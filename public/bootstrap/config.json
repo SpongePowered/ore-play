@@ -6,7 +6,7 @@
     "@gray": "lighten(@gray-base, 33.5%)",
     "@gray-light": "lighten(@gray-base, 46.7%)",
     "@gray-lighter": "lighten(@gray-base, 93.5%)",
-    "@brand-primary": "#f1c100",
+    "@brand-primary": "#e6b800",
     "@brand-success": "#5cb85c",
     "@brand-info": "#5bc0de",
     "@brand-warning": "#f0ad4e",
@@ -51,8 +51,8 @@
     "@border-radius-base": "0",
     "@border-radius-large": "0",
     "@border-radius-small": "0",
-    "@component-active-color": "#fff",
-    "@component-active-bg": "@brand-primary",
+    "@component-active-color": "#474a54",
+    "@component-active-bg": "#f6cf17",
     "@caret-width-base": "4px",
     "@caret-width-large": "5px",
     "@table-cell-padding": "8px",
@@ -163,7 +163,7 @@
     "@navbar-default-toggle-icon-bar-bg": "#888",
     "@navbar-default-toggle-border-color": "#ddd",
     "@navbar-inverse-color": "lighten(@gray-light, 15%)",
-    "@navbar-inverse-bg": "#222",
+    "@navbar-inverse-bg": "#3a3a3a",
     "@navbar-inverse-border": "darken(@navbar-inverse-bg, 10%)",
     "@navbar-inverse-link-color": "lighten(@gray-light, 15%)",
     "@navbar-inverse-link-hover-color": "#fff",
@@ -431,5 +431,5 @@
     "scrollspy.js",
     "transition.js"
   ],
-  "customizerUrl": "http://getbootstrap.com/customize/?id=53a4888b9ec7597a2411"
+  "customizerUrl": "http://getbootstrap.com/customize/?id=2b7b18d327d39e6ca0f26c96d6cc1898"
 }
