@@ -3,10 +3,16 @@
 general.name                    =   Ore
 general.description             =   A Minecraft Package Repository
 general.title                   =   Ore - A Minecraft Package Repository
-general.forums                  =   Forums
 general.signout                 =   Sign out
 general.signup                  =   Sign up
 general.login                   =   Log in
+general.home                    =   Homepage
+general.forums                  =   Forums
+general.code                    =   Code
+general.docs                    =   Docs
+general.javadocs                =   Javadocs
+general.plugins                 =   Plugins
+general.getsponge               =   Get Sponge
 
 page.edit                       =   Edit
 page.edit.cancel                =   Cancel

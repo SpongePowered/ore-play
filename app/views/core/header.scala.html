@@ -7,14 +7,24 @@ The main header displayed on each layout.
 
 <nav class="navbar navbar-fixed-top navbar-inverse">
     <div class="container">
-        <div class="navbar-header">
-            <a class="navbar-brand" href="@routes.Application.index(None)">
-                <img class="logo"
-                     src="@Play.current.configuration.getString("sponge.logo").get"
-                     alt="Sponge">
-            </a>
-        </div>
         <div class="collapse navbar-collapse">
+            <ul class="nav navbar-nav navbar-left">
+                <li class="dropdown">
+                    <a href="#" class="drop-down-toggle" style="padding: 15px;" data-toggle="dropdown">
+                        <img class="logo" src="@Play.current.configuration.getString("sponge.logo").get" />
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu main-dropdown" aria-label="maindropdown">
+                        <li><a href="https://www.spongepowered.org"><i class="fa fa-home"></i>@messages("general.home")</a></li>
+                        <li><a href="https://forums.spongepowered.org"><i class="fa fa-comment"></i>@messages("general.forums")</a></li>
+                        <li><a href="https://github.com/SpongePowered"><i class="fa fa-code"></i>@messages("general.code")</a></li>
+                        <li><a href="https://docs.spongepowered.org"><i class="fa fa-book"></i>@messages("general.docs")</a></li>
+                        <li><a href="https://jd.spongepowered.org"><i class="fa fa-graduation-cap"></i>@messages("general.javadocs")</a></li>
+                        <li class="active"><a href="https://ore-staging.spongepowered.org"><i class="fa fa-wrench"></i>@messages("general.plugins")</a></li>
+                        <li><a href="https://forums.spongepowered.org/t/sponge-downloads/11448"><i class="fa fa-download"></i>@messages("general.getsponge")</a></li>
+                    </ul>
+                </li>
+            </ul>
             @session.get("email").map { email =>
                 @* Show user controls *@
                 <ul class="nav navbar-nav navbar-right">
@@ -26,7 +36,6 @@ The main header displayed on each layout.
                         <ul class="dropdown-menu" aria-label="dropdownMenu1">
                             <li><a href="#">@session.get("username").get <i class="pull-right fa fa-user"></i></a></li>
                             <li role="separator" class="divider"></li>
-                            <li><a href="https://forums.spongepowered.org">@messages("general.forums") <i class="pull-right fa fa-home"></i></a></li>
                             <li><a href="@routes.Application.logOut">@messages("general.signout") <i class="pull-right fa fa-sign-out"></i></a></li>
                         </ul>
                     </li>
