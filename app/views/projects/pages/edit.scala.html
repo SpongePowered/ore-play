@@ -15,7 +15,7 @@
                 <a href="@routes.Projects.show(model.owner, model.getSlug)" class="btn btn-default">
                     @messages("page.edit.cancel")
                 </a>
-                <input type="submit" title="Save" value="@messages("page.edit.save")" class="btn btn-primary">
+                <input type="submit" title="@messages("page.edit.save")" value="@messages("page.edit.save")" class="btn btn-primary">
 
                 <div class="pull-right input-group">
                     @if(Pages.exists(model.owner, model.getName, page)) {

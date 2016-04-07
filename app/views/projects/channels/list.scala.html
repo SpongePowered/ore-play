@@ -3,7 +3,7 @@
 @import views.html.helper.form
 @(project: Project, channels: Seq[Channel])(implicit messages: Messages, session: Session, flash: Flash)
 
-@core.layout("Channels | " + project.owner + " / " + project.getSlug) {
+@core.layout(messages("channel.list.page-title", project.owner, project.getSlug)) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
     <script>
@@ -24,12 +24,11 @@
             <div class="col-md-6 col-md-offset-3">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h3 class="panel-title">Release channels</h3>
+                        <h3 class="panel-title">@messages("channel.list.title")</h3>
                     </div>
                     <div class="panel-body">
                         <p class="minor create-blurb">
-                            Release channels represent the state of a plugin release. A project may have up to five
-                            release channels.
+                            @messages("channel.list.description")
                         </p>
 
                         @if(flash.get("error").isDefined) {
@@ -37,7 +36,7 @@
                                 <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
-                                <strong>Whoops!</strong> @flash.get("error").get
+                                <strong>@messages("channel.list.error")</strong> @flash.get("error").get
                             </div>
                         }
 
@@ -55,7 +54,7 @@
                                             </a>
                                             <a id="channel-delete-@channel.id"
                                               @if(channels.size == 1) {
-                                                  data-toggle="tooltip" data-placement="top" title="You cannot delete your last channel."
+                                                  data-toggle="tooltip" data-placement="top" title="@messages("channel.edit.cannot-delete-last-channel")"
                                               } else {
                                                 @if(channel.versionCount > 0) {
                                                     data-toggle="modal" data-target="#modal-delete"
@@ -88,7 +87,7 @@
                         <a href="#" id="channel-new" class="pull-right btn btn-primary"
                            @if(channels.size >= Channel.MAX_AMOUNT) {
                                disabled data-toggle="tooltip" data-placement="left"
-                               title="You have reached the maximum amount of channels permitted."
+                               title="@messages("channel.edit.max-amount-reached")"
                            } else {
                                data-toggle="modal" data-target="#channel-manage"
                            }
@@ -106,18 +105,18 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="@messages("aria.close")">
                         <span aria-hidden="true">&times;</span>
                     </button>
-                    <h4 class="modal-title" id="label-delete">Delete channel</h4>
+                    <h4 class="modal-title" id="label-delete">@messages("channel.delete")</h4>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to delete this channel?</p>
-                    <p class="minor"><strong class="version-count"></strong> <i>versions will be deleted.</i></p>
+                    <p>@messages("channel.delete.info")</p>
+                    <p class="minor"><strong class="version-count"></strong> <i>@messages("channel.delete.info.versions")</i></p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <a href="#" type="button" class="btn btn-danger">Delete channel</a>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">@messages("channel.delete.close")</button>
+                    <a href="#" type="button" class="btn btn-danger">@messages("channel.delete")</a>
                 </div>
             </div>
         </div>

@@ -14,7 +14,7 @@ Page used for uploading and creating new projects.
             <div class="col-md-6 col-md-offset-3">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h3 class="panel-title">@messages("project.create.title") <span class="pull-right minor">Step 1/2</span></h3>
+                        <h3 class="panel-title">@messages("project.create.title") <span class="pull-right minor">@messages("project.create.step", 1, 2)</span></h3>
                     </div>
                     <div class="project-body panel-body">
                         <p class="minor create-blurb">
@@ -85,7 +85,7 @@ Page used for uploading and creating new projects.
                                   @* Disabled until JS determines meta is valid *@
                                   <input type="submit" name="create" value="@messages("project.create.continue")"
                                          class="continue-btn btn btn-primary" disabled />
-                                  <i class="pull-right slug">Project will be created at <strong>@project.owner/@Project.slugify(project)</strong></i>
+                                  <i class="pull-right slug">@Html(messages("project.create.destination", "<strong>" + project.owner + "/" + Project.slugify(project) + "</strong>")) </i>
                               }
                             }
                         }

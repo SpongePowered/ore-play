@@ -17,7 +17,7 @@
                         <h3 class="panel-title">
                             @messages("version.create.title")
                             @if(!showFileControls) {
-                                <span class="pull-right minor">Step 2/2</span>
+                                <span class="pull-right minor">@messages("version.create.step", 2, 2)</span>
                             }
                         </h3>
                     </div>
@@ -29,10 +29,10 @@
 
                         @if(flash.get("error").isDefined) {
                             <div class="alert alert-danger alert-dismissable" role="alert">
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <button type="button" class="close" data-dismiss="alert" aria-label="@messages("aria.close")">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
-                                <strong>Whoops!</strong> @flash.get("error").get
+                                <strong>@messages("version.create.error")</strong> @flash.get("error").get
                             </div>
                         }
 
