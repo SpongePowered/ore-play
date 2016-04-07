@@ -22,7 +22,7 @@
                         <a class="btn btn-danger"
                             @if(page.equals(Pages.HOME_PAGE)) {
                                 disabled data-toggle="tooltip" data-placement="bottom"
-                                title="Your project's homepage cannot be deleted"
+                                title="@messages("page.edit.cannot-delete-homepage")"
                             } else {
                                 href="@routes.Projects.deletePage(model.owner, model.getName, page)"
                             }
@@ -33,7 +33,7 @@
                                data-toggle="modal" data-target="#new-page"
                            } else {
                                disabled data-toggle="tooltip" data-placement="bottom"
-                               title="You have reached the maximum amount of allowed pages."
+                               title="@messages("page.edit.max-pages")"
                            }
                         >
                             <i class="fa fa-plus"></i> New page

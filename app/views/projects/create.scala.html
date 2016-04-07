@@ -17,18 +17,15 @@ Page used for uploading and creating new projects.
                     </div>
                     <div class="panel-body">
                         <p class="minor create-blurb">
-                            A project contains your downloads and the documentation for your plugin. Begin by uploading
-                            your plugin JAR file with a valid <i>mcmod.info</i> file in the first level or a ZIP file with
-                            your valid plugin JAR in the first level. Plugins with missing or incomplete metadata files
-                            will not be accepted.
+                            @Html(messages("project.create.info-text"))
                         </p>
 
                         @if(flash.get("error").isDefined) {
                             <div class="alert alert-danger alert-dismissable" role="alert">
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <button type="button" class="close" data-dismiss="alert" aria-label="@messages("aria.close")">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
-                                <strong>Whoops!</strong> @flash.get("error").get
+                                <strong>@messages("project.create.error")</strong> @flash.get("error").get
                             </div>
                         }
 

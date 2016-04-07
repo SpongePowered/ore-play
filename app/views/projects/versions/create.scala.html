@@ -5,7 +5,7 @@
 @(project: Project, pending: Option[PendingVersion],
   channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, session: Session, flash: Flash)
 
-@core.layout("Release a new version") {
+@core.layout(messages("version.create.page-title")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
     <script>
@@ -114,7 +114,7 @@
                                     <input type="submit" name="create" value="@messages("version.create.publish")" class="btn btn-primary" />
                                 }
                             }
-                            <span class="tos"><i>By clicking "Publish" you are agreeing to Ore's</i> <a href="#">Terms of Service</a>.</span>
+                            <i class="tos">@Html(messages("version.create.tos", "#"))</i>
                         }
 
                     </div>

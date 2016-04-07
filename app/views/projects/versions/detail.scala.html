@@ -23,17 +23,17 @@
                         <a class="btn btn-danger"
                            @if(project.getVersions.size == 1) {
                                disabled data-toggle="tooltip" data-placement="top"
-                               title="Every project must have at least one version"
+                               title="@messages("version.delete.cannot-last")"
                            } else {
                                href="@routes.Projects.deleteVersion(project.owner, project.getName, channel.getName, version.versionString)"
                            }
                         >
-                            Delete
+                            @messages("version.delete")
                         </a>
                     }
                     <a class="btn btn-primary"
                        href="@routes.Projects.downloadVersion(project.owner, project.getName, channel.getName, version.versionString)">
-                        Download
+                        @messages("version.download")
                     </a>
                 </div>
             </div>
@@ -48,7 +48,7 @@
                     </a>
                 }
                 @if(version.getDescription.isEmpty) {
-                    <p class="minor"><i>No description given.</i></p>
+                    <p class="minor"><i>@messages("version.create.no-description")</i></p>
                 } else {
                     <p>@Html(Pages.MD.markdownToHtml(version.getDescription.get))</p>
                 }
@@ -101,7 +101,7 @@
                                     } else {
                                         <div class="minor">
                                             @depend.pluginId
-                                            <i class="fa fa-question-circle" title="This plugin is not available for download on Ore"
+                                            <i class="fa fa-question-circle" title="@messages("version.dependency.not-on-ore")"
                                                data-toggle="tooltip" data-placement="right"></i>
                                         </div>
                                     }
@@ -113,7 +113,7 @@
                     </div>
                 </div>
             } else {
-                <p class="minor text-center"><i>This release has no dependencies</i></p>
+                <p class="minor text-center"><i>@messages("version.dependency.no")</i></p>
             }
         </div>
     </div>
