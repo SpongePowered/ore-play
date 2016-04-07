@@ -3,8 +3,8 @@
 # ~~~~
 
 # RESTful API
-GET     /api/projects                                           @controllers.Api.listProjects(version = "v1")
-GET     /api/:version/projects                                  @controllers.Api.listProjects(version)
+GET     /api/projects                                           @controllers.Api.listProjects(version = "v1", categories: Option[String], limit:Option[Int], offset: Option[Int])
+GET     /api/:version/projects                                  @controllers.Api.listProjects(version, categories: Option[String], limit:Option[Int], offset: Option[Int])
 
 GET     /api/project                                            @controllers.Api.getProject(version = "v1", pluginId: Option[String])
 GET     /api/:version/project                                   @controllers.Api.getProject(version, pluginId: Option[String])
@@ -17,51 +17,51 @@ GET     /logout                                                 @controllers.App
 # New Project
 GET     /new                                                    @controllers.Projects.showCreate
 POST    /new/upload                                             @controllers.Projects.upload
-GET     /new/:author/:name                                      @controllers.Projects.showCreateWithMeta(author, name)
-POST    /:author/:name                                          @controllers.Projects.showFirstVersionCreate(author, name)
+GET     /new/:author/:slug                                      @controllers.Projects.showCreateWithMeta(author, slug)
+POST    /:author/:slug                                          @controllers.Projects.showFirstVersionCreate(author, slug)
 
 # Projects
-GET     /:author/:name                                          @controllers.Projects.show(author, name)
-GET     /:author/:name/star/:starred                            @controllers.Projects.setStarred(author, name, starred: Boolean)
+GET     /:author/:slug                                          @controllers.Projects.show(author, slug)
+GET     /:author/:slug/star/:starred                            @controllers.Projects.setStarred(author, slug, starred: Boolean)
 
 # Pages
-GET     /:author/:name/pages/:page/edit                         @controllers.Projects.showPageEdit(author, name, page)
-POST    /:author/:name/pages/:page/edit                         @controllers.Projects.savePage(author, name, page)
-GET     /:author/:name/pages/:page/delete                       @controllers.Projects.deletePage(author, name, page)
-GET     /:author/:name/pages/:page                              @controllers.Projects.showPage(author, name, page)
+GET     /:author/:slug/pages/:page/edit                         @controllers.Projects.showPageEdit(author, slug, page)
+POST    /:author/:slug/pages/:page/edit                         @controllers.Projects.savePage(author, slug, page)
+GET     /:author/:slug/pages/:page/delete                       @controllers.Projects.deletePage(author, slug, page)
+GET     /:author/:slug/pages/:page                              @controllers.Projects.showPage(author, slug, page)
 
 # Delete version
-GET     /:author/:name/versions/:channel/:version/delete        @controllers.Projects.deleteVersion(author, name, channel, version)
+GET     /:author/:slug/versions/:channel/:version/delete        @controllers.Projects.deleteVersion(author, slug, channel, version)
 
 # Downloads
-GET     /:author/:name/versions/download/:channel/:version      @controllers.Projects.downloadVersion(author, name, channel, version)
-GET     /:author/:name/versions/download/recommended            @controllers.Projects.downloadRecommendedVersion(author, name)
+GET     /:author/:slug/versions/download/:channel/:version      @controllers.Projects.downloadVersion(author, slug, channel, version)
+GET     /:author/:slug/versions/download/recommended            @controllers.Projects.downloadRecommendedVersion(author, slug)
 
 # New Version
-GET     /:author/:name/versions/new                             @controllers.Projects.showVersionCreate(author, name)
-POST    /:author/:name/versions/new/upload                      @controllers.Projects.uploadVersion(author, name)
-GET     /:author/:name/versions/new/:channel/:version           @controllers.Projects.showVersionCreateWithMeta(author, name, channel, version)
-POST    /:author/:name/versions/:channel/:version               @controllers.Projects.createVersion(author, name, channel, version)
+GET     /:author/:slug/versions/new                             @controllers.Projects.showVersionCreate(author, slug)
+POST    /:author/:slug/versions/new/upload                      @controllers.Projects.uploadVersion(author, slug)
+GET     /:author/:slug/versions/new/:channel/:version           @controllers.Projects.showVersionCreateWithMeta(author, slug, channel, version)
+POST    /:author/:slug/versions/:channel/:version               @controllers.Projects.createVersion(author, slug, channel, version)
 
 # Versions
-GET     /:author/:name/versions                                 @controllers.Projects.showVersions(author, name, channels: Option[String])
-GET     /:author/:name/versions/:channel/:version               @controllers.Projects.showVersion(author, name, channel, version)
-POST    /:author/:name/versions/:channel/:version/save          @controllers.Projects.saveVersionDescription(author, name, channel, version)
+GET     /:author/:slug/versions                                 @controllers.Projects.showVersions(author, slug, channels: Option[String])
+GET     /:author/:slug/versions/:channel/:version               @controllers.Projects.showVersion(author, slug, channel, version)
+POST    /:author/:slug/versions/:channel/:version/save          @controllers.Projects.saveVersionDescription(author, slug, channel, version)
 
 # Channels
-GET     /:author/:name/channels                                 @controllers.Projects.showChannels(author, name)
-POST    /:author/:name/channels                                 @controllers.Projects.createChannel(author, name)
-POST    /:author/:name/channels/:channel                        @controllers.Projects.editChannel(author, name, channel)
-GET     /:author/:name/channels/:channel/delete                 @controllers.Projects.deleteChannel(author, name, channel)
+GET     /:author/:slug/channels                                 @controllers.Projects.showChannels(author, slug)
+POST    /:author/:slug/channels                                 @controllers.Projects.createChannel(author, slug)
+POST    /:author/:slug/channels/:channel                        @controllers.Projects.editChannel(author, slug, channel)
+GET     /:author/:slug/channels/:channel/delete                 @controllers.Projects.deleteChannel(author, slug, channel)
 
 # Discussion
-GET     /:author/:name/dicuss                                   @controllers.Projects.showDiscussion(author, name)
+GET     /:author/:slug/dicuss                                   @controllers.Projects.showDiscussion(author, slug)
 
 # Admin
-GET     /:author/:name/manage                                   @controllers.Projects.showManager(author, name)
-POST    /:author/:name/manage/save                              @controllers.Projects.save(author, name)
-POST    /:author/:name/manage/rename                            @controllers.Projects.rename(author, name)
-POST    /:author/:name/manage/delete                            @controllers.Projects.delete(author, name)
+GET     /:author/:slug/manage                                   @controllers.Projects.showManager(author, slug)
+POST    /:author/:slug/manage/save                              @controllers.Projects.save(author, slug)
+POST    /:author/:slug/manage/rename                            @controllers.Projects.rename(author, slug)
+POST    /:author/:slug/manage/delete                            @controllers.Projects.delete(author, slug)
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file                                           controllers.Assets.at(path="/public", file)

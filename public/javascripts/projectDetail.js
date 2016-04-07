@@ -1,6 +1,6 @@
 var baseUrl = null;
 var projectOwner = null;
-var projectName = null;
+var projectSlug = null;
 var alreadyStarred = false;
 
 $(function() {
@@ -10,7 +10,7 @@ $(function() {
     $('.btn-star').click(function() {
         var starred = $(this).find('.starred');
         starred.html(' ' + (parseInt(starred.text()) + increment).toString());
-        $.ajax(baseUrl + '/' + projectOwner + '/' + projectName + '/star/' + (increment > 0));
+        $.ajax(baseUrl + '/' + projectOwner + '/' + projectSlug + '/star/' + (increment > 0));
 
         var icon = $('#icon-star');
         if (increment > 0) {

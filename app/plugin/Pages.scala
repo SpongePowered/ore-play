@@ -4,7 +4,8 @@ import java.nio.file.{Files, Path}
 
 import com.google.common.base.Preconditions._
 import models.project.Project
-import org.pegdown.PegDownProcessor
+import org.pegdown.Extensions._
+import org.pegdown.{Extensions, PegDownProcessor}
 import util.Dirs._
 
 /**
@@ -19,7 +20,7 @@ object Pages {
   val FILE_ENCODING:      String  =   "UTF-8"
   val MAX_PAGES:          Int     =   10
 
-  val MD: PegDownProcessor = new PegDownProcessor
+  val MD: PegDownProcessor = new PegDownProcessor(ALL & ~ANCHORLINKS)
 
   /**
     * Represents a documentation Page for a project.

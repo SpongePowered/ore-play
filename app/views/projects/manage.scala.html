@@ -1,11 +1,11 @@
 @import models.project.Project
 @import views.html.helper.form
-@(project: Project)(implicit messages: Messages, session: Session)
+@(project: Project)(implicit messages: Messages, session: Session, flash: Flash)
 
 @projects.detail(project, "#settings") {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectManage.js")"></script>
-    <script>var projectName = "@project.getName";</script>
+    <script>projectName = "@project.getName";</script>
 
     <div class="container">
         <div class="row">
@@ -19,7 +19,8 @@
 
                         <label for="name">Project name</label>
                         <div class="form-inline form-rename">
-                            <input form="rename" id="name" name="name" class="form-control" type="text" value="@project.getName">
+                            <input form="rename" id="name" name="name" class="form-control" type="text" value="@project.getName"
+                                   maxlength="@Project.MAX_NAME_LENGTH">
                             <button id="btn-rename" data-toggle="modal" data-target="#modal-rename" class="btn btn-warning" disabled>
                                 @messages("project.rename")
                             </button>
@@ -39,7 +40,7 @@
                                     </div>
                                     <div class="modal-footer">
                                         <div class="form-inline">
-                                        @form(action = routes.Projects.rename(project.owner, project.getName), 'id -> "rename") {
+                                        @form(action = routes.Projects.rename(project.owner, project.getSlug), 'id -> "rename") {
                                             <button type="button" class="btn btn-default" data-dismiss="modal">
                                                 @messages("channel.edit.close")
                                             </button>
@@ -67,7 +68,7 @@
                                     </div>
                                     <div class="modal-footer">
                                         <div class="form-inline">
-                                            @form(action = routes.Projects.delete(project.owner, project.getName)) {
+                                            @form(action = routes.Projects.delete(project.owner, project.getSlug)) {
                                                 <button type="button" class="btn btn-default" data-dismiss="modal">
                                                     @messages("channel.edit.close")
                                                 </button>
@@ -79,13 +80,21 @@
                             </div>
                         </div>
 
-                        @form(action = routes.Projects.save(project.owner, project.getName), 'id -> "save") {
+                        @form(action = routes.Projects.save(project.owner, project.getSlug), 'id -> "save") {
                             <input type="submit" name="save" value="Save changes" class="btn btn-success">
                         }
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
+                @if(flash.get("error").isDefined) {
+                    <div class="alert alert-danger alert-dismissable" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        @flash.get("error").get
+                    </div>
+                }
             </div>
         </div>
     </div>

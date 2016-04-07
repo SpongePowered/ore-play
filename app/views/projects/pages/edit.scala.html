@@ -5,14 +5,14 @@
 
 @projects.detail(model, "#docs") {
 
-    <script type="text/javascript" src="@routes.Assets.at("node_modules/markdown/lib/markdown.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.at("showdown/dist/showdown.min.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/pagePreview.js")"></script>
 
     <div class="container">
-        @form(action = routes.Projects.savePage(model.owner, model.getName, page)) {
+        @form(action = routes.Projects.savePage(model.owner, model.getSlug, page)) {
             <div class="form-group form-inline">
                 <input class="form-control" type="text" name="name" value="@page" readonly>
-                <a href="@routes.Projects.show(model.owner, model.getName)" class="btn btn-default">
+                <a href="@routes.Projects.show(model.owner, model.getSlug)" class="btn btn-default">
                     @messages("page.edit.cancel")
                 </a>
                 <input type="submit" title="Save" value="@messages("page.edit.save")" class="btn btn-primary">
@@ -24,7 +24,7 @@
                                 disabled data-toggle="tooltip" data-placement="bottom"
                                 title="@messages("page.edit.cannot-delete-homepage")"
                             } else {
-                                href="@routes.Projects.deletePage(model.owner, model.getName, page)"
+                                href="@routes.Projects.deletePage(model.owner, model.getSlug, page)"
                             }
                         >@messages("page.edit.delete")</a>
 

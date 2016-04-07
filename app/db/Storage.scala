@@ -93,6 +93,11 @@ object Storage {
     this.config.db.run(query.result)
   }
 
+  private def getN[T <: Table[M], M](clazz: Class[_], n: Int): Future[Seq[M]] = {
+    val query = q[T](clazz).take(n)
+    this.config.db.run(query.result)
+  }
+
   private def optOne[T <: Table[M], M](clazz: Class[_], predicate: T => Rep[Boolean]): Future[Option[M]] = {
     val p = Promise[Option[M]]
     filter[T, M](clazz, predicate).onComplete {
@@ -153,13 +158,20 @@ object Storage {
 
   // Project queries
 
-  def getProjects: Future[Seq[Project]] = getAll[ProjectTable, Project](classOf[Project])
-
-  def getProjects(categories: Array[Int]): Future[Seq[Project]] = {
-    val query = for {
-      project <- q[ProjectTable](classOf[Project])
-      if project.categoryId inSetBind categories
-    } yield project
+  def getProjects(categories: Array[Int] = null, limit: Int = -1, offset: Int = -1): Future[Seq[Project]] = {
+    var query: Query[ProjectTable, Project, Seq] = q[ProjectTable](classOf[Project])
+    if (categories != null) {
+      query = for {
+        project <- query
+        if project.categoryId inSetBind categories
+      } yield project
+    }
+    if (offset > -1) {
+      query = query.drop(offset)
+    }
+    if (limit > -1) {
+      query = query.take(limit)
+    }
     this.config.db.run(query.result)
   }
 
@@ -179,6 +191,14 @@ object Storage {
 
   def getProject(owner: String, name: String): Future[Project] = {
     getOne[ProjectTable, Project](classOf[Project], p => p.name === name && p.ownerName === owner)
+  }
+
+  def getProjectBySlug(owner: String, slug: String): Future[Project] = {
+    getOne[ProjectTable, Project](classOf[Project], p => p.ownerName === owner && p.slug.toLowerCase === slug.toLowerCase)
+  }
+
+  def optProjectOfSlug(owner: String, slug: String): Future[Option[Project]] = {
+    optOne[ProjectTable, Project](classOf[Project], p => p.ownerName === owner && p.slug.toLowerCase === slug.toLowerCase)
   }
 
   def getProject(id: Int): Future[Project] = getOne[ProjectTable, Project](classOf[Project], p => p.id === id)
@@ -260,7 +280,7 @@ object Storage {
   }
 
   def optChannel(projectId: Int, name: String): Future[Option[Channel]] = {
-    optOne[ChannelTable, Channel](classOf[Channel], c => c.projectId === projectId && c.name === name)
+    optOne[ChannelTable, Channel](classOf[Channel], c => c.projectId === projectId && c.name.toLowerCase === name.toLowerCase)
   }
 
   def optChannel(projectId: Int, colorId: Int): Future[Option[Channel]] = {

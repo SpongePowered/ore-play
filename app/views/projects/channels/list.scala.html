@@ -1,15 +1,19 @@
 @import models.project.{Channel, Project}
 @import play.api.Play
+@import views.html.helper.form
 @(project: Project, channels: Seq[Channel])(implicit messages: Messages, session: Session, flash: Flash)
 
-@core.layout("Channels | " + project.owner + "/public " + project.getName) {
+@core.layout("Channels | " + project.owner + " / " + project.getSlug) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
     <script>
+        BASE_URL = '@Play.current.configuration.getString("application.baseUrl")';
+        PROJECT_OWNER = '@project.owner';
+        PROJECT_SLUG = '@project.getSlug';
         $(function() {
             initChannelManager(
                     "#channel-new", "", "@Channel.DEFAULT_COLOR.hex", "New channel",
-                    "@routes.Projects.createChannel(project.owner, project.getName)",
+                    "@routes.Projects.createChannel(project.owner, project.getSlug)",
                     "post", "Create channel"
             );
         });
@@ -40,7 +44,7 @@
                         <table class="table no-border">
                             <tbody>
                                 @channels.sorted.map { channel =>
-                                  <tr>
+                                    <tr>
                                       <td class="channel channel-flat"
                                           style="background-color: @channel.getColor.hex;">
                                         @channel.getName
@@ -49,22 +53,28 @@
                                                 <i data-toggle="modal" data-target="#channel-manage"
                                                    id="channel-edit-@channel.id" class="fa fa-edit"></i>
                                             </a>
-                                            <a @if(channels.size == 1) {
-                                                 data-toggle="tooltip" data-placement="top" title="You cannot delete your last channel."
-                                               } else {
-                                                 href="@routes.Projects.deleteChannel(project.owner, project.getName, channel.getName)"
-                                               }
+                                            <a id="channel-delete-@channel.id"
+                                              @if(channels.size == 1) {
+                                                  data-toggle="tooltip" data-placement="top" title="You cannot delete your last channel."
+                                              } else {
+                                                @if(channel.versionCount > 0) {
+                                                    data-toggle="modal" data-target="#modal-delete"
+                                                } else {
+                                                    href="@routes.Projects.deleteChannel(project.owner, project.getSlug, channel.getName)"
+                                                }
+                                              }
                                             >
                                                 <i class="fa fa-trash"></i>
                                             </a>
                                         </div>
                                       </td>
                                   </tr>
-                                  <script>
+                                    <script>
                                       $(function() {
+                                          initChannelDelete('#channel-delete-@channel.id', '@channel.getName', @channel.versionCount);
                                           initChannelManager(
                                                   "#channel-edit-@channel.id", "@channel.getName", "@channel.getColor.hex",
-                                                  "Edit channel", "@routes.Projects.editChannel(project.owner, project.getName, channel.getName)",
+                                                  "Edit channel", "@routes.Projects.editChannel(project.owner, project.getSlug, channel.getName)",
                                                   "post", "Save changes"
                                           );
                                       });
@@ -72,7 +82,7 @@
                                 }
                             </tbody>
                         </table>
-                        <a href="@routes.Projects.showVersions(project.owner, project.getName, None)" class="pull-left btn btn-default">
+                        <a href="@routes.Projects.showVersions(project.owner, project.getSlug, None)" class="pull-left btn btn-default">
                             <i class="fa fa-arrow-left"></i>
                         </a>
                         <a href="#" id="channel-new" class="pull-right btn btn-primary"
@@ -87,6 +97,27 @@
                         </a>
                         @projects.channels.modalManage()
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-delete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title" id="label-delete">Delete channel</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this channel?</p>
+                    <p class="minor"><strong class="version-count"></strong> <i>versions will be deleted.</i></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <a href="#" type="button" class="btn btn-danger">Delete channel</a>
                 </div>
             </div>
         </div>

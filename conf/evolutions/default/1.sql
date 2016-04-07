@@ -1,10 +1,19 @@
 # --- !Ups
 
+CREATE TABLE users (
+  external_id  bigint        NOT NULL PRIMARY KEY,
+  created_at   timestamp     NOT NULL,
+  name         varchar(255)  NOT NULL,
+  username     varchar(255)  NOT NULL,
+  email        varchar(255)  NOT NULL
+);
+
 CREATE TABLE projects (
   id                      serial          NOT NULL PRIMARY KEY,
   created_at              timestamp       NOT NULL,
   plugin_id               varchar(255)    NOT NULL UNIQUE,
   name                    varchar(255)    NOT NULL,
+  slug                    varchar(255)    NOT NULL,
   owner_name              varchar(255)    NOT NULL,
   authors                 varchar(255)[]  NOT NULL,
   homepage                text            ,
@@ -12,7 +21,22 @@ CREATE TABLE projects (
   category_id             int             NOT NULL CHECK (category_id >= 0),
   views                   bigint          NOT NULL CHECK (views >= 0),
   downloads               bigint          NOT NULL CHECK (downloads >= 0),
-  starred                 bigint          NOT NULL CHECK (starred >= 0)
+  starred                 bigint          NOT NULL CHECK (starred >= 0),
+  UNIQUE (owner_name, name),
+  UNIQUE (owner_name, slug)
+);
+
+CREATE TABLE project_views (
+  id          serial        NOT NULL PRIMARY KEY,
+  cookie      varchar(50)   ,
+  user_id     bigint        REFERENCES users ON DELETE CASCADE,
+  project_id  bigint        NOT NULL REFERENCES projects ON DELETE CASCADE
+);
+
+CREATE TABLE starred_projects (
+  user_id     bigint    NOT NULL REFERENCES users ON DELETE CASCADE,
+  project_id  bigint    NOT NULL REFERENCES projects ON DELETE CASCADE,
+  PRIMARY KEY (user_id, project_id)
 );
 
 CREATE TABLE channels (
@@ -30,7 +54,7 @@ CREATE TABLE versions (
   created_at      timestamp       NOT NULL,
   version_string  varchar(255)    NOT NULL,
   dependencies    varchar(255)[]  NOT NULL,
-  description     varchar(255)    ,
+  description     text            ,
   assets          varchar(510)    ,
   downloads       bigint          NOT NULL CHECK (downloads >= 0),
   project_id      bigint          NOT NULL REFERENCES projects ON DELETE CASCADE,
@@ -38,12 +62,11 @@ CREATE TABLE versions (
   UNIQUE (channel_id, version_string)
 );
 
-CREATE TABLE users (
-  external_id  bigint        NOT NULL PRIMARY KEY,
-  created_at   timestamp     NOT NULL,
-  name         varchar(255)  NOT NULL,
-  username     varchar(255)  NOT NULL,
-  email        varchar(255)  NOT NULL
+CREATE TABLE version_downloads (
+  id          serial        NOT NULL PRIMARY KEY,
+  cookie      varchar(50)   ,
+  user_id     bigint        REFERENCES users ON DELETE CASCADE,
+  version_id  bigint        NOT NULL REFERENCES versions ON DELETE CASCADE
 );
 
 CREATE TABLE teams (
@@ -55,7 +78,10 @@ CREATE TABLE teams (
 # --- !Downs
 
 DROP TABLE projects;
+DROP TABLE project_views;
+DROP TABLE starred_projects;
 DROP TABLE channels;
 DROP TABLE versions;
+DROP TABLE version_downloads;
 DROP TABLE users;
 DROP TABLE teams;

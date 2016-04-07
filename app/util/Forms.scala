@@ -14,11 +14,6 @@ object Forms {
   lazy val ChannelEdit = Form(tuple("channel-input" -> text, "channel-color-input" -> text))
 
   /**
-    * Submits a new Channel for a Project on initial creation.
-    */
-  lazy val ChannelNewProject = Form(tuple("chan-input" -> text, "chan-color-input" -> text))
-
-  /**
     * Submits changes on a documentation page.
     */
   lazy val PageEdit = Form(tuple("name" -> text, "content" -> text))

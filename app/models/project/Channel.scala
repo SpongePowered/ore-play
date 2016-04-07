@@ -103,6 +103,18 @@ case class Channel(id: Option[Int], var createdAt: Option[Timestamp], private va
   def getVersion(version: String): Future[Option[Version]] = Storage.optVersion(this.id.get, version)
 
   /**
+    * Returns the amount of versions in this Channel.
+    *
+    * @return Amount of versions
+    */
+  def versionCount: Int = Storage.now(getVersions) match {
+    case Failure(thrown) => throw thrown
+    case Success(versions) => versions.size
+  }
+
+  def isEmpty: Boolean = versionCount == 0
+
+  /**
     * Deletes the specified Version within this channel.
     *
     * @param version  Version to delete
@@ -129,7 +141,9 @@ case class Channel(id: Option[Int], var createdAt: Option[Timestamp], private va
     checkArgument(context.id.get == this.projectId, "invalid context id", "")
     Storage.now(context.getChannels) match {
       case Failure(thrown) => throw thrown
-      case Success(channels) => checkArgument(channels.size > 1, "only one channel", "")
+      case Success(channels) =>
+        checkArgument(channels.size > 1, "only one channel", "")
+        checkArgument(isEmpty || channels.count(c => c.versionCount > 0) > 1, "last non-empty channel", "")
     }
     Storage.now(Storage.deleteChannel(this)) match {
       case Failure(thrown) => throw thrown

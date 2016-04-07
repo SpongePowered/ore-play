@@ -1,3 +1,5 @@
+var markdown = new showdown.Converter();
+
 function init() {
     // Display description
     $('#description').html($('#description-view').html());
@@ -15,7 +17,11 @@ function init() {
 
         // Render preview
         $('[href="#preview"]').on('shown.bs.tab', function() {
-            $("#preview").html(markdown.toHTML($("#version-editor").val()));
+            var preview = $('#preview');
+            preview.html(markdown.makeHtml($("#version-editor").val()));
+            preview.find('pre code').each(function(i, block) {
+                hljs.highlightBlock(block);
+            });
         });
 
         // Save description

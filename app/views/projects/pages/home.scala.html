@@ -13,7 +13,7 @@ Documentation page within Project overview.
             <div class="row">
                 <div class="col-md-9">
                     @if(session.get("username").isDefined && session.get("username").get.equals(model.owner)) {
-                        <a href="@routes.Projects.showPageEdit(model.owner, model.getName, page.getName)"
+                        <a href="@routes.Projects.showPageEdit(model.owner, model.getSlug, page.getName)"
                            class="btn btn-default pull-right"><i class="fa fa-edit"></i> @messages("page.edit")</a>
                     }
                     @* Rendered markdown *@
@@ -34,9 +34,9 @@ Documentation page within Project overview.
                         <ul class="list-group">
                             @for(page <- Pages.getAll(model.owner, model.getName)) {
                                 <li class="list-group-item">
-                                    <a href="@routes.Projects.showPage(model.owner, model.getName, page.getName)">@page.getName</a>
+                                    <a href="@routes.Projects.showPage(model.owner, model.getSlug, page.getName)">@page.getName</a>
                                     @if(session.get("username").isDefined && session.get("username").get.equals(model.owner)) {
-                                        <a href="@routes.Projects.showPageEdit(model.owner, model.getName, page.getName)"
+                                        <a href="@routes.Projects.showPageEdit(model.owner, model.getSlug, page.getName)"
                                            class="pull-right"><i class="fa fa-edit"></i></a>
                                     }
                                 </li>

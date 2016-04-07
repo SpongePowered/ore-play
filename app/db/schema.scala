@@ -20,6 +20,7 @@ class ProjectTable(tag: Tag) extends Table[Project](tag, "projects") {
   def createdAt             =   column[Timestamp]("created_at")
   def pluginId              =   column[String]("plugin_id")
   def name                  =   column[String]("name")
+  def slug                  =   column[String]("slug")
   def ownerName             =   column[String]("owner_name")
   def authors               =   column[List[String]]("authors")
   def homepage              =   column[String]("homepage")
@@ -29,7 +30,7 @@ class ProjectTable(tag: Tag) extends Table[Project](tag, "projects") {
   def downloads             =   column[Int]("downloads", O.Default(0))
   def starred               =   column[Int]("starred", O.Default(0))
 
-  override def * = (id.?, createdAt.?, pluginId, name, ownerName,
+  override def * = (id.?, createdAt.?, pluginId, name, slug, ownerName,
                     authors, homepage.?, recommendedVersionId.?,
                     categoryId, views, downloads, starred) <> ((Project.apply _).tupled,
                     Project.unapply)

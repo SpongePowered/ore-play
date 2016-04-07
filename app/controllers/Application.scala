@@ -15,6 +15,8 @@ import scala.util.{Failure, Success}
 
 class Application @Inject()(override val messagesApi: MessagesApi) extends Controller with I18nSupport {
 
+  val INITIAL_PROJECT_LOAD: Int = 50
+
   /**
     * Display the home page.
     *
@@ -22,13 +24,13 @@ class Application @Inject()(override val messagesApi: MessagesApi) extends Contr
     */
   def index(categories: Option[String]) = Action { implicit request =>
     categories match {
-      case None => Storage.now(Storage.getProjects) match {
+      case None => Storage.now(Storage.getProjects(limit = INITIAL_PROJECT_LOAD)) match {
         case Failure(thrown) => throw thrown
         case Success(projects) => Ok(views.index(projects, None))
       }
       case Some(csv) =>
         val categoryArray = Categories.fromString(csv)
-        Storage.now(Storage.getProjects(categoryArray.map(_.id))) match {
+        Storage.now(Storage.getProjects(categoryArray.map(_.id), INITIAL_PROJECT_LOAD)) match {
           case Failure(thrown) => throw thrown
           case Success(projects) =>
             // Don't pass "visible categories" if all categories are visible

@@ -4,6 +4,7 @@ Page used for uploading and creating new projects.
 @import models.project.Project.PendingProject
 @import play.api.Play
 @import views.html.helper.form
+@import models.project.Project
 @(pending: Option[PendingProject])(implicit messages: Messages, session: Session, flash: Flash)
 
 @core.layout(messages("project.create")) {
@@ -15,7 +16,7 @@ Page used for uploading and creating new projects.
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("project.create.title") <span class="pull-right minor">Step 1/2</span></h3>
                     </div>
-                    <div class="panel-body">
+                    <div class="project-body panel-body">
                         <p class="minor create-blurb">
                             @Html(messages("project.create.info-text"))
                         </p>
@@ -53,8 +54,11 @@ Page used for uploading and creating new projects.
                                     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectCreateValidate.js")"></script>
                                     <script>
                                     $(function() {
-                                        validateMeta("@project.pluginId", "@project.owner", "@project.getName",
-                                                      "@Play.current.configuration.getString("application.baseUrl").get");
+                                        validateMeta("@project.pluginId", "@project.getName",
+                                                     "@Play.current.configuration.getString("application.baseUrl").get",
+                                                     "@project.owner", "@project.getSlug"
+
+                                        );
                                     });
                                     </script>
                                 </div>
@@ -77,10 +81,11 @@ Page used for uploading and creating new projects.
                         @* Continue to next step *@
                         @if(pending.isDefined) {
                             @defining(pending.get.project) { project =>
-                              @form(action = routes.Projects.showFirstVersionCreate(project.owner, project.getName), 'id -> "continue") {
+                              @form(action = routes.Projects.showFirstVersionCreate(project.owner, project.getSlug), 'id -> "continue") {
                                   @* Disabled until JS determines meta is valid *@
                                   <input type="submit" name="create" value="@messages("project.create.continue")"
                                          class="continue-btn btn btn-primary" disabled />
+                                  <i class="pull-right slug">Project will be created at <strong>@project.owner/@Project.slugify(project)</strong></i>
                               }
                             }
                         }

@@ -3,22 +3,43 @@ Collection of all projects.
 *@
 @import models.project.Categories.Category
 @import models.project.{Categories, Project}
+@import play.api.Play
 @(models: Seq[Project], visibleCategories: Option[Array[Category]])(implicit messages: Messages,
         session: Session, flash: Flash)
 
-<div class="container">
-    @if(flash.get("success").isDefined) {
-        <div class="alert alert-success alert-dismissable" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="@messages("aria.close")">
-                <span aria-hidden="true">&times;</span>
-            </button>
-            @flash.get("success").get
-        </div>
-    }
 
+<script type="text/javascript" src="@routes.Assets.at("javascripts/projectsMore.js")"></script>
+<script>
+    @if(visibleCategories.isDefined) {
+      CATEGORY_STRING = "@visibleCategories.get.map(_.id).mkString(",")";
+    }
+    BASE_URL = '@Play.current.configuration.getString("application.baseUrl")';
+    currentlyLoaded = @models.size;
+</script>
+
+<div class="container">
     <div class="row index-header">
         <div class="col-md-12">
-            <h3 class="pull-left">Welcome to Ore! <i class="date">A Minecraft Package Repository</i></h3>
+
+            @if(flash.get("success").isDefined) {
+                <div class="alert alert-success alert-dismissable" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="@messages("aria.close")">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    @flash.get("success").get
+                </div>
+            }
+
+            @if(flash.get("error").isDefined) {
+                <div class="alert alert-danger alert-dismissable" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="@messages("aria.close")">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    @flash.get("error").get
+                </div>
+            }
+
+            <h3 class="pull-left">@messages("overview.welcome") <i class="date">@messages("overview.welcome.description")</i></h3>
             <div class="table-controls">
                 <a href="@routes.Projects.showCreate"
                    title="Submit a new project to Ore." data-toggle="tooltip"
@@ -51,7 +72,7 @@ Collection of all projects.
                                   <td><i title="@category.title" class="fa @category.icon"></i></td>
                                 }
                                 <td class="" colspan="1">
-                                    <strong><a class="" href="@routes.Projects.show(project.owner, project.getName)">@project.getName</a></strong>
+                                    <strong><a class="" href="@routes.Projects.show(project.owner, project.getSlug)">@project.getName</a></strong>
                                 </td>
                                 <td><a href="#">@project.owner</a></td>
                                 <td class="minor">@project.getViews</td>
@@ -61,6 +82,7 @@ Collection of all projects.
                         }
                     </tbody>
                 </table>
+                <button class="btn btn-default btn-more"><strong>More</strong></button>
             </div>
         </div>
 

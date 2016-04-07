@@ -8,10 +8,6 @@
 @core.layout(messages("version.create.page-title")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
-    <script>
-        var NAME_REGEX = /@Channel.NAME_REGEX/g;
-        var BASE_URL = "@Play.current.configuration.getString("application.baseUrl")";
-    </script>
 
     <div class="container" style="margin-top: 90px">
         <div class="row">
@@ -25,7 +21,8 @@
                             }
                         </h3>
                     </div>
-                    <div class="panel-body">
+
+                    <div class="create-body panel-body">
                         <p class="minor create-blurb">
                             Release a new version for <strong>@project.getName</strong>.
                         </p>
@@ -63,12 +60,23 @@
                                             <td class="form-inline">
                                                 @* Show channel selector if old project, editor if new project *@
                                                 @if(showFileControls) {
-                                                    <select class="form-control" size="@channels.get.size">
+                                                    <select id="select-channel" form="form-publish" name="channel-input" class="form-control">
                                                         @channels.get.map { channel =>
-                                                          <option>@channel.getName</option>
+                                                          <option value="@channel.getName" data-color="@channel.getColor.hex"
+                                                            @if(pending.isDefined && channel.getName.equals(pending.get.getChannelName)) {
+                                                              selected
+                                                            }
+                                                          >
+                                                              @channel.getName
+                                                          </option>
                                                         }
                                                     </select>
-                                                    <a href="#"><i class="fa fa-plus"></i></a>
+                                                    <a href="#">
+                                                        <i id="channel-new" class="fa fa-plus" data-toggle="modal" data-target="#channel-manage"></i>
+                                                    </a>
+                                                    <script type="text/javascript"
+                                                            src="@routes.Assets.at("javascripts/versionCreateChannelNew.js")"></script>
+                                                    <script>DEFAULT_COLOR = '@Channel.DEFAULT_COLOR.hex';</script>
                                                 } else {
                                                     <span id="channel-name" class="channel" style="background-color: @pending.get.getChannelColor;">
                                                         @pending.get.getChannelName
@@ -95,7 +103,7 @@
                         }
 
                         @if(showFileControls) {
-                            @form(action = routes.Projects.uploadVersion(project.owner, project.getName), 'enctype -> "multipart/form-data") {
+                            @form(action = routes.Projects.uploadVersion(project.owner, project.getSlug), 'enctype -> "multipart/form-data") {
                                 <label class="btn btn-primary" for="pluginFile">
                                     <input id="pluginFile" name="pluginFile" type="file" style="display: none;">
                                     @messages("version.create.select-file")
@@ -108,9 +116,11 @@
                             @* Ready to go! *@
                             @defining(pending.get.version) { version =>
                                 @form(action = routes.Projects.createVersion(
-                                    project.owner, project.getName, pending.get.getChannelName, version.versionString)) {
-                                    <input type="hidden" id="chan-input" name="chan-input" value="@pending.get.getChannelName" />
-                                    <input type="hidden" id="chan-color-input" name="chan-color-input" value="@Channel.DEFAULT_COLOR.hex" />
+                                    project.owner, project.getSlug, pending.get.getChannelName, version.versionString), 'id -> "form-publish") {
+                                    @if(!showFileControls) {
+                                        <input type="hidden" class="channel-input" name="channel-input" value="@pending.get.getChannelName" />
+                                    }
+                                    <input type="hidden" class="channel-color-input" name="channel-color-input" value="@Channel.DEFAULT_COLOR.hex" />
                                     <input type="submit" name="create" value="@messages("version.create.publish")" class="btn btn-primary" />
                                 }
                             }

@@ -20,10 +20,13 @@ import scala.util.{Failure, Success}
   */
 class Projects @Inject()(override val messagesApi: MessagesApi) extends Controller with I18nSupport with Secured {
 
-  private def withProject(author: String, name: String, f: Project => Result): Result = {
-    Storage.now(Storage.getProject(author, name)) match {
-      case Failure(thrown) => NotFound
-      case Success(project) => f(project)
+  private def withProject(author: String, slug: String, f: Project => Result): Result = {
+    Storage.now(Storage.optProjectOfSlug(author, slug)) match {
+      case Failure(thrown) => throw thrown
+      case Success(optProject) => optProject match {
+        case None => NotFound
+        case Some(project) => f(project)
+      }
     }
   }
 
@@ -53,12 +56,13 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
           } else {
             throw thrown
           }
+
           case Success(plugin) =>
             // Cache pending project for later use
             val meta = plugin.getMeta.get
             val project = Project.fromMeta(user.username, meta)
             Project.setPending(project, plugin)
-            Redirect(self.showCreateWithMeta(project.owner, project.getName))
+            Redirect(self.showCreateWithMeta(project.owner, project.getSlug))
         }
     })
   }
@@ -67,11 +71,11 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Displays the "create project" page with uploaded plugin meta data.
     *
     * @param author   Author of plugin
-    * @param name     Name of plugin
+    * @param slug     Project slug
     * @return         Create project view
     */
-  def showCreateWithMeta(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    Project.getPending(author, name) match {
+  def showCreateWithMeta(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    Project.getPending(author, slug) match {
       case None => Redirect(self.showCreate())
       case Some(pending) => Ok(views.projects.create(Some(pending)))
     })
@@ -82,33 +86,33 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * publishes their Project.
     *
     * @param author   Author of project
-    * @param name     Name of project
+    * @param slug     Project slug
     * @return         Redirection to project page if successful
     */
-  def showFirstVersionCreate(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    Project.getPending(author, name) match {
+  def showFirstVersionCreate(author: String, slug: String) = { withUser(Some(author), user => implicit request => {
+    Project.getPending(author, slug) match {
       case None => BadRequest("No project to create.")
       case Some(pendingProject) =>
         val category = Categories.withName(Forms.ProjectCategory.bindFromRequest.get)
         pendingProject.project.setCategory(category)
         val pendingVersion = pendingProject.initFirstVersion
         Redirect(self.showVersionCreateWithMeta(
-          author, name, pendingVersion.getChannelName, pendingVersion.version.versionString
+          author, slug, pendingVersion.getChannelName, pendingVersion.version.versionString
         ))
-    })
+    }})
   }
 
   /**
     * Displays the Project with the specified author and name.
     *
     * @param author   Owner of project
-    * @param name     Name of project
+    * @param slug     Project slug
     * @return         View of project
     */
-  def show(author: String, name: String) = Action { implicit request =>
-    withProject(author, name, project => {
+  def show(author: String, slug: String) = Action { implicit request =>
+    withProject(author, slug, project => {
       Statistics.projectViewed(project, request)
-      Ok(views.projects.pages.home(project, Pages.getHome(author, name)))
+      Ok(views.projects.pages.home(project, Pages.getHome(author, project.getName)))
     })
   }
 
@@ -116,16 +120,16 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Saves the specified Project from the settings manager.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         View of project
     */
-  def save(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+  def save(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
       val category = Categories.withName(Forms.ProjectCategory.bindFromRequest.get)
       if (!category.equals(project.getCategory)) {
         project.setCategory(category)
       }
-      Redirect(self.show(author, name))
+      Redirect(self.show(author, slug))
     }))
   }
 
@@ -133,12 +137,12 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Sets the "starred" status of a Project for the current user.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @param starred  True if should set to starred
     * @return         Result code
     */
-  def setStarred(author: String, name: String, starred: Boolean) = { withUser(None, user => implicit request =>
-    withProject(author, name, project => {
+  def setStarred(author: String, slug: String, starred: Boolean) = { withUser(None, user => implicit request =>
+    withProject(author, slug, project => {
       val alreadyStarred = project.isStarredBy(user)
       if (starred) {
         if (!alreadyStarred) {
@@ -162,12 +166,12 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * name.
     *
     * @param author   Owner name
-    * @param name     Project name
+    * @param slug     Project slug
     * @param page     Page name
     * @return         Page editor
     */
-  def showPageEdit(author: String, name: String, page: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+  def showPageEdit(author: String, slug: String, page: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
       Ok(views.projects.pages.edit(project, page, Pages.getOrCreate(project, page).getContents))
     }))
   }
@@ -176,16 +180,16 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Saves changes made on a documentation page.
     *
     * @param author   Owner name
-    * @param name     Project name
+    * @param slug     Project slug
     * @param page     Page name
     * @return         Project home
     */
-  def savePage(author: String, name: String, page: String) = { withUser(Some(author), user => implicit request =>
+  def savePage(author: String, slug: String, page: String) = { withUser(Some(author), user => implicit request =>
     // TODO: Validate content size and title
-    withProject(author, name, project => {
+    withProject(author, slug, project => {
       val pageForm = Forms.PageEdit.bindFromRequest.get
       Pages.getOrCreate(project, page).update(page, pageForm._2)
-      Redirect(self.showPage(author, name, page))
+      Redirect(self.showPage(author, slug, page))
     }))
   }
 
@@ -193,26 +197,28 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Irreversibly deletes the specified Page from the specified Project.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @param page     Page name
     * @return         Redirect to Project homepage
     */
-  def deletePage(author: String, name: String, page: String) = withUser(Some(author), user => implicit request => {
-    Pages.delete(author, name, page)
-    Redirect(self.show(author, name))
+  def deletePage(author: String, slug: String, page: String) = withUser(Some(author), user => implicit request => {
+    withProject(author, slug, project => {
+      Pages.delete(author, project.getName, page)
+      Redirect(self.show(author, slug))
+    })
   })
 
   /**
     * Displays the specified page.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @param page     Page name
     * @return         View of page
     */
-  def showPage(author: String, name: String, page: String) = Action { implicit request =>
-    withProject(author, name, project => {
-      Pages.get(author, name, page) match {
+  def showPage(author: String, slug: String, page: String) = Action { implicit request =>
+    withProject(author, slug, project => {
+      Pages.get(author, project.getName, page) match {
         case None => NotFound
         case Some(p) => Ok(views.projects.pages.home(project, p))
       }
@@ -223,13 +229,13 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Shows the specified version detail page.
     *
     * @param author         Owner name
-    * @param name           Project name
+    * @param slug           Project slug
     * @param channelName    Channel name
     * @param versionString  Version name
     * @return               Version detail view
     */
-  def showVersion(author: String, name: String, channelName: String, versionString: String) = Action { implicit request =>
-    withProject(author, name, project => {
+  def showVersion(author: String, slug: String, channelName: String, versionString: String) = Action { implicit request =>
+    withProject(author, slug, project => {
       Storage.now(project.getChannel(channelName)) match {
         case Failure(thrown) => throw thrown
         case Success(channelOpt) => channelOpt match {
@@ -250,14 +256,14 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Saves the specified Version's description.
     *
     * @param author         Project owner
-    * @param name           Project name
+    * @param slug           Project slug
     * @param channelName    Version channel
     * @param versionString  Version name
     * @return               View of Version
     */
-  def saveVersionDescription(author: String, name: String, channelName: String, versionString: String) = {
+  def saveVersionDescription(author: String, slug: String, channelName: String, versionString: String) = {
                              withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+    withProject(author, slug, project => {
       Storage.now(project.getChannel(channelName)) match {
         case Failure(thrown) => throw thrown
         case Success(channelOpt) => channelOpt match {
@@ -268,14 +274,14 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
               case None => NotFound("Version not found.")
               case Some(version) =>
                 val oldDesc = version.getDescription
-                val newDesc = Forms.VersionDescription.bindFromRequest.get.trim()
+                val newDesc = Forms.VersionDescription.bindFromRequest.get.trim
                 if ((oldDesc.isEmpty && !newDesc.isEmpty) || !oldDesc.get.equals(newDesc)) {
                   Storage.now(version.setDescription(newDesc)) match {
                     case Failure(thrown) => throw thrown
                     case Success(i) => ;
                   }
                 }
-                Redirect(self.showVersion(author, name, channelName, versionString))
+                Redirect(self.showVersion(author, slug, channelName, versionString))
             }
           }
         }
@@ -287,19 +293,19 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Displays the "versions" tab within a Project view.
     *
     * @param author     Owner of project
-    * @param name       Name of project
+    * @param slug       Project slug
     * @param channels   Visible channels
     * @return           View of project
     */
-  def showVersions(author: String, name: String, channels: Option[String]) = Action { implicit request =>
-    withProject(author, name, project => {
+  def showVersions(author: String, slug: String, channels: Option[String]) = Action { implicit request =>
+    withProject(author, slug, project => {
       Storage.now(project.getChannels) match {
         case Failure(thrown) => throw thrown
         case Success(chans) =>
-          var channelNames = if (channels.isDefined) Some(channels.get.split(",")) else None
+          var channelNames = if (channels.isDefined) Some(channels.get.toLowerCase.split(",")) else None
           var visibleChannels = chans
           if (channelNames.isDefined) {
-            visibleChannels = chans.filter(c => channelNames.get.contains(c.getName))
+            visibleChannels = chans.filter(c => channelNames.get.contains(c.getName.toLowerCase))
           }
 
           // Don't pass "visible channels" if all channels are visible
@@ -317,11 +323,11 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Shows the creation form for new versions on projects.
     *
     * @param author   Owner of project
-    * @param name     Name of project
+    * @param slug     Project slug
     * @return         Version creation view
     */
-  def showVersionCreate(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+  def showVersionCreate(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
       Storage.now(project.getChannels) match {
         case Failure(thrown) => throw thrown
         case Success(channels) =>
@@ -336,42 +342,55 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Uploads a new version for a project for further processing.
     *
     * @param author   Owner name
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         Version create page (with meta)
     */
-  def uploadVersion(author: String, name: String) = { withUser(Some(author), user => implicit request =>
+  def uploadVersion(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
     request.body.asMultipartFormData.get.file("pluginFile") match {
-      case None => Redirect(self.showVersionCreate(author, name)).flashing("error" -> "Missing file")
+      case None => Redirect(self.showVersionCreate(author, slug)).flashing("error" -> "Missing file")
       case Some(tmpFile) =>
         // Get project
-        withProject(author, name, project => {
+        withProject(author, slug, project => {
           // Initialize plugin file
           ProjectManager.initUpload(tmpFile.ref, tmpFile.filename, user) match {
             case Failure(thrown) => if (thrown.isInstanceOf[InvalidPluginFileException]) {
               // PEBKAC
-              Redirect(self.showVersionCreate(author, name))
+              Redirect(self.showVersionCreate(author, slug))
                 .flashing("error" -> "Invalid plugin file.")
             } else {
               throw thrown
             }
             case Success(plugin) =>
-              // Cache version for later use
               val meta = plugin.getMeta.get
-              val version = Version.fromMeta(project, meta)
-              val channelName = Channel.getSuggestedNameForVersion(version.versionString)
-              Version.setPending(author, name, channelName, version, plugin)
-              Redirect(self.showVersionCreateWithMeta(author, name, channelName, version.versionString))
+              if (!meta.getId.equals(project.pluginId)) {
+                Redirect(self.showVersionCreate(author, slug))
+                  .flashing("error" -> "The uploaded plugin ID must match your project's plugin ID.")
+              } else {
+                // Create version from meta file
+                val version = Version.fromMeta(project, meta)
+
+                // Get first channel for default
+                var channelName: String = null
+                Storage.now(project.getChannels) match {
+                  case Failure(thrown) => throw thrown
+                  case Success(channels) => channelName = channels.head.getName
+                }
+
+                // Cache for later use
+                Version.setPending(author, slug, channelName, version, plugin)
+                Redirect(self.showVersionCreateWithMeta(author, slug, channelName, version.versionString))
+              }
           }
         })
     })
   }
 
-  private def pendingOrReal(author: String, name: String): Option[Any] = {
+  private def pendingOrReal(author: String, slug: String): Option[Any] = {
     // Returns either a PendingProject or existing Project
-    Storage.now(Storage.optProject(author, name)) match {
+    Storage.now(Storage.optProjectOfSlug(author, slug)) match {
       case Failure(thrown) => throw thrown
       case Success(projectOpt) => projectOpt match {
-        case None => Project.getPending(author, name)
+        case None => Project.getPending(author, slug)
         case Some(project) => Some(project)
       }
     }
@@ -381,21 +400,21 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Displays the "version create" page with the associated plugin meta-data.
     *
     * @param author         Owner name
-    * @param name           Project name
+    * @param slug           Project slug
     * @param channelName    Channel name
     * @param versionString  Version name
     * @return               Version create view
     */
-  def showVersionCreateWithMeta(author: String, name: String,
+  def showVersionCreateWithMeta(author: String, slug: String,
                                 channelName: String, versionString: String) = {
                                 withUser(Some(author), user => implicit request =>
     // Get pending version
-    Version.getPending(author, name, channelName, versionString) match {
-      case None => Redirect(routes.Application.index(None))
+    Version.getPending(author, slug, channelName, versionString) match {
+      case None => Redirect(self.showVersionCreate(author, slug))
       case Some(pendingVersion) =>
         // Get project
-        pendingOrReal(author, name) match {
-          case None => Redirect(routes.Application.index(None))
+        pendingOrReal(author, slug) match {
+          case None => Redirect(self.showVersionCreate(author, slug))
           case Some(p) => p match {
             case pending: PendingProject =>
               Ok(views.projects.versions.create(
@@ -419,36 +438,93 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * first version.
     *
     * @param author         Owner name
-    * @param name           Project name
+    * @param slug           Project slug
     * @param channelName    Channel name
     * @param versionString  Version name
     * @return               New version view
     */
-  def createVersion(author: String, name: String, channelName: String, versionString: String) = {
-                    withUser(Some(author), user => implicit request =>
-    Version.getPending(author, name, channelName, versionString) match {
-      case None => BadRequest("No version to create.")
-      case Some(pendingVersion) =>
-        // Check for pending project
-        Project.getPending(author, name) match {
-          case None => pendingVersion.complete match {
-            case Failure(thrown) => throw thrown
-            case Success(void) =>
-              // No pending project, just create the version for the existing project
-              Redirect(self.showVersion(author, name, channelName, versionString))
+  def createVersion(author: String, slug: String, channelName: String, versionString: String) = {
+    withUser(Some(author), user => implicit request => {
+      Version.getPending(author, slug, channelName, versionString) match {
+        case None => Redirect(self.showVersionCreate(author, slug))
+        case Some(pendingVersion) =>
+          // Gather form data
+          val form = Forms.ChannelEdit.bindFromRequest.get
+          val submittedName = form._1.trim
+          pendingVersion.setChannelName(submittedName)
+          ChannelColors.values.find(color => color.hex.equalsIgnoreCase(form._2)) match {
+            case None => BadRequest("Invalid channel color.")
+            case Some(color) => pendingVersion.setChannelColor(color)
           }
-          case Some(pendingProject) =>
-            // Found a pending project, create the project and it's first version
-            val form = Forms.ChannelNewProject.bindFromRequest.get
-            ChannelColors.values.find(color => color.hex.equalsIgnoreCase(form._2)) match {
-              case None => BadRequest("Invalid channel color.")
-              case Some(color) => pendingVersion.setChannelColor(color)
-            }
-            pendingVersion.setChannelName(form._1)
 
-            pendingProject.complete match {
-              case Failure(thrown) => throw thrown
-              case Success(void) => Redirect(self.show(author, name))
+          // Validate channel name
+          if (!Channel.isValidName(submittedName)) {
+            Redirect(routes.Application.index(None))
+              .flashing("error" -> "Channel names must be between 1 and 15 and be alphanumeric.")
+          } else {
+            // Check for pending project
+            Project.getPending(author, slug) match {
+              case None =>
+                // No pending project, just create the version for the existing project
+                withProject(author, slug, project => {
+                  // Check if creating a new channel
+                  var existingChannel: Channel = null
+                  Storage.now(project.getChannel(submittedName)) match {
+                    case Failure(thrown) => throw thrown
+                    case Success(optChannel) => optChannel match {
+                      case Some(channel) => existingChannel = channel
+                      case None => ;
+                    }
+                  }
+
+                  // Check if color is available
+                  var colorTaken: Boolean = false
+                  if (existingChannel == null) {
+                    Storage.now(project.getChannel(pendingVersion.getChannelColor)) match {
+                      case Failure(thrown) => throw thrown
+                      case Success(channelOpt) => channelOpt match {
+                        case Some(channel) => colorTaken = true
+                        case None => ;
+                      }
+                    }
+                  }
+
+                  if (colorTaken) {
+                    pendingVersion.cache()
+                    Redirect(self.showVersionCreateWithMeta(author, slug, channelName, versionString))
+                      .flashing("error" -> "A channel with that color already exists.")
+                  } else {
+                    // Check for existing version
+                    var existingVersion: Version = null
+                    if (existingChannel != null) {
+                      Storage.now(existingChannel.getVersion(versionString)) match {
+                        case Failure(thrown) => throw thrown
+                        case Success(versionOpt) => versionOpt match {
+                          case None => ;
+                          case Some(version) => existingVersion = version
+                        }
+                      }
+                    }
+
+                    if (existingVersion != null) {
+                      Redirect(self.showVersionCreateWithMeta(author, slug, channelName, versionString))
+                        .flashing("error" -> "Version already exists.")
+                    } else {
+                      pendingVersion.complete match {
+                        case Failure(thrown) => throw thrown
+                        case Success(void) =>
+                          Redirect(self.showVersion(author, slug, submittedName, versionString))
+                      }
+                    }
+                  }
+                })
+              case Some(pendingProject) =>
+                // Found a pending project, create the project and it's first version
+                pendingProject.complete match {
+                  case Failure(thrown) => throw thrown
+                  case Success(void) => Redirect(self.show(author, slug))
+                }
+            }
           }
       }
     })
@@ -458,14 +534,14 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Deletes the specified version and returns to the version page.
     *
     * @param author         Owner name
-    * @param name           Project name
+    * @param slug           Project slug
     * @param channelName    Channel name
     * @param versionString  Version name
     * @return               Versions page
     */
-  def deleteVersion(author: String, name: String, channelName: String, versionString: String) = {
+  def deleteVersion(author: String, slug: String, channelName: String, versionString: String) = {
                     withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+    withProject(author, slug, project => {
       Storage.now(project.getChannel(channelName)) match {
         case Failure(thrown) => throw thrown
         case Success(channelOpt) => channelOpt match {
@@ -476,7 +552,7 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
               case None => NotFound("Version not found.")
               case Some(version) => channel.deleteVersion(version, project) match {
                 case Failure(thrown) => throw thrown
-                case Success(void) => Redirect(self.showVersions(author, name, None))
+                case Success(void) => Redirect(self.showVersions(author, slug, None))
               }
             }
           }
@@ -519,11 +595,11 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Sends the specified project's current recommended version to the client.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         Sent file
     */
-  def downloadRecommendedVersion(author: String, name: String) = Action { implicit request =>
-    withProject(author, name, project => {
+  def downloadRecommendedVersion(author: String, slug: String) = Action { implicit request =>
+    withProject(author, slug, project => {
       Storage.now(project.getRecommendedVersion) match {
         case Failure(thrown) => throw thrown
         case Success(version) =>
@@ -531,7 +607,7 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
             case Failure(thrown) => throw thrown
             case Success(channel) =>
               Statistics.versionDownloaded(project, version, request)
-              Ok.sendFile(ProjectManager.getUploadPath(author, name, version.versionString, channel.getName).toFile)
+              Ok.sendFile(ProjectManager.getUploadPath(author, project.getName, version.versionString, channel.getName).toFile)
           }
       }
     })
@@ -541,11 +617,11 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Displays a view of the specified Project's Channels.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         View of channels
     */
-  def showChannels(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => Storage.now(project.getChannels) match {
+  def showChannels(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => Storage.now(project.getChannels) match {
       case Failure(thrown) => throw thrown;
       case Success(channels) => Ok(views.projects.channels.list(project, channels))
     }))
@@ -555,42 +631,42 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Creates a submitted channel for the specified Project.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         Redirect to view of channels
     */
-  def createChannel(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+  def createChannel(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
       // Get all channels
       Storage.now(project.getChannels) match {
         case Failure(thrown) => throw thrown
         case Success(channels) => if (channels.size > Channel.MAX_AMOUNT) {
           // Maximum reached
-          Redirect(self.showChannels(author, name))
+          Redirect(self.showChannels(author, slug))
             .flashing("error" -> "A project may only have up to five channels.")
         } else {
           val form = Forms.ChannelEdit.bindFromRequest.get
-          val channelName = form._1
+          val channelName = form._1.trim
           if (!Channel.isValidName(channelName)) {
-            Redirect(self.showChannels(author, name))
+            Redirect(self.showChannels(author, slug))
               .flashing("error" -> "Channel names must be between 1 and 15 and be alphanumeric.")
           } else {
             // Find submitted color
             ChannelColors.values.find(color => color.hex.equalsIgnoreCase(form._2)) match {
               case None => BadRequest("Invalid channel color.")
               case Some(color) => channels.find(c => c.getColor.equals(color)) match {
-                case None => channels.find(c => c.getName.equals(channelName)) match {
+                case None => channels.find(c => c.getName.equalsIgnoreCase(channelName)) match {
                   case None => project.newChannel(channelName, color) match {
                     case Failure(thrown) => throw thrown
-                    case Success(channel) => Redirect(self.showChannels(author, name))
+                    case Success(channel) => Redirect(self.showChannels(author, slug))
                   }
                   case Some(channel) =>
                     // Channel name taken
-                    Redirect(self.showChannels(author, name))
+                    Redirect(self.showChannels(author, slug))
                       .flashing("error" -> "A channel with that name already exists.")
                 }
                 case Some(channel) =>
                   // Channel color taken
-                  Redirect(self.showChannels(author, name))
+                  Redirect(self.showChannels(author, slug))
                     .flashing("error" -> "A channel with that color already exists.")
               }
             }
@@ -604,20 +680,20 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Submits changes to an existing channel.
     *
     * @param author       Project owner
-    * @param name         Project name
+    * @param slug         Project slug
     * @param channelName  Channel name
     * @return             View of channels
     */
-  def editChannel(author: String, name: String, channelName: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+  def editChannel(author: String, slug: String, channelName: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
       // Get all channels
       Storage.now(project.getChannels) match {
         case Failure(thrown) => throw thrown
         case Success(channels) =>
           val form = Forms.ChannelEdit.bindFromRequest.get
-          val newName = form._1
+          val newName = form._1.trim
           if (!Channel.isValidName(newName)) {
-            Redirect(self.showChannels(author, name))
+            Redirect(self.showChannels(author, slug))
               .flashing("error" -> "Channel names must be between 1 and 15 and be alphanumeric.")
           } else {
             // Find submitted channel by old name
@@ -635,10 +711,10 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
                   val nameTaken = nameChan.isDefined && !nameChan.get.equals(channel)
 
                   if (colorTaken) {
-                    Redirect(self.showChannels(author, name))
+                    Redirect(self.showChannels(author, slug))
                       .flashing("error" -> "A channel with that color already exists.")
                   } else if (nameTaken) {
-                    Redirect(self.showChannels(author, name))
+                    Redirect(self.showChannels(author, slug))
                       .flashing("error" -> "A channel with that name already exists.")
                   } else {
                     // Change name if different
@@ -657,7 +733,7 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
                       }
                     }
 
-                    Redirect(self.showChannels(author, name))
+                    Redirect(self.showChannels(author, slug))
                   }
               }
             }
@@ -671,24 +747,30 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * with it.
     *
     * @param author       Project owner
-    * @param name         Project name
+    * @param slug         Project slug
     * @param channelName  Channel name
     * @return             View of channels
     */
-  def deleteChannel(author: String, name: String, channelName: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+  def deleteChannel(author: String, slug: String, channelName: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
       Storage.now(project.getChannels) match {
         case Failure(thrown) => throw thrown
         case Success(channels) => if (channels.size == 1) {
-          Redirect(self.showChannels(author, name))
+          Redirect(self.showChannels(author, slug))
             .flashing("error" -> "You cannot delete your only channel.")
         } else {
           channels.find(c => c.getName.equals(channelName)) match {
             case None => NotFound
-            case Some(channel) => channel.delete(project) match {
-              case Failure(thrown) => throw thrown
-              case Success(void) => Redirect(self.showChannels(author, name))
-            }
+            case Some(channel) =>
+              if (!channel.isEmpty && channels.count(c => c.versionCount > 0) == 1) {
+                Redirect(self.showChannels(author, slug))
+                  .flashing("error" -> "You cannot delete your only non-empty channel.")
+              } else {
+                channel.delete(project) match {
+                  case Failure(thrown) => throw thrown
+                  case Success(void) => Redirect(self.showChannels(author, slug))
+                }
+              }
           }
         }
       }
@@ -699,37 +781,39 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Displays the "discussion" tab within a Project view.
     *
     * @param author   Owner of project
-    * @param name     Name of project
+    * @param slug     Project slug
     * @return         View of project
     */
-  def showDiscussion(author: String, name: String) = Action { implicit request =>
-    withProject(author, name, project => Ok(views.projects.discussion(project)))
+  def showDiscussion(author: String, slug: String) = Action { implicit request =>
+    withProject(author, slug, project => Ok(views.projects.discussion(project)))
   }
 
   /**
     * Shows the project manager or "settings" pane.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         Project manager
     */
-  def showManager(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => Ok(views.projects.manage(project))))
+  def showManager(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => Ok(views.projects.manage(project))))
   }
 
   /**
     * Renames the specified project.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         Project homepage
     */
-  def rename(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
-      val newName = Forms.ProjectRename.bindFromRequest.get
-      Storage.now(project.setName(newName)) match {
-        case Failure(thrown) => throw thrown
-        case Success(i) => Redirect(self.show(author, newName))
+  def rename(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
+      val newName = Project.sanitizeName(Forms.ProjectRename.bindFromRequest.get)
+      if (!Project.isNamespaceAvailable(author, Project.slugify(newName))) {
+        Redirect(self.showManager(author, slug)).flashing("error" -> "That name is not available.")
+      } else {
+        project.setName(newName)
+        Redirect(self.show(author, project.getSlug))
       }
     }))
   }
@@ -738,11 +822,11 @@ class Projects @Inject()(override val messagesApi: MessagesApi) extends Controll
     * Irreversibly deletes the specified project.
     *
     * @param author   Project owner
-    * @param name     Project name
+    * @param slug     Project slug
     * @return         Home page
     */
-  def delete(author: String, name: String) = { withUser(Some(author), user => implicit request =>
-    withProject(author, name, project => {
+  def delete(author: String, slug: String) = { withUser(Some(author), user => implicit request =>
+    withProject(author, slug, project => {
       project.delete match {
         case Failure(thrown) => throw thrown
         case Success(i) => Redirect(routes.Application.index(None))

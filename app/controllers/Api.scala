@@ -19,6 +19,7 @@ class Api extends Controller {
         }
       }
 
+      val category = project.getCategory
       Json.obj(
         "pluginId" -> project.pluginId,
         "createdAt" -> project.prettyDate,
@@ -26,10 +27,10 @@ class Api extends Controller {
         "owner" -> project.owner,
         "authors" -> project.authors,
         "channels" -> channelInfo,
-        "category" -> Categories(project.getCategory.id).title,
+        "category" -> Map("title" -> category.title, "icon" -> category.icon),
         "views" -> project.getViews,
         "downloads" -> project.getDownloads,
-        "starred" -> project.getStars
+        "stars" -> project.getStars
       )
     }
   }
@@ -40,12 +41,17 @@ class Api extends Controller {
     * @param version    API version
     * @return           JSON view of projects
     */
-  def listProjects(version: String) = Action {
+  def listProjects(version: String, categories: Option[String], limit: Option[Int], offset: Option[Int]) = Action {
     version match {
-      case "v1" => Storage.now(Storage.getProjects) match {
-        case Failure(thrown) => throw thrown
-        case Success(projects) => Ok(Json.toJson(projects))
-      }
+      case "v1" =>
+        var categoryIds: Array[Int] = null
+        if (categories.isDefined) {
+          categoryIds = Categories.fromString(categories.get).map(_.id)
+        }
+        Storage.now(Storage.getProjects(categoryIds, limit.getOrElse(-1), offset.getOrElse(-1))) match {
+          case Failure(thrown) => throw thrown
+          case Success(projects) => Ok(Json.toJson(projects))
+        }
       case zoinks => BadRequest
     }
   }

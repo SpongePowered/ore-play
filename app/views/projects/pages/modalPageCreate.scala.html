@@ -4,7 +4,7 @@
 <script type="text/javascript" src="@routes.Assets.at("javascripts/pageEdit.js")"></script>
 <script>
     var onNewPage = function(newPage) {
-        window.location = "@routes.Projects.show(model.owner, model.getName)/pages/" + newPage + "/edit"
+        window.location = "@routes.Projects.show(model.owner, model.getSlug)/pages/" + newPage + "/edit"
     }
 </script>
 

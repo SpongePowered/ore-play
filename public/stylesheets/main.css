@@ -207,8 +207,17 @@ form {
     margin-bottom: 15px;
 }
 
+.index-header .alert {
+    margin-top: 20px;
+    margin-bottom: 0;
+}
+
 .btn-create {
     margin-top: 15px;
+}
+
+.btn-more {
+    width: 100%;
 }
 
 .plugin-meta-table {
@@ -218,8 +227,8 @@ form {
 
 .plugin-meta {
     border-bottom: 1px solid #ddd;
-    margin-bottom: 15px;
-    padding-bottom: 15px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
 }
 
 .page-editor-tabs {
@@ -240,18 +249,50 @@ form {
 }
 
 .create-blurb {
-    margin-bottom: 15px;
-    padding-bottom: 15px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
     border-bottom: 1px solid #ddd;
+}
+
+.form-rename {
+    margin-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 10px; !important;
+}
+
+#form-publish {
+    margin-bottom: 5px;
+    position: relative;
 }
 
 .tos {
     font-size: 11px;
     color: gray;
+    margin-bottom: 5px;
 }
 
-.form-rename {
-    margin-bottom: 10px;
+.create-body {
+    padding-bottom: 3px; !important;
+}
+
+.project-body {
+    padding-bottom: 10px; !important;
+    padding-top: 10px; !important;
+}
+
+#continue {
+    position: relative;
+    margin-bottom: 0; !important;
+}
+
+.slug {
+    font-size: 11px;
+    color: gray;
+    position: absolute;
+    bottom: 0;
+    right: 0;
 }
 
 .version-edit-tabs {

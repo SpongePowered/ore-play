@@ -145,13 +145,13 @@ object Version {
     * Represents a pending version to be created later.
     *
     * @param owner          Name of project owner
-    * @param projectName    Name of project
+    * @param projectSlug    Project slug
     * @param channelName    Name of channel this version will be in
     * @param channelColor   Color of channel for this version
     * @param version        Version that is pending
     * @param plugin         Uploaded plugin
     */
-  case class PendingVersion(owner: String, projectName: String, private var channelName: String,
+  case class PendingVersion(owner: String, projectSlug: String, private var channelName: String,
                             private var channelColor: ChannelColor, version: Version,
                             plugin: PluginFile) extends PendingAction[Version] with Cacheable {
 
@@ -191,14 +191,14 @@ object Version {
       free()
       return ProjectManager.createVersion(this)
     }
-
+    
     override def cancel() = {
       free()
       this.plugin.delete()
     }
 
     override def getKey: String = {
-      this.owner + '/' + this.projectName + '/' + this.channelName + '/' + this.version.versionString
+      this.owner + '/' + this.projectSlug + '/' + this.channelName + '/' + this.version.versionString
     }
 
   }
@@ -207,13 +207,13 @@ object Version {
     * Marks the specified Version as pending and caches it for later use.
     *
     * @param owner    Name of owner
-    * @param name     Name of project
+    * @param slug     Project slug
     * @param channel  Name of channel
     * @param version  Name of version
     * @param plugin   Uploaded plugin
     */
-  def setPending(owner: String, name: String, channel: String, version: Version, plugin: PluginFile): PendingVersion = {
-    val pending = PendingVersion(owner, name, channel, Channel.DEFAULT_COLOR, version, plugin)
+  def setPending(owner: String, slug: String, channel: String, version: Version, plugin: PluginFile): PendingVersion = {
+    val pending = PendingVersion(owner, slug, channel, Channel.DEFAULT_COLOR, version, plugin)
     pending.cache()
     pending
   }
@@ -223,13 +223,13 @@ object Version {
     * version string.
     *
     * @param owner    Name of owner
-    * @param name     Name of project
+    * @param slug     Project slug
     * @param channel  Name of channel
     * @param version  Name of version
     * @return         PendingVersion, if present, None otherwise
     */
-  def getPending(owner: String, name: String, channel: String, version: String): Option[PendingVersion] = {
-    Cache.getAs[PendingVersion](owner + '/' + name + '/' + channel + '/' + version)
+  def getPending(owner: String, slug: String, channel: String, version: String): Option[PendingVersion] = {
+    Cache.getAs[PendingVersion](owner + '/' + slug + '/' + channel + '/' + version)
   }
 
   /**

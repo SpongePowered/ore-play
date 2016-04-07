@@ -1,8 +1,9 @@
 package plugin
 
-import java.io.{File, FilenameFilter}
 import java.nio.file.{Files, Path}
 
+import com.google.common.base.Preconditions
+import com.google.common.base.Preconditions._
 import db.Storage
 import models.auth.User
 import models.project.Project.PendingProject
@@ -67,9 +68,9 @@ object ProjectManager {
     * @throws         IllegalArgumentException if the project already exists
     */
   def createProject(pending: PendingProject): Try[Project] = Try[Project] {
-    if (pending.project.exists) {
-      throw new IllegalArgumentException("Project already exists.")
-    }
+    checkArgument(!pending.project.exists, "project already exists", "")
+    checkArgument(pending.project.isNamespaceAvailable, "slug not available", "")
+    checkArgument(Project.isValidName(pending.project.getName), "invalid name", "")
     Storage.now(Storage.createProject(pending.project)) match {
       case Failure(thrown) =>
         pending.cancel()
@@ -88,7 +89,7 @@ object ProjectManager {
     */
   def createVersion(pending: PendingVersion): Try[Version] = Try[Version] {
     // Get project
-    Storage.now(Storage.getProject(pending.owner, pending.projectName)) match {
+    Storage.now(Storage.getProjectBySlug(pending.owner, pending.projectSlug)) match {
       case Failure(thrown) =>
         pending.cancel()
         throw thrown

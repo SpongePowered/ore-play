@@ -9,28 +9,28 @@
                 <button type="button" class="close" data-dismiss="modal" aria-label="@messages("aria.cancel")">
                     <span aria-hidden="true">&times;</span>
                 </button>
-                <h4 class="modal-title" id="manage-label"></h4>
+                <h4 class="modal-title"></h4>
             </div>
-            @form(action = routes.Application.index(None), 'id -> "channel-manage-form") {
+            @form(action = routes.Application.index(None)) {
                 <div class="modal-body">
                     <div class="form-inline">
                         <label for="channel-input">@messages("channel.name")</label>
-                        <input class="form-control" id="channel-input" name="channel-input" type="text" value=""
+                        <input class="form-control channel-input" name="channel-input" type="text" value=""
                                maxlength="@Channel.MAX_NAME_LENGTH"/>
-                        <input type="hidden" name="channel-color-input" id="channel-color-input" value="" />
+                        <input type="hidden" name="channel-color-input" class="channel-color-input" value="" />
                         <a href="#">
-                            <i id="color-picker" class="fa fa-circle channel-id" style=""
+                            <i class="fa fa-circle channel-id color-picker" style=""
                                data-toggle="popover" data-placement="right" data-trigger="hover"></i>
                         </a>
                         @projects.channels.popoverColorPicker()
-                        <span id="preview" class="pull-right channel" style="display: none;"></span>
+                        <span class="pull-right channel preview" style="display: none;"></span>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("channel.edit.close")
                     </button>
-                    <input type="submit" id="channel-submit" value="" class="btn btn-primary" />
+                    <input type="submit" value="" class="btn btn-primary" />
                 </div>
             }
         </div>

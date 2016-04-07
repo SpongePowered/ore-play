@@ -26,10 +26,12 @@ Versions page within Project overview.
                                         <td>
                                             <div class="pull-right">
                                                 <span class="date">@version.prettyDate</span>
-                                                <a href="@routes.Projects.showVersion(model.owner, model.getName, channel.getName, version.versionString)">
+                                                <a href="@routes.Projects.showVersion(
+                                                    model.owner, model.getSlug, channel.getName, version.versionString)">
                                                     <i class="fa fa-info-circle"></i>
                                                 </a>
-                                                <a href="@routes.Projects.downloadVersion(model.owner, model.getName, channel.getName, version.versionString)">
+                                                <a href="@routes.Projects.downloadVersion(
+                                                    model.owner, model.getSlug, channel.getName, version.versionString)">
                                                     <i class="fa fa-download"></i>
                                                 </a>
                                             </div>
@@ -43,7 +45,7 @@ Versions page within Project overview.
                     </div>
                     <div class="col-md-3">
                         @if(session.get("username").isDefined && session.get("username").get.equals(model.owner)) {
-                            <a href="@routes.Projects.showVersionCreate(model.owner, model.getName)"
+                            <a href="@routes.Projects.showVersionCreate(model.owner, model.getSlug)"
                             class="btn btn-block btn-primary btn-panel btn-version">
                                 <i class="fa fa-plus"></i> Create version
                             </a>
@@ -52,7 +54,7 @@ Versions page within Project overview.
                             <div class="panel-heading">
                                 <h3 class="panel-title">Channels</h3>
                                 @if(visibleChannels.isDefined) {
-                                    <a href="@routes.Projects.showVersions(model.owner, model.getName, None)">
+                                    <a href="@routes.Projects.showVersions(model.owner, model.getSlug, None)">
                                         <i class="pull-right channel-reset fa fa-times"></i>
                                     </a>
                                 }
@@ -66,7 +68,7 @@ Versions page within Project overview.
                                       @if(visibleChannels.isDefined) {
                                           @if(!visibleChannels.get.contains(channel.getName)) {
                                               <a class="pull-right"
-                                                 href="@routes.Projects.showVersions(model.owner, model.getName, Some(
+                                                 href="@routes.Projects.showVersions(model.owner, model.getSlug, Some(
                                                      (visibleChannels.get :+ channel.getName).mkString(",")
                                                  ))"
                                               >
@@ -74,7 +76,7 @@ Versions page within Project overview.
                                               </a>
                                           } else {
                                               <a class="pull-right"
-                                                 href="@routes.Projects.showVersions(model.owner, model.getName, Some(
+                                                 href="@routes.Projects.showVersions(model.owner, model.getSlug, Some(
                                                      visibleChannels.get.filterNot(c => c.equals(channel.getName)).mkString(",")
                                                  ))"
                                               >
@@ -82,7 +84,7 @@ Versions page within Project overview.
                                               </a>
                                           }
                                       } else {
-                                          <a href="@routes.Projects.showVersions(model.owner, model.getName, Some(channel.getName))"
+                                          <a href="@routes.Projects.showVersions(model.owner, model.getSlug, Some(channel.getName))"
                                              class="pull-right">
                                               <i class="fa fa-eye"></i>
                                           </a>
@@ -91,7 +93,7 @@ Versions page within Project overview.
                                 }
                                 @if(session.get("username").isDefined && session.get("username").get.equals(model.owner)) {
                                     <li class="list-group-item text-right">
-                                        <a href="@routes.Projects.showChannels(model.owner, model.getName)">
+                                        <a href="@routes.Projects.showChannels(model.owner, model.getSlug)">
                                             <i class="fa fa-cog"></i> Edit
                                         </a>
                                     </li>

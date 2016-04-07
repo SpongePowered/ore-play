@@ -1,5 +1,5 @@
-function validateMeta(pluginId, owner, name, baseUrl) {
-    checkId(pluginId, owner, name, baseUrl)
+function validateMeta(pluginId, name, baseUrl, owner, slug) {
+    checkId(pluginId, name, baseUrl, owner, slug)
 }
 
 function tooltip(selector, title) {
@@ -24,23 +24,23 @@ function failed(selector, message) {
     tooltip(selector, message);
 }
 
-function checkId(pluginId, owner, name, baseUrl) {
+function checkId(pluginId, name, baseUrl, owner, slug) {
     $.ajax({
         url: baseUrl + '/api/project?pluginId=' + pluginId,
         statusCode: {
             404: function() {
                 success('.id-status');
-                checkName(owner, name, true, baseUrl);
+                checkName(name, true, baseUrl, owner, slug);
             },
             200: function() {
                 failed('.id-status', 'That plugin ID is not available!');
-                checkName(owner, name, false, baseUrl);
+                checkName(name, false, baseUrl, owner, slug);
             }
         }
     })
 }
 
-function checkName(owner, name, idSuccess, baseUrl) {
+function checkName(name, idSuccess, baseUrl, owner, slug) {
     if (name.length > 25) {
         failed('.name-status', 'This name is too long. Please rename your project to something under 25 characters.');
         updateContinueButton(idSuccess, false);
@@ -48,7 +48,7 @@ function checkName(owner, name, idSuccess, baseUrl) {
     }
 
     $.ajax({
-        url: baseUrl + '/' + owner + '/' + name,
+        url: baseUrl + '/' + owner + '/' + slug,
         statusCode: {
             404: function() {
                 success('.name-status');
