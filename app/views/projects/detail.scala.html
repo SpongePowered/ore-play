@@ -76,7 +76,7 @@ Base template for Project overview.
                     </button>
                 }
                 <a href="@routes.Versions.downloadRecommended(project.ownerName, project.slug)"
-                   title="Download the latest recommended version" data-toggle="tooltip"
+                   title="@messages("project.download.recommend")" data-toggle="tooltip"
                    data-placement="bottom" class="btn btn-primary">
                     <i class="fa fa-download"></i> @messages("project.download")
                 </a>
