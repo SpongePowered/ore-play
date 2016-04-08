@@ -14,22 +14,20 @@ Page used for uploading and creating new projects.
             <div class="col-md-8 col-md-offset-2">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h3 class="panel-title">@messages("project.create.title") <span class="pull-right minor">Step 1/2</span></h3>
+                        <h3 class="panel-title">@messages("project.create.title") <span class="pull-right minor">@messages("project.create.step", 1, 2)</span></h3>
                     </div>
                     <div class="project-body panel-body">
                         <div class="minor create-blurb">
-                            <p>A project contains your downloads and the documentation for your plugin.</p>
-                            <p>Begin by uploading your plugin JAR file with a valid <i>mcmod.info</i> file
-                               in the first level or a ZIP file with your valid plugin JAR in the first
-                               level. Plugins with missing or incomplete metadata files will not be accepted.</p>
+                            <p>@Html(messages("project.create.info-text.head"))</p>
+                            <p>@Html(messages("project.create.info-text.bottom"))</p>
                         </div>
 
                         @if(flash.get("error").isDefined) {
                             <div class="alert alert-danger alert-dismissable" role="alert">
-                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <button type="button" class="close" data-dismiss="alert" aria-label="@messages("aria.close")">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
-                                <strong>Whoops!</strong> @flash.get("error").get
+                                <strong>@messages("project.create.error")</strong> @flash.get("error").get
                             </div>
                         }
 
@@ -88,7 +86,7 @@ Page used for uploading and creating new projects.
                                   @* Disabled until JS determines meta is valid *@
                                   <input type="submit" name="create" value="@messages("project.create.continue")"
                                          class="continue-btn btn btn-primary" disabled />
-                                  <i class="pull-right slug">Project will be created at <strong>@project.ownerName/@Project.slugify(project)</strong></i>
+                                  <i class="pull-right slug">@Html(messages("project.create.destination", "<strong>" + project.ownerName + "/" + Project.slugify(project) + "</strong>")) </i>
                               }
                             }
                         }

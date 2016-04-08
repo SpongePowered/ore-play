@@ -14,7 +14,7 @@ The main header displayed on each layout.
                         <img class="logo" src="@Play.current.configuration.getString("sponge.logo").get" />
                         <span class="caret"></span>
                     </a>
-                    <ul class="dropdown-menu main-dropdown" aria-label="maindropdown">
+                    <ul class="dropdown-menu main-dropdown" aria-label="@messages("aria.dropdown.main")">
                         <li><a href="https://www.spongepowered.org"><i class="fa fa-home"></i>@messages("general.home")</a></li>
                         <li><a href="https://forums.spongepowered.org"><i class="fa fa-comment"></i>@messages("general.forums")</a></li>
                         <li><a href="https://github.com/SpongePowered"><i class="fa fa-code"></i>@messages("general.code")</a></li>
@@ -33,7 +33,7 @@ The main header displayed on each layout.
                             <img height="32" width="32" class="user-avatar" src="@Gravatar.get(email)" />
                             <span class="caret"></span>
                         </a>
-                        <ul class="user-dropdown dropdown-menu" aria-label="dropdownMenu1">
+                        <ul class="user-dropdown dropdown-menu" aria-label="@messages("aria.dropdown.menu",1)">
                             <li>
                                 <a href="#">
                                     <span class="pull-left">@session.get("username").get</span>

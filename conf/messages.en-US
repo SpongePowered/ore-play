@@ -20,22 +20,31 @@ page.edit.save                  =   Save
 page.edit.delete                =   Delete
 page.edit.title                 =   Edit page
 page.edit.preview               =   Preview changes
+page.edit.cannot-delete-homepage   =   Your project's homepage cannot be deleted
+page.edit.max-pages             =   You have reached the maximum amount of allowed pages.
+
 page.new.title                  =   Create a new page
 page.new.name                   =   Name
 page.new.close                  =   Close
 page.new.continue               =   Continue
+
 page.plural                     =   Pages
 
 project.author                  =   Author
 project.category                =   Category
 project.category.plural         =   Categories
 project.delete                  =   Delete
+project.delete.title            =   Delete project
+project.delete.info             =   Are you sure you want to delete your Project? This action cannot be undone.
 project.download                =   Download
+project.download.recommend      =   Download the latest recommended version
 project.flag                    =   Flag
 project.name                    =   Name
 project.create                  =   New Project
 project.owner                   =   Owner
 project.rename                  =   Rename
+project.rename.title            =   Rename project
+project.rename.info             =   Are you sure you want to rename your Project? This can have unintended side effects as we will not set up any redirects for you.
 
 project.discuss                 =   Discuss
 project.docs                    =   Docs
@@ -56,17 +65,51 @@ project.create.uid              =   Unique ID
 project.create.select-file      =   Select file
 project.create.upload           =   Upload
 project.create.continue         =   Continue
+project.create.error            =   Whoops!
+project.create.step             =   Step {0}/{1}
+project.create.destination      =   Project will be created at {0}
+project.create.info-text.head   =   A project contains your downloads and the documentation for your plugin.
+project.create.info-text.bottom =   Begin by uploading your plugin JAR file with a valid <i>mcmod.info</i> file in the first level or a ZIP file with your valid plugin JAR in the first level. Plugins with missing or incomplete metadata files will not be accepted.
 
 version                         =   Version
 version.description             =   Description
+version.delete                  =   Delete
+version.delete.cannot-last      =   Every project must have at least one version
+version.download                =   Download
+version.dependency.not-on-ore   =   This plugin is not available for download on Ore
+version.dependency.no           =   This release has no dependencies
+
+version.create.page-title       =   Release a new version
 version.create.title            =   New project release
 version.create.no-description   =   No description given.
 version.create.upload           =   Upload
 version.create.select-file      =   Select file
 version.create.publish          =   Publish
+version.create.step             =   Step {0}/{1}
+version.create.tos              =   By clicking "Publish" you are agreeing to Ore's <a href="#">Terms of Service</a>.
 
 channel.name                    =   Channel name
 channel.edit.title              =   Edit channel
 channel.edit.close              =   Close
 channel.edit.save               =   Save changes
+channel.edit.max-amount-reached   =   You have reached the maximum amount of channels permitted.
+channel.edit.cannot-delete-last-channel   =   You cannot delete your last channel.
 
+channel.list.page-title         =   Channels | {0} / {1}
+channel.list.title              =   Release channels
+channel.list.description        =   Release channels represent the state of a plugin release. A project may have up to five release channels.
+channel.list.error              =   Whoops!
+
+channel.delete                  =   Delete channel
+channel.delete.info             =   Are you sure you want to delete this channel?
+channel.delete.info.versions    =   versions will be deleted.
+channel.delete.close            =   Close
+
+table.welcome                   =   Welcome to Ore!
+table.welcome.description       =   A Minecraft Package Repository
+table.more                      =   More
+
+aria.close                      =   Close
+aria.cancel                     =   Cancel
+aria.dropdown.main              =   maindropdown
+aria.dropdown.menu              =   dropdownMenu{0}

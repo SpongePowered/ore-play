@@ -15,14 +15,14 @@
                 <a href="@routes.Projects.show(model.ownerName, model.slug)" class="btn btn-default">
                     @messages("page.edit.cancel")
                 </a>
-                <input type="submit" title="Save" value="@messages("page.edit.save")" class="btn btn-primary">
+                <input type="submit" title="@messages("page.edit.save")" value="@messages("page.edit.save")" class="btn btn-primary">
 
                 <div class="pull-right input-group">
                     @if(model.pageExists(page)) {
                         <a class="btn btn-danger"
                             @if(page.equals(Page.HOME)) {
                                 disabled data-toggle="tooltip" data-placement="bottom"
-                                title="Your project's homepage cannot be deleted"
+                                title="@messages("page.edit.cannot-delete-homepage")"
                             } else {
                                 href="@routes.Projects.deletePage(model.ownerName, model.slug, page)"
                             }
@@ -33,7 +33,7 @@
                                data-toggle="modal" data-target="#new-page"
                            } else {
                                disabled data-toggle="tooltip" data-placement="bottom"
-                               title="You have reached the maximum amount of allowed pages."
+                               title="@messages("page.edit.max-pages")"
                            }
                         >
                             <i class="fa fa-plus"></i> New page
