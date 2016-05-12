@@ -61,9 +61,11 @@ class Application @Inject()(data: DataHelper,
       val future = actions.collect(filter, categoryArray, projectsPerPage, offset, ordering)
       val projects = this.service.await(future).get
 
+      val total = this.service.await(this.service.getActions(classOf[ProjectActions]).count()).get
+
       if (categoryArray != null && Categories.visible.toSet.equals(categoryArray.toSet)) categoryArray = null
 
-      Ok(views.home(projects, Option(categoryArray), query, p, ordering))
+      Ok(views.home(projects, total, Option(categoryArray), query, p, ordering))
     }
   }
 
