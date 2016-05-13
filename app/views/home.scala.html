@@ -11,7 +11,7 @@ sorted according to different criteria.
 @import ore.project.Categories._
 @import ore.project.ProjectSortingStrategies.{values, _}
 @import db.impl.UserBase
-@(models: Seq[Project], visibleCategories: Option[Array[Category]], query: Option[String], page: Int,
+@(models: Seq[Project], total: Int, visibleCategories: Option[Array[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy)(implicit messages: Messages, session: Session, flash: Flash,
         request: RequestHeader, service: ModelService, forums: DiscourseApi, config: OreConfig, users: UserBase)
 
@@ -81,6 +81,7 @@ sorted according to different criteria.
             <div class="col-md-9">
                 @projects.table(
                     models = models,
+                    total = total,
                     visibleCategories = visibleCategories,
                     query = query,
                     ordering = sort,

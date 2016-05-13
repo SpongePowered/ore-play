@@ -17,6 +17,7 @@ User page for developers.
 @isThisUser = @{
     users.current.isDefined && users.current.get.equals(user)
 }
+@userProjects = @{user.projects}
 
 @core.layout(user.username) {
 
@@ -98,8 +99,10 @@ User page for developers.
         </div>
         <div class="row">
             <div class="col-md-8">
+
                 @projects.table(
-                    models = user.projects.toSeq,
+                    models = userProjects.toSeq,
+                    total = user.projects.size,
                     page = 1, // TODO
                     ordering = ProjectSortingStrategies.Default
                 )

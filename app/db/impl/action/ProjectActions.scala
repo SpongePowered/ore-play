@@ -1,6 +1,7 @@
 package db.impl.action
 
-import db._
+import db.ModelService
+import db.impl.{ProjectTable => _, _}
 import db.action.ModelAction.wrapSeq
 import db.action.{ModelActions, ModelFilter, StatActions}
 import db.impl.OrePostgresDriver.api._

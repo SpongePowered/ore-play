@@ -10,7 +10,7 @@ Collection of all projects.
 @import ore.project.Categories._
 @import ore.project.ProjectSortingStrategies
 @import ore.project.ProjectSortingStrategies.ProjectSortingStrategy
-@(models: Seq[Project], visibleCategories: Option[Array[Category]] = None, query: Option[String] = None,
+@(models: Seq[Project], total: Int, visibleCategories: Option[Array[Category]] = None, query: Option[String] = None,
         ordering: ProjectSortingStrategy, page: Int)(implicit messages: Messages, session: Session, flash: Flash,
         service: ModelService, forums: DiscourseApi, config: OreConfig, users: UserBase)
 
@@ -59,6 +59,7 @@ Collection of all projects.
                     <a href="@routes.Application.showHome(categoryString, query, orderingOption, Some(page - 1))"
                        class="btn btn-default"><i class="fa fa-arrow-left"></i></a>
                 }
+                <strong>Page: @page/@{Math.ceil(total.toFloat/pageSize).toInt}</strong>
                 @if(models.size >= pageSize) {
                     <a href="@routes.Application.showHome(categoryString, query, orderingOption, Some(page + 1))"
                        class="btn btn-default"><i class="fa fa-arrow-right"></i></a>
