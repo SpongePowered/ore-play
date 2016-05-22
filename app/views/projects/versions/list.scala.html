@@ -62,30 +62,34 @@ Versions page within Project overview.
                                     </tr>
                                 </thead>
                                 <tbody class="panel-body">
-                                    @versions.map { version =>
-                                      @defining(version.findChannelFrom(channels).get) { channel =>
-                                        <tr>
-                                            <td>
-                                                <i title="@channel.name" class="fa fa-circle channel-id" style="color: @channel.color.hex"></i>
-                                                @version.versionString
-                                            </td>
-                                            <td>
-                                                <div class="pull-right">
-                                                    <span class="date">@prettifyDate(version.createdAt.get)</span>
-                                                    <span class="date">@version.humanFileSize</span>
-                                                    <a href="@projectRoutes.Versions.show(
-                                                        model.ownerName, model.slug, version.versionString)">
-                                                        <i title="Details" class="fa fa-info-circle"></i>
+                                @versions.map { version =>
+                                    @defining(version.findChannelFrom(channels).get) { channel =>
+                                        @defining(projectRoutes.Versions.show(
+                                            model.ownerName, model.slug, version.versionString)) { details =>
+                                            <tr>
+                                                <td>
+                                                    <a href="@details">
+                                                        <i title="@channel.name" class="fa fa-circle channel-id" style="color: @channel.color.hex"></i>
+                                                        @version.versionString
                                                     </a>
-                                                    <a href="@projectRoutes.Versions.download(
-                                                        model.ownerName, model.slug, version.versionString)">
-                                                        <i title="Download" class="fa fa-download"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                      }
+                                                </td>
+                                                <td>
+                                                    <div class="pull-right">
+                                                        <span class="date">@prettifyDate(version.createdAt.get)</span>
+                                                        <span class="date">@version.humanFileSize</span>
+                                                        <a href="@details">
+                                                            <i title="Details" class="fa fa-info-circle"></i>
+                                                        </a>
+                                                        <a href="@projectRoutes.Versions.download(
+                                                            model.ownerName, model.slug, version.versionString)">
+                                                            <i title="Download" class="fa fa-download"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
                                     }
+                                }
                                 </tbody>
                             </table>
                             <div class="panel-footer">
