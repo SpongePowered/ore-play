@@ -5,7 +5,7 @@
 // user page
 
 .user-avatar {
-  @include rounded-corners();
+  border-radius: 50%;
 }
 
 .username {
