@@ -1,0 +1,15 @@
+{
+  "name": "Ore - A Minecraft Package Repository",
+  "short_name": "Ore",
+  "theme_color": "#333",
+  "background_color": "#333",
+  "display": "standalone",
+  "start_url": "/?homescreen=1",
+  "icons": [
+    {
+      "src": "/assets/images/ore-dark.png",
+      "sizes": "199x199",
+      "type": "image/png"
+    }
+  ]
+}
