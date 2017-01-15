@@ -1,5 +1,5 @@
 // TODO: need to find a way to include this into ore
-importScripts('/bower_components/sw-toolbox/sw-toolbox.js');
+importScripts('https://lergin.de/bower_components/sw-toolbox/sw-toolbox.js');
 
 function networkOnlyError(request, values, options) {
   return toolbox.networkOnly(request, values, options).catch((err) => {
@@ -26,7 +26,8 @@ var preCache = [
     '/assets/javascripts/jquery-2.2.1.min.js',
     '/assets/stylesheets/main.css',
     '/assets/images/ore-dark.png',
-    '/assets/images/ore-desc.png'
+    '/assets/images/ore-desc.png',
+    '/assets/images/spongie-mark.svg'
 ];
 
 toolbox.precache(preCache);
