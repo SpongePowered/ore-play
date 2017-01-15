@@ -158,4 +158,12 @@ final class Application @Inject()(data: DataHelper,
     Redirect(ShowHome)
   }
 
+  /**
+    * Shows the offline error page.
+    *
+    * @return Offline error page
+    */
+  def showOffline() = Action { implicit request =>
+    Ok(views.errors.offline())
+  }
 }

@@ -13,6 +13,10 @@ GET     /admin/flags/:id/resolve/:resolved                          @controllers
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
 
+# ---------- Service Worker ----------
+GET     /sw.js                                                      controllers.Assets.at(path="/public", file="sw.js")
+GET     /offline                                                    @controllers.Application.showOffline()
+
 # ---------- API (v1) ----------
 GET     /api/projects                                               @controllers.ApiController.listProjects(version = "v1", categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/projects/:pluginId                                     @controllers.ApiController.showProject(version = "v1", pluginId)

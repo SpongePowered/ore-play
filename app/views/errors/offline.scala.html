@@ -1,0 +1,15 @@
+@import db.ModelService
+@import db.impl.access.UserBase
+@import ore.{OreConfig, OreEnv}
+@()(implicit messages: Messages, session: Session, request: Request[_] = null, service: ModelService, config: OreConfig,
+        users: UserBase, env: OreEnv)
+
+@bootstrap.layout(messages("error.ore.offline"), user = false) {
+
+    <div class="container-error container">
+        <img src="@routes.Assets.at("images/ore-dark.png")" />
+        <h1 class="minor">@messages("error.ore.offline.title")</h1>
+        <i class="minor">@messages("error.ore.offline.body")</i>
+    </div>
+
+}
