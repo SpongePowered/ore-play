@@ -40,7 +40,7 @@ toolbox.precache(preCache);
 // show the mainpage even if the request with the query parameters isn't cached
 toolbox.router.get( '/', networkFirstIndex );
 
-// deaktivate cache for the api and statusz
+// deactivate cache for the api and statusz
 toolbox.router.get( '/statusz', toolbox.networkOnly );
 toolbox.router.get( '/api/(.*)', toolbox.networkOnly );
 
@@ -49,14 +49,12 @@ toolbox.router.get( '/:author/:slug/versions/:version/download', networkOnlyErro
 toolbox.router.get( '/:author/:slug/versions/:version/signature', networkOnlyError );
 toolbox.router.get( '/:author/:slug/versions/:version/jar', networkOnlyError );
 
-// deaktivate cache for some fo the admin routes
+// deactivate cache for some fo the admin routes
 toolbox.router.get('/admin/seed', toolbox.networkOnlyError);
 toolbox.router.get('/admin/flags/(.*)', toolbox.networkOnlyError);
 
-// login / logout is not possible while offline
+// logout is not possible while offline
 toolbox.router.get('/logout', toolbox.networkOnlyError);
-toolbox.router.get('/login', toolbox.networkOnlyError);
-toolbox.router.get('/signup', toolbox.networkOnlyError);
 
 // post requests will not work offline
 toolbox.router.post('(.*)', toolbox.networkOnlyError);
