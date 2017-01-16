@@ -13,6 +13,12 @@ function networkFirstError(request, values, options) {
   });
 }
 
+function networkFirstIndex(request, values, options) {
+  return toolbox.networkFirst(request, values, options).catch((err) => {
+    return toolbox.cacheOnly(new Request('/'));
+  });
+}
+
 // pre cache all urls that are needed for the main and offline page
 var preCache = [
     '/',
@@ -32,9 +38,8 @@ var preCache = [
 
 toolbox.precache(preCache);
 
-// serve every get request from the cache if no connection is available
-toolbox.router.get( '(.*)', networkFirstError );
-
+// show the mainpage even if the request with the query parameters isn't cached
+toolbox.router.get( '/', networkFirstIndex );
 
 // deaktivate cache for the api and statusz
 toolbox.router.get( '/statusz', toolbox.networkOnly );
@@ -45,9 +50,6 @@ toolbox.router.get( '/:author/:slug/versions/:version/download', networkOnlyErro
 toolbox.router.get( '/:author/:slug/versions/:version/signature', networkOnlyError );
 toolbox.router.get( '/:author/:slug/versions/:version/jar', networkOnlyError );
 
-// post requests will not work offline
-toolbox.router.post('(.*)', toolbox.networkOnlyError);
-
 // deaktivate cache for some fo the admin routes
 toolbox.router.get('/admin/seed', toolbox.networkOnlyError);
 toolbox.router.get('/admin/flags/(.*)', toolbox.networkOnlyError);
@@ -56,3 +58,9 @@ toolbox.router.get('/admin/flags/(.*)', toolbox.networkOnlyError);
 toolbox.router.get('/logout', toolbox.networkOnlyError);
 toolbox.router.get('/login', toolbox.networkOnlyError);
 toolbox.router.get('/signup', toolbox.networkOnlyError);
+
+// post requests will not work offline
+toolbox.router.post('(.*)', toolbox.networkOnlyError);
+
+// serve every get request from the cache if no connection is available
+toolbox.router.get( '(.*)', networkFirstError );

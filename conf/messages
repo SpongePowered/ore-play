@@ -84,8 +84,8 @@ error.ore.timeout.title         =   Ore took too long to respond.
 error.ore.timeout.body          =   Whoops! We couldn't respond to your request in a timely manner, this could be because a service Ore uses is currently unavailable or the servers are just overloaded. Please try again later.
 error.offline                   =   Offline
 error.offline.title             =   You are offline and this site is not cached.
-error.offline.body              =   Most likely your internet connection is currently not available and we also do not have this page cached on your device. You should still be able to see the a cached version of most pages. This page will be again be available when there is again a internet connection.
-error.offline.alert             =   You are currently offline, so you can not load new data or update anything.
+error.offline.body              =   Most likely your internet connection is currently not available and we also do not have this page cached on your device. You should still be able to see the a cached version of most pages. This page will be available again when there is a internet connection.
+error.offline.alert             =   You are currently offline, so the data you are seeing may be out of date and you can not update anything.
 
 error.plugin.fileExtension      =   Plugin file must be either a JAR or ZIP file.
 error.plugin.sig.fileExtension  =   Signature file must be either a SIG or ASC file.
