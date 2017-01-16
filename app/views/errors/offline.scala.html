@@ -4,12 +4,17 @@
 @()(implicit messages: Messages, session: Session, request: Request[_] = null, service: ModelService, config: OreConfig,
         users: UserBase, env: OreEnv)
 
-@bootstrap.layout(messages("error.ore.offline"), user = false) {
+@bootstrap.layout(messages("error.offline")) {
 
     <div class="container-error container">
         <img src="@routes.Assets.at("images/ore-dark.png")" />
-        <h1 class="minor">@messages("error.ore.offline.title")</h1>
-        <i class="minor">@messages("error.ore.offline.body")</i>
+        <h1 class="minor">@messages("error.offline.title")</h1>
+        <i class="minor">@messages("error.offline.body")</i>
     </div>
+
+    <script>
+        // we do not want to show the offline alert of this page
+        var IS_OFFLINE_PAGE = true;
+    </script>
 
 }
