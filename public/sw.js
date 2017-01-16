@@ -1,5 +1,4 @@
-// TODO: need to find a way to include this into ore
-importScripts('https://lergin.de/bower_components/sw-toolbox/sw-toolbox.js');
+importScripts('/assets/sw-toolbox/sw-toolbox.js');
 
 function networkOnlyError(request, values, options) {
   return toolbox.networkOnly(request, values, options).catch((err) => {

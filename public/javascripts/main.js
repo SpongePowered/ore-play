@@ -172,11 +172,6 @@ $(function() {
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js', {scope: '/'}).then(function(reg) {
-            console.log('ServiceWorker registered.');
-        }).catch(function(err) {
-            console.log(err);
-            console.log('ServiceWorker registration failed: ', err);
-        });
+        navigator.serviceWorker.register('/sw.js', {scope: '/'});
     });
 }
