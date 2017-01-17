@@ -27,6 +27,7 @@ general.irc                     =   Chat
 general.edit                    =   Edit
 general.cancel                  =   Cancel
 general.save                    =   Save
+general.preview                 =   Preview
 general.delete                  =   Delete
 general.name                    =   Name
 general.close                   =   Close
@@ -136,7 +137,7 @@ project.create.selectFile       =   Select plugin file
 project.create.destination      =   Project will be created at {0}
 project.create.infoText.head    =   A project contains your downloads and the documentation for your plugin.
 project.create.infoText.bottom  =   Begin by uploading your plugin JAR file with a valid <i>mcmod.info</i> file in the first level or a ZIP file with your valid plugin JAR in the first level. Plugins with missing or incomplete metadata files will not be accepted.
-project.create.infoText.pgp     =   To upload files to Ore, you must first add a PGP Public Key to your account and all files must be uploaded with a corresponding signature. <a href="https://docs.spongepowered.org/ore/publish">Learn more</a>
+project.create.infoText.pgp     =   To upload files to Ore, you must first add a PGP Public Key to your account and all files must be uploaded with a corresponding signature. <a href="https://docs.spongepowered.org/master/en/ore/publish.html">Learn more</a>
 project.create.issue-input      =   Issue tracker URL
 project.create.source-input     =   Source code URL
 project.icon                    =   Project icon

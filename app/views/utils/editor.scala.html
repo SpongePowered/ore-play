@@ -20,7 +20,7 @@
     <!-- Preview -->
     <div class="btn-edit-container btn-preview-container">
         <button type="button" class="btn btn-sm btn-preview btn-page btn-default">
-            <i class="fa fa-eye"></i>
+            <i class="fa fa-eye"></i> @messages("general.preview")
         </button>
     </div>
 
@@ -28,7 +28,7 @@
     @if(savable) {
         <div class="btn-edit-container btn-save-container">
             <button form="form-editor-save" type="submit" class="btn btn-sm btn-save btn-page btn-default">
-                <i class="fa icon-save"></i>
+                <i class="fa icon-save"></i> @messages("general.save")
             </button>
         </div>
     }
@@ -37,7 +37,7 @@
     @if(cancellable) {
         <div class="btn-edit-container btn-cancel-container">
             <button type="button" class="btn btn-sm btn-cancel btn-page btn-default">
-                <i class="fa fa-times"></i>
+                <i class="fa fa-times"></i> @messages("general.cancel")
             </button>
         </div>
     }
@@ -47,7 +47,7 @@
         <div class="btn-edit-container btn-delete-container">
             <button type="button" class="btn btn-sm btn-page-delete btn-page btn-default"
             data-toggle="modal" data-target="#modal-page-delete">
-                <i class="fa fa-trash"></i>
+                <i class="fa fa-trash"></i> @messages("general.delete")
             </button>
         </div>
 
