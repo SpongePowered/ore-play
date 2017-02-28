@@ -193,12 +193,12 @@ Base template for Project overview.
                             }
 
                             <!-- Download button -->
-                            <button form="form-download" type="submit" title="@messages("project.download.recommend")"
-                                    data-toggle="tooltip" data-placement="bottom" class="btn btn-primary">
-                                <i class="fa fa-download"></i> @messages("general.download")
-                            </button>
                             <form action="@versionRoutes.downloadRecommended(project.ownerName, project.slug)"
-                                  method="post" style="display: none;" id="form-download">
+                                  method="post" id="form-download">
+                                <button form="form-download" type="submit" title="@messages("project.download.recommend")"
+                                        data-toggle="tooltip" data-placement="bottom" class="btn btn-primary">
+                                    <i class="fa fa-download"></i> @messages("general.download")
+                                </button>
                                 @CSRF.formField
                             </form>
                         </div>

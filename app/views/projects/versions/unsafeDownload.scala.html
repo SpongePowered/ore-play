@@ -30,12 +30,12 @@
                            class="pull-left unsafe-dl-back">
                             <i class="fa fa-arrow-left"></i> @messages("project.back")
                         </a>
-                        <button type="submit" form="form-download" class="pull-right btn btn-primary">
-                            @messages("general.continue")
-                        </button>
                         <form action="@versionRoutes.downloadUnsafely(
                             project.ownerName, project.slug, target.name, origin, Some(downloadType.id), None)"
-                              method="post" style="display: none;" id="form-download">
+                              method="post" id="form-download">
+                            <button type="submit" form="form-download" class="pull-right btn btn-primary">
+                                @messages("general.continue")
+                            </button>
                             @CSRF.formField
                         </form>
                     </div>
