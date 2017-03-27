@@ -17,6 +17,8 @@ import ore.permission.scope.ProjectScope
   *
   * @param id           Unique identifier
   * @param createdAt    Instant of creation
+  * @param _isNonReviewed Whether this channel should be excluded from the staff
+  *                     approval queue
   * @param _name        Name of channel
   * @param _color       Color used to represent this Channel
   * @param projectId    ID of project this channel belongs to
@@ -25,7 +27,8 @@ case class Channel(override val id: Option[Int] = None,
                    override val createdAt: Option[Timestamp] = None,
                    override val projectId: Int,
                    private var _name: String,
-                   private var _color: Color)
+                   private var _color: Color,
+                   private var _isNonReviewed: Boolean = false)
                    extends OreModel(id, createdAt)
                      with Named
                      with Ordered[Channel]
@@ -71,6 +74,14 @@ case class Channel(override val id: Option[Int] = None,
     checkNotNull(_color, "null color", "")
     this._color = _color
     update(ModelKeys.Color)
+  }
+
+  def isNonReviewed: Boolean = this._isNonReviewed
+
+  def setNonReviewed(isNonReviewed: Boolean) = {
+    this._isNonReviewed = isNonReviewed
+    if (isDefined)
+      update(IsNonReviewed)
   }
 
   /**

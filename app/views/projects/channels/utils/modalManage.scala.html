@@ -26,6 +26,17 @@
                         </a>
                         @projects.channels.utils.popoverColorPicker()
                         <span class="pull-right channel preview" style="display: none;"></span>
+                        <br/>
+                        <span class="minor">@messages("channel.nonReviewed")</span>
+                        <input class="form-control non-reviewed"
+                               name="non-reviewed"
+                               type="checkbox"
+                               value="true" />
+                        <a href="#">
+                            <i class="fa fa-question-circle"
+                            title="@messages("channel.nonReviewed.info")"
+                            data-toggle="tooltip"></i>
+                        </a>
                     </div>
                 </div>
                 <div class="modal-footer">

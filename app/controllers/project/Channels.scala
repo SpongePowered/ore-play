@@ -52,14 +52,11 @@ class Channels @Inject()(forms: OreForms,
     */
   def create(author: String, slug: String) = ChannelEditAction(author, slug) { implicit request =>
     this.forms.ChannelEdit.bindFromRequest.fold(
-      hasErrors =>
-        Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message),
+      hasErrors => Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message),
       channelData => {
         channelData.addTo(request.project).fold(
-          error =>
-            Redirect(self.showList(author, slug)).withError(error),
-          channel =>
-            Redirect(self.showList(author, slug))
+          error => Redirect(self.showList(author, slug)).withError(error),
+          _ => Redirect(self.showList(author, slug))
         )
       }
     )

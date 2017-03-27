@@ -4,6 +4,7 @@ import javax.inject.Inject
 
 import db.ModelService
 import db.impl.access.ProjectBase
+import models.api.ProjectApiKey
 import models.project.{Channel, Page, Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -18,6 +19,16 @@ import security.pgp.PGPPublicKeyInfo
 final class OreWrites @Inject()(implicit config: OreConfig, service: ModelService) {
 
   implicit val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
+
+  implicit val projectApiKeyWrites = new Writes[ProjectApiKey] {
+    def writes(key: ProjectApiKey) = obj(
+      "id" -> key.id.get,
+      "createdAt" -> key.createdAt.get,
+      "keyType" -> obj("id" -> key.keyType.id, "name" -> key.keyType.name),
+      "projectId" -> key.projectId,
+      "value" -> key.value
+    )
+  }
 
   implicit val pageWrites = new Writes[Page] {
     def writes(page: Page) = obj(
@@ -58,7 +69,8 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
         "pluginId"      ->  project.pluginId,
         "channel"       ->  toJson(project.channels.get(version.channelId).get),
         "fileSize"      ->  version.fileSize,
-        "staffApproved" ->  version.isReviewed
+        "staffApproved" ->  version.isReviewed,
+        "href"          ->  ('/' + version.url)
       )
     }
   }

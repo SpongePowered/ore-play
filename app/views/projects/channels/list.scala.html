@@ -7,17 +7,9 @@
 @(project: Project, channels: Seq[Channel])(implicit messages: Messages, flash: Flash, request: Request[_],
         service: ModelService, config: OreConfig, users: UserBase)
 
-@projectRoutes = @{
-    controllers.project.routes.Projects
-}
-
-@channelRoutes = @{
-    controllers.project.routes.Channels
-}
-
-@versionRoutes = @{
-    controllers.project.routes.Versions
-}
+@projectRoutes = @{controllers.project.routes.Projects}
+@channelRoutes = @{controllers.project.routes.Channels}
+@versionRoutes = @{controllers.project.routes.Versions}
 
 @bootstrap.layout(messages("channel.list.page-title", project.ownerName, project.slug)) {
 
@@ -29,7 +21,7 @@
             initChannelManager(
                     "#channel-new", "", "@config.defaultChannelColor.hex", "New channel",
                     "@channelRoutes.create(project.ownerName, project.slug)",
-                    "post", "Create channel"
+                    "post", "Create channel", false
             );
         });
     </script>
@@ -103,7 +95,7 @@
                                                   "#channel-edit-@channel.id", "@channel.name", "@channel.color.hex",
                                                   "Edit channel", "@channelRoutes.save(
                                                     project.ownerName, project.slug, channel.name)",
-                                                  "post", "Save changes"
+                                                  "post", "Save changes", @channel.isNonReviewed
                                           );
                                       });
                                   </script>

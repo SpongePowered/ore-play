@@ -35,7 +35,7 @@ function rgbToHex(rgb) {
     delete(parts[0]);
     for (var i = 1; i <= 3; ++i) {
         parts[i] = parseInt(parts[i]).toString(16);
-        if (parts[i].length == 1) {
+        if (parts[i].length === 1) {
             parts[i] = '0' + parts[i];
         }
     }
@@ -63,17 +63,17 @@ function initChannelDelete(toggle, channelName, versionCount) {
     });
 }
 
-var onCustomSubmit = function(toggle, channelName, channelHex, title, submit) {
+var onCustomSubmit = function(toggle, channelName, channelHex, title, submit, nonReviewed) {
     // Called when a channel is being edited before project creation
     var publishForm = $('#form-publish');
     $('#channel-name').text(channelName).css('background-color', channelHex);
     publishForm.find('.channel-input').val(channelName);
     publishForm.find('.channel-color-input').val(channelHex);
     getModal().modal('hide');
-    initChannelManager(toggle, channelName, channelHex, title, null, null, submit);
+    initChannelManager(toggle, channelName, channelHex, title, null, null, submit, nonReviewed);
 };
 
-function initChannelManager(toggle, channelName, channelHex, title, call, method, submit) {
+function initChannelManager(toggle, channelName, channelHex, title, call, method, submit, nonReviewed) {
     $(toggle).off('click'); // Unbind previous click handlers
     $(toggle).click(function() {
         var modal = getModal();
@@ -83,6 +83,7 @@ function initChannelManager(toggle, channelName, channelHex, title, call, method
         // Update modal attributes
         modal.find('.color-picker').css('color', channelHex);
         modal.find('.modal-title').text(title);
+        modal.find('.non-reviewed').prop('checked', nonReviewed);
         preview.css('background-color', channelHex).text(channelName);
 
         // Set input values
@@ -97,7 +98,7 @@ function initChannelManager(toggle, channelName, channelHex, title, call, method
         }
 
         submitInput.val(submit);
-        if (call == null && method == null) {
+        if (call === null && method === null) {
             // Redirect form submit to client
             submitInput.off('click'); // Unbind existing click handlers
             submitInput.click(function(event) {
@@ -109,7 +110,11 @@ function initChannelManager(toggle, channelName, channelHex, title, call, method
             submitInput.submit(function(event) {
                 event.preventDefault();
                 var modal = getModal();
-                onCustomSubmit(toggle, modal.find('.channel-input').val(), modal.find('.channel-color-input').val(), title, submit);
+                onCustomSubmit(
+                    toggle,
+                    modal.find('.channel-input').val(),
+                    modal.find('.channel-color-input').val(),
+                    title, submit, nonReviewed);
             });
         } else {
             // Set form action
@@ -124,7 +129,7 @@ function initModal() {
     modal.find('.channel-input').on('input', function() {
         var val = $(this).val();
         var preview = getModal().find('.preview');
-        if (val.length == 0) {
+        if (val.length === 0) {
             preview.hide();
         } else {
             preview.show().text(val);

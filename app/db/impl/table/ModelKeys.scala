@@ -76,6 +76,7 @@ object ModelKeys {
 
   // Channel
   val Color                 =   new MappedTypeKey[Channel, Color](_.color, _.color)
+  val IsNonReviewed         =   new BooleanKey[Channel](_.isNonReviewed, _.isNonReviewed)
 
   // Page
   val Contents              =   new StringKey[Page](_.contents, _.contents)

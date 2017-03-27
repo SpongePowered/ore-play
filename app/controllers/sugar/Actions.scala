@@ -104,6 +104,11 @@ trait Actions extends Calls with ActionHelpers {
     first andThen authedProjectAction(author, slug)
   }
 
+  def AuthedProjectActionById(pluginId: String, requireUnlock: Boolean = true) = {
+    val first = if (requireUnlock) UserLock(ShowProject(pluginId)) else Authenticated
+    first andThen authedProjectActionById(pluginId)
+  }
+
   /**
     * A PermissionAction that uses an AuthedProjectRequest for the
     * ScopedRequest.
@@ -275,15 +280,20 @@ trait Actions extends Calls with ActionHelpers {
       None
   }
 
-  private def authedProjectAction(author: String, slug: String)
+  private def authedProjectActionImpl(project: Option[Project])
   = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
     def refine[A](request: AuthRequest[A]) = Future.successful {
-      Actions.this.projects.withSlug(author, slug)
-        .flatMap(processProject(_, Some(request.user)))
+      project.flatMap(processProject(_, Some(request.user)))
         .map(new AuthedProjectRequest[A](_, request))
         .toRight(NotFound)
     }
   }
+
+  private def authedProjectAction(author: String, slug: String)
+  = authedProjectActionImpl(this.projects.withSlug(author, slug))
+
+  private def authedProjectActionById(pluginId: String)
+  = authedProjectActionImpl(this.projects.withPluginId(pluginId))
 
   private def organizationAction(organization: String) = new ActionRefiner[Request, OrganizationRequest] {
     def refine[A](request: Request[A]): Future[Either[Result, OrganizationRequest[A]]] = Future.successful {

@@ -1,4 +1,5 @@
 @import db.ModelService
+@import db.impl.OrePostgresDriver.api._
 @import db.impl.access.UserBase
 @import models.project.Project
 @import ore.OreConfig
@@ -6,21 +7,25 @@
 @import ore.permission.scope.GlobalScope
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
+@import ore.rest.ProjectApiKeyTypes._
 @(project: Project)(implicit messages: Messages, flash: Flash, request: Request[_], service: ModelService,
         config: OreConfig, userBase: UserBase)
 
-@projectRoutes = @{
-    controllers.project.routes.Projects
-}
+@projectRoutes = @{controllers.project.routes.Projects}
+@deploymentKey = @{project.apiKeys.find(_.keyType === Deployment)}
 
 @projects.view(project, "#settings") {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/hideProject.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/iconUpload.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.at("javascripts/keyGen.js")"></script>
     <script nonce="@nonce">
         projectName = "@project.name";
         PROJECT_OWNER = "@project.ownerName";
         PROJECT_SLUG = "@project.slug";
+        pluginId = "@project.pluginId";
+        keyGenText = "@messages("project.settings.genKey")";
+        keyRevokeText = "@messages("project.settings.revokeKey")";
     </script>
 
     <div class="container">
@@ -97,14 +102,40 @@
                             </form>
                         </div>
 
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>@messages("project.settings.deployKey")</h4>
+                                <p>
+                                    @messages("project.settings.deployKey.info")
+                                    <a href="#"><i class="fa fa-question-circle"></i></a>
+                                </p>
+                                @deploymentKey.map { key =>
+                                    <input class="form-control input-key" type="text" value="@key.value" disabled />
+                                }.getOrElse {
+                                    <input class="form-control input-key" type="text" value="" disabled />
+                                }
+                            </div>
+                            <div class="setting-content">
+                                @deploymentKey.map { key =>
+                                  <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id.get">
+                                      <i class="fa fa-spinner fa-spin" style="display: none;"></i>
+                                      @messages("project.settings.revokeKey")
+                                  </button>
+                                }.getOrElse {
+                                    <button class="btn btn-info btn-block btn-key-gen">
+                                        <i class="fa fa-spinner fa-spin" style="display: none;"></i>
+                                        @messages("project.settings.genKey")
+                                    </button>
+                                }
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+
                         <!-- Rename -->
                         <div class="setting">
                             <div class="setting-description">
-                                <h4 class="danger">Rename</h4>
-                                <p>
-                                    Changing your projects name can have undesired consequences. We will not setup any
-                                    redirects.
-                                </p>
+                                <h4 class="danger">@messages("project.rename")</h4>
+                                <p>@messages("project.rename.info")</p>
                             </div>
                             <div class="setting-content">
                                 <input form="rename" id="name" name="name" class="form-control" type="text"

@@ -8,6 +8,7 @@ import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColum
 import db.impl.table.StatTable
 import db.table.{AssociativeTable, ModelTable, NameColumn}
 import models.admin.{ProjectLog, ProjectLogEntry}
+import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
@@ -17,6 +18,7 @@ import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
 import ore.project.FlagReasons.FlagReason
 import ore.project.io.DownloadTypes.DownloadType
+import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
 import ore.user.notification.NotificationTypes.NotificationType
 
@@ -133,10 +135,12 @@ class PageTable(tag: Tag) extends ModelTable[Page](tag, "project_pages") with Na
 
 class ChannelTable(tag: Tag) extends ModelTable[Channel](tag, "project_channels") with NameColumn[Channel] {
 
-  def color       =   column[Color]("color")
-  def projectId   =   column[Int]("project_id")
+  def color         = column[Color]("color")
+  def projectId     = column[Int]("project_id")
+  def isNonReviewed = column[Boolean]("is_non_reviewed")
 
-  override def * = (id.?, createdAt.?, projectId, name, color) <> ((Channel.apply _).tupled, Channel.unapply)
+  override def * = (id.?, createdAt.?, projectId, name, color, isNonReviewed) <> ((Channel.apply _).tupled,
+                    Channel.unapply)
 }
 
 class VersionTable(tag: Tag) extends ModelTable[Version](tag, "project_versions")
@@ -314,5 +318,15 @@ class FlagTable(tag: Tag) extends ModelTable[Flag](tag, "project_flags") {
   def isResolved  =   column[Boolean]("is_resolved")
 
   override def * = (id.?, createdAt.?, projectId, userId, reason, comment, isResolved) <> (Flag.tupled, Flag.unapply)
+
+}
+
+class ProjectApiKeyTable(tag: Tag) extends ModelTable[ProjectApiKey](tag, "project_api_keys") {
+
+  def projectId = column[Int]("project_id")
+  def keyType = column[ProjectApiKeyType]("key_type")
+  def value = column[String]("value")
+
+  override def * = (id.?, createdAt.?, projectId, keyType, value) <> (ProjectApiKey.tupled, ProjectApiKey.unapply)
 
 }

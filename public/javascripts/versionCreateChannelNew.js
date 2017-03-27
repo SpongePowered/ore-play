@@ -33,7 +33,7 @@ var DEFAULT_COLOR = null;
 function initChannelNew(color) {
     initChannelManager(
         '#channel-new', '', color, 'New channel', null, null,
-        'Create channel'
+        'Create channel', false
     );
 }
 
@@ -62,7 +62,7 @@ $(function() {
         setColorInput($(this).find(':selected').data('color'));
     });
 
-    onCustomSubmit = function(toggle, channelName, channelHex, title, submit) {
+    onCustomSubmit = function(toggle, channelName, channelHex, title, submit, nonReviewed) {
         // Add new name to select
         var select = getSelect();
         var exists = select.find('option').find(function() {

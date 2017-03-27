@@ -6,6 +6,7 @@ import db.impl.schema._
 import db.table.ModelAssociation
 import db.{ModelSchema, ModelService}
 import models.admin.{ProjectLog, ProjectLogEntry}
+import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole}
@@ -68,6 +69,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
     .withChildren[Flag](classOf[Flag], _.projectId)
     .withChildren[ProjectRole](classOf[ProjectRole], _.projectId)
     .withChildren[ProjectView](classOf[ProjectView], _.modelId)
+    .withChildren[ProjectApiKey](classOf[ProjectApiKey], _.projectId)
     .withAssociation[ProjectWatchersTable, User](
       association = this.projectWatchers,
       selfReference = _.projectId,
@@ -127,5 +129,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   val OrganizationRoleSchema = new ModelSchema[OrganizationRole](
     this, classOf[OrganizationRole], TableQuery[OrganizationRoleTable])
+
+  val ProjectApiKeySchema = new ModelSchema[ProjectApiKey](this, classOf[ProjectApiKey], TableQuery[ProjectApiKeyTable])
 
 }

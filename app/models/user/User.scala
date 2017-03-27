@@ -535,7 +535,8 @@ case class User(override val id: Option[Int] = None,
     val flags = this.service.access[Flag](classOf[Flag])
     val versions = this.service.access[Version](classOf[Version])
     val hasFlags = (this can ReviewFlags in GlobalScope) && flags.filterNot(_.isResolved).nonEmpty
-    val hasReview = (this can ReviewProjects in GlobalScope) && versions.filterNot(_.isReviewed).nonEmpty
+    val hasReview = (this can ReviewProjects in GlobalScope) &&
+      !versions.filterNot(_.isReviewed).forall(_.channel.isNonReviewed)
     val hasNotifications = this.notifications.filterNot(_.read).nonEmpty
     hasFlags || hasReview || hasNotifications
   }

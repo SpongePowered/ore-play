@@ -3,21 +3,30 @@ package form
 import java.net.{MalformedURLException, URL}
 import javax.inject.Inject
 
+import controllers.sugar.Requests.ProjectRequest
+import db.ModelService
+import db.impl.OrePostgresDriver.api._
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
+import models.api.ProjectApiKey
 import models.project.Channel
 import models.project.Page._
 import models.user.role.ProjectRole
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
-import play.api.data.Form
+import ore.rest.ProjectApiKeyTypes
+import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
+import play.api.data.{Form, FormError}
 import play.api.data.Forms._
+import play.api.data.format.Formatter
+
+import scala.util.Try
 
 /**
   * Collection of forms used in this application.
   */
 //noinspection ConvertibleToMethodValue
-class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory) {
+class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, service: ModelService) {
 
   val url = text verifying("error.url.invalid", text => {
     if (text.isEmpty)
@@ -128,7 +137,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory) {
 
     "channel-color-input" -> text.verifying(
       "Invalid channel color.", c => Channel.Colors.exists(_.hex.equalsIgnoreCase(c))
-    )
+    ),
+    "non-reviewed" -> default(boolean, false)
   )(ChannelData.apply)(ChannelData.unapply))
 
   /**
@@ -161,13 +171,50 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory) {
       "Invalid channel name.", config.isValidChannelName(_)),
     "channel-color-input" -> text.verifying(
       "Invalid channel color.", c => Channel.Colors.exists(_.hex.equalsIgnoreCase(c))),
+    "non-reviewed" -> default(boolean, false),
     "content" -> optional(text)
   )(VersionData.apply)(VersionData.unapply))
-
 
   /**
     * Submits a change to a Version's description.
     */
   lazy val VersionDescription = Form(single("content" -> text))
+
+  val projectApiKeyType = of[ProjectApiKeyType](new Formatter[ProjectApiKeyType] {
+    def bind(key: String, data: Map[String, String]) =
+      data.get(key)
+        .flatMap(id => Try(id.toInt).toOption.map(ProjectApiKeyTypes(_).asInstanceOf[ProjectApiKeyType]))
+        .toRight(Seq(FormError(key, "error.required", Nil)))
+    def unbind(key: String, value: ProjectApiKeyType): Map[String, String] = Map(key -> value.id.toString)
+  })
+
+  lazy val ProjectApiKeyCreate = Form(single("key-type" -> projectApiKeyType))
+
+  def required(key: String) = Seq(FormError(key, "error.required", Nil))
+
+  val projectApiKey = of[ProjectApiKey](new Formatter[ProjectApiKey] {
+    val projectApiKeys = OreForms.this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+    def bind(key: String, data: Map[String, String]) =
+      data.get(key).
+        flatMap(id => Try(id.toInt).toOption.flatMap(this.projectApiKeys.get(_)))
+        .toRight(required(key))
+    def unbind(key: String, value: ProjectApiKey): Map[String, String] = Map(key -> value.id.get.toString)
+  })
+
+  lazy val ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))
+
+  def channel(implicit request: ProjectRequest[_]) = of[Channel](new Formatter[Channel] {
+    def bind(key: String, data: Map[String, String]) =
+      data.get(key)
+        .flatMap(c => request.project.channels.find(_.name.toLowerCase === c.toLowerCase))
+        .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
+    def unbind(key: String, value: Channel) = Map(key -> value.name.toLowerCase)
+  })
+
+  def VersionDeploy(implicit request: ProjectRequest[_]) = Form(mapping(
+    "apiKey" -> nonEmptyText,
+    "channel" -> channel,
+    "recommended" -> default(boolean, true))
+  (VersionDeployForm.apply)(VersionDeployForm.unapply))
 
 }

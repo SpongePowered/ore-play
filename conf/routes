@@ -22,8 +22,12 @@ GET     /offline                                                    @controllers
 GET     /api/projects                                               @controllers.ApiController.listProjects(version = "v1", categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/projects/:pluginId                                     @controllers.ApiController.showProject(version = "v1", pluginId)
 
+POST    /api/projects/:pluginId/keys/new                            @controllers.ApiController.createKey(version = "v1", pluginId)
+POST    /api/projects/:pluginId/keys/revoke                         @controllers.ApiController.revokeKey(version = "v1", pluginId)
+
 GET     /api/projects/:pluginId/versions                            @controllers.ApiController.listVersions(version = "v1", pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/projects/:pluginId/versions/:name                      @controllers.ApiController.showVersion(version = "v1", pluginId, name)
+POST    /api/projects/:pluginId/versions/:name                      @controllers.ApiController.deployVersion(version = "v1", pluginId, name)
 
 GET     /api/projects/:pluginId/pages                               @controllers.ApiController.listPages(version = "v1", pluginId, parentId: Option[Int])
 
@@ -40,6 +44,7 @@ GET     /api/:version/projects/:pluginId                            @controllers
 
 GET     /api/:version/projects/:pluginId/versions                   @controllers.ApiController.listVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.showVersion(version, pluginId, name)
+POST    /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.deployVersion(version, pluginId, name)
 
 GET     /api/:version/projects/:pluginId/pages                      @controllers.ApiController.listPages(version, pluginId, parentId: Option[Int])
 

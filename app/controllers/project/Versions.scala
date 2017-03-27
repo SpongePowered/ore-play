@@ -195,24 +195,11 @@ class Versions @Inject()(stats: StatTracker,
             Redirect(call).withError("error.noFile")
           case Some(uploadData) =>
             try {
-              val plugin = this.factory.processPluginUpload(uploadData, user)
-              val project = request.project
-              if (!plugin.meta.get.getId.equals(project.pluginId))
-                Redirect(call).withError("error.version.invalidPluginId")
-              else {
-                val version = this.factory.startVersion(plugin, project, project.channels.all.head.name)
-                val model = version.underlying
-                if (model.exists && this.config.projects.getBoolean("file-validate").get)
-                  Redirect(call).withError("error.version.duplicate")
-                else if (project.isSpongePlugin && !model.hasDependency(Dependency.SpongeApiId))
-                  Redirect(call).withError("error.version.noDependency.sponge")
-                else if (project.isForgeMod && !model.hasDependency(Dependency.ForgeId))
-                  Redirect(call).withError("error.version.noDependency.forge")
-                else {
-                  version.cache()
-                  Redirect(self.showCreatorWithMeta(project.ownerName, slug, model.versionString))
-                }
-              }
+              this.factory.processSubsequentPluginUpload(uploadData, user, request.project).fold(
+                err => Redirect(call).withError(err),
+                version =>
+                  Redirect(self.showCreatorWithMeta(request.project.ownerName, slug, version.underlying.versionString))
+              )
             } catch {
               case e: InvalidPluginFileException =>
                 Redirect(call).withError(e.getMessage)

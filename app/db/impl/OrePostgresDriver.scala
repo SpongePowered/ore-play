@@ -11,6 +11,8 @@ import ore.project.FlagReasons.FlagReason
 import ore.project.io.DownloadTypes
 import ore.project.io.DownloadTypes.DownloadType
 import ore.project.{Categories, FlagReasons}
+import ore.rest.ProjectApiKeyTypes
+import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts
 import ore.user.Prompts.Prompt
 import ore.user.notification.NotificationTypes
@@ -39,6 +41,7 @@ trait OrePostgresDriver extends ExPostgresDriver with PgArraySupport with PgNetS
       value => utils.SimpleArrayUtils.mkString[Prompt](_.id.toString)(value)
     ).to(_.toList)
     implicit val downloadTypeTypeMapper = MappedJdbcType.base[DownloadType, Int](_.id, DownloadTypes.apply)
+    implicit val projectApiKeyTypeTypeMapper = MappedJdbcType.base[ProjectApiKeyType, Int](_.id, ProjectApiKeyTypes.apply)
   }
 
 }

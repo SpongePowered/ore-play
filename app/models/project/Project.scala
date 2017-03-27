@@ -3,6 +3,7 @@ package models.project
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
+import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.model.OreModel
@@ -12,6 +13,7 @@ import db.impl.table.ModelKeys
 import db.impl.table.ModelKeys._
 import db.{ModelService, Named}
 import models.admin.ProjectLog
+import models.api.ProjectApiKey
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectRole
@@ -533,6 +535,8 @@ case class Project(override val id: Option[Int] = None,
     this._isTopicDirty = topicDirty
     update(IsTopicDirty)
   }
+
+  def apiKeys: ModelAccess[ProjectApiKey] = this.schema.getChildren[ProjectApiKey](classOf[ProjectApiKey], this)
 
   override def projectId = Defined(this.id.get)
   override def copyWith(id: Option[Int], theTime: Option[Timestamp])

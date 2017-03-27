@@ -90,8 +90,11 @@ final class Application @Inject()(data: DataHelper,
     */
   def showQueue() = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      val queue = this.service.access[Version](classOf[Version]).filterNot(_.isReviewed).map(v => (v.project, v))
-      Ok(views.users.admin.queue(queue))
+      Ok(views.users.admin.queue(
+        this.service.access[Version](classOf[Version])
+          .filterNot(_.isReviewed)
+          .filterNot(_.channel.isNonReviewed)
+          .map(v => (v.project, v))))
     }
   }
 

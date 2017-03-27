@@ -22,6 +22,8 @@ trait TChannelData {
   /** Channel color hex **/
   protected def channelColorHex: String
 
+  val nonReviewed: Boolean
+
   /**
     * Attempts to add this ChannelData as a [[Channel]] to the specified
     * [[Project]].
@@ -35,13 +37,13 @@ trait TChannelData {
       Left("A project may only have up to five channels.")
     } else {
       channels.find(_.name.equalsIgnoreCase(this.channelName)) match {
-        case Some(channel) =>
+        case Some(_) =>
           Left("A channel with that name already exists.")
         case None => channels.find(_.color.equals(this.color)) match {
-          case Some(channel) =>
+          case Some(_) =>
             Left("A channel with that color already exists.")
           case None =>
-            Right(this.factory.createChannel(project, this.channelName, this.color))
+            Right(this.factory.createChannel(project, this.channelName, this.color, this.nonReviewed))
         }
       }
     }
@@ -70,6 +72,7 @@ trait TChannelData {
       } else {
         channel.name = this.channelName
         channel.color = this.color
+        channel.setNonReviewed(this.nonReviewed)
         None
       }
     }

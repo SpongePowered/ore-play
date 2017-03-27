@@ -131,7 +131,7 @@ project.create                  =   New Project
 project.owner                   =   Owner
 project.rename                  =   Rename
 project.rename.title            =   Rename project
-project.rename.info             =   Are you sure you want to rename your Project? This can have unintended side effects as we will not set up any redirects for you.
+project.rename.info             =   Changing your projects name can have undesired consequences. We will not setup any redirects.
 project.discuss                 =   Discuss
 project.discuss.postAs          =   Posting as:
 project.docs                    =   Docs
@@ -139,6 +139,10 @@ project.settings                =   Settings
 project.settings.members        =   Members
 project.settings.license        =   License
 project.settings.license.info   =   What can people do (and not do) with your project?
+project.settings.deployKey      =   Deployment key
+project.settings.deployKey.info =   Generate a unique deployment key to enable build deployment from Gradle
+project.settings.genKey         =   Generate key
+project.settings.revokeKey      =   Revoke key
 project.versions                =   Versions
 project.downloads               =   Downloads
 project.starred                 =   Stars
@@ -233,6 +237,8 @@ channel.list.description        =   Release channels represent the state of a pl
 channel.delete                  =   Delete channel
 channel.delete.info             =   Are you sure you want to delete this channel?
 channel.delete.info.versions    =   versions will be deleted.
+channel.nonReviewed             =   Exclude versions in this channel from the staff approval queue
+channel.nonReviewed.info        =   Certain restrictions may apply
 
 aria.dropdown.menu              =   dropdownMenu{0}
 
@@ -310,3 +316,7 @@ licenses.lgpl = GNU Lesser General Public License (LGPL)
 licenses.custom = Custom
 
 ph.comment = Comment
+
+api.deploy.versionExists = A version of that name already exists.
+api.deploy.invalidKey = Invalid API key.
+api.deploy.channelNotFound = Channel not found.

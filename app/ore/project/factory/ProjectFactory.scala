@@ -97,6 +97,24 @@ trait ProjectFactory {
     plugin
   }
 
+  def processSubsequentPluginUpload(uploadData: PluginUpload,
+                                    owner: User,
+                                    project: Project): Either[String, PendingVersion] = {
+    val plugin = this.processPluginUpload(uploadData, owner)
+    if (!plugin.meta.get.getId.equals(project.pluginId))
+      return Left("error.version.invalidPluginId")
+    val version = this.startVersion(plugin, project, project.channels.all.head.name)
+    val model = version.underlying
+    if (model.exists && this.config.projects.getBoolean("file-validate").get)
+      return Left("error.version.duplicate")
+    if (project.isSpongePlugin && !model.hasDependency(Dependency.SpongeApiId))
+      return Left("error.version.noDependency.sponge")
+    if (project.isForgeMod && !model.hasDependency(Dependency.ForgeId))
+      return Left("error.version.noDependency.forge")
+    version.cache()
+    Right(version)
+  }
+
   /**
     * Returns the error ID to display to the User, if any, if they cannot
     * upload files.
@@ -256,7 +274,7 @@ trait ProjectFactory {
     * @param color    Channel color
     * @return         New channel
     */
-  def createChannel(project: Project, name: String, color: Color): Channel = {
+  def createChannel(project: Project, name: String, color: Color, nonReviewed: Boolean): Channel = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     checkNotNull(name, "null name", "")
@@ -279,7 +297,7 @@ trait ProjectFactory {
     // Create channel if not exists
     project.channels.find(equalsIgnoreCase(_.name, pending.channelName)) match {
       case None =>
-        channel = createChannel(project, pending.channelName, pending.channelColor)
+        channel = createChannel(project, pending.channelName, pending.channelColor, nonReviewed = false)
       case Some(existing) =>
         channel = existing
     }

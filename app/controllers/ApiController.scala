@@ -1,16 +1,46 @@
 package controllers
 
+import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 
-import ore.rest.OreRestfulApi
+import controllers.sugar.Bakery
+import db.ModelService
+import db.impl.OrePostgresDriver.api._
+import form.OreForms
+import models.api.ProjectApiKey
+import ore.permission.EditApiKeys
+import ore.project.factory.ProjectFactory
+import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
+import ore.rest.ProjectApiKeyTypes._
+import ore.rest.{OreRestfulApi, OreWrites}
+import ore.{OreConfig, OreEnv}
+import play.api.i18n.MessagesApi
 import util.StatusZ
 import play.api.libs.json._
 import play.api.mvc._
+import security.spauth.SingleSignOnConsumer
 
 /**
   * Ore API (v1)
   */
-final class ApiController @Inject()(api: OreRestfulApi, status: StatusZ) extends Controller {
+final class ApiController @Inject()(api: OreRestfulApi,
+                                    status: StatusZ,
+                                    forms: OreForms,
+                                    writes: OreWrites,
+                                    factory: ProjectFactory,
+                                    implicit override val config: OreConfig,
+                                    implicit override val env: OreEnv,
+                                    implicit override val service: ModelService,
+                                    implicit override val bakery: Bakery,
+                                    implicit override val sso: SingleSignOnConsumer,
+                                    implicit override val messagesApi: MessagesApi)
+                                    extends BaseController {
+
+  import writes._
+
+  val files = new ProjectFiles(this.env)
+  val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)
 
@@ -39,6 +69,44 @@ final class ApiController @Inject()(api: OreRestfulApi, status: StatusZ) extends
     version match {
       case "v1" => ApiResult(this.api.getProject(pluginId))
       case _ => NotFound
+    }
+  }
+
+  def createKey(version: String, pluginId: String) = {
+    (AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
+      val project = request.project
+      this.forms.ProjectApiKeyCreate.bindFromRequest().fold(
+        _ => BadRequest,
+        {
+          case keyType@Deployment =>
+            if (this.projectApiKeys.exists(k => k.projectId === project.id.get && k.keyType === keyType))
+              BadRequest
+            else {
+              Created(Json.toJson(this.projectApiKeys.add(ProjectApiKey(
+                projectId = project.id.get,
+                keyType = keyType,
+                value = UUID.randomUUID().toString.replace("-", "")))))
+            }
+          case _ =>
+            BadRequest
+        }
+      )
+    }
+  }
+
+  def revokeKey(version: String, pluginId: String) = {
+    (AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
+      this.forms.ProjectApiKeyRevoke.bindFromRequest().fold(
+        _ => BadRequest,
+        key => {
+          if (key.projectId != request.project.id.get)
+            BadRequest
+          else {
+            key.remove()
+            Ok
+          }
+        }
+      )
     }
   }
 
@@ -72,6 +140,51 @@ final class ApiController @Inject()(api: OreRestfulApi, status: StatusZ) extends
     version match {
       case "v1" => ApiResult(this.api.getVersion(pluginId, name))
       case _ => NotFound
+    }
+  }
+
+  private def error(key: String, error: String) = Json.obj("errors" -> Map(key -> List(this.messagesApi(error))))
+
+  def deployVersion(version: String, pluginId: String, name: String) = ProjectAction(pluginId) { implicit request =>
+    version match {
+      case "v1" =>
+        val project = request.project
+        this.forms.VersionDeploy.bindFromRequest().fold(
+          hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)),
+          formData => {
+            if (!this.projectApiKeys.exists(k => k.keyType === Deployment && k.value === formData.apiKey))
+              Unauthorized(error("apiKey", "api.deploy.invalidKey"))
+            else if (project.versions.exists(_.versionString === name))
+              BadRequest(error("versionName", "api.deploy.versionExists"))
+            else {
+              val user = project.owner
+              this.factory.getUploadError(user) match {
+                case Some(err) => BadRequest(error("user", err))
+                case None => PluginUpload.bindFromRequest() match {
+                  case None => BadRequest(error("files", "error.noFile"))
+                  case Some(uploadData) =>
+                    try {
+                      this.factory.processSubsequentPluginUpload(uploadData, user, project).fold(
+                        err => BadRequest(error("upload", err)),
+                        version => {
+                          version.channelName = formData.channel.name
+                          val newVersion = version.complete().get
+                          if (formData.recommended)
+                            project.recommendedVersion = newVersion
+                          Created(Json.toJson(newVersion))
+                        }
+                      )
+                    } catch {
+                      case e: InvalidPluginFileException =>
+                        BadRequest(error("upload", e.getMessage))
+                    }
+                }
+              }
+            }
+          }
+        )
+      case _ =>
+        NotFound
     }
   }
 

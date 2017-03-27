@@ -1,16 +1,46 @@
-plugins {
-    id 'org.spongepowered.plugin' version '0.7'
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            name 'sponge-repo'
+            url 'https://repo.spongepowered.org/maven'
+        }
+    }
+    dependencies {
+        classpath 'org.spongepowered:spongegradle:0.8.2-SNAPSHOT'
+    }
 }
+
+apply plugin: 'org.spongepowered.plugin'
+apply plugin: 'org.spongepowered.meta'
+apply plugin: 'org.spongepowered.ore'
+apply plugin: 'signing'
+
+//plugins {
+//    id 'org.spongepowered.plugin' version '0.8.2-SNAPSHOT'
+//}
 
 group = 'se.walkercrou'
 version = '1.0.1'
 description = 'Ore test plugin'
+
+signing {
+    sign configurations.archives
+}
 
 sponge.plugin {
     id = 'oretest'
     meta {
         name = "Ore Test Plugin"
     }
+}
+
+oreDeploy {
+    instanceUrl = 'http://localhost:9000'
+    recommended = false
+    deploy = configurations.archives
+    channel = 'release'
 }
 
 dependencies {
