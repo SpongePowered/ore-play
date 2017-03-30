@@ -110,9 +110,9 @@
                                     <a href="#"><i class="fa fa-question-circle"></i></a>
                                 </p>
                                 @deploymentKey.map { key =>
-                                    <input class="form-control input-key" type="text" value="@key.value" disabled />
+                                    <input class="form-control input-key" type="text" value="@key.value" readonly />
                                 }.getOrElse {
-                                    <input class="form-control input-key" type="text" value="" disabled />
+                                    <input class="form-control input-key" type="text" value="" readonly />
                                 }
                             </div>
                             <div class="setting-content">
