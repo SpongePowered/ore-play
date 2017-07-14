@@ -3,13 +3,15 @@ package models.project
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
+import com.vladsch.flexmark.ast.{Node, MailLink}
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.typographic.TypographicExtension
-import com.vladsch.flexmark.html.HtmlRenderer
+import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolverFactory, LinkResolver}
+import com.vladsch.flexmark.html.renderer.{NodeRendererContext, ResolvedLink, LinkType, LinkStatus}
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.options.MutableDataSet
 import db.access.ModelAccess
@@ -19,6 +21,7 @@ import db.impl.model.OreModel
 import db.impl.schema.PageSchema
 import db.impl.table.ModelKeys._
 import db.{ModelFilter, Named}
+import java.net.{URI, URISyntaxException}
 import ore.permission.scope.ProjectScope
 import ore.{OreConfig, Visitable}
 import play.twirl.api.Html
@@ -120,6 +123,44 @@ case class Page(override val id: Option[Int] = None,
 
 object Page {
 
+  private object ExternalLinkResolver {
+
+    class Factory(config: OreConfig) extends LinkResolverFactory {
+      override def getAfterDependents() = null
+      override def getBeforeDependents() = null
+      override def affectsGlobalScope() = false
+      override def create(context: NodeRendererContext) = new ExternalLinkResolver(this.config)
+    }
+
+  }
+
+  private class ExternalLinkResolver(config: OreConfig) extends LinkResolver {
+    override def resolveLink(node: Node, context: NodeRendererContext, link: ResolvedLink) = {
+      if (link.getLinkType.equals(LinkType.IMAGE) || node.isInstanceOf[MailLink]) {
+        link
+      } else {
+        link.withStatus(LinkStatus.VALID).withUrl(wrapExternal(link.getUrl))
+      }
+    }
+
+    private def wrapExternal(urlString: String) = {
+      try {
+        val uri = new URI(urlString)
+        if (uri.getScheme == null || "http" == uri.getScheme || "https" == uri.getScheme) {
+          val host = uri.getHost
+          val trustedUrlHost = this.config.app.getString("trustedUrlHost").get
+          if (host == null || host.endsWith(trustedUrlHost)) {
+            urlString
+          } else {
+            controllers.routes.Application.linkOut(urlString).toString()
+          }
+        } else {
+          urlString
+        }
+      } catch { case _: URISyntaxException => urlString }
+    }
+  }
+
   private val (markdownParser, htmlRenderer) = {
     val options = new MutableDataSet()
       .set[java.lang.Boolean](HtmlRenderer.SUPPRESS_HTML, true)
@@ -141,7 +182,10 @@ object Page {
         TypographicExtension.create()
       ))
 
-    (Parser.builder(options).build(), HtmlRenderer.builder(options).build())
+    (Parser.builder(options).build(), HtmlRenderer.builder(options)
+      // TODO: Get OreConfig using dependency injection or pass as parameter
+      .linkResolverFactory(new ExternalLinkResolver.Factory(play.api.Play.current.injector.instanceOf(classOf[OreConfig])))
+      .build())
   }
 
   def Render(markdown: String): Html = Html(htmlRenderer.render(markdownParser.parse(markdown)))

@@ -9,6 +9,7 @@ application {
     db.default-timeout  =   10
     uploadsDir = "uploads"
     uploadsDir = ${?UPLOADS_DIR}
+    trustedUrlHost      =   "spongepowered.org"
     
     fakeUser {
         enabled    =   false
