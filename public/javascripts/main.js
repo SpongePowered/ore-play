@@ -76,9 +76,9 @@ function initTooltips() {
  * =               Google Analytics                 =
  * ==================================================
  */
-(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+(function(S,p,o,n,g,i,e){S['GoogleAnalyticsObject']=o;S[o]=S[o]||function(){
+        (S[o].q=S[o].q||[]).push(arguments)},S[o].l=1*new Date();i=p.createElement(n),
+    e=p.getElementsByTagName(n)[0];i.async=1;i.src=g;e.parentNode.insertBefore(i,e)
 })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
 ga('create', 'UA-59476017-3', 'auto');
