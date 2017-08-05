@@ -146,18 +146,23 @@ object Page {
     private def wrapExternal(urlString: String) = {
       try {
         val uri = new URI(urlString)
-        if (uri.getScheme == null || "http" == uri.getScheme || "https" == uri.getScheme) {
-          val host = uri.getHost
-          val trustedUrlHost = this.config.app.getString("trustedUrlHost").get
-          if (host == null || host.endsWith(trustedUrlHost)) {
+        val host = uri.getHost
+        if (uri.getScheme != null && host == null) {
+          if (uri.getScheme == "mailto") {
             urlString
           } else {
             controllers.routes.Application.linkOut(urlString).toString()
           }
         } else {
-          urlString
+          val trustedUrlHosts = this.config.app.getStringSeq("trustedUrlHosts").get
+          val checkSubdomain = (trusted: String) => trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1));
+          if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) {
+            urlString
+          } else {
+            controllers.routes.Application.linkOut(urlString).toString()
+          }
         }
-      } catch { case _: URISyntaxException => urlString }
+      } catch { case _: URISyntaxException => controllers.routes.Application.linkOut(urlString).toString() }
     }
   }
 
