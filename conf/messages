@@ -68,6 +68,7 @@ editor.deleteConfirm    =   Are you sure you want to delete {0}? This cannot be 
 
 error.minLength                 =   Content too short.
 error.maxLength                 =   Content too long.
+error.tooManyPages              =   You have created too many pages on this project.
 error.noFile                    =   No file submitted.
 error.nameUnavailable           =   That name is not available.
 error.noLogin                   =   Login is temporarily unavailable, please try again later.

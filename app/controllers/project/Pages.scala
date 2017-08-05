@@ -6,7 +6,7 @@ import controllers.BaseController
 import controllers.sugar.Bakery
 import db.ModelService
 import form.OreForms
-import models.project.Page
+import models.project.{Page, Project}
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.i18n.MessagesApi
@@ -32,6 +32,8 @@ class Pages @Inject()(forms: OreForms,
 
   private def PageEditAction(author: String, slug: String)
   = AuthedProjectAction(author, slug, requireUnlock = true) andThen ProjectPermissionAction(EditPages)
+
+  private def hasPagesLeft(project: Project) = project.pages.size < config.projects.getInt("max-pages").getOrElse(10)
 
   /**
     * Displays the specified page.
@@ -60,7 +62,8 @@ class Pages @Inject()(forms: OreForms,
     */
   def showEditor(author: String, slug: String, page: String) = PageEditAction(author, slug) { implicit request =>
     val project = request.project
-    Ok(views.view(project, project.getOrCreatePage(page), editorOpen = true))
+    val pageOpt = project.getPage(page)
+    pageOpt.fold(notFound)(p => Ok(views.view(project, p, editorOpen = true)))
   }
 
   /**
@@ -87,6 +90,7 @@ class Pages @Inject()(forms: OreForms,
       pageData => {
         val project = request.project
         val parentId = pageData.parentId.getOrElse(-1)
+
         //noinspection ComparingUnrelatedTypes
         if (parentId != -1 && !project.rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
           BadRequest("Invalid parent ID.")
@@ -94,10 +98,12 @@ class Pages @Inject()(forms: OreForms,
           val content = pageData.content
           if (page.equals(Page.HomeName) && (content.isEmpty || content.get.length < Page.MinLength)) {
             Redirect(self.show(author, slug, page)).withError("error.minLength")
-          } else {
+          } else if (project.pageExists(page) || hasPagesLeft(project)) {
             val pageModel = project.getOrCreatePage(page, parentId)
             pageData.content.map(pageModel.contents = _)
             Redirect(self.show(author, slug, page))
+          } else {
+            Redirect(self.show(author, slug, Page.HomeName)).withError("error.tooManyPages")
           }
         }
       }

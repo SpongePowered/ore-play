@@ -471,6 +471,17 @@ case class Project(override val id: Option[Int] = None,
   }
 
   /**
+    * Returns the specified page (lookup up by name).
+    *
+    * @param name   Page name
+    * @return       Some(Page) with name or None
+    */
+  def getPage(name: String): Option[Page] = Defined {
+    checkNotNull(name, "null name", "")
+    this.service.access[Page](classOf[Page]).find(p => p.name === name)
+  }
+
+  /**
     * Returns the parentless, root, pages for this project.
     *
     * @return Root pages of project
