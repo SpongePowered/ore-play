@@ -31,6 +31,7 @@ libraryDependencies ++= Seq(
   "org.bouncycastle"      %   "bcpkix-jdk15on"          %   "1.56",
   "org.bouncycastle"      %   "bcpg-jdk15on"            %   "1.56",
   "javax.mail"            %   "mail"                    %   "1.4.7",
+  "com.github.hazendaz"   %   "htmlcompressor"          %   "1.6.4",
 
   "com.vladsch.flexmark"  % "flexmark"                       %  "0.18.2",
   "com.vladsch.flexmark"  % "flexmark-ext-autolink"          %  "0.18.2",
