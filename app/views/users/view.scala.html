@@ -85,22 +85,30 @@
 
                             @if(user.isCurrent && !user.isOrganization) {
                                 <a class="user-settings" href="@config.security.getString("api.url").get/settings">
-                                    <i class="fa fa-cog"></i>
+                                    <i class="fa fa-cog" data-toggle="tooltip"
+                                        data-placement="top" title="Settings"></i>
                                 </a>
 
                                 <span data-toggle="modal" data-target="#modal-lock">
                                     <i class="fa @lockIcon action-lock-account" data-toggle="tooltip"
-                                       data-placement="top" title="@messages("user.lockAccount")"></i>
+                                        data-placement="top" title="@messages("user.lock")"></i>
                                 </span>
 
-                                <span data-toggle="modal" data-target="#modal-pgp">
-                                    <i class="fa fa-key action-pgp" data-toggle="tooltip" data-placement="top"
-                                       title="@messages("user.pgp.pubKey")"></i>
+                                <span data-toggle="modal" data-target="#modal-pgp-edit">
+                                    <i class="fa fa-key action-pgp" data-toggle="tooltip"
+                                        data-placement="top" title="@messages("user.pgp.pubKey")"></i>
                                 </span>
 
                                 @if(!users.current.get.readPrompts.contains(Prompts.PGP)) {
                                     @utils.prompt(Prompts.PGP, "popover-pgp")
                                 }
+                            }
+
+                            @if(!user.isCurrent && user.pgpPubKey.isDefined) {
+                                <span data-toggle="modal" data-target="#modal-pgp-show">
+                                    <i class="fa fa-key action-pgp" data-toggle="tooltip"
+                                        data-placement="top" title="@messages("user.pgp.pubKey")"></i>
+                                </span>
                             }
                         </h1>
 
@@ -158,7 +166,7 @@
 
     </div>
 
-    <div class="modal fade" id="modal-pgp" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
+    <div class="modal fade" id="modal-pgp-edit" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -244,6 +252,10 @@
             </div>
         </div>
     </div>
+
+    @utils.modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
+        <pre style="text-align:center">@user.pgpPubKey.get</pre>
+    }
 
     @utils.modal("modal-lock", "label-lock", if (user.isLocked) "user.unlock" else "user.lock") {
         <div class="modal-body">

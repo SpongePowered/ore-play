@@ -265,7 +265,6 @@ user.flags.messageOwner     =   Message project owner
 user.queue                  =   Approval queue
 user.queue.none             =   There are no versions to review.
 user.queue.approve          =   Approve
-user.lockAccount            =   Lock account.
 user.pgp.edit               =   PGP Public Key
 user.pgp.pubKey             =   PGP Public Key
 user.pgp.pubKey.info        =   Paste your PGP public key in it's entirety to the text box below. The submitted key must be associated with the email that is associated with your Sponge account.
