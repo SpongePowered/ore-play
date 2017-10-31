@@ -92,15 +92,17 @@
                                     <i class="fa @lockIcon action-lock-account" data-toggle="tooltip"
                                        data-placement="top" title="@messages("user.lockAccount")"></i>
                                 </span>
+                            }
 
+                            @if(user.isCurrent || user.pgpPubKey.isDefined) {
                                 <span data-toggle="modal" data-target="#modal-pgp">
                                     <i class="fa fa-key action-pgp" data-toggle="tooltip" data-placement="top"
                                        title="@messages("user.pgp.pubKey")"></i>
                                 </span>
+                            }
 
-                                @if(!users.current.get.readPrompts.contains(Prompts.PGP)) {
-                                    @utils.prompt(Prompts.PGP, "popover-pgp")
-                                }
+                            @if(user.isCurrent && !user.isOrganization && !users.current.get.readPrompts.contains(Prompts.PGP)) {
+                                @utils.prompt(Prompts.PGP, "popover-pgp")
                             }
                         </h1>
 
@@ -196,7 +198,11 @@
                             </div>
 
                             <div class="row">
-                                @user.pgpPubKeyInfo.map { keyInfo =>
+                                @user.pgpPubKeyInfo.fold {
+                                    <p>@messages("user.pgp.pubKey.info")</p>
+                                    <textarea class="form-control" name="pgp-pub-key" rows="10"></textarea>
+                                    <i class="pull-right"><a href="#TODO">@messages("user.pgp.help")</a></i>
+                                } { keyInfo =>
                                     <table width="100%">
                                         <tr>
                                             <td><strong>ID</strong></td>
@@ -211,15 +217,7 @@
                                             <td><a href="mailto:@keyInfo.email">@keyInfo.email</a></td>
                                         </tr>
                                     </table>
-                                }
-
-                                @if(user.pgpPubKey.isEmpty) {
-                                    <p>@messages("user.pgp.pubKey.info")</p>
-                                }
-
-                                @if(user.pgpPubKey.isEmpty) {
-                                    <textarea class="form-control" name="pgp-pub-key" rows="10"></textarea>
-                                    <i class="pull-right"><a href="#TODO">@messages("user.pgp.help")</a></i>
+                                    <textarea class="form-control" name="pgp-pub-key" rows="10" readonly>@keyInfo.raw</textarea>
                                 }
                             </div>
                         </div>
@@ -230,14 +228,16 @@
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("general.close")
                         </button>
-                        @if(user.pgpPubKey.isEmpty) {
-                            <button type="submit" class="btn btn-primary">
-                            @messages("general.save")
-                            </button>
-                        } else {
-                            <button type="submit" class="btn btn-danger">
-                            @messages("general.delete")
-                            </button>
+                        @if(user.isCurrent) {
+                            @if(user.pgpPubKey.isEmpty) {
+                                <button type="submit" class="btn btn-primary">
+                                @messages("general.save")
+                                </button>
+                            } else {
+                                <button type="submit" class="btn btn-danger">
+                                @messages("general.delete")
+                                </button>
+                            }
                         }
                     </div>
                 }
