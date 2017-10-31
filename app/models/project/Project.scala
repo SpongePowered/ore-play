@@ -23,6 +23,7 @@ import ore.project.FlagReasons.FlagReason
 import ore.project.{Categories, ProjectMember}
 import ore.user.MembershipDossier
 import ore.{Joinable, Visitable}
+import util.GitHubUtil
 import util.StringUtils._
 
 /**
@@ -446,7 +447,18 @@ case class Project(override val id: Option[Int] = None,
     * @return Project home page
     */
   def homePage: Page = Defined {
-    val page = new Page(this.id.get, Page.HomeName, Page.Template(this.name, Page.HomeMessage), false, -1)
+    var body = Page.HomeMessage
+    val source = this.settings.source
+    if (source.isDefined && GitHubUtil.isGitHubUrl(source.get)) {
+      val urlParts = source.get.split("//github.com/")(1).split("/")
+      val ghUser = urlParts(0)
+      val ghProject = urlParts(1)
+      val readme = GitHubUtil.getReadme(ghUser, ghProject)
+      if (readme != null && readme.isDefined) {
+        body = readme.get
+      }
+    }
+    val page = new Page(this.id.get, Page.HomeName, Page.Template(this.name, body), false, -1)
     this.service.await(page.schema.getOrInsert(page)).get
   }
 
