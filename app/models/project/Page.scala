@@ -166,7 +166,9 @@ object Page {
     }
   }
 
-  private val (markdownParser, htmlRenderer) = {
+  private var linkResolver: Option[LinkResolverFactory] = None
+
+  private lazy val (markdownParser, htmlRenderer) = {
     val options = new MutableDataSet()
       .set[java.lang.Boolean](HtmlRenderer.SUPPRESS_HTML, true)
 
@@ -187,13 +189,18 @@ object Page {
         TypographicExtension.create()
       ))
 
+
     (Parser.builder(options).build(), HtmlRenderer.builder(options)
-      // TODO: Get OreConfig using dependency injection or pass as parameter
-      .linkResolverFactory(new ExternalLinkResolver.Factory(play.api.Play.current.injector.instanceOf(classOf[OreConfig])))
+      .linkResolverFactory(linkResolver.get)
       .build())
   }
 
-  def Render(markdown: String): Html = Html(htmlRenderer.render(markdownParser.parse(markdown)))
+  def Render(markdown: String)(implicit config: OreConfig): Html = {
+    // htmlRenderer is lazy loaded so linkResolver will exist upon loading
+    if (linkResolver.isEmpty)
+      linkResolver = Some(new ExternalLinkResolver.Factory(config))
+    Html(htmlRenderer.render(markdownParser.parse(markdown)))
+  }
 
   /**
     * The name of each Project's homepage.
