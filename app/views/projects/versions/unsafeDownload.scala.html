@@ -4,6 +4,7 @@
 @import models.project.Version
 @import models.project.Project
 @import ore.project.io.DownloadTypes.DownloadType
+@import security.NonceFilter._
 @import views.html.helper.CSRF
 @(project: Project,
   target: Version,
@@ -37,6 +38,13 @@
                             <button type="submit" form="form-download" class="pull-right btn btn-primary">
                                 @messages("general.continue")
                             </button>
+                            <script nonce="@nonce">
+                                document.getElementById("form-download").addEventListener("submit", function() {
+                                    setTimeout(function () {
+                                        window.location.href = "@versionRoutes.show(project.ownerName, project.slug, target.name)";
+                                    }, 1000);
+                                });
+                            </script>
                         </form>
                     </div>
                 </div>
