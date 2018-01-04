@@ -54,11 +54,12 @@ class ProjectFiles(val env: OreEnv) {
   def renameProject(owner: String, oldName: String, newName: String): Try[Unit] = Try { //TODO
     val newProjectDir = getProjectDir(owner, newName)
     move(getProjectDir(owner, oldName), newProjectDir)
-    // Rename plugin files
-    for (channelDir <- newProjectDir.toFile.listFiles()) {
-      if (channelDir.isDirectory) {
-        for (pluginFile <- channelDir.listFiles()) {
-          move(pluginFile.toPath, getProjectDir(owner, newName).resolve(pluginFile.getName))
+
+    // Move all files
+    for (versionDir <- newProjectDir.toFile.listFiles()) {
+      if (versionDir.isDirectory) {
+        for (pluginFile <- versionDir.listFiles()) {
+          move(pluginFile.toPath, getProjectVersionDir(owner, newName, pluginFile.getName).resolve(pluginFile.getName))
         }
       }
     }

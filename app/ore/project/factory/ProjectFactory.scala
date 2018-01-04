@@ -338,7 +338,7 @@ trait ProjectFactory {
     newVersion
   }
 
-  private def uploadPlugin(project: Project, channel: Channel, plugin: PluginFile): Try[Unit] = Try { // Ore is just full of bugs.. channel is never used.
+  private def uploadPlugin(project: Project, channel: Channel, plugin: PluginFile): Try[Unit] = Try {
     val meta = plugin.meta.get
 
     val oldPath = plugin.path
