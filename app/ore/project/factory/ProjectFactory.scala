@@ -338,13 +338,13 @@ trait ProjectFactory {
     newVersion
   }
 
-  private def uploadPlugin(project: Project, channel: Channel, plugin: PluginFile): Try[Unit] = Try {
+  private def uploadPlugin(project: Project, channel: Channel, plugin: PluginFile): Try[Unit] = Try { // Ore is just full of bugs.. channel is never used.
     val meta = plugin.meta.get
 
     val oldPath = plugin.path
     val oldSigPath = plugin.signaturePath
 
-    val projectDir = this.fileManager.getProjectDir(project.ownerName, project.name)
+    val projectDir = this.fileManager.getProjectVersionDir(project.ownerName, project.name, meta.getVersion)
     val newPath = projectDir.resolve(oldPath.getFileName)
     val newSigPath = projectDir.resolve(oldSigPath.getFileName)
 
