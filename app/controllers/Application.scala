@@ -84,6 +84,16 @@ final class Application @Inject()(data: DataHelper,
   }
 
   /**
+    * Show external link warning page.
+    *
+    * @return External link page
+    */
+  def linkOut(remoteUrl: String) = {
+    Action { implicit request =>
+      Ok(views.linkout(remoteUrl))
+    }
+  }
+  /**
     * Shows the moderation queue for unreviewed versions.
     *
     * @return View of unreviewed versions.

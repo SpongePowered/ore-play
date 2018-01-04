@@ -55,6 +55,8 @@ general.forgeMod.tooltip        =   To mark your project as a Forge mod, add for
 general.any                     =   Any
 general.platform                =   Platform
 general.notice                  =   Notice
+general.linkout.title           =   External Link Warning
+general.linkout.warning         =   You have clicked on an external link to "{0}". If you did not intend to visit this link, please go back. Otherwise, click continue.
 
 admin.health.title = Ore Health Report
 admin.health.discuss = Missing discussion topic
