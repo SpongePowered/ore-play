@@ -369,7 +369,7 @@ trait ProjectFactory {
     val oldPath = plugin.path
     val oldSigPath = plugin.signaturePath
 
-    val projectDir = this.fileManager.getProjectDir(project.ownerName, project.name)
+    val projectDir = this.fileManager.getProjectVersionDir(project.ownerName, project.name, meta.getVersion)
     val newPath = projectDir.resolve(oldPath.getFileName)
     val newSigPath = projectDir.resolve(oldSigPath.getFileName)
 
