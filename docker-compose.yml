@@ -1,0 +1,19 @@
+version: "2"
+
+services:
+  app:
+    build: .
+    ports:
+      - "9000:9000"
+    links:
+      - "db"
+      - "spongeauth"
+  db:
+    image: postgres:9.6
+    environment:
+      POSTGRES_USER: spongeauth
+      POSTGRES_PASSWORD: spongeauth
+      POSTGRES_DB: spongeauth
+  spongeauth:
+    image: spongepowered/spongeauth
+
