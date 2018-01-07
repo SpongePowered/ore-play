@@ -63,7 +63,7 @@ Versions page within Project overview.
                     <div class="col-md-9">
                         <div class="panel panel-default version-panel">
                             <div class="panel-heading">
-                                <h4 class="panel-title pull-left">@messages("project.versions")</h2>
+                                <h4 class="panel-title pull-left">@messages("project.versions")</h4>
                                 @if(userBase.current.isDefined && (userBase.current.get can EditVersions in model)) {
                                     <a href="@versionRoutes.showCreator(model.ownerName, model.slug)"
                                        class="btn btn-primary btn-sm pull-right"
