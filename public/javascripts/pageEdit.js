@@ -54,8 +54,8 @@ $(function() {
             method: 'post',
             url: url,
             data: {csrfToken: csrf, 'parent-id': parentId, 'content': '# ' + pageName + '\n'},
-            success: function() {
-                go(url);
+            success: function(result, status, xhr) {
+                go(xhr.getResponseHeader('Location'));
             }
         });
     })
