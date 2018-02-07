@@ -83,7 +83,7 @@ case class User(override val id: Option[Int] = None,
   def setUsername(_username: String) = {
     checkNotNull(_username, "username cannot be null", "")
     this._username = _username
-    if (isDefined) update(Name)
+    if (isDefined) update(UserName)
   }
 
   /**

@@ -1,7 +1,9 @@
 package controllers
 
-import java.util.UUID
+import java.util.{Base64, UUID}
 
+import akka.http.scaladsl.model.Uri
+import javax.inject.Inject
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
@@ -11,6 +13,8 @@ import javax.inject.Inject
 import models.api.ProjectApiKey
 import models.user.User
 import ore.permission.EditApiKeys
+import ore.permission.role.RoleTypes
+import ore.permission.role.RoleTypes.RoleType
 import ore.project.factory.ProjectFactory
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyTypes._
@@ -21,6 +25,7 @@ import play.api.i18n.MessagesApi
 import util.StatusZ
 import play.api.libs.json._
 import play.api.mvc._
+import security.CryptoUtils
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.Compiled
 
@@ -302,4 +307,54 @@ final class ApiController @Inject()(api: OreRestfulApi,
     */
   def showStatusZ = Action(Ok(this.status.json))
 
+  def syncSso() = Action.async { implicit request =>
+    this.forms.SyncSso.bindFromRequest.fold(
+      hasErrors => Future.successful(BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))),
+      success = formData => {
+        val sso = formData._1
+        val sig = formData._2
+        val apiKey = formData._3
+
+
+        val confApiKey = this.config.security.get[String]("sso.apikey")
+        val confSecret = this.config.security.get[String]("sso.secret")
+
+        if (apiKey != confApiKey) {
+          Future.successful(BadRequest("API Key not valid"))
+        } else if (CryptoUtils.hmac_sha256(confSecret, sso.getBytes("UTF-8")) != sig) {
+          Future.successful(BadRequest("Signature not matched"))
+        } else {
+          val query = Uri.Query(Base64.getMimeDecoder.decode(sso))
+
+          val external_id = query.get("external_id")
+          val email = query.get("email")
+          val username = query.get("username")
+          val name = query.get("name")
+          val avatar_url = query.get("avatar_url")
+          val add_groups = query.get("add_groups")
+
+          this.users.get(external_id.get.toInt).map { optUser =>
+
+            if (!optUser.isDefined) {
+              BadRequest(Json.obj("errors" -> Seq("User not found")))
+            } else {
+              val user = optUser.get
+
+              email.foreach(user.setEmail)
+              username.foreach(user.setUsername)
+              name.foreach(user.setFullName)
+              avatar_url.foreach(user.setAvatarUrl)
+              add_groups.foreach(groups =>
+                user.setGlobalRoles(
+                  groups.split(",").flatMap(group => RoleTypes.values.find(_.title == group).map(_.asInstanceOf[RoleType])).toSet[RoleType]
+                )
+              )
+
+              Ok(Json.obj("status" -> "success"))
+            }
+          }
+        }
+      }
+    )
+  }
 }

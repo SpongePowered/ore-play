@@ -279,4 +279,10 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   lazy val NoteDescription = Form(single("content" -> text))
 
   lazy val NeedsChanges = Form(single("comment" -> text))
+
+  lazy val SyncSso = Form(tuple(
+    "sso" -> nonEmptyText,
+    "sig" -> nonEmptyText,
+    "api_key" -> nonEmptyText
+  ))
 }

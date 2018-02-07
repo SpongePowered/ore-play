@@ -65,6 +65,8 @@ security {
         secret = "changeme"
         secret = ${?SPONGE_AUTH_SSO_SECRET}
         timeout = 10000ms
+        apikey = "changeme"
+        apikey = ${?SPONGE_AUTH_SSO_API_KEY}
     }
 }
 

@@ -52,6 +52,7 @@ object ModelKeys {
   val LastOccurrence        =   new TimestampKey[ProjectLogEntry](_.lastOccurrence, _.lastOccurrence)
 
   // User
+  val UserName              =   new StringKey[User](_.name, _.username)
   val FullName              =   new StringKey[User](_.fullName, _.fullName.orNull)
   val Email                 =   new StringKey[User](_.email, _.email.orNull)
   val PGPPubKey             =   new StringKey[User](_.pgpPubKey, _.pgpPubKey.orNull)

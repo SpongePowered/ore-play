@@ -18,6 +18,8 @@ GET     /admin/flags/:id/resolve/:resolved                          @controllers
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats()
++nocsrf
+POST    /api/sync_sso                                               @controllers.ApiController.syncSso()
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
 
