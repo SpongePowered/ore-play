@@ -528,7 +528,7 @@ class Projects @Inject()(stats: StatTracker,
     if (project.visibility == VisibilityTypes.New) {
       project.setVisibility(VisibilityTypes.Public, "", request.user)
     }
-    Redirect(ShowHome)
+    Redirect(self.show(project.ownerName, project.slug))
   }
 
   /**
@@ -542,7 +542,7 @@ class Projects @Inject()(stats: StatTracker,
     if (project.visibility == VisibilityTypes.NeedsChanges) {
       project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user)
     }
-    Redirect(ShowHome)
+    Redirect(self.show(project.ownerName, project.slug))
   }
 
   def showLog(author: String, slug: String) = {
