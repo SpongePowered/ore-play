@@ -43,7 +43,7 @@ $(function() {
     });
 
     $('#continue-page').click(function() {
-        var pageName = $('#page-name').val();
+        var pageName = $('#page-name').val().trim();
         var url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/pages/' + slugify(pageName) + '/edit';
         var parent = $('.select-parent').find(':selected');
         var parentId = -1;
