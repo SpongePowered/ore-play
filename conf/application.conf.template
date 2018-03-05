@@ -163,9 +163,9 @@ slick.dbs.default {
         driver = "org.postgresql.Driver"
         url = "jdbc:postgresql://localhost/ore"
         url = ${?JDBC_DATABASE_URL}
-        user = "spongeauth"
+        user = "root"
         user = ${?JDBC_DATABASE_USERNAME}
-        password = "spongeauth"
+        password = ""
         password = ${?JDBC_DATABASE_PASSWORD}
     }
 }
