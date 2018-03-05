@@ -7,10 +7,10 @@ import controllers.sugar.Requests._
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import models.project.Project
+import models.project.{Project, VisibilityTypes}
 import models.user.{SignOn, User}
 import ore.permission.scope.GlobalScope
-import ore.permission.{EditSettings, HideProjects, Permission}
+import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
@@ -281,7 +281,12 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   private def processProject(project: Project, user: Option[User]): Option[Project] = {
-    if (project.isVisible || (user.isDefined && (user.get can HideProjects in GlobalScope)))
+    if (project.visibility == VisibilityTypes.Public || project.visibility == VisibilityTypes.New
+      || (user.isDefined && (user.get can EditPages in project)
+        && (project.visibility == VisibilityTypes.NeedsChanges
+          || project.visibility == VisibilityTypes.NeedsApproval ))
+      || (user.isDefined && (user.get can HideProjects in GlobalScope)
+      ))
       Some(project)
     else
       None

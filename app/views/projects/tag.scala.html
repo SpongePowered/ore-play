@@ -1,9 +1,13 @@
 @import models.project.Tag
 
 @(tag: Tag)
-<span class="stat channel channel-sm"
-style="color: @tag.color.foreground;
-    background-color:@tag.color.background;
-    margin-right:5px;">
-    @tag.name@if(tag.data.length > 0){: @tag.data}
-</span>
+@if(tag.data.isEmpty || tag.data.equals("null")) {
+    <div class="tags">
+        <span style="color: @tag.color.foreground; background-color:@tag.color.background; border-color: @tag.color.background" class="tag">@tag.name</span>
+    </div>
+} else {
+    <div class="tags has-addons">
+        <span style="color: @tag.color.foreground; background-color:@tag.color.background; border-color: @tag.color.background" class="tag">@tag.name</span>
+        <span class="tag">@tag.data</span>
+    </div>
+}

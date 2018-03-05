@@ -4,6 +4,7 @@
 @import db.impl.access.UserBase
 @import db.impl.access.ProjectBase
 @import models.project.Project
+@import models.project.VisibilityTypes
 @()(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase,
         projects: ProjectBase)
 
@@ -83,10 +84,10 @@
                         <h4 class="panel-title">@messages("admin.health.hidden")</h4>
                     </div>
                     <div class="panel-body list-group list-group-health">
-                    @projects.filterNot(_.isVisible).map { project =>
+                    @projects.filterNot(_.visibility === VisibilityTypes.Public).map { project =>
                         <div class="list-group-item">
                             <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                <strong>@project.namespace</strong>
+                                <strong>@project.namespace</strong> <small>@messages("visibility.name." + project.visibility.nameKey)</small>
                             </a>
                         </div>
                     }

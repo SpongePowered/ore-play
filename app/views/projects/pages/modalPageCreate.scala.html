@@ -14,10 +14,15 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
+                <
                 <button type="button" class="close" data-dismiss="modal" aria-label="@messages("general.close")">
                     <span aria-hidden="true">&times;</span>
                 </button>
                 <h4 class="modal-title" id="new-page-label">@messages("page.new.title")</h4>
+                    <h4 class="modal-title" id="new-page-label-error" style="display: none;
+                        color: red">
+                    @messages("page.new.error")
+                    </h4>
             </div>
             <div class="modal-body input-group">
                 <div class="setting">
@@ -39,7 +44,7 @@
                         <select class="form-control select-parent">
                             <option selected value="-1">&lt;none&gt;</option>
                             @model.rootPages.filterNot(_.name.equals(Page.HomeName)).map { page =>
-                              <option value="@page.id.get">@page.name</option>
+                              <option value="@page.id.get" data-slug="@page.slug">@page.name</option>
                             }
                         </select>
                     </div>

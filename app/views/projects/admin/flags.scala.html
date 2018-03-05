@@ -1,0 +1,65 @@
+@import db.ModelService
+@import db.impl.access.UserBase
+@import java.sql.Timestamp
+@import java.time.Instant
+@import ore.OreConfig
+@import models.project.Project
+@import util.StringUtils._
+
+@(project: Project)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
+
+@projectRoutes = @{controllers.project.routes.Projects}
+
+@bootstrap.layout(messages("project.flag.plural")) {
+    <div class="container" style="margin-top: 90px">
+        <div class="row">
+            <div class="col-md-12  header-flags">
+                <div class="clearfix">
+                    <h1 class="pull-left">@messages("project.flag.plural") for <a href="@projectRoutes.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a></h1>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                @if(project.flags.isEmpty) {
+                    <div class="alert-review alert alert-info" role="alert">
+                        <i class="fa fa-info-circle"></i>
+                        No flags found
+                    </div>
+                } else {
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4 class="panel-title pull-left">@messages("project.flag.plural")</h4>
+                            <div class="clearfix"></div>
+                        </div>
+                        <table class="table table-condensed setting-no-border table-review-log">
+                            <thead>
+                                <tr>
+                                    <th>Submitter</th>
+                                    <th>Reason</th>
+                                    <th>When</th>
+                                    <th>Resolved</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @project.flags.toSeq.map { flag =>
+                                <tr>
+                                    <td>@flag.user.username</td>
+                                    <td>@flag.reason, @flag.comment</td>
+                                    <td>@prettifyDateAndTime(flag.createdAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
+                                    @if(flag.isResolved) {
+                                        <td>@users.get(flag.resolvedBy.getOrElse(-1)).get.username
+                                            at @prettifyDateAndTime(flag.resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
+                                    } else {
+                                        <td>-not resolved-</td>
+                                    }
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

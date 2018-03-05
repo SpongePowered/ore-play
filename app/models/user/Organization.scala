@@ -2,12 +2,15 @@ package models.user
 
 import java.sql.Timestamp
 
+import com.google.common.base.Preconditions._
 import db.impl.access.UserBase
 import db.impl.model.OreModel
 import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
+import db.impl.table.ModelKeys._
 import db.{Model, Named}
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
+import ore.permission.role.RoleTypes
 import ore.permission.scope.OrganizationScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
@@ -25,7 +28,7 @@ import ore.{Joinable, Visitable}
 case class Organization(override val id: Option[Int] = None,
                         override val createdAt: Option[Timestamp] = None,
                         username: String,
-                        ownerId: Int)
+                        private var ownerId: Int)
                         extends OreModel(id, createdAt)
                           with UserOwned
                           with OrganizationScope
@@ -61,6 +64,29 @@ case class Organization(override val id: Option[Int] = None,
     * @return User that owns organization
     */
   override def owner: OrganizationMember = new OrganizationMember(this, this.ownerId)
+
+  override def transferOwner(member: OrganizationMember) {
+    // Down-grade current owner to "Admin"
+    this.memberships.getRoles(this.owner.user).filter(_.roleType == RoleTypes.OrganizationOwner)
+      .foreach(_.roleType = RoleTypes.OrganizationAdmin);
+    this.memberships.getRoles(member.user).foreach(_.roleType = RoleTypes.OrganizationOwner);
+    this.owner = member.user;
+  }
+
+
+  /**
+    * Sets the [[User]] that owns this Organization.
+    *
+    * @param user User that owns this organization
+    */
+  def owner_=(user: User) = {
+    checkNotNull(user, "null user", "")
+    checkArgument(user.isDefined, "undefined user", "")
+    this.ownerId = user.id.get
+    if (isDefined) {
+      update(OrgOwnerId)
+    }
+  }
 
   /**
     * Returns this Organization as a [[User]].

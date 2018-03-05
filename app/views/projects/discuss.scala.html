@@ -36,6 +36,7 @@ Discussion page within Project overview.
 
                             @defining(model.owner) { owner =>
                               @if(owner.isOrganization
+                                      && (users.current.isDefined)
                                       && (users.current.get can PostAsOrganization in owner.toOrganization)) {
                                   <div class="pull-right push-down">
                                       <i class="minor">@messages("project.discuss.postAs")</i>

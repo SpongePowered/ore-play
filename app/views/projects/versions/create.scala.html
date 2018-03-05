@@ -7,6 +7,8 @@
 @import security.NonceFilter._
 @import util.StringUtils
 @import views.html.helper.{CSRF, form}
+@import models.project.Tag
+@import models.project.TagColors
 @(project: Project, pending: Option[PendingVersion],
   channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash,
         request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
@@ -54,7 +56,7 @@
                                                 @version.description.map { description =>
                                                   @description
                                                 }.getOrElse {
-                                                  <i class="minor">@messages("version.create.noDescription")</i>
+                                                    @project.description.getOrElse(messages("version.create.noDescription"))
                                                 }
                                             </td>
                                         </tr>
@@ -104,6 +106,16 @@
                                                         });
                                                     </script>
                                                 }
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Platform</strong></td>
+                                            <td>
+                                                <div class="pull-right" id="upload-platform-tags">
+                                                @for(t <- pending.get.dependenciesAsGhostTags) {
+                                                    @projects.tag(t)
+                                                }
+                                                </div>
                                             </td>
                                         </tr>
                                         <tr>

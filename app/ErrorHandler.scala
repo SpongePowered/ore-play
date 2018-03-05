@@ -34,7 +34,7 @@ class ErrorHandler @Inject()(env: Environment,
       if (exception.cause.isInstanceOf[TimeoutException])
         GatewayTimeout(views.html.errors.timeout())
       else
-        InternalServerError(views.html.errors.error(exception.getMessage))
+        InternalServerError(views.html.errors.error())
     }
   }
 

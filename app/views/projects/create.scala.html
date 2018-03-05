@@ -10,6 +10,8 @@ Page used for uploading and creating new projects.
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import ore.permission.CreateProject
+@import models.project.Tag
+@import models.project.TagColors
 @(pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_],
         service: ModelService, config: OreConfig, users: UserBase)
 
@@ -62,6 +64,16 @@ Page used for uploading and creating new projects.
                                             @project.ownerName
                                         }
                                     }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"><strong>Platform</strong></td>
+                                <td>
+                                    <div class="pull-right" id="upload-platform-tags">
+                                    @for(t <- pending.get.pendingVersion.dependenciesAsGhostTags) {
+                                        @projects.tag(t)
+                                    }
+                                    </div>
                                 </td>
                             </tr>
                             <tr>

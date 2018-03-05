@@ -5,7 +5,7 @@ import db.impl._
 import db.impl.schema._
 import db.table.ModelAssociation
 import db.{ModelSchema, ModelService}
-import models.admin.{ProjectLog, ProjectLogEntry}
+import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
 import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
@@ -66,6 +66,8 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   val ProjectRolesSchema = new ModelSchema[ProjectRole](this, classOf[ProjectRole], TableQuery[ProjectRoleTable])
 
+  val VisibilityChangeSchema = new ModelSchema[VisibilityChange](this, classOf[VisibilityChange], TableQuery[VisibilityChangeTable])
+
   val ProjectSchema = new ProjectSchema(this, Users)
     .withChildren[Channel](classOf[Channel], _.projectId)
     .withChildren[Version](classOf[Version], _.projectId)
@@ -74,6 +76,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
     .withChildren[ProjectRole](classOf[ProjectRole], _.projectId)
     .withChildren[ProjectView](classOf[ProjectView], _.modelId)
     .withChildren[ProjectApiKey](classOf[ProjectApiKey], _.projectId)
+    .withChildren[VisibilityChange](classOf[VisibilityChange], _.projectId)
     .withAssociation[ProjectWatchersTable, User](
       association = this.projectWatchers,
       selfReference = _.projectId,
@@ -104,7 +107,11 @@ trait OreModelConfig extends ModelService with OreDBOs {
   case object ViewSchema extends ModelSchema[ProjectView](this, classOf[ProjectView], TableQuery[ProjectViewsTable])
     with StatSchema[ProjectView]
 
-  val VersionSchema = new VersionSchema(this).withChildren[VersionDownload](classOf[VersionDownload], _.modelId)
+  val ReviewSchema = new ModelSchema[Review](this, classOf[Review], TableQuery[ReviewTable])
+
+  val VersionSchema = new VersionSchema(this)
+    .withChildren[VersionDownload](classOf[VersionDownload], _.modelId)
+    .withChildren[Review](classOf[Review], _.versionId)
 
   val DownloadWarningSchema = new ModelSchema[DownloadWarning](
     this, classOf[DownloadWarning], TableQuery[DownloadWarningsTable])

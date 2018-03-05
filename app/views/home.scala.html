@@ -101,6 +101,13 @@ sorted according to different criteria.
         <div class="row project-content">
                 <!-- Project table -->
             <div class="col-md-9">
+                <div class="project-search input-group">
+                    <input type="text" class="form-control" placeholder="Search in projects...">
+                    <span class="input-group-btn">
+                        <button class="btn yellow" type="button">Search</button>
+                    </span>
+                </div>
+
                 @if(query.isDefined) {
                     <li class="list-group-item minor search-header">
                         <span class="pull-left">Showing results for: <i>@query</i></span>
@@ -134,7 +141,7 @@ sorted according to different criteria.
                         <h3 class="panel-title">@messages("project.category.plural")</h3>
                         @if(visibleCategories.isDefined) {
                             <a href="@routes.Application.showHome(None, None, None, None, None)">
-                                <i class="pull-right category-reset fa fa-times"></i>
+                                <i class="category-reset fa fa-times"></i>
                             </a>
                         }
                     </div>

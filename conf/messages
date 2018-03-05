@@ -96,12 +96,9 @@ error.user.locked               =   Your account is locked.
 error.ore.timeout               =   Timeout
 error.ore.timeout.title         =   Ore took too long to respond.
 error.ore.timeout.body          =   Whoops! We couldn't respond to your request in a timely manner, this could be because a service Ore uses is currently unavailable or the servers are just overloaded. Please try again later.
-error.offline                   =   Offline
-error.offline.title             =   You are offline and this site is not cached.
-error.offline.body              =   Most likely your internet connection is currently not available and we also do not have this page cached on your device. You should still be able to see the a cached version of most pages. This page will be available again when there is a internet connection.
-error.offline.alert             =   You are currently offline, so the data you are seeing may be out of date and you can not update anything.
 error.notFound.title            =   404 Not Found
 error.notFound.message          =   The URI "{0}" could not be found
+error.required.comment          =   A comment is required
 
 error.plugin.fileExtension      =   Plugin file must be either a JAR or ZIP file.
 error.plugin.sig.fileExtension  =   Signature file must be either a SIG or ASC file.
@@ -116,6 +113,7 @@ error.plugin.incomplete         =   Plugin meta file missing required field "{0}
 error.plugin.notSponge          =   Project is marked as a Sponge Plugin and new version contains no dependency to Sponge.
 error.plugin.notForge           =   Project is marked as a Forge Mod and new version contains no dependency to Forge.
 error.plugin.fileName           =   Filename already in use. Please rename your file and try again.
+error.plugin.owner              =   Uploading under the wrong owner.
 
 error.spongeauth.auth           =   Couldn't connect to SpongeAuth.
 error.spongeauth.parse          =   That name is invalid, please choose a name without spaces or symbols.
@@ -123,13 +121,14 @@ error.spongeauth.parse          =   That name is invalid, please choose a name w
 page.edit.cannotDeleteHomepage  =   Your project's homepage cannot be deleted
 page.edit.maxPages              =   You have reached the maximum amount of allowed pages.
 page.new.title                  =   Create a new page
+page.new.error                  =   Error creating page
 page.plural                     =   Pages
 
 project.author                  =   Author
 project.category                =   Category
 project.category.plural         =   Categories
 project.delete.title            =   Delete project
-project.delete.info             =   Are you sure you want to delete your Project? This action cannot be undone.
+project.delete.info             =   Are you sure you want to delete your Project? This action cannot be undone. Please explain why you want to delete it.
 project.download.recommend      =   Download the latest recommended version
 project.download.recommend.warn =   This project's recommended version has not been reviewed by our moderation staff and may not be safe for download.
 project.download.warn           =   This version has not been reviewed by our moderation staff and may not be safe for download.
@@ -170,6 +169,7 @@ project.create.infoText.pgp     =   To upload files to Ore, you must first add a
 project.create.issue-input      =   Issue tracker URL
 project.create.source-input     =   Source code URL
 project.icon                    =   Project icon
+project.version.new             =   New Version
 project.members.infoText.head   =   Project members are other users of Ore that have special access to your project. Different user "roles" define what a user can and cannot do to your project.
 project.members.infoText.bottom =   Ore was able to find <strong>{0}</strong> users who are registered with Ore in your plugin file.
 project.search                  =   Search for projects.
@@ -187,7 +187,8 @@ project.page.parent.info        =   Select a parent page (optional)
 
 project.back = Get me out of here!
 
-project.log.title = Project Log: {0}
+project.log.logger.title        = Project Log
+project.log.visibility.title    = Visibility Log
 
 org.create          =   New Organization
 org.create.title    =   Create a new Organization
@@ -252,6 +253,7 @@ channel.delete.info             =   Are you sure you want to delete this channel
 channel.delete.info.versions    =   versions will be deleted.
 channel.nonReviewed             =   Exclude versions in this channel from the staff approval queue
 channel.nonReviewed.info        =   Certain restrictions may apply
+channel.nameRequirements        =   Name must be: unique, alphanumerical, no spaces, max 15 characters
 
 aria.dropdown.menu              =   dropdownMenu{0}
 
@@ -271,9 +273,11 @@ user.flags.markResolved     =   Mark resolved
 user.flags.markAllResolved  =   Mark all resolved
 user.flags.messageUser      =   Message user
 user.flags.messageOwner     =   Message project owner
-user.queue                  =   Approval queue
+user.queue                  =   Version approvals
 user.queue.none             =   There are no versions to review.
 user.queue.approve          =   Approve
+user.queue.open             =   Approval queue
+user.queue.progress         =   In Review
 user.pgp.edit               =   PGP Public Key
 user.pgp.pubKey             =   PGP Public Key
 user.pgp.pubKey.info        =   Paste your PGP public key in it's entirety to the text box below. The submitted key must be associated with the email that is associated with your Sponge account.
@@ -285,6 +289,7 @@ user.lock.confirm           =   Are you sure you want to lock your account? You 
 user.unlock                 =   Unlock account
 user.unlock.confirm         =   Are you sure you want to unlock your account?
 user.enterPassword          =   Enter your password to continue:
+user.stats                  =   Stats
 
 notification.invite                 =   You have been invited to join the {0}
 notification.invites                =   Invites
@@ -308,6 +313,7 @@ notification.organization.invite    =   You have been invited to join the group 
 notification.empty.unread           =   You have no unread notifications.
 notification.empty.read             =   You have no read notifications.
 notification.empty.all              =   You have no notifications.
+notification.project.reviewed       =   {0} {1} has been reviewed and is approved.
 
 prompt.confirm = Got it!
 prompt.changeAvatar.title = Change your avatar!
@@ -332,3 +338,29 @@ ph.comment = Comment
 api.deploy.versionExists = A version of that name already exists.
 api.deploy.invalidKey = Invalid API key.
 api.deploy.channelNotFound = Channel not found.
+
+review.title = Reviews
+review.start = Start review
+review.stop = Stop review
+review.takeover = Takeover review
+review.log = Review logs
+review.whystop = Please explain why you are stopping the review
+review.whytakeover = Please explain why you are takingover
+review.addmessage = Add message
+queue.review.none = There are no reviews in progress
+activity.title = Activity: 
+
+notes = Notes
+notes.addmessage = Add message
+
+visibility.name.public          = Public
+visibility.name.new             = New
+visibility.name.needsChanges    = Needs changes
+visibility.name.needsApproval   = Needs approval
+visibility.name.softDelete      = Soft deleted
+visibility.notice.public        = None
+visibility.notice.new           = This project is new, and the author may not have finished writing the documentation.
+visibility.notice.author.new    = Click ''Publish'' to publish. This project will automatically be moved from the new stage in 24 hours.
+visibility.notice.needsChanges  = This project requires changes:
+visibility.notice.needsApproval = You have send the project for review
+visibility.notice.softDelete    = Project deleted by {0}

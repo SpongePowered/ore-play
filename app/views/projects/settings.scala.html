@@ -8,6 +8,7 @@
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import ore.rest.ProjectApiKeyTypes._
+@import ore.permission.HardRemoveProject
 @(project: Project)(implicit messages: Messages, flash: Flash, request: Request[_], service: ModelService,
         config: OreConfig, userBase: UserBase)
 
@@ -36,10 +37,29 @@
                 <div class="panel panel-default panel-settings">
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">@messages("project.settings")</h3>
-                        @if(userBase.current.get can HideProjects in GlobalScope) {
-                            @projects.utils.btnHide(project, "pull-right")
+                        @if(userBase.current.isDefined && (userBase.current.get can HideProjects in GlobalScope)) {
+                            @projects.utils.btnHide(project, userBase.current.get)
+
+                            <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="@messages("general.close")">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                            <h4 class="modal-title" style="color:black;">Comment</h4>
+                                        </div>
+                                        <div class="modal-body">
+                                            <textarea class="textarea-visibility-comment form-control" rows="3"></textarea>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
+                                            <button class="btn btn-visibility-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         }
-                        <div class="clearfix"></div>
                     </div>
 
                     <div class="panel-body">
@@ -164,6 +184,21 @@
                             <div class="clearfix"></div>
                         </div>
 
+                        @if(userBase.current.isDefined && (userBase.current.get can HardRemoveProject in GlobalScope)) {
+                            <div class="setting striped">
+                                <div class="setting-description">
+                                    <h4 class="danger">Hard Delete</h4>
+                                    <p>Once you delete a project, it cannot be recovered.</p>
+                                </div>
+                                <div class="setting-content">
+                                    <button class="btn btn-delete btn-danger btn-visibility-change" data-project="@project.ownerName/@project.slug" data-level="-99" data-modal="true">
+                                        <strong>Hard Delete</strong>
+                                    </button>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                        }
+
                         @form(action = projectRoutes.save(project.ownerName, project.slug), 'id -> "save",
                             'class -> "pull-right") {
                             @CSRF.formField
@@ -228,21 +263,22 @@
                     </button>
                     <h4 class="modal-title" id="label-delete">@messages("project.delete.title")</h4>
                 </div>
+                @form(action = projectRoutes.softDelete(project.ownerName, project.slug)) {
                 <div class="modal-body">
-                @messages("project.delete.info")
+                    @messages("project.delete.info")
+                    <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
                 </div>
                 <div class="modal-footer">
                     <div class="form-inline">
-                    @form(action = projectRoutes.delete(project.ownerName, project.slug)) {
                         @CSRF.formField
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("channel.edit.close")
                         </button>
                         <input type="submit" name="delete"
                         value="@messages("general.delete")" class="btn btn-danger">
-                        }
                     </div>
                 </div>
+                }
             </div>
         </div>
     </div>

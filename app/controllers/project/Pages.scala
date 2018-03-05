@@ -4,9 +4,10 @@ import javax.inject.Inject
 
 import controllers.BaseController
 import controllers.sugar.Bakery
-import db.ModelService
+import db.impl.OrePostgresDriver.api._
+import db.{ModelFilter, ModelService}
 import form.OreForms
-import models.project.Page
+import models.project.{Page, Project}
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.i18n.MessagesApi
@@ -34,6 +35,29 @@ class Pages @Inject()(forms: OreForms,
   = AuthedProjectAction(author, slug, requireUnlock = true) andThen ProjectPermissionAction(EditPages)
 
   /**
+    * Return the best guess of the page
+    *
+    * @param project
+    * @param page
+    * @return Tuple: Optional Page, true if using legacy fallback
+    */
+  def withPage(project: Project, page: String): (Option[Page], Boolean) = {
+    val parts = page.split("/")
+    if (parts.size == 2) {
+      val parentId = project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.getOrElse(-1)).getOrElse(-1)
+      val pages: Seq[Page] = project.pages.filter(equalsIgnoreCase(_.slug, parts(1))).seq
+      (pages.find(_.parentId == parentId), false)
+    } else {
+      val result = project.pages.find((ModelFilter[Page](_.slug === parts(0)) +&& ModelFilter[Page](_.parentId === -1)).fn)
+      if (result.isEmpty) {
+        (project.pages.find(ModelFilter[Page](_.slug === parts(0)).fn), true)
+      } else {
+        (result, false)
+      }
+    }
+  }
+
+  /**
     * Displays the specified page.
     *
     * @param author Project owner
@@ -43,9 +67,11 @@ class Pages @Inject()(forms: OreForms,
     */
   def show(author: String, slug: String, page: String) = ProjectAction(author, slug) { implicit request =>
     val project = request.project
-    project.pages.find(equalsIgnoreCase(_.name, page)) match {
-      case None => notFound
-      case Some(p) => this.stats.projectViewed(implicit request => Ok(views.view(project, p)))
+    val optionPage = withPage(project, page)
+    if (optionPage._1.isDefined) {
+      this.stats.projectViewed(implicit request => Ok(views.view(project, optionPage._1.get, optionPage._2)))
+    } else {
+      notFound
     }
   }
 
@@ -60,7 +86,16 @@ class Pages @Inject()(forms: OreForms,
     */
   def showEditor(author: String, slug: String, page: String) = PageEditAction(author, slug) { implicit request =>
     val project = request.project
-    Ok(views.view(project, project.getOrCreatePage(page), editorOpen = true))
+    val parts = page.split("/")
+    var pageName = parts(0)
+    var parentId = -1
+    if (parts.size == 2) {
+      pageName = parts(1)
+      parentId = project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.getOrElse(-1)).getOrElse(-1)
+    }
+    val optionPage = project.pages.find(equalsIgnoreCase(_.slug, pageName))
+    val pageModel = optionPage.getOrElse(project.getOrCreatePage(pageName, parentId))
+    Ok(views.view(project, pageModel, editorOpen = true))
   }
 
   /**
@@ -86,7 +121,7 @@ class Pages @Inject()(forms: OreForms,
         Redirect(self.show(author, slug, page)).withError(hasErrors.errors.head.message),
       pageData => {
         val project = request.project
-        val parentId = pageData.parentId.getOrElse(-1)
+        var parentId = pageData.parentId.getOrElse(-1)
         //noinspection ComparingUnrelatedTypes
         if (parentId != -1 && !project.rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
           BadRequest("Invalid parent ID.")
@@ -95,7 +130,13 @@ class Pages @Inject()(forms: OreForms,
           if (page.equals(Page.HomeName) && (content.isEmpty || content.get.length < Page.MinLength)) {
             Redirect(self.show(author, slug, page)).withError("error.minLength")
           } else {
-            val pageModel = project.getOrCreatePage(page, parentId)
+            val parts = page.split("/")
+            var pageName = pageData.name.getOrElse(parts(0))
+            if (parts.size == 2) {
+              pageName = pageData.name.getOrElse(parts(1))
+              parentId = project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.getOrElse(-1)).getOrElse(-1)
+            }
+            val pageModel = project.getOrCreatePage(pageName, parentId)
             pageData.content.map(pageModel.contents = _)
             Redirect(self.show(author, slug, page))
           }
@@ -114,7 +155,10 @@ class Pages @Inject()(forms: OreForms,
     */
   def delete(author: String, slug: String, page: String) = PageEditAction(author, slug) { implicit request =>
     val project = request.project
-    this.service.access[Page](classOf[Page]).remove(project.pages.find(equalsIgnoreCase(_.name, page)).get)
+    val optionPage = withPage(project, page)
+    if (optionPage._1.isDefined)
+      this.service.access[Page](classOf[Page]).remove(optionPage._1.get)
+
     Redirect(routes.Projects.show(author, slug))
   }
 

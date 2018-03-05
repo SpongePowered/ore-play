@@ -50,6 +50,7 @@ trait ProjectFactory {
   val cacheApi: CacheApi
   val actorSystem: ActorSystem
   val pgp: PGPVerifier = new PGPVerifier
+  val dependencyVersionRegex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
   implicit val messages: MessagesApi
   implicit val config: OreConfig
@@ -155,6 +156,7 @@ trait ProjectFactory {
       .ownerName(owner.name)
       .ownerId(owner.id.get)
       .name(metaData.getName)
+      .visibility(VisibilityTypes.New)
       .build()
 
     val pendingProject = PendingProject(
@@ -193,6 +195,7 @@ trait ProjectFactory {
       .hash(plugin.md5)
       .fileName(path.getFileName.toString)
       .signatureFileName(plugin.signaturePath.getFileName.toString)
+      .authorId(plugin.user.id.get)
       .build()
 
     PendingVersion(
@@ -325,10 +328,15 @@ trait ProjectFactory {
       signatureFileName = pendingVersion.signatureFileName
     ))
 
-    def addTags(dependencyName: String, tagName: String, tagColor: TagColor) = {
+    def addTags(dependencyName: String, tagName: String, tagColor: TagColor): Unit = {
       val dependenciesMatchingName = newVersion.dependencies.filter(_.pluginId == dependencyName)
       if (dependenciesMatchingName.nonEmpty) {
         val dependency = dependenciesMatchingName.head
+
+        if (!dependencyVersionRegex.pattern.matcher(dependency.version).matches()) {
+          return
+        }
+
         val tagsWithVersion = service.access(classOf[ProjectTag])
           .filter(t => t.name === tagName && t.data === dependency.version).toList
 

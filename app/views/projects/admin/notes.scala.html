@@ -1,0 +1,64 @@
+@import db.ModelService
+@import db.impl.access.UserBase
+@import ore.OreConfig
+@import models.project.Project
+@import util.StringUtils._
+@import security.NonceFilter._
+
+@import java.sql.Timestamp
+@(project: Project)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
+
+@notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }
+
+@projectRoutes = @{controllers.project.routes.Projects}
+
+@bootstrap.layout(messages("notes")) {
+    <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/notes.js")"></script>
+    <script nonce="@nonce">resourcePath = '@project.ownerName/@project.slug'</script>
+
+    <div class="container" style="margin-top: 90px">
+        <div class="row">
+            <div class="col-md-12  header-flags">
+                <div class="clearfix">
+                    <h1 class="pull-left">@messages("notes") for <a href="@projectRoutes.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a></h1>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="input-group" style="width: 100%;
+                    margin-top: 1em;">
+                    <textarea type="text" class="form-control textarea-addmessage" placeholder="Message"></textarea>
+                    <div class="input-group-addon btn btn-note-addmessage-submit btn-primary"><i class="fa fa-clipboard"></i> @messages("notes.addmessage")</div>
+                </div>
+            </div>
+        </div>
+        <div class="row version-description">
+            <div class="col-md-12">
+                <h2>@messages("notes")</h2>
+            </div>
+            @if(notes.isEmpty) {
+                <div class="col-md-12">
+                    <div class="alert-notes alert alert-info" role="alert">
+                        <i class="fa fa-info-circle"></i>
+                        This project does not have notes
+                    </div>
+                </div>
+            }
+
+            <div class="col-md-12">
+                <table class="table table-condensed setting-no-border table-notes-log">
+                    <tbody>
+                        @notes.map { note =>
+                            <tr>
+                                <td class="note-fixed-with">@prettifyDateAndTime(new Timestamp(note.time))</td>
+                                <td class="note-fixed-with"><strong>@users.get(note.user).map(_.username).getOrElse("Unknown")</strong></td>
+                                <td>@note.render</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

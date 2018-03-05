@@ -151,7 +151,7 @@ class ProjectBase(override val service: ModelService,
 
     channel.versions.all.foreach { version: Version =>
       val versionFolder = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
-      Files.deleteIfExists(versionFolder)
+      FileUtils.deleteDirectory(versionFolder)
       version.remove()
     }
   }
@@ -181,7 +181,7 @@ class ProjectBase(override val service: ModelService,
       this.deleteChannel(channel)
 
     val versionDir = this.fileManager.getVersionDir(proj.ownerName, project.name, version.name)
-    Files.deleteIfExists(versionDir)
+    FileUtils.deleteDirectory(versionDir)
   }
 
   /**

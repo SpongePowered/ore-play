@@ -8,7 +8,7 @@ import db.impl.schema._
 import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import db.impl.table.StatTable
 import db.table.{AssociativeTable, ModelTable, NameColumn}
-import models.admin.{ProjectLog, ProjectLogEntry}
+import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
 import models.api.ProjectApiKey
 import models.project.TagColors.TagColor
 import models.project._
@@ -23,6 +23,7 @@ import ore.project.io.DownloadTypes.DownloadType
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
 import ore.user.notification.NotificationTypes.NotificationType
+import slick.lifted.ProvenShape
 
 /*
  * Database schema definitions. Changes must be first applied as an evolutions
@@ -54,10 +55,11 @@ trait ProjectTable extends ModelTable[Project]
   def postId                =   column[Int]("post_id")
   def isTopicDirty          =   column[Boolean]("is_topic_dirty")
   def lastUpdated           =   column[Timestamp]("last_updated")
+  def notes                 =   column[String]("notes")
 
   override def * = (id.?, createdAt.?, pluginId, ownerName, userId, name, slug, recommendedVersionId.?, category,
                     description.?, stars, views, downloads, topicId, postId, isTopicDirty,
-                    isVisible, lastUpdated) <> ((Project.apply _).tupled, Project.unapply)
+                    visibility, lastUpdated, notes) <> ((Project.apply _).tupled, Project.unapply)
 
 }
 
@@ -335,8 +337,10 @@ class FlagTable(tag: RowTag) extends ModelTable[Flag](tag, "project_flags") {
   def reason      =   column[FlagReason]("reason")
   def comment     =   column[String]("comment")
   def isResolved  =   column[Boolean]("is_resolved")
+  def resolvedAt  =   column[Timestamp]("resolved_at")
+  def resolvedBy  =   column[Int]("resolved_by")
 
-  override def * = (id.?, createdAt.?, projectId, userId, reason, comment, isResolved) <> (Flag.tupled, Flag.unapply)
+  override def * = (id.?, createdAt.?, projectId, userId, reason, comment, isResolved, resolvedAt.?, resolvedBy.?) <> (Flag.tupled, Flag.unapply)
 
 }
 
@@ -348,4 +352,26 @@ class ProjectApiKeyTable(tag: RowTag) extends ModelTable[ProjectApiKey](tag, "pr
 
   override def * = (id.?, createdAt.?, projectId, keyType, value) <> (ProjectApiKey.tupled, ProjectApiKey.unapply)
 
+}
+
+class ReviewTable(tag: RowTag) extends ModelTable[Review](tag, "project_version_reviews") {
+
+  def versionId         =   column[Int]("version_id")
+  def userId            =   column[Int]("user_id")
+  def endedAt           =   column[Timestamp]("ended_at")
+  def comment           =   column[String]("comment")
+
+  override def * =  (id.?, createdAt.?, versionId, userId, endedAt.?, comment) <> ((Review.apply _).tupled, Review.unapply)
+}
+
+class VisibilityChangeTable(tag: RowTag) extends ModelTable[VisibilityChange](tag, "project_visibility_changes") {
+
+  def createdBy         =   column[Int]("created_by")
+  def projectId         =   column[Int]("project_id")
+  def comment           =   column[String]("comment")
+  def resolvedAt        =   column[Timestamp]("resolved_at")
+  def resolvedBy        =   column[Int]("resolved_by")
+  def visibility        =   column[Int]("visibility")
+
+  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VisibilityChange.tupled, VisibilityChange.unapply)
 }

@@ -78,7 +78,7 @@
                     <div class="version-buttons pull-right">
                         <div><span class="date">@version.humanFileSize</span></div>
 
-                        <div class="btn-group">
+                        <div>
 
                             @if(!isRecommended && canEdit) {
                                 @form(action = versionRoutes.setRecommended(
@@ -90,13 +90,13 @@
                                 }
                             }
 
-                            @if(!version.isReviewed && canApprove) {
-                                @form(action = versionRoutes.approve(
-                                    project.ownerName, project.slug, version.name), 'class -> "form-inline") {
-                                    @CSRF.formField
-                                    <button type="submit" class="btn btn-success">
-                                        <i class="fa fa-thumps-up"></i> Approve
-                                    </button>
+                            @if(canApprove) {
+                                @if(version.isReviewed) {
+                                    <a href="/@project.ownerName/@project.slug/versions/@version.versionString/reviews" class="btn btn-info">@messages("review.log")</a>
+                                } else {
+                                    <a href="/@project.ownerName/@project.slug/versions/@version.versionString/reviews" class="btn btn-success">
+                                        <i class="fa fa-thumps-up"></i> @messages("review.start")
+                                    </a>
                                 }
                             }
 

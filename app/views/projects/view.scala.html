@@ -11,6 +11,12 @@ Base template for Project overview.
 @import ore.project.FlagReasons
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
+@import ore.permission.ReviewProjects
+@import ore.permission.ReviewFlags
+@import ore.permission.ViewLogs
+@import ore.permission.scope.GlobalScope
+@import models.project.VisibilityTypes
+@import ore.permission.EditPages
 @(project: Project, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages,
         request: Request[_], flash: Flash, service: ModelService, config: OreConfig, users: UserBase)
 
@@ -19,6 +25,11 @@ Base template for Project overview.
 @isOwner(user: User) = @{ user.id.get == project.ownerId }
 @projectRoutes = @{ controllers.project.routes.Projects }
 @versionRoutes = @{ controllers.project.routes.Versions }
+@canAdminFlag = @{ hasUser && (user can ReviewFlags in GlobalScope) }
+@canAdminNotes = @{ hasUser && (user can ReviewFlags in GlobalScope) }
+@canAdminLog = @{ hasUser && (user can ViewLogs in GlobalScope) }
+@canEditPages = @{ hasUser && (user can EditPages in project) }
+@isDeleted = @{ project.visibility == VisibilityTypes.SoftDelete }
 
 @bootstrap.layout(project.ownerName + " / " + project.name) {
 
@@ -26,6 +37,42 @@ Base template for Project overview.
 
     <div class="project-header-container">
         <div class="container">
+            @if(project.visibility != VisibilityTypes.Public) {
+                <div class="row">
+                    <div class="col-xs-12">
+                        <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
+                            @if(project.visibility == VisibilityTypes.New) {
+                                @messages("visibility.notice." + project.visibility.nameKey)
+                                @if(canEditPages) {
+                                    <br>
+                                    @messages("visibility.notice.author." + project.visibility.nameKey)
+                                    <a class="btn btn-success pull-right" href="/@project.ownerName/@project.slug/manage/publish" style="margin-top: -.5em">Publish</a>
+                                }
+                            } else { @if(project.visibility == VisibilityTypes.NeedsChanges) {
+                                @if(canEditPages) {
+                                    <a class="btn btn-success pull-right" href="/@project.ownerName/@project.slug/manage/sendforapproval">Send for approval</a>
+                                }
+                                <strong>@messages("visibility.notice." + project.visibility.nameKey)</strong>
+                                <br>
+                                @if(project.lastVisibilityChange.isDefined) {
+                                    @project.lastVisibilityChange.get.renderComment()
+                                } else {
+                                    Unknown
+                                }
+                            } else { @if(project.visibility == VisibilityTypes.SoftDelete) {
+                                @if(project.lastVisibilityChange.isDefined) {
+                                    @messages("visibility.notice." + project.visibility.nameKey, users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown"))
+                                    @project.lastVisibilityChange.get.renderComment()
+                                } else {
+                                    @messages("visibility.notice." + project.visibility.nameKey, "Unknown")
+                                }
+                            } else {
+                                @messages("visibility.notice." + project.visibility.nameKey)
+                            }}}
+                        </div>
+                    </div>
+                </div>
+            }
             <!-- Header -->
             <div class="row">
                 <div class="col-md-12">
@@ -113,7 +160,7 @@ Base template for Project overview.
                                 </span>
                             }
 
-                            @if(hasUser) {
+                            @if(hasUser && !isDeleted) {
 
                                 <script nonce="@nonce">
                                     var projectOwner = "@project.ownerName";
@@ -149,7 +196,8 @@ Base template for Project overview.
 
                             <!-- Flag button -->
                             @if(hasUser && !user.username.equals(project.ownerName)
-                                    && !user.hasUnresolvedFlagFor(project)) {
+                                    && !user.hasUnresolvedFlagFor(project)
+                                    && !isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
                                     <i class="fa fa-flag"></i> @messages("project.flag")
                                 </button>
@@ -180,7 +228,7 @@ Base template for Project overview.
                                                     }
                                                     </ul>
                                                     <input class="form-control" name="comment" type="text"
-                                                           maxlength="255"
+                                                           maxlength="255" required="required"
                                                            placeholder="@messages("ph.comment")&hellip;" />
                                                 </div>
                                                 <div class="modal-footer">
@@ -196,11 +244,35 @@ Base template for Project overview.
                             }
 
                             <!-- Download button -->
-                            <a href="@versionRoutes.downloadRecommended(project.ownerName, project.slug, None)"
-                               title="@messages("project.download.recommend")" data-toggle="tooltip"
-                               data-placement="bottom" class="btn btn-primary">
-                                <i class="fa fa-download"></i> @messages("general.download")
-                            </a>
+                            @if(!isDeleted) {
+                                <a href="@versionRoutes.downloadRecommended(project.ownerName, project.slug, None)"
+                                title="@messages("project.download.recommend")" data-toggle="tooltip"
+                                data-placement="bottom" class="btn btn-primary">
+                                    <i class="fa fa-download"></i> @messages("general.download")
+                                </a>
+                            }
+
+                            @if(hasUser && (canAdminFlag || canAdminNotes || canAdminLog)) {
+                                <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                    Admin actions
+                                    <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="admin-actions">
+                                    @if(canAdminFlag) {
+                                        <li><a href="@projectRoutes.showFlags(project.ownerName, project.slug)">
+                                            Flag history (@project.flags.size) </a></li>
+                                    }
+                                    @if(canAdminNotes) {
+                                        <li><a href="@projectRoutes.showNotes(project.ownerName, project.slug)">
+                                            Staff notes (@project.getNotes().size) </a></li>
+                                    }
+                                    @if(canAdminLog) {
+                                        <li><a href="@projectRoutes.showLog(project.ownerName, project.slug)">
+                                            Log (@project.logger.entries.size) </a></li>
+                                    }
+                                    <li><a href="https://forums.spongepowered.org/users/@project.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
+                                </ul>
+                            }
                         </div>
                     }
                 </div>

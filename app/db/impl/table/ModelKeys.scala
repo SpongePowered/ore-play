@@ -4,11 +4,12 @@ import db.Named
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.table.key._
-import models.admin.ProjectLogEntry
+import models.admin.{ProjectLogEntry, Review, VisibilityChange}
+import models.project.VisibilityTypes.Visibility
 import models.project._
 import models.statistic.StatEntry
 import models.user.role.RoleModel
-import models.user.{Notification, SignOn, User}
+import models.user.{Notification, Organization, SignOn, User}
 import ore.Colors.Color
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
@@ -23,7 +24,7 @@ object ModelKeys {
   val Name                  =   new StringKey[Named](_.name, _.name)
   val Downloads             =   new IntKey[Downloadable](_.downloads, _.downloadCount)
   val Description           =   new StringKey[Describable](_.description, _.description.orNull)
-  val IsVisible             =   new BooleanKey[Hideable](_.isVisible, _.isVisible)
+  val Visibility            =   new MappedTypeKey[Project, Visibility](_.visibility, _.visibility)
 
   // Project
   val OwnerId               =   new IntKey[Project](_.userId, _.ownerId)
@@ -38,6 +39,7 @@ object ModelKeys {
   val RecommendedVersionId  =   new IntKey[Project](
                                   _.recommendedVersionId, _.recommendedVersion.id.getOrElse(-1))
   val LastUpdated           =   new TimestampKey[Project](_.lastUpdated, _.lastUpdated)
+  val Notes                 =   new StringKey[Project](_.notes, _._notes)
 
   // ProjectSettings
   val Issues                =   new StringKey[ProjectSettings](_.issues, _.issues.orNull)
@@ -60,6 +62,9 @@ object ModelKeys {
   val JoinDate              =   new TimestampKey[User](_.joinDate, _.joinDate.orNull)
   val AvatarUrl             =   new StringKey[User](_.avatarUrl, _.avatarUrl.orNull)
   val ReadPrompts           =   new Key[User, List[Prompt]](_.readPrompts, _.readPrompts.toList)
+
+  // Organization
+  val OrgOwnerId            =   new IntKey[Organization](_.userId, _.owner.userId)
 
   // SignOn
   val IsCompleted           =   new BooleanKey[SignOn](_.isCompleted, _.isCompleted)
@@ -92,6 +97,8 @@ object ModelKeys {
 
   // Flag
   val IsResolved            =   new BooleanKey[Flag](_.isResolved, _.isResolved)
+  val ResolvedAt            =   new TimestampKey[Flag](_.resolvedAt, _.resolvedAt.orNull)
+  val ResolvedBy            =   new IntKey[Flag](_.resolvedBy, _.resolvedBy.getOrElse(-1))
 
   // StatEntry
   val UserId                =   new IntKey[StatEntry[_]](_.userId, _.user.flatMap(_.id).getOrElse(-1))
@@ -99,4 +106,11 @@ object ModelKeys {
   // Notification
   val Read                  =   new BooleanKey[Notification](_.read, _.isRead)
 
+  // Review
+  val Comment               =   new StringKey[Review](_.comment, _.message)
+  val EndedAt               =   new TimestampKey[Review](_.endedAt, _.endedAt.get)
+
+  // VisibilityChange
+  val ResolvedByVC          =   new IntKey[VisibilityChange](_.resolvedBy, _.resolvedBy.get)
+  val ResolvedAtVC          =   new TimestampKey[VisibilityChange](_.resolvedAt, _.resolvedAt.get)
 }

@@ -36,6 +36,7 @@ play {
     ws.timeout.connection              =   10000
     filters.headers.contentSecurityPolicy = "default-src 'self'; script-src 'self' '%NONCE-SOURCE%' https://forums.spongepowered.org https://forums-cdn.spongepowered.org https://www.google-analytics.com/analytics.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://forums-cdn.spongepowered.org; img-src 'self' https:; font-src 'self' https://fonts.gstatic.com; frame-src https://forums.spongepowered.org; frame-ancestors 'none'; block-all-mixed-content"
     filters.headers.contentSecurityPolicy = ${?CONTENT_SECURITY_POLICY}
+    filters.enabled                   += "filters.MimeKeyedCspFilter"
     filters.csrf.body.bufferSize       =   1000000
 }
 
@@ -67,6 +68,7 @@ security {
 # Ore configuration
 ore {
     date-format =  "MMM dd, yyyy"
+    date-and-time-format = "MMM dd, yyyy HH:mm"
     debug       =  true
     debug-level =  3
     # Used in /admin/seed route. Run "gradle build" in OreTestPlugin before using that route
@@ -99,6 +101,8 @@ ore {
         tmp-file-save = false
         icon-size = 200
         staleAge = 2419200
+        check-interval = 300000                  // 1 hour (millis)
+        draft-expire = 86400000                  // 1 day (millis)
     }
     
     users {
@@ -112,9 +116,13 @@ ore {
     orgs {
         enabled = true
         passwordLength = 60
-        dummyEmailDomain = "spongepowered.org"
+        dummyEmailDomain = "ore.spongepowered.org"
         groupId = 64
         createLimit = 5
+    }
+
+    queue {
+        max-review-time = 86400000                  // 1 day (millis)
     }
 }
 
@@ -150,7 +158,7 @@ mail {
 
 # Slick configuration
 slick.dbs.default {
-    driver        =   "slick.driver.PostgresDriver$"
+    profile = "slick.jdbc.PostgresProfile$"
     db {
         driver = "org.postgresql.Driver"
         url = "jdbc:postgresql://localhost/ore"
@@ -221,4 +229,40 @@ sponge {
           "link": "https://www.yourkit.com/"
         }
     ]
+}
+
+filters {
+    csp {
+        default {
+            default-src = ["self"]
+            script-src = [
+                "self",
+                "'%NONCE-SOURCE%'"
+                "https://forums.spongepowered.org"
+                "https://forums-cdn.spongepowered.org"
+                "https://www.google-analytics.com/analytics.js"
+            ]
+            style-src = [
+                "self"
+                "unsafe-inline"
+                "https://fonts.googleapis.com"
+                "https://forums-cdn.spongepowered.org"
+            ]
+            img-src = [
+                "self",
+                "https:"
+            ]
+            font-src = [
+                "self"
+                "https://fonts.gstatic.com"
+            ]
+            frame-src = [
+                "https://forums.spongepowered.org"
+            ]
+            frame-ancestors = [
+                "none"
+            ]
+            block-all-mixed-content = []
+        }
+    }
 }

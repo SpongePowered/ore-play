@@ -2,7 +2,6 @@
 @import 'utils';
 
 .page-rendered, .page-edit textarea {
-  @include rounded-corners();
   min-height: 350px;
   margin-bottom: 20px;
   width: 100%;
@@ -89,7 +88,7 @@ button.open:hover {
 }
 
 .page-editor-tabs > li > a:hover {
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid $lighter;
 }
 
 .page-editor-tabs > li > a:hover,

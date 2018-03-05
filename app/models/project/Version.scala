@@ -1,16 +1,18 @@
 package models.project
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.VersionTable
+import db.impl.{ReviewTable, VersionTable}
 import db.impl.model.OreModel
 import db.impl.model.common.{Describable, Downloadable}
 import db.impl.schema.VersionSchema
 import db.impl.table.ModelKeys._
+import models.admin.Review
 import models.statistic.VersionDownload
 import models.user.User
 import ore.Visitable
@@ -18,6 +20,7 @@ import ore.permission.scope.ProjectScope
 import ore.project.Dependency
 import play.twirl.api.Html
 import util.FileUtils
+import util.StringUtils.equalsIgnoreCase
 
 /**
   * Represents a single version of a Project.
@@ -258,6 +261,14 @@ case class Version(override val id: Option[Int] = None,
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
   override def hashCode() = this.id.hashCode
   override def equals(o: Any) = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.get == this.id.get
+
+  def byCreationDate(first: Review, second: Review) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+  def reviewEntries = this.schema.getChildren[Review](classOf[Review], this)
+  def unfinishedReviews: Seq[Review] = reviewEntries.all.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate)
+  def mostRecentUnfinishedReview: Option[Review] = unfinishedReviews.headOption
+  def mostRecentReviews: Seq[Review] = reviewEntries.toSeq.sortWith(byCreationDate)
+  def reviewById(id: Int): Option[Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
+  def equalsInt[T <: Table[_]](int1: T => Rep[Int], int2: Int): T => Rep[Boolean] = int1(_) === int2
 
 }
 

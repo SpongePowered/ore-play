@@ -4,19 +4,22 @@
 
 GET     /*path/                                                     @controllers.Application.removeTrail(path)
 
+# ---------- Admin ----------
+
+GET     /admin/user/:user                                           @controllers.Application.userAdmin(user)
+POST    /admin/user/:user/update                                    @controllers.Application.updateUser(user)
 #GET     /admin/reset                                                @controllers.Application.reset()
 GET     /admin/seed                                                 @controllers.Application.seed(users: Int ?= 200, projects: Int ?= 1, versions: Int ?= 2, channels: Int ?= 2)
 #GET     /admin/migrate                                              @controllers.Application.migrate()
-GET     /admin/queue                                                @controllers.Application.showQueue()
+GET     /admin/approval/versions                                    @controllers.Application.showQueue()
+GET     /admin/approval/projects                                    @controllers.Application.showProjectVisibility()
 GET     /admin/flags                                                @controllers.Application.showFlags()
 GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: Int, resolved: Boolean)
 GET     /admin/health                                               @controllers.Application.showHealth()
+GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
+GET     /admin/stats                                                @controllers.Application.showStats()
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
-
-# ---------- Service Worker ----------
-GET     /sw.js                                                      controllers.Assets.at(path="/public", file="sw.js")
-GET     /offline                                                    @controllers.Application.showOffline()
 
 # ---------- API (v1) ----------
 GET     /api/projects                                               @controllers.ApiController.listProjects(version = "v1", categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Int], offset: Option[Int])
@@ -107,19 +110,25 @@ POST    /:author/:slug                                              @controllers
 GET     /:author/:slug                                              @controllers.project.Projects.show(author, slug)
 POST    /:author/:slug/star/:starred                                @controllers.project.Projects.setStarred(author, slug, starred: Boolean)
 POST    /:author/:slug/flag                                         @controllers.project.Projects.flag(author, slug)
-POST    /:author/:slug/visible/:visible                             @controllers.project.Projects.setVisible(author, slug, visible: Boolean)
+POST    /:author/:slug/visible/:visibility                          @controllers.project.Projects.setVisible(author, slug, visibility: Int)
 POST    /:author/:slug/watch/:watching                              @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
 
 GET     /:author/:slug/discuss                                      @controllers.project.Projects.showDiscussion(author, slug)
 POST    /:author/:slug/discuss/reply                                @controllers.project.Projects.postDiscussionReply(author, slug)
 
 GET     /:author/:slug/manage                                       @controllers.project.Projects.showSettings(author, slug)
+GET     /:author/:slug/manage/publish                               @controllers.project.Projects.publish(author, slug)
+GET     /:author/:slug/manage/sendforapproval                       @controllers.project.Projects.sendForApproval(author, slug)
 POST    /:author/:slug/manage/save                                  @controllers.project.Projects.save(author, slug)
 POST    /:author/:slug/manage/rename                                @controllers.project.Projects.rename(author, slug)
-POST    /:author/:slug/manage/delete                                @controllers.project.Projects.delete(author, slug)
+POST    /:author/:slug/manage/hardDelete                            @controllers.project.Projects.delete(author, slug)
+POST    /:author/:slug/manage/delete                                @controllers.project.Projects.softDelete(author, slug)
 POST    /:author/:slug/manage/members/remove                        @controllers.project.Projects.removeMember(author, slug)
 
 GET     /:author/:slug/log                                          @controllers.project.Projects.showLog(author, slug)
+GET     /:author/:slug/flags                                        @controllers.project.Projects.showFlags(author, slug)
+GET     /:author/:slug/notes                                        @controllers.project.Projects.showNotes(author, slug)
+POST    /:author/:slug/notes/addmessage                             @controllers.project.Projects.addMessage(author, slug)
 
 GET     /:author/:slug/issues                                       @controllers.project.Projects.showIssues(author, slug)
 GET     /:author/:slug/source                                       @controllers.project.Projects.showSource(author, slug)
@@ -133,10 +142,10 @@ GET     /:author/:slug/icon/pending                                 @controllers
 
 # ---------- Pages ----------
 
-GET     /:author/:slug/pages/:page/edit                             @controllers.project.Pages.showEditor(author, slug, page)
-POST    /:author/:slug/pages/:page/edit                             @controllers.project.Pages.save(author, slug, page)
-POST    /:author/:slug/pages/:page/delete                           @controllers.project.Pages.delete(author, slug, page)
-GET     /:author/:slug/pages/:page                                  @controllers.project.Pages.show(author, slug, page)
+GET     /:author/:slug/pages/*page/edit                             @controllers.project.Pages.showEditor(author, slug, page)
+POST    /:author/:slug/pages/*page/edit                             @controllers.project.Pages.save(author, slug, page)
+POST    /:author/:slug/pages/*page/delete                           @controllers.project.Pages.delete(author, slug, page)
+GET     /:author/:slug/pages/*page                                  @controllers.project.Pages.show(author, slug, page)
 
 
 # ---------- Channels ----------
@@ -173,6 +182,16 @@ POST    /:author/:slug/versions/:version                            @controllers
 GET     /:author/:slug/versions/:version                            @controllers.project.Versions.show(author, slug, version)
 POST    /:author/:slug/versions/:version/save                       @controllers.project.Versions.saveDescription(author, slug, version)
 POST    /:author/:slug/versions/:version/recommended                @controllers.project.Versions.setRecommended(author, slug, version)
+
+
+# ---------- Reviews ----------
+GET     /:author/:slug/versions/:version/reviews                    @controllers.Reviews.showReviews(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/init               @controllers.Reviews.createReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/stop               @controllers.Reviews.stopReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/approve            @controllers.Reviews.approveReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/takeover           @controllers.Reviews.takeoverReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers.Reviews.addMessage(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: Int)
 
 
 # ---------- Other ----------

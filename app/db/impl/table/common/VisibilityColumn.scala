@@ -3,6 +3,7 @@ package db.impl.table.common
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Hideable
 import db.table.ModelTable
+import models.project.VisibilityTypes.Visibility
 
 /**
   * Represents a column in a [[ModelTable]] representing the visibility of the
@@ -17,6 +18,6 @@ trait VisibilityColumn[M <: Hideable] extends ModelTable[M] {
     *
     * @return Visibility column
     */
-  def isVisible = column[Boolean]("is_visible")
+  def visibility = column[Visibility]("visibility")
 
 }

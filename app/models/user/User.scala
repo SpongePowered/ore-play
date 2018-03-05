@@ -3,14 +3,14 @@ package models.user
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
-import db.Named
+import db.{ModelFilter, Named}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
-import models.project.{Flag, Project, Version}
+import models.project.{Flag, Project, Version, VisibilityTypes}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.{OreConfig, Visitable}
 import ore.permission._
@@ -321,8 +321,9 @@ case class User(override val id: Option[Int] = None,
     val starsPerPage = this.config.users.getInt("stars-per-page").get
     val limit = if (page < 1) -1 else starsPerPage
     val offset = (page - 1) * starsPerPage
+    val filter = ModelFilter[Project](_.visibility === VisibilityTypes.Public) +|| ModelFilter[Project](_.visibility === VisibilityTypes.New)
     this.schema.getAssociation[ProjectStarsTable, Project](classOf[ProjectStarsTable], this)
-      .sorted(ordering = _.name, limit = limit, offset = offset)
+      .sorted(ordering = _.name, filter = filter.fn, limit = limit, offset = offset)
   }
 
   /**

@@ -15,7 +15,7 @@ class PageSchema(override val service: ModelService)
 
   override def like(page: Page): Future[Option[Page]] = {
     this.service.find[Page](this.modelClass, p =>
-      p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase
+      p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && p.parentId === page.parentId
     )
   }
 

@@ -26,7 +26,7 @@ case class NotifyWatchersTask(version: Version, messages: MessagesApi)(implicit 
       message = messages("notification.project.newVersion", project.name, version.name),
       action = Some(version.url)
     )
-    for (watcher <- project.watchers.all)
+    for (watcher <- project.watchers.all.filterNot(_.userId == version.author.get.userId))
       watcher.sendNotification(notification)
   }
 

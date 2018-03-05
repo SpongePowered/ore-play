@@ -43,19 +43,25 @@ $(function() {
     });
 
     $('#continue-page').click(function() {
-        var pageName = $('#page-name').val();
-        var url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/pages/' + pageName + '/edit';
+        var pageName = $('#page-name').val().trim();
+        var url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/pages/' + slugify(pageName) + '/edit';
         var parent = $('.select-parent').find(':selected');
         var parentId = -1;
         if (parent.length) {
             parentId = parent.val();
+            if (parentId != -1)
+                url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/pages/' + parent.data('slug') + '/' + slugify(pageName) + '/edit';
         }
         $.ajax({
             method: 'post',
             url: url,
-            data: {csrfToken: csrf, 'parent-id': parentId, 'content': '# ' + pageName + '\n'},
+            data: {csrfToken: csrf, 'parent-id': parentId, 'content': '# ' + pageName + '\n', 'name': pageName},
             success: function() {
                 go(url);
+            },
+            error: function() {
+                console.log("error");
+                $("#new-page-label-error").show().delay(2000).fadeOut();
             }
         });
     })

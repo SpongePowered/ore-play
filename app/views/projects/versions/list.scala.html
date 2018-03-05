@@ -6,17 +6,15 @@ Versions page within Project overview.
 @import ore.OreConfig
 @import ore.permission.{EditChannels, EditVersions}
 @import security.NonceFilter._
-@import util.StringUtils._
 @import models.project.Project
 @import models.project.Channel
-@import models.project.Tag
 @import models.project.Version
-@import models.user.User
+@import db.impl.OrePostgresDriver.api._
 @(model: Project,
-  channels: Seq[Channel],
-  versions: Seq[Version],
-  visibleChannels: Option[Array[String]],
-  page: Int)(implicit messages: Messages, request: Request[_], flash: Flash,
+        channels: Seq[Channel],
+        versions: Seq[Version],
+        visibleChannels: Option[Array[String]],
+        page: Int)(implicit messages: Messages, request: Request[_], flash: Flash,
         service: ModelService, config: OreConfig, userBase: UserBase)
 
 @pageSize = @{ config.projects.getInt("init-version-load").get }
@@ -28,29 +26,54 @@ Versions page within Project overview.
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/versionList.js")"></script>
     <script nonce="@nonce">
-        PLUGIN_ID = '@model.pluginId';
-        PROJECT_OWNER = '@model.ownerName';
-        PROJECT_SLUG = '@model.slug';
-        @if(visibleChannels.isDefined) {
-          CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
-        }
+    PLUGIN_ID = '@model.pluginId';
+    PROJECT_OWNER = '@model.ownerName';
+    PROJECT_SLUG = '@model.slug';
+    @if(visibleChannels.isDefined) {
+    CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
+    @defining(model.channels.filter(_.name.inSet(visibleChannels.get)).map(_.id.get)) { channelIds: Seq[Int] =>
+    TOTAL_VERSIONS = @model.versions.filter(_.channelId.inSet(channelIds)).size;
+    }
+    } else {
+    TOTAL_VERSIONS = @model.versions.size;
+    }
     </script>
 
-    <!-- Version row template -->
-    <table style="display: none;">
+
+    <table class="template">
         <tbody>
-            <tr id="row-version">
-                <td>
-                    <i class="fa fa-circle channel-id"></i>
-                    <a href="#" class="version-str"></a>
+            <tr class="version-template">
+                <td class="base-info">
+                    <div class="name"></div>
+                    <span class="channel"></span>
                 </td>
-                <td>
-                    <div class="pull-right">
-                        <span class="date created"></span>
-                        <span class="date size"></span>
-                        <a class="info"><i title="Details" class="fa fa-info-circle"></i></a>
-                        <a class="dl"><i title="Download" class="fa fa-download"></i></a>
+                <td class="version-tags"></td>
+                <td class="information-one">
+                    <div>
+                        <i class="fa fa-calendar"></i>
+                        <span class="created"></span>
                     </div>
+                    <div>
+                        <i class="fa fa-file-o"></i>
+                        <span class="size"></span>
+                    </div>
+                </td>
+                <td class="information-two">
+                    <div class="author">
+                        <i class="fa fa-key"></i>
+                        <span>Signed by:</span>
+                        <span class="author-name"></span>
+                    </div>
+                    <div>
+                        <i class="fa fa-download"></i>
+                        <span class="download-count"></span>
+                        <span>Downloads</span>
+                    </div>
+                </td>
+                <td class="download">
+                    <a class="download-link">
+                        <i class="fa fa-2x fa-download"></i>
+                    </a>
                 </td>
             </tr>
         </tbody>
@@ -58,135 +81,70 @@ Versions page within Project overview.
 
     <div class="container version-container">
         <div class="row">
-            <div class="col-md-12">
-                <div class="row">
-                    <div class="col-md-9">
-                        <div class="panel panel-default version-panel">
-                            <div class="panel-heading">
-                                <h4 class="panel-title pull-left">@messages("project.versions")</h2>
-                                @if(userBase.current.isDefined && (userBase.current.get can EditVersions in model)) {
-                                    <a href="@versionRoutes.showCreator(model.ownerName, model.slug)"
-                                       class="btn btn-primary btn-sm pull-right"
-                                       data-toggle="tooltip"
-                                       title="@messages("project.new")">
-                                        <i class="fa fa-plus"></i>
-                                    </a>
-                                }
-                                <div class="clearfix"></div>
-                            </div>
-                            <!-- Version table -->
-                            <table class="table">
-                                <tbody>
-                                    @versions.map { version =>
-                                        @defining(version.findChannelFrom(channels).get) { channel: Channel =>
-                                            <tr>
-                                                <td>
-                                                    <i title="@channel.name" class="fa fa-circle channel-id"
-                                                       style="color: @channel.color.hex"></i>
-                                                    <a href="@versionRoutes.show(
-                                                        model.ownerName, model.slug, version.versionString)">
-                                                        <strong>@version.versionString</strong>
-                                                    </a>
-                                                </td>
-                                                <td>
-                                                @for(t <- version.tags) {
-                                                    @projects.tag(t)
-                                                }
-                                                </td>
-                                                <td>
-                                                    <div class="pull-right">
-                                                        <span class="date">@prettifyDate(version.createdAt.get)</span>
-                                                        @defining(version.downloadCount) { d: Int =>
-                                                            <span class="date">
-                                                                @d Download@if(d != 1) {s}
-                                                            </span>
-                                                        }
-                                                        @if(version.authorId != -1) {
-                                                            @defining(version.author.get.name) { author: String =>
-                                                                <a class="date" href="@routes.Users.showProjects(author, None)">
-                                                                    <i title="Signed By: @author" class="fa fa-key"></i>
-                                                                </a>
-                                                            }
-                                                        }
-                                                        <span class="date">@version.humanFileSize</span>
-                                                        <a href="@versionRoutes.download(
-                                                            model.ownerName, model.slug, version.versionString, None)">
-                                                            <i title="Download" class="fa fa-download"></i>
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        }
-                                    }
-                                </tbody>
-                            </table>
+            <div class="col-md-9">
+                <div class="panel panel-default version-panel">
 
-                            @defining(model.versions.size) { totalVersions =>
-                              @if(page * pageSize < totalVersions) {
-                                  <div class="panel-footer">
-                                      <span class="pull-left minor">
-                                          <strong>
-                                              <span class="offset">@versions.size</span>/@model.versions.size
-                                          </strong>
-                                          <i class="fa fa-spinner" style="display: none;"></i>
-                                      </span>
-
-                                      <div class="pull-right">
-                                          <a class="prev" href="#" @if(page == 1) { style="display: none;" }>
-                                              <i class="fa fa-arrow-left"></i>
-                                          </a>
-                                          <a class="next" href="#"><i class="fa fa-arrow-right"></i></a>
-                                      </div>
-                                      <div class="clearfix"></div>
-                                  </div>
-                              }
-                            }
-                        </div>
-
+                    <div class="panel-heading">
+                        <h4 class="panel-title pull-left">@messages("project.versions")</h4>
+                        @if(userBase.current.isDefined && (userBase.current.get can EditVersions in model)) {
+                            <a href="@versionRoutes.showCreator(model.ownerName, model.slug)" class="btn yellow">
+                            @messages("project.version.new")
+                            </a>
+                        }
                     </div>
-                    <div class="col-md-3">
-                        <div class="panel panel-default channels">
-                            <div class="panel-heading">
-                                <h3 class="panel-title pull-left">Channels</h3>
-                                <input type="checkbox" class="pull-right channels-all"
-                                      @if(visibleChannels.isEmpty) { checked } />
-                                <div class="clearfix"></div>
-                            </div>
 
-                            <!-- Channel list -->
-                            <ul class="list-group list-channel">
-                                @channels.sorted.map { channel =>
-                                  <li class="list-group-item">
-                                      <span class="channel" style="background-color: @channel.color.hex;">@channel.name</span>
+                        <!-- Version table -->
+                    <div class="loading">
+                        <i class="fa fa-spinner fa-spin"></i>
+                    </div>
+                    <table class="table version-list"></table>
 
-                                      @visibleChannels.map(_.map(_.toLowerCase)).map { channels =>
-                                        @defining(channels.contains(channel.name.toLowerCase)) { visible =>
-                                            <input type="checkbox" class="pull-right"
-                                                   @if(visible) { checked } />
-                                        }
-                                      }.getOrElse {
-                                          <input type="checkbox" checked class="pull-right" />
-                                      }
-                                  </li>
-                                }
-
-                                @if(userBase.current.isDefined && (userBase.current.get can EditChannels in model)) {
-                                    <li class="list-group-item text-right">
-                                        <a href="@channelRoutes.showList(model.ownerName, model.slug)">
-                                            <i class="fa fa-cog"></i> Edit
-                                        </a>
-                                    </li>
-                                }
-                            </ul>
-                        </div>
-                        @users.memberList(
-                            model = model,
-                            settingsCall = projectRoutes.showSettings(model.ownerName, model.slug)
-                        )
+                    <div class="panel-pagination">
+                        <ul class="pagination">
+                        </ul>
                     </div>
                 </div>
             </div>
+
+            <div class="col-md-3">
+                <div class="panel panel-default channels">
+                    <div class="panel-heading">
+                        <h3 class="panel-title pull-left">Channels</h3>
+                        <input type="checkbox" class="pull-right channels-all"
+                        @if(visibleChannels.isEmpty) { checked } />
+                    </div>
+
+                        <!-- Channel list -->
+                    <ul class="list-group list-channel">
+                        @channels.sorted.map { channel =>
+                            <li class="list-group-item">
+                                <span class="channel" style="background-color: @channel.color.hex">@channel.name</span>
+
+                                @visibleChannels.map(_.map(_.toLowerCase)).map { channels =>
+                                    @defining(channels.contains(channel.name.toLowerCase)) { visible =>
+                                        <input type="checkbox" class="pull-right"
+                                        @if(visible) { checked } />
+                                    }
+                                }.getOrElse {
+                                    <input type="checkbox" checked class="pull-right" />
+                                }
+                            </li>
+                        }
+
+                        @if(userBase.current.isDefined && (userBase.current.get can EditChannels in model)) {
+                            <li class="list-group-item text-right">
+                                <a class="btn yellow btn-xs" href="@channelRoutes.showList(model.ownerName, model.slug)">
+                                    Edit
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+                @users.memberList(
+                    model = model,
+                    settingsCall = projectRoutes.showSettings(model.ownerName, model.slug)
+                )
+            </div>
         </div>
     </div>
-
 }

@@ -112,14 +112,21 @@ trait OreRestfulApi {
     */
   def getPages(pluginId: String, parentId: Option[Int]): Option[JsValue] = {
     this.projects.withPluginId(pluginId).map { project =>
-      val pages = project.pages
+      val pages = project.pages.sorted(_.name)
       var result: Seq[Page] = null
       if (parentId.isDefined) {
-        result = pages.filter(_.parentId === parentId.get)
+        result = pages.filter(_.parentId == parentId.get)
       } else {
         result = pages.toSeq
       }
-      result
+      Some(toJson(result.map(page => obj(
+        "createdAt" -> page.createdAt,
+        "id" -> page.id,
+        "name" -> page.name,
+        "parentId" -> page.parentId,
+        "slug" -> page.slug,
+        "fullSlug" -> page.fullSlug
+      ))))
     } map {
       toJson(_)
     }

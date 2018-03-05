@@ -8,8 +8,8 @@ import db.ModelFilter.IdFilter
 import db.access.ModelAccess
 import db.table.{MappedType, ModelTable}
 import slick.ast.{AnonSymbol, Ref, SortBy}
-import slick.backend.DatabaseConfig
-import slick.driver.{JdbcDriver, JdbcProfile}
+import slick.basic.DatabaseConfig
+import slick.jdbc.JdbcProfile
 import slick.jdbc.JdbcType
 import slick.lifted.{ColumnOrdered, WrappingQuery}
 import slick.util.ConstArray
@@ -31,7 +31,7 @@ trait ModelService {
   val registry: ModelRegistry
 
   /** The base JDBC driver */
-  val driver: JdbcDriver
+  val driver: JdbcProfile
   import driver.api._
 
   /**

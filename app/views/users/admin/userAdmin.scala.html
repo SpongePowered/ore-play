@@ -1,0 +1,117 @@
+@import db.ModelService
+@import db.impl.access.{UserBase, ProjectBase, OrganizationBase}
+@import models.user.User
+@import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
+@import ore.permission.role.{RoleTypes, GlobalRole}
+@import ore.{OreConfig, OreEnv}
+
+@(user: User)(implicit messages: Messages, request: Request[_], service: ModelService,
+        config: OreConfig, users: UserBase, projects: ProjectBase, organizations: OrganizationBase)
+
+@isOrg = @{user.isOrganization}
+@prefix = @{"Edit " + (if(isOrg) "Organization" else "User") + ": "}
+
+@orgRoles = @{RoleTypes.values.filter(r => r.roleClass == classOf[OrganizationRole] && (r.isAssignable || r == RoleTypes.OrganizationOwner))}
+@projectRoles = @{RoleTypes.values.filter(r => r.roleClass == classOf[ProjectRole] && (r.isAssignable || r == RoleTypes.ProjectOwner))}
+@globalRoles = @{RoleTypes.values.filter(r => r.roleClass == classOf[GlobalRole] && r.isAssignable)}
+
+@panel(title: String, size: Int = 12)(content: Html) = {
+    <div class="col-md-@size">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">@title</h4>
+            </div>
+            @content
+        </div>
+    </div>
+}
+
+@roleTable[M <: RoleModel](keyName: String, tableType: String, getOwner: M => User, roles: Set[M], roleTypes: Set[RoleTypes.Value])(showKey: M => Html) = {
+    <table class="table role-table">
+        <tr><th>@keyName</th>@if(getOwner != null) {<th>Owner</th>}<th>Role</th><th>Accepted</th></tr>
+        @for(role <- roles) {
+        <tr data-role-type="@tableType" data-role-id="@role.id">
+            <td>@showKey(role)</td>
+            @if(getOwner != null) {
+                <td><a href="@routes.Application.userAdmin(getOwner(role).username)">@{getOwner(role).username}</a></td>
+            }
+            @if(!role.roleType.isAssignable) {
+                <td colspan="3">
+                    @role.roleType.title
+                </td>
+            } else {
+                <td><select class="select-role">
+                    @for(roleType <- roleTypes) {
+                        <option value="@roleType.roleId" @if(role.roleType == roleType) {selected}
+                        @if(roleType == RoleTypes.ProjectOwner || roleType == RoleTypes.OrganizationOwner) {data-refresh="true"}>@roleType.title</option>
+                    }
+                </select></td>
+                <td><input type="checkbox" class="role-accepted" @if(role.isAccepted) {checked}></td>
+                <td><a href="#" class="delete-role"><i class="fa fa-trash"></i></a></td>
+            }
+        </tr>
+        }
+    </table>
+}
+
+@bootstrap.layout(prefix + user.username) {
+
+    <script type="text/javascript" src="@routes.Assets.at("javascripts/userAdmin.js")"></script>
+
+    <div class="container" style="margin-top: 90px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>@prefix<a href="@routes.Users.showProjects(user.username, None)">@user.username</a></h1>
+            </div>
+        </div>
+
+        <div class="row">
+        <div class="col-md-9">
+
+        <div class="row">
+            @if(!isOrg) {
+                @panel("Organizations") {
+                    @roleTable[OrganizationRole]("Organization", "orgRole", _.organization.owner, user.organizationRoles.all, orgRoles) { role =>
+                        <a href="@routes.Application.userAdmin(role.organization.username)">
+                            @role.organization.username
+                        </a>
+                    }
+                }
+            } else {
+                @panel("Members") {
+                    @roleTable[OrganizationRole]("User", "memberRole", null, user.toOrganization.memberships.roles.all, orgRoles) { role =>
+                        <a href="@routes.Application.userAdmin(role.user.username)">
+                            @role.user.username
+                        </a>
+                    }
+                }
+            }
+        </div>
+        @if(!isOrg) {
+        <div class="row">
+            @panel("Projects") {
+                @roleTable[ProjectRole]("Project", "projectRole", _.project.owner, user.projectRoles.all, projectRoles) { role =>
+                    <a href="@controllers.project.routes.Projects.show(role.project.ownerName, role.project.slug)">
+                        @role.project.name
+                    </a>
+                }
+            }
+        </div>
+        }
+        </div>
+
+        @panel("Other Administration", size=3) {
+            <div class="list-group">
+                <div class="list-group-item">
+                    <a href="@config.security.getString("api.url").get/admin/accounts/user/@user.id/change/">SpongeAuth Profile</a>
+                </div>
+                <div class="list-group-item">
+                    <a href="https://forums.spongepowered.org/users/@user.username">Forum Profile</a>
+                </div>
+            </div>
+        }
+
+        </div>
+    </div>
+
+}

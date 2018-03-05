@@ -42,7 +42,7 @@
                                             <div class="pull-right">
                                                 <span class="minor">@star.recommendedVersion.versionString</span>
                                                 @defining(star.category) { category =>
-                                                    <i title="@category.title" class="fa @category.icon"></i>
+                                                    <i title="@category.title" class="fa fa-fw @category.icon"></i>
                                                 }
                                             </div>
                                         </td>
@@ -54,7 +54,6 @@
                     </table>
 
                     <div class="panel-footer">
-                        <a class="pull-left" href="#">@messages("user.seeAll")</a>
                         <div class="pull-right">
                             <a class="prev" href="#" style="display: none;">&laquo;</a>
                             <a class="next" href="#" >&raquo;</a>

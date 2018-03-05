@@ -5,6 +5,7 @@ import db.ModelService
 import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
 import ore.OreConfig
+import ore.project.ProjectTask
 import ore.user.UserSyncTask
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
@@ -17,6 +18,7 @@ trait Bootstrap {
   val forums: OreDiscourseApi
   val config: OreConfig
   val userSync: UserSyncTask
+  val projectTask: ProjectTask
 
   val Logger = play.api.Logger("Bootstrap")
 
@@ -30,6 +32,8 @@ trait Bootstrap {
 
   this.userSync.start()
 
+  this.projectTask.start()
+
   if (this.config.security.getBoolean("requirePgp").get)
     Security.addProvider(new BouncyCastleProvider)
 
@@ -41,4 +45,5 @@ trait Bootstrap {
 class BootstrapImpl @Inject()(override val modelService: ModelService,
                               override val forums: OreDiscourseApi,
                               override val config: OreConfig,
-                              override val userSync: UserSyncTask) extends Bootstrap
+                              override val userSync: UserSyncTask,
+                              override val projectTask: ProjectTask) extends Bootstrap

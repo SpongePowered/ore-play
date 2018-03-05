@@ -66,6 +66,7 @@ class UserBase(override val service: ModelService,
       case ORDERING_PROJECTS => users = users.sortBy(u => (u.projects.size, u.username))
       case ORDERING_JOIN_DATE => users = users.sortBy(u => (u.joinDate.getOrElse(u.createdAt.get), u.username))
       case ORDERING_USERNAME => users = users.sortBy(_.username)
+      case ORDERING_ROLE => users = users.sortBy(_.globalRoles.toList.sortBy(_.trust).headOption.map(_.trust.level).getOrElse(-1))
       case _ => users.sortBy(u => (u.projects.size, u.username))
     }
 
@@ -137,5 +138,6 @@ object UserBase {
   val ORDERING_PROJECTS = "projects"
   val ORDERING_USERNAME = "username"
   val ORDERING_JOIN_DATE = "joined"
+  val ORDERING_ROLE = "roles"
 
 }

@@ -100,6 +100,11 @@ function addSig(e) {
  */
 
 $(function() {
+    var platformTags = $('#upload-platform-tags');
+    if (platformTags.size() >= 1 && platformTags.children().length == 0) {
+        platformTags.html('<div class="tags"><span style="color: #FFF; background-color: #8b0000; border-color: #8b0000" class="tag">No Platform Detected</span></div>');
+    }
+
     $('#pluginFile').on('change', function() {
         var alert = reset();
         if (this.files.length == 0) {
