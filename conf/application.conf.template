@@ -12,7 +12,7 @@ application {
 
     # Add a dot at the start of the url to trust all subdomains
     trustedUrlHosts     =   [ ".spongepowered.org" ]
-    
+
     fakeUser {
         enabled    =   false
         id         =   -1
@@ -74,14 +74,14 @@ ore {
     # Used in /admin/seed route. Run "gradle build" in OreTestPlugin before using that route
     test-plugin = "OreTestPlugin/build/libs/ore-test-plugin-dev-SNAPSHOT.jar"
     caching = true
-    
+
     channels {
         max-name-len = 15
         name-regex = "^[a-zA-Z0-9]+$"
         color-default = 7
         name-default = "Release"
     }
-    
+
     pages {
         home.name = "Home"
         home.message = "Welcome to your new project!"
@@ -89,7 +89,7 @@ ore {
         max-len = 32000
         name.max-len = 255
     }
-    
+
     projects {
         max-name-len = 25
         max-pages = 50
@@ -104,7 +104,7 @@ ore {
         check-interval = 300000                  // 1 hour (millis)
         draft-expire = 86400000                  // 1 day (millis)
     }
-    
+
     users {
         stars-per-page = 5
         max-tagline-len = 100
@@ -112,7 +112,7 @@ ore {
         project-page-size = 5
         syncRate = 10800000
     }
-    
+
     orgs {
         enabled = true
         passwordLength = 60
@@ -165,7 +165,7 @@ slick.dbs.default {
         url = ${?JDBC_DATABASE_URL}
         user = "root"
         user = ${?JDBC_DATABASE_USERNAME}
-        password = ""
+        password = "ore"
         password = ${?JDBC_DATABASE_PASSWORD}
     }
 }
@@ -176,7 +176,7 @@ discourse {
     baseUrl           =   "https://forums.spongepowered.org"
     embed.retryRate   =   60000
     embed.categorySlug = ore
-    
+
     api {
         enabled       =   true
         key           =   ${?DISCOURSE_API_KEY}
