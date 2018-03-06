@@ -22,9 +22,8 @@
     </root>
 
     <!-- Sentry -->
-    <appender name="Sentry" class="com.getsentry.raven.logback.SentryAppender">
+    <appender name="Sentry" class="io.sentry.logback.SentryAppender">
         <dsn>${SENTRY_DSN}</dsn>
-        <tags>tag1:value1,tag2:value2</tags>
     </appender>
     <root level="warn">
         <appender-ref ref="Sentry"/>

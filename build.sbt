@@ -26,7 +26,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.play"     %%  "play-slick-evolutions"   %   "2.1.0",
   "org.postgresql"        %   "postgresql"              %   "42.2.1",
   "com.github.tminglei"   %%  "slick-pg"                %   "0.15.5",
-  "com.getsentry.raven"   %   "raven-logback"           %   "8.0.3",
+  "io.sentry"             %   "sentry-logback"          %   "1.7.0",
   "org.bouncycastle"      %   "bcprov-jdk15on"          %   "1.59",
   "org.bouncycastle"      %   "bcpkix-jdk15on"          %   "1.59",
   "org.bouncycastle"      %   "bcpg-jdk15on"            %   "1.59",
