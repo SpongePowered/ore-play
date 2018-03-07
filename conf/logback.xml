@@ -12,7 +12,7 @@
         </encoder>
     </appender>
 
-    <logger name="play" level="INFO" />
+    <logger name="play" level="WARN" />
     <logger name="application" level="DEBUG" />
 
     <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
@@ -30,18 +30,18 @@
     </root>
 
     <!-- Ore loggers -->
-    <logger name="Bootstrap" level="INFO" />
-    <logger name="Discourse" level="INFO" />
-    <logger name="Database"  level="INFO" />
-    <logger name="DataHelper" level="INFO" />
-    <logger name="PGP" level="INFO" />
-    <logger name="Mailer" level="INFO" />
-    <logger name="SpongeAuth" level="INFO" />
-    <logger name="Permissions" level="INFO" />
-    <logger name="UserSync" level="INFO" />
-    <logger name="Organizations" level="INFO" />
-    <logger name="SSO" level="INFO" />
-    <logger name="ProjectTask" level="INFO" />
+    <logger name="Bootstrap" level="WARN" />
+    <logger name="Discourse" level="WARN" />
+    <logger name="Database"  level="WARN" />
+    <logger name="DataHelper" level="WARN" />
+    <logger name="PGP" level="WARN" />
+    <logger name="Mailer" level="WARN" />
+    <logger name="SpongeAuth" level="WARN" />
+    <logger name="Permissions" level="WARN" />
+    <logger name="UserSync" level="WARN" />
+    <logger name="Organizations" level="WARN" />
+    <logger name="SSO" level="WARN" />
+    <logger name="ProjectTask" level="WARN" />
     <!--<logger name="slick" level="DEBUG" />-->
 
 </configuration>
