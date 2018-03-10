@@ -26,6 +26,7 @@ import security.spauth.SpongeUser
 import util.StringUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Breaks._
 
 /**
@@ -283,27 +284,35 @@ case class User(override val id: Option[Int] = None,
     *
     * @return Highest level of trust
     */
-  def trustIn(scope: Scope = GlobalScope): Trust = Defined {
+  def trustIn(scope: Scope = GlobalScope): Future[Trust] = Defined {
     scope match {
       case GlobalScope =>
-        this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default)
+        Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        val members = pScope.project.memberships
-        var trust = members.getTrust(this)
-        if (trust.equals(Default)) {
-          breakable {
-            for (member <- members.members) {
-              if (member.isOrganization) {
-                val orgTrust = trustIn(member.toOrganization)
-                if (!orgTrust.equals(Default)) {
-                  trust = orgTrust
-                  break
-                }
+        // TODO this is horrible and could probably be done in one single query
+        val memberShips = pScope.project.memberships
+        memberShips.getTrust(this).flatMap { userTrust =>
+          if (userTrust.equals(Default)) {
+            memberShips.members.flatMap { members =>
+              val memberTrusts = members.map(member => (member, member.user.flatMap(_.isOrganization))).map {
+                case (member, isOrga) =>
+                  isOrga.flatMap {
+                    case false => Future.successful(Default)
+                    case true =>
+                      member.user.flatMap(_.toOrganization).flatMap { orga =>
+                        trustIn(orga)
+                      }
+                  }
               }
+              // Find first Trust that is not Default
+              Future.find(memberTrusts) { t =>
+                !t.equals(Default)
+              }.map(_.getOrElse(Default)) // Or Default if none found
             }
+          } else {
+            Future.successful(userTrust)
           }
         }
-        trust
       case oScope: OrganizationScope =>
         oScope.organization.memberships.getTrust(this)
       case _ =>
@@ -317,7 +326,7 @@ case class User(override val id: Option[Int] = None,
     * @param page Page of user stars
     * @return     Projects user has starred
     */
-  def starred(page: Int = -1): Seq[Project] = Defined {
+  def starred(page: Int = -1): Future[Seq[Project]] = Defined {
     val starsPerPage = this.config.users.get[Int]("stars-per-page")
     val limit = if (page < 1) -1 else starsPerPage
     val offset = (page - 1) * starsPerPage
@@ -331,10 +340,22 @@ case class User(override val id: Option[Int] = None,
     *
     * @return True if currently authenticated user
     */
-  def isCurrent(implicit request: Request[_]): Boolean = {
+  def isCurrent(implicit request: Request[_]): Future[Boolean] = {
     checkNotNull(request, "null request", "")
-    this.service.getModelBase(classOf[UserBase]).current.exists { user =>
-        user.equals(this) || (this.isOrganization && this.toOrganization.owner.user.equals(user))
+    this.service.getModelBase(classOf[UserBase]).current.flatMap {
+      case None => Future.successful(false)
+      case Some(user) =>
+        if ( user.equals(this)) Future.successful(true)
+        else {
+          this.isOrganization.flatMap {
+            case false => Future.successful(false)
+            case true => this.toOrganization.flatMap { orga =>
+              orga.owner.user
+            } map { orgaOwner =>
+              orgaOwner.equals(user)
+            }
+          }
+      }
     }
   }
 
@@ -345,9 +366,9 @@ case class User(override val id: Option[Int] = None,
     * @param user User to fill with
     * @return     This user
     */
-  def fill(user: DiscourseUser): User = {
+  def fill(user: DiscourseUser): Future[User] = {
     if (user == null)
-      return this
+      return Future.successful(this)
     this.username = user.username
     user.createdAt.foreach(this.joinDate_=)
     user.email.foreach(this.email_=)
@@ -356,7 +377,7 @@ case class User(override val id: Option[Int] = None,
     this.globalRoles = user.groups
       .flatMap(group => RoleTypes.values.find(_.roleId == group.id).map(_.asInstanceOf[RoleType]))
       .toSet[RoleType]
-    this
+    Future.successful(this) // TODO updates above!
   }
 
   /**
@@ -365,9 +386,9 @@ case class User(override val id: Option[Int] = None,
     * @param user SpongeUser
     * @return     This user
     */
-  def fill(user: SpongeUser)(implicit config: OreConfig): User = {
+  def fill(user: SpongeUser)(implicit config: OreConfig): Future[User] = {
     if (user == null)
-      return this
+      return Future.successful(this)
     this.username = user.username
     this.email = user.email
     user.avatarUrl.map { url =>
@@ -377,7 +398,7 @@ case class User(override val id: Option[Int] = None,
       } else
         url
     }.foreach(this.avatarUrl = _)
-    this
+    Future.successful(this) // TODO updates above!
   }
 
   /**
@@ -385,11 +406,9 @@ case class User(override val id: Option[Int] = None,
     *
     * @return This user
     */
-  def pullForumData(): User = {
-    this.forums.await(this.forums.fetchUser(this.name).recover {
-      case e: Exception => None // couldn't connect, ignore
-    }).foreach(fill)
-    this
+  def pullForumData: Future[User] = {
+    // Exceptions are ignored
+    this.forums.fetchUser(this.name).recover{case _: Exception => None}.flatMap(_.map(fill).getOrElse(Future.successful(this)))
   }
 
   /**
@@ -397,8 +416,8 @@ case class User(override val id: Option[Int] = None,
     *
     * @return This user
     */
-  def pullSpongeData(): User = this.auth.getUser(this.name).map(fill).getOrElse {
-    throw new Exception("user doesn't exist on SpongeAuth?")
+  def pullSpongeData: Future[User] = {
+    this.auth.getUser(this.name).flatMap(_.map(fill).getOrElse(Future.failed(new Exception("user doesn't exist on SpongeAuth?"))))
   }
 
   /**
@@ -414,7 +433,7 @@ case class User(override val id: Option[Int] = None,
     * @param name   Name of project
     * @return       Owned project, if any, None otherwise
     */
-  def getProject(name: String): Option[Project] = this.projects.find(equalsIgnoreCase(_.name, name))
+  def getProject(name: String)(implicit ec: ExecutionContext): Future[Option[Project]] = this.projects.find(equalsIgnoreCase(_.name, name))
 
   /**
     * Returns a [[ModelAccess]] of [[ProjectRole]]s.
@@ -450,7 +469,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return True if organization
     */
-  def isOrganization: Boolean = Defined {
+  def isOrganization: Future[Boolean] = Defined {
     this.service.getModelBase(classOf[OrganizationBase]).exists(_.id === this.id.get)
   }
 
@@ -459,9 +478,9 @@ case class User(override val id: Option[Int] = None,
     *
     * @return Organization
     */
-  def toOrganization: Organization = Defined {
-    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
-      .getOrElse(throw new IllegalStateException("user is not an organization"))
+  def toOrganization: Future[Organization] = Defined {
+    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get).map(
+      _.getOrElse(throw new IllegalStateException("user is not an organization")))
   }
 
   /**
@@ -481,11 +500,10 @@ case class User(override val id: Option[Int] = None,
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     val contains = this.watching.contains(project)
-    if (watching) {
-      if (!contains)
-        this.watching.add(project)
-    } else if (contains)
-      this.watching.remove(project)
+    contains.map {
+      case true => if (!watching) this.watching.remove(project)
+      case false => if (watching) this.watching.add(project)
+    }
   }
 
   /**
@@ -502,7 +520,7 @@ case class User(override val id: Option[Int] = None,
     * @param project  Project to check
     * @return         True if has pending flag on Project
     */
-  def hasUnresolvedFlagFor(project: Project): Boolean = {
+  def hasUnresolvedFlagFor(project: Project): Future[Boolean] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     this.flags.exists(f => f.projectId === project.id.get && !f.isResolved)
@@ -532,14 +550,21 @@ case class User(override val id: Option[Int] = None,
     *
     * @return True if has unread notifications
     */
-  def hasUnreadNotifications: Boolean = Defined {
+  def hasUnreadNotifications: Future[Boolean] = Defined {
     val flags = this.service.access[Flag](classOf[Flag])
     val versions = this.service.access[Version](classOf[Version])
-    val hasFlags = (this can ReviewFlags in GlobalScope) && flags.filterNot(_.isResolved).nonEmpty
-    val hasReview = (this can ReviewProjects in GlobalScope) &&
-      !versions.filterNot(_.isReviewed).forall(_.channel.isNonReviewed)
-    val hasNotifications = this.notifications.filterNot(_.read).nonEmpty
-    hasFlags || hasReview || hasNotifications
+    val hasFlags = this can ReviewFlags in GlobalScope
+    val hasReview = this can ReviewProjects in GlobalScope
+    for {
+      resolvedFlags <- flags.filterNot(_.isResolved)
+      reviewedVersions <- versions.filterNot(_.isReviewed)
+      channels <- Future.sequence(reviewedVersions.map(_.channel))
+      notifications <- this.notifications.filterNot(_.read)
+    } yield {
+      (hasFlags && resolvedFlags.nonEmpty) ||
+        (hasReview && !channels.forall(_.isNonReviewed)) ||
+        notifications.nonEmpty
+    }
   }
 
   /**
@@ -561,7 +586,7 @@ case class User(override val id: Option[Int] = None,
   }
 
   override val name = this.username
-  override val url = this.username
+  override def url(implicit ec: ExecutionContext) = this.username
   override val scope = GlobalScope
   override def userId = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(createdAt = theTime)
@@ -577,7 +602,7 @@ object User {
     * @return     Ore User
     */
   @deprecated("use fromSponge instead", "Oct 14, 2016, 1:45 PM PDT")
-  def fromDiscourse(user: DiscourseUser) = User().fill(user).copy(id = Some(user.id))
+  def fromDiscourse(user: DiscourseUser) = User().fill(user).map(_.copy(id = Some(user.id)))
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].
@@ -585,6 +610,6 @@ object User {
     * @param user User to convert
     * @return     Ore user
     */
-  def fromSponge(user: SpongeUser)(implicit config: OreConfig) = User().fill(user).copy(id = Some(user.id))
+  def fromSponge(user: SpongeUser)(implicit config: OreConfig) = User().fill(user).map(_.copy(id = Some(user.id)))
 
 }

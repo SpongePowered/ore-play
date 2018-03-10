@@ -1,6 +1,6 @@
 package util
 
-import scala.util.Try
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents an action pending completion.
@@ -10,11 +10,11 @@ trait PendingAction[R] {
   /**
     * Completes the action.
     */
-  def complete(): Try[R]
+  def complete(implicit ec: ExecutionContext): Future[R]
 
   /**
     * Cancels the action.
     */
-  def cancel()
+  def cancel(implicit ec: ExecutionContext)
 
 }

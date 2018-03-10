@@ -5,6 +5,7 @@ import models.user.User
 import models.user.role.RoleModel
 import ore.permission.scope.ScopeSubject
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
 /**
@@ -18,23 +19,15 @@ abstract class Member[RoleType <: RoleModel](override val userId: Int)(implicit 
     *
     * @return Roles user has
     */
-  def roles: Set[RoleType]
+  def roles(implicit ec: ExecutionContext): Future[Set[RoleType]]
 
   /**
     * Returns the Member's top role.
     *
     * @return Top role
     */
-  def headRole: RoleType = this.roles.toList.sorted.last
+  def headRole(implicit ec: ExecutionContext): Future[RoleType]
 
-  override def user(implicit users: UserBase = null) = super.user(this.users)
-
-}
-
-object Member {
-
-  implicit def toUser(member: Member[_]): User = member.user
-  implicit def ordering[A <: Member[_ <: RoleModel]]: Ordering[A]
-  = Ordering.by(m => (m.headRole, m.username))
+  override def user(implicit users: UserBase = null, ec: ExecutionContext): Future[User] = super.user(this.users, ec)
 
 }

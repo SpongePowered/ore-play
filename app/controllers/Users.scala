@@ -23,6 +23,9 @@ import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import views.{html => views}
 
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
   * Controller for general user actions.
   */
@@ -59,7 +62,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param sig  Incoming signature from auth
     * @return     Logged in home
     */
-  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]) = Action { implicit request =>
+  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]) = Action.async { implicit request =>
     if (this.fakeUser.isEnabled) {
       // Log in as fake user (debug only)
       this.config.checkDebug()
@@ -68,16 +71,19 @@ class Users @Inject()(fakeUser: FakeUser,
     } else if (sso.isEmpty || sig.isEmpty) {
       val nonce = SingleSignOnConsumer.nonce
       this.signOns.add(SignOn(nonce = nonce))
-      redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce))
+      Future(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
     } else {
       // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
-      this.sso.authenticate(sso.get, sig.get)(isNonceValid) match {
+      this.sso.authenticate(sso.get, sig.get)(isNonceValid) flatMap {
         case None =>
-          Redirect(ShowHome).withError("error.loginFailed")
+          Future(Redirect(ShowHome).withError("error.loginFailed"))
         case Some(spongeUser) =>
           // Complete authentication
-          val user = this.users.getOrCreate(User.fromSponge(spongeUser)).pullForumData().pullSpongeData()
-          this.redirectBack(request.flash.get("url").getOrElse("/"), user)
+          User.fromSponge(spongeUser).flatMap(this.users.getOrCreate).flatMap { user =>
+            user.pullForumData.flatMap(_.pullSpongeData).flatMap { u =>
+              this.redirectBack(request.flash.get("url").getOrElse("/"), u)
+            }
+          }
       }
     }
   }
@@ -121,20 +127,20 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]) = Action { implicit request =>
+  def showProjects(username: String, page: Option[Int]) = Action.async { implicit request =>
     val pageSize = this.config.users.get[Int]("project-page-size")
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
-    this.users.withName(username).map { u =>
-      (u, u.projects.sortedMultipleOrders(
-        orderings = p => List(p.stars.desc, p.name.asc),
-        filter = _.recommendedVersionId =!= -1,
-        limit = pageSize,
-        offset = offset))
-    } map {
-      case (user, projectSeq) => Ok(views.users.projects(user, projectSeq, p))
-    } getOrElse {
-      notFound
+    this.users.withName(username).flatMap {
+      case None => Future(notFound)
+      case Some(user) =>
+        user.projects.sortedMultipleOrders(
+          orderings = p => List(p.stars.desc, p.name.asc),
+          filter = _.recommendedVersionId =!= -1,
+          limit = pageSize,
+          offset = offset).map { projectSeq =>
+          Ok(views.users.projects(user, projectSeq, p))
+        }
     }
   }
 
@@ -144,15 +150,18 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username   User to update
     * @return           View of user page
     */
-  def saveTagline(username: String) = UserAction(username) { implicit request =>
+  def saveTagline(username: String) = UserAction(username).async { implicit request =>
     val tagline = this.forms.UserTagline.bindFromRequest.get.trim
     val maxLen = this.config.users.get[Int]("max-tagline-len")
-    val user = this.users.withName(username).get
-    if (tagline.length > maxLen) {
-      Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))
-    } else {
-      user.tagline = tagline
-      Redirect(ShowUser(user))
+    this.users.withName(username).map {
+      case None => NotFound
+      case Some(user) =>
+        if (tagline.length > maxLen) {
+          Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))
+        } else {
+          user.tagline = tagline
+          Redirect(ShowUser(user))
+        }
     }
   }
 
@@ -224,10 +233,12 @@ class Users @Inject()(fakeUser: FakeUser,
     * Shows a list of [[models.user.User]]s that have created a
     * [[models.project.Project]].
     */
-  def showAuthors(sort: Option[String], page: Option[Int]) = Action { implicit request =>
+  def showAuthors(sort: Option[String], page: Option[Int]) = Action.async { implicit request =>
     val ordering = sort.getOrElse(ORDERING_PROJECTS)
     val p = page.getOrElse(1)
-    Ok(views.users.authors(this.users.getAuthors(ordering, p), ordering, p))
+    this.users.getAuthors(ordering, p).map { u =>
+      Ok(views.users.authors(u, ordering, p))
+    }
   }
 
   /**
@@ -268,10 +279,9 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param id Notification ID
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
-  def markNotificationRead(id: Int) = Authenticated { implicit request =>
-    request.user.notifications.get(id) match {
-      case None =>
-        notFound
+  def markNotificationRead(id: Int) = Authenticated.async { implicit request =>
+    request.user.notifications.get(id) map {
+      case None => notFound
       case Some(notification) =>
         notification.setRead(read = true)
         Ok

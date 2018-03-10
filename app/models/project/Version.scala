@@ -22,6 +22,8 @@ import play.twirl.api.Html
 import util.FileUtils
 import util.StringUtils.equalsIgnoreCase
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a single version of a Project.
   *
@@ -75,7 +77,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Channel
     */
-  def channel: Channel = this.service.access[Channel](classOf[Channel]).get(this.channelId).get
+  def channel(implicit ec: ExecutionContext): Future[Channel] = this.service.access[Channel](classOf[Channel]).get(this.channelId).map(_.get)
 
   /**
     * Returns the channel this version belongs to from the specified collection
@@ -121,7 +123,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Base URL for version
     */
-  override def url: String = this.project.url + "/versions/" + this.versionString
+  override def url(implicit ec: ExecutionContext) : String = this.project.url + "/versions/" + this.versionString
 
   /**
     * Returns true if this version has been reviewed by the moderation staff.
@@ -142,7 +144,7 @@ case class Version(override val id: Option[Int] = None,
 
   def authorId: Int = this._authorId
 
-  def author: Option[User] = this.userBase.get(this._authorId)
+  def author: Future[Option[User]] = this.userBase.get(this._authorId)
 
   def authorId_=(authorId: Int) = {
     this._authorId = authorId
@@ -154,7 +156,7 @@ case class Version(override val id: Option[Int] = None,
 
   def reviewerId: Int = this._reviewerId
 
-  def reviewer: Option[User] = this.userBase.get(this._reviewerId)
+  def reviewer: Future[Option[User]] = this.userBase.get(this._reviewerId)
 
   def reviewer_=(reviewer: User) = Defined {
     this._reviewerId = reviewer.id.get
@@ -182,19 +184,15 @@ case class Version(override val id: Option[Int] = None,
     }
   }
 
-  def tags: List[Tag] = {
-    tagIds.map { id =>
-      this.service.access[Tag](classOf[Tag]).find(_.id === id).get
+  def tags(implicit ec: ExecutionContext): Future[List[Tag]] = {
+    this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map { list =>
+      list.toList
     }
   }
 
-  def isSpongePlugin: Boolean = {
-    tags.map(_.name).contains("Sponge")
-  }
+  def isSpongePlugin(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Sponge"))
 
-  def isForgeMod: Boolean = {
-    tags.map(_.name).contains("Forge")
-  }
+  def isForgeMod(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Forge"))
 
   /**
     * Returns this Versions plugin dependencies.
@@ -253,9 +251,16 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return True if exists
     */
-  def exists: Boolean = {
-    this.projectId != -1 && (this.service.await(this.schema.hashExists(this.projectId, this.hash)).get
-      || this.project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase))
+  def exists(implicit ec: ExecutionContext): Future[Boolean] = {
+    if (this.projectId == -1) Future.successful(false)
+    else {
+      for {
+        hashExists <- this.schema.hashExists(this.projectId, this.hash)
+        project <- this.project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
+      } yield {
+        hashExists && project
+      }
+    }
   }
 
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
@@ -264,10 +269,10 @@ case class Version(override val id: Option[Int] = None,
 
   def byCreationDate(first: Review, second: Review) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
   def reviewEntries = this.schema.getChildren[Review](classOf[Review], this)
-  def unfinishedReviews: Seq[Review] = reviewEntries.all.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate)
-  def mostRecentUnfinishedReview: Option[Review] = unfinishedReviews.headOption
-  def mostRecentReviews: Seq[Review] = reviewEntries.toSeq.sortWith(byCreationDate)
-  def reviewById(id: Int): Option[Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
+  def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate))
+  def mostRecentUnfinishedReview(implicit ec: ExecutionContext): Future[Option[Review]] = unfinishedReviews.map(_.headOption)
+  def mostRecentReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
+  def reviewById(id: Int): Future[Option[Review]] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
   def equalsInt[T <: Table[_]](int1: T => Rep[Int], int2: Int): T => Rep[Boolean] = int1(_) === int2
 
 }

@@ -21,7 +21,9 @@ import play.api.data.Forms._
 import play.api.data.format.Formatter
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Collection of forms used in this application.
@@ -219,31 +221,50 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   def required(key: String) = Seq(FormError(key, "error.required", Nil))
 
   val projectApiKey = of[ProjectApiKey](new Formatter[ProjectApiKey] {
-    val projectApiKeys = OreForms.this.service.access[ProjectApiKey](classOf[ProjectApiKey])
-    def bind(key: String, data: Map[String, String]) =
+    def bind(key: String, data: Map[String, String]) = {
       data.get(key).
-        flatMap(id => Try(id.toInt).toOption.flatMap(this.projectApiKeys.get(_)))
+        flatMap(id => Try(id.toInt).toOption.flatMap(evilAwaitpProjectApiKey(_)))
         .toRight(required(key))
+    }
+
     def unbind(key: String, value: ProjectApiKey): Map[String, String] = Map(key -> value.id.get.toString)
   })
+
+  def evilAwaitpProjectApiKey(key: Int): Option[ProjectApiKey] = {
+    val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+    // TODO remvove await
+    this.service.await(projectApiKeys.get(key)).getOrElse(None)
+  }
 
   lazy val ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))
 
   def channel(implicit request: ProjectRequest[_]) = of[Channel](new Formatter[Channel] {
-    def bind(key: String, data: Map[String, String]) =
+    def bind(key: String, data: Map[String, String]) = {
       data.get(key)
-        .flatMap(c => request.project.channels.find(_.name.toLowerCase === c.toLowerCase))
+        .flatMap(evilAwaitChannel(_))
         .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
+    }
+
     def unbind(key: String, value: Channel) = Map(key -> value.name.toLowerCase)
   })
+
+  def evilAwaitChannel(c: String)(implicit request: ProjectRequest[_]): Option[Channel] = {
+    val value = request.project.channels.find(_.name.toLowerCase === c.toLowerCase)
+    // TODO remvove await
+    this.service.await(value).getOrElse(None)
+  }
 
   def VersionDeploy(implicit request: ProjectRequest[_]) = Form(mapping(
     "apiKey" -> nonEmptyText,
     "channel" -> channel,
     "recommended" -> default(boolean, true),
-    "forumPost" -> default(boolean, request.project.settings.forumSync))
+    "forumPost" -> default(boolean, evilAwaitProjectSettings(request).forumSync))
   (VersionDeployForm.apply)(VersionDeployForm.unapply))
 
+  private def evilAwaitProjectSettings(request: ProjectRequest[_]) = {
+    // TODO remvove await
+    this.service.await(request.project.settings).get
+  }
 
   lazy val ReviewDescription = Form(single("content" -> text))
 

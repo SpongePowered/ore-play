@@ -1,11 +1,11 @@
 @import db.ModelService
-@import db.impl.access.UserBase
 @import ore.OreConfig
 @import play.twirl.api.Html
-@(title: String, step: Int)(content: Html)(implicit messages: Messages, request: Request[_],
-        service: ModelService, config: OreConfig, users: UserBase)
+@import models.viewhelper.HeaderData
+@(title: String, step: Int, headerData: HeaderData)(content: Html)(implicit messages: Messages, request: Request[_],
+        service: ModelService, config: OreConfig)
 
-@bootstrap.layout(title) {
+@bootstrap.layout(title, headerData) {
 
     <div class="container" style="margin-top: 90px">
         <div class="row">

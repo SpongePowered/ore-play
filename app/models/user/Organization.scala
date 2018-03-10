@@ -8,12 +8,17 @@ import db.impl.model.OreModel
 import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.impl.table.ModelKeys._
 import db.{Model, Named}
-import models.user.role.OrganizationRole
+import models.user.role.{OrganizationRole, RoleModel}
 import ore.organization.OrganizationMember
-import ore.permission.role.RoleTypes
+import ore.permission.role.{Default, RoleTypes, Trust}
 import ore.permission.scope.OrganizationScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
+import slick.lifted.{Compiled, Rep, TableQuery}
+import db.impl.OrePostgresDriver.api._
+import slick.lifted
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents an Ore Organization. An organization is like a [[User]] in the
@@ -54,8 +59,34 @@ case class Organization(override val id: Option[Int] = None,
     val roleClass: Class[RoleType] = classOf[OrganizationRole]
     val model: ModelType = Organization.this
 
-    def newMember(userId: Int) = new OrganizationMember(this.model, userId)
+    def newMember(userId: Int)(implicit ec: ExecutionContext) = new OrganizationMember(this.model, userId)
 
+    private lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
+
+    private def queryRoleForTrust(orgId: Rep[Int]) = {
+      val memberTable = TableQuery[OrganizationMembersTable]
+      val roleTable = TableQuery[OrganizationRoleTable]
+
+      for {
+        m <- memberTable if m.organizationId === orgId
+        r <- roleTable if m.userId === r.userId && r.organizationId === orgId
+      } yield {
+        r
+      }
+    }
+
+    /**
+      * Returns the highest level of [[ore.permission.role.Trust]] this user has.
+      *
+      * @param user User to get trust of
+      * @return Trust of user
+      */
+    override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] = {
+      this.userBase.service.DB.db.run(roleForTrustQuery(id.get).result).map { l =>
+        val ordering: Ordering[OrganizationRole] = Ordering.by(m => m.roleType.trust)
+        l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
+      }
+    }
   }
 
   /**
@@ -65,12 +96,22 @@ case class Organization(override val id: Option[Int] = None,
     */
   override def owner: OrganizationMember = new OrganizationMember(this, this.ownerId)
 
-  override def transferOwner(member: OrganizationMember) {
+  override def transferOwner(member: OrganizationMember)(implicit ec: ExecutionContext): Unit = {
     // Down-grade current owner to "Admin"
-    this.memberships.getRoles(this.owner.user).filter(_.roleType == RoleTypes.OrganizationOwner)
-      .foreach(_.roleType = RoleTypes.OrganizationAdmin);
-    this.memberships.getRoles(member.user).foreach(_.roleType = RoleTypes.OrganizationOwner);
-    this.owner = member.user;
+    this.owner.user.flatMap { owner =>
+      this.memberships.getRoles(owner).map { roles =>
+        roles.filter(_.roleType == RoleTypes.OrganizationOwner)
+             .foreach(_.roleType = RoleTypes.OrganizationAdmin)
+      }
+    } flatMap { _ =>
+      member.user.map { memberUser =>
+        this.memberships.getRoles(memberUser).map { memberRoles =>
+          memberRoles.foreach(_.roleType = RoleTypes.OrganizationOwner)
+        } map { _ =>
+          this.owner = memberUser
+        }
+      }
+    }
   }
 
 
@@ -93,10 +134,10 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @return This Organization as a User
     */
-  def toUser = this.service.getModelBase(classOf[UserBase]).withName(this.username).get
+  def toUser(implicit ec: ExecutionContext) = this.service.getModelBase(classOf[UserBase]).withName(this.username)
 
   override val name: String = this.username
-  override def url: String = this.toUser.url
+  override def url(implicit ec: ExecutionContext): String = this.userBase.service.await(this.toUser).get.get.url
   override val userId: Int = this.ownerId
   override def organizationId: Int = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(createdAt = theTime)

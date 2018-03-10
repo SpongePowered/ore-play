@@ -2,14 +2,12 @@
 Base layout template for website. Most templates within the project will extend
 this.
 *@
-@import db.ModelService
-@import db.impl.access.UserBase
 @import ore.OreConfig
 @import play.twirl.api.Html
 @import security.NonceFilter._
-@(title: String, scripts: Boolean = true, header: Boolean = true, user: Boolean = true,
-        footer: Boolean = true)(content: Html)(implicit messages: Messages, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase)
+@import models.viewhelper.HeaderData
+@(title: String, headerData: HeaderData, scripts: Boolean = true, header: Boolean = true, user: Boolean = true,
+        footer: Boolean = true)(content: Html)(implicit messages: Messages, request: Request[_], config: OreConfig)
 
 <!DOCTYPE html>
 <html>
@@ -39,7 +37,7 @@ this.
     </head>
     <body class="site">
         @if(header) {
-            @bootstrap.header(user)
+            @bootstrap.header(user, headerData)
         }
 
         <div class="site-content">

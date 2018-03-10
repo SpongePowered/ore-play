@@ -36,8 +36,7 @@ object ModelKeys {
   val TopicId               =   new IntKey[Project](_.topicId, _.topicId)
   val PostId                =   new IntKey[Project](_.postId, _.postId)
   val IsTopicDirty          =   new BooleanKey[Project](_.isTopicDirty, _.isTopicDirty)
-  val RecommendedVersionId  =   new IntKey[Project](
-                                  _.recommendedVersionId, _.recommendedVersion.id.getOrElse(-1))
+  val RecommendedVersionId  =   new IntKey[Project](_.recommendedVersionId, _.recommendedVersionId.getOrElse(-1))
   val LastUpdated           =   new TimestampKey[Project](_.lastUpdated, _.lastUpdated)
   val Notes                 =   new StringKey[Project](_.notes, _._notes)
 

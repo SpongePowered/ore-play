@@ -1,10 +1,11 @@
 package db.impl
 
 import com.github.tminglei.slickpg._
+import com.github.tminglei.slickpg.agg.PgAggFuncSupport
 import db.table.key.Aliases
-import models.project.{TagColors, VisibilityTypes}
 import models.project.TagColors.TagColor
 import models.project.VisibilityTypes.Visibility
+import models.project.{TagColors, VisibilityTypes}
 import ore.Colors
 import ore.Colors.Color
 import ore.permission.role.RoleTypes
@@ -24,9 +25,11 @@ import ore.user.notification.NotificationTypes.NotificationType
 /**
   * Custom Postgres driver to support array data and custom type mappings.
   */
-trait OrePostgresDriver extends ExPostgresProfile with PgArraySupport with PgNetSupport {
+trait OrePostgresDriver extends ExPostgresProfile with PgArraySupport with PgAggFuncSupport with PgNetSupport {
 
   override val api = OreDriver
+
+  def pgjson = "jsonb"
 
   object OreDriver extends API with ArrayImplicits with NetImplicits with Aliases {
     implicit val colorTypeMapper = MappedJdbcType.base[Color, Int](_.id, Colors.apply)

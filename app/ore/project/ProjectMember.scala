@@ -7,6 +7,8 @@ import models.user.role.ProjectRole
 import ore.permission.scope.Scope
 import ore.user.Member
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a member of a [[Project]].
   *
@@ -16,22 +18,31 @@ import ore.user.Member
 class ProjectMember(val project: Project, override val userId: Int)(implicit users: UserBase)
                     extends Member[ProjectRole](userId) {
 
-  override def roles: Set[ProjectRole] = this.project.memberships.getRoles(this.user)
+  override def roles(implicit ec: ExecutionContext): Future[Set[ProjectRole]] = this.user.flatMap(user => this.project.memberships.getRoles(user))
   override val scope: Scope = this.project.scope
-  override def toString: String = MoreObjects.toStringHelper(this).add("name", this.fullName).toString
-  override def hashCode: Int = Objects.hashCode(this.project, this.fullName)
+
+  /*
+  override def toString: String = MoreObjects.toStringHelper(this).add("name", this.user.fullName).toString
+  override def hashCode: Int = Objects.hashCode(this.project, this.user.fullName)
 
   override def equals(o: Any): Boolean = {
     o match {
-      case that: ProjectMember => that.project.equals(this.project) && that.user.equals(this.user)
+      case that: ProjectMember => that.project.equals(this.project) && that.userId.equals(this.userId)
       case _ => false
     }
   }
+  */
+  /**
+    * Returns the Member's top role.
+    *
+    * @return Top role
+    */
+  override def headRole(implicit ec: ExecutionContext): Future[ProjectRole] =
+    this.roles.map(role => {
+      role.max(ordering)
+    })
 
+  private def ordering: Ordering[ProjectRole]  =
+    Ordering.by(r => r.roleType.trust)
 }
 
-object ProjectMember {
-
-  implicit def ordering[A <: ProjectMember] = Member.ordering[A]
-
-}

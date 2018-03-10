@@ -11,12 +11,12 @@ import models.project.{Page, Project}
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.i18n.MessagesApi
-import play.api.mvc.Action
 import security.spauth.SingleSignOnConsumer
-import views.html.projects.{pages => views}
 import util.StringUtils._
+import views.html.projects.{pages => views}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * Controller for handling Page related actions.
@@ -43,18 +43,16 @@ class Pages @Inject()(forms: OreForms,
     * @param page
     * @return Tuple: Optional Page, true if using legacy fallback
     */
-  def withPage(project: Project, page: String): (Option[Page], Boolean) = {
+  def withPage(project: Project, page: String): Future[(Option[Page], Boolean)] = {
     val parts = page.split("/")
     if (parts.size == 2) {
-      val parentId = project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.getOrElse(-1)).getOrElse(-1)
-      val pages: Seq[Page] = project.pages.filter(equalsIgnoreCase(_.slug, parts(1))).seq
-      (pages.find(_.parentId == parentId), false)
+      project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1)).flatMap(parentId => {
+        project.pages.filter(equalsIgnoreCase(_.slug, parts(1))).map(seq => seq.find(_.parentId == parentId)).map((_, false))
+      })
     } else {
-      val result = project.pages.find((ModelFilter[Page](_.slug === parts(0)) +&& ModelFilter[Page](_.parentId === -1)).fn)
-      if (result.isEmpty) {
-        (project.pages.find(ModelFilter[Page](_.slug === parts(0)).fn), true)
-      } else {
-        (result, false)
+      project.pages.find((ModelFilter[Page](_.slug === parts(0)) +&& ModelFilter[Page](_.parentId === -1)).fn).flatMap {
+        case Some(r) => Future { (Some(r), false) }
+        case None => project.pages.find(ModelFilter[Page](_.slug === parts(0)).fn).map((_, true))
       }
     }
   }
@@ -67,13 +65,11 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return View of page
     */
-  def show(author: String, slug: String, page: String) = ProjectAction(author, slug) { implicit request =>
+  def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { implicit request =>
     val project = request.project
-    val optionPage = withPage(project, page)
-    if (optionPage._1.isDefined) {
-      this.stats.projectViewed(implicit request => Ok(views.view(project, optionPage._1.get, optionPage._2)))
-    } else {
-      notFound
+    withPage(project, page).map {
+      case (Some(p), b) => this.stats.projectViewed(implicit request => Ok(views.view(project, p, b)))
+      case (None, b) => notFound
     }
   }
 
@@ -83,21 +79,26 @@ class Pages @Inject()(forms: OreForms,
     *
     * @param author Owner name
     * @param slug   Project slug
-    * @param page   Page name
+    * @param pageName   Page name
     * @return Page editor
     */
-  def showEditor(author: String, slug: String, page: String) = PageEditAction(author, slug) { implicit request =>
+  def showEditor(author: String, slug: String, pageName: String) = PageEditAction(author, slug).async { implicit request =>
     val project = request.project
-    val parts = page.split("/")
-    var pageName = parts(0)
-    var parentId = -1
-    if (parts.size == 2) {
-      pageName = parts(1)
-      parentId = project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.getOrElse(-1)).getOrElse(-1)
+    val parts = pageName.split("/")
+    val p = parts.size match {
+      case 2 => project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1))
+        .map((parts(1), _))
+      case _ => Future{(parts(0), -1)}
     }
-    val optionPage = project.pages.find(equalsIgnoreCase(_.slug, pageName))
-    val pageModel = optionPage.getOrElse(project.getOrCreatePage(pageName, parentId))
-    Ok(views.view(project, pageModel, editorOpen = true))
+    p.flatMap {
+      case (name, parentId) =>
+        project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
+          case Some(page) => Future(page)
+          case None => project.getOrCreatePage(name, parentId)
+        }
+    } map { p =>
+      Ok(views.view(project, p, editorOpen = true))
+    }
   }
 
   /**
@@ -117,30 +118,38 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return Project home
     */
-  def save(author: String, slug: String, page: String) = PageEditAction(author, slug) { implicit request =>
+  def save(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
     this.forms.PageEdit.bindFromRequest().fold(
       hasErrors =>
-        Redirect(self.show(author, slug, page)).withError(hasErrors.errors.head.message),
+        Future(Redirect(self.show(author, slug, page)).withError(hasErrors.errors.head.message)),
       pageData => {
         val project = request.project
-        var parentId = pageData.parentId.getOrElse(-1)
+        val parentId = pageData.parentId.getOrElse(-1)
         //noinspection ComparingUnrelatedTypes
-        if (parentId != -1 && !project.rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
-          BadRequest("Invalid parent ID.")
-        } else {
-          val content = pageData.content
-          if (page.equals(Page.HomeName) && (content.isEmpty || content.get.length < Page.MinLength)) {
-            Redirect(self.show(author, slug, page)).withError("error.minLength")
+        project.rootPages.flatMap { rootPages =>
+          if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
+            Future(BadRequest("Invalid parent ID."))
           } else {
-            val parts = page.split("/")
-            var pageName = pageData.name.getOrElse(parts(0))
-            if (parts.size == 2) {
-              pageName = pageData.name.getOrElse(parts(1))
-              parentId = project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.getOrElse(-1)).getOrElse(-1)
+            val content = pageData.content
+            if (page.equals(Page.HomeName) && (content.isEmpty || content.get.length < Page.MinLength)) {
+              Future(Redirect(self.show(author, slug, page)).withError("error.minLength"))
+            } else {
+              val parts = page.split("/")
+
+              val created = if (parts.size == 2) {
+                project.pages.find(equalsIgnoreCase(_.slug, parts(0))).flatMap { parent =>
+                  val parentId = parent.flatMap(_.id).getOrElse(-1)
+                  val pageName = pageData.name.getOrElse(parts(1))
+                  project.getOrCreatePage(pageName, parentId, pageData.content)
+                }
+              } else {
+                val pageName = pageData.name.getOrElse(parts(0))
+                project.getOrCreatePage(pageName, parentId, pageData.content)
+              }
+              created.map { _ =>
+                Redirect(self.show(author, slug, page))
+              }
             }
-            val pageModel = project.getOrCreatePage(pageName, parentId)
-            pageData.content.map(pageModel.contents = _)
-            Redirect(self.show(author, slug, page))
           }
         }
       }
@@ -155,13 +164,16 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return Redirect to Project homepage
     */
-  def delete(author: String, slug: String, page: String) = PageEditAction(author, slug) { implicit request =>
+  def delete(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
     val project = request.project
-    val optionPage = withPage(project, page)
-    if (optionPage._1.isDefined)
-      this.service.access[Page](classOf[Page]).remove(optionPage._1.get)
+    for {
+      optionPage <- withPage(project, page)
+    } yield {
+      if (optionPage._1.isDefined)
+        this.service.access[Page](classOf[Page]).remove(optionPage._1.get)
 
-    Redirect(routes.Projects.show(author, slug))
+      Redirect(routes.Projects.show(author, slug))
+    }
   }
 
 }

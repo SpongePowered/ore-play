@@ -5,6 +5,8 @@ import ore.Colors.Color
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents submitted [[Channel]] data.
   */
@@ -31,19 +33,20 @@ trait TChannelData {
     * @param project  Project to add Channel to
     * @return         Either the new channel or an error message
     */
-  def addTo(project: Project): Either[String, Channel] = {
-    val channels = project.channels.all
-    if (channels.size >= config.projects.get[Int]("max-channels")) {
-      Left("A project may only have up to five channels.")
-    } else {
-      channels.find(_.name.equalsIgnoreCase(this.channelName)) match {
-        case Some(_) =>
-          Left("A channel with that name already exists.")
-        case None => channels.find(_.color.equals(this.color)) match {
+  def addTo(project: Project)(implicit ec: ExecutionContext): Future[Either[String, Channel]] = {
+    project.channels.all.flatMap { channels =>
+      if (channels.size >= config.projects.get[Int]("max-channels")) {
+        Future.successful(Left("A project may only have up to five channels."))
+      } else {
+        channels.find(_.name.equalsIgnoreCase(this.channelName)) match {
           case Some(_) =>
-            Left("A channel with that color already exists.")
-          case None =>
-            Right(this.factory.createChannel(project, this.channelName, this.color, this.nonReviewed))
+            Future.successful(Left("A channel with that name already exists."))
+          case None => channels.find(_.color.equals(this.color)) match {
+            case Some(_) =>
+              Future.successful(Left("A channel with that color already exists."))
+            case None =>
+              this.factory.createChannel(project, this.channelName, this.color, this.nonReviewed).map(Right(_))
+          }
         }
       }
     }
@@ -57,27 +60,28 @@ trait TChannelData {
     * @param project  Project of channel
     * @return         Error, if any
     */
-  def saveTo(oldName: String)(implicit project: Project): Option[String] = {
-    val channels = project.channels.all
-    val channel = channels.find(_.name.equalsIgnoreCase(oldName)).get
-    val colorChan = channels.find(_.color.equals(this.color))
-    val colorTaken = colorChan.isDefined && !colorChan.get.equals(channel)
-    if (colorTaken) {
-      Some("A channel with that color already exists.")
-    } else {
-      val nameChan = channels.find(_.name.equalsIgnoreCase(this.channelName))
-      val nameTaken = nameChan.isDefined && !nameChan.get.equals(channel)
-      if (nameTaken) {
-        Some("A channel with that name already exists.")
+  def saveTo(oldName: String)(implicit project: Project, ec: ExecutionContext): Future[Option[String]] = {
+    project.channels.all.map { channels =>
+      val channel = channels.find(_.name.equalsIgnoreCase(oldName)).get
+      val colorChan = channels.find(_.color.equals(this.color))
+      val colorTaken = colorChan.isDefined && !colorChan.get.equals(channel)
+      if (colorTaken) {
+        Some("A channel with that color already exists.")
       } else {
-        val reviewedChannels = channels.filter(!_.isNonReviewed)
-        if (this.nonReviewed && reviewedChannels.size <= 1 && reviewedChannels.contains(channel)) {
-          Some("There must be at least one reviewed channel.")
+        val nameChan = channels.find(_.name.equalsIgnoreCase(this.channelName))
+        val nameTaken = nameChan.isDefined && !nameChan.get.equals(channel)
+        if (nameTaken) {
+          Some("A channel with that name already exists.")
         } else {
-          channel.name = this.channelName
-          channel.color = this.color
-          channel.setNonReviewed(this.nonReviewed)
-          None
+          val reviewedChannels = channels.filter(!_.isNonReviewed)
+          if (this.nonReviewed && reviewedChannels.size <= 1 && reviewedChannels.contains(channel)) {
+            Some("There must be at least one reviewed channel.")
+          } else {
+            channel.name = this.channelName
+            channel.color = this.color
+            channel.setNonReviewed(this.nonReviewed)
+            None
+          }
         }
       }
     }

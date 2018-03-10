@@ -13,7 +13,7 @@ import play.api.Configuration
 import play.api.http.Status
 import play.api.libs.ws.WSClient
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
@@ -105,13 +105,13 @@ trait SingleSignOnConsumer {
     *                       marks the nonce as invalid so it cannot be used again
     * @return               [[SpongeUser]] if successful
     */
-  def authenticate(payload: String, sig: String)(isNonceValid: String => Boolean): Option[SpongeUser] = {
+  def authenticate(payload: String, sig: String)(isNonceValid: String => Future[Boolean]): Future[Option[SpongeUser]] = {
     Logger.info("Authenticating SSO payload...")
     Logger.info(payload)
     Logger.info("Signed with : " + sig)
     if (!hmac_sha256(payload.getBytes(this.CharEncoding)).equals(sig)) {
       Logger.info("<FAILURE> Could not verify payload against signature.")
-      return None
+      return Future(None)
     }
 
     // decode payload
@@ -142,18 +142,18 @@ trait SingleSignOnConsumer {
 
     if (externalId == -1 || username == null || email == null || nonce == null) {
       Logger.info("<FAILURE> Incomplete payload.")
-      return None
+      return Future(None)
     }
 
-    if (!isNonceValid(nonce)) {
-      Logger.info("<FAILURE> Invalid nonce.")
-      return None
+    isNonceValid(nonce).map {
+      case false =>
+        Logger.info("<FAILURE> Invalid nonce.")
+        None
+      case true =>
+        val user = SpongeUser(externalId, username, email, Option(avatarUrl))
+        Logger.info("<SUCCESS> " + user)
+        Some(user)
     }
-
-    val user = SpongeUser(externalId, username, email, Option(avatarUrl))
-    Logger.info("<SUCCESS> " + user)
-
-    Some(user)
   }
 
   private def hmac_sha256(data: Array[Byte]): String = {

@@ -3,7 +3,7 @@ package models.project
 import java.nio.file.Files._
 import java.sql.Timestamp
 
-import db.impl.ProjectSettingsTable
+import db.impl._
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import form.project.ProjectSettingsForm
@@ -15,9 +15,12 @@ import ore.project.{Categories, ProjectOwned}
 import ore.user.notification.NotificationTypes
 import play.api.Logger
 import play.api.i18n.{Lang, MessagesApi}
+import slick.lifted.TableQuery
 import util.StringUtils._
+import db.impl.OrePostgresDriver.api._
 
 import scala.collection.JavaConverters._
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents a [[Project]]'s settings.
@@ -138,8 +141,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
     * @param messages MessagesApi instance
     */
   //noinspection ComparingUnrelatedTypes
-  def save(project: Project, formData: ProjectSettingsForm)(implicit messages: MessagesApi,
-                                                            fileManager: ProjectFiles) = {
+  def save(project: Project, formData: ProjectSettingsForm)(implicit messages: MessagesApi, fileManager: ProjectFiles, ec: ExecutionContext): Future[_] = {
     Logger.info("Saving project settings")
     Logger.info(formData.toString)
 
@@ -153,43 +155,66 @@ case class ProjectSettings(override val id: Option[Int] = None,
     this.forumSync = formData.forumSync
 
     // Update the owner if needed
-    formData.ownerId.find(_ != project.ownerId).foreach(ownerId => project.owner = this.userBase.get(ownerId).get)
-
-    // Update icon
-    if (formData.updateIcon) {
-      fileManager.getPendingIconPath(project).foreach { pendingPath =>
-        val iconDir = fileManager.getIconDir(project.ownerName, project.name)
-        if (notExists(iconDir))
-          createDirectories(iconDir)
-        list(iconDir).iterator().asScala.foreach(delete)
-        move(pendingPath, iconDir.resolve(pendingPath.getFileName))
-      }
-    }
-
-    // Handle member changes
-    if (project.isDefined) {
-      // Add new roles
-      val dossier = project.memberships
-      for (role <- formData.build()) {
-        val user = role.user
-        dossier.addRole(role.copy(projectId = project.id.get))
-        user.sendNotification(Notification(
-          originId = project.ownerId,
-          notificationType = NotificationTypes.ProjectInvite,
-          message = messages("notification.project.invite", role.roleType.title, project.name)
-        ))
-      }
-
-      // Update existing roles
-      val projectRoleTypes = RoleTypes.values.filter(_.roleClass.equals(classOf[ProjectRole]))
-      for ((user, i) <- formData.userUps.zipWithIndex) {
-        project.memberships.members.find(_.username.equalsIgnoreCase(user)).foreach { user =>
-          user.headRole.roleType = projectRoleTypes.find(_.title.equals(formData.roleUps(i)))
-            .getOrElse(throw new RuntimeException("supplied invalid role type"))
+    val ownerSet = formData.ownerId.find(_ != project.ownerId) match {
+      case None => Future.successful()
+      case Some(ownerId) => this.userBase.get(ownerId).flatMap(user => project.setOwner(user.get))}
+    ownerSet.flatMap { _ =>
+      // Update icon
+      if (formData.updateIcon) {
+        fileManager.getPendingIconPath(project).foreach { pendingPath =>
+          val iconDir = fileManager.getIconDir(project.ownerName, project.name)
+          if (notExists(iconDir))
+            createDirectories(iconDir)
+          list(iconDir).forEach(delete(_))
+          move(pendingPath, iconDir.resolve(pendingPath.getFileName))
         }
       }
+
+      // Handle member changes
+      if (project.isDefined) {
+        // Add new roles
+        val dossier = project.memberships
+        Future.sequence(formData.build().map { role =>
+          dossier.addRole(role.copy(projectId = project.id.get))
+        }).flatMap { roles =>
+          val notifications = roles.map { role =>
+            Notification(
+              userId = role.userId,
+              originId = project.ownerId,
+              notificationType = NotificationTypes.ProjectInvite,
+              message = messages("notification.project.invite", role.roleType.title, project.name))
+          }
+
+          service.DB.db.run(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
+        } flatMap { _ =>
+          // Update existing roles
+          val projectRoleTypes = RoleTypes.values.filter(_.roleClass.equals(classOf[ProjectRole]))
+
+          val usersTable = TableQuery[UserTable]
+          // Select member userIds
+          service.DB.db.run(usersTable.filter(_.name inSetBind formData.userUps).map(_.id).result).map { userIds =>
+            userIds zip formData.roleUps.map(role => projectRoleTypes.find(_.title.equals(role)).getOrElse(throw new RuntimeException("supplied invalid role type")))
+          } map { _.map {
+              case (userId, role) => updateMemberShip(userId).update(role)
+            }
+          } flatMap { updates =>
+            service.DB.db.run(DBIO.sequence(updates))
+          }
+        }
+      } else Future.successful()
     }
   }
+
+  private def memberShipUpdate(userId: Rep[Int]) = {
+    val rolesTable = TableQuery[ProjectRoleTable]
+
+    for {
+      m <- rolesTable if m.userId === userId
+    } yield {
+      m.roleType
+    }
+  }
+  private lazy val updateMemberShip = Compiled(memberShipUpdate _)
 
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
 

@@ -9,6 +9,7 @@ import ore.project.io.PluginFile
 import play.api.cache.CacheApi
 import util.PendingAction
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 /**
@@ -20,6 +21,7 @@ import scala.util.Try
   * @param underlying     Version that is pending
   * @param plugin         Uploaded plugin
   */
+// TODO caching?
 case class PendingVersion(projects: ProjectBase,
                           factory: ProjectFactory,
                           var project: Project,
@@ -27,24 +29,19 @@ case class PendingVersion(projects: ProjectBase,
                           var channelColor: Color,
                           underlying: Version,
                           plugin: PluginFile,
-                          var createForumPost: Boolean,
-                          override val cacheApi: CacheApi)
-                          extends PendingAction[Version]
-                            with Cacheable {
-
-  override def complete(): Try[Version] = Try {
-    free()
-    return this.factory.createVersion(this)
+                          var createForumPost: Boolean)
+                          extends PendingAction[Version] {
+  override def complete(implicit ec: ExecutionContext): Future[Version] = {
+    this.factory.createVersion(this)
   }
 
-  override def cancel() = {
-    free()
+  override def cancel(implicit ec: ExecutionContext) = {
     this.plugin.delete()
     if (this.underlying.isDefined)
       this.projects.deleteVersion(this.underlying)
   }
 
-  override def key: String = this.project.url + '/' + this.underlying.versionString
+  // TODO cacheKey override def key: String = this.project.url + '/' + this.underlying.versionString
 
   def dependenciesAsGhostTags: Seq[Tag] = {
     var ghostFlags: Seq[Tag] = Seq()

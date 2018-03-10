@@ -42,17 +42,6 @@ abstract class RoleModel(override val id: Option[Int],
   def subject: Visitable
 
   /**
-    * Sets this role's [[RoleType]].
-    *
-    * @param _roleType Role type to set
-    */
-  def roleType_=(_roleType: RoleType) = {
-    checkNotNull(_roleType, "null role type", "")
-    this._roleType = _roleType
-    if (isDefined) update(ModelKeys.RoleType)
-  }
-
-  /**
     * Sets whether this role has been accepted by the [[User]] it belongs to.
     *
     * @param accepted True if role accepted
@@ -71,10 +60,15 @@ abstract class RoleModel(override val id: Option[Int],
 
   override def roleType = this._roleType
 
-}
-
-object RoleModel {
-
-  implicit def ordering[A <: RoleModel]: Ordering[A] = Ordering.by(_.roleType.trust)
+  /**
+    * Sets this role's [[RoleType]].
+    *
+    * @param _roleType Role type to set
+    */
+  def roleType_=(_roleType: RoleType) = {
+    checkNotNull(_roleType, "null role type", "")
+    this._roleType = _roleType
+    if (isDefined) update(ModelKeys.RoleType)
+  }
 
 }

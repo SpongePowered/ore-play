@@ -2,24 +2,30 @@ package controllers
 
 import java.sql.Timestamp
 import java.time.Instant
-
 import javax.inject.Inject
+
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.ModelService
+import db.impl.OrePostgresDriver.api._
+import db.impl._
 import form.OreForms
 import models.admin.{Message, Review}
+import models.project.{Project, Version}
 import models.user.{Notification, User}
 import ore.permission.ReviewProjects
 import ore.permission.role.Lifted
+import ore.permission.role.RoleTypes.RoleType
 import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv}
-import play.api.i18n.{Lang, MessagesApi}
+import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
+import slick.lifted.{Rep, TableQuery}
 import util.DataHelper
 import views.{html => views}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * Controller for handling Review related actions.
@@ -35,116 +41,176 @@ final class Reviews @Inject()(data: DataHelper,
                               extends OreBaseController {
 
   def showReviews(author: String, slug: String, versionString: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      withProject(author, slug) { implicit project =>
-        withVersion(versionString) { implicit version =>
-          Ok(views.users.admin.reviews(version.mostRecentReviews))
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) andThen ProjectAction(author, slug)).async { implicit request =>
+        implicit val project = request.project
+        withVersionAsync(versionString) { implicit version =>
+          version.mostRecentReviews.map { reviews =>
+            Ok(views.users.admin.reviews(reviews))
+          }
         }
       }
-    }
   }
 
   def createReview(author: String, slug: String, versionString: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      withProject(author, slug) { implicit project =>
-        withVersion(versionString) { implicit version =>
-          val review = new Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, users.current.get.id.get, None, "")
-          this.service.insert(review)
-          Redirect(routes.Reviews.showReviews(author, slug, versionString))
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
+      withProjectAsync(author, slug) { implicit project =>
+        withVersionAsync(versionString) { implicit version =>
+          for {
+            currentUser <- users.current
+          } yield {
+            val review = new Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, currentUser.get.id.get, None, "")
+            this.service.insert(review)
+            Redirect(routes.Reviews.showReviews(author, slug, versionString))
+          }
         }
       }
     }
   }
 
   def stopReview(author: String, slug: String, versionString: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      withProject(author, slug) { implicit project =>
-        withVersion(versionString) { version =>
-          val review = version.mostRecentUnfinishedReview.get
-          review.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "stop"))
-          review.setEnded(Timestamp.from(Instant.now()))
-          Redirect(routes.Reviews.showReviews(author, slug, versionString))
+    Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) async { implicit request =>
+      withProjectAsync(author, slug) { implicit project =>
+        withVersionAsync(versionString) { version =>
+          version.mostRecentUnfinishedReview.map {
+            case None => NotFound
+            case Some(review) =>
+              review.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "stop"))
+              review.setEnded(Timestamp.from(Instant.now()))
+              Redirect(routes.Reviews.showReviews(author, slug, versionString))
+          }
         }
       }
     }
   }
 
   def approveReview(author: String, slug: String, versionString: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      withProject(author, slug) { implicit project =>
-        withVersion(versionString) { version =>
-          val review = version.mostRecentUnfinishedReview.get
-          review.setEnded(Timestamp.from(Instant.now()))
-
-          // send notification that review happened
-          val organization = this.organizations.get(project.ownerId)
-
-          if (organization.isDefined) {
-            val users: List[User] = organization.get.memberships.members.toList.filter(_.headRole.roleType.trust.level >= Lifted.level).map(_.user)
-
-            if (!users.contains(version.author.get))
-              users :+ version.author.get
-
-            users.foreach(user => user.sendNotification(Notification(
-              originId = request.user.id.get,
-              notificationType = NotificationTypes.ProjectInvite,
-              message = messagesApi("notification.project.reviewed", slug, versionString)
-            )))
-          } else {
-            version.author.get.sendNotification(Notification(
-              originId = request.user.id.get,
-              notificationType = NotificationTypes.ProjectInvite,
-              message = messagesApi("notification.project.reviewed", slug, versionString)
-            ))
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
+      withProjectAsync(author, slug) { implicit project =>
+        withVersionAsync(versionString) { version =>
+          version.mostRecentUnfinishedReview.flatMap {
+            case None => Future.successful(NotFound)
+            case Some(review) =>
+              for {
+                _ <- review.setEnded(Timestamp.from(Instant.now()))
+                // send notification that review happened
+                _ <- sendReviewNotification(project, version, request.user)
+              } yield {
+                Redirect(routes.Reviews.showReviews(author, slug, versionString))
+              }
           }
-
-          Redirect(routes.Reviews.showReviews(author, slug, versionString))
         }
       }
     }
   }
 
+  private def queryNotificationUsers(projectId: Rep[Int], userId: Rep[Int], noRole: Rep[Option[RoleType]])
+    : Query[(Rep[Int], Rep[Option[RoleType]]), (Int, Option[RoleType]), Seq] = {
+
+    val orgTable = TableQuery[OrganizationTable]
+    val orgMemberTable = TableQuery[OrganizationMembersTable]
+    val orgRolesTable = TableQuery[OrganizationRoleTable]
+    val userTable = TableQuery[UserTable]
+
+    // Query Orga Members
+    val q1: Query[(Rep[Int], Rep[Option[RoleType]]), (Int, Option[RoleType]), scala.Seq]  = for {
+      org <- orgTable if org.id === projectId
+      members <- orgMemberTable if org.id === members.organizationId
+      roles <- orgRolesTable if members.userId === roles.userId // TODO roletype lvl in database?
+      users <- userTable if members.userId === users.id
+    } yield {
+      (users.id, roles.roleType.?)
+    }
+
+    // Query version author
+    val q2: Query[(Rep[Int], Rep[Option[RoleType]]), (Int, Option[RoleType]), scala.Seq]  = for {
+      user <- userTable if user.id === userId
+    } yield {
+      (user.id, noRole)
+    }
+
+    q1 ++ q2 // Union
+  }
+
+  private lazy val notificationUsersQuery = Compiled(queryNotificationUsers _)
+
+  private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
+
+    val users: Future[Seq[Int]] = this.service.DB.db.run(notificationUsersQuery(project.id.get, version.authorId, None).result).map { list =>
+      list.filter {
+        case (_, Some(level)) => level.trust.level >= Lifted.level
+        case (_, None) => true
+      }.map(_._1)
+    }
+
+    val notificationTable = TableQuery[NotificationTable]
+
+    users.map { list =>
+      list.map { id =>
+        Notification(
+          userId = id,
+          originId = requestUser.id.get,
+          notificationType = NotificationTypes.VersionReviewed,
+          message = messagesApi("notification.project.reviewed", project.slug, version.versionString)
+        )
+      }
+    } map (notificationTable ++= _) flatMap (service.DB.db.run(_)) // Batch insert all notifications
+  }
+
   def takeoverReview(author: String, slug: String, versionString: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      withProject(author, slug) { implicit project =>
-        withVersion(versionString) { version =>
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+      withProjectAsync(author, slug) { implicit project =>
+        withVersionAsync(versionString) { version =>
           // Close old review
-          val oldreview = version.mostRecentUnfinishedReview.get
-          oldreview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "takeover"))
-          oldreview.setEnded(Timestamp.from(Instant.now()))
-          // Make new one
-          val review = new Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, users.current.get.id.get, None, "")
-          this.service.insert(review)
-          Redirect(routes.Reviews.showReviews(author, slug, versionString))
+          val closeOldReview = version.mostRecentUnfinishedReview.flatMap {
+            case Some(oldreview) =>
+              for {
+                _ <- oldreview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "takeover"))
+                _ <- oldreview.setEnded(Timestamp.from(Instant.now()))
+              } yield {}
+          }
+
+          // Then make new one
+          for {
+            _ <- closeOldReview
+            currentUser <- users.current
+            _ <- this.service.insert(Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, currentUser.get.id.get, None, ""))
+          } yield {
+            Redirect(routes.Reviews.showReviews(author, slug, versionString))
+          }
         }
       }
     }
   }
 
   def editReview(author: String, slug: String, versionString: String, reviewId: Int) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      withProject(author, slug) { implicit project =>
-        withVersion(versionString) { version =>
-          val review = version.reviewById(reviewId)
-          review.get.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
-          Ok("Review"  + review)
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+      withProjectAsync(author, slug) { implicit project =>
+          withVersionAsync(versionString) { version =>
+          version.reviewById(reviewId).map {
+            case None => NotFound
+            case Some(review) =>
+              review.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
+              Ok("Review" + review)
+          }
         }
       }
     }
   }
 
   def addMessage(author: String, slug: String, versionString: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
-      withProject(author, slug) { implicit project =>
-        withVersion(versionString) { version =>
-          val recentReview = version.mostRecentUnfinishedReview
-          if (recentReview.isDefined) {
-            val currentUser = users.current
-            if (recentReview.get.userId == currentUser.get.userId) {
-              recentReview.get.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
-            }
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+      withProjectAsync(author, slug) { implicit project =>
+        withVersionAsync(versionString) { version =>
+          version.mostRecentUnfinishedReview.flatMap {
+            case None => Future.successful(Ok("Review"))
+            case Some(recentReview) =>
+              users.current.flatMap {
+                case Some(currentUser) =>
+                  if (recentReview.userId == currentUser.userId) {
+                    recentReview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
+                  } else Future.successful()
+              }.map( _ => Ok("Review"))
           }
-          Ok("Review")
         }
       }
     }

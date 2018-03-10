@@ -3,7 +3,7 @@ package ore.project.factory
 import db.ModelService
 import db.impl.TagTable
 import db.impl.access.ProjectBase
-import models.project.{Project, ProjectSettings, Tag}
+import models.project.{Project, ProjectSettings, Tag, Version}
 import models.user.role.ProjectRole
 import ore.project.Dependency._
 import ore.project.io.PluginFile
@@ -11,6 +11,7 @@ import ore.{Cacheable, Colors, OreConfig}
 import play.api.cache.CacheApi
 import util.PendingAction
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 /**
@@ -29,7 +30,7 @@ case class PendingProject(projects: ProjectBase,
                           var roles: Set[ProjectRole] = Set(),
                           override val cacheApi: CacheApi)
                          (implicit service: ModelService)
-                          extends PendingAction[Project]
+                          extends PendingAction[(Project, Version)]
                             with Cacheable {
 
   /**
@@ -43,20 +44,25 @@ case class PendingProject(projects: ProjectBase,
   val pendingVersion: PendingVersion = {
     val version = this.factory.startVersion(this.file, this.underlying, this.channelName)
     val model = version.underlying
-    version.cache()
+    // TODO cache version.cache()
     version
   }
 
-  override def complete(): Try[Project] = Try {
+  override def complete(implicit ec: ExecutionContext): Future[(Project, Version)] = {
     free()
-    val newProject = this.factory.createProject(this).get
-    this.pendingVersion.project = newProject
-    val newVersion = this.factory.createVersion(this.pendingVersion).get
-    newProject.recommendedVersion = newVersion
-    newProject
+    for {
+      newProject <- this.factory.createProject(this)
+      newVersion <- {
+        this.pendingVersion.project = newProject
+        this.factory.createVersion(this.pendingVersion)
+      }
+    } yield {
+      newProject.recommendedVersion = newVersion
+      (newProject, newVersion)
+    }
   }
 
-  override def cancel() = {
+  override def cancel(implicit ec: ExecutionContext) = {
     free()
     this.file.delete()
     if (this.underlying.isDefined)

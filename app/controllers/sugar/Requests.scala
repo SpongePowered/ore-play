@@ -22,9 +22,7 @@ object Requests {
     * @param user     Authenticated user
     * @param request  Request to wrap
     */
-  case class AuthRequest[A](override val user: User, request: Request[A])
-    extends WrappedRequest[A](request)
-      with ScopedRequest[A]
+  case class AuthRequest[A](override val user: User, request: Request[A]) extends WrappedRequest[A](request) with ScopedRequest[A]
 
   /**
     * A request that holds a [[Project]].

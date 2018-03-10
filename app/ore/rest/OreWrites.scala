@@ -44,6 +44,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
     def writes(channel: Channel) = obj("name" -> channel.name, "color" -> channel.color.hex)
   }
 
+  /* TODO writes?
   implicit val memberWrites = new Writes[ProjectMember] {
     def writes(member: ProjectMember) = {
       obj(
@@ -54,6 +55,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
       )
     }
   }
+  */
 
   implicit val tagWrites = new Writes[Tag] {
     override def writes(tag: Tag): JsValue = {
@@ -77,6 +79,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
     }
   }
 
+  /*
   implicit val versionWrites = new Writes[Version] {
     def writes(version: Version) = {
       val project = version.project
@@ -104,7 +107,9 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
       returnObject
     }
   }
+  */
 
+  /*
   implicit val projectWrites = new Writes[Project] {
     def writes(project: Project) = {
       val category = project.category
@@ -116,7 +121,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
         "description"   ->  project.description,
         "href"          ->  ('/' + project.ownerName + '/' + project.slug),
         "members"       ->  project.memberships.members.filter(_.roles.exists(_.isAccepted)),
-        "channels"      ->  toJson(project.channels.toSeq),
+        "channels"      ->  toJson(project.channels.toSeq fut),
         "recommended"   ->  toJson(project.recommendedVersion),
         "category"      ->  obj("title" -> category.title, "icon" -> category.icon),
         "views"         ->  project.viewCount,
@@ -125,7 +130,10 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
       )
     }
   }
+  */
 
+
+  /*TODO writes?
   implicit val userWrites = new Writes[User] {
     def writes(user: User) = {
       obj(
@@ -139,6 +147,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
       )
     }
   }
+  */
 
   implicit val pgpPublicKeyInfoWrites = new Writes[PGPPublicKeyInfo] {
     def writes(key: PGPPublicKeyInfo) = {

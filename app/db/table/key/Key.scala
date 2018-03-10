@@ -11,9 +11,6 @@ import slick.jdbc.JdbcType
   */
 class Key[M <: Model, A](val ref: M#T => Rep[A], val getter: M => A)(implicit mapper: JdbcType[A]) {
 
-  def update(model: M) = {
-    val service = model.service
-    service.await(service.set(model, this.ref, getter(model)))
-  }
+  def update(model: M) = model.service.set(model, this.ref, getter(model))
 
 }

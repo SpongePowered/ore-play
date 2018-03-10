@@ -7,8 +7,9 @@ import db.impl.model.OreModel
 import db.table.AssociativeTable
 import models.user.User
 import models.user.role.RoleModel
-import ore.permission.role.Default
+import ore.permission.role.{Default, Trust}
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
 /**
@@ -34,7 +35,7 @@ trait MembershipDossier {
   private def association
   = this.model.schema.getAssociation[MembersTable, User](this.membersTableClass, this.model)
   private def roleAccess: ModelAccess[RoleType] = this.model.service.access[RoleType](roleClass)
-  private def addMember(user: User) = this.association.add(user)
+  private def addMember(user: User)(implicit ec: ExecutionContext) = this.association.add(user)
 
   private def clearRoles(user: User) = this.roleAccess.removeAll(_.userId === user.id.get)
 
@@ -44,7 +45,7 @@ trait MembershipDossier {
     * @param userId User ID of member
     * @return       New Member
     */
-  def newMember(userId: Int): MemberType
+  def newMember(userId: Int)(implicit ec: ExecutionContext): MemberType
 
   /**
     * Returns all members of the model. This includes members that have not
@@ -52,10 +53,10 @@ trait MembershipDossier {
     *
     * @return All members
     */
-  def members: Set[MemberType] = {
-    this.association.all.map { user =>
+  def members(implicit ec: ExecutionContext): Future[Set[MemberType]] = {
+    this.association.all.map(_.map { user =>
       newMember(user.id.get)
-    }
+    })
   }
 
   /**
@@ -63,11 +64,14 @@ trait MembershipDossier {
     *
     * @param role Role to add
     */
-  def addRole(role: RoleType) = {
-    val user = role.user
-    if (!this.roles.exists(_.userId === user.id.get))
-      addMember(user)
-    this.roleAccess.add(role)
+  def addRole(role: RoleType)(implicit ec: ExecutionContext) = {
+    role.user.flatMap { user =>
+      this.roles.exists(_.userId === user.id.get).flatMap { exists =>
+        if (!exists) addMember(user) else Future.successful()
+      } flatMap { _ =>
+        this.roleAccess.add(role)
+      }
+    }
   }
 
   /**
@@ -76,7 +80,7 @@ trait MembershipDossier {
     * @param user User to get roles for
     * @return     User roles
     */
-  def getRoles(user: User): Set[RoleType] = this.roles.filter(_.userId === user.id.get).toSet
+  def getRoles(user: User)(implicit ec: ExecutionContext): Future[Set[RoleType]] = this.roles.filter(_.userId === user.id.get).map(_.toSet)
 
   /**
     * Returns the highest level of [[ore.permission.role.Trust]] this user has.
@@ -84,25 +88,24 @@ trait MembershipDossier {
     * @param user User to get trust of
     * @return Trust of user
     */
-  def getTrust(user: User) = {
-    this.members
-      .find(_.user.equals(user))
-      .flatMap(_.roles
-        .filter(_.isAccepted).toList.sorted.lastOption
-        .map(_.roleType.trust))
-      .getOrElse(Default)
-  }
+  def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust]
 
   /**
     * Removes a role from the dossier and removes the member if last role.
     *
     * @param role Role to remove
     */
-  def removeRole(role: RoleType) = {
-    this.roleAccess.remove(role)
-    val user = role.user
-    if (!this.roles.exists(_.userId === user.id.get))
-      removeMember(user)
+  def removeRole(role: RoleType)(implicit ec: ExecutionContext) = {
+    val checks = for {
+      _ <- this.roleAccess.remove(role)
+      user   <- role.user
+      exists <- this.roles.exists(_.userId === user.id.get)
+    } yield {
+      (exists, user)
+    }
+    checks.flatMap {
+      case (exists, user) => if (!exists) removeMember(user) else Future.successful()
+    }
   }
 
   /**
@@ -111,9 +114,10 @@ trait MembershipDossier {
     * @param user User to remove
     * @return
     */
-  def removeMember(user: User) = {
-    clearRoles(user)
-    this.association.remove(user)
+  def removeMember(user: User)(implicit ec: ExecutionContext) = {
+    clearRoles(user) flatMap { _ =>
+      this.association.remove(user)
+    }
   }
 
 }

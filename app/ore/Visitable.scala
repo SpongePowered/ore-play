@@ -1,5 +1,7 @@
 package ore
 
+import scala.concurrent.ExecutionContext
+
 /**
   * Represents anything that can be visited.
   */
@@ -10,7 +12,7 @@ trait Visitable {
     *
     * @return URL
     */
-  def url: String
+  def url(implicit ec: ExecutionContext): String
 
   /**
     * Returns this instance's name.

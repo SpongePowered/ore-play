@@ -9,7 +9,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import util.WSUtils.parseJson
 import play.api.libs.json._
-import play.api.libs.ws.{WSClient, WSResponse}
+import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -48,7 +48,7 @@ trait SpongeAuthApi {
   def createUser(username: String,
                  email: String,
                  password: String,
-                 verified: Boolean = false): Either[String, SpongeUser]
+                 verified: Boolean = false): Future[Either[String, SpongeUser]]
   = doCreateUser(username, email, password, verified)
 
   /**
@@ -59,14 +59,14 @@ trait SpongeAuthApi {
     * @param verified True if should bypass email verification
     * @return         Newly created user
     */
-  def createDummyUser(username: String, email: String, verified: Boolean = false): Either[String, SpongeUser]
+  def createDummyUser(username: String, email: String, verified: Boolean = false): Future[Either[String, SpongeUser]]
   = doCreateUser(username, email, null, verified, dummy = true)
 
   private def doCreateUser(username: String,
                            email: String,
                            password: String,
                            verified: Boolean = false,
-                           dummy: Boolean = false): Either[String, SpongeUser] = {
+                           dummy: Boolean = false): Future[Either[String, SpongeUser]] = {
     checkNotNull(username, "null username", "")
     checkNotNull(email, "null email", "")
     var params = Map(
@@ -77,7 +77,7 @@ trait SpongeAuthApi {
       "dummy" -> Seq(dummy.toString))
     if (password != null)
       params += "password" -> Seq(password)
-    readUser(this.ws.url(route("/api/users")).post(params))
+    readUser(this.ws.url(route("/api/users")).withRequestTimeout(timeout).post(params))
   }
 
   /**
@@ -86,10 +86,10 @@ trait SpongeAuthApi {
     * @param username Username to lookup
     * @return         User with username
     */
-  def getUser(username: String): Option[SpongeUser] = {
+  def getUser(username: String): Future[Option[SpongeUser]] = {
     checkNotNull(username, "null username", "")
     val url = route("/api/users/" + username) + s"?apiKey=$apiKey"
-    readUser(this.ws.url(url).get()).right.toOption
+    readUser(this.ws.url(url).withRequestTimeout(timeout).get()).map(_.right.toOption)
   }
 
   /**
@@ -98,14 +98,14 @@ trait SpongeAuthApi {
     * @param username Username to lookup
     * @return         Deleted user
     */
-  def deleteUser(username: String): Either[String, SpongeUser] = {
+  def deleteUser(username: String): Future[Either[String, SpongeUser]] = {
     checkNotNull(username, "null username", "")
     val url = route("/api/users") + s"?username=$username&apiKey=$apiKey"
-    readUser(this.ws.url(url).delete())
+    readUser(this.ws.url(url).withRequestTimeout(timeout).delete())
   }
 
-  private def readUser(response: Future[WSResponse], nullable: Boolean = false): Either[String, SpongeUser] = {
-    await(response.map(parseJson(_, Logger)).map(_.map { json =>
+  private def readUser(response: Future[WSResponse], nullable: Boolean = false): Future[Either[String, SpongeUser]] = {
+    response.map(parseJson(_, Logger)).map(_.map { json =>
       val obj = json.as[JsObject]
       if (obj.keys.contains("error"))
         Left((obj \ "error").as[String])
@@ -119,10 +119,8 @@ trait SpongeAuthApi {
       case e =>
         Logger.error("An unexpected error occured while handling a response", e)
         Left("error.spongeauth.unexpected")
-    })
+    }
   }
-
-  private def await[A](future: Future[A]): A = Await.result(future, this.timeout)
 
   private def route(route: String) = this.url + route
 

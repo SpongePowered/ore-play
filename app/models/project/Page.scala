@@ -29,6 +29,8 @@ import ore.{OreConfig, Visitable}
 import play.twirl.api.Html
 import util.StringUtils._
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a documentation page within a project.
   *
@@ -115,13 +117,18 @@ case class Page(override val id: Option[Int] = None,
     *
     * @return Optional Project
     */
-  def parentProject: Option[Project] = this.projectBase.get(projectId)
+  // TODO remove await
+  def parentProject: Option[Project] = this.service.await(this.projectBase.get(projectId)).get
 
   /**
     *
     * @return
     */
-  def parentPage: Option[Page] = if (parentProject.isDefined) { parentProject.get.pages.find(ModelFilter[Page](_.id === parentId).fn).lastOption } else { None }
+  // TODO remove await
+  def parentPage: Option[Page] = {
+    if (parentProject.isDefined) this.service.await(parentProject.get.pages.find(ModelFilter[Page](_.id === parentId).fn)).get
+    else None
+  }
 
   /**
     * Get the /:parent/:child
@@ -138,7 +145,7 @@ case class Page(override val id: Option[Int] = None,
   def children: ModelAccess[Page]
   = this.service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.get))
 
-  override def url: String = this.project.url + "/pages/" + this.fullSlug
+  override def url(implicit ec: ExecutionContext) : String = this.project.url + "/pages/" + this.fullSlug
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
 
 }

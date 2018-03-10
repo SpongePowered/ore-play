@@ -10,12 +10,12 @@ import models.project.{Project, Version}
 import models.user.SignOn
 import ore.{OreConfig, OreEnv}
 import play.api.i18n.{I18nSupport, Lang}
-import play.api.mvc.{Action, _}
+import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import util.StringUtils._
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * Represents a Secured base Controller for this application.
@@ -48,8 +48,11 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param request  Incoming request
     * @return         NotFound or function result
     */
-  def withProject(author: String, slug: String)(fn: Project => Result)(implicit request: Request[_]): Result
-  = this.projects.withSlug(author, slug).map(fn).getOrElse(notFound)
+  def withProject(author: String, slug: String)(fn: Project => Result)(implicit request: Request[_]): Future[Result]
+  = this.projects.withSlug(author, slug).map(_.map(fn).getOrElse(notFound))
+
+  def withProjectAsync(author: String, slug: String)(fn: Project => Future[Result])(implicit request: Request[_]): Future[Result]
+  = this.projects.withSlug(author, slug).flatMap(_.map(fn).getOrElse(Future(notFound)))
 
   /**
     * Executes the given function with the specified result or returns a
@@ -62,8 +65,12 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @return               NotFound or function result
     */
   def withVersion(versionString: String)(fn: Version => Result)
-                 (implicit request: Request[_], project: Project): Result
-  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).map(fn).getOrElse(notFound)
+                 (implicit request: Request[_], project: Project): Future[Result]
+  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).map(_.map(fn).getOrElse(notFound()))
+
+  def withVersionAsync(versionString: String)(fn: Version => Future[Result])
+                 (implicit request: Request[_], project: Project): Future[Result]
+  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).flatMap(_.map(fn).getOrElse(Future(notFound())))
 
   /** Ensures a request is authenticated */
   def Authenticated = Action andThen authAction

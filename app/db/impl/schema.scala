@@ -22,8 +22,8 @@ import ore.project.FlagReasons.FlagReason
 import ore.project.io.DownloadTypes.DownloadType
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
+import db.impl.OrePostgresDriver.OreDriver.categoryTypeMapper
 import ore.user.notification.NotificationTypes.NotificationType
-import slick.lifted.ProvenShape
 
 /*
  * Database schema definitions. Changes must be first applied as an evolutions

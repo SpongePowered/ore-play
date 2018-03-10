@@ -2,8 +2,8 @@ package ore.project.factory
 
 import java.nio.file.Files._
 import java.nio.file.StandardCopyOption
-
 import javax.inject.Inject
+
 import akka.actor.ActorSystem
 import com.google.common.base.Preconditions._
 import db.ModelService
@@ -30,6 +30,7 @@ import util.StringUtils._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
@@ -109,16 +110,26 @@ trait ProjectFactory {
 
   def processSubsequentPluginUpload(uploadData: PluginUpload,
                                     owner: User,
-                                    project: Project): Either[String, PendingVersion] = {
+                                    project: Project): Future[Either[String, PendingVersion]] = {
     val plugin = this.processPluginUpload(uploadData, owner)
     if (!plugin.meta.get.getId.equals(project.pluginId))
-      return Left("error.version.invalidPluginId")
-    val version = this.startVersion(plugin, project, project.channels.all.head.name)
-    val model = version.underlying
-    if (model.exists && this.config.projects.get[Boolean]("file-validate"))
-      return Left("error.version.duplicate")
-    version.cache()
-    Right(version)
+      return Future.successful(Left("error.version.invalidPluginId"))
+    val version = for {
+      projects <- project.channels.all
+    } yield {
+      this.startVersion(plugin, project, projects.head.name)
+    }
+    version.flatMap { version =>
+      val model = version.underlying
+      model.exists.map { exists =>
+        if (exists && this.config.projects.get[Boolean]("file-validate"))
+          Left("error.version.duplicate")
+        else {
+          // TODO cache version.cache()
+          Right(version)
+        }
+      }
+    }
   }
 
   /**
@@ -207,8 +218,9 @@ trait ProjectFactory {
       channelColor = this.config.defaultChannelColor,
       underlying = version,
       plugin = plugin,
-      createForumPost = if (project.id.isDefined) project.settings.forumSync else true,
-      cacheApi = this.cacheApi)
+      // TODO remove await
+      createForumPost = if (project.id.isDefined) this.service.await(project.settings).get.forumSync else true,
+      )
   }
 
   private def checkMeta(plugin: PluginFile): PluginMetadata
@@ -243,36 +255,47 @@ trait ProjectFactory {
     * @return         New Project
     * @throws         IllegalArgumentException if the project already exists
     */
-  def createProject(pending: PendingProject): Try[Project] = Try {
+  def createProject(pending: PendingProject): Future[Project] = {
     val project = pending.underlying
-    checkArgument(!this.projects.exists(project), "project already exists", "")
-    checkArgument(this.projects.isNamespaceAvailable(project.ownerName, project.slug), "slug not available", "")
-    checkArgument(this.config.isValidProjectName(pending.underlying.name), "invalid name", "")
 
-    // Create the project and it's settings
-    val newProject = this.projects.add(pending.underlying)
-    newProject.settings = pending.settings
-
-    // Invite members
-    val dossier = newProject.memberships
-    val owner = newProject.owner
-    val ownerId = owner.id.get
-    val projectId = newProject.id.get
-
-    dossier.addRole(new ProjectRole(ownerId, RoleTypes.ProjectOwner, projectId, accepted = true, visible = true))
-    for (role <- pending.roles) {
-      val user = role.user
-      dossier.addRole(role.copy(projectId = projectId))
-      user.sendNotification(Notification(
-        originId = ownerId,
-        notificationType = NotificationTypes.ProjectInvite,
-        message = messages("notification.project.invite", role.roleType.title, project.name)
-      ))
+    val checks = for {
+      exists <- this.projects.exists(project)
+      available <- this.projects.isNamespaceAvailable(project.ownerName, project.slug)
+    } yield {
+      checkArgument(!exists, "project already exists", "")
+      checkArgument(available, "slug not available", "")
+      checkArgument(this.config.isValidProjectName(pending.underlying.name), "invalid name", "")
     }
 
-    Try(this.forums.await(this.forums.createProjectTopic(newProject)))
+    // Create the project and it's settings
+    for {
+      _ <- checks
+      newProject <- this.projects.add(pending.underlying)
+    } yield {
+      newProject.updateSettings(pending.settings)
 
-    newProject
+      // Invite members
+      val dossier = newProject.memberships
+      val owner = newProject.owner
+      val ownerId = owner.userId
+      val projectId = newProject.id.get
+
+      dossier.addRole(new ProjectRole(ownerId, RoleTypes.ProjectOwner, projectId, accepted = true, visible = true))
+      pending.roles.map { role =>
+        role.user.map { user =>
+          dossier.addRole(role.copy(projectId = projectId))
+          user.sendNotification(Notification(
+            originId = ownerId,
+            notificationType = NotificationTypes.ProjectInvite,
+            message = messages("notification.project.invite", role.roleType.title, project.name)
+          ))
+        }
+      }
+
+      this.forums.createProjectTopic(newProject)
+
+      newProject
+    }
   }
 
   /**
@@ -283,14 +306,21 @@ trait ProjectFactory {
     * @param color    Channel color
     * @return         New channel
     */
-  def createChannel(project: Project, name: String, color: Color, nonReviewed: Boolean): Channel = {
+  def createChannel(project: Project, name: String, color: Color, nonReviewed: Boolean): Future[Channel] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     checkNotNull(name, "null name", "")
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
     checkNotNull(color, "null color", "")
-    checkState(project.channels.size < this.config.projects.get[Int]("max-channels"), "channel limit reached", "")
-    this.service.access[Channel](classOf[Channel]).add(new Channel(name, color, project.id.get))
+    val checks = for {
+      channelCount <- project.channels.size
+    } yield {
+      checkState(channelCount < this.config.projects.get[Int]("max-channels"), "channel limit reached", "")
+    }
+
+    checks.flatMap { _ =>
+      this.service.access[Channel](classOf[Channel]).add(new Channel(name, color, project.id.get))
+    }
   }
 
   /**
@@ -299,49 +329,73 @@ trait ProjectFactory {
     * @param pending  PendingVersion
     * @return         New version
     */
-  def createVersion(pending: PendingVersion): Try[Version] = Try {
-    var channel: Channel = null
+  def createVersion(pending: PendingVersion): Future[Version] = {
     val project = pending.project
 
-    // Create channel if not exists
-    project.channels.find(equalsIgnoreCase(_.name, pending.channelName)) match {
-      case None =>
-        channel = createChannel(project, pending.channelName, pending.channelColor, nonReviewed = false)
-      case Some(existing) =>
-        channel = existing
+    val pendingVersion = pending.underlying
+
+    val channel = for {
+      // Create channel if not exists
+      channel <- getOrCreateChannel(pending, project)
+      exists <- pendingVersion.exists
+    } yield {
+      if (exists && this.config.projects.get[Boolean]("file-validate"))
+        throw new IllegalArgumentException("Version already exists.")
+      channel
     }
 
     // Create version
-    val pendingVersion = pending.underlying
-    if (pendingVersion.exists && this.config.projects.get[Boolean]("file-validate"))
-      throw new IllegalArgumentException("Version already exists.")
+    val newVersion = channel.flatMap { channel =>
+      val newVersion = Version(
+        versionString = pendingVersion.versionString,
+        dependencyIds = pendingVersion.dependencyIds,
+        _description = pendingVersion.description,
+        assets = pendingVersion.assets,
+        projectId = project.id.get,
+        channelId = channel.id.get,
+        fileSize = pendingVersion.fileSize,
+        hash = pendingVersion.hash,
+        _authorId = pendingVersion.authorId,
+        fileName = pendingVersion.fileName,
+        signatureFileName = pendingVersion.signatureFileName
+      )
+      this.service.access[Version](classOf[Version]).add(newVersion)
+    }
 
-    val newVersion = this.service.access[Version](classOf[Version]).add(Version(
-      versionString = pendingVersion.versionString,
-      dependencyIds = pendingVersion.dependencyIds,
-      _description = pendingVersion.description,
-      assets = pendingVersion.assets,
-      projectId = project.id.get,
-      channelId = channel.id.get,
-      fileSize = pendingVersion.fileSize,
-      hash = pendingVersion.hash,
-      _authorId = pendingVersion.authorId,
-      fileName = pendingVersion.fileName,
-      signatureFileName = pendingVersion.signatureFileName
-    ))
+    for {
+      channel <- channel
+      newVersion <- newVersion
+    } yield {
+      addTags(newVersion, SpongeApiId, "Sponge", TagColors.Sponge)
+      addTags(newVersion, ForgeId, "Forge", TagColors.Forge)
 
-    def addTags(dependencyName: String, tagName: String, tagColor: TagColor): Unit = {
-      val dependenciesMatchingName = newVersion.dependencies.filter(_.pluginId == dependencyName)
-      if (dependenciesMatchingName.nonEmpty) {
-        val dependency = dependenciesMatchingName.head
+      // Notify watchers
+      this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, messages))
 
-        if (!dependencyVersionRegex.pattern.matcher(dependency.version).matches()) {
-          return
-        }
+      project.lastUpdated = this.service.theTime
 
-        val tagsWithVersion = service.access(classOf[ProjectTag])
-          .filter(t => t.name === tagName && t.data === dependency.version).toList
+      uploadPlugin(project, channel, pending.plugin, newVersion)
 
+      if (project.topicId != -1 && pending.createForumPost) {
+        this.forums.postVersionRelease(project, newVersion, newVersion.description)
+      }
+      newVersion
+    }
+  }
+
+  private def addTags(newVersion: Version, dependencyName: String, tagName: String, tagColor: TagColor): Unit = {
+    val dependenciesMatchingName = newVersion.dependencies.filter(_.pluginId == dependencyName)
+    if (dependenciesMatchingName.nonEmpty) {
+      val dependency = dependenciesMatchingName.head
+
+      if (!dependencyVersionRegex.pattern.matcher(dependency.version).matches()) {
+        return
+      }
+
+      for {
+        tagsWithVersion <- service.access(classOf[ProjectTag])
+        .filter(t => t.name === tagName && t.data === dependency.version)
+      } yield {
         if (tagsWithVersion.isEmpty) {
           val tag = Tag(
             _versionIds = List(newVersion.id.get),
@@ -349,10 +403,9 @@ trait ProjectFactory {
             data = dependency.version,
             color = tagColor
           )
-          service.access(classOf[ProjectTag]).add(tag)
-          // requery the tag because it now includes the id
-          val newTag = service.access(classOf[ProjectTag]).filter(t => t.name === tag.name && t.data === tag.data).toList.head
-          newVersion.addTag(newTag)
+          val newTag = service.access(classOf[ProjectTag]).add(tag)
+          newTag.map(newVersion.addTag)
+
         } else {
           val tag = tagsWithVersion.head
           tag.addVersionId(newVersion.id.get)
@@ -360,21 +413,14 @@ trait ProjectFactory {
         }
       }
     }
+  }
 
-    addTags(SpongeApiId, "Sponge", TagColors.Sponge)
-    addTags(ForgeId, "Forge", TagColors.Forge)
 
-    // Notify watchers
-    this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, messages))
-
-    project.lastUpdated = this.service.theTime
-
-    uploadPlugin(project, channel, pending.plugin, newVersion)
-
-    if (project.topicId != -1 && pending.createForumPost) {
-      this.forums.postVersionRelease(project, newVersion, newVersion.description)
+  private def getOrCreateChannel(pending: PendingVersion, project: Project) = {
+    project.channels.find(equalsIgnoreCase(_.name, pending.channelName)) flatMap {
+      case Some(existing) => Future.successful(existing)
+      case None => createChannel(project, pending.channelName, pending.channelColor, nonReviewed = false)
     }
-    newVersion
   }
 
   private def uploadPlugin(project: Project, channel: Channel, plugin: PluginFile, version: Version): Try[Unit] = Try {
