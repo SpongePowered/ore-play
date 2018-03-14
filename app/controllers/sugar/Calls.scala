@@ -13,7 +13,7 @@ trait Calls {
   /**
     * A call to the home page.
     */
-  val ShowHome = routes.Application.showHome(None, None, None, None, None)
+  val ShowHome: Call = routes.Application.showHome(None, None, None, None, None)
 
   /**
     * A call to a [[User]] page.
@@ -21,7 +21,7 @@ trait Calls {
     * @param username Username of user
     * @return         Call to user page
     */
-  def ShowUser(username: String) = routes.Users.showProjects(username, None)
+  def ShowUser(username: String): Call = routes.Users.showProjects(username, None)
 
   /**
     * A call to a [[User]] page.
@@ -38,9 +38,9 @@ trait Calls {
     * @param slug   Project slug
     * @return       Call to project page
     */
-  def ShowProject(author: String, slug: String) = controllers.project.routes.Projects.show(author, slug)
+  def ShowProject(author: String, slug: String): Call = controllers.project.routes.Projects.show(author, slug)
 
-  def ShowProject(pluginId: String) = controllers.project.routes.Projects.showProjectById(pluginId)
+  def ShowProject(pluginId: String): Call = controllers.project.routes.Projects.showProjectById(pluginId)
 
   /**
     * A call to a [[Project]] page.

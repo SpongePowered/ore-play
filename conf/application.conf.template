@@ -182,6 +182,7 @@ discourse {
     
     api {
         enabled       =   true
+        key           =   "changeme"
         key           =   ${?DISCOURSE_API_KEY}
         admin         =   windy
         timeout       =   10000ms

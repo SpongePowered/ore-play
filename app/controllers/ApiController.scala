@@ -155,7 +155,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
   private def error(key: String, error: String) = Json.obj("errors" -> Map(key -> List(this.messagesApi(error))))
 
-  def deployVersion(version: String, pluginId: String, name: String) = (Action andThen projectAction(pluginId)).async { implicit request =>
+  def deployVersion(version: String, pluginId: String, name: String) = ProjectAction(pluginId).async { implicit request =>
     version match {
       case "v1" =>
         val project = request.project

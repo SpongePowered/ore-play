@@ -23,7 +23,7 @@ import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io.{InvalidPluginFileException, PluginFile, PluginUpload, ProjectFiles}
 import ore.user.notification.NotificationTypes
 import org.spongepowered.plugin.meta.PluginMetadata
-import play.api.cache.CacheApi
+import play.api.cache.SyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import security.pgp.PGPVerifier
 import util.StringUtils._
@@ -48,7 +48,7 @@ trait ProjectFactory {
   implicit val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
 
   val fileManager: ProjectFiles = this.projects.fileManager
-  val cacheApi: CacheApi
+  val cacheApi: SyncCacheApi
   val actorSystem: ActorSystem
   val pgp: PGPVerifier = new PGPVerifier
   val dependencyVersionRegex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
@@ -85,8 +85,8 @@ trait ProjectFactory {
     if (!owner.isPgpPubKeyReady)
       throw new IllegalArgumentException("error.plugin.pubKey.cooldown")
 
-    var pluginPath = uploadData.pluginFile.file.toPath
-    var sigPath = uploadData.signatureFile.file.toPath
+    var pluginPath = uploadData.pluginFile.path
+    var sigPath = uploadData.signatureFile.path
 
     // verify detached signature
     if (!this.pgp.verifyDetachedSignature(pluginPath, sigPath, owner.pgpPubKey.get))
@@ -449,7 +449,7 @@ trait ProjectFactory {
 class OreProjectFactory @Inject()(override val service: ModelService,
                                   override val config: OreConfig,
                                   override val forums: OreDiscourseApi,
-                                  override val cacheApi: CacheApi,
+                                  override val cacheApi: SyncCacheApi,
                                   override val messages: MessagesApi,
                                   override val actorSystem: ActorSystem)
                                   extends ProjectFactory

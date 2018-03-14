@@ -11,7 +11,7 @@ import models.project.{Channel, Project, ProjectSettings, Version}
 import models.user.User
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
-import play.api.cache.CacheApi
+import play.api.cache.SyncCacheApi
 
 /**
   * Utility class for performing some bulk actions on the application data.
@@ -22,7 +22,7 @@ final class DataHelper @Inject()(config: OreConfig,
                                  service: ModelService,
                                  factory: ProjectFactory,
                                  forums: OreDiscourseApi,
-                                 cacheApi: CacheApi) {
+                                 cacheApi: SyncCacheApi) {
 
   implicit private val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
   private val channels: ModelAccess[Channel] = this.service.access[Channel](classOf[Channel])

@@ -1,13 +1,13 @@
 package ore
 
-import play.api.cache.CacheApi
+import play.api.cache.SyncCacheApi
 
 /**
   * Represents something that can be added to the Cache.
   */
 trait Cacheable {
 
-  def cacheApi: CacheApi
+  def cacheApi: SyncCacheApi
 
   /**
     * Returns the key to this in the Cache.

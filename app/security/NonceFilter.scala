@@ -5,16 +5,19 @@ import java.util.Base64
 import javax.inject.Inject
 
 import akka.stream.Materializer
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.libs.typedmap.TypedKey
 import play.api.mvc.{Filter, RequestHeader, Result}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 object NonceFilter {
 
+  val NonceKey: TypedKey[String] = TypedKey("nonce")
+
   def nonce(implicit request: RequestHeader): String = {
     if (request != null) {
-      request.tags("nonce")
+      request.attrs.get(NonceKey).getOrElse("")
     } else {
       ""
     }
@@ -28,7 +31,7 @@ class NonceFilter @Inject() (implicit val mat: Materializer) extends Filter {
 
   override def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
     val nonce = generateNonce
-    next(request.withTag("nonce", nonce)).map { result =>
+    next(request.addAttr(NonceFilter.NonceKey, nonce)).map { result =>
       result.withHeaders("Content-Security-Policy" -> result.header.headers("Content-Security-Policy")
         .replace("%NONCE-SOURCE%", s"nonce-$nonce"))
     }

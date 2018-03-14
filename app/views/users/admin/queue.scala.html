@@ -175,11 +175,11 @@
     <script nonce="@nonce">
         $(function(){
             var momentNow = moment();
-            var maxDiffrence = @config.ore.get[Configuration]("queue").get[Int]("max-review-time")OrElse(86400000);
+            var maxDifference = @config.ore.get[Configuration]("queue").getOptional[Int]("max-review-time").getOrElse(86400000);
             $('span[data-ago]').each(function() {
                 var momentAgo = moment($(this).data('ago'))
                 $(this).text($(this).data('title') + momentAgo.fromNow());
-                if (momentNow.diff(momentAgo) >= maxDiffrence) {
+                if (momentNow.diff(momentAgo) >= maxDifference) {
                     $(this).text('pastdue ' + momentAgo.fromNow()).css('color', 'darkred');
                     $(this).parent().parent().find('.status').removeClass().addClass('status fa fa-fw fa-clock-o fa-2x').css('color', 'darkred');
                 }
