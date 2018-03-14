@@ -370,7 +370,7 @@ trait ProjectFactory {
       // Notify watchers
       this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, messages))
 
-      project.lastUpdated = this.service.theTime
+      project.setLastUpdated(this.service.theTime)
 
       uploadPlugin(project, channel, pending.plugin, newVersion)
 

@@ -134,8 +134,8 @@ class ProjectBase(override val service: ModelService,
     }
     future.flatMap { _ =>
       this.fileManager.renameProject(project.ownerName, project.name, newName)
-      project.name = newName
-      project.slug = newSlug
+      project.setName(newName)
+      project.setSlug(newSlug)
 
       // Project's name alter's the topic title, update it
       if (project.topicId != -1 && this.forums.isEnabled)
@@ -199,7 +199,7 @@ class ProjectBase(override val service: ModelService,
       rv <- proj.recommendedVersion
       projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
     } yield {
-      if (version.equals(rv)) proj.recommendedVersion = projects.filterNot(_.equals(version)).head
+      if (version.equals(rv)) proj.setRecommendedVersion(projects.filterNot(_.equals(version)).head)
       proj
     }
 

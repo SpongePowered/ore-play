@@ -4,10 +4,13 @@
 @import ore.OreConfig
 @import views.html.helper.form
 @import views.html.helper.CSRF
-@()(implicit messages: Messages, flash: Flash, request: Request[_], service: ModelService, config: OreConfig,
-        userBase: UserBase)
+@import views.html.utils.alert
+@import models.viewhelper.HeaderData
 
-@bootstrap.layout(messages("org.create")) {
+
+@(headerData: HeaderData)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
+
+@bootstrap.layout(messages("org.create"), headerData: HeaderData) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/orgCreate.js")"></script>
 
@@ -22,7 +25,7 @@
                     </div>
 
                     <div class="project-body panel-body">
-                        @utils.alert("error")
+                        @alert("error")
 
                         <p class="minor"> @messages("org.info")</p>
 
@@ -39,7 +42,7 @@
                             </div>
                         }
 
-                        @users.invite.form(owner = userBase.current.get, roleClass = classOf[OrganizationRole])
+                        @users.invite.form(owner = headerData.currentUser.get, roleClass = classOf[OrganizationRole])
 
                         <button title="Continue" type="submit" name="create" form="form-continue"
                                 value="@messages("general.continue")"

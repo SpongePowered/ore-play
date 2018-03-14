@@ -127,7 +127,8 @@ final class Application @Inject()(data: DataHelper,
     }
     fullList map { list =>
       val lists = list.partition(_._3 == 0)
-      Ok(views.users.admin.queue(lists._1.map(a => (a._1, a._2)), lists._2.map(a => (a._1, a._2))))
+      val headerData: HeaderData = null // TODO headerdata
+      Ok(views.users.admin.queue(headerData, lists._1.map(a => (a._1, a._2)), lists._2.map(a => (a._1, a._2))))
     }
 
   }
@@ -216,7 +217,7 @@ final class Application @Inject()(data: DataHelper,
     */
   def reset() = (Authenticated andThen PermissionAction[AuthRequest](ResetOre)) { implicit request =>
     this.config.checkDebug()
-    this.data.reset()
+    this.data.reset
     Redirect(ShowHome).withNewSession
   }
 

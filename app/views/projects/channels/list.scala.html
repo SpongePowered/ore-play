@@ -5,23 +5,24 @@
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
-@(project: Project, channels: Seq[Channel])(implicit messages: Messages, flash: Flash, request: Request[_],
+@import models.viewhelper.ProjectData
+@(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: Request[_],
         service: ModelService, config: OreConfig, users: UserBase)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @channelRoutes = @{controllers.project.routes.Channels}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("channel.list.title", project.ownerName, project.slug)) {
+@bootstrap.layout(messages("channel.list.title", p.p.ownerName, p.p.slug), p.global) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
     <script nonce="@nonce">
-        PROJECT_OWNER = '@project.ownerName';
-        PROJECT_SLUG = '@project.slug';
+        PROJECT_OWNER = '@p.p.ownerName';
+        PROJECT_SLUG = '@p.p.slug';
         $(function() {
             initChannelManager(
                     "#channel-new", "", "@config.defaultChannelColor.hex", "New channel",
-                    "@channelRoutes.create(project.ownerName, project.slug)",
+                    "@channelRoutes.create(p.p.ownerName, p.p.slug)",
                     "post", "Create channel", false
             );
         });
@@ -46,24 +47,24 @@
                                 @channels.sorted.map { channel =>
                                     <tr>
                                         <td>
-                                            <div class="channel" style="background-color: @channel.color.hex">@channel.name</div>
+                                            <div class="channel" style="background-color: @channel.color.hex">@channel._1.name</div>
                                         </td>
                                         <td>
-                                            <div class="btn btn-sm yellow" data-toggle="modal" data-target="#channel-settings" id="channel-edit-@channel.id">Edit</div>
+                                            <div class="btn btn-sm yellow" data-toggle="modal" data-target="#channel-settings" id="channel-edit-@channel._1.id">Edit</div>
                                         </td>
                                         @if(channels.size > 1) {
                                             <td>
                                                 <div class="btn btn-sm yellow"
-                                                    @if(channel.versions.nonEmpty) {
-                                                        id="channel-delete-@channel.id" data-toggle="modal"
+                                                    @if(channel._2 > 0) {
+                                                        id="channel-delete-@channel._1.id" data-toggle="modal"
                                                         data-target="#modal-delete">
                                                     } else {
-                                                        id="channel-delete-@channel.id.get" data-channel-delete="safe-delete"
-                                                        data-channel-id="@channel.id.get">
+                                                        id="channel-delete-@channel._1.id.get" data-channel-delete="safe-delete"
+                                                        data-channel-id="@channel._1.id.get">
 
                                                         @form(action = channelRoutes.delete(
-                                                            project.ownerName, project.slug, channel.name),
-                                                            'id -> s"form-delete-${channel.id.get}",
+                                                            p.p.ownerName, p.p.slug, channel._1.name),
+                                                            'id -> s"form-delete-${channel._1.id.get}",
                                                             'class -> "form-channel-delete") {
                                                             @CSRF.formField
                                                         }
@@ -75,19 +76,19 @@
                                   </tr>
                                     <script nonce="@nonce">
                                       $(function() {
-                                          initChannelDelete('#channel-delete-@channel.id', '@channel.name', @channel.versions.size);
+                                          initChannelDelete('#channel-delete-@channel._1.id', '@channel._1.name', @channel._2);
                                           initChannelManager(
-                                                  "#channel-edit-@channel.id", "@channel.name", "@channel.color.hex",
+                                                  "#channel-edit-@channel._1.id", "@channel._1.name", "@channel._1.color.hex",
                                                   "Edit channel", "@channelRoutes.save(
-                                                    project.ownerName, project.slug, channel.name)",
-                                                  "post", "Save changes", @channel.isNonReviewed
+                                                    p.p.ownerName, p.p.slug, channel._1.name)",
+                                                  "post", "Save changes", @channel._1.isNonReviewed
                                           );
                                       });
                                   </script>
                                 }
                             </tbody>
                         </table>
-                        <a href="@versionRoutes.showList(project.ownerName, project.slug, None, None)"
+                        <a href="@versionRoutes.showList(p.p.ownerName, p.p.slug, None, None)"
                            class="pull-left btn btn-default">
                             <i class="fa fa-arrow-left"></i>
                         </a>

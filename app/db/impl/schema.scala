@@ -264,7 +264,7 @@ class OrganizationTable(tag: RowTag) extends ModelTable[Organization](tag, "orga
   override def id   =   column[Int]("id", O.PrimaryKey)
   def userId        =   column[Int]("user_id")
 
-  override def * = (id.?, createdAt.?, name, userId) <> (Organization.tupled, Organization.unapply)
+  override def * = (id.?, createdAt.?, name, userId) <> ((Organization.apply _).tupled, Organization.unapply)
 
 }
 

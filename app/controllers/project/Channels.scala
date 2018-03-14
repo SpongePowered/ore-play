@@ -6,6 +6,7 @@ import controllers.OreBaseController
 import controllers.sugar.Bakery
 import db.ModelService
 import form.OreForms
+import models.viewhelper.ProjectData
 import ore.permission.EditChannels
 import ore.project.factory.ProjectFactory
 import ore.{OreConfig, OreEnv}
@@ -44,7 +45,9 @@ class Channels @Inject()(forms: OreForms,
   def showList(author: String, slug: String) = ChannelEditAction(author, slug).async { implicit request =>
     val project = request.project
     project.channels.toSeq.map { list =>
-      Ok(views.list(project, list))
+      val projectData: ProjectData = null // TODO projectdata
+      val listWithVersionCount = list.map(c => (c, 0)) // TODO count
+      Ok(views.list(projectData, listWithVersionCount))
     }
   }
 

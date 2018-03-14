@@ -30,6 +30,7 @@ import security.spauth.SingleSignOnConsumer
 import util.StringUtils._
 import views.html.projects.{versions => views}
 import _root_.views.html.helper
+import models.viewhelper.VersionData
 import ore.project.factory.TagAlias.ProjectTag
 import util.JavaUtils.autoClose
 
@@ -71,7 +72,8 @@ class Versions @Inject()(stats: StatTracker,
     withVersionAsync(versionString) { version =>
       version.channel.map{ channel =>
           this.stats.projectViewed { implicit request =>
-           Ok(views.view(project, channel, version))
+            val versionData: VersionData = null // TODO fill versionData
+            Ok(views.view(versionData))
         }
       }
     }
@@ -107,7 +109,7 @@ class Versions @Inject()(stats: StatTracker,
     VersionEditAction(author, slug).async { implicit request =>
       implicit val project = request.project
       withVersion(versionString) { version =>
-        project.recommendedVersion = version
+        project.setRecommendedVersion( version)
         Redirect(self.show(author, slug, versionString))
       }
     }
@@ -321,7 +323,7 @@ class Versions @Inject()(stats: StatTracker,
 
                           pendingVersion.complete.map { newVersion =>
                             if (versionData.recommended)
-                              project.recommendedVersion = newVersion._1
+                              project.setRecommendedVersion(newVersion._1)
                             addUnstableTag(newVersion._1, versionData.unstable)
 
                             Redirect(self.show(author, slug, versionString))

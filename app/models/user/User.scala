@@ -23,6 +23,7 @@ import org.spongepowered.play.discourse.model.DiscourseUser
 import play.api.mvc.Request
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.SpongeUser
+import slick.lifted.TableQuery
 import util.StringUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -289,28 +290,35 @@ case class User(override val id: Option[Int] = None,
       case GlobalScope =>
         Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        // TODO this is horrible and could probably be done in one single query
-        val memberShips = pScope.project.memberships
-        memberShips.getTrust(this).flatMap { userTrust =>
-          if (userTrust.equals(Default)) {
-            memberShips.members.flatMap { members =>
-              val memberTrusts = members.map(member => (member, member.user.flatMap(_.isOrganization))).map {
-                case (member, isOrga) =>
-                  isOrga.flatMap {
-                    case false => Future.successful(Default)
-                    case true =>
-                      member.user.flatMap(_.toOrganization).flatMap { orga =>
-                        trustIn(orga)
-                      }
-                  }
-              }
-              // Find first Trust that is not Default
-              Future.find(memberTrusts) { t =>
-                !t.equals(Default)
-              }.map(_.getOrElse(Default)) // Or Default if none found
-            }
-          } else {
+        this.userBase.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId).result).map { l =>
+          val ordering: Ordering[ProjectRole] = Ordering.by(m => m.roleType.trust)
+          l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
+        } flatMap { userTrust =>
+          if (!userTrust.equals(Default)) {
             Future.successful(userTrust)
+          } else {
+
+            val projectTable = TableQuery[ProjectTableMain]
+            val projectMembersTable = TableQuery[ProjectMembersTable]
+            val orgaTable = TableQuery[OrganizationTable]
+
+            val memberTable = TableQuery[OrganizationMembersTable]
+            val roleTable = TableQuery[OrganizationRoleTable]
+
+            // TODO check logic
+            val query = for {
+              p <- projectTable if p.id === pScope.projectId
+              pm <- projectMembersTable if p.id === pm.projectId // Join members of project
+              o <- orgaTable if pm.userId == o.userId            // Filter out non organizations
+              m <- memberTable if m.organizationId === o.id
+              r <- roleTable if m.userId === r.userId && r.organizationId === o.id
+            } yield {
+              r.roleType
+            }
+
+            service.DB.db.run(query.result).map { l =>
+              l.map(_.trust).find(t => !t.equals(Default)).getOrElse(Default) // Find first non default trust
+            }
           }
         }
       case oScope: OrganizationScope =>

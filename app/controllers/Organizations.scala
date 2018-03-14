@@ -6,6 +6,7 @@ import controllers.sugar.Bakery
 import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
+import models.viewhelper.HeaderData
 import ore.permission.EditSettings
 import ore.rest.OreWrites
 import ore.user.MembershipDossier._
@@ -44,7 +45,10 @@ class Organizations @Inject()(forms: OreForms,
   def showCreator() = UserLock().async { implicit request =>
     request.user.ownedOrganizations.size.map { size =>
       if (size >= this.createLimit) Redirect(ShowHome).withError(this.messagesApi("error.org.createLimit", this.createLimit))
-      else Ok(views.createOrganization())
+      else {
+        val headerData: HeaderData = null // TODO headerdata
+        Ok(views.createOrganization(headerData))
+      }
     }
 
   }

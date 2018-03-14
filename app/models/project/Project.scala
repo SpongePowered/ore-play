@@ -84,7 +84,6 @@ case class Project(override val id: Option[Int] = None,
                      with Downloadable
                      with Named
                      with Describable
-                     with Visitable
                      with Hideable
                      with Joinable[ProjectMember] {
 
@@ -113,19 +112,6 @@ case class Project(override val id: Option[Int] = None,
 
     def newMember(userId: Int)(implicit ec: ExecutionContext): MemberType = new ProjectMember(this.model, userId)
 
-    private def queryRoleForTrust(projectId: Rep[Int]) = {
-      val memberTable = TableQuery[ProjectMembersTable]
-      val roleTable = TableQuery[ProjectRoleTable]
-
-      for {
-        m <- memberTable if m.projectId === projectId
-        r <- roleTable if m.userId === r.userId && r.projectId === projectId
-      } yield {
-        r
-      }
-    }
-
-    private lazy val roleForTrustQuery = lifted.Compiled(queryRoleForTrust _)
 
     /**
       * Returns the highest level of [[ore.permission.role.Trust]] this user has.
@@ -134,7 +120,7 @@ case class Project(override val id: Option[Int] = None,
       * @return Trust of user
       */
     override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] = {
-      this.userBase.service.DB.db.run(roleForTrustQuery(id.get).result).map { l =>
+      this.userBase.service.DB.db.run(Project.roleForTrustQuery(id.get).result).map { l =>
         val ordering: Ordering[ProjectRole] = Ordering.by(m => m.roleType.trust)
         l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
       }
@@ -146,9 +132,7 @@ case class Project(override val id: Option[Int] = None,
     this(pluginId=pluginId, _name=compact(name), _slug=slugify(name), _ownerName=owner, _ownerId=ownerId)
   }
 
-  def isOwner(user: User) : Boolean = {
-    user.id.map(_ == _ownerId).getOrElse(false)
-  }
+  def isOwner(user: User) : Boolean = user.id.contains(_ownerId)
 
   /**
     * Returns the ID of the [[User]] that owns this Project.
@@ -224,7 +208,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param _name New name
     */
-  def name_=(_name: String) = {
+  def setName(_name: String) = {
     checkNotNull(_name, "null name", "")
     this._name = _name
     if (isDefined) update(Name)
@@ -242,7 +226,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param _slug New slug
     */
-  def slug_=(_slug: String) = {
+  def setSlug(_slug: String) = {
     checkNotNull(_slug, "null slug", "")
     this._slug = _slug
     if (isDefined) update(Slug)
@@ -255,7 +239,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Base URL for project
     */
-  override def url(implicit ec: ExecutionContext) : String = this.ownerName + '/' + this.slug
+  def url: String = this.ownerName + '/' + this.slug
 
   /**
     * Returns this Project's [[Category]].
@@ -269,7 +253,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param category Project category
     */
-  def category_=(category: Category) = {
+  def setCategory(category: Category) = {
     checkNotNull(category, "null category", "")
     this._category = category
     if (isDefined) update(ModelKeys.Category)
@@ -287,7 +271,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param description Project description.
     */
-  def description_=(description: String) = {
+  def setDescription(description: String) = {
     this._description = Option(description)
     if (isDefined) update(Description)
   }
@@ -373,7 +357,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param lastUpdated Last time project was updated
     */
-  def lastUpdated_=(lastUpdated: Timestamp) = {
+  def setLastUpdated(lastUpdated: Timestamp) = {
     checkNotNull(lastUpdated, "null timestamp", "")
     this._lastUpdated = lastUpdated
     if (isDefined) update(LastUpdated)
@@ -507,7 +491,7 @@ case class Project(override val id: Option[Int] = None,
     * @param _version  Version to set
     * @return         Result
     */
-  def recommendedVersion_=(_version: Version) = {
+  def setRecommendedVersion(_version: Version) = {
     checkNotNull(_version, "null version", "")
     checkArgument(_version.isDefined, "undefined version", "")
     this.recommendedVersionId = _version.id
@@ -587,7 +571,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param _topicId ID to set
     */
-  def topicId_=(_topicId: Int) = Defined {
+  def setTopicId(_topicId: Int) = Defined {
     this._topicId = _topicId
     update(TopicId)
   }
@@ -604,7 +588,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param _postId Forum post ID
     */
-  def postId_=(_postId: Int) = Defined {
+  def setPostId(_postId: Int) = Defined {
     this._postId = _postId
     update(PostId)
   }
@@ -710,6 +694,20 @@ case class Note(message: String, user: Int, time: Long = System.currentTimeMilli
 }
 
 object Project {
+
+  private def queryRoleForTrust(projectId: Rep[Int]) = {
+    val memberTable = TableQuery[ProjectMembersTable]
+    val roleTable = TableQuery[ProjectRoleTable]
+
+    for {
+      m <- memberTable if m.projectId === projectId
+      r <- roleTable if m.userId === r.userId && r.projectId === projectId
+    } yield {
+      r
+    }
+  }
+
+  lazy val roleForTrustQuery = lifted.Compiled(queryRoleForTrust _)
 
   /**
     * Helper class for easily building new Projects.

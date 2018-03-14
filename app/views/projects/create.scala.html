@@ -13,12 +13,13 @@ Page used for uploading and creating new projects.
 @import models.project.Tag
 @import models.project.TagColors
 @import views.html.utils
-@(pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_],
+@import models.viewhelper.HeaderData
+@(headerData: HeaderData, pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_],
         service: ModelService, config: OreConfig, users: UserBase)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
+@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2, headerData) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectCreateValidate.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>

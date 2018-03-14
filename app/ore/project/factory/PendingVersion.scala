@@ -49,7 +49,7 @@ case class PendingVersion(projects: ProjectBase,
       this.projects.deleteVersion(this.underlying)
   }
 
-  override def key: String = this.project.url + '/' + this.underlying.versionString
+  override def key(implicit ec: ExecutionContext): String = this.project.url + '/' + this.underlying.versionString
 
   def dependenciesAsGhostTags: Seq[Tag] = {
     var ghostFlags: Seq[Tag] = Seq()

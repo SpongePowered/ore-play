@@ -256,9 +256,10 @@ case class Version(override val id: Option[Int] = None,
     else {
       for {
         hashExists <- this.schema.hashExists(this.projectId, this.hash)
-        project <- this.project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
+        project <- this.project
+        pExists <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
       } yield {
-        hashExists && project
+        hashExists && pExists
       }
     }
   }

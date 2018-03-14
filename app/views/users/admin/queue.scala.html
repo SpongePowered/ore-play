@@ -6,15 +6,15 @@
 @import security.NonceFilter._
 
 @import play.api.Configuration
-@(underReview: Seq[(Project, Version)], versions: Seq[(Project, Version)])(implicit messages: Messages, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase)
+@import models.viewhelper.HeaderData
+@import models.admin.Review
+@(headerData: HeaderData, underReview: Seq[(Project, Version)], versions: Seq[(Project, Version)])(implicit messages: Messages, request: Request[_], config: OreConfig)
 
 @import java.sql.Timestamp
 @import java.time.Instant
 @versionRoutes = @{controllers.project.routes.Versions}
-@currentUserId = @{users.current.get.id.get}
 
-@bootstrap.layout(messages("user.queue")) {
+@bootstrap.layout(messages("user.queue"), headerData) {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/queue.js")"></script>
 
     <div class="container" style="margin-top: 90px">
@@ -50,7 +50,7 @@
                         }
                         @underReview.map { tuple =>
                             @defining(tuple._2.mostRecentUnfinishedReview) { currentReview =>
-                                <tr @if(currentReview.isDefined && currentUserId == (currentReview.get.userId)){ class="warning" }>
+                                <tr @if(currentReview.isDefined && headerData.currentUserId == (currentReview.get.userId)){ class="warning" }>
                                     <td>
                                         <a href="@versionRoutes.show(tuple._1.ownerName, tuple._1.slug, tuple._2.name)">
                                             @tuple._1.ownerName/<string>@tuple._1.name</string>

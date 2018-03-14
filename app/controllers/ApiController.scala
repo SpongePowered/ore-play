@@ -213,7 +213,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                       pendingVersion.channelName = formData.channel.name
                       pendingVersion.complete.map { newVersion =>
                         if (formData.recommended)
-                          project.recommendedVersion = newVersion._1
+                          project.setRecommendedVersion(newVersion._1)
                         Created(api.writeVersion(newVersion._1, project, newVersion._2, None, newVersion._3))
                       }
                   }

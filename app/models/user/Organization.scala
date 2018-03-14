@@ -61,19 +61,7 @@ case class Organization(override val id: Option[Int] = None,
 
     def newMember(userId: Int)(implicit ec: ExecutionContext) = new OrganizationMember(this.model, userId)
 
-    private lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
 
-    private def queryRoleForTrust(orgId: Rep[Int]) = {
-      val memberTable = TableQuery[OrganizationMembersTable]
-      val roleTable = TableQuery[OrganizationRoleTable]
-
-      for {
-        m <- memberTable if m.organizationId === orgId
-        r <- roleTable if m.userId === r.userId && r.organizationId === orgId
-      } yield {
-        r
-      }
-    }
 
     /**
       * Returns the highest level of [[ore.permission.role.Trust]] this user has.
@@ -82,7 +70,7 @@ case class Organization(override val id: Option[Int] = None,
       * @return Trust of user
       */
     override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] = {
-      this.userBase.service.DB.db.run(roleForTrustQuery(id.get).result).map { l =>
+      this.userBase.service.DB.db.run(Organization.roleForTrustQuery(id.get).result).map { l =>
         val ordering: Ordering[OrganizationRole] = Ordering.by(m => m.roleType.trust)
         l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
       }
@@ -142,4 +130,20 @@ case class Organization(override val id: Option[Int] = None,
   override def organizationId: Int = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(createdAt = theTime)
 
+}
+
+object Organization {
+  lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
+
+  private def queryRoleForTrust(orgId: Rep[Int]) = {
+    val memberTable = TableQuery[OrganizationMembersTable]
+    val roleTable = TableQuery[OrganizationRoleTable]
+
+    for {
+      m <- memberTable if m.organizationId === orgId
+      r <- roleTable if m.userId === r.userId && r.organizationId === orgId
+    } yield {
+      r
+    }
+  }
 }

@@ -57,8 +57,8 @@ case class PendingProject(projects: ProjectBase,
         this.factory.createVersion(this.pendingVersion)
       }
     } yield {
-      newProject.recommendedVersion = newVersion
-      (newProject, newVersion)
+      newProject.setRecommendedVersion(newVersion._1)
+      (newProject, newVersion._1)
     }
   }
 

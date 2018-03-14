@@ -18,6 +18,7 @@ import play.api.libs.json.{JsObject, JsString, JsValue}
 import play.api.libs.json.Json.{obj, toJson}
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport.GeneralAggFunctions.arrayAgg
 import play.mvc.BodyParser.Json
+import slick.lifted.QueryBase
 import util.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -49,26 +50,29 @@ trait OreRestfulApi {
   def getProjectList(categories: Option[String], sort: Option[Int], q: Option[String],
                      limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
     val queries = this.service.getSchema(classOf[ProjectSchema])
-    val categoryArray: Option[Array[Category]] = categories.map(Categories.fromString)
+    val cats: Option[Seq[Category]] = categories.map(Categories.fromString).map(_.toSeq)
     val ordering = sort.map(ProjectSortingStrategies.withId(_).get).getOrElse(ProjectSortingStrategies.Default)
 
     val maxLoad = this.config.projects.get[Int]("init-load")
     val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
     def filteredProjects(offset: Option[Int], lim: Int) = {
-      val query = queryProject.filter { case (p, v, c) =>
+      val query = queryProjectRV.filter { case (p, v, c) =>
         val query = "%" + q.map(_.toLowerCase).getOrElse("") + "%"
         (p.name.toLowerCase like query) ||
           (p.description.toLowerCase like query) ||
           (p.ownerName.toLowerCase like query) ||
           (p.pluginId.toLowerCase like query)
       }
-      query.filter { case (p, v, c) =>
-        categoryArray.map {
-          p.category inSetBind _
-        } getOrElse true
-      } sortBy { case (p, v, c) =>
-        ordering
+      //categories.map(_.toSeq).map { cats =>
+      val filtered = cats.map { ca =>
+        query.filter { case (p, v, c) =>
+          p.category inSetBind ca
+        }
+      } getOrElse query
+
+      filtered sortBy { case (p, v, c) =>
+        ordering.fn.apply(p)
       } drop offset.getOrElse(-1) take lim
     }
 
@@ -86,7 +90,7 @@ trait OreRestfulApi {
 
 
 
-  private def writeProjects(projects: Seq[(Project, Version, Channel)]) = {
+  private def writeProjects(projects: Seq[(Project, Version, Channel)])(implicit ec: ExecutionContext) = {
     val projectIds = projects.flatMap(_._1.id)
     val versionIds = projects.flatMap(_._2.id)
 
@@ -104,7 +108,7 @@ trait OreRestfulApi {
           "href" -> ('/' + p.ownerName + '/' + p.slug),
           //"members"       ->  p.memberships.members.filter(_.roles.exists(_.isAccepted)), // TODO members
           "channels"      ->  toJson(chans.getOrElse(p.id.get, Seq.empty)),
-          "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id, Seq.empty))),                                                  // TODO channel(one) and tags
+          "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.get, Seq.empty))),                                                  // TODO channel(one) and tags
           "category" -> obj("title" -> p.category.title, "icon" -> p.category.icon),
           "views" -> p.viewCount,
           "downloads" -> p.downloadCount,
@@ -155,7 +159,7 @@ trait OreRestfulApi {
     }
   }
 
-  private def queryProject = {
+  private def queryProjectRV = {
     val tableProject = TableQuery[ProjectTableMain]
     val tableVersion = TableQuery[VersionTable]
     val tableChannels = TableQuery[ChannelTable]
@@ -176,8 +180,8 @@ trait OreRestfulApi {
     * @return Json value of project if found, None otherwise
     */
   def getProject(pluginId: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
-    val query = queryProject.filter {
-      case (p, v, c) => p.pluginId
+    val query = queryProjectRV.filter {
+      case (p, v, c) => p.pluginId === pluginId
     }
     for {
       project <- service.DB.db.run(query.result.headOption)
@@ -198,22 +202,34 @@ trait OreRestfulApi {
     */
   def getVersionList(pluginId: String, channels: Option[String],
                      limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
-    this.projects.withPluginId(pluginId).flatMap {
-      case None => Future(None)
-      case Some(project) =>
-        val filter = channels match {
-          case None => Future(ModelFilter.Empty)
-          case Some(c) =>
-            // Map channel names to IDs
-          project.channels.filter(_.name inSet c.toLowerCase().split(",")).map(_.map(_.id.getOrElse(-1)))
-          // Only allow versions in the specified channels
-            .map(service.getSchema(classOf[VersionSchema]).channelFilter(_))
-        }
-        val maxLoad = this.config.projects.get[Int]("init-version-load")
-        val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
-        filter.flatMap { f =>
-          project.versions.sorted(_.createdAt.desc, f.fn, lim, offset.getOrElse(-1)).map(toJson(_)).map(Some(_))
-        }
+
+    val filtered = channels.map { chan =>
+      queryVersions.filter { case (p, v, vId, c, uName) =>
+          // Only allow versions in the specified channels or all if none specified
+          c.name inSetBind chan.toLowerCase.split(",")
+      }
+    } getOrElse queryVersions filter {
+      case (p, v, vId, c, uName) =>
+        p.pluginId.toLowerCase === pluginId.toLowerCase
+    }
+
+
+    // val grouped = filtered.groupBy(_._1.*)
+    // TODO grouped type is nothing for some reason :/ grouping in memory instead below
+
+    val maxLoad = this.config.projects.get[Int]("init-version-load")
+    val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
+
+    val limited = filtered.drop(offset.getOrElse(-1)).take(lim)
+
+    for {
+      data <- service.DB.db.run(limited.result) // Get Project Version Channel and AuthorName
+      vTags <- service.DB.db.run(queryVersionTags(data.map(_._3)).result).map { p => p.groupBy(_._1) mapValues (_.map(_._2)) }
+    } yield {
+      val list = data.map { case (p, v, vId, c, uName) =>
+        writeVersion(v, p, c, Some(uName), vTags.getOrElse(vId, Seq.empty))
+      }
+      Some(toJson(list))
     }
   }
 
@@ -225,10 +241,39 @@ trait OreRestfulApi {
     * @return         JSON version if found, None otherwise
     */
   def getVersion(pluginId: String, name: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
-    this.projects.withPluginId(pluginId).flatMap {
-      case None => Future(None)
-      case Some(p) => p.versions.find(equalsIgnoreCase(_.versionString, name))
-    }.map(_.map(toJson(_)))
+
+    val filtered = queryVersions.filter { case (p, v, vId, c, uName) =>
+      p.pluginId.toLowerCase === pluginId.toLowerCase &&
+      v.versionString.toLowerCase === name.toLowerCase
+    }
+    // val grouped = filtered.groupBy(_._1.*)
+    // TODO grouped type is nothing for some reason :/
+
+    for {
+      data <- service.DB.db.run(filtered.result.headOption) // Get Project Version Channel and AuthorName
+      tags <- service.DB.db.run(queryVersionTags(data.map(_._3).toSeq).result).map(_.map(_._2)) // Get Tags
+    } yield {
+      data.map { case (p, v, _, c, uName) =>
+        writeVersion(v, p, c, Some(uName), tags)
+      }
+    }
+  }
+
+
+  private def queryVersions: Query[(ProjectTableMain, VersionTable, Rep[Int], ChannelTable, Rep[String]), (Project, Version, Int, Channel, String), Seq] = {
+    val tableProject = TableQuery[ProjectTableMain]
+    val tableVersion = TableQuery[VersionTable]
+    val tableChannels = TableQuery[ChannelTable]
+    val tableUsers = TableQuery[UserTable]
+
+    for {
+      p <- tableProject
+      v <- tableVersion if p.id === v.projectId
+      c <- tableChannels if v.channelId === c.id
+      u <- tableUsers if v.authorId === u.id
+    } yield {
+      (p, v, v.id, c, u.name)
+    }
   }
 
   /**
@@ -266,7 +311,27 @@ trait OreRestfulApi {
     */
   def getUserList(limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
     val userList = this.service.collect(modelClass = classOf[User], limit = limit.getOrElse(-1), offset = offset.getOrElse(-1))
-    userList.map(toJson(_))
+    userList.map(ul => toJson(ul.map(writeUser)))
+  }
+
+  def writeUser(user: User): JsObject = {
+    // TODO bulk select for users
+    for {
+      projects <- Future.successful(Seq.empty[(Project, Version, Channel)]) // TODO query projects
+      userProjects <- writeProjects(projects)
+      starred <- Future.successful(Seq.empty[String]) // TODO query starred plugin ids
+    } yield {
+      obj(
+        "id"              ->  user.id,
+        "createdAt"       ->  user.createdAt.get.toString,
+        "username"        ->  user.username,
+        "roles"           ->  user.globalRoles.map(_.title),
+        "starred"         ->  starred,
+        "avatarUrl"       ->  user.avatarUrl,
+        "projects"        ->  userProjects
+      )
+    }
+
   }
 
 
@@ -276,7 +341,8 @@ trait OreRestfulApi {
     * @param username Username of User
     * @return         JSON user if found, None otherwise
     */
-  def getUser(username: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = this.users.withName(username).map(_.map(toJson(_)))
+  def getUser(username: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] =
+    this.users.withName(username).map(_.map(u => toJson(writeUser(u))))
 
   /**
     * Returns a Json array of the tags on a project's version

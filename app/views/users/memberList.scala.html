@@ -7,17 +7,18 @@
 @import ore.{Joinable, OreConfig}
 @import views.html.helper.form
 @import views.html.helper.CSRF
-@(model: Joinable[_ <: Member[_]], editable: Boolean = false, removeCall: Call = null,
-        settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, service: ModelService,
-        config: OreConfig, userBase: UserBase, request: Request[_])
+@import models.viewhelper.HeaderData
+@* MemberData? with perms *@
+@(headerData: HeaderData, model: Joinable[_ <: Member[_]], editable: Boolean = false, removeCall: Call = null,
+        settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: Request[_])
 
 @canEdit = @{
-    editable && userBase.current.isDefined && (userBase.current.get can EditSettings in model)
+    editable && headerData.hasUser && (userBase.current.get can EditSettings in model)
 }
 
 @shouldShowMember(member: Member[_ <: RoleModel]) = @{
     val headRole = member.headRole
-    val isCurrentUsersProject = userBase.current.isDefined && userBase.current.get.username.equals(model.owner.user.name)
+    val isCurrentUsersProject = headerData.hasUser && headerData.currentUser.get.username.equals(model.owner.user.name)
     canEdit || headRole.isAccepted || isCurrentUsersProject
 }
 

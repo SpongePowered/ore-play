@@ -9,8 +9,11 @@
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
-@(user: User)(content: Html)(implicit messages: Messages, flash: Flash, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase)
+@import views.html.utils.alert
+@import views.html.utils.userAvatar
+@import views.html.utils.modal
+@import models.viewhelper.HeaderData
+@(headerData: HeaderData, user: User)(content: Html)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
 
 @canEditOrganization = @{
     user.isOrganization && users.current.isDefined && (users.current.get can EditSettings in user.toOrganization)
@@ -32,14 +35,14 @@
     if (user.isLocked) "fa-lock" else "fa-unlock-alt"
 }
 
-@bootstrap.layout(user.username) {
+@bootstrap.layout(user.username, headerData) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/userPage.js")"></script>
     <script nonce="@nonce">USERNAME = '@user.username';</script>
 
     <div class="container" style="margin-top: 90px">
 
-        @utils.alert("error")
+        @alert("error")
 
         @flash.get("pgp-updated").map { updated =>
           <script nonce="@nonce">
@@ -62,7 +65,7 @@
             <div class="header-body">
                 <!-- Title -->
                 <span class="user-badge">
-                    @utils.userAvatar(
+                    @userAvatar(
                         user = user,
                         clazz = "user-avatar-md" + (if (canEditOrganization) " organization-avatar" else ""),
                         href = "#",
@@ -152,7 +155,7 @@
                     @user.organizations.all.map { organization =>
                         <li class="organization-role" data-toggle="tooltip" data-placement="top"
                             data-title="@organization.name">
-                            @utils.userAvatar(organization.toUser, clazz = "user-avatar-xxs")
+                            @userAvatar(organization.toUser, clazz = "user-avatar-xxs")
                         </li>
                     }
 
@@ -270,13 +273,13 @@
         </div>
     </div>
 
-    @utils.modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
+    @modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
         @if(user.pgpPubKey.isDefined) {
             <pre style="text-align: center">@user.pgpPubKey.get</pre>
         }
     }
 
-    @utils.modal("modal-lock", "label-lock", if (user.isLocked) "user.unlock" else "user.lock") {
+    @modal("modal-lock", "label-lock", if (user.isLocked) "user.unlock" else "user.lock") {
         <div class="modal-body">
             <p class="minor">
                 @if(user.isLocked) {
@@ -301,7 +304,7 @@
         </div>
     }
 
-    @utils.modal("modal-tagline", "label-tagline", "user.tagline.edit") {
+    @modal("modal-tagline", "label-tagline", "user.tagline.edit") {
         @form(action = routes.Users.saveTagline(user.username)) {
             @CSRF.formField
             <div class="modal-body">
@@ -324,7 +327,7 @@
         }
     }
 
-    @utils.modal("modal-avatar", "label-avatar", "user.editAvatar") {
+    @modal("modal-avatar", "label-avatar", "user.editAvatar") {
         @form(action = routes.Organizations.updateAvatar(user.name), 'id -> "form-avatar",
             'enctype -> "multipart/form-data") {
             @CSRF.formField

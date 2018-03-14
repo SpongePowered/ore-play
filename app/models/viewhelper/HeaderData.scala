@@ -7,7 +7,7 @@ import ore.permission.Permission
 
 // TODO give this to templates with:
 
-// TODO perms in GlobalScope ;  ReviewFlags - ReviewVisibility - ReviewProjects - ViewStats - ViewHealth - ViewLogs
+// TODO perms in GlobalScope ;  ReviewFlags - ReviewVisibility - ReviewProjects - ViewStats - ViewHealth - ViewLogs - HideProjects - HardRemoveProject
 
 case class HeaderData(currentUser: Option[User],
                       permissions: Map[Permission, Boolean],

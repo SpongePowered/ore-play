@@ -145,8 +145,8 @@ case class ProjectSettings(override val id: Option[Int] = None,
     Logger.info("Saving project settings")
     Logger.info(formData.toString)
 
-    project.category = Categories.withName(formData.categoryName)
-    project.description = nullIfEmpty(formData.description)
+    project.setCategory(Categories.withName(formData.categoryName))
+    project.setDescription(nullIfEmpty(formData.description))
 
     this.issues = nullIfEmpty(formData.issues)
     this.source = nullIfEmpty(formData.source)

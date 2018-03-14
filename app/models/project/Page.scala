@@ -53,8 +53,7 @@ case class Page(override val id: Option[Int] = None,
                 private var _contents: String)
                 extends OreModel(id, createdAt)
                   with ProjectScope
-                  with Named
-                  with Visitable {
+                  with Named {
 
   override type M = Page
   override type T = PageTable
@@ -85,7 +84,7 @@ case class Page(override val id: Option[Int] = None,
     *
     * @param _contents Markdown contents
     */
-  def setContents(_contents: String) = Future[Unit] {
+  def setContents(_contents: String)(implicit ec: ExecutionContext) = Future[Unit] {
     checkNotNull(_contents, "null contents", "")
     checkArgument(_contents.length <= MaxLength, "contents too long", "")
     this._contents = _contents
@@ -94,7 +93,7 @@ case class Page(override val id: Option[Int] = None,
         _ <- update(Contents)
         project <- this.project
         // Contents were updated, update on forums
-        _ <- if (this.name.equals(HomeName) && project.topicId != -1) this.forums.updateProjectTopic(project)
+        _ <- if (this.name.equals(HomeName) && project.topicId != -1) this.forums.updateProjectTopic(project) else Future.successful()
       } yield {}
     }
   }
@@ -146,7 +145,7 @@ case class Page(override val id: Option[Int] = None,
   def children: ModelAccess[Page]
   = this.service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.get))
 
-  override def url(implicit ec: ExecutionContext) : String = this.project.url + "/pages/" + this.fullSlug
+  def url(implicit project: Project) : String = project.url + "/pages/" + this.fullSlug
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
 
 }
