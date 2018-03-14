@@ -1,8 +1,8 @@
 package controllers
 
 import java.util.UUID
-import javax.inject.Inject
 
+import javax.inject.Inject
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
@@ -15,11 +15,13 @@ import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyTypes._
 import ore.rest.{OreRestfulApi, OreWrites}
 import ore.{OreConfig, OreEnv}
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, MessagesApi}
 import util.StatusZ
 import play.api.libs.json._
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Ore API (v1)
@@ -35,7 +37,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                                     implicit override val bakery: Bakery,
                                     implicit override val sso: SingleSignOnConsumer,
                                     implicit override val messagesApi: MessagesApi)
-                                    extends BaseController {
+                                    extends OreBaseController {
 
   import writes._
 
@@ -73,7 +75,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   }
 
   def createKey(version: String, pluginId: String) = {
-    (AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
+    (Action andThen AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
       val project = request.project
       this.forms.ProjectApiKeyCreate.bindFromRequest().fold(
         _ => BadRequest,
@@ -152,7 +154,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
         this.forms.VersionDeploy.bindFromRequest().fold(
           hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)),
           formData => {
-            if (!this.projectApiKeys.exists(k => k.keyType === Deployment && k.value === formData.apiKey))
+            if (!this.projectApiKeys.exists(k => k.keyType === Deployment && k.value === formData.apiKey && project.id.isDefined && k.projectId === project.id.get))
               Unauthorized(error("apiKey", "api.deploy.invalidKey"))
             else if (project.versions.exists(_.versionString === name))
               BadRequest(error("versionName", "api.deploy.versionExists"))
@@ -169,6 +171,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                       this.factory.processSubsequentPluginUpload(uploadData, user, project).fold(
                         err => BadRequest(error("upload", err)),
                         version => {
+                          version.createForumPost = formData.createForumPost
                           version.channelName = formData.channel.name
                           val newVersion = version.complete().get
                           if (formData.recommended)
@@ -222,6 +225,28 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def showUser(version: String, username: String) = Action {
     version match {
       case "v1" => ApiResult(this.api.getUser(username))
+      case _ => NotFound
+    }
+  }
+
+  /**
+    * Get the tags for a single version
+    *
+    * @param version     API Version
+    * @param plugin      Plugin Id
+    * @param versionName Version of the plugin
+    * @return Tags for the version of the plugin
+    */
+  def listTags(version: String, plugin: String, versionName: String) = Action {
+    version match {
+      case "v1" => ApiResult(this.api.getTags(plugin, versionName))
+      case _ => NotFound
+    }
+  }
+
+  def tagColor(version: String, id: String) = Action {
+    version match {
+      case "v1" => ApiResult(this.api.getTagColor(id.toInt))
       case _ => NotFound
     }
   }

@@ -1,58 +1,189 @@
+@import _root_.util.StringUtils._
 @import db.ModelService
 @import db.impl.access.UserBase
+@import models.project.{Project, Version}
 @import ore.OreConfig
-@import _root_.util.StringUtils._
-@import models.project.Project
-@import models.project.Version
-@(versions: Seq[(Project, Version)])(implicit messages: Messages, request: Request[_], service: ModelService,
+@import security.NonceFilter._
+
+@import play.api.Configuration
+@(underReview: Seq[(Project, Version)], versions: Seq[(Project, Version)])(implicit messages: Messages, request: Request[_], service: ModelService,
         config: OreConfig, users: UserBase)
 
+@import java.sql.Timestamp
+@import java.time.Instant
 @versionRoutes = @{controllers.project.routes.Versions}
+@currentUserId = @{users.current.get.id.get}
 
 @bootstrap.layout(messages("user.queue")) {
-
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/queue.js")"></script>
+    <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/queue.js")"></script>
 
     <div class="container" style="margin-top: 90px">
         <div class="row">
             <div class="col-md-12 header-flags">
-                <h2>@messages("user.queue")</h2>
-                <h3 class="minor no-versions" @if(versions.nonEmpty) { style="display: none;" }>
-                    <i class="fa fa-thumbs-o-up"></i> @messages("user.queue.none")
-                </h3>
+                <h2>@messages("user.queue.progress")</h2>
             </div>
         </div>
         <div class="row">
             <div class="col-md-12">
-                <ul class="list-group list-versions">
-                    @versions.sortWith(_._2.createdAt.get.getTime < _._2.createdAt.get.getTime).map { tuple =>
-                        <li class="list-group-item"
-                            data-version="@tuple._1.ownerName/@tuple._1.slug/versions/@tuple._2.name">
-                            @utils.userAvatar(tuple._1.owner.user, clazz = "user-avatar-xs")
-                            <a href="@versionRoutes.show(tuple._1.ownerName, tuple._1.slug, tuple._2.name)">
-                                @tuple._1.ownerName/<strong>@tuple._1.name</strong>
-                            </a>
-                            <span class="pull-right">
-                                <span class="faint">@prettifyDate(tuple._2.createdAt.get)</span>
-                                <span class="minor">@tuple._2.versionString</span>
-                                @defining(tuple._2.channel) { channel =>
-                                    <span class="channel" style="background-color: @channel.color.hex;">@channel.name</span>
-                                }
-                                <span class="btn-group-sm">
-                                    <a href="https://forums.spongepowered.org/users/@tuple._1.ownerName"
-                                       class="btn btn-default">
-                                        <i class="fa fa-reply"></i> @messages("user.flags.messageOwner")
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title pull-left">@messages("user.queue.progress")</h4>
+                        <div class="clearfix"></div>
+                    </div>
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Project version</th>
+                                <th>Queued by</th>
+                                <th style="text-align: right; max-width: 40px"></th>
+                                <th>Status</th>
+                                <th ></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @if(underReview.isEmpty) {
+                            <tr>
+                                <th rowspan="5">
+                                    <h3>@messages("queue.review.none")</h3>
+                                </th>
+                            </tr>
+                        }
+                        @underReview.map { tuple =>
+                            @defining(tuple._2.mostRecentUnfinishedReview) { currentReview =>
+                                <tr @if(currentReview.isDefined && currentUserId == (currentReview.get.userId)){ class="warning" }>
+                                    <td>
+                                        <a href="@versionRoutes.show(tuple._1.ownerName, tuple._1.slug, tuple._2.name)">
+                                            @tuple._1.ownerName/<string>@tuple._1.name</string>
+                                        </a>
+                                        <br>
+                                        @tuple._2.versionString
+                                        @defining(tuple._2.channel) { channel =>
+                                            <span class="channel" style="background-color: @channel.color.hex">@channel.name</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if(tuple._2.author.isDefined) {
+                                            <a href="https://forums.spongepowered.org/users/@tuple._1.ownerName">
+                                            @tuple._2.author.get.name
+                                            </a>
+                                        } else {
+                                            Unknown
+                                        }
+                                        <br>
+                                        @prettifyDateAndTime(tuple._2.createdAt.get)
+                                    </td>
+                                    <td style="text-align: right; max-width: 40px">
+                                    @if(currentReview.isDefined) {
+                                        @if(currentUserId == (currentReview.get.userId)) {
+                                            <i class="status fa fa-fw fa-play-circle fa-2x" style="color: green"></i>
+                                        } else {
+                                            <i class="status fa fa-fw fa-cog fa-2x" style="color: black"></i>
+                                        }
+                                    } else {
+                                        <i class="status fa fa-fw fa-pause-circle fa-2x" style="color: orange"></i>
+                                    }
+                                    </td>
+                                    <td @if(!currentReview.isDefined){ style="color: darkred" }>
+                                    @if(currentReview.isDefined) {
+                                        @users.get(currentReview.get.userId).get.name
+                                        <br>
+                                        <span data-ago="@currentReview.get.createdAt.getOrElse(Timestamp.from(Instant.now())).getTime" data-title="started "></span>
+                                    } else {
+                                        <strike>@users.get(tuple._2.mostRecentReviews.last.userId).get.name</strike>
+                                        <br>
+                                        <span data-ago="@tuple._2.mostRecentReviews.last.createdAt.getOrElse(Timestamp.from(Instant.now())).getTime" data-title="abandoned "></span>
+                                    }
+                                    </td>
+                                    <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
+                                        <a href="/@tuple._1.ownerName/@tuple._1.slug/versions/@tuple._2.name/reviews"><i class="fa fa-2x fa-fw fa-info"></i></a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12 header-flags">
+                <h2>@messages("user.queue.open")</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title pull-left">@messages("user.queue.open")</h4>
+                        <div class="clearfix"></div>
+                    </div>
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Project</th>
+                                <th>Version</th>
+                                <th>Queued by</th>
+                                <th style="text-align: right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @if(versions.isEmpty) {
+                            <tr>
+                                <th rowspan="5">
+                                    <h3><i class="fa fa-thumbs-o-up"></i> @messages("user.queue.none")</h3>
+                                </th>
+                            </tr>
+                        }
+                        @versions.sortWith(_._2.createdAt.get.getTime < _._2.createdAt.get.getTime).map { tuple =>
+                            <tr data-version="@tuple._1.ownerName/@tuple._1.slug/versions/@tuple._2.name">
+                                <td>
+                                    @utils.userAvatar(tuple._1.owner.user, clazz = "user-avatar-xs")
+                                </td>
+                                <td>
+                                    <a href="@versionRoutes.show(tuple._1.ownerName, tuple._1.slug, tuple._2.name)">
+                                        @tuple._1.ownerName/<strong>@tuple._1.name</strong>
                                     </a>
-                                    <button class="btn btn-approve btn-success">
-                                        <i class="fa fa-thumbs-up"></i> @messages("user.queue.approve")
-                                    </button>
-                                </span>
-                            </span>
-                        </li>
-                    }
-                </ul>
+                                </td>
+                                <td>
+                                    <span class="faint">@prettifyDate(tuple._2.createdAt.get)</span>
+                                    <span class="minor">@tuple._2.versionString</span>
+                                    @defining(tuple._2.channel) { channel =>
+                                        <span class="channel" style="background-color: @channel.color.hex;">@channel.name</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if(tuple._2.author.isDefined) {
+                                        <a href="https://forums.spongepowered.org/users/@tuple._1.ownerName">
+                                        @tuple._2.author.get.name
+                                        </a>
+                                    }
+                                <br>
+                                <td style="vertical-align: middle; text-align: right">
+                                    <a class="btn btn-success" href="/@tuple._1.ownerName/@tuple._1.slug/versions/@tuple._2.name/reviews">Start review</a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
         </div>
     </div>
-
+    <script nonce="@nonce">
+        $(function(){
+            var momentNow = moment();
+            var maxDifference = @config.ore.get[Configuration]("queue").getOptional[Int]("max-review-time").getOrElse(86400000);
+            $('span[data-ago]').each(function() {
+                var momentAgo = moment($(this).data('ago'))
+                $(this).text($(this).data('title') + momentAgo.fromNow());
+                if (momentNow.diff(momentAgo) >= maxDifference) {
+                    $(this).text('pastdue ' + momentAgo.fromNow()).css('color', 'darkred');
+                    $(this).parent().parent().find('.status').removeClass().addClass('status fa fa-fw fa-clock-o fa-2x').css('color', 'darkred');
+                }
+            });
+        });
+    </script>
 }

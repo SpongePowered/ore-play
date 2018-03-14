@@ -3,7 +3,6 @@
   -->
 <!-- The default logback configuration that Play uses if no other configuration is provided -->
 <configuration>
-
     <conversionRule conversionWord="coloredLevel" converterClass="play.api.libs.logback.ColoredLevel" />
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -12,23 +11,26 @@
         </encoder>
     </appender>
 
-    <logger name="play" level="INFO" />
-    <logger name="application" level="DEBUG" />
-
-    <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
-
-    <root level="WARN">
+    <appender name="ASYNCSTDOUT" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="STDOUT" />
-    </root>
+    </appender>
 
     <!-- Sentry -->
-    <appender name="Sentry" class="com.getsentry.raven.logback.SentryAppender">
-        <dsn>${SENTRY_DSN}</dsn>
-        <tags>tag1:value1,tag2:value2</tags>
+    <appender name="Sentry" class="io.sentry.logback.SentryAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
     </appender>
-    <root level="warn">
-        <appender-ref ref="Sentry"/>
+
+    <root level="WARN">
+        <appender-ref ref="ASYNCSTDOUT" />
     </root>
+
+    <!-- Play -->
+    <logger name="play" level="INFO" />
+    <logger name="application" level="INFO" />
+    <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
+    <logger name="org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator" level="ERROR" />
 
     <!-- Ore loggers -->
     <logger name="Bootstrap" level="INFO" />
@@ -42,6 +44,6 @@
     <logger name="UserSync" level="INFO" />
     <logger name="Organizations" level="INFO" />
     <logger name="SSO" level="INFO" />
-    <!--<logger name="slick" level="DEBUG" />-->
-
+    <logger name="ProjectTask" level="INFO" />
+    <logger name="slick" level="INFO" />
 </configuration>

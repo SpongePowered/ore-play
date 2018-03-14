@@ -14,6 +14,7 @@ object NotificationTypes extends Enumeration {
   val ProjectInvite = NotificationType(0)
   val OrganizationInvite = NotificationType(1)
   val NewProjectVersion = NotificationType(2)
+  val VersionReviewed = NotificationType(3)
 
   case class NotificationType(i: Int) extends super.Val(i) with MappedType[NotificationType] {
     implicit val mapper: JdbcType[NotificationType] = OrePostgresDriver.api.notificationTypeTypeMapper

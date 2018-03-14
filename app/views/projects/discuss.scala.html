@@ -8,6 +8,7 @@ Discussion page within Project overview.
 @import org.spongepowered.play.discourse.DiscourseApi
 @import security.NonceFilter._
 @import ore.permission.PostAsOrganization
+@import views.html.utils
 @(model: Project)(implicit messages: Messages, request: Request[_], flash: Flash, service: ModelService,
         forums: DiscourseApi, config: OreConfig, users: UserBase)
 
@@ -17,7 +18,7 @@ Discussion page within Project overview.
 
     <script nonce="@nonce">
         DiscourseEmbed = {
-            discourseUrl: '@config.forums.getString("baseUrl").get/',
+            discourseUrl: '@config.forums.get[String]("baseUrl")/',
             topicId: @model.topicId
         };
     </script>
@@ -36,6 +37,7 @@ Discussion page within Project overview.
 
                             @defining(model.owner) { owner =>
                               @if(owner.isOrganization
+                                      && (users.current.isDefined)
                                       && (users.current.get can PostAsOrganization in owner.toOrganization)) {
                                   <div class="pull-right push-down">
                                       <i class="minor">@messages("project.discuss.postAs")</i>
@@ -61,7 +63,7 @@ Discussion page within Project overview.
                     </div>
                     <div class="reply-controls">
                         <a class="forums" target="_blank"
-                           href="@config.forums.getString("baseUrl").get/t/@model.topicId">
+                           href="@config.forums.get[String]("baseUrl")/t/@model.topicId">
                             @messages("general.viewOnForums")
                         </a>
                     </div>

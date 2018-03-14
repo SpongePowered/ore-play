@@ -105,17 +105,17 @@ trait Mailer extends Runnable {
 @Singleton
 final class SpongeMailer @Inject()(config: Configuration, actorSystem: ActorSystem) extends Mailer {
 
-  private val conf = config.getConfig("mail").get
+  private val conf = config.get[Configuration]("mail")
 
-  override val username = this.conf.getString("username").get
-  override val email = InternetAddress.parse(this.conf.getString("email").get)(0)
-  override val password = this.conf.getString("password").get
-  override val smtpHost = this.conf.getString("smtp.host").get
-  override val smtpPort = this.conf.getInt("smtp.port").get
-  override val transportProtocol = this.conf.getString("transport.protocol").get
-  override val interval = this.conf.getLong("interval").get.millis
+  override val username = this.conf.get[String]("username")
+  override val email = InternetAddress.parse(this.conf.get[String]("email"))(0)
+  override val password = this.conf.get[String]("password")
+  override val smtpHost = this.conf.get[String]("smtp.host")
+  override val smtpPort = this.conf.get[Int]("smtp.port")
+  override val transportProtocol = this.conf.get[String]("transport.protocol")
+  override val interval = this.conf.get[FiniteDuration]("interval")
   override val scheduler = this.actorSystem.scheduler
-  override val properties = this.conf.getObject("properties").get.unwrapped().asScala.toMap
+  override val properties = this.conf.get[Map[String, String]]("properties")
 
   start()
 

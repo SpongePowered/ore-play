@@ -7,10 +7,12 @@ import db.ModelAction._
 import db.ModelFilter.IdFilter
 import db.access.ModelAccess
 import db.table.{MappedType, ModelTable}
-import slick.backend.DatabaseConfig
-import slick.driver.{JdbcDriver, JdbcProfile}
+import slick.ast.{AnonSymbol, Ref, SortBy}
+import slick.basic.DatabaseConfig
+import slick.jdbc.JdbcProfile
 import slick.jdbc.JdbcType
-import slick.lifted.ColumnOrdered
+import slick.lifted.{ColumnOrdered, WrappingQuery}
+import slick.util.ConstArray
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -29,7 +31,7 @@ trait ModelService {
   val registry: ModelRegistry
 
   /** The base JDBC driver */
-  val driver: JdbcDriver
+  val driver: JdbcProfile
   import driver.api._
 
   /**
@@ -259,6 +261,25 @@ trait ModelService {
   }
 
   /**
+    * Same as collect but with multiple sorted columns
+    */
+  def collectMultipleSorts[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean] = null,
+                          sort: M#T => List[ColumnOrdered[_]] = null, limit: Int = -1, offset: Int = -1): Future[Seq[M]] = {
+    var query = newAction[M](modelClass)
+    if (filter != null) query = query.filter(filter)
+    if (sort != null)  {
+      val generator = new AnonSymbol
+      val aliased = query.shaped.encodeRef(Ref(generator))
+      val l = sort(aliased.value)
+      val c = ConstArray.from(l.foldLeft(l.head.columns) { (r, c) => r ++ c.columns })
+      query = new WrappingQuery(SortBy(generator, query.toNode, c), query.shaped)
+    }
+    if (offset > -1) query = query.drop(offset)
+    if (limit > -1) query = query.take(limit)
+    doAction(query.result)
+  }
+
+  /**
     * Filters the the models.
     *
     * @param filter Model filter
@@ -269,7 +290,7 @@ trait ModelService {
     */
   def filter[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean], limit: Int = -1,
                          offset: Int = -1): Future[Seq[M]]
-  = collect(modelClass, filter, null, limit, offset)
+  = collect(modelClass, filter, null.asInstanceOf[M#T => ColumnOrdered[_]], limit, offset)
 
   /**
     * Sorts the models by the specified ColumnOrdered.
@@ -284,5 +305,12 @@ trait ModelService {
   def sorted[M <: Model](modelClass: Class[M], sort: M#T => ColumnOrdered[_], filter: M#T => Rep[Boolean] = null,
                          limit: Int = -1, offset: Int = -1): Future[Seq[M]]
   = collect(modelClass, filter, sort, limit, offset)
+
+  /**
+    * Same as sorted but with multiple sorts
+    */
+  def sortedMultipleOrders[M <: Model](modelClass: Class[M], sorts: M#T => List[ColumnOrdered[_]], filter: M#T => Rep[Boolean] = null,
+                         limit: Int = -1, offset: Int = -1): Future[Seq[M]]
+  = collectMultipleSorts(modelClass, filter, sorts, limit, offset)
 
 }

@@ -6,6 +6,8 @@
 @import 'nav';
 @import 'project';
 @import 'user';
+@import "panel";
+@import "version-list";
 @import 'utils';
 
 html {
@@ -15,20 +17,24 @@ html {
 
 body {
   background-color: $mainBackground;
-  margin-bottom: 60px;
+}
+
+.site {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.site-content {
+  flex: 1;
 }
 
 .modal-body {
   width: 100%;
 }
 
-.panel {
-  .panel-heading { background-color: white; }
-  .panel-footer { background-color: white; }
-}
-
 .index-header {
-  padding-bottom: 20px;
+  padding-bottom: 24px;
 }
 
 .index-header .alert {
@@ -39,26 +45,32 @@ body {
   height: 40px;
 }
 
-.sponsor-logo {
-  max-height: 35px;
+.sponsor-block {
   max-width: 100%;
 }
 
 .sponsor {
-  @include padding-horiz(5px, 5px);
-  @include rounded-corners();
-  max-height: 60px;
-  background-color: #ddd;
-  border: 1px solid $light;
-  padding-bottom: 5px;
+  float: right;
+  width: 100%;
+  height: 50px;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   i {
     font-size: 10px;
-    color: #fafafa;
+    color: $sponge_dark_grey;
   }
-}
 
-.sponsor-featured {
-  margin-bottom: 20px;
+  .logo {
+    max-height: 50px;
+    max-width: 100%;
+    height: auto;
+    z-index: 1;
+  }
 }
 
 form {
@@ -87,10 +99,6 @@ form {
     padding: 15px;
     white-space: nowrap;
     overflow: hidden;
-  }
-
-  .list-group-item.project-hidden {
-    background: repeating-linear-gradient(45deg, $lighter, $lighter 10px, #f5f5f5 10px, #f5f5f5 20px);
   }
 
   .list-group-item.project-list-footer {
@@ -181,22 +189,27 @@ form {
 }
 
 .category-table {
-  tr.selected:hover { background: #f6d830; }
-  tr.selected > td { padding-top: 8px; }
-  tr > td:first-child {
-    text-align: center;
-    padding-right: 0;
-  }
+  tr {
+    &:hover {
+      cursor: pointer;
+      background-color: $mainBackground;
+    }
 
-  tr:hover {
-    cursor: pointer;
-    background-color: $mainBackground;
-  }
+    > td {
+      &:first-child {
+        text-align: center;
+        padding-right: 0;
+      }
 
-  tr.selected {
-    @include box-shadow5(inset, 0, 0, 5px, #e6b800);
-    background: #f6d830;
-    border: none;
+      border: none;
+    }
+
+    &.selected {
+      box-shadow: inset -10px 0px 0px 0px $sponge_yellow;
+    }
+    &.selected td:nth-child(2) {
+      box-shadow: inset -10px 0px $sponge_yellow;
+    }
   }
 }
 
@@ -212,4 +225,211 @@ form {
     display: block;
     margin: 0 auto;
   }
+}
+
+.btn {
+  &:focus, &:active:focus, &.active:focus, &.focus, &:active.focus, &.active.focus {
+    outline: none;
+  }
+
+  &.dark {
+    background: $sponge_dark_grey;
+    border: 1px solid $sponge_light_gray;
+    color: #ffffff;
+
+    &:hover {
+      background: darken($sponge_dark_grey, 1);
+    }
+  }
+
+  &.yellow {
+    background: $sponge_yellow;
+    border: 1px solid darken($sponge_yellow, 7);
+    color: darken($sponge_yellow, 30);
+    font-weight: 600;
+
+    &:hover {
+      background: darken($sponge_yellow, 2);
+    }
+  }
+}
+
+.panel > .panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: $sponge_grey;
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+
+  &:last-child {
+    margin-left: auto;
+  }
+
+  .btn i {
+    color: inherit;
+  }
+
+  i {
+    color: #ffffff;
+  }
+}
+
+select.form-control, input.form-control {
+  box-shadow: none;
+  border: 1px solid $lighter;
+
+  &:focus {
+    box-shadow: none;
+    border: 1px solid $lighter;
+  }
+}
+
+.btn-group .form-control {
+  z-index: 4;
+}
+
+.template {
+  display: none;
+}
+
+.pagination {
+  margin: 10px 0;
+
+  li {
+    &:first-child a {
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
+    }
+
+    &:last-child a {
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
+    }
+
+    a {
+      background: $sponge_light_gray;
+      color: white;
+      cursor: pointer;
+      border: 1px solid lighten($sponge_light_gray, 10);
+
+      &:hover, &:focus, &:active {
+        border-color: $sponge_yellow;
+        background: $sponge_yellow;
+        color: darken($sponge_yellow, 30);
+      }
+    }
+
+    &.disabled a, &.disabled a:hover, &.disabled a:focus {
+      background: $sponge_light_gray;
+      color: lighten($sponge_light_gray, 10);
+      border: 1px solid lighten($sponge_light_gray, 10);
+    }
+
+    &.active > a {
+      cursor: pointer;
+      border-color: $sponge_yellow;
+      background: $sponge_yellow;
+      color: darken($sponge_yellow, 30);
+
+      &:hover {
+        cursor: pointer;
+        color: darken($sponge_yellow, 30);
+      }
+    }
+  }
+}
+
+.tags {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+
+  .tag {
+    border: 1px solid darken(whitesmoke, 10);
+    align-items: center;
+    display: flex;
+    background-color: whitesmoke;
+    border-radius: 3px;
+    font-size: 0.75em;
+    height: 2em;
+    padding-left: 0.75em;
+    padding-right: 0.75em;
+    white-space: nowrap;
+    margin: 5px;
+  }
+
+  &.has-addons .tag {
+    &:first-child {
+      border-bottom-right-radius: 0;
+      border-top-right-radius: 0;
+      margin-right: 0;
+    }
+
+    &:nth-child(2) {
+      border-bottom-left-radius: 0;
+      border-top-left-radius: 0;
+      border-left: none;
+      margin-left: 0;
+    }
+  }
+}
+
+.channel {
+  align-items: center;
+  display: inline-flex;
+  border-radius: 3px;
+  font-size: 0.75em;
+  height: 2em;
+  padding-left: 0.75em;
+  padding-right: 0.75em;
+  white-space: nowrap;
+}
+
+.table tbody > tr > td {
+  vertical-align: middle;
+}
+
+.table.centered {
+  text-align: center;
+}
+
+.project-search {
+  margin-bottom: 1rem;
+}
+
+.text-sponge-yellow {
+  color: $sponge_yellow !important;
+}
+
+.table-review-log tr td:first-child {
+  width: 10em;
+  font-weight: bold;
+  vertical-align: top;
+}
+
+.table-notes-log tr .note-fixed-with {
+  width: 10em;
+}
+
+.input-group .input-group-btn {
+  z-index: 999;
+}
+
+.striped {
+  background: repeating-linear-gradient(45deg, $lighter, $lighter 15px, #f5f5f5 15px, #f5f5f5 35px);
+}
+
+.project-new {
+  box-shadow: inset -10px 0px cadetblue;
+}
+
+.project-needsChanges {
+  box-shadow: inset -10px 0px gold;
+}
+
+.project-hidden {
+  box-shadow: inset -10px 0px red;
 }

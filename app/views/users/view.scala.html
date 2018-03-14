@@ -3,7 +3,8 @@
 @import db.impl.access.UserBase
 @import models.user.User
 @import ore.OreConfig
-@import ore.permission.EditSettings
+@import ore.permission.{ViewActivity, ReviewFlags, ReviewProjects, EditSettings, UserAdmin}
+@import ore.permission.scope.GlobalScope
 @import ore.user.Prompts
 @import security.NonceFilter._
 @import util.StringUtils._
@@ -84,23 +85,47 @@
                             @user.username
 
                             @if(user.isCurrent && !user.isOrganization) {
-                                <a class="user-settings" href="@config.security.getString("api.url").get/settings">
-                                    <i class="fa fa-cog"></i>
+                                <a class="user-settings" href="@config.security.get[String]("api.url")/accounts/settings">
+                                    <i class="fa fa-cog" data-toggle="tooltip"
+                                        data-placement="top" title="Settings"></i>
                                 </a>
 
                                 <span data-toggle="modal" data-target="#modal-lock">
                                     <i class="fa @lockIcon action-lock-account" data-toggle="tooltip"
-                                       data-placement="top" title="@messages("user.lockAccount")"></i>
+                                        data-placement="top" title="@messages("user.lock")"></i>
                                 </span>
 
-                                <span data-toggle="modal" data-target="#modal-pgp">
-                                    <i class="fa fa-key action-pgp" data-toggle="tooltip" data-placement="top"
-                                       title="@messages("user.pgp.pubKey")"></i>
+                                <span data-toggle="modal" data-target="#modal-pgp-edit">
+                                    <i class="fa fa-key action-pgp" data-toggle="tooltip"
+                                        data-placement="top" title="@messages("user.pgp.pubKey")"></i>
                                 </span>
 
                                 @if(!users.current.get.readPrompts.contains(Prompts.PGP)) {
                                     @utils.prompt(Prompts.PGP, "popover-pgp")
                                 }
+                            }
+
+                            @if(!user.isCurrent && user.pgpPubKey.isDefined) {
+                                <span data-toggle="modal" data-target="#modal-pgp-show">
+                                    <i class="fa fa-key action-pgp" data-toggle="tooltip"
+                                        data-placement="top" title="@messages("user.pgp.pubKey")"></i>
+                                </span>
+                            }
+
+                            @if(users.current.isDefined && (users.current.get can ViewActivity in user)) {
+                                @if((user can ReviewFlags in user) || (user can ReviewProjects in user)) {
+                                    <a class="user-settings" href="@routes.Application.showActivities(user.name)">
+                                        <i class="fa fa-calendar" data-toggle="tooltip"
+                                        data-placement="top" title="Activity"></i>
+                                    </a>
+                                }
+                            }
+
+                            @if(users.current.isDefined && (users.current.get can UserAdmin in GlobalScope)) {
+                                <a class="user-settings" href="@routes.Application.userAdmin(user.username)">
+                                    <i class="fa fa-wrench" data-toggle="tooltip"
+                                        data-placement="top" title="User Admin"></i>
+                                </a>
                             }
                         </h1>
 
@@ -140,7 +165,7 @@
 
                 <div class="user-info">
                     @defining(user.projects.size) { size =>
-                        <i class="minor">@size @if(size == 1) { project } else { projects }</i><br/>
+                        <i class="minor">@size&nbsp;@if(size == 1){project}else{projects}</i><br/>
                     }
                     <i class="minor">
                     @messages(
@@ -158,7 +183,7 @@
 
     </div>
 
-    <div class="modal fade" id="modal-pgp" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
+    <div class="modal fade" id="modal-pgp-edit" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -245,6 +270,12 @@
         </div>
     </div>
 
+    @utils.modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
+        @if(user.pgpPubKey.isDefined) {
+            <pre style="text-align: center">@user.pgpPubKey.get</pre>
+        }
+    }
+
     @utils.modal("modal-lock", "label-lock", if (user.isLocked) "user.unlock" else "user.lock") {
         <div class="modal-body">
             <p class="minor">
@@ -280,7 +311,7 @@
                         <p>@messages("user.tagline.info")</p>
                     </div>
                     <input class="form-control" type="text" value="@user.tagline.getOrElse("")" id="tagline"
-                           name="tagline" maxlength="@config.users.getInt("max-tagline-len").get" />
+                           name="tagline" maxlength="@config.users.get[Int]("max-tagline-len")" />
                 </div>
                 <div class="clearfix"></div>
             </div>

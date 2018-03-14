@@ -19,7 +19,7 @@ object StringUtils {
     * @return     Standard formatted date
     */
   def prettifyDate(date: Date)(implicit config: OreConfig): String
-  = new SimpleDateFormat(config.ore.getString("date-format").get).format(date)
+  = new SimpleDateFormat(config.ore.get[String]("date-format")).format(date)
 
   /**
     * Returns a URL readable string from the specified string.
@@ -70,4 +70,12 @@ object StringUtils {
   def readAndFormatFile(path: Path, params: String*): String
   = MessageFormat.format(new String(Files.readAllBytes(path)), params.map(_.asInstanceOf[AnyRef]): _*)
 
+  /**
+    * Formats the specified date into the standard application form time.
+    *
+    * @param date Date to format
+    * @return     Standard formatted date
+    */
+  def prettifyDateAndTime(date: Date)(implicit config: OreConfig): String
+  = new SimpleDateFormat(config.ore.get[String]("date-and-time-format")).format(date)
 }

@@ -29,9 +29,10 @@ trait MembershipDossier {
 
   implicit def convertModel(model: ModelType): this.model.M = model.asInstanceOf[this.model.M]
 
+  def roles: ModelAccess[RoleType] = this.model.schema.getChildren[RoleType](this.roleClass, this.model)
+
   private def association
   = this.model.schema.getAssociation[MembersTable, User](this.membersTableClass, this.model)
-  private def roles: ModelAccess[RoleType] = this.model.schema.getChildren[RoleType](this.roleClass, this.model)
   private def roleAccess: ModelAccess[RoleType] = this.model.service.access[RoleType](roleClass)
   private def addMember(user: User) = this.association.add(user)
 
@@ -52,7 +53,7 @@ trait MembershipDossier {
     * @return All members
     */
   def members: Set[MemberType] = {
-    this.model.schema.getAssociation[MembersTable, User](this.membersTableClass, this.model).all.map { user =>
+    this.association.all.map { user =>
       newMember(user.id.get)
     }
   }

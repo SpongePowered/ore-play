@@ -2,25 +2,29 @@ package ore.project.factory
 
 import java.nio.file.Files._
 import java.nio.file.StandardCopyOption
-import javax.inject.Inject
 
+import javax.inject.Inject
 import akka.actor.ActorSystem
 import com.google.common.base.Preconditions._
 import db.ModelService
+import db.impl.OrePostgresDriver.api._
 import db.impl.access.{ProjectBase, UserBase}
 import discourse.OreDiscourseApi
-import models.project.{Channel, Project, Version}
+import models.project._
+import models.project.TagColors.TagColor
 import models.user.role.ProjectRole
 import models.user.{Notification, User}
 import ore.Colors.Color
 import ore.OreConfig
 import ore.permission.role.RoleTypes
+import ore.project.Dependency.{ForgeId, SpongeApiId}
+import ore.project.NotifyWatchersTask
+import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io.{InvalidPluginFileException, PluginFile, PluginUpload, ProjectFiles}
-import ore.project.{Dependency, NotifyWatchersTask}
 import ore.user.notification.NotificationTypes
 import org.spongepowered.plugin.meta.PluginMetadata
-import play.api.cache.CacheApi
-import play.api.i18n.MessagesApi
+import play.api.cache.SyncCacheApi
+import play.api.i18n.{Lang, MessagesApi}
 import security.pgp.PGPVerifier
 import util.StringUtils._
 
@@ -28,6 +32,10 @@ import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.util.Try
+
+package object TagAlias {
+  type ProjectTag = models.project.Tag
+}
 
 /**
   * Manages the project and version creation pipeline.
@@ -39,16 +47,18 @@ trait ProjectFactory {
   implicit val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
 
   val fileManager: ProjectFiles = this.projects.fileManager
-  val cacheApi: CacheApi
+  val cacheApi: SyncCacheApi
   val actorSystem: ActorSystem
   val pgp: PGPVerifier = new PGPVerifier
+  val dependencyVersionRegex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
   implicit val messages: MessagesApi
   implicit val config: OreConfig
   implicit val forums: OreDiscourseApi
   implicit val env = this.fileManager.env
+  implicit val lang = Lang.defaultLang
 
-  var isPgpEnabled = this.config.security.getBoolean("requirePgp").get
+  var isPgpEnabled = this.config.security.get[Boolean]("requirePgp")
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -74,8 +84,8 @@ trait ProjectFactory {
     if (!owner.isPgpPubKeyReady)
       throw new IllegalArgumentException("error.plugin.pubKey.cooldown")
 
-    var pluginPath = uploadData.pluginFile.file.toPath
-    var sigPath = uploadData.signatureFile.file.toPath
+    var pluginPath = uploadData.pluginFile.path
+    var sigPath = uploadData.signatureFile.path
 
     // verify detached signature
     if (!this.pgp.verifyDetachedSignature(pluginPath, sigPath, owner.pgpPubKey.get))
@@ -105,12 +115,8 @@ trait ProjectFactory {
       return Left("error.version.invalidPluginId")
     val version = this.startVersion(plugin, project, project.channels.all.head.name)
     val model = version.underlying
-    if (model.exists && this.config.projects.getBoolean("file-validate").get)
+    if (model.exists && this.config.projects.get[Boolean]("file-validate"))
       return Left("error.version.duplicate")
-    if (project.isSpongePlugin && !model.hasDependency(Dependency.SpongeApiId))
-      return Left("error.version.noDependency.sponge")
-    if (project.isForgeMod && !model.hasDependency(Dependency.ForgeId))
-      return Left("error.version.noDependency.forge")
     version.cache()
     Right(version)
   }
@@ -151,6 +157,7 @@ trait ProjectFactory {
       .ownerName(owner.name)
       .ownerId(owner.id.get)
       .name(metaData.getName)
+      .visibility(VisibilityTypes.New)
       .build()
 
     val pendingProject = PendingProject(
@@ -189,6 +196,7 @@ trait ProjectFactory {
       .hash(plugin.md5)
       .fileName(path.getFileName.toString)
       .signatureFileName(plugin.signaturePath.getFileName.toString)
+      .authorId(plugin.user.id.get)
       .build()
 
     PendingVersion(
@@ -199,6 +207,7 @@ trait ProjectFactory {
       channelColor = this.config.defaultChannelColor,
       underlying = version,
       plugin = plugin,
+      createForumPost = if (project.id.isDefined) project.settings.forumSync else true,
       cacheApi = this.cacheApi)
   }
 
@@ -280,7 +289,7 @@ trait ProjectFactory {
     checkNotNull(name, "null name", "")
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
     checkNotNull(color, "null color", "")
-    checkState(project.channels.size < this.config.projects.getInt("max-channels").get, "channel limit reached", "")
+    checkState(project.channels.size < this.config.projects.get[Int]("max-channels"), "channel limit reached", "")
     this.service.access[Channel](classOf[Channel]).add(new Channel(name, color, project.id.get))
   }
 
@@ -304,16 +313,8 @@ trait ProjectFactory {
 
     // Create version
     val pendingVersion = pending.underlying
-    if (pendingVersion.exists && this.config.projects.getBoolean("file-validate").get)
+    if (pendingVersion.exists && this.config.projects.get[Boolean]("file-validate"))
       throw new IllegalArgumentException("Version already exists.")
-
-    // Check to make sure that the required dependencies are there
-    if (project.isSpongePlugin && !pendingVersion.hasDependency(Dependency.SpongeApiId))
-      throw InvalidPluginFileException("error.plugin.notSponge")
-
-    if (project.isForgeMod && !pendingVersion.hasDependency(Dependency.ForgeId)) {
-      throw InvalidPluginFileException("error.plugin.notForge")
-    }
 
     val newVersion = this.service.access[Version](classOf[Version]).add(Version(
       versionString = pendingVersion.versionString,
@@ -324,28 +325,67 @@ trait ProjectFactory {
       channelId = channel.id.get,
       fileSize = pendingVersion.fileSize,
       hash = pendingVersion.hash,
+      _authorId = pendingVersion.authorId,
       fileName = pendingVersion.fileName,
       signatureFileName = pendingVersion.signatureFileName
     ))
+
+    def addTags(dependencyName: String, tagName: String, tagColor: TagColor): Unit = {
+      val dependenciesMatchingName = newVersion.dependencies.filter(_.pluginId == dependencyName)
+      if (dependenciesMatchingName.nonEmpty) {
+        val dependency = dependenciesMatchingName.head
+
+        if (!dependencyVersionRegex.pattern.matcher(dependency.version).matches()) {
+          return
+        }
+
+        val tagsWithVersion = service.access(classOf[ProjectTag])
+          .filter(t => t.name === tagName && t.data === dependency.version).toList
+
+        if (tagsWithVersion.isEmpty) {
+          val tag = Tag(
+            _versionIds = List(newVersion.id.get),
+            name = tagName,
+            data = dependency.version,
+            color = tagColor
+          )
+          service.access(classOf[ProjectTag]).add(tag)
+          // requery the tag because it now includes the id
+          val newTag = service.access(classOf[ProjectTag]).filter(t => t.name === tag.name && t.data === tag.data).toList.head
+          newVersion.addTag(newTag)
+        } else {
+          val tag = tagsWithVersion.head
+          tag.addVersionId(newVersion.id.get)
+          newVersion.addTag(tag)
+        }
+      }
+    }
+
+    addTags(SpongeApiId, "Sponge", TagColors.Sponge)
+    addTags(ForgeId, "Forge", TagColors.Forge)
 
     // Notify watchers
     this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, messages))
 
     project.lastUpdated = this.service.theTime
 
-    uploadPlugin(project, channel, pending.plugin)
+    uploadPlugin(project, channel, pending.plugin, newVersion)
+
+    if (project.topicId != -1 && pending.createForumPost) {
+      this.forums.postVersionRelease(project, newVersion, newVersion.description)
+    }
     newVersion
   }
 
-  private def uploadPlugin(project: Project, channel: Channel, plugin: PluginFile): Try[Unit] = Try {
+  private def uploadPlugin(project: Project, channel: Channel, plugin: PluginFile, version: Version): Try[Unit] = Try {
     val meta = plugin.meta.get
 
     val oldPath = plugin.path
     val oldSigPath = plugin.signaturePath
 
-    val projectDir = this.fileManager.getProjectDir(project.ownerName, meta.getName)
-    val newPath = projectDir.resolve(oldPath.getFileName)
-    val newSigPath = projectDir.resolve(oldSigPath.getFileName)
+    val versionDir = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
+    val newPath = versionDir.resolve(oldPath.getFileName)
+    val newSigPath = versionDir.resolve(oldSigPath.getFileName)
 
     if (exists(newPath) || exists(newSigPath))
       throw InvalidPluginFileException("error.plugin.fileName")
@@ -363,7 +403,7 @@ trait ProjectFactory {
 class OreProjectFactory @Inject()(override val service: ModelService,
                                   override val config: OreConfig,
                                   override val forums: OreDiscourseApi,
-                                  override val cacheApi: CacheApi,
+                                  override val cacheApi: SyncCacheApi,
                                   override val messages: MessagesApi,
                                   override val actorSystem: ActorSystem)
                                   extends ProjectFactory

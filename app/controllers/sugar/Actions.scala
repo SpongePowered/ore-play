@@ -7,17 +7,16 @@ import controllers.sugar.Requests._
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import models.project.Project
+import models.project.{Project, VisibilityTypes}
 import models.user.{SignOn, User}
 import ore.permission.scope.GlobalScope
-import ore.permission.{EditSettings, HideProjects, Permission}
+import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
-
 /**
   * A set of actions used by Ore.
   */
@@ -34,11 +33,8 @@ trait Actions extends Calls with ActionHelpers {
 
   val AuthTokenName = "_oretoken"
 
-  /** Ensures a request is authenticated */
-  def Authenticated = Action andThen authAction
 
-  /** Ensures a user's account is unlocked */
-  def UserLock(redirect: Call = ShowHome) = Authenticated andThen userLock(redirect)
+
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
   def onUnauthorized(request: Request[_]) = {
@@ -56,7 +52,8 @@ trait Actions extends Calls with ActionHelpers {
     * @tparam R Type of ScopedRequest that is being checked
     * @return   The ScopedRequest as an instance of R
     */
-  def PermissionAction[R[_] <: ScopedRequest[_]](p: Permission) = new ActionRefiner[ScopedRequest, R] {
+  def PermissionAction[R[_] <: ScopedRequest[_]](p: Permission)(implicit ec: ExecutionContext) = new ActionRefiner[ScopedRequest, R] {
+    def executionContext = ec
 
     private def log(success: Boolean, request: ScopedRequest[_]) = {
       val lang = if (success) "GRANTED" else "DENIED"
@@ -75,68 +72,13 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   /**
-    * Retrieves, processes, and adds a [[Project]] to a request.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return       Request with a project if found, NotFound otherwise.
-    */
-  def ProjectAction(author: String, slug: String) = Action andThen projectAction(author, slug)
-
-  /**
-    * Retrieves, processes, and adds a [[Project]] to a request.
-    *
-    * @param pluginId The project's unique plugin ID
-    * @return         Request with a project if found, NotFound otherwise
-    */
-  def ProjectAction(pluginId: String) = Action andThen projectAction(pluginId)
-
-  /**
-    * Ensures a request is authenticated and retrieves, processes, and adds a
-    * [[Project]] to a request.
-    *
-    * @param author Project owner
-    * @param slug Project slug
-    * @return Authenticated request with a project if found, NotFound otherwise.
-    */
-  def AuthedProjectAction(author: String, slug: String, requireUnlock: Boolean = false) = {
-    val first = if (requireUnlock) UserLock(ShowProject(author, slug)) else Authenticated
-    first andThen authedProjectAction(author, slug)
-  }
-
-  def AuthedProjectActionById(pluginId: String, requireUnlock: Boolean = true) = {
-    val first = if (requireUnlock) UserLock(ShowProject(pluginId)) else Authenticated
-    first andThen authedProjectActionById(pluginId)
-  }
-
-  /**
     * A PermissionAction that uses an AuthedProjectRequest for the
     * ScopedRequest.
     *
     * @param p  Permission to check
     * @return   An [[AuthedProjectRequest]]
     */
-  def ProjectPermissionAction(p: Permission) = PermissionAction[AuthedProjectRequest](p)
-
-  /**
-    * Retrieves an [[models.user.Organization]] and adds it to the request.
-    *
-    * @param organization Organization to retrieve
-    * @return             Request with organization if found, NotFound otherwise
-    */
-  def OrganizationAction(organization: String) = Action andThen organizationAction(organization)
-
-  /**
-    * Ensures a request is authenticated and retrieves and adds a
-    * [[models.user.Organization]] to the request.
-    *
-    * @param organization Organization to retrieve
-    * @return             Authenticated request with Organization if found, NotFound otherwise
-    */
-  def AuthedOrganizationAction(organization: String, requireUnlock: Boolean = false) = {
-    val first = if (requireUnlock) UserLock(ShowUser(organization)) else Authenticated
-    first andThen authedOrganizationAction(organization)
-  }
+  def ProjectPermissionAction(p: Permission)(implicit ec: ExecutionContext) = PermissionAction[AuthedProjectRequest](p)
 
   /**
     * A PermissionAction that uses an AuthedOrganizationRequest for the
@@ -145,27 +87,7 @@ trait Actions extends Calls with ActionHelpers {
     * @param p  Permission to check
     * @return   [[AuthedOrganizationRequest]]
     */
-  def OrganizationPermissionAction(p: Permission) = PermissionAction[AuthedOrganizationRequest](p)
-
-  /**
-    * A request that ensures that a user has permission to edit a specified
-    * profile.
-    *
-    * @param username User to check
-    * @return [[AuthRequest]] if has permission
-    */
-  def UserAction(username: String) = Authenticated andThen userAction(username)
-
-  /**
-    * Represents an action that requires a user to reenter their password.
-    *
-    * @param username Username to verify
-    * @param sso      Incoming SSO payload
-    * @param sig      Incoming SSO signature
-    * @return         None if verified, Unauthorized otherwise
-    */
-  def VerifiedAction(username: String, sso: Option[String], sig: Option[String])
-  = UserAction(username) andThen verifiedAction(sso, sig)
+  def OrganizationPermissionAction(p: Permission)(implicit ec: ExecutionContext) = PermissionAction[AuthedOrganizationRequest](p)
 
   implicit final class ResultWrapper(result: Result) {
 
@@ -216,7 +138,9 @@ trait Actions extends Calls with ActionHelpers {
 
   // Implementation
 
-  private def userLock(redirect: Call) = new ActionFilter[AuthRequest] {
+  def userLock(redirect: Call)(implicit ec: ExecutionContext) = new ActionFilter[AuthRequest] {
+    def executionContext = ec
+
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = Future.successful {
       if (request.user.isLocked)
         Some(Redirect(redirect).flashing("error" -> "error.user.locked"))
@@ -225,7 +149,9 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def verifiedAction(sso: Option[String], sig: Option[String]) = new ActionFilter[AuthRequest] {
+  def verifiedAction(sso: Option[String], sig: Option[String])(implicit ec: ExecutionContext) = new ActionFilter[AuthRequest] {
+    def executionContext = ec
+
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = Future.successful {
       if (sso.isEmpty || sig.isEmpty)
         Some(Unauthorized)
@@ -243,7 +169,9 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def userAction(username: String) = new ActionFilter[AuthRequest] {
+  def userAction(username: String)(implicit ec: ExecutionContext) = new ActionFilter[AuthRequest] {
+    def executionContext = ec
+
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = Future.successful {
       Actions.this.users.withName(username).flatMap[User] { toCheck =>
         val user = request.user
@@ -255,7 +183,9 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def authAction = new ActionRefiner[Request, AuthRequest] {
+  def authAction(implicit ec: ExecutionContext) = new ActionRefiner[Request, AuthRequest] {
+    def executionContext = ec
+
     def refine[A](request: Request[A]): Future[Either[Result, AuthRequest[A]]] = Future.successful {
       users.current(request)
         .map(AuthRequest(_, request))
@@ -263,32 +193,42 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def projectAction(author: String, slug: String) = new ActionRefiner[Request, ProjectRequest] {
+  def projectAction(author: String, slug: String)(implicit ec: ExecutionContext) = new ActionRefiner[Request, ProjectRequest] {
+    def executionContext = ec
+
     def refine[A](request: Request[A])
     = Future.successful(maybeProjectRequest(request, Actions.this.projects.withSlug(author, slug)))
   }
 
-  private def projectAction(pluginId: String) = new ActionRefiner[Request, ProjectRequest] {
+  def projectAction(pluginId: String)(implicit ec: ExecutionContext) = new ActionRefiner[Request, ProjectRequest] {
+    def executionContext: ExecutionContext = ec
+
     def refine[A](request: Request[A]): Future[Either[Result, ProjectRequest[A]]]
     = Future.successful(maybeProjectRequest(request, Actions.this.projects.withPluginId(pluginId)))
   }
 
-  private def maybeProjectRequest[A](request: Request[A], project: Option[Project]) = {
+  def maybeProjectRequest[A](request: Request[A], project: Option[Project]) = {
     project
       .flatMap(processProject(_, this.users.current(request)))
       .map(new ProjectRequest[A](_, request))
       .toRight(notFound()(request))
   }
 
-  private def processProject(project: Project, user: Option[User]): Option[Project] = {
-    if (project.isVisible || (user.isDefined && (user.get can HideProjects in GlobalScope)))
+  def processProject(project: Project, user: Option[User]): Option[Project] = {
+    if (project.visibility == VisibilityTypes.Public || project.visibility == VisibilityTypes.New
+      || (user.isDefined && (user.get can EditPages in project)
+        && (project.visibility == VisibilityTypes.NeedsChanges
+          || project.visibility == VisibilityTypes.NeedsApproval ))
+      || (user.isDefined && (user.get can HideProjects in GlobalScope)
+      ))
       Some(project)
     else
       None
   }
 
-  private def authedProjectActionImpl(project: Option[Project])
-  = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
+  def authedProjectActionImpl(project: Option[Project])(implicit ec: ExecutionContext) = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
+    def executionContext = ec
+
     def refine[A](request: AuthRequest[A]) = Future.successful {
       project.flatMap(processProject(_, Some(request.user)))
         .map(new AuthedProjectRequest[A](_, request))
@@ -296,13 +236,13 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def authedProjectAction(author: String, slug: String)
-  = authedProjectActionImpl(this.projects.withSlug(author, slug))
+  def authedProjectAction(author: String, slug: String)(implicit ec: ExecutionContext) = authedProjectActionImpl(this.projects.withSlug(author, slug))
 
-  private def authedProjectActionById(pluginId: String)
-  = authedProjectActionImpl(this.projects.withPluginId(pluginId))
+  def authedProjectActionById(pluginId: String)(implicit ec: ExecutionContext) = authedProjectActionImpl(this.projects.withPluginId(pluginId))
 
-  private def organizationAction(organization: String) = new ActionRefiner[Request, OrganizationRequest] {
+  def organizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[Request, OrganizationRequest] {
+    def executionContext = ec
+
     def refine[A](request: Request[A]): Future[Either[Result, OrganizationRequest[A]]] = Future.successful {
       Actions.this.organizations.withName(organization)
         .map(new OrganizationRequest(_, request))
@@ -310,8 +250,9 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def authedOrganizationAction(organization: String)
-  = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
+  def authedOrganizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
+    def executionContext = ec
+
     def refine[A](request: AuthRequest[A]) = Future.successful {
       Actions.this.organizations.withName(organization)
         .map(new AuthedOrganizationRequest[A](_, request))

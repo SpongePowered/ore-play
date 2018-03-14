@@ -2,7 +2,6 @@ package db.impl.service
 
 import javax.inject.{Inject, Singleton}
 
-import db.impl.OrePostgresDriver.api._
 import db.impl.{OreModelProcessor, OrePostgresDriver}
 import db.{ModelRegistry, ModelService}
 import discourse.OreDiscourseApi
@@ -10,7 +9,7 @@ import ore.{OreConfig, OreEnv}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.i18n.MessagesApi
 import security.spauth.SpongeAuthApi
-import slick.driver.JdbcProfile
+import slick.jdbc.JdbcProfile
 
 import scala.concurrent.duration._
 
@@ -37,7 +36,7 @@ class OreModelService @Inject()(override val env: OreEnv,
     this, Users, Projects, Organizations, this.config, this.forums, this.auth)
   override lazy val driver = OrePostgresDriver
   override lazy val DB = db.get[JdbcProfile]
-  override lazy val DefaultTimeout: Duration = this.config.app.getInt("db.default-timeout").get.seconds
+  override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
 
   import registry.{registerModelBase, registerSchema}
 
@@ -60,7 +59,9 @@ class OreModelService @Inject()(override val env: OreEnv,
     registerSchema(ProjectLogEntrySchema)
     registerSchema(FlagSchema)
     registerSchema(ViewSchema)
+    registerSchema(ReviewSchema)
     registerSchema(VersionSchema)
+    registerSchema(TagSchema)
     registerSchema(DownloadWarningSchema)
     registerSchema(UnsafeDownloadSchema)
     registerSchema(DownloadSchema)
@@ -70,6 +71,7 @@ class OreModelService @Inject()(override val env: OreEnv,
     registerSchema(OrganizationSchema)
     registerSchema(OrganizationRoleSchema)
     registerSchema(ProjectApiKeySchema)
+    registerSchema(VisibilityChangeSchema)
 
     Logger.info(
       "Database initialized:\n" +

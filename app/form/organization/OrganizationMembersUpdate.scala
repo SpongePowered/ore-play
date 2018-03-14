@@ -5,7 +5,7 @@ import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
 import ore.permission.role.RoleTypes
 import ore.user.notification.NotificationTypes
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, MessagesApi}
 
 /**
   * Saves new and old [[OrganizationRole]]s.
@@ -19,6 +19,8 @@ case class OrganizationMembersUpdate(override val users: List[Int],
                                      override val roles: List[String],
                                      userUps: List[String],
                                      roleUps: List[String]) extends TOrganizationRoleSetBuilder {
+
+  implicit val lang = Lang.defaultLang
 
   //noinspection ComparingUnrelatedTypes
   def saveTo(organization: Organization)(implicit messages: MessagesApi, users: UserBase) = {
@@ -41,7 +43,7 @@ case class OrganizationMembersUpdate(override val users: List[Int],
     // Update existing roles
     val orgRoleTypes = RoleTypes.values.filter(_.roleClass.equals(classOf[OrganizationRole]))
     for ((user, i) <- this.userUps.zipWithIndex) {
-      organization.memberships.members.find(_.username.equalsIgnoreCase(user)).foreach { user =>
+      organization.memberships.members.find(_.username.equalsIgnoreCase(user.trim)).foreach { user =>
         user.headRole.roleType = orgRoleTypes.find(_.title.equals(roleUps(i)))
           .getOrElse(throw new RuntimeException("supplied invalid role type"))
       }

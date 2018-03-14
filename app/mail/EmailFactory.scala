@@ -1,12 +1,11 @@
 package mail
 
 import javax.inject.Inject
-
 import db.ModelService
 import db.impl.access.UserBase
 import models.user.User
 import ore.OreConfig
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.{I18nSupport, Lang, MessagesApi}
 import play.api.mvc.Request
 
 final class EmailFactory @Inject()(override val messagesApi: MessagesApi,
@@ -17,6 +16,7 @@ final class EmailFactory @Inject()(override val messagesApi: MessagesApi,
   val AccountUnlocked = "email.accountUnlock"
 
   implicit val users = this.service.getModelBase(classOf[UserBase])
+  implicit val lang = Lang.defaultLang
 
   def create(user: User, id: String)(implicit request: Request[_]): Email = Email(
     recipient = user.email.get,

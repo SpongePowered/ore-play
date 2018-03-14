@@ -1,27 +1,40 @@
 package controllers.project
 
 import java.nio.file.{Files, Path}
-import javax.inject.Inject
+import java.sql.Timestamp
+import java.time.Instant
 
-import controllers.BaseController
+import javax.inject.Inject
+import controllers.OreBaseController
 import controllers.sugar.Bakery
+import controllers.sugar.Requests.AuthRequest
 import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
-import ore.permission.{EditSettings, HideProjects, PostAsOrganization, ViewLogs}
+import ore.permission._
+import models.admin.Message
+import models.project.{Note, Page, VisibilityTypes}
+import ore.permission._
 import ore.project.FlagReasons
 import ore.project.factory.ProjectFactory
 import ore.project.io.{InvalidPluginFileException, PluginUpload}
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
-import play.api.cache.CacheApi
+import play.api.cache.SyncCacheApi
 import play.api.i18n.MessagesApi
+import play.api.libs.json._
 import play.api.mvc._
+import play.twirl.api.Html
 import security.spauth.SingleSignOnConsumer
-import util.StringUtils._
+import _root_.util.StringUtils
+import _root_.util.StringUtils._
+import models.project.VisibilityTypes.Visibility
+import ore.permission.scope.GlobalScope
 import views.html.{projects => views}
 
 import scala.collection.JavaConverters._
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Controller for handling Project related actions.
@@ -29,7 +42,7 @@ import scala.collection.JavaConverters._
 class Projects @Inject()(stats: StatTracker,
                          forms: OreForms,
                          factory: ProjectFactory,
-                         implicit val cache: CacheApi,
+                         implicit val cache: SyncCacheApi,
                          implicit override val bakery: Bakery,
                          implicit override val sso: SingleSignOnConsumer,
                          implicit val forums: OreDiscourseApi,
@@ -37,7 +50,7 @@ class Projects @Inject()(stats: StatTracker,
                          implicit override val env: OreEnv,
                          implicit override val config: OreConfig,
                          implicit override val service: ModelService)
-                         extends BaseController {
+                         extends OreBaseController {
 
   implicit val fileManager = factory.fileManager
 
@@ -108,11 +121,13 @@ class Projects @Inject()(stats: StatTracker,
     * @return         View of members config
     */
   def showInvitationForm(author: String, slug: String) = UserLock() { implicit request =>
+    val organisationUserCanUploadTo = request.user.organizations.all
+      .filter(request.user can CreateProject in _).map(_.id.get).toSeq :+ request.user.id.get
     this.factory.getPendingProject(author, slug) match {
       case None =>
         Redirect(self.showCreator())
       case Some(pendingProject) =>
-        this.forms.ProjectSave.bindFromRequest().fold(
+        this.forms.ProjectSave(organisationUserCanUploadTo).bindFromRequest().fold(
           hasErrors =>
             FormError(self.showCreator(), hasErrors),
           formData => {
@@ -289,7 +304,7 @@ class Projects @Inject()(stats: StatTracker,
         hasErrors =>
           FormError(ShowProject(project), hasErrors),
         formData => {
-          project.flagFor(user, formData.reason, formData.comment.orNull)
+          project.flagFor(user, formData.reason, formData.comment)
           Redirect(self.show(author, slug)).flashing("reported" -> "true")
         }
       )
@@ -449,8 +464,10 @@ class Projects @Inject()(stats: StatTracker,
     * @return View of project
     */
   def save(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
+    val organisationUserCanUploadTo = request.user.organizations.all
+      .filter(request.user can CreateProject in _).map(_.id.get).toSeq :+ request.user.id.get
     val project = request.project
-    this.forms.ProjectSave.bindFromRequest().fold(
+    this.forms.ProjectSave(organisationUserCanUploadTo).bindFromRequest().fold(
       hasErrors =>
         FormError(self.showSettings(author, slug), hasErrors),
       formData => {
@@ -481,22 +498,60 @@ class Projects @Inject()(stats: StatTracker,
   /**
     * Sets the visible state of the specified Project.
     *
-    * @param author   Project owner
-    * @param slug     Project slug
-    * @param visible  Project visibility
+    * @param author     Project owner
+    * @param slug       Project slug
+    * @param visibility Project visibility
     * @return         Ok
     */
-  def setVisible(author: String, slug: String, visible: Boolean) = {
+  def setVisible(author: String, slug: String, visibility: Int) = {
     (AuthedProjectAction(author, slug, requireUnlock = true)
       andThen ProjectPermissionAction(HideProjects)) { implicit request =>
-      request.project.setVisible(visible)
+      val newVisibility = VisibilityTypes.withId(visibility)
+      if (request.user can newVisibility.permission in GlobalScope) {
+        if (newVisibility.showModal) {
+          val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+          request.project.setVisibility(newVisibility, comment, request.user)
+        } else {
+          request.project.setVisibility(newVisibility, "", request.user)
+        }
+      }
       Ok
     }
   }
 
+  /**
+    * Set a project that is in new to public
+    * @param author   Project owner
+    * @param slug     Project slug
+    * @return         Redirect home
+    */
+  def publish(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
+    val project = request.project
+    if (project.visibility == VisibilityTypes.New) {
+      project.setVisibility(VisibilityTypes.Public, "", request.user)
+    }
+    Redirect(self.show(project.ownerName, project.slug))
+  }
+
+  /**
+    * Set a project that needed changes to the approval state
+    * @param author   Project owner
+    * @param slug     Project slug
+    * @return         Redirect home
+    */
+  def sendForApproval(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
+    val project = request.project
+    if (project.visibility == VisibilityTypes.NeedsChanges) {
+      project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user)
+    }
+    Redirect(self.show(project.ownerName, project.slug))
+  }
+
   def showLog(author: String, slug: String) = {
-    (AuthedProjectAction(author, slug) andThen ProjectPermissionAction(ViewLogs)) { implicit request =>
-      Ok(views.log(request.project))
+    (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)) { implicit request =>
+      withProject(author, slug) { project =>
+        Ok(views.log(project))
+      }
     }
   }
 
@@ -507,10 +562,63 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Home page
     */
-  def delete(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
+  def delete(author: String, slug: String) = {
+    (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)) { implicit request =>
+      withProject(author, slug) { project =>
+        this.projects.delete(project)
+        Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name))
+      }
+    }
+  }
+
+  /**
+    * Soft deletes the specified project.
+    *
+    * @param author Project owner
+    * @param slug   Project slug
+    * @return Home page
+    */
+  def softDelete(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
     val project = request.project
-    this.projects.delete(project)
+    val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+    project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user)
     Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name))
   }
 
+  /**
+    * Show the flags that have been made on this project
+    *
+    * @param author Project owner
+    * @param slug   Project slug
+    */
+  def showFlags(author: String, slug: String) = {
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)) { implicit request =>
+      withProject(author, slug) { project =>
+        Ok(views.admin.flags(project))
+      }
+    }
+  }
+
+  /**
+    * Show the notes that have been made on this project
+    *
+    * @param author Project owner
+    * @param slug   Project slug
+    */
+  def showNotes(author: String, slug: String) = {
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)) { implicit request =>
+      withProject(author, slug) { project =>
+        Ok(views.admin.notes(project))
+      }
+    }
+  }
+
+  def addMessage(author: String, slug: String) = {
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) { implicit request =>
+      withProject(author, slug) { project =>
+        project.addNote(Note(this.forms.NoteDescription.bindFromRequest.get.trim, request.user.userId))
+        Ok("Review")
+      }
+    }
+  }
 }

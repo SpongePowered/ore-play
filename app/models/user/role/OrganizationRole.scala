@@ -23,9 +23,8 @@ case class OrganizationRole(override val id: Option[Int] = None,
                             override val userId: Int,
                             override val organizationId: Int = -1,
                             private val _roleType: RoleType,
-                            private val _isAccepted: Boolean = false,
-                            private val _isVisible: Boolean = true)
-                            extends RoleModel(id, createdAt, userId, _roleType, _isAccepted, _isVisible)
+                            private val _isAccepted: Boolean = false)
+                            extends RoleModel(id, createdAt, userId, _roleType, _isAccepted)
                               with OrganizationScope {
 
   override type M = OrganizationRole

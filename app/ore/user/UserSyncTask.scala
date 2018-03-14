@@ -20,7 +20,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 final class UserSyncTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig) extends Runnable {
 
   val Logger = play.api.Logger("UserSync")
-  val interval = this.config.users.getLong("syncRate").get.millis
+  val interval = this.config.users.get[Long]("syncRate").millis
 
   /**
     * Starts the task.

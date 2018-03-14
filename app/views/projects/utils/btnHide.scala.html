@@ -1,9 +1,0 @@
-@import models.project.Project
-@(project: Project, classes: String = "")
-
-@defining(project.isVisible) { visible =>
-    <button class="btn-hide btn btn-sm btn-default @classes" data-project="@project.ownerName/@project.slug">
-        <i class="fa @if(visible) { fa-eye-slash } else { fa-eye }"></i>
-        <span>@if(visible) { Hide } else { Unhide }</span> project
-    </button>
-}

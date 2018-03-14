@@ -33,7 +33,7 @@ var PROJECT_SLUG = null;
 $(function() {
     var form = $('#form-icon');
     var btn = form.find('.btn-upload');
-    var url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/icon';
+    var url = sanitize('/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/icon');
     var preview = form.find('.user-avatar');
     var input = form.find('input[type="file"]');
 

@@ -1,6 +1,7 @@
 package models.project
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import com.google.common.base.Preconditions._
 import db.access.ModelAccess
@@ -12,19 +13,25 @@ import db.impl.schema.ProjectSchema
 import db.impl.table.ModelKeys
 import db.impl.table.ModelKeys._
 import db.{ModelService, Named}
-import models.admin.ProjectLog
+import models.admin.{ProjectLog, VisibilityChange}
 import models.api.ProjectApiKey
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectRole
+import ore.permission.role.RoleTypes
 import ore.permission.scope.ProjectScope
 import ore.project.Categories.Category
 import ore.project.FlagReasons.FlagReason
 import ore.project.{Categories, ProjectMember}
 import ore.user.MembershipDossier
-import ore.{Joinable, Visitable}
-import util.GitHubUtil
-import util.StringUtils._
+import ore.{Joinable, OreConfig, Visitable}
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
+import play.twirl.api.Html
+import _root_.util.GitHubUtil
+import _root_.util.StringUtils
+import _root_.util.StringUtils._
+import models.project.VisibilityTypes.{Public, Visibility}
 
 /**
   * Represents an Ore package.
@@ -45,8 +52,9 @@ import util.StringUtils._
   * @param _topicId               ID of forum topic
   * @param _postId                ID of forum topic post ID
   * @param _isTopicDirty          Whether this project's forum topic needs to be updated
-  * @param _isVisible             Whether this project is visible to the default user
+  * @param _visibility            Whether this project is visible to the default user
   * @param _lastUpdated           Instant of last version release
+  * @param _notes                 JSON notes
   */
 case class Project(override val id: Option[Int] = None,
                    override val createdAt: Option[Timestamp] = None,
@@ -57,8 +65,6 @@ case class Project(override val id: Option[Int] = None,
                    private var _slug: String,
                    private var recommendedVersionId: Option[Int] = None,
                    private var _category: Category = Categories.Undefined,
-                   private var _isSpongePlugin: Boolean = false,
-                   private var _isForgeMod: Boolean = false,
                    private var _description: Option[String] = None,
                    private var _stars: Int = 0,
                    private var _views: Int = 0,
@@ -66,8 +72,9 @@ case class Project(override val id: Option[Int] = None,
                    private var _topicId: Int = -1,
                    private var _postId: Int = -1,
                    private var _isTopicDirty: Boolean = false,
-                   private var _isVisible: Boolean = true,
-                   private var _lastUpdated: Timestamp = null)
+                   private var _visibility: Visibility = Public,
+                   private var _lastUpdated: Timestamp = null,
+                   var _notes: String = "")
                    extends OreModel(id, createdAt)
                      with ProjectScope
                      with Downloadable
@@ -124,6 +131,14 @@ case class Project(override val id: Option[Int] = None,
     * @return Owner Member of project
     */
   override def owner: ProjectMember = new ProjectMember(this, this.ownerId)
+
+  override def transferOwner(member: ProjectMember) {
+    // Down-grade current owner to "Developer"
+    this.memberships.getRoles(this.owner.user).filter(_.roleType == RoleTypes.ProjectOwner)
+      .foreach(_.roleType = RoleTypes.ProjectDev);
+    this.memberships.getRoles(member.user).foreach(_.roleType = RoleTypes.ProjectOwner);
+    this.owner = member.user;
+  }
 
   /**
     * Sets the [[User]] that owns this Project.
@@ -211,20 +226,6 @@ case class Project(override val id: Option[Int] = None,
     if (isDefined) update(ModelKeys.Category)
   }
 
-  def isSpongePlugin: Boolean = this._isSpongePlugin
-
-  def setSpongePlugin(spongePlugin: Boolean) = {
-    this._isSpongePlugin = spongePlugin
-    if (isDefined) update(IsSpongePlugin)
-  }
-
-  def isForgeMod: Boolean = this._isForgeMod
-
-  def setForgeMod(forgeMod: Boolean) = {
-    this._isForgeMod = forgeMod
-    if (isDefined) update(IsForgeMod)
-  }
-
   /**
     * Returns this Project's description.
     *
@@ -272,17 +273,34 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return True if visible
     */
-  override def isVisible: Boolean = this._isVisible
+  override def visibility: Visibility = this._visibility
 
   /**
     * Sets whether this project is visible.
     *
-    * @param visible True if visible
+    * @param visibility True if visible
     */
-  def setVisible(visible: Boolean) = {
-    this._isVisible = visible
-    if (isDefined) update(IsVisible)
+  def setVisibility(visibility: Visibility, comment: String, creator: User) = {
+    this._visibility = visibility
+    if (isDefined) update(ModelKeys.Visibility)
+
+    if (lastVisibilityChange.isDefined) {
+      val visibilityChange =lastVisibilityChange.get
+      visibilityChange.setResolvedAt(Timestamp.from(Instant.now()))
+      visibilityChange.setResolvedBy(creator)
+    }
+
+    this.service.access[VisibilityChange](classOf[VisibilityChange]).add(VisibilityChange(None, Some(Timestamp.from(Instant.now())), creator.id, this.id.get, comment, None, None, visibility.id))
   }
+
+  /**
+    * Get VisibilityChanges
+    */
+  def visibilityChanges = this.schema.getChildren[VisibilityChange](classOf[VisibilityChange], this)
+  def visibilityChangesByDate = visibilityChanges.all.toSeq.sortWith(byCreationDate)
+  def byCreationDate(first: VisibilityChange, second: VisibilityChange) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+  def lastVisibilityChange: Option[VisibilityChange] = visibilityChanges.all.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption
+  def lastChangeRequest: Option[VisibilityChange] = visibilityChanges.all.toSeq.filter(cr => cr.visibility == VisibilityTypes.NeedsChanges.id).sortWith(byCreationDate).lastOption
 
   /**
     * Returns the last time this [[Project]] was updated.
@@ -556,6 +574,78 @@ case class Project(override val id: Option[Int] = None,
   override def hashCode() = this.id.get.hashCode
   override def equals(o: Any) = o.isInstanceOf[Project] && o.asInstanceOf[Project].id.get == this.id.get
 
+  /**
+    * Set a message and update the database
+    * @param content
+    * @return
+    */
+  private def setNote(content: String) = {
+    this._notes = content
+    update(Notes)
+  }
+
+  /**
+    * Helper function to decode the json
+    */
+  implicit val notesRead: Reads[Note] = (
+    (JsPath \ "message").read[String] and
+      (JsPath \ "user").read[Int] and
+      (JsPath \ "time").read[Long]
+    ) (Note.apply _)
+
+  /**
+    * Add new note
+    * @param message
+    * @return
+    */
+  def addNote(message: Note) = {
+
+    /**
+      * Helper function to encode to json
+      */
+    implicit val noteWrites = new Writes[Note] {
+      def writes(note: Note) = Json.obj(
+        "message" -> note.message,
+        "user" -> note.user,
+        "time" -> note.time
+      )
+    }
+
+    val messages = getNotes() :+ message
+    val js: Seq[JsValue] = messages.map(m => Json.toJson(m))
+    setNote(
+      Json.stringify(
+        JsObject(Seq(
+          "messages" -> JsArray(
+            js
+          )
+        ))
+      )
+    )
+  }
+
+  /**
+    * Get all messages
+    * @return
+    */
+  def getNotes(): Seq[Note] = {
+    if (this._notes.startsWith("{")  && _notes.endsWith("}")) {
+      val messages: JsValue = Json.parse(_notes)
+      (messages \ "messages").as[Seq[Note]]
+    } else {
+      Seq()
+    }
+  }
+}
+
+/**
+  * This modal is needed to convert the json
+  * @param time
+  * @param message
+  */
+case class Note(message: String, user: Int, time: Long = System.currentTimeMillis()) {
+  def getTime(implicit oreConfig: OreConfig) = StringUtils.prettifyDateAndTime(new Timestamp(time))
+  def render(implicit oreConfig: OreConfig): Html = Page.Render(message)
 }
 
 object Project {
@@ -571,6 +661,7 @@ object Project {
     private var _ownerName: String = _
     private var _ownerId: Int = -1
     private var _name: String = _
+    private var _visibility: Visibility = _
 
     def pluginId(pluginId: String) = {
       this._pluginId = pluginId
@@ -592,6 +683,11 @@ object Project {
       this
     }
 
+    def visibility(visibility: Visibility) = {
+      this._visibility = visibility
+      this
+    }
+
     def build(): Project = {
       checkNotNull(this._pluginId, "plugin id null", "")
       checkNotNull(this._ownerName, "owner name null", "")
@@ -602,7 +698,8 @@ object Project {
         _ownerName = this._ownerName,
         _ownerId = this._ownerId,
         _name = this._name,
-        _slug = slugify(this._name)
+        _slug = slugify(this._name),
+        _visibility = this._visibility
       ))
     }
 

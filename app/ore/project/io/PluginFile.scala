@@ -10,7 +10,7 @@ import models.user.User
 import ore.user.UserOwned
 import org.apache.commons.codec.digest.DigestUtils
 import org.spongepowered.plugin.meta.{McModInfo, PluginMetadata}
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, MessagesApi}
 
 import scala.collection.JavaConverters._
 import scala.util.control.Breaks._
@@ -21,6 +21,8 @@ import scala.util.control.Breaks._
   * @param _path Path to uploaded file
   */
 class PluginFile(private var _path: Path, val signaturePath: Path, val user: User) extends UserOwned {
+
+  implicit val lang = Lang.defaultLang
 
   private val MetaFileName = "mcmod.info"
 

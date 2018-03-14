@@ -9,7 +9,8 @@
   cooked: Html = Html(""),
   subject: String = null,
   cancellable: Boolean = true,
-  targetForm: String = null)(implicit messages: Messages, request: Request[_])
+  targetForm: String = null,
+  extraFormValue: String = null)(implicit messages: Messages, request: Request[_])
 
 @if(enabled) {
     <!-- Edit -->
@@ -91,6 +92,9 @@
     @if(savable) {
         @form(action = saveCall, 'id -> "form-editor-save") {
             @CSRF.formField
+            @if(extraFormValue != null) {
+                <input type="hidden" value="@extraFormValue" name="name">
+            }
         }
     }
 

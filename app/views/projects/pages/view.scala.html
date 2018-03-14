@@ -15,16 +15,17 @@ Documentation page within Project overview.
 @import models.project.Page
 @(model: Project,
   page: Page,
+  forceHideEditor: Boolean = false,
   editorOpen: Boolean = false)(implicit messages: Messages, request: Request[_], flash: Flash, service: ModelService,
         config: OreConfig, userBase: UserBase)
 
 @canEditPages = @{
-    userBase.current.isDefined && (userBase.current.get can EditPages in model)
+    userBase.current.isDefined && (userBase.current.get can EditPages in model) && !forceHideEditor
 }
 
 @projects.view(model, "#docs") {
 
-    <script type="text/javascript" src="@controllers.routes.Assets.at("javascripts/pageView.js")"></script>
+    <script type="text/javascript" src="@controllers.routes.Assets.at("javascripts/pageCollapse.js")"></script>
     <script nonce="@nonce">
         pluginId = '@model.pluginId';
         namespace = '@model.namespace';
@@ -41,13 +42,14 @@ Documentation page within Project overview.
                         <div class="col-md-12">
                             @utils.alert("error")
                             @utils.editor(
-                                saveCall = routes.Pages.save(model.ownerName, model.slug, page.name),
-                                deleteCall = routes.Pages.delete(model.ownerName, model.slug, page.name),
+                                saveCall = routes.Pages.save(model.ownerName, model.slug, page.fullSlug),
+                                deleteCall = routes.Pages.delete(model.ownerName, model.slug, page.fullSlug),
                                 deletable = !page.isHome,
                                 enabled = canEditPages,
                                 raw = page.contents,
                                 cooked = page.html,
-                                subject = "Page")
+                                subject = "Page",
+                                extraFormValue = page.name)
                         </div>
                     </div>
                 </div>
@@ -71,14 +73,13 @@ Documentation page within Project overview.
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <h3 class="pull-left panel-title">@messages("page.plural")</h3>
-                            @if(canEditPages && model.pages.size < config.projects.getInt("max-pages").get) {
+                            @if(canEditPages && model.pages.size < config.projects.get[Int]("max-pages")) {
                                 <button data-toggle="modal" data-target="#new-page" title="New"
-                                        class="btn-panel new-page btn btn-default btn-xs pull-right">
+                                        class="new-page btn yellow btn-xs pull-right">
                                     <i class="fa fa-plus"></i>
                                 </button>
                                 @projects.pages.modalPageCreate(model)
                             }
-                            <div class="clearfix"></div>
                         </div>
                         <ul class="list-group">
                             <li class="list-group-item">
@@ -90,16 +91,16 @@ Documentation page within Project overview.
                                 <li class="list-group-item">
                                     @if(pg.children.nonEmpty) {
                                         @if(page.parentId != pg.id.get) {
-                                            <a href="#" class="page-expand" data-page-id="@pg.id.get">
+                                            <a class="page-expand" data-page-id="@pg.id.get">
                                                 <i class="fa fa-plus-square-o"></i>
                                             </a>
                                         } else {
-                                            <a href="#" class="page-collapse" data-page-id="@pg.id.get">
+                                            <a class="page-collapse" data-page-id="@pg.id.get">
                                                 <i class="fa fa-minus-square-o"></i>
                                             </a>
                                         }
                                     }
-                                    <a href="@routes.Pages.show(model.ownerName, model.slug, pg.name)">
+                                    <a href="@routes.Pages.show(model.ownerName, model.slug, pg.fullSlug)">
                                         @pg.name
                                     </a>
                                 </li>
@@ -107,7 +108,7 @@ Documentation page within Project overview.
                                   <div class="page-children" data-page-id="@pg.id.get">
                                       @pg.children.sorted(_.name).map { child =>
                                         <li class="list-group-item page-item-child">
-                                            <a href="@routes.Pages.show(model.ownerName, model.slug, child.name)">
+                                            <a href="@routes.Pages.show(model.ownerName, model.slug, child.fullSlug)">
                                                 @child.name
                                             </a>
                                         </li>

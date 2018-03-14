@@ -1,49 +1,47 @@
 @()(implicit messages: Messages)
 
 <footer class="footer">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-4">
-                <div class="info">
-                    <span class="minor copy">&copy;</span>
-                    <span class="minor copyright">2016 @messages("general.organization")</span>
-                    <a href="#">@messages("general.terms")</a>
-                    <a href="https://forums.spongepowered.org/c/plugins/ore-support">@messages("general.contact")</a>
-                    <a href="https://docs.spongepowered.org/stable/en/about/index.html">@messages("general.about")</a>
+    <div class="above">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12">
+                    By using this site you're accepting our <a class="tos" href="https://docs.spongepowered.org/stable/en/about/tos.html">@messages("general.terms")</a>
                 </div>
             </div>
-
-            <div class="col-md-4 col-spongie">
-                <div>
-                    <img width="50" height="50" id="spongie" class="svg"
-                         src="@routes.Assets.at("images/spongie-mark.svg")" />
+        </div>
+    </div>
+    <div class="middle">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-2 col-xs-12">
+                    <h5>Ore API</h5>
+                    <a class="btn dark" href="https://docs.spongepowered.org/stable/en/ore/api.html">@messages("general.api")</a>
+                </div>
+                <div class="col-sm-2 col-xs-12">
+                    <h5>Help Needed?</h5>
+                    <a class="btn dark" href="https://forums.spongepowered.org/c/plugins/ore-support">@messages("general.contact")</a>
+                </div>
+                <div class="col-sm-4 col-xs-12">
+                    <a href="https://www.spongepowered.org">
+                        <img class="spongie" src="@routes.Assets.at("images/spongie-mark.svg")" />
+                    </a>
+                </div>
+                <div class="col-sm-2 col-xs-12">
+                    <h5>Found an Issue?</h5>
+                    <a class="btn dark" target="_blank" href="https://github.com/SpongePowered/Ore/issues"> @messages("general.issues")</a>
+                </div>
+                <div class="col-sm-2 col-xs-12">
+                    <h5>Our Sponsors</h5>
+                    <a class="btn dark" href="https://www.spongepowered.org/sponsors">@messages("general.sponsors")</a>
                 </div>
             </div>
-
-            <div class="col-md-4">
-                <div class="social pull-right">
-
-                    @sys.env.get("GIT_COMMIT").map { commit =>
-                        <a tabindex="1" class="commit" href="https://github.com/SpongePowered/Ore/commit/@commit">
-                            @commit.substring(0, 8)
-                        </a>
-                    }
-
-                    <a target="_blank" href="https://github.com/SpongePowered/Ore/issues">
-                        @messages("general.issues")
-                    </a>
-                    <a target="_blank" href="https://github.com/SpongePowered/Ore">@messages("general.source")</a>
-                    <a href="https://docs.spongepowered.org/stable/en/ore/api.html">@messages("general.api")</a>
-                    <a href="https://www.spongepowered.org/sponsors">@messages("general.sponsors")</a>
-                    <a class="social-icon" target="_blank" href="https://twitter.com/spongepowered">
-                        <i class="fa fa-twitter fa-2x"></i>
-                    </a>
-                    <a class="social-icon" target="_blank" href="https://www.facebook.com/SpongePoweredMC">
-                        <i class="fa fa-facebook-official fa-2x"></i>
-                    </a>
-                    <a class="social-icon" target="_blank" href="https://www.reddit.com/r/spongeproject">
-                        <i class="fa fa-reddit fa-2x"></i>
-                    </a>
+        </div>
+    </div>
+    <div class="below">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12">
+                    <p>Copyright &copy; @messages("general.organization") 2016-2018</p>
                 </div>
             </div>
         </div>

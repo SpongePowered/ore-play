@@ -26,6 +26,11 @@ case object Limited extends Trust { override val level = 1 }
 case object Standard extends Trust { override val level = 2 }
 
 /**
+  * User that can perform any action but they are not on top.
+  */
+case object Lifted extends Trust { override val level = 3 }
+
+/**
   * User is absolutely trusted and may perform any action.
   */
-case object Absolute extends Trust { override val level = 3 }
+case object Absolute extends Trust { override val level = 4 }

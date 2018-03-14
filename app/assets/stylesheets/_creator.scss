@@ -2,7 +2,6 @@
 @import 'pallette';
 
 .project-create-steps {
-  @include rounded-corners();
   background-color: #fafafa;
   color: #ccc;
   border: 1px solid $lighter;
@@ -118,7 +117,7 @@
 
 .table-members {
   border-top: none;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid $lighter;
   .input-group { max-width: 35%; }
   tbody > tr > td { padding: 10px; }
   tr > td:last-child { text-align: right; }
@@ -131,7 +130,7 @@
 }
 
 .release-bulletin {
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid $lighter;
   > div {
     width: 90%;
     margin: 10px auto 0;

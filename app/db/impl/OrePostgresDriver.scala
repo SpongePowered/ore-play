@@ -2,6 +2,9 @@ package db.impl
 
 import com.github.tminglei.slickpg._
 import db.table.key.Aliases
+import models.project.{TagColors, VisibilityTypes}
+import models.project.TagColors.TagColor
+import models.project.VisibilityTypes.Visibility
 import ore.Colors
 import ore.Colors.Color
 import ore.permission.role.RoleTypes
@@ -21,12 +24,13 @@ import ore.user.notification.NotificationTypes.NotificationType
 /**
   * Custom Postgres driver to support array data and custom type mappings.
   */
-trait OrePostgresDriver extends ExPostgresDriver with PgArraySupport with PgNetSupport {
+trait OrePostgresDriver extends ExPostgresProfile with PgArraySupport with PgNetSupport {
 
   override val api = OreDriver
 
   object OreDriver extends API with ArrayImplicits with NetImplicits with Aliases {
     implicit val colorTypeMapper = MappedJdbcType.base[Color, Int](_.id, Colors.apply)
+    implicit val tagColorTypeMapper = MappedJdbcType.base[TagColor, Int](_.id, TagColors.apply)
     implicit val roleTypeTypeMapper = MappedJdbcType.base[RoleType, Int](_.roleId, RoleTypes.withId)
     implicit val roleTypeListTypeMapper = new AdvancedArrayJdbcType[RoleType]("int2",
       str => utils.SimpleArrayUtils.fromString[RoleType](s => RoleTypes.withId(Integer.parseInt(s)))(str).orNull,
@@ -42,6 +46,7 @@ trait OrePostgresDriver extends ExPostgresDriver with PgArraySupport with PgNetS
     ).to(_.toList)
     implicit val downloadTypeTypeMapper = MappedJdbcType.base[DownloadType, Int](_.id, DownloadTypes.apply)
     implicit val projectApiKeyTypeTypeMapper = MappedJdbcType.base[ProjectApiKeyType, Int](_.id, ProjectApiKeyTypes.apply)
+    implicit val visibiltyTypeMapper = MappedJdbcType.base[Visibility, Int](_.id, VisibilityTypes.withId)
   }
 
 }

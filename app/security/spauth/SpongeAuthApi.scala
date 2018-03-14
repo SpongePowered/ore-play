@@ -132,8 +132,8 @@ final class SpongeAuth @Inject()(config: OreConfig, override val ws: WSClient) e
 
   val conf = this.config.security
 
-  override val url = this.conf.getString("api.url").get
-  override val apiKey = this.conf.getString("api.key").get
-  override val timeout = this.conf.getLong("api.timeout").get.millis
+  override val url = this.conf.get[String]("api.url")
+  override val apiKey = this.conf.get[String]("api.key")
+  override val timeout = this.conf.get[FiniteDuration]("api.timeout")
 
 }

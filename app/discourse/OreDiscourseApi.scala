@@ -45,8 +45,6 @@ trait OreDiscourseApi extends DiscourseApi {
 
   private var recovery: RecoveryTask = _
 
-  isDebugMode = true
-
   /**
     * Initializes and starts this API instance.
     */
@@ -232,17 +230,16 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param version Version of project
     * @return
     */
-  def postVersionRelease(project: Project, version: Version, content: String): Future[List[String]] = {
+  def postVersionRelease(project: Project, version: Version, content: Option[String]): Future[List[String]] = {
     if (!this.isEnabled)
       return Future(List.empty)
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(version.id.isDefined, "undefined version", "")
     checkArgument(version.projectId == project.id.get, "invalid version project pair", "")
-    val cont = if (content.isEmpty) None else Some(content)
     postDiscussionReply(
       project = project,
       user = project.owner,
-      content = this.templates.versionRelease(project, version, cont)).map { errors =>
+      content = this.templates.versionRelease(project, version, content)).map { errors =>
       if (errors.nonEmpty) {
         errors.foreach(project.logger.err(_))
       }

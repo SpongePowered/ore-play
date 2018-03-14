@@ -5,14 +5,18 @@ sorted according to different criteria.
 @import db.ModelService
 @import db.impl.access.UserBase
 @import models.project.Project
-@import ore.{OreConfig, Platforms}
 @import ore.Platforms.Platform
 @import ore.project.Categories._
 @import ore.project.ProjectSortingStrategies.{values, _}
 @import ore.project.{Categories, ProjectSortingStrategies}
+@import ore.{OreConfig, Platforms}
+@import play.api.Configuration
 @import security.NonceFilter._
+@import scala.collection.JavaConversions._
 
+@import scala.collection.mutable
 @import scala.util.Random
+
 @(models: Seq[Project], visibleCategories: Option[Array[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
@@ -20,10 +24,12 @@ sorted according to different criteria.
 @projectRoutes = @{controllers.project.routes.Projects}
 
 @randomSponsor = @{
-    val logos = config.sponge.getStringList("sponsors.logos").get
-    val urls = config.sponge.getStringList("sponsors.urls").get
+    val logos: Seq[Configuration] = config.sponge.get[Seq[Configuration]]("sponsors")
+
     val index = new Random().nextInt(logos.size)
-    (logos.get(index), urls.get(index))
+    val logo = logos(index)
+
+    (logo.get[String]("name"), logo.get[String]("image"), logo.get[String]("link"))
 }
 
 @categoryString = @{
@@ -43,10 +49,10 @@ sorted according to different criteria.
 
 @maybeActive(pform: Platform) = @{
     platform.map { p =>
-      if (p.equals(pform))
-        "active"
-      else
-        ""
+        if (p.equals(pform))
+            "active"
+        else
+            ""
     }
 }
 
@@ -54,20 +60,20 @@ sorted according to different criteria.
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/home.js")"></script>
     <script nonce="@nonce">
-        @if(visibleCategories.isDefined) {
-            CATEGORY_STRING = "@visibleCategories.get.map(_.id).mkString(",")";
-        }
-        @if(!sort.equals(Default)) {
-            SORT_STRING = "@sort.id";
-        }
-        @if(request.getQueryString("q").isDefined) {
-            QUERY_STRING = "@request.getQueryString("q").get";
-        }
-        currentlyLoaded = @models.size;
+    @if(visibleCategories.isDefined) {
+    CATEGORY_STRING = "@visibleCategories.get.map(_.id).mkString(",")";
+    }
+    @if(!sort.equals(ProjectSortingStrategies.Default)) {
+    SORT_STRING = "@sort.id";
+    }
+    @if(request.getQueryString("q").isDefined) {
+    QUERY_STRING = "@request.getQueryString("q").get";
+    }
+    currentlyLoaded = @models.size;
     </script>
 
     <div class="container" style="margin-top: 90px ;">
-        <!-- Header -->
+            <!-- Header -->
         <div class="index-header">
             <div class="row">
                 <div class="col-md-12">
@@ -78,12 +84,12 @@ sorted according to different criteria.
 
             <div class="row">
                 <div class="col-md-9"><img height="60" src="@routes.Assets.at("images/ore-desc.png")" /></div>
-                <div class="col-md-3">
-                    <div class="sponsor sponsor-block">
-                        <i>@messages("general.sponsoredBy")</i><br/>
+                <div class="col-md-3 sponsor-block">
+                    <i>@messages("general.sponsoredBy")</i>
+                    <div class="sponsor">
                         @defining(randomSponsor) { sponsor =>
-                            <a href="@sponsor._2">
-                                <img class="sponsor-logo" src="@routes.Assets.at("images/sponsors/" + sponsor._1)" />
+                            <a href="@sponsor._3">
+                                <img class="logo" src="@routes.Assets.at(sponsor._2)" />
                             </a>
                         }
                     </div>
@@ -91,10 +97,17 @@ sorted according to different criteria.
             </div>
         </div>
 
-        <!-- Main content -->
+            <!-- Main content -->
         <div class="row project-content">
-            <!-- Project table -->
+                <!-- Project table -->
             <div class="col-md-9">
+                <div class="project-search input-group">
+                    <input type="text" class="form-control" placeholder="Search in projects...">
+                    <span class="input-group-btn">
+                        <button class="btn yellow" type="button">Search</button>
+                    </span>
+                </div>
+
                 @if(query.isDefined) {
                     <li class="list-group-item minor search-header">
                         <span class="pull-left">Showing results for: <i>@query</i></span>
@@ -106,15 +119,15 @@ sorted according to different criteria.
                 @projects.list(
                     models = models,
                     page = page,
-                    pageSize = config.projects.getInt("init-load").get,
+                    pageSize = config.projects.get[Int]("init-load"),
                     call = page => routes.Application.showHome(
                         categoryString, query, orderingOption, Some(page), platformOption)
                 )
             </div>
 
-            <!-- Sidebar -->
+                <!-- Sidebar -->
             <div class="col-md-3">
-                <!-- Ordering selection -->
+                    <!-- Ordering selection -->
                 <select class="form-control select-sort">
                     <option selected value="@sort.id">@sort.title</option>
                     @values.filterNot(_.equals(sort)).map { strategy =>
@@ -122,36 +135,32 @@ sorted according to different criteria.
                     }
                 </select>
 
-                <!-- Category table -->
+                    <!-- Category table -->
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("project.category.plural")</h3>
                         @if(visibleCategories.isDefined) {
                             <a href="@routes.Application.showHome(None, None, None, None, None)">
-                                <i class="pull-right category-reset fa fa-times"></i>
+                                <i class="category-reset fa fa-times"></i>
                             </a>
                         }
                     </div>
 
                     <table class="table panel-body category-table">
                         <tbody>
-                            @for(category <- Categories.visible) {
-                                <tr data-id="@category.id"
-                                    @if(visibleCategories.isDefined && visibleCategories.get.contains(category)) {
-                                        class="selected"
-                                    }
-                                >
-                                    <td><i class="fa @category.icon"></i></td>
-                                    <td>
-                                        <strong>@category.title</strong>
-                                    </td>
-                                </tr>
-                            }
+                        @for(category <- Categories.visible) {
+                            <tr data-id="@category.id" @if(visibleCategories.isDefined && visibleCategories.get.contains(category)) { class="selected"} >
+                                <td><i class="fa @category.icon"></i></td>
+                                <td>
+                                    <strong>@category.title</strong>
+                                </td>
+                            </tr>
+                        }
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Platform list -->
+                    <!-- Platform list -->
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("general.platform")</h3>
@@ -165,7 +174,7 @@ sorted according to different criteria.
                             orderingOption,
                             Some(page),
                             None)"
-                           class="list-group-item @if(platform.isEmpty) { active }">
+                        class="list-group-item @if(platform.isEmpty) { active }">
                             <strong>@messages("general.any")</strong>
                         </a>
 
@@ -176,22 +185,12 @@ sorted according to different criteria.
                                 orderingOption,
                                 Some(page),
                                 Some(pform.name))"
-                               class="list-group-item @maybeActive(pform)">
+                            class="list-group-item @maybeActive(pform)">
                                 <strong>@pform.name</strong>
                             </a>
                         }
                     </ul>
                 </div>
-
-                <!-- Featured sponsor -->
-                @config.sponge.getString("sponsors.featured.logo").map { logo =>
-                  <div class="sponsor sponsor-block sponsor-featured">
-                      <i>@messages("general.featuredSponsor")</i><br/>
-                      <a href="@config.sponge.getString("sponsors.featured.url")">
-                          <img class="sponsor-logo" src="@routes.Assets.at("images/sponsors/" + logo)" />
-                      </a>
-                  </div>
-                }
             </div>
         </div>
     </div>

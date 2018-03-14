@@ -7,7 +7,14 @@ The main header displayed on each layout.
 @import models.project.{Flag, Version}
 @import ore.OreConfig
 @import ore.permission.scope.GlobalScope
-@import ore.permission.{ReviewFlags, ReviewProjects}
+@import ore.permission._
+@import db.impl.schema.ProjectSchema
+@import db.ModelFilter
+@import models.project.Project
+@import models.project.VisibilityTypes
+@import db.impl.OrePostgresDriver.api._
+@import ore.project.ProjectSortingStrategies
+
 @(user: Boolean = true)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig,
         users: UserBase)
 
@@ -26,7 +33,7 @@ The main header displayed on each layout.
         <!-- Left navbar -->
         <div id="sp-logo-container">
             <a class="logo" href="@routes.Application.showHome(None, None, None, None, None)">
-                <img src="@config.sponge.getString("logo").get">
+                <img src="@config.sponge.get[String]("logo")">
                 <span>@messages("general.projectName")</span>
                 <i class="fa fa-fw fa-chevron-down"></i>
             </a>
@@ -63,27 +70,9 @@ The main header displayed on each layout.
         <!-- Right navbar -->
         @if(user) {
             <ul class="nav navbar-nav navbar-collapse collapse navbar-right">
-
-                <li class="project-search">
-                    <div class="input-group" style="display: none;">
-                        <input type="text" class="form-control" placeholder="Search projects&hellip;" />
-                        <div class="input-group-btn">
-                            <button class="btn btn-default"><i class="fa fa-arrow-right"></i></button>
-                        </div>
-                    </div>
-                </li>
-
-                <li class="nav-icon search-icon" @tooltip(messages("project.search"))>
-                    <i class="icon fa fa-search"></i>
-                </li>
-
-                <li class="nav-icon authors-icon" @tooltip(messages("project.viewAuthors"))>
-                    <i class="icon fa fa-users"></i>
-                </li>
-
                 @users.current.map { user =>
 
-                <li class="dropdown nav-icon new-icon new-controls">
+                <li class="dropdown nav-icon new-controls">
                     <a href="#" class="drop-down-toggle" data-toggle="dropdown">
                         <i class="icon fa fa-plus"></i>
                         <span class="caret"></span>
@@ -101,8 +90,13 @@ The main header displayed on each layout.
                         </li>
                     </ul>
                 </li>
+
+                <li class="nav-icon authors-icon" @tooltip(messages("project.viewAuthors"))>
+                    <i class="icon fa fa-users"></i>
+                </li>
+
                     @* Show user controls *@
-                <li class="dropdown user-controls">
+                <li class="dropdown user-controls nav-icon">
                     <a href="#" class="drop-down-toggle user-toggle" data-toggle="dropdown">
                         @if(user.hasUnreadNotifications) {
                             <span class="unread"></span>
@@ -144,6 +138,25 @@ The main header displayed on each layout.
                             </li>
                         }
 
+                        @if(user can ReviewVisibility in GlobalScope) {
+                            <li>
+                                <a href="@routes.Application.showProjectVisibility()">
+                                    <span class="flags pull-left">
+                                        Project approvals
+                                        @{
+                                            val projectSchema = service.getSchema(classOf[ProjectSchema])
+                                            val futureApproval = projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0)
+                                            val projectApprovals = service.await(futureApproval).get
+                                            if (projectApprovals.size >= 1) {
+                                                <span class="unread"></span>
+                                            }
+                                        }
+                                    </span>
+                                    <i class="pull-right fa fa-thumbs-up"></i>
+                                </a>
+                            </li>
+                        }
+
                         @if(user can ReviewProjects in GlobalScope) {
                             <li>
                                 <a href="@routes.Application.showQueue()">
@@ -157,6 +170,29 @@ The main header displayed on each layout.
                                 </a>
                             </li>
                         }
+
+                        @if(user can ViewStats in GlobalScope) {
+                            <li>
+                                <a href="@routes.Application.showStats()">
+                                    <span class="pull-left">
+                                        @messages("user.stats")
+                                    </span>
+                                    <i class="pull-right fa fa-area-chart"></i>
+                                </a>
+                            </li>
+                        }
+
+                        @if(user can ViewHealth in GlobalScope) {
+                            <li>
+                                <a href="@routes.Application.showHealth()">
+                                    <span class="pull-left">
+                                    @messages("admin.health.title")
+                                    </span>
+                                    <i class="pull-right fa fa-heartbeat"></i>
+                                </a>
+                            </li>
+                        }
+
 
                         <li role="separator" class="divider"></li>
                         <li>

@@ -2,6 +2,7 @@ package db.impl.model.common
 
 import db.Model
 import db.impl.table.common.VisibilityColumn
+import models.project.VisibilityTypes.Visibility
 
 /**
   * Represents a [[Model]] that has a toggleable visibility.
@@ -16,6 +17,6 @@ trait Hideable extends Model { self =>
     *
     * @return True if model is visible
     */
-  def isVisible: Boolean
+  def visibility: Visibility
 
 }

@@ -1,89 +1,90 @@
+@import "sponge_variables";
 @import 'pallette';
 @import 'utils';
 
-/* footer */
-
 .footer {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  min-height: 60px;
-  height: 60px;
-  padding: 0 10px 0 10px;
-  a { outline: none; }
-  .col-md-4.col-spongie { padding: 0; }
-  .info { display: table; }
-
-  .col-md-4 {
-    @include padding-horiz(5px, 5px);
-    font-size: 12px;
-    padding-top: 12px;
-    vertical-align: middle;
-    border-top: 1px solid $lighter;
-  }
-
-  .info > a, .info > .copyright {
-    display: table-cell;
-    padding-right: 10px;
-    vertical-align: middle;
-  }
-
-  .commit {
-    font-size: 10px;
-    color: $mainBackground;
-  }
-
-  .commit:hover {
-    color: $mainBackground;
-  }
-}
-
-.footer > .navbar-default {
-  background-color: $light;
-  border: 0;
-  border-top: 1px solid #A5A5A5;
-}
-
-#spongie, .col-spongie > div {
-  @include size(25px, 25px);
   display: block;
-  margin: 12px auto;
-  path {
-    @include transition3(fill, 0.15s, ease-in-out);
-    fill: gray;
+  width: 100%;
+  margin-top: 2em;
+  text-align: center;
+
+  h5, p , a, a:hover {
+    color: #ffffff;
   }
-}
 
-.col-spongie > div {
-  cursor: pointer;
-}
+  h5 {
+    font-size: 1.3em;
+    font-weight: bold;
+  }
 
-.copy {
-  font-size: 11px;
-  padding-right: 2px;
-}
+  .above {
+    background: $sponge_light_gray;
+    padding: 10px 0;
+    color: #e5e5e5;
 
-.copyright {
-  font-family: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
+    a.tos {
+      color: #e5e5e5;
+      font-size: 1em;
+      padding: 0;
+      text-decoration: underline;
+    }
+  }
 
-.social {
-  display: table;
-  .fa-twitter:hover { color: #00aced; }
-  .fa-facebook-official:hover { color: #3b5998; }
-  .fa-reddit:hover { color: #3399ff; }
-}
+  .middle {
+    background: $sponge_grey;
+    padding: 1.5em;
 
-.social > a {
-  display: table-cell;
-  padding-left: 10px;
-  vertical-align: middle;
-}
+    img.spongie {
+      height: 60px;
+      width: 60px;
 
-.social > .social-icon {
-  color: #727272;
-}
+      @media (min-width: 768px) {
+        height: 74px;
+        width: 74px;
 
-.social > a > .fa {
-  @include transition3(color, 0.15s, ease-in-out);
+        &:hover {
+          animation-name: bounce;
+          animation-duration: .5s;
+          animation-fill-mode: both;
+          animation-iteration-count: infinite;
+        }
+
+        @-webkit-keyframes bounce {
+          0%, 100% {
+            transform: rotateZ(0);
+          }
+          33% {
+            transform: rotateZ(-5deg);
+          }
+          50% {
+            transform: rotateZ(0);
+          }
+          76% {
+            transform: rotateZ(5deg);
+          }
+        }
+      }
+    }
+  }
+
+  .below {
+    background: $sponge_dark_grey;
+    padding: 1em;
+    font-size: 1em;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  @media (max-width: 768px) {
+    [class*="col-"] {
+      margin: 1em 0;
+    }
+
+    h5 {
+      margin-top: 0;
+    }
+  }
+
 }

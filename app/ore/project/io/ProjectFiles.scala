@@ -26,6 +26,18 @@ class ProjectFiles(val env: OreEnv) {
   def getProjectDir(owner: String, name: String): Path = getUserDir(owner).resolve(name)
 
   /**
+    * Returns the specified version's directory
+    *
+    * @param owner   Owner name
+    * @param name    Project name
+    * @param version Version
+    * @return        Version directory
+    */
+  def getVersionDir(owner: String, name: String, version: String): Path = {
+    getProjectDir(owner, name).resolve("versions").resolve(version)
+  }
+
+  /**
     * Returns the specified user's plugin directory.
     *
     * @param user User name
@@ -44,14 +56,6 @@ class ProjectFiles(val env: OreEnv) {
   def renameProject(owner: String, oldName: String, newName: String): Try[Unit] = Try {
     val newProjectDir = getProjectDir(owner, newName)
     move(getProjectDir(owner, oldName), newProjectDir)
-    // Rename plugin files
-    for (channelDir <- newProjectDir.toFile.listFiles()) {
-      if (channelDir.isDirectory) {
-        for (pluginFile <- channelDir.listFiles()) {
-          move(pluginFile.toPath, getProjectDir(owner, newName).resolve(pluginFile.getName))
-        }
-      }
-    }
   }
 
   /**

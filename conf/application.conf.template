@@ -9,6 +9,9 @@ application {
     db.default-timeout  =   10
     uploadsDir = "uploads"
     uploadsDir = ${?UPLOADS_DIR}
+
+    # Add a dot at the start of the url to trust all subdomains
+    trustedUrlHosts     =   [ ".spongepowered.org" ]
     
     fakeUser {
         enabled    =   false
@@ -22,18 +25,22 @@ application {
 
 # Play configuration
 play {
-    crypto.secret                      =   "changeme"
-    crypto.secret                      =   ${?APPLICATION_SECRET}
     i18n.langs                         =   [ "en", "en-US" ]
     evolutions.autocommit              =   false
     evolutions.db.default.autoApply    =   true
-    http.session.maxAge                =   2419200 # 4 weeks
-    http.parser.maxDiskBuffer          =   20MB
-    http.parser.maxMemoryBuffer        =   1000000
-    ws.timeout.connection              =   10000
+    ws.timeout.connection              =   10000ms
     filters.headers.contentSecurityPolicy = "default-src 'self'; script-src 'self' '%NONCE-SOURCE%' https://forums.spongepowered.org https://forums-cdn.spongepowered.org https://www.google-analytics.com/analytics.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://forums-cdn.spongepowered.org; img-src 'self' https:; font-src 'self' https://fonts.gstatic.com; frame-src https://forums.spongepowered.org; frame-ancestors 'none'; block-all-mixed-content"
     filters.headers.contentSecurityPolicy = ${?CONTENT_SECURITY_POLICY}
+    filters.enabled                   += "filters.MimeKeyedCspFilter"
     filters.csrf.body.bufferSize       =   1000000
+
+    http {
+        secret.key                       =   "changeme"
+        secret.key                       =   ${?APPLICATION_SECRET}
+        session.maxAge                   =   2419200 # 4 weeks
+        parser.maxDiskBuffer             =   20MB
+        parser.maxMemoryBuffer           =   1000000
+    }
 }
 
 security {
@@ -48,7 +55,7 @@ security {
         url = ${?SPONGE_AUTH_URL}
         key = "changeme"
         key = ${?SPONGE_AUTH_API_KEY}
-        timeout = 10000
+        timeout = 10000ms
     }
 
     sso {
@@ -57,14 +64,15 @@ security {
         verifyUrl = ${security.api.url}"/sso/sudo/"
         secret = "changeme"
         secret = ${?SPONGE_AUTH_SSO_SECRET}
-        timeout = 10000
+        timeout = 10000ms
     }
 }
 
 # Ore configuration
 ore {
     date-format =  "MMM dd, yyyy"
-    debug       =  true
+    date-and-time-format = "MMM dd, yyyy HH:mm"
+    debug       =  false
     debug-level =  3
     # Used in /admin/seed route. Run "gradle build" in OreTestPlugin before using that route
     test-plugin = "OreTestPlugin/build/libs/ore-test-plugin-dev-SNAPSHOT.jar"
@@ -96,6 +104,8 @@ ore {
         tmp-file-save = false
         icon-size = 200
         staleAge = 2419200
+        check-interval = 300000ms                  // 1 hour (millis)
+        draft-expire = 86400000                  // 1 day (millis)
     }
     
     users {
@@ -109,9 +119,13 @@ ore {
     orgs {
         enabled = true
         passwordLength = 60
-        dummyEmailDomain = "spongepowered.org"
+        dummyEmailDomain = "ore.spongepowered.org"
         groupId = 64
         createLimit = 5
+    }
+
+    queue {
+        max-review-time = 86400000                  // 1 day (millis)
     }
 }
 
@@ -128,7 +142,7 @@ mail {
     smtp.port          =   ${?ORE_SMTP_PORT}
     confirm.maxAge     =   600000                      // 10 minutes (millis)
     transport.protocol =   "smtps"                     // The outgoing transport protocol
-    interval           =   30000                       // 30 seconds (millis)
+    interval           =   30s                      // 30 seconds (millis)
 
     // Custom properties to be added to the Properties object that is passed to
     // the JavaMail session. These might vary from SMTP server to server. This
@@ -147,7 +161,7 @@ mail {
 
 # Slick configuration
 slick.dbs.default {
-    driver        =   "slick.driver.PostgresDriver$"
+    profile = "slick.jdbc.PostgresProfile$"
     db {
         driver = "org.postgresql.Driver"
         url = "jdbc:postgresql://localhost/ore"
@@ -163,14 +177,15 @@ slick.dbs.default {
 # Discourse SSO
 discourse {
     baseUrl           =   "https://forums.spongepowered.org"
-    embed.retryRate   =   60000
+    embed.retryRate   =   60000ms
     embed.categorySlug = ore
     
     api {
         enabled       =   true
+        key           =   "changeme"
         key           =   ${?DISCOURSE_API_KEY}
         admin         =   windy
-        timeout       =   10000
+        timeout       =   10000ms
     }
 }
 
@@ -179,11 +194,79 @@ sponge {
     logo = "https://www.spongepowered.org/assets/img/icons/spongie-mark.svg"
     icon = "https://www.spongepowered.org/favicon.ico"
     service = "Ore"
-    
-    sponsors {
-        urls = [  "https://billing.creeperhost.net/link.php?id=8", "https://www.enjin.com/", "http://www.multiplaygameservers.com", "https://www.beastnode.com/", "https://serverminer.com/", "https://mcprohosting.com/?promo=Sponge" ]
-        logos = [ "creeperhost.svg", "enjin.png", "multiplay.png", "beastnode.png", "serverminer.png", "mcprohosting.png" ]
-        featured.logo = "creeperhost.svg"
-        featured.url = "https://billing.creeperhost.net/link.php?id=8"
+
+    # Sponsors from high to low donation amounts
+    sponsors = [
+        {
+          "name": "MC Pro Hosting",
+          "image": "images/sponsors/mcprohosting.png",
+          "link": "https://mcprohosting.com/?promo=Sponge"
+        },
+        {
+          "name": "Enjin",
+          "image": "images/sponsors/enjin.png",
+          "link": "https://www.enjin.com/"
+        },
+        {
+          "name": "Negafinity",
+          "image": "images/sponsors/negafinity.png",
+          "link": "https://www.negafinity.com/"
+        },
+        {
+          "name": "Apex Hosting",
+          "image": "images/sponsors/apexhosting.png",
+          "link": "https://apexminecrafthosting.com/"
+        },
+        {
+          "name": "CreeperHost",
+          "image": "images/sponsors/creeperhost.svg",
+          "link": "https://billing.creeperhost.net/link.php?id=8"
+        },
+        {
+          "name": "JetBrains",
+          "image": "images/sponsors/jetbrains.svg",
+          "link": "https://www.jetbrains.com/"
+        },
+        {
+          "name": "YourKit",
+          "image": "images/sponsors/yourkit.png",
+          "link": "https://www.yourkit.com/"
+        }
+    ]
+}
+
+filters {
+    csp {
+        default {
+            default-src = ["self"]
+            script-src = [
+                "self",
+                "'%NONCE-SOURCE%'"
+                "https://forums.spongepowered.org"
+                "https://forums-cdn.spongepowered.org"
+                "https://www.google-analytics.com/analytics.js"
+            ]
+            style-src = [
+                "self"
+                "unsafe-inline"
+                "https://fonts.googleapis.com"
+                "https://forums-cdn.spongepowered.org"
+            ]
+            img-src = [
+                "self",
+                "https:"
+            ]
+            font-src = [
+                "self"
+                "https://fonts.gstatic.com"
+            ]
+            frame-src = [
+                "https://forums.spongepowered.org"
+            ]
+            frame-ancestors = [
+                "none"
+            ]
+            block-all-mixed-content = []
+        }
     }
 }

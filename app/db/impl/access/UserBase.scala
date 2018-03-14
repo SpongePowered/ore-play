@@ -66,11 +66,12 @@ class UserBase(override val service: ModelService,
       case ORDERING_PROJECTS => users = users.sortBy(u => (u.projects.size, u.username))
       case ORDERING_JOIN_DATE => users = users.sortBy(u => (u.joinDate.getOrElse(u.createdAt.get), u.username))
       case ORDERING_USERNAME => users = users.sortBy(_.username)
+      case ORDERING_ROLE => users = users.sortBy(_.globalRoles.toList.sortBy(_.trust).headOption.map(_.trust.level).getOrElse(-1))
       case _ => users.sortBy(u => (u.projects.size, u.username))
     }
 
     // get page slice
-    val pageSize = this.config.users.getInt("author-page-size").get
+    val pageSize = this.config.users.get[Int]("author-page-size")
     val offset = (page - 1) * pageSize
     users = if (reverse) users.reverse else users
     users.slice(offset, offset + pageSize)
@@ -96,7 +97,7 @@ class UserBase(override val service: ModelService,
     * @return     Newly created session
     */
   def createSession(user: User): Session = {
-    val maxAge = this.config.play.getInt("http.session.maxAge").get
+    val maxAge = this.config.play.get[Int]("http.session.maxAge")
     val expiration = new Timestamp(new Date().getTime + maxAge * 1000L)
     val token = UUID.randomUUID().toString
     val session = Session(None, None, expiration, user.username, token)
@@ -137,5 +138,6 @@ object UserBase {
   val ORDERING_PROJECTS = "projects"
   val ORDERING_USERNAME = "username"
   val ORDERING_JOIN_DATE = "joined"
+  val ORDERING_ROLE = "roles"
 
 }

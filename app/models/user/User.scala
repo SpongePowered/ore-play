@@ -3,14 +3,14 @@ package models.user
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
-import db.Named
+import db.{ModelFilter, Named}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
-import models.project.{Flag, Project, Version}
+import models.project.{Flag, Project, Version, VisibilityTypes}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.{OreConfig, Visitable}
 import ore.permission._
@@ -154,7 +154,7 @@ case class User(override val id: Option[Int] = None,
     * @return True if key is ready for use
     */
   def isPgpPubKeyReady: Boolean = this.pgpPubKey.isDefined && this.lastPgpPubKeyUpdate.forall { lastUpdate =>
-    val cooldown = this.config.security.getLong("keyChangeCooldown").get
+    val cooldown = this.config.security.get[Long]("keyChangeCooldown")
     val minTime = new Timestamp(lastUpdate.getTime + cooldown)
     minTime.before(this.service.theTime)
   }
@@ -241,7 +241,7 @@ case class User(override val id: Option[Int] = None,
     * @param _tagline Tagline to display
     */
   def tagline_=(_tagline: String) = {
-    checkArgument(_tagline.length <= this.config.users.getInt("max-tagline-len").get, "tagline too long", "")
+    checkArgument(_tagline.length <= this.config.users.get[Int]("max-tagline-len"), "tagline too long", "")
     this._tagline = Option(nullIfEmpty(_tagline))
     if (isDefined) update(Tagline)
   }
@@ -318,11 +318,12 @@ case class User(override val id: Option[Int] = None,
     * @return     Projects user has starred
     */
   def starred(page: Int = -1): Seq[Project] = Defined {
-    val starsPerPage = this.config.users.getInt("stars-per-page").get
+    val starsPerPage = this.config.users.get[Int]("stars-per-page")
     val limit = if (page < 1) -1 else starsPerPage
     val offset = (page - 1) * starsPerPage
+    val filter = ModelFilter[Project](_.visibility === VisibilityTypes.Public) +|| ModelFilter[Project](_.visibility === VisibilityTypes.New)
     this.schema.getAssociation[ProjectStarsTable, Project](classOf[ProjectStarsTable], this)
-      .sorted(ordering = _.name, limit = limit, offset = offset)
+      .sorted(ordering = _.name, filter = filter.fn, limit = limit, offset = offset)
   }
 
   /**
@@ -371,7 +372,7 @@ case class User(override val id: Option[Int] = None,
     this.email = user.email
     user.avatarUrl.map { url =>
       if (!url.startsWith("http")) {
-        val baseUrl = config.security.getString("api.url").get
+        val baseUrl = config.security.get[String]("api.url")
         baseUrl + url
       } else
         url
@@ -575,7 +576,7 @@ object User {
     * @param user User to convert
     * @return     Ore User
     */
-  @deprecated("use fromSponge instead")
+  @deprecated("use fromSponge instead", "Oct 14, 2016, 1:45 PM PDT")
   def fromDiscourse(user: DiscourseUser) = User().fill(user).copy(id = Some(user.id))
 
   /**

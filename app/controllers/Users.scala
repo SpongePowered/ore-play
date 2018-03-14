@@ -37,9 +37,9 @@ class Users @Inject()(fakeUser: FakeUser,
                       implicit override val messagesApi: MessagesApi,
                       implicit override val env: OreEnv,
                       implicit override val config: OreConfig,
-                      implicit override val service: ModelService) extends BaseController {
+                      implicit override val service: ModelService) extends OreBaseController {
 
-  private val baseUrl = this.config.app.getString("baseUrl").get
+  private val baseUrl = this.config.app.get[String]("baseUrl")
 
   /**
     * Redirect to auth page for SSO authentication.
@@ -103,7 +103,7 @@ class Users @Inject()(fakeUser: FakeUser,
   }
 
   private def redirectBack(url: String, user: User)
-  = Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.getInt("http.session.maxAge").get)
+  = Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.get[Int]("http.session.maxAge"))
 
   /**
     * Clears the current session.
@@ -122,12 +122,12 @@ class Users @Inject()(fakeUser: FakeUser,
     * @return           View of user projects page
     */
   def showProjects(username: String, page: Option[Int]) = Action { implicit request =>
-    val pageSize = this.config.users.getInt("project-page-size").get
+    val pageSize = this.config.users.get[Int]("project-page-size")
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
     this.users.withName(username).map { u =>
-      (u, u.projects.sorted(
-        ordering = _.stars.desc,
+      (u, u.projects.sortedMultipleOrders(
+        orderings = p => List(p.stars.desc, p.name.asc),
         filter = _.recommendedVersionId =!= -1,
         limit = pageSize,
         offset = offset))
@@ -146,7 +146,7 @@ class Users @Inject()(fakeUser: FakeUser,
     */
   def saveTagline(username: String) = UserAction(username) { implicit request =>
     val tagline = this.forms.UserTagline.bindFromRequest.get.trim
-    val maxLen = this.config.users.getInt("max-tagline-len").get
+    val maxLen = this.config.users.get[Int]("max-tagline-len")
     val user = this.users.withName(username).get
     if (tagline.length > maxLen) {
       Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))

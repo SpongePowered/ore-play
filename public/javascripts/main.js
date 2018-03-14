@@ -50,6 +50,10 @@ function shouldExecuteHotkey(event) {
     return !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey;
 }
 
+function sanitize(html) {
+    return $('<textarea>').html(html).text();
+}
+
 function decodeHtml(html) {
     // lol
     return $('<textarea>').html(html).val();
@@ -69,6 +73,10 @@ function initTooltips() {
         container: "body",
         delay: { "show": 500 }
     });
+}
+
+function slugify(name) {
+    return name.trim().replace(/ +/g, ' ').replace(/ /g, '-');
 }
 
 /*
@@ -103,25 +111,6 @@ $(function() {
     $('.btn-spinner').click(function() {
         var iconClass = $(this).data('icon');
         $(this).find('.' + iconClass).removeClass(iconClass).addClass('fa-spinner fa-spin');
-    });
-
-    $('.search-icon').click(function() {
-        var searchBar = $('.project-search');
-        var input = searchBar.find('.input-group');
-        if (input.is(':visible')) {
-            searchBar.animate({width: '0'}, 100);
-            input.fadeOut(100);
-        } else {
-            var startPos = searchBar.position();
-            var dropdown = $('#sp-logo-container');
-            var endPos = dropdown.position();
-            var a = startPos.left - (endPos.left + dropdown.width());
-            var b = startPos.top - endPos.top;
-            var distance = Math.sqrt(a*a + b*b);
-            input.fadeIn(100);
-            searchBar.animate({width: distance}, 100);
-            input.find('input').focus();
-        }
     });
 
     var searchBar = $('.project-search');
@@ -178,16 +167,67 @@ $(function() {
             }
         }
     });
+
+    $(".unsafe-link-back").click(function () {
+        window.history.back();
+    });
+
+    $(".unsafe-link-continue").click(function () {
+        var remote = $(".unsafe-link-continue").data("remote");
+
+        location.replace(location.href);
+        location.replace(remote);
+    });
+});
+
+// Fix page anchors which were broken by the fixed top navigation
+
+var scrollToAnchor = function (anchor) {
+    if (anchor) {
+        var target = $("a" + anchor);
+
+        if (target.length) {
+            $('html,body').animate({
+                scrollTop: target.offset().top - ($("#topbar").height() + 10)
+            }, 1);
+
+            return false;
+        }
+    }
+
+    return true;
+};
+
+$(window).load(function () {
+    return scrollToAnchor(window.location.hash);
+});
+
+$("a[href^='#']").click(function () {
+    window.location.replace(window.location.toString().split("#")[0] + $(this).attr("href"));
+
+    return scrollToAnchor(this.hash);
 });
 
 /*
  * ==================================================
  * =                 Service Worker                 =
  * ==================================================
+ *
+ * The service worker has been removed in commit 9ab90b5f4a5728587fc08176e316edbe88dfce9e.
+ * This code ensures that the service worker is removed from the browser.
+ *
  */
 
-if ('serviceWorker' in navigator && caching) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js', {scope: '/'});
-    });
+if (window.navigator && navigator.serviceWorker) {
+    if ('getRegistrations' in navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            registrations.forEach(function (registration) {
+                registration.unregister();
+            })
+        })
+    } else if ('getRegistration' in navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistration().then(function (registration) {
+            registration.unregister();
+        })
+    }
 }

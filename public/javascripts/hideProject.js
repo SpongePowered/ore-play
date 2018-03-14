@@ -15,8 +15,7 @@
  * ==================================================
  */
 
-var ICON_VIS = 'fa-eye-slash';
-var ICON_INVIS = 'fa-eye';
+var ICON = 'fa-eye';
 
 /*
  * ==================================================
@@ -25,24 +24,45 @@ var ICON_INVIS = 'fa-eye';
  */
 
 $(function() {
-    $('.btn-hide').click(function () {
-        var lang = $(this).find('span');
-        var icon = $(this).find('i');
-        var visible = icon.hasClass(ICON_VIS);
-        var iconClass = visible ? ICON_VIS : ICON_INVIS;
+    $('.btn-visibility-change').click(function () {
         var project = $(this).data('project');
-        var spinner = icon.removeClass(iconClass).addClass('fa-spinner fa-spin');
+        var visibilityLevel = $(this).data('level');
+        var needsModal = $(this).data('modal');
+        var spinner = $('button[data-project="'  + project + '"]').find('i');
+        spinner.removeClass(ICON).addClass('fa-spinner fa-spin');
+        if (needsModal) {
+            $('.modal-title').html($(this).text().trim() + ": comment");
+            $('#modal-visibility-comment').modal('show');
+            $('.btn-visibility-comment-submit').data('project', project);
+            $('.btn-visibility-comment-submit').data('level', visibilityLevel);
+            spinner.addClass(ICON).removeClass('fa-spinner fa-spin');
+        } else {
+            sendVisibilityRequest(project, visibilityLevel, '', spinner);
+        }
+    });
+
+    $('.btn-visibility-comment-submit').click(function () {
+        var project = $(this).data('project');
+        var visibilityLevel = $(this).data('level');
+        var spinner = $(this).find('i');
+        spinner.removeClass(ICON).addClass('fa-spinner fa-spin');
+        sendVisibilityRequest(project, visibilityLevel, $('.textarea-visibility-comment').val(), spinner);
+
+    });
+
+    function sendVisibilityRequest(project, level, comment, spinner) {
+        var _url = '/' + project + (level == -99 ? '/manage/hardDelete' : '/visible/' + level);
         $.ajax({
             type: 'post',
-            url: '/' + project + '/visible/' + !visible,
-            data: { csrfToken: csrf },
+            url: _url,
+            data: { csrfToken: csrf, comment: comment },
             fail: function () {
-                spinner.addClass(iconClass).removeClass('fa-spinner fa-spin');
+                spinner.addClass(ICON).removeClass('fa-spinner fa-spin');
             },
             success: function () {
-                spinner.addClass(visible ? ICON_INVIS : ICON_VIS).removeClass('fa-spinner fa-spin');
-                lang.text(visible ? 'Unhide' : 'Hide');
+                spinner.addClass(ICON).removeClass('fa-spinner fa-spin');
+                location.reload();
             }
         });
-    });
+    }
 });

@@ -35,6 +35,6 @@ object Dependency {
   /**
     * The Forge dependency ID
     */
-  val ForgeId: String = "Forge"
+  val ForgeId: String = "forge"
 
 }

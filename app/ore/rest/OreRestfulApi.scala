@@ -7,13 +7,13 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.{ProjectSchema, VersionSchema}
 import db.{ModelFilter, ModelService}
-import models.project.Page
+import models.project.{Page, TagColors}
 import models.user.User
 import ore.OreConfig
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
-import play.api.libs.json.JsValue
-import play.api.libs.json.Json.toJson
+import play.api.libs.json.{JsArray, JsValue}
+import play.api.libs.json.Json.{obj, arr, toJson}
 import util.StringUtils._
 
 /**
@@ -48,7 +48,7 @@ trait OreRestfulApi {
     val searchFilter = q.map(queries.searchFilter).getOrElse(ModelFilter.Empty)
     val categoryFilter = categoryArray.map(queries.categoryFilter).getOrElse(ModelFilter.Empty)
     val filter = categoryFilter +&& searchFilter
-    val maxLoad = this.config.projects.getInt("init-load").get
+    val maxLoad = this.config.projects.get[Int]("init-load")
     val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
     val future = queries.collect(filter.fn, ordering, lim, offset.getOrElse(-1))
     val projects = this.service.await(future).get
@@ -82,9 +82,9 @@ trait OreRestfulApi {
 
       // Only allow versions in the specified channels
       val filter = channelIds.map(service.getSchema(classOf[VersionSchema]).channelFilter).getOrElse(ModelFilter.Empty)
-      val maxLoad = this.config.projects.getInt("init-version-load").get
+      val maxLoad = this.config.projects.get[Int]("init-version-load")
       val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
-      
+
       val versions = project.versions.sorted(_.createdAt.desc, filter.fn, lim, offset.getOrElse(-1))
       toJson(versions)
     }
@@ -112,14 +112,21 @@ trait OreRestfulApi {
     */
   def getPages(pluginId: String, parentId: Option[Int]): Option[JsValue] = {
     this.projects.withPluginId(pluginId).map { project =>
-      val pages = project.pages
+      val pages = project.pages.sorted(_.name)
       var result: Seq[Page] = null
       if (parentId.isDefined) {
-        result = pages.filter(_.parentId === parentId.get)
+        result = pages.filter(_.parentId == parentId.get)
       } else {
         result = pages.toSeq
       }
-      result
+      Some(toJson(result.map(page => obj(
+        "createdAt" -> page.createdAt,
+        "id" -> page.id,
+        "name" -> page.name,
+        "parentId" -> page.parentId,
+        "slug" -> page.slug,
+        "fullSlug" -> page.fullSlug
+      ))))
     } map {
       toJson(_)
     }
@@ -147,6 +154,35 @@ trait OreRestfulApi {
     * @return         JSON user if found, None otherwise
     */
   def getUser(username: String): Option[JsValue] = this.users.withName(username).map(toJson(_))
+
+  /**
+    * Returns a Json array of the tags on a project's version
+    *
+    * @param pluginId Project plugin ID
+    * @param version  Version name
+    * @return         Tags on the Version
+    */
+  def getTags(pluginId: String, version: String): Option[JsValue] = {
+    val maybeProject = this.projects.withPluginId(pluginId)
+      .flatMap(_.versions.find(equalsIgnoreCase(_.versionString, version)))
+    maybeProject match {
+      case Some(project) => Some(obj(
+        "pluginId" -> pluginId,
+        "version" -> version,
+        "tags" -> project.tags.map(toJson(_))))
+      case None => None
+    }
+  }
+
+  /**
+    * Get the Tag Color information from an ID
+    *
+    * @param tagId The ID of the Tag Color
+    * @return The Tag Color
+    */
+  def getTagColor(tagId: Int): Option[JsValue] = {
+    Some(toJson(TagColors.withId(tagId)))
+  }
 
 }
 

@@ -5,10 +5,10 @@ import java.nio.file.Files._
 import java.nio.file.{Files, StandardCopyOption}
 import java.sql.Timestamp
 import java.util.{Date, UUID}
-import javax.inject.Inject
 
+import javax.inject.Inject
 import com.github.tminglei.slickpg.InetString
-import controllers.BaseController
+import controllers.OreBaseController
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
@@ -17,7 +17,6 @@ import discourse.OreDiscourseApi
 import form.OreForms
 import models.project._
 import ore.permission.{EditVersions, ReviewProjects}
-import ore.project.Dependency
 import ore.project.factory.{PendingProject, ProjectFactory}
 import ore.project.io.DownloadTypes._
 import ore.project.io.{DownloadTypes, InvalidPluginFileException, PluginFile, PluginUpload}
@@ -25,12 +24,17 @@ import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.Logger
 import play.api.i18n.MessagesApi
 import play.api.libs.json.Json
-import play.api.mvc.{Result, Request}
+import play.api.mvc.{Request, Result}
 import play.filters.csrf.CSRF
 import security.spauth.SingleSignOnConsumer
 import util.StringUtils._
 import views.html.projects.{versions => views}
 import _root_.views.html.helper
+import ore.project.factory.TagAlias.ProjectTag
+import util.JavaUtils.autoClose
+
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Controller for handling Version related actions.
@@ -45,7 +49,7 @@ class Versions @Inject()(stats: StatTracker,
                          implicit override val env: OreEnv,
                          implicit override val config: OreConfig,
                          implicit override val service: ModelService)
-                         extends BaseController {
+  extends OreBaseController {
 
   private val fileManager = this.projects.fileManager
   private val self = controllers.project.routes.Versions
@@ -143,12 +147,12 @@ class Versions @Inject()(stats: StatTracker,
 
       var visibleNames: Option[Array[String]] = channels.map(_.toLowerCase.split(','))
       val visible: Option[Array[Channel]] = visibleNames.map(_.map { name =>
-        allChannels.find(_.name.equalsIgnoreCase(name)).get
-      })
+        allChannels.find(_.name.equalsIgnoreCase(name))
+      }).map(_.flatten)
 
       val visibleIds: Array[Int] = visible.map(_.map(_.id.get)).getOrElse(allChannels.map(_.id.get).toArray)
 
-      val pageSize = this.config.projects.getInt("init-version-load").get
+      val pageSize = this.config.projects.get[Int]("init-version-load")
       val p = page.getOrElse(1)
       val versions = project.versions.sorted(
         ordering = _.createdAt.desc,
@@ -199,8 +203,10 @@ class Versions @Inject()(stats: StatTracker,
             try {
               this.factory.processSubsequentPluginUpload(uploadData, user, request.project).fold(
                 err => Redirect(call).withError(err),
-                version =>
+                version => {
+                  version.underlying.authorId = user.id.getOrElse(-1)
                   Redirect(self.showCreatorWithMeta(request.project.ownerName, slug, version.underlying.versionString))
+                }
               )
             } catch {
               case e: InvalidPluginFileException =>
@@ -275,8 +281,34 @@ class Versions @Inject()(stats: StatTracker,
 
             versionData => {
               // Channel is valid
+
+              def addUnstableTag(version: Version) = {
+                if (versionData.unstable) {
+                  val tagsWithVersion = service.access(classOf[ProjectTag])
+                    .filter(t => t.name === "Unstable" && t.data === "").toList
+
+                  if (tagsWithVersion.isEmpty) {
+                    val tag = Tag(
+                      _versionIds = List(version.id.get),
+                      name = "Unstable",
+                      data = "",
+                      color = TagColors.Unstable
+                    )
+                    service.access(classOf[ProjectTag]).add(tag)
+                    // requery the tag because it now includes the id
+                    val newTag = service.access(classOf[ProjectTag]).filter(t => t.name === tag.name && t.data === tag.data).toList.head
+                    version.addTag(newTag)
+                  } else {
+                    val tag = tagsWithVersion.head
+                    tag.addVersionId(version.id.get)
+                    version.addTag(tag)
+                  }
+                }
+              }
+
               pendingVersion.channelName = versionData.channelName.trim
               pendingVersion.channelColor = versionData.color
+              pendingVersion.createForumPost = versionData.forumPost
 
               // Check for pending project
               this.factory.getPendingProject(author, slug) match {
@@ -296,25 +328,24 @@ class Versions @Inject()(stats: StatTracker,
                         Redirect(self.showCreatorWithMeta(author, slug, versionString)).withError(error)
                       },
                       channel => {
+                        // Update description
+                        versionData.content.foreach { content =>
+                          pendingVersion.underlying.description = content.trim
+                        }
+
                         val newVersion = pendingVersion.complete().get
                         if (versionData.recommended)
                           project.recommendedVersion = newVersion
 
-                        // Create forum topic reply / update description
-                        versionData.content.foreach { content =>
-                          val c = content.trim
-                          newVersion.description = c
-                          if (project.topicId != -1)
-                            this.forums.postVersionRelease(project, newVersion, c)
-                        }
-
+                        addUnstableTag(newVersion)
                         Redirect(self.show(author, slug, versionString))
                       }
                     )
                   }
                 case Some(pendingProject) =>
                   // Found a pending project, create it with first version
-                  pendingProject.complete().get
+                  val project = pendingProject.complete().get
+                  addUnstableTag(project.recommendedVersion)
                   Redirect(ShowProject(author, slug))
               }
             }
@@ -351,10 +382,10 @@ class Versions @Inject()(stats: StatTracker,
     */
   def download(author: String, slug: String, versionString: String, token: Option[String]) = {
     ProjectAction(author, slug) { implicit request =>
-        implicit val project = request.project
-        withVersion(versionString) { version =>
-          sendVersion(project, version, token)
-        }
+      implicit val project = request.project
+      withVersion(versionString) { version =>
+        sendVersion(project, version, token)
+      }
     }
   }
 
@@ -383,9 +414,9 @@ class Versions @Inject()(stats: StatTracker,
       case Some(tkn) =>
         this.warnings.find { warn =>
           (warn.token === tkn) &&
-          (warn.versionId === version.id.get) &&
-          (warn.address === InetString(StatTracker.remoteAddress)) &&
-          warn.isConfirmed
+            (warn.versionId === version.id.get) &&
+            (warn.address === InetString(StatTracker.remoteAddress)) &&
+            warn.isConfirmed
         } map { warn =>
           if (warn.hasExpired) {
             warn.remove()
@@ -400,8 +431,8 @@ class Versions @Inject()(stats: StatTracker,
 
   private def _sendVersion(project: Project, version: Version)(implicit req: ProjectRequest[_]): Result = {
     this.stats.versionDownloaded(version) { implicit request =>
-      Ok.sendFile(this.fileManager.getProjectDir(project.ownerName, project.name)
-        .resolve(version.fileName).toFile)
+      Ok.sendPath(this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
+        .resolve(version.fileName))
     }
   }
 
@@ -442,7 +473,7 @@ class Versions @Inject()(stats: StatTracker,
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
           val token = UUID.randomUUID().toString
-          val expiration = new Timestamp(new Date().getTime + this.config.security.getLong("unsafeDownload.maxAge").get)
+          val expiration = new Timestamp(new Date().getTime + this.config.security.get[Long]("unsafeDownload.maxAge"))
           val address = InetString(StatTracker.remoteAddress)
           // remove old warning attached to address
           this.warnings.removeAll(_.address === address)
@@ -488,10 +519,10 @@ class Versions @Inject()(stats: StatTracker,
           // find warning
           this.warnings.find { warn =>
             (warn.address === addr) &&
-            (warn.token === token) &&
-            (warn.versionId === version.id.get) &&
-            !warn.isConfirmed &&
-            (warn.downloadId === -1)
+              (warn.token === token) &&
+              (warn.versionId === version.id.get) &&
+              !warn.isConfirmed &&
+              (warn.downloadId === -1)
           } map { warn =>
             if (warn.hasExpired) {
               // warning has expired
@@ -565,33 +596,30 @@ class Versions @Inject()(stats: StatTracker,
                       token: Option[String],
                       api: Boolean = false)
                      (implicit request: ProjectRequest[_]): Result = {
+    if (project.visibility == VisibilityTypes.SoftDelete) {
+      return notFound
+    }
     if (!checkConfirmation(project, version, token))
       Redirect(self.showDownloadConfirm(
         project.ownerName, project.slug, version.name, Some(JarFile.id), api = Some(api)))
     else {
       val fileName = version.fileName
-      val path = this.fileManager.getProjectDir(project.ownerName, project.name).resolve(fileName)
+      val path = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
       this.stats.versionDownloaded(version) { implicit request =>
         if (fileName.endsWith(".jar"))
-          Ok.sendFile(path.toFile)
+          Ok.sendPath(path)
         else {
           val pluginFile = new PluginFile(path, signaturePath = null, project.owner.user)
           val jarName = fileName.substring(0, fileName.lastIndexOf('.')) + ".jar"
           val jarPath = this.fileManager.env.tmp.resolve(project.ownerName).resolve(jarName)
-          var jarIn: InputStream = null
-          try {
-            jarIn = pluginFile.newJarStream
+
+          autoClose(pluginFile.newJarStream) { jarIn =>
             copy(jarIn, jarPath, StandardCopyOption.REPLACE_EXISTING)
-          } catch {
-            case e: Exception =>
-              Logger.error("an error occurred while trying to send a plugin", e)
-          } finally {
-            if (jarIn != null)
-              jarIn.close()
-            else
-              Logger.error("could not obtain input stream for download request")
+          }{ e =>
+            Logger.error("an error occurred while trying to send a plugin", e)
           }
-          Ok.sendFile(jarPath.toFile, onClose = () => Files.delete(jarPath))
+
+          Ok.sendPath(jarPath, onClose = () => Files.delete(jarPath))
         }
       }
     }
@@ -691,12 +719,15 @@ class Versions @Inject()(stats: StatTracker,
 
   private def sendSignatureFile(version: Version)(implicit request: Request[_]): Result = {
     val project = version.project
-    val path = this.fileManager.getProjectDir(project.ownerName, project.name).resolve(version.signatureFileName)
+    if (project.visibility == VisibilityTypes.SoftDelete) {
+      return notFound
+    }
+    val path = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(version.signatureFileName)
     if (notExists(path)) {
       Logger.warn("project version missing signature file")
       notFound
     } else
-      Ok.sendFile(path.toFile)
+      Ok.sendPath(path)
   }
 
 }

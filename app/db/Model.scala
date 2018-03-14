@@ -26,7 +26,7 @@ abstract class Model(val id: Option[Int], val createdAt: Option[Timestamp]) { se
   private var _isProcessed = false
 
   implicit def convertKey[A](key: Key[_, A]): Key[M, A] = {
-    if (!key.isInstanceOf[Key[M, A]])
+    if (!key.isInstanceOf[Key[M @unchecked, A @unchecked]])
       throw new RuntimeException("tried to use key on wrong model")
     key.asInstanceOf[Key[M, A]]
   }

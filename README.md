@@ -40,7 +40,7 @@ Namely, the differences include:
 ### Setup
 
 After cloning Ore, the first thing you will want to do is create a new PostgreSQL database for the application to use.
-This is required in order for Ore to run. Learn more about PostgreSQL [here](http://www.postgresql.org/).
+This is required in order for Ore to run. Learn more about PostgreSQL [here](https://www.postgresql.org/).
 
 After setting up a database, create a copy of `conf/application.conf.template` named `conf/application.conf` and 
 configure the application. This file is in the `.gitignore` so it will not appear in your commits. In a typical 

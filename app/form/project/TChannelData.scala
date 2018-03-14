@@ -33,7 +33,7 @@ trait TChannelData {
     */
   def addTo(project: Project): Either[String, Channel] = {
     val channels = project.channels.all
-    if (channels.size >= config.projects.getInt("max-channels").get) {
+    if (channels.size >= config.projects.get[Int]("max-channels")) {
       Left("A project may only have up to five channels.")
     } else {
       channels.find(_.name.equalsIgnoreCase(this.channelName)) match {
@@ -70,10 +70,15 @@ trait TChannelData {
       if (nameTaken) {
         Some("A channel with that name already exists.")
       } else {
-        channel.name = this.channelName
-        channel.color = this.color
-        channel.setNonReviewed(this.nonReviewed)
-        None
+        val reviewedChannels = channels.filter(!_.isNonReviewed)
+        if (this.nonReviewed && reviewedChannels.size <= 1 && reviewedChannels.contains(channel)) {
+          Some("There must be at least one reviewed channel.")
+        } else {
+          channel.name = this.channelName
+          channel.color = this.color
+          channel.setNonReviewed(this.nonReviewed)
+          None
+        }
       }
     }
   }

@@ -17,8 +17,8 @@
 
 @shouldShowMember(member: Member[_ <: RoleModel]) = @{
     val headRole = member.headRole
-    headRole.isVisible && (headRole.isAccepted ||
-            (userBase.current.isDefined && userBase.current.get.username.equals(model.owner.user.name)))
+    val isCurrentUsersProject = userBase.current.isDefined && userBase.current.get.username.equals(model.owner.user.name)
+    canEdit || headRole.isAccepted || isCurrentUsersProject
 }
 
 @roleClass = @{
@@ -86,8 +86,8 @@
                 <div class="pull-right">
                     @if(!editable && settingsCall != null) {
                         <a href="@settingsCall"
-                           class="btn btn-default btn-panel btn-xs">
-                            <i class="fa fa-edit"></i>
+                           class="btn yellow btn-xs">
+                            <i class="fa fa-pencil"></i>
                         </a>
                     }
 
@@ -95,15 +95,13 @@
                         @form(action = saveCall, 'id -> "save") {
                             @CSRF.formField
                             <button class="btn-members-save btn btn-default btn-panel btn-xs" data-toggle="tooltip"
-                                    data-placement="top" data-title="Send updates" style="display: none;">
+                                    data-placement="top" data-title="@messages("org.users.save")" style="display: none;">
                                 <i class="fa fa-paper-plane"></i>
                             </button>
                         }
                     }
                 </div>
             }
-
-            <div class="clearfix"></div>
         </div>
 
         <ul class="list-members list-group">
@@ -115,17 +113,21 @@
                         <a class="username" href="@routes.Users.showProjects(member.username, None)">
                             @member.username
                         </a>
-
+                        @defining(member.headRole.id) { id: Option[Int] =>
+                            @if(id.isDefined) {
+                                <p style="display: none;" class="role-id">@id.get</p>
+                            }
+                        }
                         @if(canEdit && !member.headRole.roleType.trust.equals(Absolute)) {
                             <a href="#">
-                                <i class="fa fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
+                                <i style="padding-left:5px" class="fa fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
                             </a>
-                            <a href="#"><i class="fa fa-edit"></i></a>
+                            <a href="#"><i style="padding-left:5px" class="fa fa-edit"></i></a>
                         }
 
                         <span class="minor pull-right">
                             @if(!member.headRole.isAccepted) {
-                                <span class="minor">(Invited)</span>
+                                <span class="minor">(Invited as @member.headRole.roleType.title)</span>
                             } else {
                                 @member.headRole.roleType.title
                             }

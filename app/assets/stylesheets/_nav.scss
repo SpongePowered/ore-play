@@ -31,7 +31,7 @@
 
 .navbar-nav > li > .main-dropdown, .user-dropdown {
   @include no-box-shadow();
-  border-radius: 0 0 4px 4px;
+  border-radius: 0;
   border: 1px solid #e4e4e4;
 }
 
@@ -46,6 +46,7 @@
 
 .user-dropdown > li {
   position: relative;
+
   .unread {
     bottom: 6px;
     margin-left: 5px;
@@ -54,24 +55,16 @@
 
 .navbar-main {
   .navbar-right > li > a { padding: 0; }
-  .navbar-right {
-    @include padding-vert(9px, 9px);
-    padding-right: 20px;
-  }
-}
-
-.project-search {
-  @include size(0, 40px);
-  padding: 3px;
-  overflow: hidden;
 }
 
 .nav-icon {
   @include transition2(background-color, 0.5s);
   cursor: pointer;
-  padding: 7px;
-  margin-right: 5px;
   text-align: center;
+
+  &:not(:last-child) {
+    margin-right: 20px;
+  }
 
   .icon {
     @include transition2(color, 0.5s);
@@ -81,30 +74,43 @@
   }
 }
 
-.nav-icon:hover {
-  background-color: white;
-  .icon { color: black; }
+.nav-icon:hover, .nav-icon:hover a {
+  .icon { color: white; }
+  .user-avatar {
+    background: white;
+  }
 }
 
-.new-icon {
-  .caret { padding-bottom: 10px; }
+.authors-icon {
+  margin-top: 19px;
 }
 
-.new-icon:hover {
-  background-color: transparent;
-  .icon { color: #F6CF17; }
+.no-caret {
+  .caret {
+    display: none;
+  }
 }
 
-.user-controls {
-  @include padding-vert(5px, 17px);
+li.user-controls {
+  margin-top: 15.5px;
+
+  > .dropdown-menu {
+    margin-top: 15px;
+    margin-right: -5px;
+  }
 }
 
-.new-controls {
-  @include padding-vert(10px, 19px);
-}
+li.new-controls {
+  margin-top: 19.5px;
 
-.user-avatar:hover {
-  background-color: white;
+  > .dropdown-menu {
+    margin-top: 17px;
+    margin-right: -5px;
+  }
+
+  .caret {
+    margin-bottom: 10px;
+  }
 }
 
 .user-dropdown > li > a {
@@ -116,6 +122,7 @@
 }
 
 .btn-group-login {
+  margin-top: 10.5px;
   padding: 4px;
 }
 
@@ -127,10 +134,13 @@
   @include size(12px, 12px);
   @include circle();
   position: absolute;
-  background-image: linear-gradient(#e6b800, #FFD21A);
+  background-image: linear-gradient(#CC0000, #B70000);
 }
 
 .user-toggle {
   position: relative;
-  .unread { right: 10px; }
+  .unread {
+    right: 10px;
+    top: -4px;
+  }
 }

@@ -19,6 +19,7 @@ import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import play.api.data.{Form, FormError}
 import play.api.data.Forms._
 import play.api.data.format.Formatter
+import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 
 import scala.util.Try
 
@@ -61,13 +62,34 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     */
   lazy val ProjectFlag = Form(mapping(
     "flag-reason" -> number,
-    "comment" -> optional(nonEmptyText))
+    "comment" -> nonEmptyText)
   (FlagForm.apply)(FlagForm.unapply))
+
+
+  /**
+    * This is a Constraint checker for the ownerId that will search the list allowedIds to see if the number is in it.
+    * @param allowedIds number that are allowed as ownerId
+    * @return Constraint
+    */
+  def ownerIdInList(allowedIds: Seq[Int]): Constraint[Option[Int]] = Constraint("constraints.check")({
+    ownerId =>
+      var errors: Seq[ValidationError] = Seq()
+      if (ownerId.isDefined) {
+        if (!allowedIds.contains(ownerId.get)) {
+          errors = Seq(ValidationError("error.plugin"))
+        }
+      }
+      if (errors.isEmpty) {
+        Valid
+      } else {
+        Invalid(errors)
+      }
+  })
 
   /**
     * Submits settings changes for a Project.
     */
-  lazy val ProjectSave = Form(mapping(
+  def ProjectSave(organisationUserCanUploadTo: Seq[Int]) = Form(mapping(
     "category" -> text,
     "issues" -> url,
     "source" -> url,
@@ -79,7 +101,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "userUps" -> list(text),
     "roleUps" -> list(text),
     "update-icon" -> boolean,
-    "owner" -> optional(number)
+    "owner" -> optional(number).verifying(ownerIdInList(organisationUserCanUploadTo)),
+    "forum-sync" -> boolean
   )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply))
 
   /**
@@ -146,6 +169,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     */
   lazy val PageEdit = Form(mapping(
     "parent-id" -> optional(number),
+    "name" -> optional(text),
     "content" -> optional(text(
       maxLength = MaxLength
     )))(PageSaveForm.apply)(PageSaveForm.unapply))
@@ -166,13 +190,15 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * Submits a new Version.
     */
   lazy val VersionCreate = Form(mapping(
+    "unstable" -> boolean,
     "recommended" -> boolean,
     "channel-input" -> text.verifying(
       "Invalid channel name.", config.isValidChannelName(_)),
     "channel-color-input" -> text.verifying(
       "Invalid channel color.", c => Channel.Colors.exists(_.hex.equalsIgnoreCase(c))),
     "non-reviewed" -> default(boolean, false),
-    "content" -> optional(text)
+    "content" -> optional(text),
+    "forum-post" -> boolean
   )(VersionData.apply)(VersionData.unapply))
 
   /**
@@ -214,7 +240,20 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   def VersionDeploy(implicit request: ProjectRequest[_]) = Form(mapping(
     "apiKey" -> nonEmptyText,
     "channel" -> channel,
-    "recommended" -> default(boolean, true))
+    "recommended" -> default(boolean, true),
+    "forumPost" -> default(boolean, request.project.settings.forumSync))
   (VersionDeployForm.apply)(VersionDeployForm.unapply))
 
+
+  lazy val ReviewDescription = Form(single("content" -> text))
+
+  lazy val UserAdminUpdate = Form(tuple(
+      "thing" -> text,
+      "action" -> text,
+      "data" -> text
+  ))
+
+  lazy val NoteDescription = Form(single("content" -> text))
+
+  lazy val NeedsChanges = Form(single("comment" -> text))
 }

@@ -52,9 +52,12 @@ function initMember(memberRow) {
         var container = getItemContainer($(this)).addClass('user-changed');
         var input = $('#select-role').clone().removeAttr('id').attr('form', 'save');
 
+        var roleId = container.find('.role-id').text();
+        input.find('option:eq(' + roleId + ')').attr('selected', '');
+
         // Add input
         container.find('span').replaceWith(input.show());
-        var username = container.find('.username').text();
+        var username = container.find('.username').text().trim();
         container.append('<input type="hidden" form="save" value="' + username + '" />');
 
         // Remove edit button and update input names

@@ -1,11 +1,12 @@
 package ore.project.factory
 
 import db.impl.access.ProjectBase
-import models.project.{Project, Version}
+import models.project._
 import ore.Cacheable
 import ore.Colors.Color
+import ore.project.Dependency
 import ore.project.io.PluginFile
-import play.api.cache.CacheApi
+import play.api.cache.SyncCacheApi
 import util.PendingAction
 
 import scala.util.Try
@@ -26,7 +27,8 @@ case class PendingVersion(projects: ProjectBase,
                           var channelColor: Color,
                           underlying: Version,
                           plugin: PluginFile,
-                          override val cacheApi: CacheApi)
+                          var createForumPost: Boolean,
+                          override val cacheApi: SyncCacheApi)
                           extends PendingAction[Version]
                             with Cacheable {
 
@@ -44,4 +46,18 @@ case class PendingVersion(projects: ProjectBase,
 
   override def key: String = this.project.url + '/' + this.underlying.versionString
 
+  def dependenciesAsGhostTags: Seq[Tag] = {
+    var ghostFlags: Seq[Tag] = Seq()
+    for (dependency <-  this.underlying.dependencies) {
+      if (factory.dependencyVersionRegex.pattern.matcher(dependency.version).matches()) {
+        if (dependency.pluginId.equalsIgnoreCase(Dependency.SpongeApiId)) {
+          ghostFlags = ghostFlags :+ Tag(None, List(), "Sponge", dependency.version, TagColors.Sponge)
+        }
+        if (dependency.pluginId.equalsIgnoreCase(Dependency.ForgeId)) {
+          ghostFlags = ghostFlags :+ Tag(None, List(), "Forge", dependency.version, TagColors.Forge)
+        }
+      }
+    }
+    ghostFlags
+  }
 }

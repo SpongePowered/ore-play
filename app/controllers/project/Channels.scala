@@ -2,7 +2,7 @@ package controllers.project
 
 import javax.inject.Inject
 
-import controllers.BaseController
+import controllers.OreBaseController
 import controllers.sugar.Bakery
 import db.ModelService
 import form.OreForms
@@ -12,6 +12,8 @@ import ore.{OreConfig, OreEnv}
 import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
 import views.html.projects.{channels => views}
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Controller for handling Channel related actions.
@@ -24,7 +26,7 @@ class Channels @Inject()(forms: OreForms,
                          implicit override val env: OreEnv,
                          implicit override val config: OreConfig,
                          implicit override val service: ModelService)
-                         extends BaseController {
+                         extends OreBaseController {
 
   private val self = controllers.project.routes.Channels
 
@@ -107,8 +109,13 @@ class Channels @Inject()(forms: OreForms,
           if (channel.versions.nonEmpty && channels.count(c => c.versions.nonEmpty) == 1) {
             Redirect(self.showList(author, slug)).withError("error.channel.lastNonEmpty")
           } else {
-            this.projects.deleteChannel(channel)
-            Redirect(self.showList(author, slug))
+            val reviewedChannels = channels.filter(!_.isNonReviewed)
+            if (!channel.isNonReviewed && reviewedChannels.size <= 1 && reviewedChannels.contains(channel)) {
+              Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed")
+            } else {
+              this.projects.deleteChannel(channel)
+              Redirect(self.showList(author, slug))
+            }
           }
       }
     }

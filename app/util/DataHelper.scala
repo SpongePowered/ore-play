@@ -11,17 +11,18 @@ import models.project.{Channel, Project, ProjectSettings, Version}
 import models.user.User
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
-import play.api.cache.CacheApi
+import play.api.cache.SyncCacheApi
 
 /**
   * Utility class for performing some bulk actions on the application data.
   * Typically for testing.
   */
 final class DataHelper @Inject()(config: OreConfig,
+                                 statusZ: StatusZ,
                                  service: ModelService,
                                  factory: ProjectFactory,
                                  forums: OreDiscourseApi,
-                                 cacheApi: CacheApi) {
+                                 cacheApi: SyncCacheApi) {
 
   implicit private val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
   private val channels: ModelAccess[Channel] = this.service.access[Channel](classOf[Channel])
@@ -33,7 +34,8 @@ final class DataHelper @Inject()(config: OreConfig,
   /**
     * Resets the application to factory defaults.
     */
-  def reset() = {
+  def reset(): Unit = {
+    if (sys.env.getOrElse(statusZ.SpongeEnv, "unknown") != "local") return
     Logger.info("Resetting Ore...")
     val projects = this.projects.all
     Logger.info(s"Deleting ${projects.size} projects...")
@@ -43,6 +45,7 @@ final class DataHelper @Inject()(config: OreConfig,
     Logger.info("Clearing disk...")
     FileUtils.deleteDirectory(this.factory.env.uploads)
     Logger.info("Done.")
+
   }
 
   /**
@@ -50,7 +53,8 @@ final class DataHelper @Inject()(config: OreConfig,
     *
     * @param users Amount of users to create
     */
-  def seed(users: Int, projects: Int, versions: Int, channels: Int) = {
+  def seed(users: Int, projects: Int, versions: Int, channels: Int): Unit = {
+    if (sys.env.getOrElse(statusZ.SpongeEnv, "unknown") != "local") return
     // Note: Dangerous as hell, handle with care
     Logger.info("---- Seeding Ore ----")
 
@@ -88,6 +92,7 @@ final class DataHelper @Inject()(config: OreConfig,
               channelId = channel.id.get,
               fileSize = 1,
               hash = "none",
+              _authorId = i,
               fileName = "none",
               signatureFileName = "none"))
             if (l == 0)
@@ -100,8 +105,12 @@ final class DataHelper @Inject()(config: OreConfig,
     }
 
     Logger.info("---- Seed complete ----")
+
   }
 
-  def migrate() = Unit
+  def migrate(): Unit = {
+    if (sys.env.getOrElse(statusZ.SpongeEnv, "unknown") != "local") return
+    Unit
+  }
 
 }

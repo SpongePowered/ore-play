@@ -22,7 +22,7 @@ this.
 
         <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
 
-        <link rel="icon" href="@config.sponge.getString("icon")">
+        <link rel="icon" href="@config.sponge.get[String]("icon")">
         <link rel="stylesheet" type="text/css" href="@routes.Assets.at("highlight/styles/default.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.at("bootstrap/css/bootstrap.min.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.at("stylesheets/main.css")" />
@@ -37,33 +37,27 @@ this.
             <script type="text/javascript" src="@routes.Assets.at("lib/jquery/jquery.min.js")"></script>
         }
     </head>
-    <body>
+    <body class="site">
         @if(header) {
             @bootstrap.header(user)
         }
 
-        @content
+        <div class="site-content">
+            @content
+        </div>
 
         @if(footer) {
             @bootstrap.footer()
         }
 
         @if(scripts) {
-            <!-- Offline alert (hidden) -->
-            <div id="alert-warning-offline" class="alert alert-warning" role="alert" style="display: none;">
-                @messages("error.offline.alert")
-            </div>
-
+            <script type="text/javascript" src="@routes.Assets.at("lib/momentjs/min/moment.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("bootstrap/js/bootstrap.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("lib/filesize/lib/filesize.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("highlight/highlight.pack.js")"></script>
-            <script nonce="@nonce">var caching = @config.ore.getBoolean("caching").get;</script>
             <script type="text/javascript" src="@routes.Assets.at("javascripts/main.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("javascripts/svg.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("javascripts/spongie.js")"></script>
-            @if(config.ore.getBoolean("caching").get) {
-                <script type="text/javascript" src="@routes.Assets.at("javascripts/offline.js")"></script>
-            }
             @if(request != null) {
                 <script nonce="@nonce">csrf = '@play.filters.csrf.CSRF.getToken.get.value'</script>
             }

@@ -1,16 +1,18 @@
 package models.project
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.VersionTable
+import db.impl.{ReviewTable, VersionTable}
 import db.impl.model.OreModel
 import db.impl.model.common.{Describable, Downloadable}
 import db.impl.schema.VersionSchema
 import db.impl.table.ModelKeys._
+import models.admin.Review
 import models.statistic.VersionDownload
 import models.user.User
 import ore.Visitable
@@ -18,6 +20,7 @@ import ore.permission.scope.ProjectScope
 import ore.project.Dependency
 import play.twirl.api.Html
 import util.FileUtils
+import util.StringUtils.equalsIgnoreCase
 
 /**
   * Represents a single version of a Project.
@@ -41,11 +44,13 @@ case class Version(override val id: Option[Int] = None,
                    channelId: Int = -1,
                    fileSize: Long,
                    hash: String,
+                   private var _authorId: Int = -1,
                    private var _description: Option[String] = None,
                    private var _downloads: Int = 0,
                    private var _isReviewed: Boolean = false,
                    private var _reviewerId: Int = -1,
                    private var _approvedAt: Option[Timestamp] = None,
+                   private var _tagIds: List[Int] = List(),
                    fileName: String,
                    signatureFileName: String)
                    extends OreModel(id, createdAt)
@@ -135,6 +140,18 @@ case class Version(override val id: Option[Int] = None,
     if (isDefined) update(IsReviewed)
   }
 
+  def authorId: Int = this._authorId
+
+  def author: Option[User] = this.userBase.get(this._authorId)
+
+  def authorId_=(authorId: Int) = {
+    this._authorId = authorId
+    // If the project is in the Database
+    if (isDefined) {
+      update(AuthorId)
+    }
+  }
+
   def reviewerId: Int = this._reviewerId
 
   def reviewer: Option[User] = this.userBase.get(this._reviewerId)
@@ -149,6 +166,34 @@ case class Version(override val id: Option[Int] = None,
   def approvedAt_=(approvedAt: Timestamp) = Defined {
     this._approvedAt = Option(approvedAt)
     update(ApprovedAt)
+  }
+
+  def tagIds: List[Int] = this._tagIds
+
+  def tagIds_=(tags: List[Int]) = {
+    this._tagIds = tags
+    if(isDefined) update(TagIds)
+  }
+
+  def addTag(tag: Tag) = {
+    this._tagIds = this._tagIds :+ tag.id.get
+    if (isDefined) {
+      update(TagIds)
+    }
+  }
+
+  def tags: List[Tag] = {
+    tagIds.map { id =>
+      this.service.access[Tag](classOf[Tag]).find(_.id === id).get
+    }
+  }
+
+  def isSpongePlugin: Boolean = {
+    tags.map(_.name).contains("Sponge")
+  }
+
+  def isForgeMod: Boolean = {
+    tags.map(_.name).contains("Forge")
   }
 
   /**
@@ -217,6 +262,14 @@ case class Version(override val id: Option[Int] = None,
   override def hashCode() = this.id.hashCode
   override def equals(o: Any) = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.get == this.id.get
 
+  def byCreationDate(first: Review, second: Review) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+  def reviewEntries = this.schema.getChildren[Review](classOf[Review], this)
+  def unfinishedReviews: Seq[Review] = reviewEntries.all.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate)
+  def mostRecentUnfinishedReview: Option[Review] = unfinishedReviews.headOption
+  def mostRecentReviews: Seq[Review] = reviewEntries.toSeq.sortWith(byCreationDate)
+  def reviewById(id: Int): Option[Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
+  def equalsInt[T <: Table[_]](int1: T => Rep[Int], int2: Int): T => Rep[Boolean] = int1(_) === int2
+
 }
 
 object Version {
@@ -232,10 +285,12 @@ object Version {
     private var _dependencyIds: List[String] = List()
     private var _description: String = _
     private var _projectId: Int = -1
+    private var _authorId: Int = -1
     private var _fileSize: Long = -1
     private var _hash: String = _
     private var _fileName: String = _
     private var _signatureFileName: String = _
+    private var _tagIds: List[Int] = List()
 
     def versionString(versionString: String) = {
       this._versionString = versionString
@@ -267,6 +322,11 @@ object Version {
       this
     }
 
+    def authorId(authorId: Int) = {
+      this._authorId = authorId
+      this
+    }
+
     def fileName(fileName: String) = {
       this._fileName = fileName
       this
@@ -274,6 +334,11 @@ object Version {
 
     def signatureFileName(signatureFileName: String) = {
       this._signatureFileName = signatureFileName
+      this
+    }
+
+    def tagIds(tagIds: List[Int]) = {
+      this._tagIds = tagIds
       this
     }
 
@@ -286,7 +351,9 @@ object Version {
         projectId = this._projectId,
         fileSize = this._fileSize,
         hash = checkNotNull(this._hash, "hash null", ""),
+        _authorId = checkNotNull(this._authorId, "author id null", ""),
         fileName = checkNotNull(this._fileName, "file name null", ""),
+        _tagIds = this._tagIds,
         signatureFileName = checkNotNull(this._signatureFileName, "signature file name null", "")))
     }
 

@@ -4,7 +4,7 @@ import db.impl.access.ProjectBase
 import models.project.Version
 import models.user.Notification
 import ore.user.notification.NotificationTypes
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, MessagesApi}
 
 /**
   * Notifies all [[models.user.User]]s that are watching the specified
@@ -18,6 +18,8 @@ import play.api.i18n.MessagesApi
 case class NotifyWatchersTask(version: Version, messages: MessagesApi)(implicit projects: ProjectBase)
   extends Runnable {
 
+  implicit val lang = Lang.defaultLang
+
   def run() = {
     val project = version.project
     val notification = Notification(
@@ -26,7 +28,7 @@ case class NotifyWatchersTask(version: Version, messages: MessagesApi)(implicit 
       message = messages("notification.project.newVersion", project.name, version.name),
       action = Some(version.url)
     )
-    for (watcher <- project.watchers.all)
+    for (watcher <- project.watchers.all.filterNot(_.userId == version.author.get.userId))
       watcher.sendNotification(notification)
   }
 

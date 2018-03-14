@@ -1,7 +1,7 @@
 @import db.ModelService
 @import db.impl.access.UserBase
 @import ore.{OreConfig, OreEnv}
-@(message: String)(implicit messages: Messages, session: Session, request: Request[_] = null,
+@()(implicit messages: Messages, session: Session, request: Request[_] = null,
         service: ModelService, config: OreConfig, users: UserBase, env: OreEnv)
 
 @bootstrap.layout("Error", user = false) {
@@ -9,7 +9,6 @@
     <div class="container-error container">
         <img src="@routes.Assets.at("images/ore-dark.png")" />
         <h1 class="minor">Ore is experiencing difficulties.</h1>
-        <i class="minor">@message</i>
         <p class="minor">
             If you suspect this is a bug, please take a minute to report it to
             <a target="_blank" href="https://github.com/SpongePowered/Ore/issues">the issue tracker.</a>

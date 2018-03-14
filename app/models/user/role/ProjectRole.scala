@@ -23,9 +23,8 @@ case class ProjectRole(override val id: Option[Int] = None,
                        override val userId: Int,
                        override val projectId: Int,
                        private val _roleType: RoleType,
-                       private val _isAccepted: Boolean = false,
-                       private val _isVisible: Boolean = true)
-                       extends RoleModel(id, createdAt, userId, _roleType, _isAccepted, _isVisible)
+                       private val _isAccepted: Boolean = false)
+                       extends RoleModel(id, createdAt, userId, _roleType, _isAccepted)
                          with ProjectScope {
 
   override type M = ProjectRole
@@ -37,8 +36,7 @@ case class ProjectRole(override val id: Option[Int] = None,
     userId = userId,
     _roleType = roleType,
     projectId = projectId,
-    _isAccepted = accepted,
-    _isVisible = visible
+    _isAccepted = accepted
   )
 
   override def subject: Visitable = this.project

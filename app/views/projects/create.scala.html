@@ -5,16 +5,20 @@ Page used for uploading and creating new projects.
 @import db.impl.access.UserBase
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
+@import models.project.Project
 @import play.twirl.api.Html
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import ore.permission.CreateProject
+@import models.project.Tag
+@import models.project.TagColors
+@import views.html.utils
 @(pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_],
         service: ModelService, config: OreConfig, users: UserBase)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.utils.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
+@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectCreateValidate.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>
@@ -31,7 +35,7 @@ Page used for uploading and creating new projects.
 
         @if(pending.isDefined) {
             @* Display plugin metadata *@
-            @defining(pending.get.underlying) { project =>
+            @defining(pending.get.underlying) { project: Project =>
                 <div class="plugin-meta">
                     <i class="minor">mcmod.info</i>
 
@@ -64,25 +68,13 @@ Page used for uploading and creating new projects.
                                 </td>
                             </tr>
                             <tr>
-                                <td colspan="2"><strong>@messages("general.spongePlugin")</strong></td>
+                                <td colspan="2"><strong>Platform</strong></td>
                                 <td>
-                                    @if(project.isSpongePlugin) {
-                                        <i class="fa fa-check-circle"></i>
-                                    } else {
-                                        <i class="fa fa-time-circle" data-toggle="tooltip"
-                                           title="@messages("general.spongePlugin.tooltip")"></i>
+                                    <div class="pull-right" id="upload-platform-tags">
+                                    @for(t <- pending.get.pendingVersion.dependenciesAsGhostTags) {
+                                        @projects.tag(t)
                                     }
-                                </td>
-                            </tr>
-                            <tr>
-                                <td colspan="2"><strong>@messages("general.forgeMod")</strong></td>
-                                <td>
-                                    @if(project.isForgeMod) {
-                                        <i class="fa fa-check-circle"></i>
-                                    } else {
-                                        <i class="fa fa-times-circle" data-toggle="tooltip"
-                                           title="@messages("general.forgeMod.tooltip")"></i>
-                                    }
+                                    </div>
                                 </td>
                             </tr>
                             <tr>
@@ -91,7 +83,7 @@ Page used for uploading and creating new projects.
                                     @defining(pending.get.pendingVersion.underlying.description) { description =>
                                         <input form="continue" class="form-control" type="text" id="description"
                                                name="description"
-                                               maxlength="@config.projects.getInt("max-desc-len").get"
+                                               maxlength="@config.projects.get[Int]("max-desc-len")"
                                             @description.map { value =>
                                                value="@value"
                                             }.getOrElse {
@@ -117,7 +109,7 @@ Page used for uploading and creating new projects.
 
         @if(pending.isDefined) {
             @* Category select *@
-            @projects.utils.inputSettings("continue")
+            @projects.helper.inputSettings("continue")
         }
 
         <div class="create-buttons">
@@ -152,7 +144,7 @@ Page used for uploading and creating new projects.
                 }
             }
 
-            @projects.utils.alertFile()
+            @projects.helper.alertFile()
         </div>
     </div>
 

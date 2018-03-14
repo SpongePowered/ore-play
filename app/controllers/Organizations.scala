@@ -29,12 +29,12 @@ class Organizations @Inject()(forms: OreForms,
                               implicit override val env: OreEnv,
                               implicit override val config: OreConfig,
                               implicit override val service: ModelService,
-                              implicit override val messagesApi: MessagesApi) extends BaseController {
+                              implicit override val messagesApi: MessagesApi) extends OreBaseController {
 
   private def EditOrganizationAction(organization: String)
   = AuthedOrganizationAction(organization, requireUnlock = true) andThen OrganizationPermissionAction(EditSettings)
 
-  private val createLimit: Int = this.config.orgs.getInt("createLimit").get
+  private val createLimit: Int = this.config.orgs.get[Int]("createLimit")
 
   /**
     * Shows the creation panel for Organizations.
@@ -60,7 +60,7 @@ class Organizations @Inject()(forms: OreForms,
       BadRequest
     else if (user.isLocked)
       Redirect(failCall).withError("error.user.locked")
-    else if (!this.config.orgs.getBoolean("enabled").get)
+    else if (!this.config.orgs.get[Boolean]("enabled"))
       Redirect(failCall).withError("error.org.disabled")
     else {
       this.forms.OrganizationCreate.bindFromRequest().fold(

@@ -15,5 +15,6 @@ case class ProjectSettingsForm(categoryName: String,
                                userUps: List[String],
                                roleUps: List[String],
                                updateIcon: Boolean,
-                               ownerId: Option[Int])
+                               ownerId: Option[Int],
+                               forumSync: Boolean)
                                extends TProjectRoleSetBuilder
