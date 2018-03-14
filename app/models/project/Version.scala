@@ -58,8 +58,7 @@ case class Version(override val id: Option[Int] = None,
                    extends OreModel(id, createdAt)
                      with ProjectScope
                      with Describable
-                     with Downloadable
-                     with Visitable {
+                     with Downloadable {
 
   override type M = Version
   override type T = VersionTable
@@ -123,7 +122,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Base URL for version
     */
-  override def url(implicit ec: ExecutionContext) : String = this.project.url + "/versions/" + this.versionString
+  def url(implicit project: Project): String = project.url + "/versions/" + this.versionString
 
   /**
     * Returns true if this version has been reviewed by the moderation staff.
@@ -189,6 +188,7 @@ case class Version(override val id: Option[Int] = None,
       list.toList
     }
   }
+
 
   def isSpongePlugin(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Sponge"))
 

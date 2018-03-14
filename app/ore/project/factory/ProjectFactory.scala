@@ -34,10 +34,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.util.Try
 
-package object TagAlias {
-  type ProjectTag = models.project.Tag
-}
-
 /**
   * Manages the project and version creation pipeline.
   */
@@ -220,6 +216,7 @@ trait ProjectFactory {
       plugin = plugin,
       // TODO remove await
       createForumPost = if (project.id.isDefined) this.service.await(project.settings).get.forumSync else true,
+      cacheApi = cacheApi
       )
   }
 
@@ -329,7 +326,7 @@ trait ProjectFactory {
     * @param pending  PendingVersion
     * @return         New version
     */
-  def createVersion(pending: PendingVersion): Future[Version] = {
+  def createVersion(pending: PendingVersion): Future[(Version, Channel, Seq[ProjectTag])] = {
     val project = pending.project
 
     val pendingVersion = pending.underlying
@@ -365,9 +362,10 @@ trait ProjectFactory {
     for {
       channel <- channel
       newVersion <- newVersion
+      spongeTag <- addTags(newVersion, SpongeApiId, "Sponge", TagColors.Sponge)
+      forgeTag <- addTags(newVersion, ForgeId, "Forge", TagColors.Forge)
     } yield {
-      addTags(newVersion, SpongeApiId, "Sponge", TagColors.Sponge)
-      addTags(newVersion, ForgeId, "Forge", TagColors.Forge)
+      val tags = spongeTag ++ forgeTag
 
       // Notify watchers
       this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, messages))
@@ -379,39 +377,45 @@ trait ProjectFactory {
       if (project.topicId != -1 && pending.createForumPost) {
         this.forums.postVersionRelease(project, newVersion, newVersion.description)
       }
-      newVersion
+
+      (newVersion, channel, tags.toSeq)
     }
   }
 
-  private def addTags(newVersion: Version, dependencyName: String, tagName: String, tagColor: TagColor): Unit = {
+  private def addTags(newVersion: Version, dependencyName: String, tagName: String, tagColor: TagColor): Future[Option[ProjectTag]] = {
     val dependenciesMatchingName = newVersion.dependencies.filter(_.pluginId == dependencyName)
-    if (dependenciesMatchingName.nonEmpty) {
-      val dependency = dependenciesMatchingName.head
+    dependenciesMatchingName.headOption match {
+      case None => Future.successful(None)
+      case Some(dep) =>
+        if (!dependencyVersionRegex.pattern.matcher(dep.version).matches())
+          Future.successful(None)
+        else {
+          val tagToAdd = for {
+            tagsWithVersion <- service.access(classOf[ProjectTag])
+              .filter(t => t.name === tagName && t.data === dep.version)
+          } yield {
+            if (tagsWithVersion.isEmpty) {
+              val tag = Tag(
+                _versionIds = List(newVersion.id.get),
+                name = tagName,
+                data = dep.version,
+                color = tagColor
+              )
+              val newTag = service.access(classOf[ProjectTag]).add(tag)
+              newTag.map(newVersion.addTag)
+              newTag
 
-      if (!dependencyVersionRegex.pattern.matcher(dependency.version).matches()) {
-        return
-      }
-
-      for {
-        tagsWithVersion <- service.access(classOf[ProjectTag])
-        .filter(t => t.name === tagName && t.data === dependency.version)
-      } yield {
-        if (tagsWithVersion.isEmpty) {
-          val tag = Tag(
-            _versionIds = List(newVersion.id.get),
-            name = tagName,
-            data = dependency.version,
-            color = tagColor
-          )
-          val newTag = service.access(classOf[ProjectTag]).add(tag)
-          newTag.map(newVersion.addTag)
-
-        } else {
-          val tag = tagsWithVersion.head
-          tag.addVersionId(newVersion.id.get)
-          newVersion.addTag(tag)
+            } else {
+              val tag = tagsWithVersion.head
+              tag.addVersionId(newVersion.id.get)
+              Future.successful(tag)
+            }
+          }
+          tagToAdd.flatten.map { tag =>
+            newVersion.addTag(tag)
+            Some(tag)
+          }
         }
-      }
     }
   }
 

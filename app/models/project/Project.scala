@@ -146,6 +146,10 @@ case class Project(override val id: Option[Int] = None,
     this(pluginId=pluginId, _name=compact(name), _slug=slugify(name), _ownerName=owner, _ownerId=ownerId)
   }
 
+  def isOwner(user: User) : Boolean = {
+    user.id.map(_ == _ownerId).getOrElse(false)
+  }
+
   /**
     * Returns the ID of the [[User]] that owns this Project.
     *
@@ -167,7 +171,7 @@ case class Project(override val id: Option[Int] = None,
     */
   override def owner: ProjectMember = new ProjectMember(this, this.ownerId)
 
-  override def transferOwner(member: ProjectMember)(implicit ex: ExecutionContext) {
+  override def transferOwner(member: ProjectMember)(implicit ex: ExecutionContext): Future[Unit] = {
     // Down-grade current owner to "Developer"
     this.owner.user.flatMap(u => this.memberships.getRoles(u)).map { roles =>
       roles.filter(_.roleType == RoleTypes.ProjectOwner)
@@ -323,6 +327,8 @@ case class Project(override val id: Option[Int] = None,
     * @return True if visible
     */
   override def visibility: Visibility = this._visibility
+
+  def isDeleted = visibility == VisibilityTypes.SoftDelete
 
   /**
     * Sets whether this project is visible.

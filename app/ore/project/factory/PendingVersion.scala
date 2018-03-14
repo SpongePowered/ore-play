@@ -5,11 +5,16 @@ import models.project._
 import ore.Cacheable
 import ore.Colors.Color
 import ore.project.Dependency
+import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io.PluginFile
 import play.api.cache.SyncCacheApi
 import util.PendingAction
 
 import scala.concurrent.{ExecutionContext, Future}
+
+package object TagAlias {
+  type ProjectTag = models.project.Tag
+}
 
 /**
   * Represents a pending version to be created later.
@@ -32,7 +37,7 @@ case class PendingVersion(projects: ProjectBase,
   extends PendingAction[Version]
     with Cacheable {
 
-  override def complete(implicit ec: ExecutionContext): Future[Version] = {
+  override def complete(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[ProjectTag])] = {
     free()
     this.factory.createVersion(this)
   }

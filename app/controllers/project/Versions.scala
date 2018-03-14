@@ -321,8 +321,8 @@ class Versions @Inject()(stats: StatTracker,
 
                           pendingVersion.complete.map { newVersion =>
                             if (versionData.recommended)
-                              project.recommendedVersion = newVersion
-                            addUnstableTag(newVersion, versionData.unstable)
+                              project.recommendedVersion = newVersion._1
+                            addUnstableTag(newVersion._1, versionData.unstable)
 
                             Redirect(self.show(author, slug, versionString))
                           }
@@ -716,7 +716,7 @@ class Versions @Inject()(stats: StatTracker,
   def downloadSignature(author: String, slug: String, versionString: String) = {
     ProjectAction(author, slug).async { implicit request =>
       implicit val project = request.project
-      withVersion(versionString)(sendSignatureFile)
+      withVersion(versionString)(sendSignatureFile(_, project))
     }
   }
 
@@ -729,7 +729,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def downloadSignatureById(pluginId: String, versionString: String) = ProjectAction(pluginId).async { implicit request =>
     implicit val project = request.project
-    withVersion(versionString)(sendSignatureFile)
+    withVersion(versionString)(sendSignatureFile(_, project))
   }
 
   /**
@@ -740,7 +740,7 @@ class Versions @Inject()(stats: StatTracker,
     * @return       Sent file
     */
   def downloadRecommendedSignature(author: String, slug: String) = ProjectAction(author, slug).async { implicit request =>
-    request.project.recommendedVersion.map(sendSignatureFile)
+    request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
   }
 
   /**
@@ -750,20 +750,20 @@ class Versions @Inject()(stats: StatTracker,
     * @return         Sent file
     */
   def downloadRecommendedSignatureById(pluginId: String) = ProjectAction(pluginId).async { implicit request =>
-    request.project.recommendedVersion.map(sendSignatureFile)
+    request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
   }
 
-  private def sendSignatureFile(version: Version)(implicit request: Request[_]): Result = {
-    val project = version.project
+  private def sendSignatureFile(version: Version, project: Project)(implicit request: Request[_]): Result = {
     if (project.visibility == VisibilityTypes.SoftDelete) {
-      return notFound
-    }
-    val path = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(version.signatureFileName)
-    if (notExists(path)) {
-      Logger.warn("project version missing signature file")
       notFound
-    } else
-      Ok.sendPath(path)
+    } else {
+      val path = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(version.signatureFileName)
+      if (notExists(path)) {
+        Logger.warn("project version missing signature file")
+        notFound
+      } else
+        Ok.sendPath(path)
+    }
   }
 
 }

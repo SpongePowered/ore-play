@@ -85,16 +85,17 @@ case class Page(override val id: Option[Int] = None,
     *
     * @param _contents Markdown contents
     */
-  def contents_=(_contents: String) = {
+  def setContents(_contents: String) = Future[Unit] {
     checkNotNull(_contents, "null contents", "")
     checkArgument(_contents.length <= MaxLength, "contents too long", "")
     this._contents = _contents
     if (isDefined) {
-      update(Contents)
-      // Contents were updated, update on forums
-      val project = this.project
-      if (this.name.equals(HomeName) && project.topicId != -1)
-        this.forums.updateProjectTopic(project)
+      for {
+        _ <- update(Contents)
+        project <- this.project
+        // Contents were updated, update on forums
+        _ <- if (this.name.equals(HomeName) && project.topicId != -1) this.forums.updateProjectTopic(project)
+      } yield {}
     }
   }
 

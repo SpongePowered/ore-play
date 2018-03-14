@@ -96,7 +96,7 @@ case class Organization(override val id: Option[Int] = None,
     */
   override def owner: OrganizationMember = new OrganizationMember(this, this.ownerId)
 
-  override def transferOwner(member: OrganizationMember)(implicit ec: ExecutionContext): Unit = {
+  override def transferOwner(member: OrganizationMember)(implicit ec: ExecutionContext): Future[Unit] = {
     // Down-grade current owner to "Admin"
     this.owner.user.flatMap { owner =>
       this.memberships.getRoles(owner).map { roles =>

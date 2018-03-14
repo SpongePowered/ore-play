@@ -2,18 +2,19 @@ package ore.rest
 
 import java.lang.Math._
 import javax.inject.Inject
+import javax.swing.text.html.parser.TagStack
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.{ChannelTable, ProjectTable, VersionTable}
+import db.impl._
 import db.impl.access.{ProjectBase, UserBase}
-import db.impl.schema.{ProjectSchema, VersionSchema}
+import db.impl.schema.{ProjectSchema, ProjectTag, VersionSchema}
 import db.{ModelFilter, ModelService}
-import models.project.{Project, TagColors, Version}
+import models.project.{Channel, Project, TagColors, Version}
 import models.user.User
 import ore.OreConfig
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsObject, JsString, JsValue}
 import play.api.libs.json.Json.{obj, toJson}
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport.GeneralAggFunctions.arrayAgg
 import play.mvc.BodyParser.Json
@@ -55,18 +56,18 @@ trait OreRestfulApi {
     val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
     def filteredProjects(offset: Option[Int], lim: Int) = {
-      val query = queryProject.filter { case (p, v) =>
+      val query = queryProject.filter { case (p, v, c) =>
         val query = "%" + q.map(_.toLowerCase).getOrElse("") + "%"
         (p.name.toLowerCase like query) ||
           (p.description.toLowerCase like query) ||
           (p.ownerName.toLowerCase like query) ||
           (p.pluginId.toLowerCase like query)
       }
-      query.filter { case (p, v) =>
+      query.filter { case (p, v, c) =>
         categoryArray.map {
           p.category inSetBind _
         } getOrElse true
-      } sortBy { case (p, v) =>
+      } sortBy { case (p, v, c) =>
         ordering
       } drop offset.getOrElse(-1) take lim
     }
@@ -83,20 +84,17 @@ trait OreRestfulApi {
   }
 
 
-  private def writeProjects(projects: Seq[(Project, Version)]) = {
-    val projectIds = projects.map(_._1.id).flatten
 
-    val tableChannels = TableQuery[ChannelTable]
 
-    val projectChannels = for {
-      c <- tableChannels if c.projectId inSetBind projectIds
-    } yield {
-      c
-    }
+  private def writeProjects(projects: Seq[(Project, Version, Channel)]) = {
+    val projectIds = projects.flatMap(_._1.id)
+    val versionIds = projects.flatMap(_._2.id)
+
     for {
-      chans <- service.DB.db.run(projectChannels.result).map { chans => chans.groupBy(_.projectId) }
+      chans <- service.DB.db.run(queryProjectChannels(projectIds).result).map { chans => chans.groupBy(_.projectId) }
+      vTags <- service.DB.db.run(queryVersionTags(versionIds).result).map { p => p.groupBy(_._1) mapValues (_.map(_._2)) }
     } yield {
-      projects.map { case (p, v) =>
+      projects.map { case (p, v, c) =>
         obj(
           "pluginId" -> p.pluginId,
           "createdAt" -> p.createdAt.get.toString,
@@ -106,7 +104,7 @@ trait OreRestfulApi {
           "href" -> ('/' + p.ownerName + '/' + p.slug),
           //"members"       ->  p.memberships.members.filter(_.roles.exists(_.isAccepted)), // TODO members
           "channels"      ->  toJson(chans.getOrElse(p.id.get, Seq.empty)),
-          //"recommended"   ->  toJson(v),                                                  // TODO channels and tags
+          "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id, Seq.empty))),                                                  // TODO channel(one) and tags
           "category" -> obj("title" -> p.category.title, "icon" -> p.category.icon),
           "views" -> p.viewCount,
           "downloads" -> p.downloadCount,
@@ -114,18 +112,60 @@ trait OreRestfulApi {
         )
       }
     }
+  }
 
+  def writeVersion(v: Version, p: Project, c: Channel, author: Option[String], tags: Seq[ProjectTag]): JsObject = {
+    val dependencies: List[JsObject] = v.dependencies.map { dependency =>
+      obj("pluginId" -> dependency.pluginId, "version" -> dependency.version)
+    }
+    val json = obj(
+      "id"            ->  v.id.get,
+      "createdAt"     ->  v.createdAt.get.toString,
+      "name"          ->  v.versionString,
+      "dependencies"  ->  dependencies,
+      "pluginId"      ->  p.pluginId,
+      "channel"       ->  toJson(c),
+      "fileSize"      ->  v.fileSize,
+      "md5"           ->  v.hash,
+      "staffApproved" ->  v.isReviewed,
+      "href"          ->  ('/' + v.url(p)),
+      "tags"          ->  tags.map(toJson(_)),
+      "downloads"     ->  v.downloadCount
+    )
+    author.map(a => json.+(("author", JsString(a)))).getOrElse(json)
+  }
 
+  private def queryProjectChannels(projectIds: Seq[Int]) = {
+    val tableChannels = TableQuery[ChannelTable]
+    for {
+      c <- tableChannels if c.projectId inSetBind projectIds
+    } yield {
+      c
+    }
+  }
+
+  private def queryVersionTags(versions: Seq[Int]) = {
+    val tableTags = TableQuery[TagTable]
+    val tableVersion = TableQuery[VersionTable]
+    for {
+      v <- tableVersion if v.id inSetBind versions
+      t <- tableTags if t.id === v.tagIds.any // TODO check if this is correct
+    } yield {
+      (v.id, t)
+    }
   }
 
   private def queryProject = {
-    val tableProject = TableQuery[ProjectTable]
+    val tableProject = TableQuery[ProjectTableMain]
     val tableVersion = TableQuery[VersionTable]
+    val tableChannels = TableQuery[ChannelTable]
+
     for {
       p <- tableProject
       v <- tableVersion if p.recommendedVersionId === v.id
+      c <- tableChannels if v.channelId === c.id
     } yield {
-      (p, v)
+      (p, v, c)
     }
   }
 
@@ -137,12 +177,13 @@ trait OreRestfulApi {
     */
   def getProject(pluginId: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
     val query = queryProject.filter {
-      case (p, v) => p.pluginId
+      case (p, v, c) => p.pluginId
     }
     for {
       project <- service.DB.db.run(query.result.headOption)
+      json <- writeProjects(project.toSeq)
     } yield {
-      writeProjects(project.toSeq).headOption
+      json.headOption
     }
   }
 

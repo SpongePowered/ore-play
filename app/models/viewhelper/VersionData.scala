@@ -1,0 +1,23 @@
+package models.viewhelper
+
+import models.project.{Channel, Version}
+
+// TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
+
+// TODO give this to templates with:
+
+case class VersionData(p: ProjectData, v: Version, c: Channel,
+                       approvedBy: Option[String] // Reviewer if present
+                      ) {
+
+  def global = p.global
+
+  def hasUser = p.hasUser
+  def currentUser = p.currentUser
+
+  def isRecommended = p.p.recommendedVersionId == v.id
+
+  def fullSlug = s"""${p.fullSlug}/versions/${v.versionString}"""
+
+
+}

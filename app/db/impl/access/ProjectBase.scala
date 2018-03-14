@@ -7,6 +7,7 @@ import java.util.Date
 
 import com.google.common.base.Preconditions._
 import db.impl.OrePostgresDriver.api._
+import db.impl.{ProjectTable, ProjectTableMain, VersionTable}
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
 import models.project.{Channel, Project, Version}
@@ -30,15 +31,21 @@ class ProjectBase(override val service: ModelService,
   implicit val self = this
 
   def missingFile(implicit ec: ExecutionContext): Future[Seq[Version]] = {
-    for {
-      versions <- this.service.access[Version](classOf[Version]).all
+    val tableVersion = TableQuery[VersionTable]
+    val tableProject = TableQuery[ProjectTableMain]
+
+    def allVersions = for {
+      v <- tableVersion
+      p <- tableProject if v.projectId === p.id
     } yield {
-      versions.filter { version =>
-        val project = version.project
-        val versionDir = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
+      (p.ownerName, p.name, v)
+    }
+
+    service.DB.db.run(allVersions.result).map { versions =>
+      versions.filter { case (ownerNamer, name, version) =>
+        val versionDir = this.fileManager.getVersionDir(ownerNamer,name,version.name)
         Files.notExists(versionDir.resolve(version.fileName))
-      }
-      versions.toSeq
+      }.map(_._3)
     }
   }
 
@@ -143,30 +150,31 @@ class ProjectBase(override val service: ModelService,
     *
     * @param context Project context
     */
-  def deleteChannel(channel: Channel)(implicit context: Project = null, ec: ExecutionContext) = {
-    val project = if (context != null) context else channel.project
-    checkArgument(project.id.get == channel.projectId, "invalid project id", "")
-
-    val checks = for {
-      channels <- project.channels.all
-      noVersion <- channel.versions.isEmpty
-      nonEmptyChannels <- Future.sequence(channels.map(_.versions.nonEmpty)).map(_.count(_ == true))
-    } yield {
-      checkArgument(channels.size > 1, "only one channel", "")
-      checkArgument(noVersion || nonEmptyChannels > 1, "last non-empty channel", "")
-      val reviewedChannels = channels.filter(!_.isNonReviewed)
-      checkArgument(channel.isNonReviewed || reviewedChannels.size > 1 || !reviewedChannels.contains(channel),
-        "last reviewed channel", "")
-    }
-    for {
-      _ <- checks
-      _ <- channel.remove()
-      versions <- channel.versions.all
-    } yield {
-      versions.foreach { version =>
-        val versionFolder = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
-        FileUtils.deleteDirectory(versionFolder)
-        version.remove()
+  def deleteChannel(channel: Channel)(implicit context: Project = null, ec: ExecutionContext): Future[Unit] = {
+    val project = if (context != null) Future.successful(context) else channel.project
+    project.map { project =>
+      checkArgument(project.id.get == channel.projectId, "invalid project id", "")
+      val checks = for {
+        channels <- project.channels.all
+        noVersion <- channel.versions.isEmpty
+        nonEmptyChannels <- Future.sequence(channels.map(_.versions.nonEmpty)).map(_.count(_ == true))
+      } yield {
+        checkArgument(channels.size > 1, "only one channel", "")
+        checkArgument(noVersion || nonEmptyChannels > 1, "last non-empty channel", "")
+        val reviewedChannels = channels.filter(!_.isNonReviewed)
+        checkArgument(channel.isNonReviewed || reviewedChannels.size > 1 || !reviewedChannels.contains(channel),
+          "last reviewed channel", "")
+      }
+      for {
+        _ <- checks
+        _ <- channel.remove()
+        versions <- channel.versions.all
+      } yield {
+        versions.foreach { version =>
+          val versionFolder = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
+          FileUtils.deleteDirectory(versionFolder)
+          version.remove()
+        }
       }
     }
   }
@@ -177,33 +185,35 @@ class ProjectBase(override val service: ModelService,
     * @param project Project context
     */
   def deleteVersion(version: Version)(implicit project: Project = null, ec: ExecutionContext) = {
-    val proj = if (project != null) project else version.project
-
     val checks = for {
+      proj <-  if (project != null) Future.successful(project) else version.project
       size <- proj.versions.size
     } yield {
       checkArgument(size > 1, "only one version", "")
       checkArgument(proj.id.get == version.projectId, "invalid context id", "")
+      proj
     }
 
     val rcUpdate = for {
-      _ <- checks
+      proj <- checks
       rv <- proj.recommendedVersion
       projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
     } yield {
       if (version.equals(rv)) proj.recommendedVersion = projects.filterNot(_.equals(version)).head
+      proj
     }
 
     val channelCleanup = for {
-      _ <- rcUpdate
+      proj <- rcUpdate
       channel <- version.channel
       noVersions <- channel.versions.isEmpty
     } yield {
       // Delete channel if now empty
       if (noVersions) this.deleteChannel(channel)
+      proj
     }
 
-    channelCleanup.flatMap { _ =>
+    channelCleanup.flatMap { proj =>
       val versionDir = this.fileManager.getVersionDir(proj.ownerName, project.name, version.name)
       FileUtils.deleteDirectory(versionDir)
       version.remove()
