@@ -7,13 +7,14 @@
 @import util.StringUtils._
 @import security.NonceFilter._
 
+@import models.viewhelper.HeaderData
 
-@(reviews: Seq[Review])(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase, project: Project, version: Version)
+@(headerData: HeaderData, mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Review, Option[String])])(implicit messages: Messages, request: Request[_], config: OreConfig, project: Project, version: Version)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("review.title")) {
+@bootstrap.layout(messages("review.title"), headerData) {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/review.js")"></script>
     <script nonce="@nonce">versionPath = '@project.ownerName/@project.slug/versions/@version.name'</script>
 
@@ -36,8 +37,8 @@
                             <a href="@versionRoutes.downloadJar(project.ownerName, project.slug, version.versionString, None)" class="btn btn-info">Download File</a>
                         </span>
                         <span class="btn-group-sm">
-                            @if(version.mostRecentUnfinishedReview.isDefined) {
-                                @if(users.current == users.get(version.mostRecentUnfinishedReview.get.userId)) {
+                            @if(mostRecentUnfinishedReview.isDefined) {
+                                @if(headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
                                     <button class="btn btn-review-stop btn-danger"><i class="fa fa-times-circle-o"></i> @messages("review.stop")</button>
                                     <button class="btn btn-review-approve btn-success"><i class="fa fa-thumbs-up"></i> @messages("user.queue.approve")</button>
                                 } else {
@@ -51,8 +52,8 @@
                 }
             </div>
         </div>
-        @if(version.mostRecentUnfinishedReview.isDefined) {
-            @if(users.current == users.get(version.mostRecentUnfinishedReview.get.userId)) {
+        @if(mostRecentUnfinishedReview.isDefined) {
+            @if(headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
                 <div class="row">
                     <div class="col-md-12">
                         <div class="input-group" style="width: 100%;
@@ -80,41 +81,41 @@
             <div class="col-md-12">
                 <table class="table table-condensed setting-no-border table-review-log">
                     <tbody>
-                        @for((item, index) <- reviews.reverse.zipWithIndex) {
+                        @reviews.reverse.zipWithIndex.foreach { case ((item, name), index) =>
                             @if(item.endedAt.isDefined) {
                                 @if(reviews.size > (reviews.size-index)) {
-                                    @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse((reviews.size-index-1)).createdAt.get))) {
+                                    @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt.get))) {
                                         <tr>
                                             <td>@prettifyDateAndTime(item.endedAt.get)</td>
                                             <td>
 
-                                                <strong>@users.get(reviews.reverse((reviews.size-index-1)).userId).map(_.username).getOrElse("Unknown")</strong>
+                                                <strong>@name.getOrElse("Unknown")</strong>
                                                 took over from
-                                                <strong>@users.get(item.userId).map(_.username).getOrElse("Unknown")</strong>
-                                                @if(item.getMessages.filter(_.isTakeover()).isEmpty) {
+                                                <strong>@name.getOrElse("Unknown")</strong>
+                                                @if(!item.getMessages.exists(_.isTakeover())) {
                                                     <i>- no message provided -</i>
                                                 } else {
-                                                    <i>@item.getMessages.filter(_.isTakeover())(0).render</i>
+                                                    <i>@item.getMessages.filter(_.isTakeover()).head.render</i>
                                                 }
                                             </td>
                                         </tr>
                                     } else {
                                         <tr>
                                             <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                            <td><strong>@users.get(item.userId).map(_.username).getOrElse("Unknown")</strong> stopped</td>
+                                            <td><strong>@name.getOrElse("Unknown")</strong> stopped</td>
                                         </tr>
                                     }
                                 } else {
                                     @if(version.approvedAt.isDefined) {
                                         <tr>
                                             <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                            <td><strong>@users.get(item.userId).map(_.username).getOrElse("Unknown")</strong> approved</td>
+                                            <td><strong>@name.getOrElse("Unknown")</strong> approved</td>
                                         </tr>
                                     } else {
                                         <tr>
                                             <td>@prettifyDateAndTime(item.endedAt.get)</td>
                                             <td>
-                                                <strong>@users.get(item.userId).map(_.username).getOrElse("Unknown")</strong>
+                                                <strong>@name.getOrElse("Unknown")</strong>
                                                 stopped
                                                 <br>
                                                 @if(item.getMessages.filter(_.isStop()).isEmpty) {
@@ -131,7 +132,7 @@
                                 <tr>
                                     <td>@message.getTime</td>
                                     <td>
-                                        <strong>@users.get(item.userId).map(_.username).getOrElse("Unknown")</strong>
+                                        <strong>@name.getOrElse("Unknown")</strong>
                                         added message
                                         <br>
                                         <i>@message.render</i>
@@ -140,7 +141,7 @@
                             }
                             <tr>
                                 <td>@prettifyDateAndTime(item.createdAt.get)</td>
-                                <td><strong>@users.get(item.userId).map(_.username).getOrElse("Unknown")</strong> started a review</td>
+                                <td><strong>@name.getOrElse("Unknown")</strong> started a review</td>
                             </tr>
                         }
                     </tbody>

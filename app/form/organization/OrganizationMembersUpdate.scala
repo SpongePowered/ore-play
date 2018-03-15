@@ -7,6 +7,8 @@ import ore.permission.role.RoleTypes
 import ore.user.notification.NotificationTypes
 import play.api.i18n.{Lang, MessagesApi}
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Saves new and old [[OrganizationRole]]s.
   *
@@ -23,7 +25,7 @@ case class OrganizationMembersUpdate(override val users: List[Int],
   implicit val lang = Lang.defaultLang
 
   //noinspection ComparingUnrelatedTypes
-  def saveTo(organization: Organization)(implicit messages: MessagesApi, users: UserBase) = {
+  def saveTo(organization: Organization)(implicit ex: ExecutionContext, messages: MessagesApi, users: UserBase) = {
     if (!organization.isDefined)
       throw new RuntimeException("tried to update members on undefined organization")
 
@@ -33,21 +35,27 @@ case class OrganizationMembersUpdate(override val users: List[Int],
     for (role <- this.build()) {
       val user = role.user
       dossier.addRole(role.copy(organizationId = orgId))
-      user.sendNotification(Notification(
-        originId = orgId,
-        notificationType = NotificationTypes.OrganizationInvite,
-        message = messages("notification.organization.invite", role.roleType.title, organization.name)
-      ))
+      user.flatMap {
+        _.sendNotification(Notification(
+          originId = orgId,
+          notificationType = NotificationTypes.OrganizationInvite,
+          message = messages("notification.organization.invite", role.roleType.title, organization.name)
+        ))
+      }
     }
 
     // Update existing roles
     val orgRoleTypes = RoleTypes.values.filter(_.roleClass.equals(classOf[OrganizationRole]))
     for ((user, i) <- this.userUps.zipWithIndex) {
-      organization.memberships.members.find(_.username.equalsIgnoreCase(user.trim)).foreach { user =>
-        user.headRole.roleType = orgRoleTypes.find(_.title.equals(roleUps(i)))
-          .getOrElse(throw new RuntimeException("supplied invalid role type"))
+        organization.memberships.members.flatMap { members =>
+          Future.sequence(members.map(member => member.user.map((_, member))))
+        } map { users =>
+          users.find(_._1.name.equalsIgnoreCase(user.trim)).foreach { user =>
+            user._2.headRole.map { role =>
+                role.setRoleType(orgRoleTypes.find(_.title.equals(roleUps(i))).getOrElse(throw new RuntimeException("supplied invalid role type")))
+            }
+          }
+        }
       }
     }
-  }
-
 }

@@ -9,6 +9,8 @@ import db.impl.ProjectLogTable
 import db.impl.model.OreModel
 import ore.project.ProjectOwned
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a log for a [[models.project.Project]].
   *
@@ -37,21 +39,21 @@ case class ProjectLog(override val id: Option[Int] = None,
     * @param message  Message to log
     * @return         New entry
     */
-  def err(message: String): ProjectLogEntry = Defined {
+  def err(message: String)(implicit ec: ExecutionContext): Future[ProjectLogEntry] = Defined {
     val entries = this.service.access[ProjectLogEntry](
       classOf[ProjectLogEntry], ModelFilter[ProjectLogEntry](_.logId === this.id.get))
     val tag = "error"
-    entries.find(e => e.message === message && e.tag === tag).map { entry =>
-      entry.occurrences = entry.occurrences + 1
-      entry.lastOccurrence = this.service.theTime
-      entry
+    entries.find(e => e.message === message && e.tag === tag).flatMap(_.map { entry =>
+      entry.setOoccurrences(entry.occurrences + 1)
+      entry.setLastOccurrence(this.service.theTime)
+      Future.successful(entry)
     } getOrElse {
       entries.add(ProjectLogEntry(
         logId = this.id.get,
         tag = tag,
         message = message,
         _lastOccurrence = this.service.theTime))
-    }
+    })
   }
 
   def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)

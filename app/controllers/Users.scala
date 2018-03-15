@@ -247,7 +247,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @return Unread notifications
     */
   def showNotifications(notificationFilter: Option[String], inviteFilter: Option[String]) = {
-    Authenticated { implicit request =>
+    Authenticated.async { implicit request =>
       val user = request.user
 
       // Get visible notifications
@@ -264,12 +264,13 @@ class Users @Inject()(fakeUser: FakeUser,
           .find(_.name.equalsIgnoreCase(str))
           .getOrElse(InviteFilters.All))
         .getOrElse(InviteFilters.All)
-      val invites: Seq[RoleModel] = iFilter(user)
 
-      Ok(views.users.notifications(
-        notifications,
-        invites,
-        nFilter, iFilter))
+      iFilter(user).map { invites =>
+        Ok(views.users.notifications(
+          notifications,
+          invites,
+          nFilter, iFilter))
+      }
     }
   }
 

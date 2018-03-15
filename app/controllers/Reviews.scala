@@ -13,6 +13,7 @@ import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, Version}
 import models.user.{Notification, User}
+import models.viewhelper.HeaderData
 import ore.permission.ReviewProjects
 import ore.permission.role.Lifted
 import ore.permission.role.RoleTypes.RoleType
@@ -44,8 +45,16 @@ final class Reviews @Inject()(data: DataHelper,
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) andThen ProjectAction(author, slug)).async { implicit request =>
         implicit val project = request.project
         withVersionAsync(versionString) { implicit version =>
-          version.mostRecentReviews.map { reviews =>
-            Ok(views.users.admin.reviews(reviews))
+          version.mostRecentReviews.flatMap { reviews =>
+            val headerData: HeaderData = null // TODO fill headerData
+            val unfinished = reviews.filter(r => r.createdAt.isDefined && r.endedAt.isEmpty).sorted(Review.ordering2).headOption
+            Future.sequence(reviews.map { r =>
+              r.userBase.get(r.userId).map { u =>
+                (r, u.map(_.name))
+              }
+            }) map { rv =>
+              Ok(views.users.admin.reviews(headerData, unfinished, rv))
+            }
           }
         }
       }

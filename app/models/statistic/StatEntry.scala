@@ -62,4 +62,9 @@ abstract class StatEntry[Subject <: Model](override val id: Option[Int] = None,
     if (isDefined) update(UserId)
   }
 
+  def setUserId(userId: Int) = {
+    this._userId = Some(userId)
+    if (isDefined) update(UserId)
+  }
+
 }

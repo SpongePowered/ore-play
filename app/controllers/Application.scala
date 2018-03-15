@@ -130,16 +130,11 @@ final class Application @Inject()(data: DataHelper,
     } map { case (list, reviewsByVersion) =>
       val reviewData = reviewsByVersion.mapValues { reviews =>
 
-        def ordering: Ordering[(Review, _)] = {
-          // TODO make simple + check order
-          Ordering.by(_._1.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
-        }
-
         reviews.filter { case (review, _) =>
           review.createdAt.isDefined && review.endedAt.isEmpty
-        }.sorted(ordering).headOption.map { case (r, a) =>
+        }.sorted(Review.ordering).headOption.map { case (r, a) =>
           (r, true, a) // Unfinished Review
-        } orElse reviews.sorted(ordering).headOption.map { case (r, a) =>
+        } orElse reviews.sorted(Review.ordering).headOption.map { case (r, a) =>
           (r, false, a) // any review
         }
       }
@@ -221,8 +216,20 @@ final class Application @Inject()(data: DataHelper,
     }
   }
 
-  def showHealth() = (Authenticated andThen PermissionAction[AuthRequest](ViewHealth)) { implicit request =>
-    Ok(views.users.admin.health())
+  def showHealth() = (Authenticated andThen PermissionAction[AuthRequest](ViewHealth)) async { implicit request =>
+    val headerData: HeaderData = null // TODO headerData
+
+    for {
+      noTopicProjects <- projects.filter(p => p.topicId === -1 || p.postId === -1)
+      topicDirtyProjects <- projects.filter(_.isTopicDirty)
+      staleProjects <- projects.stale
+      notPublic <- projects.filterNot(_.visibility === VisibilityTypes.Public)
+      missingFileProjects <- projects.missingFile.flatMap { v =>
+        Future.sequence(v.map { v => v.project.map(p => (v, p)) })
+      }
+    } yield {
+      Ok(views.users.admin.health(headerData, noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
+    }
   }
 
   /**

@@ -28,13 +28,15 @@ class RecoveryTask(scheduler: Scheduler,
   override def run() = {
     Logger.info("Running Discourse recovery task...")
 
-    val toCreate = this.projects.filter(_.topicId === -1)
-    Logger.info(s"Creating ${toCreate.size} topics...")
-    toCreate.foreach(this.api.createProjectTopic)
+    this.projects.filter(_.topicId === -1).foreach { toCreate =>
+      Logger.info(s"Creating ${toCreate.size} topics...")
+      toCreate.foreach(this.api.createProjectTopic)
+    }
 
-    val toUpdate = this.projects.filter(_.isTopicDirty)
-    Logger.info(s"Updating ${toUpdate.size} topics...")
-    toUpdate.foreach(this.api.updateProjectTopic)
+    this.projects.filter(_.isTopicDirty).foreach { toUpdate =>
+      Logger.info(s"Updating ${toUpdate.size} topics...")
+      toUpdate.foreach(this.api.updateProjectTopic)
+    }
 
     Logger.info("Done")
     // TODO: We need to keep deleted projects in case the topic cannot be deleted

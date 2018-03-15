@@ -34,8 +34,8 @@ trait StatSchema[M <: StatEntry[_]] extends ModelSchema[M] {
           promise.completeWith(this.service.insert(entry).map(_.isDefined))
         case Some(existingEntry) =>
           // Existing entry found, update the User ID if possible
-          if (existingEntry.user.isEmpty && entry.user.isDefined) {
-            existingEntry.user = entry.user.get
+          if (existingEntry.userId.isEmpty && entry.userId.isDefined) {
+            existingEntry.setUserId(entry.userId.get)
           }
           promise.success(false)
       }
@@ -47,7 +47,9 @@ trait StatSchema[M <: StatEntry[_]] extends ModelSchema[M] {
     val baseFilter: ModelFilter[M] = ModelFilter[M](_.modelId === entry.modelId)
     val filter: M#T => Rep[Boolean] = e => e.address === entry.address || e.cookie === entry.cookie
     val userFilter = entry.user.map(_.map[M#T => Rep[Boolean]](u => e => filter(e) || e.userId === u.id.get).getOrElse(filter))
-    this.service.find(this.modelClass, (baseFilter && userFilter).fn)
+    userFilter.flatMap { uFilter =>
+      this.service.find(this.modelClass, (baseFilter && uFilter).fn)
+    }
   }
 
 }

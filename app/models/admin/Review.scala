@@ -1,6 +1,7 @@
 package models.admin
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import util.StringUtils
 import ore.OreConfig
@@ -136,4 +137,17 @@ case class Message(message: String, time: Long = System.currentTimeMillis(), act
   def isTakeover() = action.equalsIgnoreCase("takeover")
   def isStop() = action.equalsIgnoreCase("stop")
   def render(implicit oreConfig: OreConfig): Html = Page.Render(message)
+}
+
+
+object Review {
+  def ordering: Ordering[(Review, _)] = {
+    // TODO make simple + check order
+    Ordering.by(_._1.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+  }
+
+  def ordering2: Ordering[Review] = {
+    // TODO make simple + check order
+    Ordering.by(_.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+  }
 }
