@@ -91,14 +91,14 @@ case class Organization(override val id: Option[Int] = None,
     this.owner.user.flatMap { owner =>
       this.memberships.getRoles(owner).map { roles =>
         roles.filter(_.roleType == RoleTypes.OrganizationOwner)
-             .foreach(_.roleType = RoleTypes.OrganizationAdmin)
+             .foreach(_.setRoleType(RoleTypes.OrganizationAdmin))
       }
     } flatMap { _ =>
       member.user.map { memberUser =>
         this.memberships.getRoles(memberUser).map { memberRoles =>
-          memberRoles.foreach(_.roleType = RoleTypes.OrganizationOwner)
+          memberRoles.foreach(_.setRoleType(RoleTypes.OrganizationOwner))
         } map { _ =>
-          this.owner = memberUser
+          this.setOwner(memberUser)
         }
       }
     }
@@ -110,7 +110,7 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @param user User that owns this organization
     */
-  def owner_=(user: User) = {
+  def setOwner(user: User) = {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     this._ownerId = user.id.get

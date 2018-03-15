@@ -132,7 +132,7 @@ class Users @Inject()(fakeUser: FakeUser,
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
     this.users.withName(username).flatMap {
-      case None => Future.successful(notFound)
+      case None => Future.successful(NotFound)
       case Some(user) =>
         user.projects.sortedMultipleOrders(
           orderings = p => List(p.stars.desc, p.name.asc),
@@ -159,7 +159,7 @@ class Users @Inject()(fakeUser: FakeUser,
         if (tagline.length > maxLen) {
           Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))
         } else {
-          user.tagline = tagline
+          user.setTagline(tagline)
           Redirect(ShowUser(user))
         }
     }
@@ -180,9 +180,9 @@ class Users @Inject()(fakeUser: FakeUser,
         import writes._
         val keyInfo = keySubmission.info
         val user = request.user
-        user.pgpPubKey = keyInfo.raw
+        user.setPgpPubKey(keyInfo.raw)
         if (user.lastPgpPubKeyUpdate.isDefined)
-          user.lastPgpPubKeyUpdate = this.service.theTime // Not set the first time
+          user.setLastPgpPubKeyUpdate(this.service.theTime) // Not set the first time
 
         // Send email notification
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
@@ -205,8 +205,8 @@ class Users @Inject()(fakeUser: FakeUser,
       if (user.pgpPubKey.isEmpty)
         BadRequest
       else {
-        user.pgpPubKey = null
-        user.lastPgpPubKeyUpdate = this.service.theTime
+        user.setPgpPubKey(null)
+        user.setLastPgpPubKeyUpdate(this.service.theTime)
         Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
       }
     }

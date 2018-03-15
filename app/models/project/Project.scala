@@ -159,11 +159,11 @@ case class Project(override val id: Option[Int] = None,
     // Down-grade current owner to "Developer"
     this.owner.user.flatMap(u => this.memberships.getRoles(u)).map { roles =>
       roles.filter(_.roleType == RoleTypes.ProjectOwner)
-           .foreach(_.roleType = RoleTypes.ProjectDev)
+           .foreach(_.setRoleType(RoleTypes.ProjectDev))
     } flatMap { _ =>
       member.user.flatMap { user =>
         this.memberships.getRoles(user).map { roles =>
-          roles.foreach(_.roleType = RoleTypes.ProjectOwner)
+          roles.foreach(_.setRoleType(RoleTypes.ProjectOwner))
         } flatMap { _ =>
           this.setOwner(user)
         }

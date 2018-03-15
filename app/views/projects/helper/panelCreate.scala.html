@@ -2,8 +2,7 @@
 @import ore.OreConfig
 @import play.twirl.api.Html
 @import models.viewhelper.HeaderData
-@(title: String, step: Int, headerData: HeaderData)(content: Html)(implicit messages: Messages, request: Request[_],
-        service: ModelService, config: OreConfig)
+@(title: String, step: Int, headerData: HeaderData)(content: Html)(implicit messages: Messages, request: Request[_], config: OreConfig)
 
 @bootstrap.layout(title, headerData) {
 

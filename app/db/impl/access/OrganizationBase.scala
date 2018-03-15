@@ -69,7 +69,7 @@ class OrganizationBase(override val service: ModelService,
         org.toUser.map {
           case None => throw new IllegalStateException("User not created")
           case Some(userOrg) => userOrg.pullForumData.flatMap(_.pullSpongeData)
-            userOrg.globalRoles = userOrg.globalRoles + RoleTypes.Organization // TODO update future
+            userOrg.setGlobalRoles(userOrg.globalRoles + RoleTypes.Organization) // TODO update future
             userOrg
         } flatMap { owner =>
           // Add the owner

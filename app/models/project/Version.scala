@@ -103,7 +103,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @param _description Version description
     */
-  def description_=(_description: String) = {
+  def setDescription(_description: String) = {
     checkArgument(_description == null || _description.length <= Page.MaxLength, "content too long", "")
     this._description = Option(_description)
     if (isDefined) update(Description)
@@ -145,7 +145,7 @@ case class Version(override val id: Option[Int] = None,
 
   def author: Future[Option[User]] = this.userBase.get(this._authorId)
 
-  def authorId_=(authorId: Int) = {
+  def setAuthorId(authorId: Int) = {
     this._authorId = authorId
     // If the project is in the Database
     if (isDefined) {
@@ -157,21 +157,21 @@ case class Version(override val id: Option[Int] = None,
 
   def reviewer: Future[Option[User]] = this.userBase.get(this._reviewerId)
 
-  def reviewer_=(reviewer: User) = Defined {
+  def setReviewer(reviewer: User) = Defined {
     this._reviewerId = reviewer.id.get
     update(ReviewerId)
   }
 
   def approvedAt: Option[Timestamp] = this._approvedAt
 
-  def approvedAt_=(approvedAt: Timestamp) = Defined {
+  def setApprovedAt(approvedAt: Timestamp) = Defined {
     this._approvedAt = Option(approvedAt)
     update(ApprovedAt)
   }
 
   def tagIds: List[Int] = this._tagIds
 
-  def tagIds_=(tags: List[Int]) = {
+  def setTagIds(tags: List[Int]) = {
     this._tagIds = tags
     if(isDefined) update(TagIds)
   }

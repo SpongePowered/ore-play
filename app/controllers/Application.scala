@@ -195,7 +195,7 @@ final class Application @Inject()(data: DataHelper,
     */
   def setFlagResolved(flagId: Int, resolved: Boolean) = FlagAction.async { implicit request =>
     this.service.access[Flag](classOf[Flag]).get(flagId) flatMap {
-      case None => Future.successful(notFound)
+      case None => Future.successful(NotFound)
       case Some(flag) =>
         users.current.map { user =>
           flag.setResolved(resolved, user)
@@ -253,7 +253,7 @@ final class Application @Inject()(data: DataHelper,
     */
   def showActivities(user: String) = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
     this.users.withName(user).flatMap {
-      case None => Future.successful(notFound)
+      case None => Future.successful(NotFound)
       case Some(u) =>
         val activities: Future[Seq[(Object, Option[Project])]] = u.id match {
           case None => Future{Seq.empty}
@@ -350,7 +350,7 @@ final class Application @Inject()(data: DataHelper,
 
   def updateUser(userName: String) = UserAdminAction.async { implicit request =>
     this.users.withName(userName).flatMap {
-      case None => Future.successful(notFound)
+      case None => Future.successful(NotFound)
       case Some(user) => {
         this.forms.UserAdminUpdate.bindFromRequest.fold(
           _ => Future.successful(BadRequest),
@@ -370,7 +370,7 @@ final class Application @Inject()(data: DataHelper,
                       transferOwner(role)
                       Ok
                     } else if (roleType.roleClass == allowedType && roleType.isAssignable) {
-                      role.roleType = roleType
+                      role.setRoleType(roleType)
                       Ok
                     } else BadRequest
                 }

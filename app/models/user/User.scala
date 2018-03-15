@@ -81,7 +81,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _username Username of User
     */
-  def username_=(_username: String) = {
+  def setUsername(_username: String) = {
     checkNotNull(_username, "username cannot be null", "")
     this._username = _username
     if (isDefined) update(Name)
@@ -99,7 +99,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _email User email
     */
-  def email_=(_email: String) = {
+  def setEmail(_email: String) = {
     this._email = Option(_email)
     if (isDefined) update(Email)
   }
@@ -118,7 +118,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param pgpPubKey PGP public key
     */
-  def pgpPubKey_=(pgpPubKey: String) = {
+  def setPgpPubKey(pgpPubKey: String) = {
     this._pgpPubKey = Option(pgpPubKey)
     if (isDefined) update(PGPPubKey)
   }
@@ -145,7 +145,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _lastPgpPubKeyUpdate Last time this User updated their public key
     */
-  def lastPgpPubKeyUpdate_=(_lastPgpPubKeyUpdate: Timestamp) = Defined {
+  def setLastPgpPubKeyUpdate(_lastPgpPubKeyUpdate: Timestamp) = Defined {
     this._lastPgpPubKeyUpdate = Option(_lastPgpPubKeyUpdate)
     update(LastPGPPubKeyUpdate)
   }
@@ -190,7 +190,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _fullName Full name of user
     */
-  def fullName_=(_fullName: String) = {
+  def setFullName(_fullName: String) = {
     this._name = Option(_fullName)
     if (isDefined) update(FullName)
   }
@@ -208,7 +208,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _joinDate Sponge join date
     */
-  def joinDate_=(_joinDate: Timestamp) = {
+  def setJoinDate(_joinDate: Timestamp) = {
     this._joinDate = Option(_joinDate)
     if (isDefined) update(JoinDate)
   }
@@ -225,7 +225,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _avatarUrl Avatar url
     */
-  def avatarUrl_=(_avatarUrl: String) = {
+  def setAvatarUrl(_avatarUrl: String) = {
     this._avatarUrl = Option(_avatarUrl)
     if (isDefined) update(AvatarUrl)
   }
@@ -242,7 +242,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _tagline Tagline to display
     */
-  def tagline_=(_tagline: String) = {
+  def setTagline(_tagline: String) = {
     checkArgument(_tagline.length <= this.config.users.get[Int]("max-tagline-len"), "tagline too long", "")
     this._tagline = Option(nullIfEmpty(_tagline))
     if (isDefined) update(Tagline)
@@ -260,7 +260,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _globalRoles Roles to set
     */
-  def globalRoles_=(_globalRoles: Set[RoleType]) = {
+  def setGlobalRoles(_globalRoles: Set[RoleType]) = {
     var roles = _globalRoles
     if (roles == null)
       roles = Set.empty
@@ -377,14 +377,14 @@ case class User(override val id: Option[Int] = None,
   def fill(user: DiscourseUser): Future[User] = {
     if (user == null)
       return Future.successful(this)
-    this.username = user.username
-    user.createdAt.foreach(this.joinDate_=)
-    user.email.foreach(this.email_=)
-    user.fullName.foreach(this.fullName_=)
-    user.avatarTemplate.foreach(this.avatarUrl_=)
-    this.globalRoles = user.groups
+    this.setUsername(user.username)
+    user.createdAt.foreach(this.setJoinDate)
+    user.email.foreach(this.setEmail)
+    user.fullName.foreach(this.setFullName)
+    user.avatarTemplate.foreach(this.setAvatarUrl)
+    this.setGlobalRoles(user.groups
       .flatMap(group => RoleTypes.values.find(_.roleId == group.id).map(_.asInstanceOf[RoleType]))
-      .toSet[RoleType]
+      .toSet[RoleType])
     Future.successful(this) // TODO updates above!
   }
 
@@ -397,15 +397,15 @@ case class User(override val id: Option[Int] = None,
   def fill(user: SpongeUser)(implicit config: OreConfig): Future[User] = {
     if (user == null)
       return Future.successful(this)
-    this.username = user.username
-    this.email = user.email
+    this.setUsername(user.username)
+    this.setEmail(user.email)
     user.avatarUrl.map { url =>
       if (!url.startsWith("http")) {
         val baseUrl = config.security.get[String]("api.url")
         baseUrl + url
       } else
         url
-    }.foreach(this.avatarUrl = _)
+    }.foreach(this.setAvatarUrl(_))
     Future.successful(this) // TODO updates above!
   }
 

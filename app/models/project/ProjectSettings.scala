@@ -61,7 +61,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
     *
     * @param issues Issues URL
     */
-  def issues_=(issues: String) = {
+  def setIssues(issues: String) = {
     this._issues = Option(issues)
     if (isDefined) update(Issues)
   }
@@ -78,7 +78,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
     *
     * @param source Source code URL
     */
-  def source_=(source: String) = {
+  def setSource(source: String) = {
     this._source = Option(source)
     if (isDefined) update(Source)
   }
@@ -95,7 +95,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
     *
     * @param licenseName Name of license
     */
-  def licenseName_=(licenseName: String) = {
+  def setLicenseName(licenseName: String) = {
     this._licenseName = Option(licenseName)
     if (isDefined) update(LicenseName)
   }
@@ -112,7 +112,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
     *
     * @param licenseUrl URL to project license
     */
-  def licenseUrl_=(licenseUrl: String) = {
+  def setLicenseUrl(licenseUrl: String) = {
     this._licenseUrl = Option(licenseUrl)
     if (isDefined) update(LicenseUrl)
   }
@@ -129,7 +129,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
     *
     * @param shouldPost If posts should be created on the forum
     */
-  def forumSync_=(shouldPost: Boolean): Unit = {
+  def setForumSync(shouldPost: Boolean): Unit = {
     this._forumSync = shouldPost
     if (isDefined) update(ForumSync)
   }
@@ -148,11 +148,11 @@ case class ProjectSettings(override val id: Option[Int] = None,
     project.setCategory(Categories.withName(formData.categoryName))
     project.setDescription(nullIfEmpty(formData.description))
 
-    this.issues = nullIfEmpty(formData.issues)
-    this.source = nullIfEmpty(formData.source)
-    this.licenseUrl = nullIfEmpty(formData.licenseUrl)
-    this.licenseUrl.foreach(url => this.licenseName = formData.licenseName)
-    this.forumSync = formData.forumSync
+    this.setIssues(nullIfEmpty(formData.issues))
+    this.setSource(nullIfEmpty(formData.source))
+    this.setLicenseUrl(nullIfEmpty(formData.licenseUrl))
+    this.licenseUrl.foreach(url => this.setLicenseName(formData.licenseName))
+    this.setForumSync(formData.forumSync)
 
     // Update the owner if needed
     val ownerSet = formData.ownerId.find(_ != project.ownerId) match {

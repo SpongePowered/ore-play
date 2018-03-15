@@ -7,10 +7,13 @@
 @import security.NonceFilter._
 @import util.StringUtils
 @import views.html.helper.{CSRF, form}
+@import views.html.utils.alert
+@import views.html.utils.editor
 @import models.project.Tag
 @import models.project.TagColors
 @import models.viewhelper.HeaderData
-@(headerData: HeaderData, project: Project, pending: Option[PendingVersion],
+
+@(headerData: HeaderData, project: Project, forumSync: Boolean, pending: Option[PendingVersion],
   channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
 
 @mainWidth = {
@@ -39,7 +42,7 @@
                             <p>@Html(messages("project.create.infoText.pgp"))</p>
                         </div>
 
-                        @utils.alert("error")
+                        @alert("error")
 
                         @if(pending.isDefined) {
                             @* Show plugin meta *@
@@ -146,7 +149,7 @@
                                             <td class="rv">
                                                 <div class="checkbox-inline">
                                                     <input form="form-publish" name="forum-post" type="checkbox"
-                                                            @if(!project.id.isDefined || project.settings.forumSync) { checked } value="true"/>
+                                                            @if(project.id.isEmpty || forumSync) { checked } value="true"/>
                                                 </div>
                                                 <div class="clearfix"></div>
                                             </td>
@@ -160,7 +163,7 @@
                                             <h3>@messages("version.releaseBulletin")</h3>
                                             <p>@messages("version.releaseBulletin.info")</p>
 
-                                            @utils.editor(
+                                            @editor(
                                                 savable = false,
                                                 enabled = true,
                                                 raw = version.description.getOrElse(""),

@@ -111,7 +111,7 @@ class Channels @Inject()(forms: OreForms,
         Future.successful(Redirect(self.showList(author, slug)).withError("error.channel.last"))
       } else {
         channels.find(c => c.name.equals(channelName)) match {
-          case None => Future.successful(notFound)
+          case None => Future.successful(NotFound)
           case Some(channel) =>
             for {
               nonEmpty <- channel.versions.nonEmpty

@@ -69,7 +69,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
     *
     * @param download Download warning was for
     */
-  def download_=(download: UnsafeDownload) = Defined {
+  def setDownload(download: UnsafeDownload) = Defined {
     checkNotNull(download, "null download", "")
     checkArgument(download.isDefined, "undefined download", "")
     this._downloadId = download.id.get

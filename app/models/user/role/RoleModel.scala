@@ -65,7 +65,7 @@ abstract class RoleModel(override val id: Option[Int],
     *
     * @param _roleType Role type to set
     */
-  def roleType_=(_roleType: RoleType) = {
+  def setRoleType(_roleType: RoleType) = {
     checkNotNull(_roleType, "null role type", "")
     this._roleType = _roleType
     if (isDefined) update(ModelKeys.RoleType)

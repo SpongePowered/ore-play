@@ -358,7 +358,7 @@ class Projects @Inject()(stats: StatTracker,
   def setInviteStatus(id: Int, status: String) = Authenticated.async { implicit request =>
     val user = request.user
     user.projectRoles.get(id).flatMap {
-      case None => Future.successful(notFound)
+      case None => Future.successful(NotFound)
       case Some(role) =>
         role.project.map(_.memberships).map { dossier =>
           status match {

@@ -47,27 +47,27 @@
 
                         <table class="table no-border centered">
                             <tbody>
-                                @channels.map { channel =>
+                                @channels.foreach { case (channel, versions) =>
                                     <tr>
                                         <td>
-                                            <div class="channel" style="background-color: @channel.color.hex">@channel._1.name</div>
+                                            <div class="channel" style="background-color: @channel.color.hex">@channel.name</div>
                                         </td>
                                         <td>
-                                            <div class="btn btn-sm yellow" data-toggle="modal" data-target="#channel-settings" id="channel-edit-@channel._1.id">Edit</div>
+                                            <div class="btn btn-sm yellow" data-toggle="modal" data-target="#channel-settings" id="channel-edit-@channel.id">Edit</div>
                                         </td>
                                         @if(channels.size > 1) {
                                             <td>
                                                 <div class="btn btn-sm yellow"
-                                                    @if(channel._2 > 0) {
-                                                        id="channel-delete-@channel._1.id" data-toggle="modal"
+                                                    @if(versions > 0) {
+                                                        id="channel-delete-@channel.id" data-toggle="modal"
                                                         data-target="#modal-delete">
                                                     } else {
-                                                        id="channel-delete-@channel._1.id.get" data-channel-delete="safe-delete"
-                                                        data-channel-id="@channel._1.id.get">
+                                                        id="channel-delete-@channel.id.get" data-channel-delete="safe-delete"
+                                                        data-channel-id="@channel.id.get">
 
                                                         @form(action = channelRoutes.delete(
-                                                            p.p.ownerName, p.p.slug, channel._1.name),
-                                                            'id -> s"form-delete-${channel._1.id.get}",
+                                                            p.p.ownerName, p.p.slug, channel.name),
+                                                            'id -> s"form-delete-${channel.id.get}",
                                                             'class -> "form-channel-delete") {
                                                             @CSRF.formField
                                                         }
@@ -76,18 +76,18 @@
                                                 </div>
                                             </td>
                                         }
+                                        <script nonce="@nonce">
+                                          $(function() {
+                                              initChannelDelete('#channel-delete-@channel.id', '@channel.name', @versions);
+                                              initChannelManager(
+                                                      "#channel-edit-@channel.id", "@channel.name", "@channel.color.hex",
+                                                      "Edit channel", "@channelRoutes.save(
+                                                        p.p.ownerName, p.p.slug, channel.name)",
+                                                      "post", "Save changes", @channel.isNonReviewed
+                                              );
+                                          });
+                                      </script>
                                   </tr>
-                                    <script nonce="@nonce">
-                                      $(function() {
-                                          initChannelDelete('#channel-delete-@channel._1.id', '@channel._1.name', @channel._2);
-                                          initChannelManager(
-                                                  "#channel-edit-@channel._1.id", "@channel._1.name", "@channel._1.color.hex",
-                                                  "Edit channel", "@channelRoutes.save(
-                                                    p.p.ownerName, p.p.slug, channel._1.name)",
-                                                  "post", "Save changes", @channel._1.isNonReviewed
-                                          );
-                                      });
-                                  </script>
                                 }
                             </tbody>
                         </table>

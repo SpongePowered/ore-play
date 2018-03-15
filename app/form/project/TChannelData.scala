@@ -77,8 +77,8 @@ trait TChannelData {
           if (this.nonReviewed && reviewedChannels.size <= 1 && reviewedChannels.contains(channel)) {
             Some("There must be at least one reviewed channel.")
           } else {
-            channel.name = this.channelName
-            channel.color = this.color
+            channel.setName(this.channelName)
+            channel.setColor(this.color)
             channel.setNonReviewed(this.nonReviewed)
             None
           }

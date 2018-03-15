@@ -88,7 +88,7 @@ trait OreDiscourseApi extends DiscourseApi {
             s"Content: $content\n" +
             s"Errors: ${errors.toString}"
           Logger.warn(message)
-          project.logger.err(message)
+          project.logger.map(_.err(message))
         case Right(topic) =>
           // Topic created!
           // Catch some unexpected cases (should never happen)
@@ -98,8 +98,8 @@ trait OreDiscourseApi extends DiscourseApi {
             throw new RuntimeException("project post user isn't owner?")
 
           // Update the post and topic id in the project
-          project.topicId = topic.topicId
-          project.postId = topic.postId
+          project.setTopicId(topic.topicId)
+          project.setPostId(topic.postId)
 
           Logger.info(
             s"New project topic:\n" +
@@ -149,7 +149,7 @@ trait OreDiscourseApi extends DiscourseApi {
         s"Topic ID: $topicId\n" +
         s"Title: $title\n" +
         s"Errors: ${errors.toString}"
-      project.logger.err(message)
+      project.logger.map(_.err(message))
       Logger.warn(message)
     }
 
@@ -236,14 +236,16 @@ trait OreDiscourseApi extends DiscourseApi {
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(version.id.isDefined, "undefined version", "")
     checkArgument(version.projectId == project.id.get, "invalid version project pair", "")
-    postDiscussionReply(
-      project = project,
-      user = project.owner.user,
-      content = this.templates.versionRelease(project, version, content)).map { errors =>
-      if (errors.nonEmpty) {
-        errors.foreach(project.logger.err(_))
+    project.owner.user.flatMap { user =>
+      postDiscussionReply(
+        project,
+        user,
+        content = this.templates.versionRelease(project, version, content)).map { errors =>
+        if (errors.nonEmpty) {
+          errors.foreach(error => project.logger.map(_.err(error)))
+        }
+        errors
       }
-      errors
     }
   }
 
@@ -268,8 +270,8 @@ trait OreDiscourseApi extends DiscourseApi {
           logFailure()
           resultPromise.success(false)
         } else {
-          project.topicId = -1
-          project.postId = -1
+          project.setTopicId(-1)
+          project.setPostId(-1)
           Logger.info(s"Successfully deleted project topic for: ${project.url}.")
           resultPromise.success(true)
         }
@@ -317,13 +319,16 @@ trait OreDiscourseApi extends DiscourseApi {
     )
 
     /** Generates the content for a version release post. */
-    def versionRelease(project: Project, version: Version, content: Option[String]) = readAndFormatFile(
-      OreDiscourseApi.this.versionReleasePostTemplatePath,
-      project.name,
-      OreDiscourseApi.this.baseUrl + '/' + project.url,
-      OreDiscourseApi.this.baseUrl + '/' + version.url,
-      content.getOrElse("*No description given.*")
-    )
+    def versionRelease(project: Project, version: Version, content: Option[String]) = {
+      implicit val p = project
+      readAndFormatFile(
+        OreDiscourseApi.this.versionReleasePostTemplatePath,
+        project.name,
+        OreDiscourseApi.this.baseUrl + '/' + project.url,
+        OreDiscourseApi.this.baseUrl + '/' + version.url,
+        content.getOrElse("*No description given.*")
+      )
+    }
 
   }
 

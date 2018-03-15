@@ -13,7 +13,7 @@
         <tr id="result-row">
             <td>
                 <input type="hidden"/>
-                @userAvatar(null, clazz = "user-avatar-xs")
+                @userAvatar(None, None, clazz = "user-avatar-xs")
                 <i class="fa fa-times user-cancel"></i>
                 <a class="username" target="_blank" href=""></a>
                 <span>@users.invite.roleSelect(roleClass)</span>
@@ -36,7 +36,7 @@
             <!-- Owner (not submitted) -->
             <tr>
                 <td>
-                    @userAvatar(owner, clazz = "user-avatar-xs")
+                    @userAvatar(Some(owner.name), owner.avatarUrl, clazz = "user-avatar-xs")
                     <strong>@owner.username</strong>
                     <span><i class="minor">@messages("project.owner")</i></span>
                 </td>
@@ -46,7 +46,7 @@
                 <tr>
                     <td>
                         <input form="form-continue" type="hidden" value="@user.id.get" />
-                        @userAvatar(user, clazz = "user-avatar-xs")
+                        @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
                         <a target="_blank" href="@routes.Users.showProjects(user.username, None)">
                             @user.username
                         </a>

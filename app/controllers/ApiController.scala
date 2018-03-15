@@ -134,7 +134,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                    limit: Option[Int], offset: Option[Int]) = Action.async {
     version match {
       case "v1" => this.api.getVersionList(pluginId, channels, limit, offset).map(ApiResult)
-      case _ => Future.successful(notFound)
+      case _ => Future.successful(NotFound)
     }
   }
 
@@ -149,7 +149,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def showVersion(version: String, pluginId: String, name: String) = Action.async {
     version match {
       case "v1" => this.api.getVersion(pluginId, name).map(ApiResult)
-      case _ => Future.successful(notFound)
+      case _ => Future.successful(NotFound)
     }
   }
 
@@ -225,14 +225,14 @@ final class ApiController @Inject()(api: OreRestfulApi,
             dep.flatten
           }
         )
-      case _ => Future.successful(notFound)
+      case _ => Future.successful(NotFound)
     }
   }
 
   def listPages(version: String, pluginId: String, parentId: Option[Int]) = Action.async {
     version match {
       case "v1" => this.api.getPages(pluginId, parentId).map(ApiResult)
-      case _ => Future.successful(notFound)
+      case _ => Future.successful(NotFound)
     }
   }
 
@@ -247,7 +247,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def listUsers(version: String, limit: Option[Int], offset: Option[Int]) = Action.async {
     version match {
       case "v1" => this.api.getUserList(limit, offset).map(Ok(_))
-      case _ => Future.successful(notFound)
+      case _ => Future.successful(NotFound)
     }
   }
 
@@ -261,7 +261,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def showUser(version: String, username: String) = Action.async {
     version match {
       case "v1" => this.api.getUser(username).map(ApiResult)
-      case _ => Future.successful(notFound)
+      case _ => Future.successful(NotFound)
     }
   }
 
@@ -276,7 +276,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def listTags(version: String, plugin: String, versionName: String) = Action.async {
     version match {
       case "v1" => this.api.getTags(plugin, versionName).map(ApiResult)
-      case _ => Future.successful(notFound)
+      case _ => Future.successful(NotFound)
     }
   }
 

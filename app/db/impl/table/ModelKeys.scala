@@ -101,7 +101,7 @@ object ModelKeys {
   val ResolvedBy            =   new IntKey[Flag](_.resolvedBy, _.resolvedBy.getOrElse(-1))
 
   // StatEntry
-  val UserId                =   new IntKey[StatEntry[_]](_.userId, _.user.flatMap(_.id).getOrElse(-1))
+  val UserId                =   new IntKey[StatEntry[_]](_.userId, _.userId.getOrElse(-1))
 
   // Notification
   val Read                  =   new BooleanKey[Notification](_.read, _.isRead)

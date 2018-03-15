@@ -52,7 +52,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
   = this.projects.withSlug(author, slug).map(_.map(fn).getOrElse(notFound))
 
   def withProjectAsync(author: String, slug: String)(fn: Project => Future[Result])(implicit request: Request[_]): Future[Result]
-  = this.projects.withSlug(author, slug).flatMap(_.map(fn).getOrElse(Future.successful(notFound)))
+  = this.projects.withSlug(author, slug).flatMap(_.map(fn).getOrElse(Future.successful(NotFound)))
 
   /**
     * Executes the given function with the specified result or returns a

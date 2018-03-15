@@ -91,7 +91,7 @@ class Versions @Inject()(stats: StatTracker,
     VersionEditAction(author, slug).async { implicit request =>
       implicit val project = request.project
       withVersion(versionString) { version =>
-        version.description = this.forms.VersionDescription.bindFromRequest.get.trim
+        version.setDescription(this.forms.VersionDescription.bindFromRequest.get.trim)
         Redirect(self.show(author, slug, versionString))
       }
     }
@@ -129,8 +129,8 @@ class Versions @Inject()(stats: StatTracker,
       implicit val project = request.project
       withVersion(versionString) { version =>
         version.setReviewed(reviewed = true)
-        version.reviewer = request.user
-        version.approvedAt = this.service.theTime
+        version.setReviewer(request.user)
+        version.setApprovedAt(this.service.theTime)
         Redirect(self.show(author, slug, versionString))
       }
     }
@@ -191,7 +191,8 @@ class Versions @Inject()(stats: StatTracker,
       channels <- project.channels.all
     } yield {
       val headerData: HeaderData = null // TODO headerData
-      Ok(views.create(headerData, project, None, Some(channels.toSeq), showFileControls = true))
+      val doForumSync: Boolean = true // TODO get from project settings
+      Ok(views.create(headerData, project, doForumSync, None, Some(channels.toSeq), showFileControls = true))
     }
   }
 
@@ -217,7 +218,7 @@ class Versions @Inject()(stats: StatTracker,
               this.factory.processSubsequentPluginUpload(uploadData, user, request.project).map(_.fold(
                 err => Redirect(call).withError(err),
                 version => {
-                  version.underlying.authorId = user.id.getOrElse(-1)
+                  version.underlying.setAuthorId(user.id.getOrElse(-1))
                   Redirect(self.showCreatorWithMeta(request.project.ownerName, slug, version.underlying.versionString))
                 }
               ))
@@ -245,17 +246,19 @@ class Versions @Inject()(stats: StatTracker,
           Future.successful(Redirect(self.showCreator(author, slug)))
         case Some(pendingVersion) =>
           // Get project
-          pendingOrReal(author, slug) flatMap {
+          pendingOrReal(author, slug).flatMap {
             case None =>
-              Future.successful.successful(Redirect(self.showCreator(author, slug)))
+              Future.successful(Redirect(self.showCreator(author, slug)))
             case Some(p) => p match {
               case pending: PendingProject =>
+                val doForumSync: Boolean = true // TODO get from project settings
                 val headerData: HeaderData = null // TODO headerData
-                Future.successful.successful(Ok(views.create(headerData, pending.underlying, Some(pendingVersion), None, showFileControls = false)))
+                Future.successful(Ok(views.create(headerData, pending.underlying, doForumSync, Some(pendingVersion), None, showFileControls = false)))
               case real: Project =>
                 real.channels.toSeq.map { channels =>
+                  val doForumSync: Boolean = true // TODO get from project settings
                   val headerData: HeaderData = null // TODO headerData
-                  Ok(views.create(headerData, real, Some(pendingVersion), Some(channels), showFileControls = true))
+                  Ok(views.create(headerData, real, doForumSync, Some(pendingVersion), Some(channels), showFileControls = true))
                 }
             }
           }
@@ -321,7 +324,7 @@ class Versions @Inject()(stats: StatTracker,
                         _ => {
                           // Update description
                           versionData.content.foreach { content =>
-                            pendingVersion.underlying.description = content.trim
+                            pendingVersion.underlying.setDescription(content.trim)
                           }
 
                           pendingVersion.complete.map { newVersion =>
@@ -567,7 +570,7 @@ class Versions @Inject()(stats: StatTracker,
                   address = addr,
                   downloadType = dlType))
               } map { dl =>
-                warn.download = dl
+                warn.setDownload(dl)
               } map { _ =>
                 dlType match {
                   case UploadedFile =>
@@ -628,7 +631,7 @@ class Versions @Inject()(stats: StatTracker,
                       api: Boolean = false)
                      (implicit request: ProjectRequest[_]): Future[Result] = {
     if (project.visibility == VisibilityTypes.SoftDelete) {
-      return Future.successful(notFound)
+      return Future.successful(NotFound)
     }
     checkConfirmation(project, version, token).flatMap { passed =>
       if (!passed)
