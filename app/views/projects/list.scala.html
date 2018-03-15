@@ -6,7 +6,6 @@ Collection of all projects.
 @import models.project.{Project, Version}
 @import ore.OreConfig
 @import ore.project.{Categories, Dependency}
-@import models.project.VisibilityTypes
 @import views.html.utils
 @(models: Seq[Project], page: Int, pageSize: Int, call: Int => Call)(implicit messages: Messages, flash: Flash,
         service: ModelService, config: OreConfig, users: UserBase)
@@ -17,68 +16,64 @@ Collection of all projects.
 
 <ul class="list-group project-list">
     @models.map { project =>
-        <li class="list-group-item @project.visibility.cssClass">
-            <div class="project-list-header pull-left">
-                <!-- Avatar -->
-                @utils.userAvatar(
-                    user = project.owner,
-                    call = projectRoutes.showIcon(project.ownerName, project.slug),
-                    clazz = "user-avatar-sm pull-left")
+        <li class="list-group-item project @project.visibility.cssClass">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-1">
+                    @utils.userAvatar(
+                        user = project.owner,
+                        call = projectRoutes.showIcon(project.ownerName, project.slug),
+                        clazz = "user-avatar-sm")
+                    </div>
+                    <div class="col-xs-12 col-sm-11">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <a class="title" href="@projectRoutes.show(project.ownerName, project.slug)">@project.name</a>
+                            </div>
+                            <div class="col-sm-6 hidden-xs">
+                                <div class="info minor">
+                                    @defining(project.recommendedVersion) { rv: Version =>
+                                        <span class="stat recommended-version" title="Recommended version">
+                                            <i class="fa fa-diamond"></i>
+                                            <a href="@controllers.project.routes.Versions.show(
+                                                project.ownerName, project.slug, rv.name)">
+                                            @rv.name
+                                            </a>
+                                        </span>
+                                        @rv.dependencies.find(_.pluginId.equals(Dependency.MinecraftId)).map { dep =>
+                                            <span class="stat" title="Minecraft version">
+                                                <strong>MC @dep.version</strong>
+                                            </span>
+                                        }
+                                    }
 
-                <!-- Title -->
-                <span class="project-title">
-                    <strong>
-                        <a class="" href="@projectRoutes.show(project.ownerName, project.slug)">
-                            @project.name
-                        </a>
-                    </strong>
-                    <div class="project-description minor">@project.description</div>
-                </span>
+                                    <span class="stat" title="Views"><i class="fa fa-eye"></i> @project.viewCount</span>
+                                    <span class="stat" title="Download"><i class="fa fa-download"></i> @project.downloadCount</span>
+                                    <span class="stat" title="Stars"><i class="fa fa-star"></i> @project.starCount</span>
+
+                                    @defining(project.category) { category: Categories.Category =>
+                                        <span class="stat" title="@category.title">
+                                            <i class="fa @category.icon"></i>
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-7 description-column">
+                                <div class="description">@project.description</div>
+                            </div>
+                            <div class="col-xs-12 col-sm-5 tags-line">
+                                @defining(project.recommendedVersion) { rv: Version =>
+                                    @for(t <- rv.tags) {
+                                        @projects.tag(t)
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <table class="pull-right">
-                <tr>
-                    <td>
-                            <!-- Stats -->
-                        <div class="pull-right minor">
-                            @defining(project.recommendedVersion) { rv: Version =>
-                                <span class="stat" title="Recommended version">
-                                    <i class="fa fa-diamond"></i>
-                                    <a href="@controllers.project.routes.Versions.show(
-                                        project.ownerName, project.slug, rv.name)">
-                                        <strong>@rv.name</strong>
-                                    </a>
-                                </span>
-                            @rv.dependencies.find(_.pluginId.equals(Dependency.MinecraftId)).map { dep =>
-                                <span class="stat" title="Minecraft version">
-                                    <strong>MC @dep.version</strong>
-                                </span>
-                            }
-                            }
-
-                            <span class="stat" title="Views"><i class="fa fa-eye"></i> @project.viewCount</span>
-                            <span class="stat" title="Download"><i class="fa fa-download"></i> @project.downloadCount</span>
-                            <span class="stat" title="Stars"><i class="fa fa-star"></i> @project.starCount</span>
-
-                            @defining(project.category) { category: Categories.Category =>
-                                <span class="stat fa @category.icon" title="@category.title"></span>
-                            }
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <div class="pull-right minor" style="margin-top: 1vh;">
-                        @defining(project.recommendedVersion) { rv: Version =>
-                            @for(t <- rv.tags) {
-                                @projects.tag(t)
-                            }
-                        }
-                        </div>
-                    </td>
-                </tr>
-            </table>
-            <div class="clearfix"></div>
         </li>
     }
 
@@ -87,11 +82,11 @@ Collection of all projects.
             <div class="pull-right">
                 @if(page > 1) {
                     <a href="@call(page - 1)"
-                       class="btn btn-default"><i class="fa fa-arrow-left"></i></a>
+                    class="btn btn-default"><i class="fa fa-arrow-left"></i></a>
                 }
                 @if(models.size >= pageSize) {
                     <a href="@call(page + 1)"
-                       class="btn btn-default"><i class="fa fa-arrow-right"></i></a>
+                    class="btn btn-default"><i class="fa fa-arrow-right"></i></a>
                 }
             </div>
             <div class="clearfix"></div>

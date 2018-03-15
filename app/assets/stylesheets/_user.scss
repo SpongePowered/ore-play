@@ -6,10 +6,6 @@
 
 .user-avatar {
   @include rounded-corners();
-  display: inline-block;
-  -webkit-background-size: cover;
-  background-size: cover;
-  background-position: center;
 }
 
 .user-avatar-xxs {
