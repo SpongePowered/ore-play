@@ -170,7 +170,8 @@ trait OreRestfulApi {
     }
 
     allProjects.filter { case (p, v, c) =>
-      p.visibility =!= VisibilityTypes.SoftDelete
+      p.visibility =!= VisibilityTypes.SoftDelete &&
+      p.visibility =!= VisibilityTypes.NeedsChanges
     }
   }
 
@@ -307,9 +308,6 @@ trait OreRestfulApi {
     val tableUsers = TableQuery[UserTable]
     val tableStars = TableQuery[ProjectStarsTable]
     val tableProject = TableQuery[ProjectTableMain]
-
-    val tableVersion = TableQuery[VersionTable]
-    val tableChannels = TableQuery[ChannelTable]
 
     val baseQuery = for {
       u <- tableUsers

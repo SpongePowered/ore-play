@@ -18,7 +18,7 @@ versions string is authorname btw
 versions User is projectowner
 *@
 @(h: HeaderData,
-        underReview: Seq[(Project, Version, Channel, (Review, Boolean, String), Option[String])],
+        underReview: Seq[(Project, Version, Channel, Option[String], (Review, Boolean, String))],
         versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: Request[_], config: OreConfig)
 
 @import java.sql.Timestamp
@@ -59,7 +59,7 @@ versions User is projectowner
                                 </th>
                             </tr>
                         }
-                        @underReview.map { case (project, version, channel, (review, unfinishedReview, reviewer), author) =>
+                        @underReview.map { case (project, version, channel, author, (review, unfinishedReview, reviewer)) =>
                             <tr @if(unfinishedReview && h.isCurrentUser(review.userId)){ class="warning" }>
                                 <td>
                                     <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">

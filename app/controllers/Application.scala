@@ -8,7 +8,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.{OrePostgresDriver, ProjectTable, ReviewTable, VersionTable}
+import db.impl._
 import db.impl.schema.{ProjectSchema, ReviewSchema, VersionSchema}
 import db.{ModelFilter, ModelSchema, ModelService}
 import form.OreForms
@@ -121,59 +121,76 @@ final class Application @Inject()(data: DataHelper,
     */
   def showQueue() = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
 
-    val fullList: Future[Seq[(Project, Version, Int)]] = this.service.DB.db.run(queueQuery.result).map { l =>
-      l.map {
-        case (v, p, cnt) => ((Project.apply _).tupled(p), (Version.apply _).tupled(v), cnt)
+    val data = this.service.DB.db.run(queryQueue.result).flatMap { list =>
+      service.DB.db.run(queryReviews(list.map(_._1.id.get)).result).map { reviewList =>
+        reviewList.groupBy(_._1.versionId)
+      } map { reviewsByVersion =>
+        (list, reviewsByVersion)
+      }
+    } map { case (list, reviewsByVersion) =>
+      val reviewData = reviewsByVersion.mapValues { reviews =>
+
+        def ordering: Ordering[(Review, _)] = {
+          // TODO make simple + check order
+          Ordering.by(_._1.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+        }
+
+        reviews.filter { case (review, _) =>
+          review.createdAt.isDefined && review.endedAt.isEmpty
+        }.sorted(ordering).headOption.map { case (r, a) =>
+          (r, true, a) // Unfinished Review
+        } orElse reviews.sorted(ordering).headOption.map { case (r, a) =>
+          (r, false, a) // any review
+        }
+      }
+
+      list.map { case (v, p, c, a, u) =>
+        (v, p, c, a, u, reviewData.getOrElse(v.id.get, None))
       }
     }
-    fullList map { list =>
-      val lists = list.partition(_._3 == 0)
+    data map { list =>
+      val lists = list.partition(_._6.isEmpty)
       val headerData: HeaderData = null // TODO headerdata
-      val reviewList = lists._1.map(a => (a._1, a._2))
-      val unReviewList = lists._2.map(a => (a._1, a._2))
-      // TODO well this is fucked
+      val reviewList = lists._1.map { case (v, p, c, a, _, r) =>
+        (p, v, c, a, r.get)
+      }
+      val unReviewList = lists._2.map { case (v, p, c, a, u, _) =>
+        (p, v, c, a, u)
+      }
+
       Ok(views.users.admin.queue(headerData, reviewList, unReviewList))
     }
 
   }
 
-  private lazy val queueQuery = Compiled {
-    queryQueue
+  private def queryReviews(versions: Seq[Int]) = {
+
+    val reviewsTable = TableQuery[ReviewTable]
+    val userTable = TableQuery[UserTable]
+    for {
+      r <- reviewsTable if r.versionId inSetBind versions
+      u <- userTable if r.userId === u.id
+    } yield {
+      (r, u.name)
+    }
+
   }
 
-  private def queryQueue= {
-    val versionTable = this.service.getSchema(classOf[VersionSchema]).baseQuery
-    val channelTable = this.service.getSchema(classOf[ModelSchema[Channel]]).baseQuery
-    val reviewTable = this.service.getSchema(classOf[ReviewSchema]).baseQuery
-    val projectTable = this.service.getSchema(classOf[ProjectSchema]).baseQuery
+  private def queryQueue = {
+    val versionTable = TableQuery[VersionTable]
+    val channelTable = TableQuery[ChannelTable]
+    val projectTable = TableQuery[ProjectTableMain]
+    val userTable = TableQuery[UserTable]
 
-    val query: OrePostgresDriver.api.Query[(VersionTable, ProjectTable, ReviewTable), (Version, Project, Review), Seq] = for {
-      v <- versionTable if v.isReviewed =!= true
-      c <- channelTable if v.channelId === c.id
-      r <- reviewTable if r.versionId === v.id
+    for {
+      (v, u) <- versionTable joinLeft userTable on (_.authorId === _.id)
+      c <- channelTable if v.channelId === c.id && v.isReviewed =!= true
       p <- projectTable if v.projectId === p.id
+      ou <- userTable if p.userId === ou.id
     } yield {
-      (v, p, r)
+      (v, p, c, u.map(_.name), ou)
     }
 
-    val grouped = query.groupBy {
-      // case (v: Version#T, p: Project#T, r: Review#T) => (v.*.shape, r.*.shape)
-      case (v: VersionTable, p: ProjectTable, r: ReviewTable) => ((
-        v.id.?, v.createdAt.?, v.projectId, v.versionString, v.dependencies, v.assets.?, v.channelId,
-        v.fileSize, v.hash, v.authorId, v.description.?, v.downloads, v.isReviewed, v.reviewerId, v.approvedAt.?,
-        v.tagIds, v.fileName, v.signatureFileName),
-
-        (
-          p.id.?, p.createdAt.?, p.pluginId, p.ownerName, p.userId, p.name, p.slug, p.recommendedVersionId.?, p.category,
-          p.description.?, p.stars, p.views, p.downloads, p.topicId, p.postId, p.isTopicDirty,
-          p.visibility, p.lastUpdated, p.notes
-        ))
-    }
-
-    val projected = grouped.map { case
-      ((v, p), q) => (v, p, q.length)
-    }
-    projected
   }
 
   /**

@@ -69,7 +69,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Name of channel
     */
-  override def name: String = this.versionString
+  def name: String = this.versionString
 
   /**
     * Returns the channel this version belongs to.

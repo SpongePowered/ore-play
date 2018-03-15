@@ -9,7 +9,6 @@ import ore.project.Dependency._
 import ore.project.io.PluginFile
 import ore.{Cacheable, Colors, OreConfig}
 import play.api.cache.SyncCacheApi
-import util.PendingAction
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -30,8 +29,7 @@ case class PendingProject(projects: ProjectBase,
                           var roles: Set[ProjectRole] = Set(),
                           override val cacheApi: SyncCacheApi)
                          (implicit service: ModelService)
-                          extends PendingAction[(Project, Version)]
-                            with Cacheable {
+                           extends Cacheable {
 
   /**
     * The [[Project]]'s internal settings.
@@ -48,7 +46,7 @@ case class PendingProject(projects: ProjectBase,
     version
   }
 
-  override def complete()(implicit ec: ExecutionContext): Future[(Project, Version)] = {
+  def complete()(implicit ec: ExecutionContext): Future[(Project, Version)] = {
     free()
     for {
       newProject <- this.factory.createProject(this)
@@ -62,7 +60,7 @@ case class PendingProject(projects: ProjectBase,
     }
   }
 
-  override def cancel()(implicit ec: ExecutionContext) = {
+  def cancel()(implicit ec: ExecutionContext) = {
     free()
     this.file.delete()
     if (this.underlying.isDefined)
