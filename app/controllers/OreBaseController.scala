@@ -52,7 +52,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
   = this.projects.withSlug(author, slug).map(_.map(fn).getOrElse(notFound))
 
   def withProjectAsync(author: String, slug: String)(fn: Project => Future[Result])(implicit request: Request[_]): Future[Result]
-  = this.projects.withSlug(author, slug).flatMap(_.map(fn).getOrElse(Future(notFound)))
+  = this.projects.withSlug(author, slug).flatMap(_.map(fn).getOrElse(Future.successful(notFound)))
 
   /**
     * Executes the given function with the specified result or returns a
@@ -70,7 +70,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
 
   def withVersionAsync(versionString: String)(fn: Version => Future[Result])
                  (implicit request: Request[_], project: Project): Future[Result]
-  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).flatMap(_.map(fn).getOrElse(Future(notFound())))
+  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).flatMap(_.map(fn).getOrElse(Future.successful(notFound())))
 
   /** Ensures a request is authenticated */
   def Authenticated = Action andThen authAction

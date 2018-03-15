@@ -59,7 +59,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
     */
   def download(implicit ec: ExecutionContext): Future[Option[UnsafeDownload]] = {
     if (this._downloadId == -1)
-      Future(None)
+      Future.successful(None)
     else
       this.service.access[UnsafeDownload](classOf[UnsafeDownload]).get(this._downloadId)
   }

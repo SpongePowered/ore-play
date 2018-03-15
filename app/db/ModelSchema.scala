@@ -159,6 +159,6 @@ class ModelSchema[M <: Model](val service: ModelService,
     * @param model  Model to find
     * @return       Model if found
     */
-  def like(model: M): Future[Option[M]] = Future(None)
+  def like(model: M): Future[Option[M]] = Future.successful(None)
 
 }

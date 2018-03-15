@@ -95,7 +95,7 @@ class Pages @Inject()(forms: OreForms,
     p.flatMap {
       case (name, parentId) =>
         project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
-          case Some(page) => Future(page)
+          case Some(page) => Future.successful(page)
           case None => project.getOrCreatePage(name, parentId)
         }
     } map { p =>
@@ -123,18 +123,18 @@ class Pages @Inject()(forms: OreForms,
   def save(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
     this.forms.PageEdit.bindFromRequest().fold(
       hasErrors =>
-        Future(Redirect(self.show(author, slug, page)).withError(hasErrors.errors.head.message)),
+        Future.successful(Redirect(self.show(author, slug, page)).withError(hasErrors.errors.head.message)),
       pageData => {
         val project = request.project
         val parentId = pageData.parentId.getOrElse(-1)
         //noinspection ComparingUnrelatedTypes
         project.rootPages.flatMap { rootPages =>
           if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
-            Future(BadRequest("Invalid parent ID."))
+            Future.successful(BadRequest("Invalid parent ID."))
           } else {
             val content = pageData.content
             if (page.equals(Page.HomeName) && (content.isEmpty || content.get.length < Page.MinLength)) {
-              Future(Redirect(self.show(author, slug, page)).withError("error.minLength"))
+              Future.successful(Redirect(self.show(author, slug, page)).withError("error.minLength"))
             } else {
               val parts = page.split("/")
 

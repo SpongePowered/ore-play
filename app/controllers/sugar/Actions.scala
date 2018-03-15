@@ -72,7 +72,7 @@ trait Actions extends Calls with ActionHelpers {
         onUnauthorized.map(Left(_))
       } else {
         log(success = true, request)
-        Future(Right(request.asInstanceOf[R[A]]))
+        Future.successful(Right(request.asInstanceOf[R[A]]))
       }
     }
 
@@ -166,7 +166,7 @@ trait Actions extends Calls with ActionHelpers {
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
       if (sso.isEmpty || sig.isEmpty)
-        Future(Some(Unauthorized))
+        Future.successful(Some(Unauthorized))
       else {
         Actions.this.sso.authenticate(sso.get, sig.get)(isNonceValid) map {
           case None => Some(Unauthorized)
@@ -223,7 +223,7 @@ trait Actions extends Calls with ActionHelpers {
   def maybeProjectRequest[A](request: Request[A], project: Future[Option[Project]])(implicit ec: ExecutionContext): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val r = request
     val pr = project.flatMap {
-      case None => Future(None)
+      case None => Future.successful(None)
       case Some(p) => users.current.map(processProject(p, _))
     }
     pr.map {

@@ -242,16 +242,16 @@ class Versions @Inject()(stats: StatTracker,
       // Get pending version
       this.factory.getPendingVersion(author, slug, versionString) match {
         case None =>
-          Future(Redirect(self.showCreator(author, slug)))
+          Future.successful(Redirect(self.showCreator(author, slug)))
         case Some(pendingVersion) =>
           // Get project
           pendingOrReal(author, slug) flatMap {
             case None =>
-              Future.successful(Redirect(self.showCreator(author, slug)))
+              Future.successful.successful(Redirect(self.showCreator(author, slug)))
             case Some(p) => p match {
               case pending: PendingProject =>
                 val headerData: HeaderData = null // TODO headerData
-                Future.successful(Ok(views.create(headerData, pending.underlying, Some(pendingVersion), None, showFileControls = false)))
+                Future.successful.successful(Ok(views.create(headerData, pending.underlying, Some(pendingVersion), None, showFileControls = false)))
               case real: Project =>
                 real.channels.toSeq.map { channels =>
                   val headerData: HeaderData = null // TODO headerData
@@ -286,14 +286,14 @@ class Versions @Inject()(stats: StatTracker,
       this.factory.getPendingVersion(author, slug, versionString) match {
         case None =>
           // Not found
-          Future(Redirect(self.showCreator(author, slug)))
+          Future.successful(Redirect(self.showCreator(author, slug)))
         case Some(pendingVersion) =>
           // Get submitted channel
           this.forms.VersionCreate.bindFromRequest.fold(
             hasErrors => {
               // Invalid channel
               val call = self.showCreatorWithMeta(author, slug, versionString)
-              Future(Redirect(call).withError(hasErrors.errors.head.message))
+              Future.successful(Redirect(call).withError(hasErrors.errors.head.message))
             },
 
             versionData => {
@@ -312,7 +312,7 @@ class Versions @Inject()(stats: StatTracker,
                       equalsIgnoreCase(_.name, pendingVersion.channelName)
                     } flatMap {
                       case None => versionData.addTo(project)
-                      case Some(channel) => Future(Right(channel))
+                      case Some(channel) => Future.successful(Right(channel))
                     } flatMap { channelResult =>
                       channelResult.fold(
                         error => {
@@ -428,12 +428,12 @@ class Versions @Inject()(stats: StatTracker,
                                 token: Option[String])
                                (implicit req: ProjectRequest[_]): Future[Boolean] = {
     if (version.isReviewed)
-      return Future(true)
+      return Future.successful(true)
     // check for confirmation
     req.cookies.get(DownloadWarning.COOKIE).map(_.value).orElse(token) match {
       case None =>
         // unconfirmed
-        Future(false)
+        Future.successful(false)
       case Some(tkn) =>
         this.warnings.find { warn =>
           (warn.token === tkn) &&
@@ -482,7 +482,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val project = request.project
       withVersionAsync(target) { version =>
         if (version.isReviewed)
-          Future(Redirect(ShowProject(author, slug)))
+          Future.successful(Redirect(ShowProject(author, slug)))
         else {
           val userAgent = request.headers.get("User-Agent")
           var curl: Boolean = false
@@ -508,16 +508,16 @@ class Versions @Inject()(stats: StatTracker,
             address = InetString(StatTracker.remoteAddress)))
 
           if (wget) {
-            Future(
+            Future.successful(
             MultipleChoices(this.messagesApi("version.download.confirm.wget"))
               .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\""))
           } else if (curl) {
-            Future(MultipleChoices(this.messagesApi("version.download.confirm.body.plain",
+            Future.successful(MultipleChoices(this.messagesApi("version.download.confirm.body.plain",
               self.confirmDownload(author, slug, target, Some(dlType.id), token).absoluteURL(),
               CSRF.getToken.get.value) + "\n")
               .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\""))
           } else if (api.getOrElse(false)) {
-            Future(MultipleChoices(Json.obj(
+            Future.successful(MultipleChoices(Json.obj(
               "message" -> this.messagesApi("version.download.confirm.body.api").split('\n'),
               "post" -> helper.CSRF(
                 self.confirmDownload(author, slug, target, Some(dlType.id), token)).absoluteURL())))
@@ -535,7 +535,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val project = request.project
       withVersionAsync(target) { version =>
         if (version.isReviewed)
-          Future(Redirect(ShowProject(author, slug)))
+          Future.successful(Redirect(ShowProject(author, slug)))
         else {
           val addr = InetString(StatTracker.remoteAddress)
           val dlType = downloadType
@@ -549,12 +549,12 @@ class Versions @Inject()(stats: StatTracker,
               !warn.isConfirmed &&
               (warn.downloadId === -1)
           } flatMap {
-            case None => Future(Redirect(ShowProject(author, slug)))
+            case None => Future.successful(Redirect(ShowProject(author, slug)))
             case Some(warn) =>
             if (warn.hasExpired) {
               // warning has expired
               warn.remove()
-              Future(Redirect(ShowProject(author, slug)))
+              Future.successful(Redirect(ShowProject(author, slug)))
             } else {
               // warning confirmed and redirect to download
               warn.setConfirmed()
@@ -628,7 +628,7 @@ class Versions @Inject()(stats: StatTracker,
                       api: Boolean = false)
                      (implicit request: ProjectRequest[_]): Future[Result] = {
     if (project.visibility == VisibilityTypes.SoftDelete) {
-      return Future(notFound)
+      return Future.successful(notFound)
     }
     checkConfirmation(project, version, token).flatMap { passed =>
       if (!passed)

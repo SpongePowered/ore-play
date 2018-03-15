@@ -111,7 +111,7 @@ trait SingleSignOnConsumer {
     Logger.info("Signed with : " + sig)
     if (!hmac_sha256(payload.getBytes(this.CharEncoding)).equals(sig)) {
       Logger.info("<FAILURE> Could not verify payload against signature.")
-      return Future(None)
+      return Future.successful(None)
     }
 
     // decode payload
@@ -142,7 +142,7 @@ trait SingleSignOnConsumer {
 
     if (externalId == -1 || username == null || email == null || nonce == null) {
       Logger.info("<FAILURE> Incomplete payload.")
-      return Future(None)
+      return Future.successful(None)
     }
 
     isNonceValid(nonce).map {

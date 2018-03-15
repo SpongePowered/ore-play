@@ -67,7 +67,7 @@ trait OreDiscourseApi extends DiscourseApi {
     */
   def createProjectTopic(project: Project): Future[Boolean] = {
     if (!this.isEnabled)
-      return Future(true)
+      return Future.successful(true)
     checkArgument(project.id.isDefined, "undefined project", "")
     val content = this.templates.projectTopic(project)
     val title = this.templates.projectTitle(project)
@@ -126,7 +126,7 @@ trait OreDiscourseApi extends DiscourseApi {
     */
   def updateProjectTopic(project: Project): Future[Boolean] = {
     if (!this.isEnabled)
-      return Future(true)
+      return Future.successful(true)
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
     checkArgument(project.postId != -1, "undefined post id", "")
@@ -209,7 +209,7 @@ trait OreDiscourseApi extends DiscourseApi {
   def postDiscussionReply(project: Project, user: User, content: String): Future[List[String]] = {
     if (!this.isEnabled) {
       Logger.warn("Tried to post discussion with API disabled?") // Shouldn't be reachable
-      return Future(List.empty)
+      return Future.successful(List.empty)
     }
     checkArgument(project.topicId != -1, "undefined topic id", "")
     // It's OK if Discourse responds with errors here, we will just show them to the user
@@ -232,13 +232,13 @@ trait OreDiscourseApi extends DiscourseApi {
     */
   def postVersionRelease(project: Project, version: Version, content: Option[String]): Future[List[String]] = {
     if (!this.isEnabled)
-      return Future(List.empty)
+      return Future.successful(List.empty)
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(version.id.isDefined, "undefined version", "")
     checkArgument(version.projectId == project.id.get, "invalid version project pair", "")
     postDiscussionReply(
       project = project,
-      user = project.owner,
+      user = project.owner.user,
       content = this.templates.versionRelease(project, version, content)).map { errors =>
       if (errors.nonEmpty) {
         errors.foreach(project.logger.err(_))
@@ -255,7 +255,7 @@ trait OreDiscourseApi extends DiscourseApi {
     */
   def deleteProjectTopic(project: Project): Future[Boolean] = {
     if (!this.isEnabled)
-      return Future(true)
+      return Future.successful(true)
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
 
@@ -290,7 +290,7 @@ trait OreDiscourseApi extends DiscourseApi {
     */
   def countUsers(users: List[String]): Future[Int] = {
     if (!this.isEnabled)
-      return Future(0)
+      return Future.successful(0)
     var futures: Seq[Future[Boolean]] = Seq.empty
     for (user <- users) {
       futures :+= userExists(user).recover {

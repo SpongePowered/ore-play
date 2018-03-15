@@ -195,7 +195,7 @@ final class Application @Inject()(data: DataHelper,
     */
   def setFlagResolved(flagId: Int, resolved: Boolean) = FlagAction.async { implicit request =>
     this.service.access[Flag](classOf[Flag]).get(flagId) flatMap {
-      case None => Future(notFound)
+      case None => Future.successful(notFound)
       case Some(flag) =>
         users.current.map { user =>
           flag.setResolved(resolved, user)
@@ -253,7 +253,7 @@ final class Application @Inject()(data: DataHelper,
     */
   def showActivities(user: String) = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
     this.users.withName(user).flatMap {
-      case None => Future(notFound)
+      case None => Future.successful(notFound)
       case Some(u) =>
         val activities: Future[Seq[(Object, Option[Project])]] = u.id match {
           case None => Future{Seq.empty}
@@ -350,10 +350,10 @@ final class Application @Inject()(data: DataHelper,
 
   def updateUser(userName: String) = UserAdminAction.async { implicit request =>
     this.users.withName(userName).flatMap {
-      case None => Future(notFound)
+      case None => Future.successful(notFound)
       case Some(user) => {
         this.forms.UserAdminUpdate.bindFromRequest.fold(
-          _ => Future(BadRequest),
+          _ => Future.successful(BadRequest),
           { case (thing, action, data) =>
 
             import play.api.libs.json._
@@ -398,12 +398,12 @@ final class Application @Inject()(data: DataHelper,
             thing match {
               case "orgRole" =>
                 isOrga.flatMap {
-                  case true => Future(BadRequest)
+                  case true => Future.successful(BadRequest)
                   case false => updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
                 }
               case "memberRole" =>
                 isOrga.flatMap {
-                  case false => Future(BadRequest)
+                  case false => Future.successful(BadRequest)
                   case true =>
                     user.toOrganization.flatMap { orga =>
                       updateRoleTable(orga.memberships.roles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
@@ -411,11 +411,11 @@ final class Application @Inject()(data: DataHelper,
                 }
               case "projectRole" =>
                 isOrga.flatMap {
-                  case true => Future(BadRequest)
+                  case true => Future.successful(BadRequest)
                   case false => updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleTypes.ProjectOwner,
                     (r: ProjectRole) => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))))
                 }
-              case _ => Future(BadRequest)
+              case _ => Future.successful(BadRequest)
             }
 
           })

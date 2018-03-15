@@ -82,12 +82,12 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def createKey(version: String, pluginId: String) = {
     (Action andThen AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) async { implicit request =>
       val project = request.project
-      this.forms.ProjectApiKeyCreate.bindFromRequest().fold( _ => Future(BadRequest),
+      this.forms.ProjectApiKeyCreate.bindFromRequest().fold( _ => Future.successful(BadRequest),
         {
           case keyType@Deployment =>
             this.projectApiKeys.exists(k => k.projectId === project.id.get && k.keyType === keyType)
               .flatMap { exists =>
-                if (exists) Future(BadRequest)
+                if (exists) Future.successful(BadRequest)
                 else {
                   this.projectApiKeys.add(ProjectApiKey(
                     projectId = project.id.get,
@@ -98,7 +98,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                 }
               }
 
-          case _ => Future(BadRequest)
+          case _ => Future.successful(BadRequest)
         }
       )
     }
@@ -134,7 +134,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                    limit: Option[Int], offset: Option[Int]) = Action.async {
     version match {
       case "v1" => this.api.getVersionList(pluginId, channels, limit, offset).map(ApiResult)
-      case _ => Future(NotFound)
+      case _ => Future.successful(notFound)
     }
   }
 
@@ -149,7 +149,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def showVersion(version: String, pluginId: String, name: String) = Action.async {
     version match {
       case "v1" => this.api.getVersion(pluginId, name).map(ApiResult)
-      case _ => Future(NotFound)
+      case _ => Future.successful(notFound)
     }
   }
 
@@ -160,7 +160,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
       case "v1" =>
         val project = request.project
         this.forms.VersionDeploy.bindFromRequest().fold(
-          hasErrors => Future(BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))),
+          hasErrors => Future.successful(BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))),
           formData => {
 
             val apiKeyTable = TableQuery[ProjectApiKeyTable]
@@ -203,7 +203,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                         }
                       } catch {
                         case e: InvalidPluginFileException =>
-                          Future(Left(BadRequest(error("upload", e.getMessage))))
+                          Future.successful(Left(BadRequest(error("upload", e.getMessage))))
                       }
                   }
                   pending flatMap {
@@ -225,14 +225,14 @@ final class ApiController @Inject()(api: OreRestfulApi,
             dep.flatten
           }
         )
-      case _ => Future(NotFound)
+      case _ => Future.successful(notFound)
     }
   }
 
   def listPages(version: String, pluginId: String, parentId: Option[Int]) = Action.async {
     version match {
       case "v1" => this.api.getPages(pluginId, parentId).map(ApiResult)
-      case _ => Future(NotFound)
+      case _ => Future.successful(notFound)
     }
   }
 
@@ -247,7 +247,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def listUsers(version: String, limit: Option[Int], offset: Option[Int]) = Action.async {
     version match {
       case "v1" => this.api.getUserList(limit, offset).map(Ok(_))
-      case _ => Future(NotFound)
+      case _ => Future.successful(notFound)
     }
   }
 
@@ -261,7 +261,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def showUser(version: String, username: String) = Action.async {
     version match {
       case "v1" => this.api.getUser(username).map(ApiResult)
-      case _ => Future(NotFound)
+      case _ => Future.successful(notFound)
     }
   }
 
@@ -276,7 +276,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def listTags(version: String, plugin: String, versionName: String) = Action.async {
     version match {
       case "v1" => this.api.getTags(plugin, versionName).map(ApiResult)
-      case _ => Future(NotFound)
+      case _ => Future.successful(notFound)
     }
   }
 

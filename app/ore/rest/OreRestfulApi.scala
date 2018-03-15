@@ -285,7 +285,7 @@ trait OreRestfulApi {
     */
   def getPages(pluginId: String, parentId: Option[Int])(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
     this.projects.withPluginId(pluginId).flatMap {
-      case None => Future(None)
+      case None => Future.successful(None)
       case Some(project) =>
         val pages = project.pages.sorted(_.name)
         val result = if (parentId.isDefined) pages.map(_.filter(_.parentId == parentId.get)) else pages
@@ -353,7 +353,7 @@ trait OreRestfulApi {
     */
   def getTags(pluginId: String, version: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
     this.projects.withPluginId(pluginId).flatMap {
-      case None => Future(None)
+      case None => Future.successful(None)
       case Some(project) => project.versions.find(equalsIgnoreCase(_.versionString, version)).flatMap {
         case None => Future.successful(None)
         case Some(v) =>

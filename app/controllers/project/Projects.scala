@@ -217,15 +217,15 @@ class Projects @Inject()(stats: StatTracker,
   def postDiscussionReply(author: String, slug: String) = AuthedProjectAction(author, slug) async { implicit request =>
     this.forms.ProjectReply.bindFromRequest.fold(
       hasErrors =>
-        Future(Redirect(self.showDiscussion(author, slug)).withError(hasErrors.errors.head.message)),
+        Future.successful(Redirect(self.showDiscussion(author, slug)).withError(hasErrors.errors.head.message)),
       formData => {
         val project = request.project
         if (project.topicId == -1)
-          Future(BadRequest)
+          Future.successful(BadRequest)
         else {
           // Do forum post and display errors to user if any
           val poster = formData.poster match {
-            case None => Future(request.user)
+            case None => Future.successful(request.user)
             case Some(posterName) =>
               this.users.requestPermission(request.user, posterName, PostAsOrganization).map {
                 case None => request.user // No Permission ; Post as self instead
@@ -494,7 +494,7 @@ class Projects @Inject()(stats: StatTracker,
   def rename(author: String, slug: String) = SettingsEditAction(author, slug).async { implicit request =>
     val newName = compact(this.forms.ProjectRename.bindFromRequest.get)
     projects.isNamespaceAvailable(author, slugify(newName)).flatMap {
-      case false => Future(Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
+      case false => Future.successful(Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
       case true =>
         val project = request.project
         this.projects.rename(project, newName).map { _ =>

@@ -60,7 +60,7 @@ class Channels @Inject()(forms: OreForms,
     */
   def create(author: String, slug: String) = ChannelEditAction(author, slug).async { implicit request =>
     this.forms.ChannelEdit.bindFromRequest.fold(
-      hasErrors => Future(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
+      hasErrors => Future.successful(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
       channelData => {
         channelData.addTo(request.project).map { _.fold(
             error => Redirect(self.showList(author, slug)).withError(error),
@@ -83,7 +83,7 @@ class Channels @Inject()(forms: OreForms,
     implicit val project = request.project
     this.forms.ChannelEdit.bindFromRequest.fold(
       hasErrors =>
-        Future(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
+        Future.successful(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
       channelData => {
         channelData.saveTo(channelName).map { _.map { error =>
             Redirect(self.showList(author, slug)).withError(error)
@@ -108,10 +108,10 @@ class Channels @Inject()(forms: OreForms,
     implicit val project = request.project
     project.channels.all.flatMap { channels =>
       if (channels.size == 1) {
-        Future(Redirect(self.showList(author, slug)).withError("error.channel.last"))
+        Future.successful(Redirect(self.showList(author, slug)).withError("error.channel.last"))
       } else {
         channels.find(c => c.name.equals(channelName)) match {
-          case None => Future(notFound)
+          case None => Future.successful(notFound)
           case Some(channel) =>
             for {
               nonEmpty <- channel.versions.nonEmpty

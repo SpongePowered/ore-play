@@ -43,9 +43,9 @@ class UserBase(override val service: ModelService,
     */
   def withName(username: String)(implicit ec: ExecutionContext): Future[Option[User]] = {
     this.find(equalsIgnoreCase(_.name, username)).flatMap {
-      case Some(u) => Future(Some(u))
+      case Some(u) => Future.successful(Some(u))
       case None => this.auth.getUser(username) flatMap {
-        case None => Future(None)
+        case None => Future.successful(None)
         case Some(u) => User.fromSponge(u).flatMap(getOrCreate).map(Some(_))
       }
     }
@@ -161,9 +161,9 @@ class UserBase(override val service: ModelService,
     */
   def current(implicit session: Request[_], ec: ExecutionContext): Future[Option[User]] = {
     session.cookies.get("_oretoken") match {
-      case None => Future(None)
+      case None => Future.successful(None)
       case Some(cookie) => getSession(cookie.value).flatMap {
-          case None => Future(None)
+          case None => Future.successful(None)
           case Some(s) => s.user
         }
       }

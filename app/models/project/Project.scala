@@ -555,7 +555,7 @@ case class Project(override val id: Option[Int] = None,
     val loggers = this.service.access[ProjectLog](classOf[ProjectLog])
     loggers.find(_.projectId === this.id.get).flatMap {
       case None => loggers.add(ProjectLog(projectId = this.id.get))
-      case Some(l) => Future(l)
+      case Some(l) => Future.successful(l)
     }
   }
 

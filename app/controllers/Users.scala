@@ -71,12 +71,12 @@ class Users @Inject()(fakeUser: FakeUser,
     } else if (sso.isEmpty || sig.isEmpty) {
       val nonce = SingleSignOnConsumer.nonce
       this.signOns.add(SignOn(nonce = nonce))
-      Future(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
+      Future.successful(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
     } else {
       // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
       this.sso.authenticate(sso.get, sig.get)(isNonceValid) flatMap {
         case None =>
-          Future(Redirect(ShowHome).withError("error.loginFailed"))
+          Future.successful(Redirect(ShowHome).withError("error.loginFailed"))
         case Some(spongeUser) =>
           // Complete authentication
           User.fromSponge(spongeUser).flatMap(this.users.getOrCreate).flatMap { user =>
@@ -132,7 +132,7 @@ class Users @Inject()(fakeUser: FakeUser,
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
     this.users.withName(username).flatMap {
-      case None => Future(notFound)
+      case None => Future.successful(notFound)
       case Some(user) =>
         user.projects.sortedMultipleOrders(
           orderings = p => List(p.stars.desc, p.name.asc),
