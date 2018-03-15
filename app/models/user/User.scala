@@ -353,7 +353,7 @@ case class User(override val id: Option[Int] = None,
     this.service.getModelBase(classOf[UserBase]).current.flatMap {
       case None => Future.successful(false)
       case Some(user) =>
-        if ( user.equals(this)) Future.successful(true)
+        if (user.equals(this)) Future.successful(true)
         else {
           this.isOrganization.flatMap {
             case false => Future.successful(false)

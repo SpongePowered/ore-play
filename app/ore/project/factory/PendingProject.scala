@@ -48,7 +48,7 @@ case class PendingProject(projects: ProjectBase,
     version
   }
 
-  override def complete(implicit ec: ExecutionContext): Future[(Project, Version)] = {
+  override def complete()(implicit ec: ExecutionContext): Future[(Project, Version)] = {
     free()
     for {
       newProject <- this.factory.createProject(this)
@@ -62,7 +62,7 @@ case class PendingProject(projects: ProjectBase,
     }
   }
 
-  override def cancel(implicit ec: ExecutionContext) = {
+  override def cancel()(implicit ec: ExecutionContext) = {
     free()
     this.file.delete()
     if (this.underlying.isDefined)

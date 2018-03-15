@@ -136,7 +136,7 @@ trait OreRestfulApi {
       "tags"          ->  tags.map(toJson(_)),
       "downloads"     ->  v.downloadCount
     )
-    author.map(a => json.+(("author", JsString(a)))).getOrElse(json)
+    author.fold(json)(a => json + (("author", JsString(a))))
   }
 
   private def queryProjectChannels(projectIds: Seq[Int]) = {
@@ -314,7 +314,7 @@ trait OreRestfulApi {
     userList.map(ul => toJson(ul.map(writeUser)))
   }
 
-  def writeUser(user: User): JsObject = {
+  def writeUser(user: User)(implicit ec: ExecutionContext): JsObject = {
     // TODO bulk select for users
     for {
       projects <- Future.successful(Seq.empty[(Project, Version, Channel)]) // TODO query projects

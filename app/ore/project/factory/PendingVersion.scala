@@ -37,12 +37,12 @@ case class PendingVersion(projects: ProjectBase,
   extends PendingAction[Version]
     with Cacheable {
 
-  override def complete(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[ProjectTag])] = {
+  override def complete()(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[ProjectTag])] = {
     free()
     this.factory.createVersion(this)
   }
 
-  override def cancel(implicit ec: ExecutionContext): Unit = {
+  override def cancel()(implicit ec: ExecutionContext): Unit = {
     free()
     this.plugin.delete()
     if (this.underlying.isDefined)

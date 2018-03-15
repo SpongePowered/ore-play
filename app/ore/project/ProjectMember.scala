@@ -37,12 +37,8 @@ class ProjectMember(val project: Project, override val userId: Int)(implicit use
     *
     * @return Top role
     */
-  override def headRole(implicit ec: ExecutionContext): Future[ProjectRole] =
-    this.roles.map(role => {
-      role.max(ordering)
-    })
+  override def headRole(implicit ec: ExecutionContext): Future[ProjectRole] = this.roles.map(_.max(ordering))
 
-  private def ordering: Ordering[ProjectRole]  =
-    Ordering.by(r => r.roleType.trust)
+  private def ordering: Ordering[ProjectRole] = Ordering.by(r => r.roleType.trust)
 }
 

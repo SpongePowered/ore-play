@@ -58,7 +58,7 @@ class OrganizationBase(override val service: ModelService,
         // reference to the Sponge user ID, the organization's username and a
         // reference to the User owner of the organization.
         Logger.info("Creating on Ore...")
-        this.add(Organization(id = Some(spongeUser.id), username = name, ownerId = ownerId)).map(Right(_))
+        this.add(Organization(id = Some(spongeUser.id), username = name, _ownerId = ownerId)).map(Right(_))
     } flatMap {
       case Left(err) => Future.successful(Left(err))
       case Right(org) =>

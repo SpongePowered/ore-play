@@ -10,11 +10,11 @@ trait PendingAction[R] {
   /**
     * Completes the action.
     */
-  def complete(implicit ec: ExecutionContext): Future[R]
+  def complete()(implicit ec: ExecutionContext): Future[R]
 
   /**
     * Cancels the action.
     */
-  def cancel(implicit ec: ExecutionContext)
+  def cancel()(implicit ec: ExecutionContext)
 
 }

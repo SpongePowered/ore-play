@@ -14,8 +14,10 @@ Page used for uploading and creating new projects.
 @import models.project.TagColors
 @import views.html.utils
 @import models.viewhelper.HeaderData
-@(headerData: HeaderData, pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_],
-        service: ModelService, config: OreConfig, users: UserBase)
+@import models.user.Organization
+
+@* createProjectOrgas: TODO project.owner can CreateProject in _ for *@
+@(headerData: HeaderData, createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -53,18 +55,15 @@ Page used for uploading and creating new projects.
                             <tr>
                                 <td colspan="2"><strong>@messages("project.owner")</strong></td>
                                 <td>
-                                    @defining(project.owner.organizations.all
-                                            .filter(project.owner can CreateProject in _)) { organizations =>
-                                        @if(organizations.nonEmpty) {
-                                            <select name="owner" form="continue">
-                                                <option value="@project.ownerId" selected>@project.ownerName</option>
-                                                @organizations.map { organization =>
-                                                  <option value="@organization.id.get">@organization.name</option>
-                                                }
-                                            </select>
-                                        } else {
-                                            @project.ownerName
-                                        }
+                                    @if(createProjectOrgas.nonEmpty) {
+                                        <select name="owner" form="continue">
+                                            <option value="@project.ownerId" selected>@project.ownerName</option>
+                                            @createProjectOrgas.map { organization =>
+                                                <option value="@organization.id.get">@organization.name</option>
+                                            }
+                                        </select>
+                                    } else {
+                                        @project.ownerName
                                     }
                                 </td>
                             </tr>
@@ -85,8 +84,8 @@ Page used for uploading and creating new projects.
                                         <input form="continue" class="form-control" type="text" id="description"
                                                name="description"
                                                maxlength="@config.projects.get[Int]("max-desc-len")"
-                                            @description.map { value =>
-                                               value="@value"
+                                            @description.map { v =>
+                                               value="@v"
                                             }.getOrElse {
                                                placeholder="@messages("version.create.noDescription")"
                                             }

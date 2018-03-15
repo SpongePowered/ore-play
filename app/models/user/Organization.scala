@@ -28,12 +28,12 @@ import scala.concurrent.{ExecutionContext, Future}
   *
   * @param id             Unique ID
   * @param createdAt      Date of creation
-  * @param ownerId        The ID of the [[User]] that owns this organization
+  * @param _ownerId        The ID of the [[User]] that owns this organization
   */
 case class Organization(override val id: Option[Int] = None,
                         override val createdAt: Option[Timestamp] = None,
                         username: String,
-                        private var ownerId: Int)
+                        private var _ownerId: Int)
                         extends OreModel(id, createdAt)
                           with UserOwned
                           with OrganizationScope
@@ -82,7 +82,9 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @return User that owns organization
     */
-  override def owner: OrganizationMember = new OrganizationMember(this, this.ownerId)
+  override def owner: OrganizationMember = new OrganizationMember(this, this._ownerId)
+
+  override def ownerId: Int = this._ownerId
 
   override def transferOwner(member: OrganizationMember)(implicit ec: ExecutionContext): Future[Unit] = {
     // Down-grade current owner to "Admin"
@@ -111,7 +113,7 @@ case class Organization(override val id: Option[Int] = None,
   def owner_=(user: User) = {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
-    this.ownerId = user.id.get
+    this._ownerId = user.id.get
     if (isDefined) {
       update(OrgOwnerId)
     }
@@ -126,7 +128,7 @@ case class Organization(override val id: Option[Int] = None,
 
   override val name: String = this.username
   override def url(implicit ec: ExecutionContext): String = this.userBase.service.await(this.toUser).get.get.url
-  override val userId: Int = this.ownerId
+  override val userId: Int = this._ownerId
   override def organizationId: Int = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(createdAt = theTime)
 

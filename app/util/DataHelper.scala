@@ -36,7 +36,7 @@ final class DataHelper @Inject()(config: OreConfig,
   /**
     * Resets the application to factory defaults.
     */
-  def reset(implicit ec: ExecutionContext): Unit = {
+  def reset()(implicit ec: ExecutionContext): Unit = {
     if (sys.env.getOrElse(statusZ.SpongeEnv, "unknown") != "local") return
     Logger.info("Resetting Ore...")
     this.projects.all.map { projects =>

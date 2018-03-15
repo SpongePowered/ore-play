@@ -153,21 +153,20 @@ class UserBase(override val service: ModelService,
     }
   }
 
-
   /**
-    * Returns the currently authenticated User.
+    * Returns the currently authenticated User.c
     *
     * @param session  Current session
     * @return         Authenticated user, if any, None otherwise
     */
   def current(implicit session: Request[_], ec: ExecutionContext): Future[Option[User]] = {
     session.cookies.get("_oretoken") match {
-    case None => Future(None)
-    case Some(cookie) => getSession(cookie.value).flatMap {
-        case None => Future(None)
-        case Some(s) => s.user
+      case None => Future(None)
+      case Some(cookie) => getSession(cookie.value).flatMap {
+          case None => Future(None)
+          case Some(s) => s.user
+        }
       }
-    }
   }
 
 }

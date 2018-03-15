@@ -46,9 +46,11 @@ class Pages @Inject()(forms: OreForms,
   def withPage(project: Project, page: String): Future[(Option[Page], Boolean)] = {
     val parts = page.split("/")
     if (parts.size == 2) {
-      project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1)).flatMap(parentId => {
+      project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map {
+        _.flatMap(_.id).getOrElse(-1)
+      } flatMap { parentId =>
         project.pages.filter(equalsIgnoreCase(_.slug, parts(1))).map(seq => seq.find(_.parentId == parentId)).map((_, false))
-      })
+      }
     } else {
       project.pages.find((ModelFilter[Page](_.slug === parts(0)) +&& ModelFilter[Page](_.parentId === -1)).fn).flatMap {
         case Some(r) => Future { (Some(r), false) }

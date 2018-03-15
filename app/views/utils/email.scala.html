@@ -1,10 +1,11 @@
 @import db.ModelService
 @import db.impl.access.UserBase
 @import ore.OreConfig
-@(title: String, recipient: String, body: String)(implicit messages: Messages, request: Request[_],
+@import models.viewhelper.HeaderData
+@(headerData: HeaderData, title: String, recipient: String, body: String)(implicit messages: Messages, request: Request[_],
         service: ModelService, config: OreConfig, users: UserBase)
 
-@bootstrap.layout(messages(title), scripts = false, header = false, footer = false) {
+@bootstrap.layout(messages(title), headerData, scripts = false, header = false, footer = false) {
 
     <div class="container">
         <p>@recipient,</p>

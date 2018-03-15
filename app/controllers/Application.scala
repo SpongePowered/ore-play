@@ -15,6 +15,7 @@ import form.OreForms
 import models.admin.Review
 import models.project._
 import models.user.role._
+import models.viewhelper.HeaderData
 import ore.Platforms.Platform
 import ore.permission._
 import ore.permission.role.{Role, RoleTypes}
@@ -128,7 +129,10 @@ final class Application @Inject()(data: DataHelper,
     fullList map { list =>
       val lists = list.partition(_._3 == 0)
       val headerData: HeaderData = null // TODO headerdata
-      Ok(views.users.admin.queue(headerData, lists._1.map(a => (a._1, a._2)), lists._2.map(a => (a._1, a._2))))
+      val reviewList = lists._1.map(a => (a._1, a._2))
+      val unReviewList = lists._2.map(a => (a._1, a._2))
+      // TODO well this is fucked
+      Ok(views.users.admin.queue(headerData, reviewList, unReviewList))
     }
 
   }
@@ -256,11 +260,11 @@ final class Application @Inject()(data: DataHelper,
           case Some(id) =>
             val reviews = this.service.access[Review](classOf[Review])
               .filter(_.userId === id)
-              .map(_.take(20).map(review => { review ->
+              .map(_.take(20).map { review => { review ->
                 this.service.access[Version](classOf[Version]).filter(_.id === review.versionId).flatMap { version =>
                   this.projects.find(_.id === version.head.projectId)
                 }
-              }))
+              }})
             val flags = this.service.access[Flag](classOf[Flag])
               .filter(_.resolvedBy === id)
               .map(_.take(20).map(flag => flag -> this.projects.find(_.id === flag.projectId)))

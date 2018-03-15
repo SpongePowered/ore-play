@@ -37,8 +37,8 @@ trait Actions extends Calls with ActionHelpers {
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
   def onUnauthorized(implicit request: Request[_], ec: ExecutionContext): Future[Result] = {
+    val noRedirect = request.flash.get("noRedirect")
     for {
-      noRedirect <- Future(request.flash.get("noRedirect"))
       currentUser <- this.users.current
     }
       yield {

@@ -6,6 +6,9 @@
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
 @import models.viewhelper.ProjectData
+
+@* TODO make sure channel list is sorted before going into template *@
+
 @(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: Request[_],
         service: ModelService, config: OreConfig, users: UserBase)
 
@@ -44,7 +47,7 @@
 
                         <table class="table no-border centered">
                             <tbody>
-                                @channels.sorted.map { channel =>
+                                @channels.map { channel =>
                                     <tr>
                                         <td>
                                             <div class="channel" style="background-color: @channel.color.hex">@channel._1.name</div>

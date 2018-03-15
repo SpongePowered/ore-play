@@ -98,7 +98,8 @@
                                     <h4>Icon</h4>
 
                                     @utils.userAvatar(
-                                        user = p.p.owner.user,
+                                        Some(p.projectOwner.name),
+                                        p.projectOwner.avatarUrl,
                                         call = projectRoutes.showIcon(p.p.ownerName, p.p.slug),
                                         clazz = "user-avatar-md")
 
@@ -213,8 +214,7 @@
                 <div class="alert alert-danger" role="alert" @if(flash.get("error").isEmpty) { style="display: none;" }>
                     <strong>Whoops!</strong> <span>@flash.get("error").getOrElse("")</span>
                 </div>
-                @users.memberList(
-                    model = p.p,
+                @users.memberList(p, p.p,
                     editable = true,
                     removeCall = projectRoutes.removeMember(p.p.ownerName, p.p.slug),
                     settingsCall = projectRoutes.showSettings(p.p.ownerName, p.p.slug)

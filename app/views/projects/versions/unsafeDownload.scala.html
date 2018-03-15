@@ -5,15 +5,15 @@
 @import models.project.Project
 @import ore.project.io.DownloadTypes.DownloadType
 @import views.html.helper.CSRF
-@(project: Project,
+@import models.viewhelper.HeaderData
+@(headerData: HeaderData, project: Project,
   target: Version,
   downloadType: DownloadType,
-  token: String)(implicit messages: Messages, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase)
+  token: String)(implicit messages: Messages, request: Request[_], config: OreConfig)
 
 @versionRoutes = @{ controllers.project.routes.Versions }
 
-@bootstrap.layout(messages("version.download.confirm", project.ownerName, project.name, target.name)) {
+@bootstrap.layout(messages("version.download.confirm", project.ownerName, project.name, target.name), headerData) {
 
     <div class="container" style="margin-top: 90px;">
         <div class="row">

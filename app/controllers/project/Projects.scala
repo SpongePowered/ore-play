@@ -11,7 +11,7 @@ import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
 import models.project.{Note, VisibilityTypes}
-import models.user.User
+import models.user.{Organization, User}
 import models.viewhelper.{HeaderData, ProjectData}
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -60,7 +60,8 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showCreator() = UserLock() { implicit request =>
     val headerData: HeaderData = null // TODO headerData
-    Ok(views.create(headerData, None))
+    val createdOrgas: Seq[Organization] = null // TODO
+    Ok(views.create(headerData, createdOrgas, None))
   }
 
   /**
@@ -105,7 +106,8 @@ class Projects @Inject()(stats: StatTracker,
         Redirect(self.showCreator())
       case Some(pending) =>
         val headerData: HeaderData = null // TODO headerdata
-        Ok(views.create(headerData, Some(pending)))
+      val createdOrgas: Seq[Organization] = null // TODO
+        Ok(views.create(headerData, createdOrgas, Some(pending)))
     }
   }
 

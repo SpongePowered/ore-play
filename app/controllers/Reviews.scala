@@ -162,6 +162,7 @@ final class Reviews @Inject()(data: DataHelper,
         withVersionAsync(versionString) { version =>
           // Close old review
           val closeOldReview = version.mostRecentUnfinishedReview.flatMap {
+            case None => Future.successful()
             case Some(oldreview) =>
               for {
                 _ <- oldreview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "takeover"))
@@ -186,12 +187,12 @@ final class Reviews @Inject()(data: DataHelper,
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
       withProjectAsync(author, slug) { implicit project =>
           withVersionAsync(versionString) { version =>
-          version.reviewById(reviewId).map {
-            case None => NotFound
-            case Some(review) =>
-              review.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
-              Ok("Review" + review)
-          }
+            version.reviewById(reviewId).map {
+              case None => NotFound
+              case Some(review) =>
+                review.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
+                Ok("Review" + review)
+            }
         }
       }
     }

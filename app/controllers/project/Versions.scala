@@ -30,7 +30,7 @@ import security.spauth.SingleSignOnConsumer
 import util.StringUtils._
 import views.html.projects.{versions => views}
 import _root_.views.html.helper
-import models.viewhelper.VersionData
+import models.viewhelper.{HeaderData, VersionData}
 import ore.project.factory.TagAlias.ProjectTag
 import util.JavaUtils.autoClose
 
@@ -70,10 +70,10 @@ class Versions @Inject()(stats: StatTracker,
   def show(author: String, slug: String, versionString: String) = ProjectAction(author, slug).async { implicit request =>
     implicit val project = request.project
     withVersionAsync(versionString) { version =>
-      version.channel.map{ channel =>
-          this.stats.projectViewed { implicit request =>
-            val versionData: VersionData = null // TODO fill versionData
-            Ok(views.view(versionData))
+      version.channel.map { channel =>
+        this.stats.projectViewed { implicit request =>
+          val versionData: VersionData = null // TODO fill versionData
+          Ok(views.view(versionData))
         }
       }
     }
@@ -109,7 +109,7 @@ class Versions @Inject()(stats: StatTracker,
     VersionEditAction(author, slug).async { implicit request =>
       implicit val project = request.project
       withVersion(versionString) { version =>
-        project.setRecommendedVersion( version)
+        project.setRecommendedVersion(version)
         Redirect(self.show(author, slug, versionString))
       }
     }
@@ -190,7 +190,8 @@ class Versions @Inject()(stats: StatTracker,
     for {
       channels <- project.channels.all
     } yield {
-      Ok(views.create(project, None, Some(channels.toSeq), showFileControls = true))
+      val headerData: HeaderData = null // TODO headerData
+      Ok(views.create(headerData, project, None, Some(channels.toSeq), showFileControls = true))
     }
   }
 
@@ -249,10 +250,12 @@ class Versions @Inject()(stats: StatTracker,
               Future.successful(Redirect(self.showCreator(author, slug)))
             case Some(p) => p match {
               case pending: PendingProject =>
-                Future.successful(Ok(views.create(pending.underlying, Some(pendingVersion), None, showFileControls = false)))
+                val headerData: HeaderData = null // TODO headerData
+                Future.successful(Ok(views.create(headerData, pending.underlying, Some(pendingVersion), None, showFileControls = false)))
               case real: Project =>
                 real.channels.toSeq.map { channels =>
-                  Ok(views.create(real, Some(pendingVersion), Some(channels), showFileControls = true))
+                  val headerData: HeaderData = null // TODO headerData
+                  Ok(views.create(headerData, real, Some(pendingVersion), Some(channels), showFileControls = true))
                 }
             }
           }
@@ -519,7 +522,8 @@ class Versions @Inject()(stats: StatTracker,
               "post" -> helper.CSRF(
                 self.confirmDownload(author, slug, target, Some(dlType.id), token)).absoluteURL())))
           } else {
-            warning.map(warn => MultipleChoices(views.unsafeDownload(project, version, dlType, token)).withCookies(warn.cookie))
+            val headerData: HeaderData = null // TODO headerData
+            warning.map(warn => MultipleChoices(views.unsafeDownload(headerData, project, version, dlType, token)).withCookies(warn.cookie))
           }
         }
       }

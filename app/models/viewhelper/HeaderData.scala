@@ -7,7 +7,7 @@ import ore.permission.Permission
 
 // TODO give this to templates with:
 
-// TODO perms in GlobalScope ;  ReviewFlags - ReviewVisibility - ReviewProjects - ViewStats - ViewHealth - ViewLogs - HideProjects - HardRemoveProject
+// TODO perms in GlobalScope ;  ReviewFlags - ReviewVisibility - ReviewProjects - ViewStats - ViewHealth - ViewLogs - HideProjects - HardRemoveProject - UserAdmin
 
 case class HeaderData(currentUser: Option[User],
                       permissions: Map[Permission, Boolean],
@@ -21,6 +21,8 @@ case class HeaderData(currentUser: Option[User],
   // Just some helpers in templates:
 
   def hasUser = currentUser.isDefined
+
+  def isCurrentUser(userId: Int) = currentUser.map(_.id).contains(userId)
 
   def apply(permission: Permission): Boolean = permissions(permission)
 }
