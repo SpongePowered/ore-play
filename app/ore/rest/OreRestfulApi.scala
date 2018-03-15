@@ -9,7 +9,7 @@ import db.impl._
 import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.{ProjectSchema, ProjectTag, VersionSchema}
 import db.{ModelFilter, ModelService}
-import models.project.{Channel, Project, TagColors, Version}
+import models.project._
 import models.user.User
 import ore.OreConfig
 import ore.project.Categories.Category
@@ -161,12 +161,16 @@ trait OreRestfulApi {
     val tableVersion = TableQuery[VersionTable]
     val tableChannels = TableQuery[ChannelTable]
 
-    for {
+    val allProjects = for {
       p <- tableProject
       v <- tableVersion if p.recommendedVersionId === v.id
       c <- tableChannels if v.channelId === c.id
     } yield {
       (p, v, c)
+    }
+
+    allProjects.filter { case (p, v, c) =>
+      p.visibility =!= VisibilityTypes.SoftDelete
     }
   }
 
