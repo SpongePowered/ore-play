@@ -46,14 +46,14 @@ final class Reviews @Inject()(data: DataHelper,
         implicit val project = request.project
         withVersionAsync(versionString) { implicit version =>
           version.mostRecentReviews.flatMap { reviews =>
-            val headerData: HeaderData = null // TODO fill headerData
             val unfinished = reviews.filter(r => r.createdAt.isDefined && r.endedAt.isEmpty).sorted(Review.ordering2).headOption
             Future.sequence(reviews.map { r =>
               r.userBase.get(r.userId).map { u =>
                 (r, u.map(_.name))
               }
             }) map { rv =>
-              Ok(views.users.admin.reviews(headerData, unfinished, rv))
+              implicit val r = request.request
+              Ok(views.users.admin.reviews(unfinished, rv))
             }
           }
         }

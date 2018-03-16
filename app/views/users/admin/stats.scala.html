@@ -4,9 +4,11 @@
 @import security.NonceFilter._
 
 @import play.api.libs.json.Json
+@import models.viewhelper.HeaderData
+@import controllers.sugar.Requests.OreRequest
 @(reviews: Seq[(String, String)], uploads: Seq[(String, String)], totalDownloads: Seq[(String, String)],
         unsafeDownloads: Seq[(String, String)], flagsOpen: Seq[(String, String)], flagsClosed: Seq[(String, String)])(implicit messages: Messages,
-        request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
+        request: OreRequest[_], config: OreConfig)
 
 @bootstrap.layout("Stats") {
     <div class="container" style="margin-top: 90px">

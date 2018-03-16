@@ -8,8 +8,7 @@ Collection of all projects.
 @import ore.project.{Categories, Dependency}
 @import models.project.VisibilityTypes
 @import views.html.utils
-@(models: Seq[Project], page: Int, pageSize: Int, call: Int => Call)(implicit messages: Messages, flash: Flash,
-        service: ModelService, config: OreConfig, users: UserBase)
+@(models: Seq[Project], page: Int, pageSize: Int, call: Int => Call)(implicit messages: Messages, flash: Flash, config: OreConfig)
 
 @projectRoutes = @{
     controllers.project.routes.Projects
@@ -21,7 +20,8 @@ Collection of all projects.
             <div class="project-list-header pull-left">
                 <!-- Avatar -->
                 @utils.userAvatar(
-                    user = project.owner,
+                    userName = project.owner,
+                    avatarUrl = project.owner.avatar
                     call = projectRoutes.showIcon(project.ownerName, project.slug),
                     clazz = "user-avatar-sm pull-left")
 

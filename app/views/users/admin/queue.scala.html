@@ -17,15 +17,16 @@ underreview Review is either (version.mostRecentUnfinishedReview, true, reviewer
 versions string is authorname btw
 versions User is projectowner
 *@
-@(h: HeaderData,
+@import controllers.sugar.Requests.OreRequest
+@(
         underReview: Seq[(Project, Version, Channel, Option[String], (Review, Boolean, String))],
-        versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: Request[_], config: OreConfig)
+        versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @import java.sql.Timestamp
 @import java.time.Instant
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("user.queue"), h) {
+@bootstrap.layout(messages("user.queue")) {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/queue.js")"></script>
 
     <div class="container" style="margin-top: 90px">

@@ -13,6 +13,7 @@ import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
 import play.api.i18n.MessagesApi
 import play.api.libs.json.Json
+import controllers.sugar.Requests._
 import security.spauth.SingleSignOnConsumer
 import views.{html => views}
 
@@ -46,8 +47,7 @@ class Organizations @Inject()(forms: OreForms,
     request.user.ownedOrganizations.size.map { size =>
       if (size >= this.createLimit) Redirect(ShowHome).withError(this.messagesApi("error.org.createLimit", this.createLimit))
       else {
-        val headerData: HeaderData = null // TODO headerdata
-        Ok(views.createOrganization(headerData))
+        Ok(views.createOrganization())
       }
     }
 
@@ -58,7 +58,7 @@ class Organizations @Inject()(forms: OreForms,
     *
     * @return Redirect to organization page
     */
-  def create = UserLock().async { implicit request =>
+  def create() = UserLock().async { implicit request =>
     val user = request.user
     val failCall = routes.Organizations.showCreator()
     user.ownedOrganizations.size.flatMap { size =>
@@ -92,23 +92,25 @@ class Organizations @Inject()(forms: OreForms,
     */
   def setInviteStatus(id: Int, status: String) = Authenticated.async { implicit request =>
     val user = request.user
-    user.organizationRoles.get(id).map {
-      case None => notFound
+    user.organizationRoles.get(id).flatMap {
+      case None => Future.successful(notFound)
       case Some(role) =>
-        val dossier = role.organization.memberships
-        status match {
-          case STATUS_DECLINE =>
-            dossier.removeRole(role)
-            Ok
-          case STATUS_ACCEPT =>
-            role.setAccepted(true)
-            Ok
-          case STATUS_UNACCEPT =>
-            role.setAccepted(false)
-            Ok
-          case _ =>
-            BadRequest
+        role.organization.map { orga =>
+          status match {
+            case STATUS_DECLINE =>
+              orga.memberships.removeRole(role)
+              Ok
+            case STATUS_ACCEPT =>
+              role.setAccepted(true)
+              Ok
+            case STATUS_UNACCEPT =>
+              role.setAccepted(false)
+              Ok
+            case _ =>
+              BadRequest
+          }
         }
+
     }
   }
 

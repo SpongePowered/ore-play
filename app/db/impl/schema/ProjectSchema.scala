@@ -27,9 +27,9 @@ class ProjectSchema(override val service: ModelService, implicit val users: User
   def distinctAuthors: Future[Seq[User]] = {
     service.DB.db.run {
       (for (project <- this.baseQuery) yield project.userId).distinct.result
-    } map { userIds =>
-      this.users.in(userIds.toSet).toSeq
-    }
+    } flatMap { userIds =>
+      this.users.in(userIds.toSet)
+    } map(_.toSeq)
   }
 
   /**

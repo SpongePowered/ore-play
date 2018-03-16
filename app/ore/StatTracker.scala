@@ -14,6 +14,7 @@ import ore.StatTracker.COOKIE_NAME
 import play.api.mvc.{RequestHeader, Result}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * Helper class for handling tracking of statistics.
@@ -34,15 +35,16 @@ trait StatTracker {
     *
     * @param request Request to view the project
     */
-  def projectViewed(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Result = {
+  def projectViewed(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Future[Result] = {
     val project = request.project
-    val statEntry = ProjectView.bindFromRequest
-    this.viewSchema.record(statEntry).andThen {
-      case recorded => if (recorded.get) {
-        project.addView()
+    ProjectView.bindFromRequest.map { statEntry =>
+      this.viewSchema.record(statEntry).andThen {
+        case recorded => if (recorded.get) {
+          project.addView()
+        }
       }
+      f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
     }
-    f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
   }
 
   /**
@@ -53,15 +55,16 @@ trait StatTracker {
     * @param version Version to check downloads for
     * @param request Request to download the version
     */
-  def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Result = {
-    val statEntry = VersionDownload.bindFromRequest(version)
-    this.downloadSchema.record(statEntry).andThen {
-      case recorded => if (recorded.get) {
-        version.addDownload()
-        request.project.addDownload()
+  def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Future[Result] = {
+    VersionDownload.bindFromRequest(version).map { statEntry =>
+      this.downloadSchema.record(statEntry).andThen {
+        case recorded => if (recorded.get) {
+          version.addDownload()
+          request.project.addDownload()
+        }
       }
+      f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
     }
-    f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
   }
 
 }

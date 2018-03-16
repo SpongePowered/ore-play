@@ -2,9 +2,10 @@
 @import ore.OreConfig
 @import play.twirl.api.Html
 @import models.viewhelper.HeaderData
-@(title: String, step: Int, headerData: HeaderData)(content: Html)(implicit messages: Messages, request: Request[_], config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(title: String, step: Int)(content: Html)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
-@bootstrap.layout(title, headerData) {
+@bootstrap.layout(title) {
 
     <div class="container" style="margin-top: 90px">
         <div class="row">

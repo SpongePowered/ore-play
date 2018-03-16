@@ -8,15 +8,14 @@
 @import models.viewhelper.ProjectData
 
 @* TODO make sure channel list is sorted before going into template *@
-
-@(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: Request[_],
-        service: ModelService, config: OreConfig, users: UserBase)
+@import controllers.sugar.Requests.OreRequest
+@(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @channelRoutes = @{controllers.project.routes.Channels}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("channel.list.title", p.p.ownerName, p.p.slug), p.global) {
+@bootstrap.layout(messages("channel.list.title", p.p.ownerName, p.p.slug)) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
     <script nonce="@nonce">

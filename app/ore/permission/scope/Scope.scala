@@ -3,6 +3,8 @@ package ore.permission.scope
 import models.user.User
 import ore.permission.Permission
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a "scope" for testing permissions within the application.
   */
@@ -22,7 +24,7 @@ trait Scope extends ScopeSubject {
     * @param p    Permission to test
     * @return     True if user has permission in this scope
     */
-  def check(user: User, p: Permission): Boolean = p.trust <= user.trustIn(this)
+  def check(user: User, p: Permission)(implicit ec: ExecutionContext): Future[Boolean] = user.trustIn(this).map(userTrust => p.trust <= userTrust)
 
   /**
     * Tests the given permission for the given user.
@@ -31,15 +33,17 @@ trait Scope extends ScopeSubject {
     * @param p    Permission to test
     * @return     True if user has permission
     */
-  def test(user: User, p: Permission): Boolean = {
-    var result: Boolean = false
-    var scope: Option[Scope] = Some(this)
-    while (scope.isDefined || (scope.isDefined && !result)) {
-      val s = scope.get
-      result |= s.check(user, p)
-      scope = s.parent
+  def test(user: User, p: Permission)(implicit ec: ExecutionContext): Future[Boolean] = {
+
+    this.check(user, p).flatMap {
+      case true => Future.successful(true)
+      case false =>
+        this.parent match {
+          case Some(parent) => parent.test(user, p)
+          case None => Future.successful(false)
+        }
     }
-    result
+
   }
 
   override val scope: Scope = this

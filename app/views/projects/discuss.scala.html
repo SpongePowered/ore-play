@@ -9,17 +9,18 @@ Discussion page within Project overview.
 @import security.NonceFilter._
 @import ore.permission.PostAsOrganization
 @import views.html.utils
-@(model: Project)(implicit messages: Messages, request: Request[_], flash: Flash, service: ModelService,
-        forums: DiscourseApi, config: OreConfig, users: UserBase)
+@import controllers.sugar.Requests.OreRequest
+@import models.viewhelper.ProjectData
+@(p: ProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, forums: DiscourseApi, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.view(model, "#discussion") {
+@projects.view(p, "#discussion") {
 
     <script nonce="@nonce">
         DiscourseEmbed = {
             discourseUrl: '@config.forums.get[String]("baseUrl")/',
-            topicId: @model.topicId
+            topicId: @p.p.topicId
         };
     </script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDiscuss.js")"></script>
@@ -28,31 +29,27 @@ Discussion page within Project overview.
     <div class="container">
         <div id='discourse-comments'></div>
         <div class="row">
-            @if(users.current.isDefined) {
+            @if(request.data.currentUser.isDefined) {
                 <div class="col-md-8">
                     <div class="reply-box">
                         @utils.alert("error")
 
                         @if(forums.isAvailable) {
 
-                            @defining(model.owner) { owner =>
-                              @if(owner.isOrganization
-                                      && (users.current.isDefined)
-                                      && (users.current.get can PostAsOrganization in owner.toOrganization)) {
+                              @if(p.canPostAsOwnerOrga) {
                                   <div class="pull-right push-down">
                                       <i class="minor">@messages("project.discuss.postAs")</i>
                                       <select name="poster" form="form-editor-save">
-                                          <option selected>@users.current.get.name</option>
-                                          <option>@owner.name</option>
+                                          <option selected>@request.data.currentUser.get.name</option>
+                                          <option>@p.projectOwner.name</option>
                                       </select>
                                   </div>
                                   <div class="clearfix"></div>
                               }
-                            }
 
                             <div class="push-down">
                                 @utils.editor(
-                                    saveCall = projectRoutes.postDiscussionReply(model.ownerName, model.slug),
+                                    saveCall = projectRoutes.postDiscussionReply(p.p.ownerName, p.p.slug),
                                     cancellable = false,
                                     enabled = true
                                 )
@@ -63,7 +60,7 @@ Discussion page within Project overview.
                     </div>
                     <div class="reply-controls">
                         <a class="forums" target="_blank"
-                           href="@config.forums.get[String]("baseUrl")/t/@model.topicId">
+                           href="@config.forums.get[String]("baseUrl")/t/@p.p.topicId">
                             @messages("general.viewOnForums")
                         </a>
                     </div>

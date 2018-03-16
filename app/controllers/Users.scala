@@ -18,7 +18,7 @@ import ore.user.{FakeUser, Prompts}
 import ore.{OreConfig, OreEnv}
 import mail.{EmailFactory, Mailer}
 import models.project.{Project, Version}
-import models.viewhelper.{OrganizationData, UserData}
+import models.viewhelper.{HeaderData, OrganizationData, UserData}
 import play.Logger
 import play.api.i18n.MessagesApi
 import play.api.mvc._
@@ -261,20 +261,25 @@ class Users @Inject()(fakeUser: FakeUser,
           .find(_.name.equalsIgnoreCase(str))
           .getOrElse(NotificationFilters.Unread))
         .getOrElse(NotificationFilters.Unread)
-      val notifications: Seq[Notification] = nFilter(user.notifications)
 
-      // Get visible invites
-      val iFilter: InviteFilter = inviteFilter
-        .map(str => InviteFilters.values
-          .find(_.name.equalsIgnoreCase(str))
-          .getOrElse(InviteFilters.All))
-        .getOrElse(InviteFilters.All)
+      Future.sequence(nFilter(user.notifications).map { notif =>
+        notif.origin.map((notif, _))
+      }) flatMap { notifications =>
+        // Get visible invites
+        val iFilter: InviteFilter = inviteFilter
+          .map(str => InviteFilters.values
+            .find(_.name.equalsIgnoreCase(str))
+            .getOrElse(InviteFilters.All))
+          .getOrElse(InviteFilters.All)
 
-      iFilter(user).map { invites =>
-        Ok(views.users.notifications(
-          notifications,
-          invites,
-          nFilter, iFilter))
+        iFilter(user).flatMap { invites =>
+          Future.sequence(invites.map {invite => invite.subject.map((invite, _))})
+        } map { invites =>
+          Ok(views.users.notifications(
+            notifications,
+            invites,
+            nFilter, iFilter))
+        }
       }
     }
   }

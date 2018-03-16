@@ -10,7 +10,7 @@ import javax.inject.Inject
 import com.github.tminglei.slickpg.InetString
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.ProjectRequest
+import controllers.sugar.Requests.{OreRequest, ProjectRequest}
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
@@ -33,6 +33,7 @@ import _root_.views.html.helper
 import models.viewhelper.{HeaderData, VersionData}
 import ore.project.factory.TagAlias.ProjectTag
 import util.JavaUtils.autoClose
+import controllers.sugar.Requests._
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -67,10 +68,11 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString Version name
     * @return Version view
     */
-  def show(author: String, slug: String, versionString: String) = ProjectAction(author, slug).async { implicit request =>
+  def show(author: String, slug: String, versionString: String) = ProjectAction(author, slug) async { implicit request =>
     implicit val project = request.project
+    implicit val r = request.request
     withVersionAsync(versionString) { version =>
-      version.channel.map { channel =>
+      version.channel.flatMap { channel =>
         this.stats.projectViewed { implicit request =>
           val versionData: VersionData = null // TODO fill versionData
           Ok(views.view(versionData))
@@ -89,6 +91,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def saveDescription(author: String, slug: String, versionString: String) = {
     VersionEditAction(author, slug).async { implicit request =>
+      implicit val r = request.request
       implicit val project = request.project
       withVersion(versionString) { version =>
         version.setDescription(this.forms.VersionDescription.bindFromRequest.get.trim)
@@ -107,6 +110,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def setRecommended(author: String, slug: String, versionString: String) = {
     VersionEditAction(author, slug).async { implicit request =>
+      implicit val r = request.request
       implicit val project = request.project
       withVersion(versionString) { version =>
         project.setRecommendedVersion(version)
@@ -127,6 +131,7 @@ class Versions @Inject()(stats: StatTracker,
     (AuthedProjectAction(author, slug, requireUnlock = true)
       andThen ProjectPermissionAction(ReviewProjects)).async { implicit request =>
       implicit val project = request.project
+      implicit val r = request.request
       withVersion(versionString) { version =>
         version.setReviewed(reviewed = true)
         version.setReviewer(request.user)
@@ -169,10 +174,11 @@ class Versions @Inject()(stats: StatTracker,
 
         for {
           versions <- futureVersions
-        } yield {
-          this.stats.projectViewed { implicit request =>
+          r <- this.stats.projectViewed { implicit request =>
             Ok(views.list(project, allChannels, versions, visibleNames, p))
           }
+        } yield {
+          r
         }
       }
     }
@@ -388,6 +394,7 @@ class Versions @Inject()(stats: StatTracker,
   def delete(author: String, slug: String, versionString: String) = {
     VersionEditAction(author, slug).async { implicit request =>
       implicit val project = request.project
+      implicit val r = request.request
       withVersion(versionString) { version =>
         this.projects.deleteVersion(version)
         Redirect(self.showList(author, slug, None, None))
@@ -406,6 +413,7 @@ class Versions @Inject()(stats: StatTracker,
   def download(author: String, slug: String, versionString: String, token: Option[String]) = {
     ProjectAction(author, slug).async { implicit request =>
       implicit val project = request.project
+      implicit val r = request.request
       withVersionAsync(versionString) { version =>
         sendVersion(project, version, token)
       }
@@ -416,12 +424,13 @@ class Versions @Inject()(stats: StatTracker,
                           version: Version,
                           token: Option[String])
                          (implicit req: ProjectRequest[_]): Future[Result] = {
-    checkConfirmation(project, version, token).map { passed =>
+    checkConfirmation(project, version, token).flatMap { passed =>
       if (passed)
         _sendVersion(project, version)
       else
+       Future.successful(
         Redirect(self.showDownloadConfirm(
-          project.ownerName, project.slug, version.name, Some(UploadedFile.id), api = Some(false)))
+          project.ownerName, project.slug, version.name, Some(UploadedFile.id), api = Some(false))))
     }
 
   }
@@ -455,7 +464,7 @@ class Versions @Inject()(stats: StatTracker,
     }
   }
 
-  private def _sendVersion(project: Project, version: Version)(implicit req: ProjectRequest[_]): Result = {
+  private def _sendVersion(project: Project, version: Version)(implicit req: ProjectRequest[_]): Future[Result] = {
     this.stats.versionDownloaded(version) { implicit request =>
       Ok.sendPath(this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
         .resolve(version.fileName))
@@ -483,6 +492,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug).async { implicit request =>
       val dlType = downloadType.flatMap(i => DownloadTypes.values.find(_.id == i)).getOrElse(DownloadTypes.UploadedFile)
       implicit val project = request.project
+      implicit val r = request.request
       withVersionAsync(target) { version =>
         if (version.isReviewed)
           Future.successful(Redirect(ShowProject(author, slug)))
@@ -536,6 +546,7 @@ class Versions @Inject()(stats: StatTracker,
   def confirmDownload(author: String, slug: String, target: String, downloadType: Option[Int], token: String) = {
     ProjectAction(author, slug) async { implicit request =>
       implicit val project = request.project
+      implicit val r: OreRequest = request.request
       withVersionAsync(target) { version =>
         if (version.isReviewed)
           Future.successful(Redirect(ShowProject(author, slug)))
@@ -620,8 +631,9 @@ class Versions @Inject()(stats: StatTracker,
   def downloadJar(author: String, slug: String, versionString: String, token: Option[String]) = {
     ProjectAction(author, slug).async { implicit request =>
       implicit val project = request.project
+      implicit val r = request.request
       withVersionAsync(versionString)(version =>
-        sendJar(project, version, token))
+        sendJar(project.p, version, token))
     }
   }
 
@@ -640,7 +652,7 @@ class Versions @Inject()(stats: StatTracker,
       else {
         val fileName = version.fileName
         val path = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
-        project.owner.user.map { projectOwner =>
+        project.owner.user.flatMap { projectOwner =>
           this.stats.versionDownloaded(version) { implicit request =>
             if (fileName.endsWith(".jar"))
               Ok.sendPath(path)
@@ -693,6 +705,7 @@ class Versions @Inject()(stats: StatTracker,
   def downloadJarById(pluginId: String, versionString: String, token: Option[String]) = {
     ProjectAction(pluginId).async { implicit request =>
       implicit val project = request.project
+      implicit val r = request.request
       withVersionAsync(versionString)(version =>
         sendJar(project, version, token, api = true))
     }
@@ -725,6 +738,7 @@ class Versions @Inject()(stats: StatTracker,
   def downloadSignature(author: String, slug: String, versionString: String) = {
     ProjectAction(author, slug).async { implicit request =>
       implicit val project = request.project
+      implicit val r = request.request
       withVersion(versionString)(sendSignatureFile(_, project))
     }
   }
@@ -738,6 +752,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def downloadSignatureById(pluginId: String, versionString: String) = ProjectAction(pluginId).async { implicit request =>
     implicit val project = request.project
+    implicit val r = request.request
     withVersion(versionString)(sendSignatureFile(_, project))
   }
 
@@ -748,7 +763,8 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return       Sent file
     */
-  def downloadRecommendedSignature(author: String, slug: String) = ProjectAction(author, slug).async { implicit request =>
+  def downloadRecommendedSignature(author: String, slug: String) = ProjectAction(author, slug) async { implicit request =>
+    implicit val r = request.request
     request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
   }
 
@@ -759,10 +775,11 @@ class Versions @Inject()(stats: StatTracker,
     * @return         Sent file
     */
   def downloadRecommendedSignatureById(pluginId: String) = ProjectAction(pluginId).async { implicit request =>
+    implicit val r = request.request
     request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
   }
 
-  private def sendSignatureFile(version: Version, project: Project)(implicit request: Request[_]): Result = {
+  private def sendSignatureFile(version: Version, project: Project)(implicit request: OreRequest[_]): Result = {
     if (project.visibility == VisibilityTypes.SoftDelete) {
       notFound
     } else {

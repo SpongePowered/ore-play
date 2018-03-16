@@ -1,6 +1,6 @@
 package controllers
 
-import controllers.sugar.Requests.AuthRequest
+import controllers.sugar.Requests.OreRequest
 import controllers.sugar.{Actions, Bakery}
 import db.ModelService
 import db.access.ModelAccess
@@ -8,6 +8,7 @@ import db.impl.VersionTable
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import models.project.{Project, Version}
 import models.user.SignOn
+import models.viewhelper.HeaderData
 import ore.{OreConfig, OreEnv}
 import play.api.i18n.{I18nSupport, Lang}
 import play.api.mvc._
@@ -36,7 +37,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
 
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn](classOf[SignOn])
 
-  override def notFound()(implicit request: Request[_]) = NotFound(views.html.errors.notFound())
+  override def notFound()(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())
 
   /**
     * Executes the given function with the specified result or returns a
@@ -48,10 +49,10 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param request  Incoming request
     * @return         NotFound or function result
     */
-  def withProject(author: String, slug: String)(fn: Project => Result)(implicit request: Request[_]): Future[Result]
+  def withProject(author: String, slug: String)(fn: Project => Result)(implicit request: OreRequest[_]): Future[Result]
   = this.projects.withSlug(author, slug).map(_.map(fn).getOrElse(notFound))
 
-  def withProjectAsync(author: String, slug: String)(fn: Project => Future[Result])(implicit request: Request[_]): Future[Result]
+  def withProjectAsync(author: String, slug: String)(fn: Project => Future[Result])(implicit request: OreRequest[_]): Future[Result]
   = this.projects.withSlug(author, slug).flatMap(_.map(fn).getOrElse(Future.successful(NotFound)))
 
   /**
@@ -65,12 +66,14 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @return               NotFound or function result
     */
   def withVersion(versionString: String)(fn: Version => Result)
-                 (implicit request: Request[_], project: Project): Future[Result]
+                 (implicit request: OreRequest[_], project: Project): Future[Result]
   = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).map(_.map(fn).getOrElse(notFound()))
 
   def withVersionAsync(versionString: String)(fn: Version => Future[Result])
-                 (implicit request: Request[_], project: Project): Future[Result]
+                 (implicit request: OreRequest[_], project: Project): Future[Result]
   = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).flatMap(_.map(fn).getOrElse(Future.successful(notFound())))
+
+  def OreAction = Action andThen oreAction
 
   /** Ensures a request is authenticated */
   def Authenticated = Action andThen authAction
@@ -85,7 +88,8 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param slug   Project slug
     * @return       Request with a project if found, NotFound otherwise.
     */
-  def ProjectAction(author: String, slug: String) = Action andThen projectAction(author, slug)
+  def ProjectAction(author: String, slug: String) = OreAction andThen projectAction(author, slug)
+
 
   /**
     * Retrieves, processes, and adds a [[Project]] to a request.
@@ -93,7 +97,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param pluginId The project's unique plugin ID
     * @return         Request with a project if found, NotFound otherwise
     */
-  def ProjectAction(pluginId: String) = Action andThen projectAction(pluginId)
+  def ProjectAction(pluginId: String) = OreAction andThen projectAction(pluginId)
 
   /**
     * Ensures a request is authenticated and retrieves, processes, and adds a
@@ -119,7 +123,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param organization Organization to retrieve
     * @return             Request with organization if found, NotFound otherwise
     */
-  def OrganizationAction(organization: String) = Action andThen organizationAction(organization)
+  def OrganizationAction(organization: String) = OreAction andThen organizationAction(organization)
 
   /**
     * Ensures a request is authenticated and retrieves and adds a
@@ -138,7 +142,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * profile.
     *
     * @param username User to check
-    * @return [[AuthRequest]] if has permission
+    * @return [[OreAction]] if has permission
     */
   def UserAction(username: String) = Authenticated andThen userAction(username)
 

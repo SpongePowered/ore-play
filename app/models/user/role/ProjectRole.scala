@@ -7,6 +7,8 @@ import ore.Visitable
 import ore.permission.role.RoleTypes.RoleType
 import ore.permission.scope.ProjectScope
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a [[ore.project.ProjectMember]]'s role in a
   * [[models.project.Project]]. A ProjectRole determines what a Member can and
@@ -39,7 +41,7 @@ case class ProjectRole(override val id: Option[Int] = None,
     _isAccepted = accepted
   )
 
-  override def subject: Visitable = this.project
+  override def subject(implicit ec: ExecutionContext): Future[Visitable] = this.project
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
 
 }

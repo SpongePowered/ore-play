@@ -13,6 +13,8 @@ import ore.Visitable
 import ore.permission.role.Role
 import ore.permission.role.RoleTypes.RoleType
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a [[Role]] in something like a [[models.project.Project]] or
   * [[models.user.Organization]].
@@ -39,7 +41,7 @@ abstract class RoleModel(override val id: Option[Int],
     *
     * @return Subject of Role
     */
-  def subject: Visitable
+  def subject(implicit ec: ExecutionContext): Future[Visitable]
 
   /**
     * Sets whether this role has been accepted by the [[User]] it belongs to.

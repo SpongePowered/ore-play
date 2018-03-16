@@ -1,7 +1,7 @@
 package models.viewhelper
 
 import models.admin.VisibilityChange
-import models.project.{Project, ProjectSettings, Version}
+import models.project.{Flag, Project, ProjectSettings, Version}
 import models.user.User
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.organization.OrganizationMember
@@ -15,11 +15,13 @@ import play.twirl.api.Html
 // TODO give this to templates with:
 
 // TODO perms in project ; EditPages ; EditSettings (currently in projects.view.html
+// EditChannels - EditVersions
 
 
 case class ProjectData(headerData: HeaderData,
                        joinable: Project,
                        projectOwner: User,
+                       canPostAsOwnerOrga: Boolean, // a.currentUser.get can PostAsOrganization in owner.toOrganization
                        ownerRole: ProjectRole,
                        versions: Int, // project.versions.size
                        settings: ProjectSettings,
@@ -29,12 +31,14 @@ case class ProjectData(headerData: HeaderData,
                        starred: Boolean,
                        watching: Boolean,
                        projectLogSize: Int,
-                       flagCount: Int, // flags.size
+                       flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
                        noteCount: Int, // getNotes.size
                        lastVisibilityChange: Option[VisibilityChange],
                        lastVisibilityChangeUser: String // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
                       ) extends JoinableData[ProjectRole, ProjectMember, Project]()
 {
+
+  def flagCount = flags.size
 
   def p: Project = joinable
 

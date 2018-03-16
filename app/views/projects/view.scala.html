@@ -15,10 +15,10 @@ Base template for Project overview.
 @import models.viewhelper.ProjectData
 @import controllers.project.routes._
 
-@(p: ProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit
-        messages: Messages, request: Request[_], flash: Flash, config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(p: ProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
-@bootstrap.layout(p.p.ownerName + " / " + p.p.name, p.global) {
+@bootstrap.layout(p.p.ownerName + " / " + p.p.name) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDetail.js")"></script>
 

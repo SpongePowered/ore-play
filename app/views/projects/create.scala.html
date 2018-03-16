@@ -17,11 +17,12 @@ Page used for uploading and creating new projects.
 @import models.user.Organization
 
 @* createProjectOrgas: TODO project.owner can CreateProject in _ for *@
-@(headerData: HeaderData, createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2, headerData) {
+@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectCreateValidate.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>

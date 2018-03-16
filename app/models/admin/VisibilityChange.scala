@@ -46,6 +46,10 @@ case class VisibilityChange(override val id: Option[Int] = None,
     this.resolvedBy = user.id
     update(ResolvedByVC)
   }
+  def setResolvedById(userId: Int) = {
+    this.resolvedBy = Some(userId)
+    update(ResolvedByVC)
+  }
 
   /**
     * Returns a copy of this model with an updated ID and timestamp.

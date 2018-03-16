@@ -5,8 +5,10 @@
 @import ore.OreConfig
 @import models.project.Project
 @import util.StringUtils._
+@import models.viewhelper.ProjectData
 
-@(project: Project)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
+@import controllers.sugar.Requests.OreRequest
+@(p: ProjectData)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -15,13 +17,13 @@
         <div class="row">
             <div class="col-md-12  header-flags">
                 <div class="clearfix">
-                    <h1 class="pull-left">@messages("project.flag.plural") for <a href="@projectRoutes.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a></h1>
+                    <h1 class="pull-left">@messages("project.flag.plural") for <a href="@projectRoutes.show(p.p.ownerName, p.p.slug)">@p.p.ownerName/@p.p.slug</a></h1>
                 </div>
             </div>
         </div>
         <div class="row">
             <div class="col-md-12">
-                @if(project.flags.isEmpty) {
+                @if(p.flagCount == 0) {
                     <div class="alert-review alert alert-info" role="alert">
                         <i class="fa fa-info-circle"></i>
                         No flags found
@@ -42,13 +44,13 @@
                                 </tr>
                             </thead>
                             <tbody>
-                            @project.flags.toSeq.map { flag =>
+                            @p.flags.foreach { case (flag, by, resolvedBy) =>
                                 <tr>
-                                    <td>@flag.user.username</td>
+                                    <td>@by</td>
                                     <td>@flag.reason, @flag.comment</td>
                                     <td>@prettifyDateAndTime(flag.createdAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
                                     @if(flag.isResolved) {
-                                        <td>@users.get(flag.resolvedBy.getOrElse(-1)).get.username
+                                        <td>@resolvedBy.get
                                             at @prettifyDateAndTime(flag.resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
                                     } else {
                                         <td>-not resolved-</td>

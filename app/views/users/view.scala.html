@@ -16,9 +16,10 @@
 @import models.user.Organization
 @import models.viewhelper.UserData
 
-@(u: UserData)(content: Html)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(u: UserData)(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
-@bootstrap.layout(u.user.username, u.global) {
+@bootstrap.layout(u.user.username) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/userPage.js")"></script>
     <script nonce="@nonce">USERNAME = '@u.user.username';</script>

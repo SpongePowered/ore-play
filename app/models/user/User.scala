@@ -12,7 +12,7 @@ import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import models.project.{Flag, Project, Version, VisibilityTypes}
 import models.user.role.{OrganizationRole, ProjectRole}
-import ore.{OreConfig, Visitable}
+import ore.OreConfig
 import ore.permission._
 import ore.permission.role.RoleTypes.{DonorType, RoleType}
 import ore.permission.role._
@@ -56,8 +56,7 @@ case class User(override val id: Option[Int] = None,
                 extends OreModel(id, createdAt)
                   with UserOwned
                   with ScopeSubject
-                  with Named
-                  with Visitable {
+                  with Named {
 
   override type M = User
   override type T = UserTable
@@ -322,7 +321,7 @@ case class User(override val id: Option[Int] = None,
           }
         }
       case oScope: OrganizationScope =>
-        oScope.organization.memberships.getTrust(this)
+        oScope.organization.flatMap(_.memberships.getTrust(this))
       case _ =>
         throw new RuntimeException("unknown scope: " + scope)
     }
@@ -414,7 +413,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return This user
     */
-  def pullForumData: Future[User] = {
+  def pullForumData(): Future[User] = {
     // Exceptions are ignored
     this.forums.fetchUser(this.name).recover{case _: Exception => None}.flatMap(_.map(fill).getOrElse(Future.successful(this)))
   }
@@ -424,7 +423,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return This user
     */
-  def pullSpongeData: Future[User] = {
+  def pullSpongeData(): Future[User] = {
     this.auth.getUser(this.name).flatMap(_.map(fill).getOrElse(Future.failed(new Exception("user doesn't exist on SpongeAuth?"))))
   }
 
@@ -561,9 +560,10 @@ case class User(override val id: Option[Int] = None,
   def hasUnreadNotifications: Future[Boolean] = Defined {
     val flags = this.service.access[Flag](classOf[Flag])
     val versions = this.service.access[Version](classOf[Version])
-    val hasFlags = this can ReviewFlags in GlobalScope
-    val hasReview = this can ReviewProjects in GlobalScope
+
     for {
+      hasFlags <- this can ReviewFlags in GlobalScope
+      hasReview <- this can ReviewProjects in GlobalScope
       resolvedFlags <- flags.filterNot(_.isResolved)
       reviewedVersions <- versions.filterNot(_.isReviewed)
       channels <- Future.sequence(reviewedVersions.map(_.channel))
@@ -593,8 +593,8 @@ case class User(override val id: Option[Int] = None,
     if (isDefined) update(ReadPrompts)
   }
 
-  override val name = this.username
-  override def url(implicit ec: ExecutionContext) = this.username
+  def name = this.username
+  def url = this.username
   override val scope = GlobalScope
   override def userId = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(createdAt = theTime)

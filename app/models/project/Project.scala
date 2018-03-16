@@ -85,7 +85,9 @@ case class Project(override val id: Option[Int] = None,
                      with Named
                      with Describable
                      with Hideable
-                     with Joinable[ProjectMember] {
+                     with Joinable[ProjectMember]
+                  with Visitable
+{
 
 
 
@@ -239,7 +241,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Base URL for project
     */
-  def url: String = this.ownerName + '/' + this.slug
+  override def url: String = this.ownerName + '/' + this.slug
 
   /**
     * Returns this Project's [[Category]].
@@ -319,19 +321,19 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param visibility True if visible
     */
-  def setVisibility(visibility: Visibility, comment: String, creator: User)(implicit ec: ExecutionContext) = {
+  def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext) = {
     this._visibility = visibility
     if (isDefined) update(ModelKeys.Visibility)
 
     val cnt = lastVisibilityChange.flatMap {
       case Some(vc) =>
         vc.setResolvedAt(Timestamp.from(Instant.now()))
-        vc.setResolvedBy(creator)
+        vc.setResolvedById(creator)
         Future.successful(0)
       case None => Future.successful(0)
     }
     cnt.flatMap { _ =>
-      val change = VisibilityChange(None, Some(Timestamp.from(Instant.now())), creator.id, this.id.get, comment, None, None, visibility.id)
+      val change = VisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
       this.service.access[VisibilityChange](classOf[VisibilityChange]).add(change)
     }
   }

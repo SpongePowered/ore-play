@@ -21,6 +21,7 @@ import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.cache.SyncCacheApi
 import play.api.i18n.MessagesApi
+import play.api.mvc.AnyContent
 import security.spauth.SingleSignOnConsumer
 import views.html.{projects => views}
 
@@ -59,9 +60,8 @@ class Projects @Inject()(stats: StatTracker,
     * @return Create project view
     */
   def showCreator() = UserLock() { implicit request =>
-    val headerData: HeaderData = null // TODO headerData
     val createdOrgas: Seq[Organization] = null // TODO
-    Ok(views.create(headerData, createdOrgas, None))
+    Ok(views.create(createdOrgas, None))
   }
 
   /**
@@ -119,35 +119,49 @@ class Projects @Inject()(stats: StatTracker,
     * @return         View of members config
     */
   def showInvitationForm(author: String, slug: String) = UserLock().async { implicit request =>
-    request.user.organizations.all.flatMap { all =>
-      val organisationUserCanUploadTo = all.filter(request.user can CreateProject in _).map(_.id.get).toSeq :+ request.user.id.get
-      this.factory.getPendingProject(author, slug) match {
-        case None => Future.successful(Redirect(self.showCreator()))
-        case Some(pendingProject) =>
-          this.forms.ProjectSave(organisationUserCanUploadTo).bindFromRequest().fold(
-            hasErrors =>
-              Future.successful(FormError(self.showCreator(), hasErrors)),
-            formData => {
-              pendingProject.settings.save(pendingProject.underlying, formData)
-              // update cache for name changes
-              val project = pendingProject.underlying
-              val version = pendingProject.pendingVersion
-              val namespace = project.namespace
-              this.cache.set(namespace, pendingProject)
-              this.cache.set(namespace + '/' + version.underlying.versionString, version)
+    orgasUserCanUploadTo(request.user) flatMap { organisationUserCanUploadTo =>
+        this.factory.getPendingProject(author, slug) match {
+          case None => Future.successful(Redirect(self.showCreator()))
+          case Some(pendingProject) =>
+            this.forms.ProjectSave(organisationUserCanUploadTo.toSeq).bindFromRequest().fold(
+              hasErrors =>
+                Future.successful(FormError(self.showCreator(), hasErrors)),
+              formData => {
+                pendingProject.settings.save(pendingProject.underlying, formData)
+                // update cache for name changes
+                val project = pendingProject.underlying
+                val version = pendingProject.pendingVersion
+                val namespace = project.namespace
+                this.cache.set(namespace, pendingProject)
+                this.cache.set(namespace + '/' + version.underlying.versionString, version)
 
-              implicit val currentUser = request.user
+                implicit val currentUser = request.user
 
-              val authors = pendingProject.file.meta.get.getAuthors.asScala
-              for {
-                users <- Future.sequence(authors.filterNot(_.equals(currentUser.username)).map(this.users.withName))
-                registered <- this.forums.countUsers(authors.toList)
-              } yield {
-                val headerData: HeaderData = null // TODO get my data
-                Ok(views.invite(pendingProject, users.flatten.toList, registered, headerData))
+                val authors = pendingProject.file.meta.get.getAuthors.asScala
+                for {
+                  users <- Future.sequence(authors.filterNot(_.equals(currentUser.username)).map(this.users.withName))
+                  registered <- this.forums.countUsers(authors.toList)
+                } yield {
+                  val headerData: HeaderData = null // TODO get my data
+                  Ok(views.invite(pendingProject, users.flatten.toList, registered, headerData))
+                }
               }
-            }
-          )
+            )
+        }
+      }
+  }
+
+  private def orgasUserCanUploadTo(user: User): Future[Set[Int]] = {
+    user.organizations.all.flatMap { all =>
+
+      Future.sequence(all.map { org =>
+        user can CreateProject in org map { perm =>
+          (org.id.get, perm)
+        }
+      }) map {
+        _.filter(_._2).map(_._1) // Filter by can Create Project
+      } map {
+        _ + user.id.get // Add self
       }
     }
   }
@@ -178,7 +192,7 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return View of project
     */
-  def show(author: String, slug: String) = ProjectAction(author, slug) { implicit request =>
+  def show(author: String, slug: String) = ProjectAction(author, slug) async { implicit request =>
     val project = request.project
     this.stats.projectViewed(implicit request => Ok(views.pages.view(project, project.homePage)))
   }
@@ -189,7 +203,7 @@ class Projects @Inject()(stats: StatTracker,
     * @param pluginId Project pluginId
     * @return Redirect to project page.
     */
-  def showProjectById(pluginId: String) = Action.async { implicit request =>
+  def showProjectById(pluginId: String) = OreAction async { implicit request =>
     this.projects.withPluginId(pluginId).map {
       case None => notFound
       case Some(project) => Redirect(self.show(project.ownerName, project.slug))
@@ -203,8 +217,10 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return View of project
     */
-  def showDiscussion(author: String, slug: String) = ProjectAction(author, slug) { implicit request =>
-    this.stats.projectViewed(implicit request => Ok(views.discuss(request.project)))
+  def showDiscussion(author: String, slug: String) = ProjectAction(author, slug) async { implicit request =>
+    implicit val r = request.request
+    val p: ProjectData = null // TODO projectData
+    this.stats.projectViewed(implicit request => Ok(views.discuss(p)))
   }
 
   /**
@@ -250,6 +266,7 @@ class Projects @Inject()(stats: StatTracker,
     * @return Issue tracker
     */
   def showIssues(author: String, slug: String) = ProjectAction(author, slug).async { implicit request =>
+    implicit val r = request.request
     request.project.settings.map(_.issues match {
       case None => notFound
       case Some(link) => Redirect(link)
@@ -264,6 +281,7 @@ class Projects @Inject()(stats: StatTracker,
     * @return Source code
     */
   def showSource(author: String, slug: String) = ProjectAction(author, slug).async { implicit request =>
+    implicit val r = request.request
     request.project.settings.map(_.source match {
       case None => notFound
       case Some(link) => Redirect(link)
@@ -280,6 +298,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showIcon(author: String, slug: String) = ProjectAction(author, slug).async { implicit request =>
     val project = request.project
+    implicit val r = request.request
     this.projects.fileManager.getIconPath(project) match {
       case None =>
         project.owner.user.map(_.avatarUrl.map(Redirect(_)).getOrElse(notFound))
@@ -439,6 +458,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showPendingIcon(author: String, slug: String) = ProjectAction(author, slug) { implicit request =>
     val project = request.project
+    implicit val r = request.request
     this.projects.fileManager.getPendingIconPath(project) match {
       case None => notFound
       case Some(path) => showImage(path)
@@ -468,10 +488,9 @@ class Projects @Inject()(stats: StatTracker,
     * @return View of project
     */
   def save(author: String, slug: String) = SettingsEditAction(author, slug).async { implicit request =>
-    request.user.organizations.all.flatMap { all =>
-      val organisationUserCanUploadTo = all.filter(request.user can CreateProject in _).map(_.id.get).toSeq :+ request.user.id.get
+    orgasUserCanUploadTo(request.user) flatMap { organisationUserCanUploadTo =>
       val project = request.project
-      this.forms.ProjectSave(organisationUserCanUploadTo).bindFromRequest().fold(
+      this.forms.ProjectSave(organisationUserCanUploadTo.toSeq).bindFromRequest().fold(
         hasErrors =>
           Future.successful(FormError(self.showSettings(author, slug), hasErrors)),
         formData => {
@@ -513,17 +532,20 @@ class Projects @Inject()(stats: StatTracker,
     */
   def setVisible(author: String, slug: String, visibility: Int) = {
     (AuthedProjectAction(author, slug, requireUnlock = true)
-      andThen ProjectPermissionAction(HideProjects)) { implicit request =>
+      andThen ProjectPermissionAction(HideProjects)) async { implicit request =>
       val newVisibility = VisibilityTypes.withId(visibility)
-      if (request.user can newVisibility.permission in GlobalScope) {
-        if (newVisibility.showModal) {
-          val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-          request.project.setVisibility(newVisibility, comment, request.user)
-        } else {
-          request.project.setVisibility(newVisibility, "", request.user)
+      request.user can newVisibility.permission in GlobalScope map { perm =>
+        if (perm) {
+          if (newVisibility.showModal) {
+            val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+            request.project.setVisibility(newVisibility, comment, request.user.id.get)
+          } else {
+            request.project.setVisibility(newVisibility, "", request.user.id.get)
+          }
         }
+        Ok
       }
-      Ok
+
     }
   }
 
@@ -536,7 +558,7 @@ class Projects @Inject()(stats: StatTracker,
   def publish(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
     val project = request.project
     if (project.visibility == VisibilityTypes.New) {
-      project.setVisibility(VisibilityTypes.Public, "", request.user)
+      project.setVisibility(VisibilityTypes.Public, "", request.user.id.get)
     }
     Redirect(self.show(project.ownerName, project.slug))
   }
@@ -550,7 +572,7 @@ class Projects @Inject()(stats: StatTracker,
   def sendForApproval(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
     val project = request.project
     if (project.visibility == VisibilityTypes.NeedsChanges) {
-      project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user)
+      project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.get)
     }
     Redirect(self.show(project.ownerName, project.slug))
   }
@@ -589,7 +611,7 @@ class Projects @Inject()(stats: StatTracker,
   def softDelete(author: String, slug: String) = SettingsEditAction(author, slug).async { implicit request =>
     val project = request.project
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-    project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user).map(vc =>
+    project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map(vc =>
       Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name)))
   }
 
@@ -601,8 +623,10 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showFlags(author: String, slug: String) = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)).async { implicit request =>
+      implicit val r = request.request
       withProject(author, slug) { project =>
-        Ok(views.admin.flags(project))
+        val p: ProjectData = null // TODO projectData
+        Ok(views.admin.flags(p))
       }
     }
   }

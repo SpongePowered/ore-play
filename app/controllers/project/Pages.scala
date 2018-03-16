@@ -69,9 +69,10 @@ class Pages @Inject()(forms: OreForms,
     */
   def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { implicit request =>
     val project = request.project
-    withPage(project, page).map {
+    implicit val r = request.request
+    withPage(project, page).flatMap {
       case (Some(p), b) => this.stats.projectViewed(implicit request => Ok(views.view(project, p, b)))
-      case (None, b) => notFound
+      case (None, b) => Future.successful(notFound)
     }
   }
 

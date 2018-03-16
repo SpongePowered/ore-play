@@ -127,7 +127,7 @@ case class Organization(override val id: Option[Int] = None,
   def toUser(implicit ec: ExecutionContext) = this.service.getModelBase(classOf[UserBase]).withName(this.username)
 
   override val name: String = this.username
-  override def url(implicit ec: ExecutionContext): String = this.userBase.service.await(this.toUser).get.get.url
+  override def url: String = this.username
   override val userId: Int = this._ownerId
   override def organizationId: Int = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(createdAt = theTime)

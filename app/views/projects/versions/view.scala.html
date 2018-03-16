@@ -18,13 +18,6 @@
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@filterDependencies = @{
-    v.v.dependencies
-            .filterNot(_.pluginId.equals(SpongeApiId))
-            .filterNot(_.pluginId.equals(MinecraftId))
-            .filterNot(_.pluginId.equals(ForgeId))
-}
-
 @projects.view(v.p, "#versions", noButtons = true) {
 
     <div class="container">
@@ -191,24 +184,22 @@
                                 </li>
                             }
 
-                            @filterDependencies.map { depend =>
+                            @v.filteredDependencies.map { case (depend, project)=>
                                 <li class="list-group-item">
-                                    @defining(depend.project) { project =>
-                                        @if(project.isDefined) {
-                                            <a href="@projectRoutes.show(
-                                                project.get.ownerName, project.get.slug)">
-                                                <strong>@project.get.name</strong>
-                                            </a>
-                                        } else {
-                                            <div class="minor">
-                                                @depend.pluginId
-                                                <i class="fa fa-question-circle"
-                                                   title="@messages("version.dependency.notOnOre")"
-                                                   data-toggle="tooltip" data-placement="right"></i>
-                                            </div>
-                                        }
-                                        <p class="version-string">@depend.version</p>
+                                    @if(project.isDefined) {
+                                        <a href="@projectRoutes.show(
+                                            project.get.ownerName, project.get.slug)">
+                                            <strong>@project.get.name</strong>
+                                        </a>
+                                    } else {
+                                        <div class="minor">
+                                            @depend.pluginId
+                                            <i class="fa fa-question-circle"
+                                               title="@messages("version.dependency.notOnOre")"
+                                               data-toggle="tooltip" data-placement="right"></i>
+                                        </div>
                                     }
+                                    <p class="version-string">@depend.version</p>
                                 </li>
                             }
                         </ul>

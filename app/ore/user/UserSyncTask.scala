@@ -9,6 +9,7 @@ import ore.OreConfig
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * Task that is responsible for keeping Ore users synchronized with external
@@ -34,10 +35,15 @@ final class UserSyncTask @Inject()(models: ModelService, actorSystem: ActorSyste
     * Synchronizes all users with external site data.
     */
   def run() = {
-    val users = this.models.getModelBase(classOf[UserBase]).all
-    Logger.info(s"Synchronizing ${users.size} users with external site data...")
-    users.foreach(user => user.pullForumData().pullSpongeData())
-    Logger.info("Done")
+    this.models.getModelBase(classOf[UserBase]).all.map { users =>
+      Logger.info(s"Synchronizing ${users.size} users with external site data...")
+      Future.sequence(users.map { user =>
+        user.pullForumData().flatMap(_.pullSpongeData())
+      }).map { _ =>
+        Logger.info("Done")
+      }
+    }
+
   }
 
 }

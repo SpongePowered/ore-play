@@ -6,7 +6,8 @@
 @import security.NonceFilter._
 
 @import java.sql.Timestamp
-@(project: Project)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
+@import controllers.sugar.Requests.OreRequest
+@(project: Project)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }
 

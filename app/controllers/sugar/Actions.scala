@@ -9,10 +9,13 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import models.project.{Project, VisibilityTypes}
 import models.user.{SignOn, User}
+import models.viewhelper.{HeaderData, OrganizationData, ProjectData}
 import ore.permission.scope.GlobalScope
 import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc.{request, _}
+import controllers.sugar.Requests._
+import controllers.sugar.Requests
 import security.spauth.SingleSignOnConsumer
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -67,13 +70,17 @@ trait Actions extends Calls with ActionHelpers {
 
     def refine[A](request: ScopedRequest[A]) = {
       implicit val r = request
-      if (!(request.user can p in request.subject)) {
-        log(success = false, request)
-        onUnauthorized.map(Left(_))
-      } else {
-        log(success = true, request)
-        Future.successful(Right(request.asInstanceOf[R[A]]))
+
+      request.user can p in request.subject flatMap { perm =>
+        if (!perm) {
+          log(success = false, request)
+          onUnauthorized.map(Left(_))
+        } else {
+          log(success = true, request)
+          Future.successful(Right(request.asInstanceOf[R[A]]))
+        }
       }
+
     }
 
   }
@@ -83,7 +90,7 @@ trait Actions extends Calls with ActionHelpers {
     * ScopedRequest.
     *
     * @param p Permission to check
-    * @return An [[AuthedProjectRequest]]
+    * @return An [[ProjectRequest]]
     */
   def ProjectPermissionAction(p: Permission)(implicit ec: ExecutionContext) = PermissionAction[AuthedProjectRequest](p)
 
@@ -92,7 +99,7 @@ trait Actions extends Calls with ActionHelpers {
     * ScopedRequest.
     *
     * @param p Permission to check
-    * @return [[AuthedOrganizationRequest]]
+    * @return [[OrganizationRequest]]
     */
   def OrganizationPermissionAction(p: Permission)(implicit ec: ExecutionContext) = PermissionAction[AuthedOrganizationRequest](p)
 
@@ -146,7 +153,7 @@ trait Actions extends Calls with ActionHelpers {
     *
     * @return NotFound
     */
-  def notFound()(implicit request: Request[_]): Result
+  def notFound()(implicit request: OreRequest[_]): Result
 
   // Implementation
 
@@ -154,10 +161,8 @@ trait Actions extends Calls with ActionHelpers {
     def executionContext = ec
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = Future.successful {
-      if (request.user.isLocked)
-        Some(Redirect(redirect).flashing("error" -> "error.user.locked"))
-      else
-        None
+      if (!request.user.isLocked) None
+      else Some(Redirect(redirect).flashing("error" -> "error.user.locked"))
     }
   }
 
@@ -183,11 +188,20 @@ trait Actions extends Calls with ActionHelpers {
     def executionContext = ec
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = {
-      val user = request.user
-      Actions.this.users.requestPermission(user, username, EditSettings).map {
+      Actions.this.users.requestPermission(request.user, username, EditSettings).map {
         case None => Some(Unauthorized) // No Permission
         case Some(_) => None            // Permission granted => No Filter
       }
+    }
+  }
+
+  def oreAction(implicit ec: ExecutionContext) = new ActionTransformer[Request, OreRequest] {
+    def executionContext = ec
+
+    def transform[A](request: Request[A]): Future[OreRequest[A]] = {
+      // TODO build and cache HeaderData here
+      val headerData: Future[HeaderData] = Future.successful(HeaderData())
+      headerData.map(new OreRequest(_, request))
     }
   }
 
@@ -202,79 +216,125 @@ trait Actions extends Calls with ActionHelpers {
   private def maybeAuthRequest[A](request: Request[A], futUser: Future[Option[User]])(implicit ec: ExecutionContext): Future[Either[Result, AuthRequest[A]]] = {
     futUser.flatMap {
       case None => onUnauthorized(request, ec).map(Left(_))
-      case Some(user) => val as = Future.successful(Right(AuthRequest[A](user, request)))
-        as
+      case Some(user) => {
+        // TODO build and cache HeaderData here
+        val headerData: Future[HeaderData] = Future.successful(HeaderData())
+        headerData map(hd => Right(new AuthRequest[A](user, hd, request)))
+      }
     }
   }
 
-  def projectAction(author: String, slug: String)(implicit ec: ExecutionContext) = new ActionRefiner[Request, ProjectRequest] {
+  def projectAction(author: String, slug: String)(implicit ec: ExecutionContext) = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext = ec
 
-    def refine[A](request: Request[A]) = maybeProjectRequest(request, Actions.this.projects.withSlug(author, slug))
+    def refine[A](request: OreRequest[A]) = maybeProjectRequest(request, Actions.this.projects.withSlug(author, slug))
   }
 
-  def projectAction(pluginId: String)(implicit ec: ExecutionContext) = new ActionRefiner[Request, ProjectRequest] {
+  def projectAction(pluginId: String)(implicit ec: ExecutionContext) = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
-    def refine[A](request: Request[A]): Future[Either[Result, ProjectRequest[A]]]
-    = maybeProjectRequest(request, Actions.this.projects.withPluginId(pluginId))
+    def refine[A](request: OreRequest[A]) = maybeProjectRequest(request, Actions.this.projects.withPluginId(pluginId))
   }
 
-  def maybeProjectRequest[A](request: Request[A], project: Future[Option[Project]])(implicit ec: ExecutionContext): Future[Either[Result, ProjectRequest[A]]] = {
-    implicit val r = request
+  def maybeProjectRequest[A](r: OreRequest[A], project: Future[Option[Project]])(implicit ec: ExecutionContext): Future[Either[Result, ProjectRequest[A]]] = {
+    implicit val request = r
     val pr = project.flatMap {
       case None => Future.successful(None)
-      case Some(p) => users.current.map(processProject(p, _))
+      case Some(p) => processProject(p, request.data.currentUser)
     }
-    pr.map {
-      case None => Left(notFound())
-      case Some(p) => Right(new ProjectRequest[A](p, request))
+    pr.flatMap {
+      case None => Future.successful(Left(notFound()))
+      case Some(p) => {
+        getProjectData(request, p).map { pd =>
+          Right(new ProjectRequest[A](pd, r))
+        }
+      }
     }
   }
 
-  def processProject(project: Project, user: Option[User]): Option[Project] = {
-    if (project.visibility == VisibilityTypes.Public || project.visibility == VisibilityTypes.New
-      || (user.isDefined && (user.get can EditPages in project)
-      && (project.visibility == VisibilityTypes.NeedsChanges
-      || project.visibility == VisibilityTypes.NeedsApproval))
-      || (user.isDefined && (user.get can HideProjects in GlobalScope)
-      ))
-      Some(project)
-    else
-      None
+  def getProjectData(request: OreRequest[_], project: Project): Future[ProjectData] = {
+    // TODO cache and fill
+    Future.successful(
+      new ProjectData(request.data, project, null, null, null, null, null,null,null,null,null,null, null,null,null,null,null)
+    )
+  }
+
+  def processProject(project: Project, user: Option[User])(implicit ec: ExecutionContext) : Future[Option[Project]] = {
+    if (project.visibility == VisibilityTypes.Public || project.visibility == VisibilityTypes.New) {
+      Future.successful(Some(project))
+    } else {
+      if (user.isDefined) {
+        for {
+          check1 <- canEditAndNeedChangeOrApproval(project, user)
+          check2 <- user.get can HideProjects in GlobalScope
+        } yield {
+          if (check1 || check2) Some(project) else None
+        }
+      } else {
+        Future.successful(None)
+      }
+    }
+  }
+
+  private def canEditAndNeedChangeOrApproval(project: Project, user: Option[User])(implicit ec: ExecutionContext) = {
+    if (project.visibility == VisibilityTypes.NeedsChanges || project.visibility == VisibilityTypes.NeedsApproval) {
+      user.get can EditPages in project
+    } else {
+      Future.successful(false)
+    }
   }
 
   def authedProjectActionImpl(project: Future[Option[Project]])(implicit ec: ExecutionContext) = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
     def executionContext = ec
 
-    def refine[A](request: AuthRequest[A]) = project.map { p =>
-      p.flatMap(processProject(_, Some(request.user)))
-        .map(new AuthedProjectRequest[A](_, request))
-        .toRight(notFound()(request))
-    }
+    def refine[A](request: AuthRequest[A]) = project.flatMap { p =>
+      implicit val r = request
+
+      p match {
+        case None => Future.successful(None)
+        case Some(pr) =>
+          val processed = processProject(pr, Some(request.user))
+          processed.flatMap {
+            case None => Future.successful(None)
+            case Some(pro) => getProjectData(request, pro).map(Some(_))
+          } map(_.map(new AuthedProjectRequest[A](_, request)))
+        }
+      } map(_.toRight(notFound()))
+
   }
 
-  def authedProjectAction(author: String, slug: String)(implicit ec: ExecutionContext)
-  = authedProjectActionImpl(projects.withSlug(author, slug))
+  def authedProjectAction(author: String, slug: String)(implicit ec: ExecutionContext) = authedProjectActionImpl(projects.withSlug(author, slug))
 
-  def authedProjectActionById(pluginId: String)(implicit ec: ExecutionContext)
-  = authedProjectActionImpl(projects.withPluginId(pluginId))
+  def authedProjectActionById(pluginId: String)(implicit ec: ExecutionContext) = authedProjectActionImpl(projects.withPluginId(pluginId))
 
-  def organizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[Request, OrganizationRequest] {
+  def organizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[OreRequest, OrganizationRequest] {
     def executionContext = ec
 
-    def refine[A](request: Request[A]): Future[Either[Result, OrganizationRequest[A]]] =
-      Actions.this.organizations.withName(organization).map(
-        _.map(new OrganizationRequest(_, request)).toRight(notFound()(request)))
+    def refine[A](request: OreRequest[A]) = {
+      implicit val r = request
+      getOrganizationData(request, organization).map { data =>
+        data.map(new OrganizationRequest[A](_, request)).toRight(notFound())
+      }
+    }
   }
 
   def authedOrganizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
     def executionContext = ec
 
-    def refine[A](request: AuthRequest[A]) =
-      Actions.this.organizations.withName(organization).map(
-        _.map(new AuthedOrganizationRequest[A](_, request))
-        .toRight(notFound()(request)))
+    def refine[A](request: AuthRequest[A]) = {
+      implicit val r = request
+      getOrganizationData(request, organization).map { data =>
+        data.map(new AuthedOrganizationRequest[A](_, request)).toRight(notFound())
+      }
+    }
+
+  }
+
+  def getOrganizationData(request: OreRequest[_], organization: String): Future[Option[OrganizationData]] = {
+    // TODO cache
+    this.organizations.withName(organization).map(_.map { orga =>
+      OrganizationData(request.data, orga, null, null, null) // TODO fill
+    })
   }
 
 }

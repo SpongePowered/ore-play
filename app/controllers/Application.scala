@@ -47,6 +47,16 @@ final class Application @Inject()(data: DataHelper,
   private def FlagAction = Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)
 
   /**
+    * Show external link warning page.
+    *
+    * @return External link page
+    */
+  def linkOut(remoteUrl: String) = OreAction { implicit request =>
+    implicit val headerData = request.data
+    Ok(views.linkout(remoteUrl))
+  }
+
+  /**
     * Display the home page.
     *
     * @return Home page
@@ -55,64 +65,51 @@ final class Application @Inject()(data: DataHelper,
                query: Option[String],
                sort: Option[Int],
                page: Option[Int],
-               platform: Option[String]) = {
-    Action.async { implicit request =>
-      // Get categories and sorting strategy
-      val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
-      val actions = this.service.getSchema(classOf[ProjectSchema])
+               platform: Option[String]) = OreAction async { implicit request =>
+     // Get categories and sorting strategy
+     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
+     val actions = this.service.getSchema(classOf[ProjectSchema])
 
-      val visibleFilter = for {
-        currentUser <- this.users.current
-      } yield {
-        val canHideProjects = currentUser.isDefined && (currentUser.get can HideProjects in GlobalScope)
-        val visibleFilter: ModelFilter[Project] = if (canHideProjects) ModelFilter.Empty
-        else ModelFilter[Project](_.visibility === VisibilityTypes.Public) +|| ModelFilter[Project](_.visibility === VisibilityTypes.New)
+     val visibleFilter = for {
+       currentUser <- this.users.current
+       canHideProjects <- if (currentUser.isDefined) currentUser.get can HideProjects in GlobalScope else Future.successful(false)
+     } yield {
+       val visibleFilter: ModelFilter[Project] = if (canHideProjects) ModelFilter.Empty
+       else ModelFilter[Project](_.visibility === VisibilityTypes.Public) +|| ModelFilter[Project](_.visibility === VisibilityTypes.New)
 
-        if (currentUser.isDefined) {
-          visibleFilter +|| (ModelFilter[Project](_.userId === currentUser.get.id.get)
-            +&& ModelFilter[Project](_.visibility =!= VisibilityTypes.SoftDelete))
-        } else visibleFilter
-      }
+       if (currentUser.isDefined) {
+         visibleFilter +|| (ModelFilter[Project](_.userId === currentUser.get.id.get)
+           +&& ModelFilter[Project](_.visibility =!= VisibilityTypes.SoftDelete))
+       } else visibleFilter
+     }
 
-      val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
-      val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
+     val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
+     val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
 
-      var categoryArray: Array[Category] = categories.map(Categories.fromString).orNull
-      val categoryFilter: ModelFilter[Project] = if (categoryArray != null)
-        actions.categoryFilter(categoryArray)
-      else
-        ModelFilter.Empty
+     var categoryArray: Array[Category] = categories.map(Categories.fromString).orNull
+     val categoryFilter: ModelFilter[Project] = if (categoryArray != null)
+       actions.categoryFilter(categoryArray)
+     else
+       ModelFilter.Empty
 
-      val searchFilter: ModelFilter[Project] = query.map(actions.searchFilter).getOrElse(ModelFilter.Empty)
+     val searchFilter: ModelFilter[Project] = query.map(actions.searchFilter).getOrElse(ModelFilter.Empty)
 
-      val validFilter = ModelFilter[Project](_.recommendedVersionId =!= -1)
-      val filter = visibleFilter.map(_ +&& platformFilter +&& categoryFilter +&& searchFilter +&& validFilter)
+     val validFilter = ModelFilter[Project](_.recommendedVersionId =!= -1)
+     val filter = visibleFilter.map(_ +&& platformFilter +&& categoryFilter +&& searchFilter +&& validFilter)
 
-      // Get projects
-      val pageSize = this.config.projects.get[Int]("init-load")
-      val p = page.getOrElse(1)
-      val offset = (p - 1) * pageSize
-      val future = filter.flatMap { filter =>
-        actions.collect(filter.fn, ordering, pageSize, offset)
-      }
+     // Get projects
+     val pageSize = this.config.projects.get[Int]("init-load")
+     val p = page.getOrElse(1)
+     val offset = (p - 1) * pageSize
+     val future = filter.flatMap { filter =>
+       actions.collect(filter.fn, ordering, pageSize, offset)
+     }
 
-      if (categoryArray != null && Categories.visible.toSet.equals(categoryArray.toSet))
-        categoryArray = null
+     if (categoryArray != null && Categories.visible.toSet.equals(categoryArray.toSet))
+       categoryArray = null
 
-      future.map(projects => Ok(views.home(projects, Option(categoryArray), query.find(_.nonEmpty), p, ordering, pform)))
-    }
-  }
-
-  /**
-    * Show external link warning page.
-    *
-    * @return External link page
-    */
-  def linkOut(remoteUrl: String) = {
-    Action { implicit request =>
-      Ok(views.linkout(remoteUrl))
-    }
-  }
+     future.map(projects => Ok(views.home(projects, Option(categoryArray), query.find(_.nonEmpty), p, ordering, pform)))
+   }
 
   /**
     * Shows the moderation queue for unreviewed versions.
@@ -153,7 +150,7 @@ final class Application @Inject()(data: DataHelper,
         (p, v, c, a, u)
       }
 
-      Ok(views.users.admin.queue(headerData, reviewList, unReviewList))
+      Ok(views.users.admin.queue(reviewList, unReviewList))
     }
 
   }
@@ -217,7 +214,6 @@ final class Application @Inject()(data: DataHelper,
   }
 
   def showHealth() = (Authenticated andThen PermissionAction[AuthRequest](ViewHealth)) async { implicit request =>
-    val headerData: HeaderData = null // TODO headerData
 
     for {
       noTopicProjects <- projects.filter(p => p.topicId === -1 || p.postId === -1)
@@ -228,7 +224,7 @@ final class Application @Inject()(data: DataHelper,
         Future.sequence(v.map { v => v.project.map(p => (v, p)) })
       }
     } yield {
-      Ok(views.users.admin.health(headerData, noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
+      Ok(views.users.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
     }
   }
 
@@ -416,7 +412,11 @@ final class Application @Inject()(data: DataHelper,
               asd
             }
 
-            def transferOrgOwner(r: OrganizationRole) = r.organization.transferOwner(r.organization.memberships.newMember(r.userId))
+            def transferOrgOwner(r: OrganizationRole) = {
+              r.organization.flatMap { orga =>
+                orga.transferOwner(orga.memberships.newMember(r.userId))
+              }
+            }
 
             val isOrga = user.isOrganization
             thing match {

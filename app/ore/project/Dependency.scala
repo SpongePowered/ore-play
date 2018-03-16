@@ -3,6 +3,8 @@ package ore.project
 import db.impl.access.ProjectBase
 import models.project.Project
 
+import scala.concurrent.Future
+
 /**
   * Represents a dependency to another plugin. Either on or not on Ore.
   *
@@ -16,7 +18,7 @@ case class Dependency(pluginId: String, version: String) {
     *
     * @return Project if dependency is on Ore, empty otherwise.
     */
-  def project(implicit projects: ProjectBase): Option[Project] = projects.withPluginId(this.pluginId)
+  def project(implicit projects: ProjectBase): Future[Option[Project]] = projects.withPluginId(this.pluginId)
 
 }
 

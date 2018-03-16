@@ -13,14 +13,15 @@
 @import models.project.TagColors
 @import models.viewhelper.HeaderData
 
-@(headerData: HeaderData, project: Project, forumSync: Boolean, pending: Option[PendingVersion],
-  channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(project: Project, forumSync: Boolean, pending: Option[PendingVersion],
+  channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @mainWidth = {
     @pending.map(_ => "col-md-10").getOrElse("col-md-12")
 }
 
-@bootstrap.layout(messages("version.create.pageTitle"), headerData) {
+@bootstrap.layout(messages("version.create.pageTitle")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>

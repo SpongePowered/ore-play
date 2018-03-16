@@ -15,7 +15,6 @@ import db.impl.table.ModelKeys._
 import models.admin.Review
 import models.statistic.VersionDownload
 import models.user.User
-import ore.Visitable
 import ore.permission.scope.ProjectScope
 import ore.project.Dependency
 import play.twirl.api.Html

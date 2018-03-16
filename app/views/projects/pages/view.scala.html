@@ -13,17 +13,19 @@ Documentation page within Project overview.
 @import util.StringUtils._
 @import models.project.Project
 @import models.project.Page
-@(model: Project,
+@import models.viewhelper.ProjectData
+
+@import controllers.sugar.Requests.OreRequest
+@(p: ProjectData,
   page: Page,
   forceHideEditor: Boolean = false,
-  editorOpen: Boolean = false)(implicit messages: Messages, request: Request[_], flash: Flash, service: ModelService,
-        config: OreConfig, userBase: UserBase)
+  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @canEditPages = @{
     userBase.current.isDefined && (userBase.current.get can EditPages in model) && !forceHideEditor
 }
 
-@projects.view(model, "#docs") {
+@projects.view(p, "#docs") {
 
     <script type="text/javascript" src="@controllers.routes.Assets.at("javascripts/pageCollapse.js")"></script>
     <script nonce="@nonce">

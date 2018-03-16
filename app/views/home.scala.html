@@ -12,14 +12,16 @@ sorted according to different criteria.
 @import ore.{OreConfig, Platforms}
 @import play.api.Configuration
 @import security.NonceFilter._
+@import views.html.utils.alert
 @import scala.collection.JavaConversions._
 
 @import scala.collection.mutable
 @import scala.util.Random
 
+@import controllers.sugar.Requests.OreRequest
 @(models: Seq[Project], visibleCategories: Option[Array[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platform: Option[Platform])(implicit messages: Messages, flash: Flash,
-        request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
+        request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -77,8 +79,8 @@ sorted according to different criteria.
         <div class="index-header">
             <div class="row">
                 <div class="col-md-12">
-                    @utils.alert("success")
-                    @utils.alert("error")
+                    @alert("success")
+                    @alert("error")
                 </div>
             </div>
 

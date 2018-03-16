@@ -9,12 +9,14 @@
 
 @import models.viewhelper.HeaderData
 
-@(headerData: HeaderData, mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Review, Option[String])])(implicit messages: Messages, request: Request[_], config: OreConfig, project: Project, version: Version)
+@import controllers.sugar.Requests.OreRequest
+@(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Review, Option[String])])(implicit messages: Messages,
+        request: OreRequest[_], config: OreConfig, project: Project, version: Version)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("review.title"), headerData) {
+@bootstrap.layout(messages("review.title")) {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/review.js")"></script>
     <script nonce="@nonce">versionPath = '@project.ownerName/@project.slug/versions/@version.name'</script>
 

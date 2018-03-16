@@ -57,7 +57,7 @@ object ProjectView {
         modelId = request.project.id.get,
         address = InetString(remoteAddress),
         cookie = currentCookie,
-        userId = userId
+        _userId = userId
       )
       view.userBase = users
       view

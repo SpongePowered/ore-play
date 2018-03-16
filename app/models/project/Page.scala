@@ -25,7 +25,7 @@ import db.impl.table.ModelKeys._
 import db.{ModelFilter, Named}
 import models.project
 import ore.permission.scope.ProjectScope
-import ore.{OreConfig, Visitable}
+import ore.OreConfig
 import play.twirl.api.Html
 import util.StringUtils._
 

@@ -368,7 +368,7 @@ trait ProjectFactory {
       val tags = spongeTag ++ forgeTag
 
       // Notify watchers
-      this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, messages))
+      this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project, messages))
 
       project.setLastUpdated(this.service.theTime)
 

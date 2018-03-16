@@ -6,7 +6,8 @@ The main header displayed on each layout.
 @import ore.OreConfig
 @import ore.permission._
 
-@(user: Boolean = true, headerData: HeaderData)(implicit messages: Messages, request: Request[_], config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(user: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 
 @tooltip(title: String) = @{
@@ -55,7 +56,7 @@ The main header displayed on each layout.
         <!-- Right navbar -->
         @if(user) {
             <ul class="nav navbar-nav navbar-collapse collapse navbar-right">
-                @headerData.currentUser.map { cu =>
+                @request.data.currentUser.map { cu =>
 
                 <li class="dropdown nav-icon new-controls">
                     <a href="#" class="drop-down-toggle" data-toggle="dropdown">
@@ -83,7 +84,7 @@ The main header displayed on each layout.
                     @* Show user controls *@
                 <li class="dropdown user-controls nav-icon">
                     <a href="#" class="drop-down-toggle user-toggle" data-toggle="dropdown">
-                        @if(headerData.hasUnreadNotifications) {
+                        @if(request.data.hasUnreadNotifications) {
                             <span class="unread"></span>
                         }
                         <img height="32" width="32" class="user-avatar" src="@cu.avatarUrl.getOrElse(routes.Assets.at("images/spongie-mark.svg"))" />
@@ -101,7 +102,7 @@ The main header displayed on each layout.
                             <a href="@routes.Users.showNotifications(None, None)">
                                 <span class="pull-left">
                                     @messages("notification.plural")
-                                    @if(headerData.hasUnreadNotifications) {
+                                    @if(request.data.hasUnreadNotifications) {
                                         <span class="unread"></span>
                                     }
                                 </span>
@@ -109,12 +110,12 @@ The main header displayed on each layout.
                             </a>
                         </li>
 
-                        @if(headerData.permissions(ReviewFlags)) {
+                        @if(request.data.permissions(ReviewFlags)) {
                             <li>
                                 <a href="@routes.Application.showFlags()">
                                     <span class="flags pull-left">
                                         @messages("project.flag.plural")
-                                        @if(headerData.unresolvedFlags) {
+                                        @if(request.data.unresolvedFlags) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -123,12 +124,12 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(headerData.permissions(ReviewVisibility)) {
+                        @if(request.data.permissions(ReviewVisibility)) {
                             <li>
                                 <a href="@routes.Application.showProjectVisibility()">
                                     <span class="flags pull-left">
                                         Project approvals
-                                        @if(headerData.hasProjectApprovals) {
+                                        @if(request.data.hasProjectApprovals) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -137,12 +138,12 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(headerData.permissions(ReviewProjects)) {
+                        @if(request.data.permissions(ReviewProjects)) {
                             <li>
                                 <a href="@routes.Application.showQueue()">
                                     <span class="pull-left">
                                         @messages("user.queue")
-                                        @if(headerData.hasReviewQueue) {
+                                        @if(request.data.hasReviewQueue) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -151,7 +152,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(headerData.permissions(ViewStats)) {
+                        @if(request.data.permissions(ViewStats)) {
                             <li>
                                 <a href="@routes.Application.showStats()">
                                     <span class="pull-left">
@@ -162,7 +163,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(headerData.permissions(ViewHealth)) {
+                        @if(request.data.permissions(ViewHealth)) {
                             <li>
                                 <a href="@routes.Application.showHealth()">
                                     <span class="pull-left">

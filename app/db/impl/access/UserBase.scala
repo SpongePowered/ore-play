@@ -8,7 +8,7 @@ import db.impl.model.OreModel
 import db.impl.schema.ProjectSchema
 import db.{ModelBase, ModelService, Named}
 import models.user.{Session, User}
-import ore.{OreConfig, Visitable}
+import ore.OreConfig
 import ore.permission.Permission
 import ore.permission.scope.ScopeSubject
 import ore.user.UserOwned
@@ -69,9 +69,11 @@ class UserBase(override val service: ModelService,
           // TODO remove double DB access for orga check
           toCheck.isOrganization.flatMap {
             case false => Future.successful(None) // Not an orga
-            case true => toCheck.toOrganization.map { orga =>
-              if (user can perm in orga) Some(toCheck) // Has Orga perm
-              else None // Has not Orga perm
+            case true => toCheck.toOrganization.flatMap { orga =>
+              user can perm in orga map { perm =>
+                if (perm) Some(toCheck) // Has Orga perm
+                else None // Has not Orga perm
+              }
             }
           }
         }

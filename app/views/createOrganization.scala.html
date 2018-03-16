@@ -7,10 +7,10 @@
 @import views.html.utils.alert
 @import models.viewhelper.HeaderData
 
+@import controllers.sugar.Requests.OreRequest
+@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
-@(headerData: HeaderData)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
-
-@bootstrap.layout(messages("org.create"), headerData: HeaderData) {
+@bootstrap.layout(messages("org.create")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/orgCreate.js")"></script>
 
@@ -42,7 +42,7 @@
                             </div>
                         }
 
-                        @users.invite.form(owner = headerData.currentUser.get, roleClass = classOf[OrganizationRole])
+                        @users.invite.form(owner = request.data.currentUser.get, roleClass = classOf[OrganizationRole])
 
                         <button title="Continue" type="submit" name="create" form="form-continue"
                                 value="@messages("general.continue")"

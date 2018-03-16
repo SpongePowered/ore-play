@@ -8,17 +8,17 @@
 @import models.viewhelper.HeaderData
 @import models.project.Version
 
-@(headerData: HeaderData,
-        noTopicProjects: Seq[Project],
-        topicDirtyProjects: Seq[Project],
-        staleProjects: Seq[Project],
-        notPublicProjects: Seq[Project],
-        missingFileProjects: Seq[(Version, Project)])(implicit messages: Messages, request: Request[_], config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(noTopicProjects: Seq[Project],
+  topicDirtyProjects: Seq[Project],
+  staleProjects: Seq[Project],
+  notPublicProjects: Seq[Project],
+  missingFileProjects: Seq[(Version, Project)])(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("admin.health.title"), headerData) {
+@bootstrap.layout(messages("admin.health.title")) {
 
     <div class="container" style="margin-top: 90px;">
         <div class="row">
