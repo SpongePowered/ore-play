@@ -15,7 +15,8 @@
 @import models.viewhelper.HeaderData
 @import models.user.Organization
 @import models.viewhelper.UserData
-@(u: UserData, orgas: Seq[(Organization, User)])(content: Html)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
+
+@(u: UserData)(content: Html)(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
 
 @bootstrap.layout(u.user.username, u.global) {
 
@@ -135,7 +136,7 @@
 
                 <!-- Roles -->
                 <ul class="user-roles">
-                    @orgas.foreach { case (organization, user) =>
+                    @u.orgas.foreach { case (organization, user) =>
                         <li class="organization-role" data-toggle="tooltip" data-placement="top"
                             data-title="@organization.name">
                             @userAvatar(Some(organization.name), user.avatarUrl, clazz = "user-avatar-xxs")

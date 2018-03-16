@@ -11,6 +11,8 @@ import models.project.Project
 import ore.StatTracker._
 import ore.permission.scope.ProjectScope
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a unique view on a Project.
   *
@@ -26,8 +28,8 @@ case class ProjectView(override val id: Option[Int] = None,
                        override val modelId: Int,
                        override val address: InetString,
                        override val cookie: String,
-                       private var userId: Option[Int] = None)
-                       extends StatEntry[Project](id, createdAt, modelId, address, cookie, userId)
+                       private var _userId: Option[Int] = None)
+                       extends StatEntry[Project](id, createdAt, modelId, address, cookie, _userId)
                          with ProjectScope {
 
   override type M = ProjectView
@@ -47,18 +49,19 @@ object ProjectView {
     * @param request  Request to bind
     * @return         New ProjectView
     */
-  def bindFromRequest()(implicit request: ProjectRequest[_], users: UserBase): ProjectView = {
+  def bindFromRequest()(implicit ec: ExecutionContext, request: ProjectRequest[_], users: UserBase): Future[ProjectView] = {
     checkNotNull(request, "null request", "")
     checkNotNull(users, "null user base", "")
-    val userId = users.current.flatMap(_.id)
-    val view = ProjectView(
-      modelId = request.project.id.get,
-      address = InetString(remoteAddress),
-      cookie = currentCookie,
-      userId = userId
-    )
-    view.userBase = users
-    view
+    users.current.map { _.flatMap(_.id) } map { userId =>
+      val view = ProjectView(
+        modelId = request.project.id.get,
+        address = InetString(remoteAddress),
+        cookie = currentCookie,
+        userId = userId
+      )
+      view.userBase = users
+      view
+    }
   }
 
 }

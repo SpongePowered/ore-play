@@ -5,10 +5,14 @@
 @import models.user.User
 @import ore.OreConfig
 @import views.html.projects.{list => projectList}
-@(user: User, models: Seq[Project], page: Int)(implicit messages: Messages, flash: Flash, request: Request[_],
+
+@import models.viewhelper.UserData
+@import models.project.Version
+@import models.viewhelper.OrganizationData
+@(u: UserData, o: Option[OrganizationData], models: Seq[Project], starred: Seq[(Project, Version)], page: Int)(implicit messages: Messages, flash: Flash, request: Request[_],
         service: ModelService, config: OreConfig, userBase: UserBase)
 
-@users.view(user) {
+@users.view(u) {
 
     <div class="row">
         <div class="col-md-8">
@@ -16,23 +20,22 @@
             models = models,
             page = page,
             pageSize = config.users.get[Int]("project-page-size"),
-            call = page => routes.Users.showProjects(user.username, Some(page))
+            call = page => routes.Users.showProjects(u.user.name, Some(page))
         )
         </div>
 
         <div class="col-md-4">
-            @if(!user.isOrganization) {
+            @if(!u.isOrga) {
                 <div class="panel-stars panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title"><i class="fa fa-star"></i> @messages("project.starred")</h3>
                     </div>
                     <table class="table panel-body">
                         <tbody>
-                        @defining(user.starred(1)) { stars =>
-                            @if(stars.isEmpty) {
-                                <tr><td><i class="minor">@messages("user.noStars", user.username)</i></td></tr>
+                            @if(starred.isEmpty) {
+                                <tr><td><i class="minor">@messages("user.noStars", u.user.name)</i></td></tr>
                             } else {
-                                @stars.map { star =>
+                                @starred.foreach { case (star, rv) =>
                                     <tr>
                                         <td>
                                             <a href="@projectRoutes.Projects.show(star.ownerName, star.slug)"
@@ -40,7 +43,7 @@
                                                 @star.ownerName/<strong>@star.name</strong>
                                             </a>
                                             <div class="pull-right">
-                                                <span class="minor">@star.recommendedVersion.versionString</span>
+                                                <span class="minor">@rv.versionString</span>
                                                 @defining(star.category) { category =>
                                                     <i title="@category.title" class="fa fa-fw @category.icon"></i>
                                                 }
@@ -49,7 +52,6 @@
                                     </tr>
                                 }
                             }
-                        }
                         </tbody>
                     </table>
 
@@ -62,12 +64,11 @@
                     </div>
                 </div>
             } else {
-                @defining(user.toOrganization) { organization =>
-                    @users.memberList(
-                        model = organization,
+                @o.foreach { orgData =>
+                    @users.memberList(orgData,
                         editable = true,
-                        saveCall = routes.Organizations.updateMembers(organization.name),
-                        removeCall = routes.Organizations.removeMember(organization.name)
+                        saveCall = routes.Organizations.updateMembers(orgData.o.name),
+                        removeCall = routes.Organizations.removeMember(orgData.o.name)
                     )
                 }
             }

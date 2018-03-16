@@ -214,7 +214,7 @@
                 <div class="alert alert-danger" role="alert" @if(flash.get("error").isEmpty) { style="display: none;" }>
                     <strong>Whoops!</strong> <span>@flash.get("error").getOrElse("")</span>
                 </div>
-                @users.memberList(p, p.p,
+                @users.memberList(p,
                     editable = true,
                     removeCall = projectRoutes.removeMember(p.p.ownerName, p.p.slug),
                     settingsCall = projectRoutes.showSettings(p.p.ownerName, p.p.slug)

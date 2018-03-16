@@ -17,6 +17,8 @@ import ore.user.notification.{InviteFilters, NotificationFilters}
 import ore.user.{FakeUser, Prompts}
 import ore.{OreConfig, OreEnv}
 import mail.{EmailFactory, Mailer}
+import models.project.{Project, Version}
+import models.viewhelper.{OrganizationData, UserData}
 import play.Logger
 import play.api.i18n.MessagesApi
 import play.api.mvc._
@@ -139,7 +141,10 @@ class Users @Inject()(fakeUser: FakeUser,
           filter = _.recommendedVersionId =!= -1,
           limit = pageSize,
           offset = offset).map { projectSeq =>
-          Ok(views.users.projects(user, projectSeq, p))
+            val ud: UserData = null // TODO UserData
+            val od: Option[OrganizationData] = null // TODO Orgadata if user is orga
+            val starred: Seq[(Project, Version)] = null // TODO starred by user
+            Ok(views.users.projects(ud, od, projectSeq, starred, p))
         }
     }
   }

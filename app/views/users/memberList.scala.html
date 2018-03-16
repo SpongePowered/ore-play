@@ -11,7 +11,8 @@
 @import models.viewhelper.HeaderData
 @* MemberData? with perms *@
 @import models.viewhelper.JoinableData
-@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_]]], model: Joinable[_ <: Member[_]], editable: Boolean = false, removeCall: Call = null,
+
+@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_]]], editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: Request[_])
 
 <!-- TODO: Pagination -->

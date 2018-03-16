@@ -27,5 +27,4 @@ case class OrganizationData(headerData: HeaderData,
   def hasUser = global.hasUser
   def currentUser = global.currentUser
 
-
 }
