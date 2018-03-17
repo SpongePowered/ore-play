@@ -94,7 +94,7 @@ trait Mailer extends Runnable {
     * Sends all queued [[Email]]s.
     */
   def run() = {
-    if (queue.size == 0) {
+    if (queue.nonEmpty) {
       log(s"Sending ${this.queue.size} queued emails...")
       this.queue.foreach(send)
       this.queue = Seq.empty

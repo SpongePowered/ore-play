@@ -42,12 +42,21 @@ object OrganizationData {
 
   def of[A](request: OreRequest[A], orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[OrganizationData] = {
     // TODO cache
+    implicit val users = orga.userBase
+    for {
+      editSettings <- request.data.currentUser.get can EditSettings in orga map ((EditSettings, _))
+      role <- orga.owner.headRole
+      memberRoles <- orga.memberships.members.flatMap(m => Future.sequence(m.map(_.headRole)))
+      memberUser <- Future.sequence(memberRoles.map(_.user))
+    } yield {
 
-    Future.successful {
-      OrganizationData(request.data, orga, null, null, noPerms) // TODO fill
+      val perms: Map[Permission, Boolean] = Seq(editSettings).toMap
+      val members = memberRoles zip memberUser
+      OrganizationData(request.data,
+        orga,
+        role,
+        members.toSeq,
+        perms)
     }
-
-
-
   }
 }

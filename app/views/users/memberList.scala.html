@@ -19,7 +19,7 @@
 
 @if(j.members.nonEmpty) {
 
-    @if(j(EditSettings)) {
+    @if(editable && j(EditSettings)) {
         <script type="text/javascript" src="@routes.Assets.at("javascripts/userSearch.js")"></script>
         <script type="text/javascript" src="@routes.Assets.at("javascripts/memberList.js")"></script>
 
@@ -96,13 +96,13 @@
 
         <ul class="list-members list-group">
             <!-- Member list -->
-            @j.filteredMembers.foreach { case (role, user) =>
+            @j.filteredMembers.map { case (role, user) =>
                 <li class="list-group-item">
                     @userAvatar(Some(user.username), user.avatarUrl, clazz = "user-avatar-xs")
                 <a class="username" href="@routes.Users.showProjects(user.username, None)">
                 @user.username
                 </a>
-                    @role.id.foreach { id =>
+                    @role.id.map { id =>
                         <p style="display: none;" class="role-id">@id</p>
                     }
                     @if(j(EditSettings) && !role.roleType.trust.equals(Absolute)) {

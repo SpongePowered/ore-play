@@ -37,7 +37,7 @@
                             @if(starred.isEmpty) {
                                 <tr><td><i class="minor">@messages("user.noStars", u.user.name)</i></td></tr>
                             } else {
-                                @starred.foreach { case (star, rv) =>
+                                @starred.map { case (star, rv) =>
                                     <tr>
                                         <td>
                                             <a href="@projectRoutes.Projects.show(star.ownerName, star.slug)"
@@ -66,7 +66,7 @@
                     </div>
                 </div>
             } else {
-                @o.foreach { orgData =>
+                @o.map { orgData =>
                     @users.memberList(orgData,
                         editable = true,
                         saveCall = routes.Organizations.updateMembers(orgData.orga.name),

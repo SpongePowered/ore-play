@@ -88,11 +88,14 @@ object HeaderData {
   private def getHeaderData(user: User)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) = {
     for {
       perms <- perms(Some(user))
+      unreadNotif <- user.hasUnreadNotifications
+      unresolvedFlags <- user.flags.filterNot(_.isResolved).map(_.nonEmpty)
+      hasProjectApprovals <- Future.successful(true) // TODO >= 1 val futureApproval = projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0)
+      hasReviewQueue <- Future.successful(true)   // TODO queue.nonEmpty
     } yield {
-
       // TODO cache and fill
 
-      HeaderData(Some(user), perms)
+      HeaderData(Some(user), perms, unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue)
     }
   }
 

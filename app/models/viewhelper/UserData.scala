@@ -50,10 +50,27 @@ object UserData {
   val noOrgaPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
   def of[A](request: OreRequest[A], user: User)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[UserData] = {
-    // TODO cache
+    // TODO cache && fill
+    for {
+      isOrga <- user.isOrganization
+      projectCount <- user.projects.size
+      orga <- user.toMaybeOrganization
+      viewActivity <- user can ViewActivity in user map ((ViewActivity, _))
+      reviewFlags <- user can ReviewFlags in user map ((ReviewFlags, _))
+      editSettings <- user can EditSettings in orga map ((EditSettings, _))
+    } yield {
 
-    Future.successful {
-      UserData(request.data, user, false, 0, Seq.empty, noUserPerms, noOrgaPerms)
+      val userPerms: Map[Permission, Boolean] = Seq(viewActivity, reviewFlags).toMap
+      val orgaPerms: Map[Permission, Boolean] = Seq(editSettings).toMap
+
+      UserData(request.data,
+              user,
+              isOrga,
+              projectCount,
+              Seq.empty,
+              userPerms,
+              orgaPerms)
+
     }
 
   }

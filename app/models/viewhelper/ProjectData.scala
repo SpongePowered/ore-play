@@ -33,8 +33,8 @@ case class ProjectData(headerData: HeaderData,
                        versions: Int, // project.versions.size
                        settings: ProjectSettings,
                        permissions: Map[Permission, Boolean],
-                       members: Seq[(ProjectRole, User)], // TODO sorted/reverse
-                       uProjectFlags: Boolean, // TODO user.hasUnresolvedFlagFor(project)
+                       members: Seq[(ProjectRole, User)],
+                       uProjectFlags: Boolean,
                        starred: Boolean,
                        watching: Boolean,
                        projectLogSize: Int,
@@ -98,7 +98,7 @@ object ProjectData {
         versions,
         settings,
         perms,
-        members,
+        members.sortBy(_._1.roleType.trust).reverse,
         uProjectFlags,
         starred,
         watching,
@@ -116,14 +116,15 @@ object ProjectData {
 
     val query = for {
       r <- tableRole if r.projectId === project.id.get
-      u <- tableUser if r.userId == u.id
+      u <- tableUser if r.userId === u.id
     } yield {
       (r, u)
     }
 
-    db.run(query.result).map(_.map {
+    val asd =db.run(query.result).map(_.map {
       case (r, u) => (r, u)
     })
+    asd
   }
 
   def perms(currentUser: Option[User], project: Project)(implicit ec: ExecutionContext): Future[Map[Permission, Boolean]] = {
