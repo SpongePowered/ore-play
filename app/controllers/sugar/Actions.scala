@@ -16,6 +16,7 @@ import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc.{request, _}
 import controllers.sugar.Requests._
 import controllers.sugar.Requests
+import db.ModelService
 import play.api.cache.AsyncCacheApi
 import security.spauth.SingleSignOnConsumer
 import slick.jdbc.JdbcBackend
@@ -303,7 +304,7 @@ trait Actions extends Calls with ActionHelpers {
 
   def authedProjectActionById(pluginId: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = authedProjectActionImpl(projects.withPluginId(pluginId))
 
-  def organizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[OreRequest, OrganizationRequest] {
+  def organizationAction(organization: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, OrganizationRequest] {
     def executionContext = ec
 
     def refine[A](request: OreRequest[A]) = {
@@ -314,7 +315,7 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def authedOrganizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
+  def authedOrganizationAction(organization: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
     def executionContext = ec
 
     def refine[A](request: AuthRequest[A]) = {
@@ -326,18 +327,20 @@ trait Actions extends Calls with ActionHelpers {
 
   }
 
-  def getOrganizationData(request: OreRequest[_], organization: String)(implicit ec: ExecutionContext): Future[Option[OrganizationData]] = {
-    // TODO cache
-    this.organizations.withName(organization).map(_.map { orga =>
-      OrganizationData(request.data, orga, null, null, null) // TODO fill
-    })
+  def getOrganizationData(request: OreRequest[_], organization: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef): Future[Option[OrganizationData]] = {
+    this.organizations.withName(organization).flatMap {
+      case None => Future.successful(None)
+      case Some(orga) =>
+        OrganizationData.of(request, orga).map(Some(_))
+    }
   }
 
-  def getUserData(request: OreRequest[_], userName: String)(implicit ec: ExecutionContext): Future[Option[UserData]] = {
-    // TODO cache
-    this.users.withName(userName).map(_.map { user =>
-      UserData(request.data, user, false, 0, Seq.empty, Map.empty, Map.empty)
-    })
+  def getUserData(request: OreRequest[_], userName: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef): Future[Option[UserData]] = {
+    this.users.withName(userName).flatMap {
+      case None => Future.successful(None)
+      case Some(user) =>
+        UserData.of(request, user).map(Some(_))
+    }
   }
 
 }
