@@ -2,6 +2,7 @@ package models.viewhelper
 
 import akka.stream.actor.ActorPublisherMessage.Request
 import controllers.sugar.Requests.OreRequest
+import db.impl.{ProjectMembersTable, ProjectRoleTable, UserTable}
 import models.admin.VisibilityChange
 import models.project._
 import models.user.User
@@ -12,6 +13,8 @@ import ore.project.ProjectMember
 import play.api.cache.AsyncCacheApi
 import play.twirl.api.Html
 import slick.jdbc.JdbcBackend
+import db.impl.OrePostgresDriver.api._
+import slick.lifted.TableQuery
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,7 +33,7 @@ case class ProjectData(headerData: HeaderData,
                        versions: Int, // project.versions.size
                        settings: ProjectSettings,
                        permissions: Map[Permission, Boolean],
-                       members: Seq[(ProjectMember, ProjectRole, User)], // TODO sorted/reverse
+                       members: Seq[(ProjectRole, User)], // TODO sorted/reverse
                        uProjectFlags: Boolean, // TODO user.hasUnresolvedFlagFor(project)
                        starred: Boolean,
                        watching: Boolean,
@@ -62,6 +65,7 @@ object ProjectData {
 
   def of[A](request: OreRequest[A], project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
 
+    implicit val userBase = project.userBase
     // TODO cache and fill
     for {
       settings <- project.settings
@@ -69,19 +73,25 @@ object ProjectData {
       orgaOwner <- projectOwner.toMaybeOrganization
       canPostAsOwnerOrga <- request.data.currentUser.get can PostAsOrganization in orgaOwner // TODO none.get
       ownerRole <- project.owner.headRole
-      versions <- Future.successful(0) // TODO count versions
+      versions <- project.versions.size
       perms <- perms(request.data.currentUser, project)
-      members <- Future.successful(Seq.empty) // TODO get members
-      uProjectFlags <- request.data.currentUser.get.hasUnresolvedFlagFor(project)// TODO none.get
-      starred <- Future.successful(false) // TODO
-      watching <- Future.successful(false) // TODO
-      logSize <- Future.successful(0) // TODO
-      flags <- Future.successful(Seq.empty) // TODO
-      noteCount <- Future.successful(0) // TODO
+      members <- members(project)
+      uProjectFlags <- request.data.currentUser.get.hasUnresolvedFlagFor(project) // TODO none.get
+      starred <- project.stars.contains(request.data.currentUser.get) // TODO none.get
+      watching <- project.watchers.contains(request.data.currentUser.get)  // TODO none.get
+      logSize <- project.logger.flatMap(_.entries.size)
+      flags <- project.flags.all
+      flagUsers <- Future.sequence(flags.map(_.user))
+      flagResolved <- Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1))))
       lastVisibilityChange <- project.lastVisibilityChange
       lastVisibilityChangeUser <- if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
                                   else lastVisibilityChange.get.created.map(_.map(_.name).getOrElse("Unknown"))
     } yield {
+      val noteCount = project.getNotes().size
+      val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
+        (fl, user.name, resolved.map(_.username))
+      }
+
       new ProjectData(request.data, project, projectOwner,
         canPostAsOwnerOrga,
         ownerRole,
@@ -93,11 +103,27 @@ object ProjectData {
         starred,
         watching,
         logSize,
-        flags,
+        flagData.toSeq,
         noteCount,
         lastVisibilityChange,
         lastVisibilityChangeUser)
     }
+  }
+
+  def members(project: Project)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectRole, User)]] = {
+    val tableUser = TableQuery[UserTable]
+    val tableRole = TableQuery[ProjectRoleTable]
+
+    val query = for {
+      r <- tableRole if r.projectId === project.id.get
+      u <- tableUser if r.userId == u.id
+    } yield {
+      (r, u)
+    }
+
+    db.run(query.result).map(_.map {
+      case (r, u) => (r, u)
+    })
   }
 
   def perms(currentUser: Option[User], project: Project)(implicit ec: ExecutionContext): Future[Map[Permission, Boolean]] = {

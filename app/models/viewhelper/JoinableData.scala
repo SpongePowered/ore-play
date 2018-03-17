@@ -14,7 +14,7 @@ trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M]] {
   val permissions: Map[Permission, Boolean]
   val joinable: T
   val ownerRole: R
-  val members: Seq[(M, R, User)]
+  val members: Seq[(R, User)]
 
   def roleClass = ownerRole.getClass.asInstanceOf[Class[_ <: Role]]
 
@@ -26,7 +26,7 @@ trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M]] {
     ) members
     else {
       members.filter {
-        case (_, role, _) => role.isAccepted // project role is accepted
+        case (role, _) => role.isAccepted // project role is accepted
       }
     }
   }

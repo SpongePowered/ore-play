@@ -13,7 +13,7 @@
 
 @* @notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }*@
 
-@(project: Project, notes: Seq[(Note, User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -58,7 +58,7 @@
                         @notes.map { case (note, user) =>
                             <tr>
                                 <td class="note-fixed-with">@prettifyDateAndTime(new Timestamp(note.time))</td>
-                                <td class="note-fixed-with"><strong>user.name).getOrElse("Unknown")</strong></td>
+                                <td class="note-fixed-with"><strong>@user.map(_.name).getOrElse("Unknown")</strong></td>
                                 <td>@note.render</td>
                             </tr>
                         }

@@ -23,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
 case class OrganizationData(headerData: HeaderData,
                             joinable: Organization,
                             ownerRole: OrganizationRole,
-                            members: Seq[(OrganizationMember, OrganizationRole, User)], // TODO sorted/reverse
+                            members: Seq[(OrganizationRole, User)], // TODO sorted/reverse
                             permissions: Map[Permission, Boolean])
   extends JoinableData[OrganizationRole, OrganizationMember, Organization] {
 

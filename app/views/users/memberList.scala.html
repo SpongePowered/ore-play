@@ -96,7 +96,7 @@
 
         <ul class="list-members list-group">
             <!-- Member list -->
-            @j.filteredMembers.foreach { case (member, role, user) =>
+            @j.filteredMembers.foreach { case (role, user) =>
                 <li class="list-group-item">
                     @userAvatar(Some(user.username), user.avatarUrl, clazz = "user-avatar-xs")
                 <a class="username" href="@routes.Users.showProjects(user.username, None)">

@@ -648,9 +648,10 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showNotes(author: String, slug: String) = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)).async { implicit request =>
-      withProject(author, slug) { project =>
-        val notes: Seq[(Note, User)] = null // TODO get notes
-        Ok(views.admin.notes(project, notes))
+      withProjectAsync(author, slug) { project =>
+        Future.sequence(project.getNotes().map(note => users.get(note.user).map(user => (note, user)))) map { notes =>
+          Ok(views.admin.notes(project, notes))
+        }
       }
     }
   }

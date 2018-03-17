@@ -82,7 +82,7 @@
                 }
             } else {
                 @panel("Members") {
-                    @roleTable[User, OrganizationRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._3, t._2, null)).toSet, orgRoles) { (user, role) =>
+                    @roleTable[User, OrganizationRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, role) =>
                         <a href="@routes.Application.userAdmin(user.username)">
                             @user.username
                         </a>

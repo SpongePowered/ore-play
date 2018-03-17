@@ -28,7 +28,7 @@ Versions page within Project overview.
     if (visibleChannels.isEmpty) p.versions
     else {
         val channelFilter = channels.filter(c => visibleChannels.get.contains(c.name)).map(_.id.get)
-        versions.filter(v => channelFilter.contains(v.channelId)).size
+        versions.count(v => channelFilter.contains(v.channelId))
     }
 }
 
