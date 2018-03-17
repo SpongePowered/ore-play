@@ -81,12 +81,10 @@ Collection of all projects.
         <li class="list-group-item project-list-footer">
             <div class="pull-right">
                 @if(page > 1) {
-                    <a href="@call(page - 1)"
-                    class="btn btn-default"><i class="fa fa-arrow-left"></i></a>
+                    <a href="@call(page - 1)" class="btn btn-default"><i class="fa fa-arrow-left"></i></a>
                 }
                 @if(models.size >= pageSize) {
-                    <a href="@call(page + 1)"
-                    class="btn btn-default"><i class="fa fa-arrow-right"></i></a>
+                    <a href="@call(page + 1)" class="btn btn-default"><i class="fa fa-arrow-right"></i></a>
                 }
             </div>
             <div class="clearfix"></div>
