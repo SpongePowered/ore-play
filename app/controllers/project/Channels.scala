@@ -46,7 +46,7 @@ class Channels @Inject()(forms: OreForms,
     */
   def showList(author: String, slug: String) = ChannelEditAction(author, slug).async { request =>
     val project = request.project
-    project.p.channels.toSeq.map { list =>
+    project.project.channels.toSeq.map { list =>
       implicit val r = request.request
       val listWithVersionCount = list.map(c => (c, 0)) // TODO count
       Ok(views.list(request.project, listWithVersionCount))
@@ -64,7 +64,7 @@ class Channels @Inject()(forms: OreForms,
     this.forms.ChannelEdit.bindFromRequest.fold(
       hasErrors => Future.successful(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
       channelData => {
-        channelData.addTo(request.project.p).map { _.fold(
+        channelData.addTo(request.project.project).map { _.fold(
             error => Redirect(self.showList(author, slug)).withError(error),
             _ => Redirect(self.showList(author, slug))
           )
@@ -87,7 +87,7 @@ class Channels @Inject()(forms: OreForms,
       hasErrors =>
         Future.successful(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
       channelData => {
-        implicit val p = project.p
+        implicit val p = project.project
         channelData.saveTo(channelName).map { _.map { error =>
             Redirect(self.showList(author, slug)).withError(error)
           } getOrElse {
@@ -109,7 +109,7 @@ class Channels @Inject()(forms: OreForms,
     */
   def delete(author: String, slug: String, channelName: String) = ChannelEditAction(author, slug).async { implicit request =>
     implicit val project = request.project
-    project.p.channels.all.flatMap { channels =>
+    project.project.channels.all.flatMap { channels =>
       if (channels.size == 1) {
         Future.successful(Redirect(self.showList(author, slug)).withError("error.channel.last"))
       } else {

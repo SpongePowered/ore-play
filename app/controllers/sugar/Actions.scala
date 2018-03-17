@@ -285,13 +285,13 @@ trait Actions extends Calls with ActionHelpers {
       implicit val r = request
 
       p match {
-      case None => Future.successful(None)
-      case Some(pr) =>
-        val processed = processProject(pr, Some(request.user))
-        processed.flatMap {
-          case None => Future.successful(None)
-          case Some(pro) => ProjectData.of(request, pro).map(Some(_))
-        } map(_.map(new AuthedProjectRequest[A](_, request)))
+        case None => Future.successful(None)
+        case Some(pr) =>
+          val processed = processProject(pr, Some(request.user))
+          processed.flatMap {
+            case None => Future.successful(None)
+            case Some(pro) => ProjectData.of(request, pro).map(Some(_))
+          } map(_.map(new AuthedProjectRequest[A](_, request)))
       }
     } map { o =>
       implicit val r = request

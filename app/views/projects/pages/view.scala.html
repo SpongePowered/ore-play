@@ -36,8 +36,8 @@ Documentation page within Project overview.
 
     <script type="text/javascript" src="@controllers.routes.Assets.at("javascripts/pageCollapse.js")"></script>
     <script nonce="@nonce">
-        pluginId = '@p.p.pluginId';
-        namespace = '@p.p.namespace';
+        pluginId = '@p.project.pluginId';
+        namespace = '@p.project.namespace';
     </script>
     @if(editorOpen) {
         <script nonce="@nonce">$(function() { $('.btn-edit').click(); });</script>
@@ -51,8 +51,8 @@ Documentation page within Project overview.
                         <div class="col-md-12">
                             @alert("error")
                             @editor(
-                                saveCall = routes.Pages.save(p.p.ownerName, p.p.slug, page.fullSlug(parentPage)),
-                                deleteCall = routes.Pages.delete(p.p.ownerName, p.p.slug, page.fullSlug(parentPage)),
+                                saveCall = routes.Pages.save(p.project.ownerName, p.project.slug, page.fullSlug(parentPage)),
+                                deleteCall = routes.Pages.delete(p.project.ownerName, p.project.slug, page.fullSlug(parentPage)),
                                 deletable = !page.isHome,
                                 enabled = canEditPages,
                                 raw = page.contents,
@@ -65,10 +65,10 @@ Documentation page within Project overview.
                 <div class="col-md-3">
 
                     <div class="stats minor">
-                        <p>@messages("project.category.info", p.p.category.title)</p>
-                        <p>@messages("project.publishDate", prettifyDate(p.p.createdAt.get))</p>
-                        <p>@p.p.viewCount views</p>
-                        <p>@NumberFormat.getInstance.format(p.p.downloadCount) total downloads</p>
+                        <p>@messages("project.category.info", p.project.category.title)</p>
+                        <p>@messages("project.publishDate", prettifyDate(p.project.createdAt.get))</p>
+                        <p>@p.project.viewCount views</p>
+                        <p>@NumberFormat.getInstance.format(p.project.downloadCount) total downloads</p>
                         @p.settings.licenseName.map { licenseName =>
                             <p>
                                 @Html(messages("project.license.link"))
@@ -85,12 +85,12 @@ Documentation page within Project overview.
                                         class="new-page btn yellow btn-xs pull-right">
                                     <i class="fa fa-plus"></i>
                                 </button>
-                                @projects.pages.modalPageCreate(p.p, rootPages.keys.toSeq)
+                                @projects.pages.modalPageCreate(p.project, rootPages.keys.toSeq)
                             }
                         </div>
                         <ul class="list-group">
                             <li class="list-group-item">
-                                <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, Page.HomeName)">
+                                <a href="@routes.Pages.show(p.project.ownerName, p.project.slug, Page.HomeName)">
                                     @Page.HomeName
                                 </a>
                             </li>
@@ -107,7 +107,7 @@ Documentation page within Project overview.
                                             </a>
                                         }
                                     }
-                                    <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, pg.fullSlug(None))">
+                                    <a href="@routes.Pages.show(p.project.ownerName, p.project.slug, pg.fullSlug(None))">
                                         @pg.name
                                     </a>
                                 </li>
@@ -115,7 +115,7 @@ Documentation page within Project overview.
                                   <div class="page-children" data-page-id="@pg.id.get">
                                       @children.foreach { child =>
                                         <li class="list-group-item page-item-child">
-                                            <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, child.fullSlug(Some(pg)))">
+                                            <a href="@routes.Pages.show(p.project.ownerName, p.project.slug, child.fullSlug(Some(pg)))">
                                                 @child.name
                                             </a>
                                         </li>
@@ -129,7 +129,7 @@ Documentation page within Project overview.
                     <!-- Member list -->
                     @users.memberList(
                         j = p,
-                        settingsCall = routes.Projects.showSettings(p.p.ownerName, p.p.slug)
+                        settingsCall = routes.Projects.showSettings(p.project.ownerName, p.project.slug)
                     )
                 </div>
             </div>

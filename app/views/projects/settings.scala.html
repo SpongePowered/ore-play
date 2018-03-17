@@ -20,10 +20,10 @@
     <script type="text/javascript" src="@routes.Assets.at("javascripts/iconUpload.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/keyGen.js")"></script>
     <script nonce="@nonce">
-        projectName = "@p.p.name";
-        PROJECT_OWNER = "@p.p.ownerName";
-        PROJECT_SLUG = "@p.p.slug";
-        pluginId = "@p.p.pluginId";
+        projectName = "@p.project.name";
+        PROJECT_OWNER = "@p.project.ownerName";
+        PROJECT_SLUG = "@p.project.slug";
+        pluginId = "@p.project.pluginId";
         keyGenText = "@messages("project.settings.genKey")";
         keyRevokeText = "@messages("project.settings.revokeKey")";
     </script>
@@ -37,7 +37,7 @@
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">@messages("project.settings")</h3>
                         @if(p.hasUser && p.global(HideProjects)) {
-                            @projects.helper.btnHide(p.p, p.permissions, p.currentUser.get)
+                            @projects.helper.btnHide(p.project, p.permissions, p.currentUser.get)
 
                             <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
                                 <div class="modal-dialog" role="document">
@@ -68,7 +68,7 @@
                             source = p.settings.source,
                             licenseName = p.settings.licenseName,
                             licenseUrl = p.settings.licenseUrl,
-                            selected = Some(p.p.category),
+                            selected = Some(p.project.category),
                             forumSync = p.settings.forumSync
                         )
 
@@ -81,7 +81,7 @@
                                 </div>
                                 <input form="save" class="form-control" type="text" id="description"
                                        name="description" maxlength="@maxLength"
-                                    @p.p.description.map { description =>
+                                    @p.project.description.map { description =>
                                         value="@description"
                                     }.getOrElse {
                                         placeholder="@messages("version.create.noDescription")"
@@ -101,7 +101,7 @@
                                     @utils.userAvatar(
                                         Some(p.projectOwner.name),
                                         p.projectOwner.avatarUrl,
-                                        call = projectRoutes.showIcon(p.p.ownerName, p.p.slug),
+                                        call = projectRoutes.showIcon(p.project.ownerName, p.project.slug),
                                         clazz = "user-avatar-md")
 
                                     <input class="form-control-static" type="file" id="icon" name="icon" />
@@ -158,7 +158,7 @@
                             </div>
                             <div class="setting-content">
                                 <input form="rename" id="name" name="name" class="form-control" type="text"
-                                       value="@p.p.name"
+                                       value="@p.project.name"
                                        maxlength="@config.projects.get[Int]("max-name-len")">
                                 <button id="btn-rename" data-toggle="modal" data-target="#modal-rename"
                                         class="btn btn-warning" disabled>
@@ -190,7 +190,7 @@
                                     <p>Once you delete a project, it cannot be recovered.</p>
                                 </div>
                                 <div class="setting-content">
-                                    <button class="btn btn-delete btn-danger btn-visibility-change" data-project="@p.p.ownerName/@p.p.slug" data-level="-99" data-modal="true">
+                                    <button class="btn btn-delete btn-danger btn-visibility-change" data-project="@p.project.ownerName/@p.project.slug" data-level="-99" data-modal="true">
                                         <strong>Hard Delete</strong>
                                     </button>
                                 </div>
@@ -198,7 +198,7 @@
                             </div>
                         }
 
-                        @form(action = projectRoutes.save(p.p.ownerName, p.p.slug), 'id -> "save",
+                        @form(action = projectRoutes.save(p.project.ownerName, p.project.slug), 'id -> "save",
                             'class -> "pull-right") {
                             @CSRF.formField
                             <input type="hidden" id="update-icon" name="update-icon" value="false" />
@@ -217,8 +217,8 @@
                 </div>
                 @users.memberList(p,
                     editable = true,
-                    removeCall = projectRoutes.removeMember(p.p.ownerName, p.p.slug),
-                    settingsCall = projectRoutes.showSettings(p.p.ownerName, p.p.slug)
+                    removeCall = projectRoutes.removeMember(p.project.ownerName, p.project.slug),
+                    settingsCall = projectRoutes.showSettings(p.project.ownerName, p.project.slug)
                 )
             </div>
         </div>
@@ -239,7 +239,7 @@
                 </div>
                 <div class="modal-footer">
                     <div class="form-inline">
-                    @form(action = projectRoutes.rename(p.p.ownerName, p.p.slug), 'id -> "rename") {
+                    @form(action = projectRoutes.rename(p.project.ownerName, p.project.slug), 'id -> "rename") {
                         @CSRF.formField
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("channel.edit.close")
@@ -261,7 +261,7 @@
                     </button>
                     <h4 class="modal-title" id="label-delete">@messages("project.delete.title")</h4>
                 </div>
-                @form(action = projectRoutes.softDelete(p.p.ownerName, p.p.slug)) {
+                @form(action = projectRoutes.softDelete(p.project.ownerName, p.project.slug)) {
                 <div class="modal-body">
                     @messages("project.delete.info")
                     <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>

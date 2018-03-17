@@ -36,9 +36,9 @@ Versions page within Project overview.
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/versionList.js")"></script>
     <script nonce="@nonce">
-    PLUGIN_ID = '@p.p.pluginId';
-    PROJECT_OWNER = '@p.p.ownerName';
-    PROJECT_SLUG = '@p.p.slug';
+    PLUGIN_ID = '@p.project.pluginId';
+    PROJECT_OWNER = '@p.project.ownerName';
+    PROJECT_SLUG = '@p.project.slug';
     @if(visibleChannels.isDefined) {
         CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
     }
@@ -53,7 +53,7 @@ Versions page within Project overview.
                     <div class="panel-heading">
                         <h4 class="panel-title pull-left">@messages("project.versions")</h4>
                         @if(p(EditVersions)) {
-                            <a href="@versionRoutes.showCreator(p.p.ownerName, p.p.slug)" class="btn yellow">
+                            <a href="@versionRoutes.showCreator(p.project.ownerName, p.project.slug)" class="btn yellow">
                             @messages("project.version.new")
                             </a>
                         }
@@ -102,7 +102,7 @@ Versions page within Project overview.
 
                         @if(p(EditChannels)) {
                             <li class="list-group-item text-right">
-                                <a class="btn yellow btn-xs" href="@channelRoutes.showList(p.p.ownerName, p.p.slug)">
+                                <a class="btn yellow btn-xs" href="@channelRoutes.showList(p.project.ownerName, p.project.slug)">
                                     Edit
                                 </a>
                             </li>
@@ -111,7 +111,7 @@ Versions page within Project overview.
                 </div>
                 @users.memberList(
                     j = p,
-                    settingsCall = projectRoutes.showSettings(p.p.ownerName, p.p.slug)
+                    settingsCall = projectRoutes.showSettings(p.project.ownerName, p.project.slug)
                 )
             </div>
         </div>

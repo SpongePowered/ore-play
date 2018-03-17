@@ -15,16 +15,16 @@
 @channelRoutes = @{controllers.project.routes.Channels}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("channel.list.title", p.p.ownerName, p.p.slug)) {
+@bootstrap.layout(messages("channel.list.title", p.project.ownerName, p.project.slug)) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
     <script nonce="@nonce">
-        PROJECT_OWNER = '@p.p.ownerName';
-        PROJECT_SLUG = '@p.p.slug';
+        PROJECT_OWNER = '@p.project.ownerName';
+        PROJECT_SLUG = '@p.project.slug';
         $(function() {
             initChannelManager(
                     "#channel-new", "", "@config.defaultChannelColor.hex", "New channel",
-                    "@channelRoutes.create(p.p.ownerName, p.p.slug)",
+                    "@channelRoutes.create(p.project.ownerName, p.project.slug)",
                     "post", "Create channel", false
             );
         });
@@ -65,7 +65,7 @@
                                                         data-channel-id="@channel.id.get">
 
                                                         @form(action = channelRoutes.delete(
-                                                            p.p.ownerName, p.p.slug, channel.name),
+                                                            p.project.ownerName, p.project.slug, channel.name),
                                                             'id -> s"form-delete-${channel.id.get}",
                                                             'class -> "form-channel-delete") {
                                                             @CSRF.formField
@@ -81,7 +81,7 @@
                                               initChannelManager(
                                                       "#channel-edit-@channel.id", "@channel.name", "@channel.color.hex",
                                                       "Edit channel", "@channelRoutes.save(
-                                                        p.p.ownerName, p.p.slug, channel.name)",
+                                                        p.project.ownerName, p.project.slug, channel.name)",
                                                       "post", "Save changes", @channel.isNonReviewed
                                               );
                                           });
@@ -90,7 +90,7 @@
                                 }
                             </tbody>
                         </table>
-                        <a href="@versionRoutes.showList(p.p.ownerName, p.p.slug, None, None)"
+                        <a href="@versionRoutes.showList(p.project.ownerName, p.project.slug, None, None)"
                            class="pull-left btn btn-default">
                             <i class="fa fa-arrow-left"></i>
                         </a>

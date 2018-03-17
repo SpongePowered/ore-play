@@ -73,7 +73,7 @@ class Versions @Inject()(stats: StatTracker,
   def show(author: String, slug: String, versionString: String) = ProjectAction(author, slug) async { request =>
     implicit val project = request.project
     implicit val r = request.request
-    implicit val p = project.p
+    implicit val p = project.project
     withVersionAsync(versionString) { version =>
       version.channel.flatMap { channel =>
         this.stats.projectViewed { request =>
@@ -96,7 +96,7 @@ class Versions @Inject()(stats: StatTracker,
     VersionEditAction(author, slug).async { request =>
       implicit val r = request.request
       implicit val project = request.project
-      implicit val p = project.p
+      implicit val p = project.project
       withVersion(versionString) { version =>
         version.setDescription(this.forms.VersionDescription.bindFromRequest.get.trim)
         Redirect(self.show(author, slug, versionString))
@@ -116,9 +116,9 @@ class Versions @Inject()(stats: StatTracker,
     VersionEditAction(author, slug).async { implicit request =>
       implicit val r = request.request
       implicit val project = request.project
-      implicit val p = project.p
+      implicit val p = project.project
       withVersion(versionString) { version =>
-        project.p.setRecommendedVersion(version)
+        project.project.setRecommendedVersion(version)
         Redirect(self.show(author, slug, versionString))
       }
     }
@@ -137,7 +137,7 @@ class Versions @Inject()(stats: StatTracker,
       andThen ProjectPermissionAction(ReviewProjects)).async { implicit request =>
       implicit val project = request.project
       implicit val r = request.request
-      implicit val p = project.p
+      implicit val p = project.project
       withVersion(versionString) { version =>
         version.setReviewed(reviewed = true)
         version.setReviewer(request.user)
@@ -159,7 +159,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug).async { request =>
       val project = request.project
       implicit val r = request.request
-      project.p.channels.toSeq.flatMap { allChannels =>
+      project.project.channels.toSeq.flatMap { allChannels =>
         var visibleNames: Option[Array[String]] = channels.map(_.toLowerCase.split(','))
         val visible: Option[Array[Channel]] = visibleNames.map(_.map { name =>
           allChannels.find(_.name.equalsIgnoreCase(name))
@@ -169,7 +169,7 @@ class Versions @Inject()(stats: StatTracker,
 
         val pageSize = this.config.projects.get[Int]("init-version-load")
         val p = page.getOrElse(1)
-        val futureVersions = project.p.versions.sorted(
+        val futureVersions = project.project.versions.sorted(
           ordering = _.createdAt.desc,
           filter = _.channelId inSetBind visibleIds,
           offset = pageSize * (p - 1),
@@ -202,7 +202,7 @@ class Versions @Inject()(stats: StatTracker,
     val project = request.project
     implicit val r = request.request
     for {
-      channels <- project.p.channels.all
+      channels <- project.project.channels.all
     } yield {
       val doForumSync: Boolean = true // TODO get from project settings
       Ok(views.create(project, doForumSync, None, Some(channels.toSeq), showFileControls = true))
@@ -228,11 +228,11 @@ class Versions @Inject()(stats: StatTracker,
             Future.successful(Redirect(call).withError("error.noFile"))
           case Some(uploadData) =>
             try {
-              this.factory.processSubsequentPluginUpload(uploadData, user, request.project.p).map(_.fold(
+              this.factory.processSubsequentPluginUpload(uploadData, user, request.project.project).map(_.fold(
                 err => Redirect(call).withError(err),
                 version => {
                   version.underlying.setAuthorId(user.id.getOrElse(-1))
-                  Redirect(self.showCreatorWithMeta(request.project.p.ownerName, slug, version.underlying.versionString))
+                  Redirect(self.showCreatorWithMeta(request.project.project.ownerName, slug, version.underlying.versionString))
                 }
               ))
             } catch {
@@ -402,7 +402,7 @@ class Versions @Inject()(stats: StatTracker,
     VersionEditAction(author, slug).async { implicit request =>
       implicit val project = request.project
       implicit val r = request.request
-      implicit val p = project.p
+      implicit val p = project.project
       withVersion(versionString) { version =>
         this.projects.deleteVersion(version)
         Redirect(self.showList(author, slug, None, None))
@@ -421,10 +421,10 @@ class Versions @Inject()(stats: StatTracker,
   def download(author: String, slug: String, versionString: String, token: Option[String]) = {
     ProjectAction(author, slug).async { implicit request =>
       implicit val project = request.project
-      implicit val p: Project = project.p
+      implicit val p: Project = project.project
       implicit val r = request.request
       withVersionAsync(versionString) { version =>
-        sendVersion(project.p, version, token)
+        sendVersion(project.project, version, token)
       }
     }
   }
@@ -501,7 +501,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug).async { request =>
       val dlType = downloadType.flatMap(i => DownloadTypes.values.find(_.id == i)).getOrElse(DownloadTypes.UploadedFile)
       implicit val project = request.project
-      implicit val p = project.p
+      implicit val p = project.project
       implicit val r = request.request
       withVersionAsync(target) { version =>
         if (version.isReviewed)
@@ -545,7 +545,7 @@ class Versions @Inject()(stats: StatTracker,
               "post" -> helper.CSRF(
                 self.confirmDownload(author, slug, target, Some(dlType.id), token)).absoluteURL())))
           } else {
-            warning.map(warn => MultipleChoices(views.unsafeDownload(project.p, version, dlType, token)).withCookies(warn.cookie))
+            warning.map(warn => MultipleChoices(views.unsafeDownload(project.project, version, dlType, token)).withCookies(warn.cookie))
           }
         }
       }
@@ -555,7 +555,7 @@ class Versions @Inject()(stats: StatTracker,
   def confirmDownload(author: String, slug: String, target: String, downloadType: Option[Int], token: String) = {
     ProjectAction(author, slug) async { request =>
       implicit val project = request.project
-      implicit val p = project.p
+      implicit val p = project.project
       implicit val r: OreRequest[_] = request.request
       withVersionAsync(target) { version =>
         if (version.isReviewed)
@@ -623,8 +623,8 @@ class Versions @Inject()(stats: StatTracker,
   def downloadRecommended(author: String, slug: String, token: Option[String]) = {
     ProjectAction(author, slug).async { implicit request =>
       val project = request.project
-      project.p.recommendedVersion.flatMap { rv =>
-        sendVersion(project.p, rv, token)
+      project.project.recommendedVersion.flatMap { rv =>
+        sendVersion(project.project, rv, token)
       }
     }
   }
@@ -641,7 +641,7 @@ class Versions @Inject()(stats: StatTracker,
   def downloadJar(author: String, slug: String, versionString: String, token: Option[String]) = {
     ProjectAction(author, slug).async { implicit request =>
       implicit val p = request.project
-      implicit val project = p.p
+      implicit val project = p.project
       implicit val r = request.request
       withVersionAsync(versionString)(version =>
         sendJar(project, version, token))
@@ -699,8 +699,8 @@ class Versions @Inject()(stats: StatTracker,
   def downloadRecommendedJar(author: String, slug: String, token: Option[String]) = {
     ProjectAction(author, slug).async { implicit request =>
       val project = request.project
-      project.p.recommendedVersion.flatMap { rv =>
-        sendJar(project.p, rv, token)
+      project.project.recommendedVersion.flatMap { rv =>
+        sendJar(project.project, rv, token)
       }
     }
   }
@@ -716,10 +716,10 @@ class Versions @Inject()(stats: StatTracker,
   def downloadJarById(pluginId: String, versionString: String, token: Option[String]) = {
     ProjectAction(pluginId).async { implicit request =>
       implicit val project = request.project
-      implicit val p = project.p
+      implicit val p = project.project
       implicit val r = request.request
       withVersionAsync(versionString)(version =>
-        sendJar(project.p, version, token, api = true))
+        sendJar(project.project, version, token, api = true))
     }
   }
 
@@ -733,8 +733,8 @@ class Versions @Inject()(stats: StatTracker,
   def downloadRecommendedJarById(pluginId: String, token: Option[String]) = {
     ProjectAction(pluginId).async { implicit request =>
       val project = request.project
-      project.p.recommendedVersion.flatMap { rv =>
-        sendJar(project.p, rv, token, api = true)
+      project.project.recommendedVersion.flatMap { rv =>
+        sendJar(project.project, rv, token, api = true)
       }
     }
   }
@@ -750,7 +750,7 @@ class Versions @Inject()(stats: StatTracker,
   def downloadSignature(author: String, slug: String, versionString: String) = {
     ProjectAction(author, slug).async { implicit request =>
       implicit val p = request.project
-      implicit val project = p.p
+      implicit val project = p.project
       implicit val r = request.request
       withVersion(versionString)(sendSignatureFile(_, project))
     }
@@ -765,7 +765,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def downloadSignatureById(pluginId: String, versionString: String) = ProjectAction(pluginId).async { implicit request =>
     implicit val p = request.project
-    implicit val project = p.p
+    implicit val project = p.project
     implicit val r = request.request
     withVersion(versionString)(sendSignatureFile(_, project))
   }
@@ -779,7 +779,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def downloadRecommendedSignature(author: String, slug: String) = ProjectAction(author, slug) async { implicit request =>
     implicit val r = request.request
-    request.project.p.recommendedVersion.map(sendSignatureFile(_, request.project.p))
+    request.project.project.recommendedVersion.map(sendSignatureFile(_, request.project.project))
   }
 
   /**
@@ -790,7 +790,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def downloadRecommendedSignatureById(pluginId: String) = ProjectAction(pluginId).async { implicit request =>
     implicit val r = request.request
-    request.project.p.recommendedVersion.map(sendSignatureFile(_, request.project.p))
+    request.project.project.recommendedVersion.map(sendSignatureFile(_, request.project.project))
   }
 
   private def sendSignatureFile(version: Version, project: Project)(implicit request: OreRequest[_]): Result = {

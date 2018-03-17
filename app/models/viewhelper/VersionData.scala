@@ -18,7 +18,7 @@ case class VersionData(p: ProjectData, v: Version, c: Channel,
   def hasUser = p.hasUser
   def currentUser = p.currentUser
 
-  def isRecommended = p.p.recommendedVersionId == v.id
+  def isRecommended = p.project.recommendedVersionId == v.id
 
   def fullSlug = s"""${p.fullSlug}/versions/${v.versionString}"""
 

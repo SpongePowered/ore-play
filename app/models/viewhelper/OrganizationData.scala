@@ -27,7 +27,7 @@ case class OrganizationData(headerData: HeaderData,
                             permissions: Map[Permission, Boolean])
   extends JoinableData[OrganizationRole, OrganizationMember, Organization] {
 
-  def o: Organization = joinable
+  def orga: Organization = joinable
 
   def global = headerData
 

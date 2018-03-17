@@ -74,15 +74,13 @@ class Pages @Inject()(forms: OreForms,
     val project = request.project
     implicit val r = request.request
 
-    withPage(project.p, page).flatMap {
+    withPage(project.project, page).flatMap {
       case (None, b) => Future.successful(notFound)
       case (Some(p), b) =>
-        projects.queryProjectPages(project.p) flatMap { pages =>
+        projects.queryProjectPages(project.project) flatMap { pages =>
           val pageCount = pages.size + pages.values.map(_.size).sum
           val parentPage = if (pages.contains(p)) None
-          else {
-            pages.find(p => p._2.contains(p)).map(_._1)
-          }
+          else pages.collectFirst { case (pp, page) if page.contains(p) => pp }
           this.stats.projectViewed(_ => Ok(views.view(project, pages, p, parentPage, pageCount, b)))(request)
 
         }
@@ -103,23 +101,21 @@ class Pages @Inject()(forms: OreForms,
     val project = request.project
     val parts = pageName.split("/")
     val p = parts.size match {
-      case 2 => project.p.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1))
+      case 2 => project.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1))
         .map((parts(1), _))
       case _ => Future{(parts(0), -1)}
     }
     p.flatMap {
       case (name, parentId) =>
-        project.p.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
+        project.project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
           case Some(page) => Future.successful(page)
-          case None => project.p.getOrCreatePage(name, parentId)
+          case None => project.project.getOrCreatePage(name, parentId)
         }
     } flatMap { p =>
-      projects.queryProjectPages(project.p) map { pages =>
+      projects.queryProjectPages(project.project) map { pages =>
         val pageCount = pages.size + pages.values.map(_.size).sum
         val parentPage = if (pages.contains(p)) None
-        else {
-          pages.find(p => p._2.contains(p)).map(_._1)
-        }
+        else pages.collectFirst { case (pp, page) if page.contains(p) => pp }
         Ok(views.view(project, pages, p, parentPage, pageCount, editorOpen = true))
       }
     }
@@ -150,7 +146,7 @@ class Pages @Inject()(forms: OreForms,
         val project = request.project
         val parentId = pageData.parentId.getOrElse(-1)
         //noinspection ComparingUnrelatedTypes
-        project.p.rootPages.flatMap { rootPages =>
+        project.project.rootPages.flatMap { rootPages =>
           if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
             Future.successful(BadRequest("Invalid parent ID."))
           } else {
@@ -161,14 +157,14 @@ class Pages @Inject()(forms: OreForms,
               val parts = page.split("/")
 
               val created = if (parts.size == 2) {
-                project.p.pages.find(equalsIgnoreCase(_.slug, parts(0))).flatMap { parent =>
+                project.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).flatMap { parent =>
                   val parentId = parent.flatMap(_.id).getOrElse(-1)
                   val pageName = pageData.name.getOrElse(parts(1))
-                  project.p.getOrCreatePage(pageName, parentId, pageData.content)
+                  project.project.getOrCreatePage(pageName, parentId, pageData.content)
                 }
               } else {
                 val pageName = pageData.name.getOrElse(parts(0))
-                project.p.getOrCreatePage(pageName, parentId, pageData.content)
+                project.project.getOrCreatePage(pageName, parentId, pageData.content)
               }
               created.map { _ =>
                 Redirect(self.show(author, slug, page))
@@ -191,7 +187,7 @@ class Pages @Inject()(forms: OreForms,
   def delete(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
     val project = request.project
     for {
-      optionPage <- withPage(project.p, page)
+      optionPage <- withPage(project.project, page)
     } yield {
       if (optionPage._1.isDefined)
         this.service.access[Page](classOf[Page]).remove(optionPage._1.get)

@@ -135,7 +135,7 @@ case class Page(override val id: Option[Int] = None,
     *
     * @return String
     */
-  def fullSlug(parentPage: Option[Page]): String = if (parentPage.isDefined) { s"${parentPage.get.slug}/$slug" } else { slug }
+  def fullSlug(parentPage: Option[Page]): String = parentPage.fold(slug)(pp => s"${pp.slug}/$slug")
 
   /**
     * Returns access to this Page's children (if any).

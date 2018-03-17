@@ -69,8 +69,8 @@
                 @o.foreach { orgData =>
                     @users.memberList(orgData,
                         editable = true,
-                        saveCall = routes.Organizations.updateMembers(orgData.o.name),
-                        removeCall = routes.Organizations.removeMember(orgData.o.name)
+                        saveCall = routes.Organizations.updateMembers(orgData.orga.name),
+                        removeCall = routes.Organizations.removeMember(orgData.orga.name)
                     )
                 }
             }

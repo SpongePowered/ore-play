@@ -40,7 +40,7 @@
 
                     <div class="create-body panel-body">
                         <div class="minor create-blurb">
-                            <p>@Html(messages("version.create.info", project.p.name))</p>
+                            <p>@Html(messages("version.create.info", project.project.name))</p>
                             <p>@Html(messages("project.create.infoText.pgp"))</p>
                         </div>
 
@@ -61,7 +61,7 @@
                                                 @version.description.map { description =>
                                                   @description
                                                 }.getOrElse {
-                                                    @project.p.description.getOrElse(messages("version.create.noDescription"))
+                                                    @project.project.description.getOrElse(messages("version.create.noDescription"))
                                                 }
                                             </td>
                                         </tr>
@@ -151,7 +151,7 @@
                                             <td class="rv">
                                                 <div class="checkbox-inline">
                                                     <input form="form-publish" name="forum-post" type="checkbox"
-                                                            @if(project.p.id.isEmpty || forumSync) { checked } value="true"/>
+                                                            @if(project.project.id.isEmpty || forumSync) { checked } value="true"/>
                                                 </div>
                                                 <div class="clearfix"></div>
                                             </td>
@@ -180,7 +180,7 @@
                         }
 
                         @if(showFileControls) {
-                            @form(action = projectRoutes.Versions.upload(project.p.ownerName, project.p.slug),
+                            @form(action = projectRoutes.Versions.upload(project.project.ownerName, project.project.slug),
                                 'enctype -> "multipart/form-data", 'id -> "form-upload") {
                                 @CSRF.formField
                                 <label class="btn btn-default pull-left" for="pluginFile">
@@ -197,7 +197,7 @@
                             @* Ready to go! *@
                             @defining(pending.get.underlying) { version: Version =>
                                 @form(action = projectRoutes.Versions.publish(
-                                    project.p.ownerName, project.p.slug, version.versionString),
+                                    project.project.ownerName, project.project.slug, version.versionString),
                                     'id -> "form-publish", 'class -> "pull-right") {
                                     @CSRF.formField
                                     @if(!showFileControls) {
@@ -210,7 +210,7 @@
                                     <div @if(!showFileControls) { class="btn-group" } >
                                         @if(!showFileControls) {
                                             <a href="@projectRoutes.Projects.showCreatorWithMeta(
-                                                project.p.ownerName, project.p.name)" title="Back"
+                                                project.project.ownerName, project.project.name)" title="Back"
                                                class="btn btn-default">
                                                 <i class="fa fa-arrow-left"></i>
                                             </a>
@@ -229,7 +229,7 @@
                     <span class="pull-right tos">
                         <i>@Html(messages(
                             "project.create.destination",
-                            "<strong>" + project.p.ownerName + "/" + StringUtils.slugify(project.p.name) + "</strong>"))
+                            "<strong>" + project.project.ownerName + "/" + StringUtils.slugify(project.project.name) + "</strong>"))
                         </i>
                     </span>
                 }

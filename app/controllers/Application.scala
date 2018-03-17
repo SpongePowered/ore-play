@@ -84,16 +84,16 @@ final class Application @Inject()(data: DataHelper,
                platform: Option[String]) = OreAction async { implicit request =>
     // Get categories and sorting strategy
     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
-    val actions = this.service.getSchema(classOf[ProjectSchema])
 
     val canHideProjects = request.data(HideProjects)
     val currentUserId = request.data.currentUser.flatMap(_.id).getOrElse(-1)
 
     // TODO platform filter is not implemented
     val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
-    val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
-    var categoryList: Seq[Category] = categories.map(Categories.fromString).map(_.toSeq).getOrElse(Seq.empty)
-    val q = query.map(queryString => s"%${queryString.toLowerCase}%").getOrElse("%")
+    // val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
+
+    val categoryList: Seq[Category] = categories.fold(Categories.fromString(""))(s => Categories.fromString(s)).toSeq
+    val q = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
 
     val pageSize = this.config.projects.get[Int]("init-load")
     val p = page.getOrElse(1)
@@ -122,10 +122,9 @@ final class Application @Inject()(data: DataHelper,
         (p,u,v,tags)
       }
 
-      if (categoryList != null && Categories.visible.toSet.equals(categoryList.toSet))
-        categoryList = null
+      val catList = if (Categories.visible.toSet.equals(categoryList.toSet)) Some(Seq.empty) else Some(categoryList)
 
-      Ok(views.home(data, Option(categoryList), query.find(_.nonEmpty), p, ordering, pform))
+      Ok(views.home(data, catList, query.find(_.nonEmpty), p, ordering, pform))
     }
 
    }
@@ -161,11 +160,10 @@ final class Application @Inject()(data: DataHelper,
     }
     data map { list =>
       val lists = list.partition(_._6.isEmpty)
-      val headerData: HeaderData = null // TODO headerdata
-      val reviewList = lists._1.map { case (v, p, c, a, _, r) =>
+      val reviewList = lists._2.map { case (v, p, c, a, _, r) =>
         (p, v, c, a, r.get)
       }
-      val unReviewList = lists._2.map { case (v, p, c, a, u, _) =>
+      val unReviewList = lists._1.map { case (v, p, c, a, u, _) =>
         (p, v, c, a, u)
       }
 
@@ -313,11 +311,11 @@ final class Application @Inject()(data: DataHelper,
           case Some(id) =>
             val reviews = this.service.access[Review](classOf[Review])
               .filter(_.userId === id)
-              .map(_.take(20).map { review => { review ->
+              .map(_.take(20).map { review => review ->
                 this.service.access[Version](classOf[Version]).filter(_.id === review.versionId).flatMap { version =>
                   this.projects.find(_.id === version.head.projectId)
                 }
-              }})
+              })
             val flags = this.service.access[Flag](classOf[Flag])
               .filter(_.resolvedBy === id)
               .map(_.take(20).map(flag => flag -> this.projects.find(_.id === flag.projectId)))

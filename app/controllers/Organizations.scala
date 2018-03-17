@@ -136,7 +136,7 @@ class Organizations @Inject()(forms: OreForms,
     this.users.withName(this.forms.OrganizationMemberRemove.bindFromRequest.get.trim).map {
       case None => BadRequest
       case Some(user) =>
-        request.organization.o.memberships.removeMember(user)
+        request.organization.orga.memberships.removeMember(user)
         Redirect(ShowUser(organization))
     }
   }
@@ -148,7 +148,7 @@ class Organizations @Inject()(forms: OreForms,
     * @return             Redirect to Organization page
     */
   def updateMembers(organization: String) = EditOrganizationAction(organization) { implicit request =>
-    this.forms.OrganizationUpdateMembers.bindFromRequest.get.saveTo(request.organization.o)
+    this.forms.OrganizationUpdateMembers.bindFromRequest.get.saveTo(request.organization.orga)
     Redirect(ShowUser(organization))
   }
 

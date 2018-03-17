@@ -18,7 +18,7 @@ Base template for Project overview.
 @import controllers.sugar.Requests.OreRequest
 @(p: ProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
-@bootstrap.layout(p.p.ownerName + " / " + p.p.name) {
+@bootstrap.layout(p.project.ownerName + " / " + p.project.name) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDetail.js")"></script>
 
@@ -60,12 +60,12 @@ Base template for Project overview.
                 <div class="col-md-12">
                     <div class="project-header pull-left">
                         <h1>
-                            <a href="@routes.Users.showProjects(p.p.ownerName, None)">@p.p.ownerName</a>
+                            <a href="@routes.Users.showProjects(p.project.ownerName, None)">@p.project.ownerName</a>
                             / <strong>
-                            <a href="@Projects.show(p.p.ownerName, p.p.slug)">@p.p.name</a>
+                            <a href="@Projects.show(p.project.ownerName, p.project.slug)">@p.project.name</a>
                         </strong>
                         </h1>
-                        @defining(p.p.description.getOrElse("")) { description =>
+                        @defining(p.project.description.getOrElse("")) { description =>
                             <i class="minor" title="@description">@description</i>
                         }
                     </div>
@@ -80,21 +80,21 @@ Base template for Project overview.
                             <ul class="nav navbar-nav">
                                 <!-- Tabs -->
                                 <li id="docs" class="">
-                                    <a href="@Projects.show(p.p.ownerName, p.p.slug)">
+                                    <a href="@Projects.show(p.project.ownerName, p.project.slug)">
                                         <i class="fa fa-book"></i> @messages("project.docs")</a>
                                 </li>
 
                                 <li id="versions" class="">
                                     <a href="@Versions.showList(
-                                        p.p.ownerName, p.p.slug, None, None)">
+                                        p.project.ownerName, p.project.slug, None, None)">
                                         <i class="fa fa-download"></i> @messages("project.versions")
                                     </a>
                                 </li>
 
-                                @if(p.p.topicId != -1) {
+                                @if(p.project.topicId != -1) {
                                     <li id="discussion" class="">
                                         <a href="@Projects.showDiscussion(
-                                            p.p.ownerName, p.p.slug)">
+                                            p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-users"></i> @messages("project.discuss")
                                         </a>
                                     </li>
@@ -103,7 +103,7 @@ Base template for Project overview.
                                 @if(p.hasUser && p(EditSettings)) {
                                     @* Show manager if permitted *@
                                     <li id="settings" class="">
-                                        <a href="@Projects.showSettings(p.p.ownerName, p.p.slug)">
+                                        <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-cog"></i> @messages("project.settings")
                                         </a>
                                     </li>
@@ -113,7 +113,7 @@ Base template for Project overview.
                                     <li id="issues">
                                         <a title="@issues" target="_blank"
                                             href="@Projects.showIssues(
-                                                p.p.ownerName, p.p.slug)">
+                                                p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-bug"></i> Issues <i class="fa fa-external-link"></i></a>
                                     </li>
                                 }
@@ -121,7 +121,7 @@ Base template for Project overview.
                                 @p.settings.source.map { source =>
                                     <li id="source">
                                         <a title="@source" target="_blank"
-                                        href="@Projects.showSource(p.p.ownerName, p.p.slug)">
+                                        href="@Projects.showSource(p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-code"></i> Source <i class="fa fa-external-link"></i>
                                         </a>
                                     </li>
@@ -140,25 +140,25 @@ Base template for Project overview.
                                 </span>
                             }
 
-                            @if(p.global.hasUser && !p.p.isDeleted) {
+                            @if(p.global.hasUser && !p.project.isDeleted) {
 
                                 <script nonce="@nonce">
-                                    var projectOwner = "@p.p.ownerName";
-                                    var projectSlug = "@p.p.slug";
+                                    var projectOwner = "@p.project.ownerName";
+                                    var projectSlug = "@p.project.slug";
                                     var alreadyStarred = @p.starred;
                                 </script>
 
-                                @if(!p.p.isOwner(p.global.currentUser.get)) {
+                                @if(!p.project.isOwner(p.global.currentUser.get)) {
                                     <button class="btn btn-default btn-star">
                                         <i id="icon-star" @if(p.starred) {
                                             class="fa fa-star"
                                         } else {
                                             class="fa fa-star-o" }></i>
-                                        <span class="starred"> @p.p.starCount</span>
+                                        <span class="starred"> @p.project.starCount</span>
                                     </button>
                                 } else {
                                     <span class="minor stars-static">
-                                        <i class="fa fa-star"></i> @p.p.starCount
+                                        <i class="fa fa-star"></i> @p.project.starCount
                                     </span>
                                 }
 
@@ -169,9 +169,9 @@ Base template for Project overview.
                             }
 
                             <!-- Flag button -->
-                            @if(p.hasUser && !p.currentUser.get.username.equals(p.p.ownerName)
+                            @if(p.hasUser && !p.currentUser.get.username.equals(p.project.ownerName)
                                     && !p.uProjectFlags
-                                    && !p.p.isDeleted) {
+                                    && !p.project.isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
                                     <i class="fa fa-flag"></i> @messages("project.flag")
                                 </button>
@@ -187,7 +187,7 @@ Base template for Project overview.
                                                 <h4 class="modal-title" id="label-flag">Flag project</h4>
                                             </div>
                                             @form(action = Projects.flag(
-                                                p.p.ownerName, p.p.slug)) {
+                                                p.project.ownerName, p.project.slug)) {
                                                 @CSRF.formField
                                                 <div class="modal-body">
                                                     <ul class="list-group list-flags">
@@ -218,8 +218,8 @@ Base template for Project overview.
                             }
 
                             <!-- Download button -->
-                            @if(!p.p.isDeleted) {
-                                <a href="@Versions.downloadRecommended(p.p.ownerName, p.p.slug, None)"
+                            @if(!p.project.isDeleted) {
+                                <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
                                 title="@messages("project.download.recommend")" data-toggle="tooltip"
                                 data-placement="bottom" class="btn btn-primary">
                                     <i class="fa fa-download"></i> @messages("general.download")
@@ -233,18 +233,18 @@ Base template for Project overview.
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-actions">
                                     @if(p.global(ReviewFlags)) {
-                                        <li><a href="@Projects.showFlags(p.p.ownerName, p.p.slug)">
+                                        <li><a href="@Projects.showFlags(p.project.ownerName, p.project.slug)">
                                             Flag history (@p.flagCount) </a></li>
                                     }
                                     @if(p.global(ReviewFlags)) {
-                                        <li><a href="@Projects.showNotes(p.p.ownerName, p.p.slug)">
+                                        <li><a href="@Projects.showNotes(p.project.ownerName, p.project.slug)">
                                             Staff notes (@p.noteCount) </a></li>
                                     }
                                     @if(p.global(ViewLogs)) {
-                                        <li><a href="@Projects.showLog(p.p.ownerName, p.p.slug)">
+                                        <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
                                             Log (@p.projectLogSize) </a></li>
                                     }
-                                    <li><a href="https://forums.spongepowered.org/users/@p.p.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
+                                    <li><a href="https://forums.spongepowered.org/users/@p.project.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
                                 </ul>
                             }
                         </div>

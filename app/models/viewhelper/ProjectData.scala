@@ -44,16 +44,16 @@ case class ProjectData(headerData: HeaderData,
 
   def flagCount = flags.size
 
-  def p: Project = joinable
+  def project: Project = joinable
 
   def global = headerData
 
   def hasUser = global.hasUser
   def currentUser = global.currentUser
 
-  def visibility = p.visibility
+  def visibility = project.visibility
 
-  def fullSlug = s"""/${p.ownerName}/${p.slug}"""
+  def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
   def renderVisibilityChange = lastVisibilityChange.map(_.renderComment())
 }

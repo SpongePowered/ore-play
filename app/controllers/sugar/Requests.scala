@@ -52,7 +52,7 @@ object Requests {
     extends ProjectRequest[A](project, request)
       with ScopedRequest[A] {
     override def user: User = request.user
-    override val subject: ScopeSubject = this.project.p
+    override val subject: ScopeSubject = this.project.project
   }
 
   /**
@@ -73,6 +73,6 @@ object Requests {
     extends OrganizationRequest[A](organization, request)
       with ScopedRequest[A] {
     override def user: User = request.user
-    override val subject: ScopeSubject = this.organization.o
+    override val subject: ScopeSubject = this.organization.orga
   }
 }

@@ -249,7 +249,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   })
 
   def evilAwaitChannel(c: String)(implicit request: ProjectRequest[_]): Option[Channel] = {
-    val value = request.project.p.channels.find(_.name.toLowerCase === c.toLowerCase)
+    val value = request.project.project.channels.find(_.name.toLowerCase === c.toLowerCase)
     // TODO remvove await
     this.service.await(value).getOrElse(None)
   }

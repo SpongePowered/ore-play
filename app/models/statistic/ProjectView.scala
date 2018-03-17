@@ -54,7 +54,7 @@ object ProjectView {
     checkNotNull(users, "null user base", "")
     users.current.map { _.flatMap(_.id) } map { userId =>
       val view = ProjectView(
-        modelId = request.project.p.id.get,
+        modelId = request.project.project.id.get,
         address = InetString(remoteAddress),
         cookie = currentCookie,
         _userId = userId

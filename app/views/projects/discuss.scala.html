@@ -20,7 +20,7 @@ Discussion page within Project overview.
     <script nonce="@nonce">
         DiscourseEmbed = {
             discourseUrl: '@config.forums.get[String]("baseUrl")/',
-            topicId: @p.p.topicId
+            topicId: @p.project.topicId
         };
     </script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDiscuss.js")"></script>
@@ -49,7 +49,7 @@ Discussion page within Project overview.
 
                             <div class="push-down">
                                 @utils.editor(
-                                    saveCall = projectRoutes.postDiscussionReply(p.p.ownerName, p.p.slug),
+                                    saveCall = projectRoutes.postDiscussionReply(p.project.ownerName, p.project.slug),
                                     cancellable = false,
                                     enabled = true
                                 )
@@ -60,7 +60,7 @@ Discussion page within Project overview.
                     </div>
                     <div class="reply-controls">
                         <a class="forums" target="_blank"
-                           href="@config.forums.get[String]("baseUrl")/t/@p.p.topicId">
+                           href="@config.forums.get[String]("baseUrl")/t/@p.project.topicId">
                             @messages("general.viewOnForums")
                         </a>
                     </div>

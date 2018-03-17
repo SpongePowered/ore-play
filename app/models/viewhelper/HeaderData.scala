@@ -58,8 +58,7 @@ object HeaderData {
                    UserAdmin -> false,
                    HideProjects -> false))
 
-  def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
-      service: ModelService): Future[HeaderData] = {
+  def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[HeaderData] = {
     request.cookies.get("_oretoken") match {
       case None => Future.successful(unAuthenticated)
       case Some(cookie) =>
@@ -94,18 +93,18 @@ object HeaderData {
   private def getHeaderData(user: User) = {
 
     Future.successful(
-    HeaderData(Some(user),
-      Map(ReviewFlags -> false,
-        ReviewVisibility -> false,
-        ReviewProjects -> false,
-        ViewStats -> false,
-        ViewHealth -> false,
-        ViewLogs -> false,
-        HideProjects -> false,
-        HardRemoveProject -> false,
-        UserAdmin -> false,
-        HideProjects -> false)
-    ))
+      HeaderData(Some(user),
+        Map(ReviewFlags -> true,
+          ReviewVisibility -> true,
+          ReviewProjects -> true,
+          ViewStats -> true,
+          ViewHealth -> true,
+          ViewLogs -> true,
+          HideProjects -> true,
+          HardRemoveProject -> true,
+          UserAdmin -> true,
+          HideProjects -> true)
+      ))
     // TODO cache and fill
   }
 
