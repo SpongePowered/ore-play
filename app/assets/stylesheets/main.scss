@@ -93,7 +93,14 @@ form {
 .project-list {
   .row {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+  }
+
+  @media (max-width: 767px) {
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+    }
   }
 
   .project {
@@ -480,7 +487,7 @@ select.form-control, input.form-control {
 @media (min-width : 992px) {
   .centered-content-row {
     display: flex;
-    flex-flow: row wrap;
+    flex-flow: nowrap;
     align-items: center;
   }
 }
