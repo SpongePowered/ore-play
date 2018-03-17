@@ -9,8 +9,10 @@
 @import models.viewhelper.UserData
 @import models.project.Version
 @import models.viewhelper.OrganizationData
-@(u: UserData, o: Option[OrganizationData], models: Seq[Project], starred: Seq[(Project, Version)], page: Int)(implicit messages: Messages, flash: Flash, request: Request[_],
-        service: ModelService, config: OreConfig, userBase: UserBase)
+@import models.project.Tag
+@import controllers.sugar.Requests.OreRequest
+@(u: UserData, o: Option[OrganizationData], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
+        page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @users.view(u) {
 

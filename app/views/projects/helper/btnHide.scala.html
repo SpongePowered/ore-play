@@ -1,24 +1,24 @@
 @import models.project.Project
 @import models.project.VisibilityTypes
 @import models.user.User
-@(project: Project, user: User)(implicit messages: Messages)
+@import models.viewhelper.ProjectData
+@import ore.permission.Permission
+@(project: Project, perms: Map[Permission, Boolean], user: User)(implicit messages: Messages)
 
-@defining(project.visibility) { visible =>
-    <div class="btn-group btn-group-sm">
-        <button class="btn btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-project="@project.ownerName/@project.slug" style="color: black">
-            <i class="fa fa-eye"></i> Visibility actions
-            <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="visibility-actions">
-        @for(visibility <- VisibilityTypes.values.toSeq.sortBy(_.id)) {
-            @if(user can visibility.permission in project) {
-            <li>
-                <a href="#" class="btn-visibility-change" data-project="@project.ownerName/@project.slug" data-level="@visibility.id" @if(visibility.showModal){ data-modal="true" }>
-                    @messages("visibility.name." + visibility.nameKey) @if(project.visibility == visibility) { <i class="fa fa-check" style="color: black" aria-hidden="true"></i> }
-                </a>
-            </li>
-            }
+<div class="btn-group btn-group-sm">
+    <button class="btn btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-project="@project.ownerName/@project.slug" style="color: black">
+        <i class="fa fa-eye"></i> Visibility actions
+        <span class="caret"></span>
+    </button>
+    <ul class="dropdown-menu" aria-labelledby="visibility-actions">
+    @for(visibility <- VisibilityTypes.values.toSeq.sortBy(_.id)) {
+        @if(perms(visibility.permission)) {
+        <li>
+            <a href="#" class="btn-visibility-change" data-project="@project.ownerName/@project.slug" data-level="@visibility.id" @if(visibility.showModal){ data-modal="true" }>
+                @messages("visibility.name." + visibility.nameKey) @if(project.visibility == visibility) { <i class="fa fa-check" style="color: black" aria-hidden="true"></i> }
+            </a>
+        </li>
         }
-        </ul>
-    </div>
-}
+    }
+    </ul>
+</div>

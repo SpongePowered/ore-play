@@ -4,6 +4,7 @@ import javax.inject.Inject
 
 import controllers.OreBaseController
 import controllers.sugar.Bakery
+import controllers.sugar.Requests.OreRequest
 import db.impl.OrePostgresDriver.api._
 import db.{ModelFilter, ModelService}
 import form.OreForms
@@ -67,11 +68,13 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return View of page
     */
-  def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { implicit request =>
+  def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { request =>
     val project = request.project
     implicit val r = request.request
-    withPage(project, page).flatMap {
-      case (Some(p), b) => this.stats.projectViewed(implicit request => Ok(views.view(project, p, b)))
+    val rootPages: Seq[(Page, Seq[Page])] = null // TODO get pages
+  val pageCount: Int = 0  //TODO get pagecount
+    withPage(project.p, page).flatMap {
+      case (Some(p), b) => this.stats.projectViewed(_ => Ok(views.view(project, rootPages, p, pageCount, b)))(request)
       case (None, b) => Future.successful(notFound)
     }
   }
@@ -85,22 +88,25 @@ class Pages @Inject()(forms: OreForms,
     * @param pageName   Page name
     * @return Page editor
     */
-  def showEditor(author: String, slug: String, pageName: String) = PageEditAction(author, slug).async { implicit request =>
+  def showEditor(author: String, slug: String, pageName: String) = PageEditAction(author, slug).async { request =>
+    implicit val r = request.request
     val project = request.project
     val parts = pageName.split("/")
     val p = parts.size match {
-      case 2 => project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1))
+      case 2 => project.p.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1))
         .map((parts(1), _))
       case _ => Future{(parts(0), -1)}
     }
     p.flatMap {
       case (name, parentId) =>
-        project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
+        project.p.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
           case Some(page) => Future.successful(page)
-          case None => project.getOrCreatePage(name, parentId)
+          case None => project.p.getOrCreatePage(name, parentId)
         }
     } map { p =>
-      Ok(views.view(project, p, editorOpen = true))
+      val rootPages: Seq[(Page, Seq[Page])] = null // TODO get pages
+      val pageCount: Int = 0 // TODO get pagecount
+      Ok(views.view(project, rootPages, p, pageCount, editorOpen = true))
     }
   }
 
@@ -129,7 +135,7 @@ class Pages @Inject()(forms: OreForms,
         val project = request.project
         val parentId = pageData.parentId.getOrElse(-1)
         //noinspection ComparingUnrelatedTypes
-        project.rootPages.flatMap { rootPages =>
+        project.p.rootPages.flatMap { rootPages =>
           if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
             Future.successful(BadRequest("Invalid parent ID."))
           } else {
@@ -140,14 +146,14 @@ class Pages @Inject()(forms: OreForms,
               val parts = page.split("/")
 
               val created = if (parts.size == 2) {
-                project.pages.find(equalsIgnoreCase(_.slug, parts(0))).flatMap { parent =>
+                project.p.pages.find(equalsIgnoreCase(_.slug, parts(0))).flatMap { parent =>
                   val parentId = parent.flatMap(_.id).getOrElse(-1)
                   val pageName = pageData.name.getOrElse(parts(1))
-                  project.getOrCreatePage(pageName, parentId, pageData.content)
+                  project.p.getOrCreatePage(pageName, parentId, pageData.content)
                 }
               } else {
                 val pageName = pageData.name.getOrElse(parts(0))
-                project.getOrCreatePage(pageName, parentId, pageData.content)
+                project.p.getOrCreatePage(pageName, parentId, pageData.content)
               }
               created.map { _ =>
                 Redirect(self.show(author, slug, page))
@@ -170,7 +176,7 @@ class Pages @Inject()(forms: OreForms,
   def delete(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
     val project = request.project
     for {
-      optionPage <- withPage(project, page)
+      optionPage <- withPage(project.p, page)
     } yield {
       if (optionPage._1.isDefined)
         this.service.access[Page](classOf[Page]).remove(optionPage._1.get)

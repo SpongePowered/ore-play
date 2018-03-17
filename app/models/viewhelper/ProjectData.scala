@@ -15,7 +15,7 @@ import play.twirl.api.Html
 // TODO give this to templates with:
 
 // TODO perms in project ; EditPages ; EditSettings (currently in projects.view.html
-// EditChannels - EditVersions
+// EditChannels - EditVersions - VisibilityTypes.values
 
 
 case class ProjectData(headerData: HeaderData,

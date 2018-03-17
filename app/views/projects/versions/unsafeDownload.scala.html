@@ -6,14 +6,15 @@
 @import ore.project.io.DownloadTypes.DownloadType
 @import views.html.helper.CSRF
 @import models.viewhelper.HeaderData
-@(headerData: HeaderData, project: Project,
+@import controllers.sugar.Requests.OreRequest
+@(project: Project,
   target: Version,
   downloadType: DownloadType,
-  token: String)(implicit messages: Messages, request: Request[_], config: OreConfig)
+  token: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @versionRoutes = @{ controllers.project.routes.Versions }
 
-@bootstrap.layout(messages("version.download.confirm", project.ownerName, project.name, target.name), headerData) {
+@bootstrap.layout(messages("version.download.confirm", project.ownerName, project.name, target.name)) {
 
     <div class="container" style="margin-top: 90px;">
         <div class="row">

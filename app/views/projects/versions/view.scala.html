@@ -12,8 +12,8 @@
 @import views.html.utils.editor
 @import models.viewhelper.HeaderData
 @import models.viewhelper.VersionData
-@(v: VersionData)(implicit messages: Messages, request: Request[_], flash: Flash,
-        service: ModelService, config: OreConfig, users: UserBase, projectBase: ProjectBase)
+@import controllers.sugar.Requests.OreRequest
+@(v: VersionData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}

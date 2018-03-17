@@ -7,9 +7,14 @@
 
 @import java.sql.Timestamp
 @import controllers.sugar.Requests.OreRequest
-@(project: Project)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@import models.project.Note
+@import models.user.User
 
-@notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }
+
+@* @notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }*@
+
+@(project: Project, notes: Seq[(Note, User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -50,10 +55,10 @@
             <div class="col-md-12">
                 <table class="table table-condensed setting-no-border table-notes-log">
                     <tbody>
-                        @notes.map { note =>
+                        @notes.map { case (note, user) =>
                             <tr>
                                 <td class="note-fixed-with">@prettifyDateAndTime(new Timestamp(note.time))</td>
-                                <td class="note-fixed-with"><strong>@users.get(note.user).map(_.username).getOrElse("Unknown")</strong></td>
+                                <td class="note-fixed-with"><strong>user.name).getOrElse("Unknown")</strong></td>
                                 <td>@note.render</td>
                             </tr>
                         }

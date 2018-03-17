@@ -10,7 +10,7 @@ import models.project.{Project, Version}
 import models.user.SignOn
 import models.viewhelper.HeaderData
 import ore.{OreConfig, OreEnv}
-import play.api.i18n.{I18nSupport, Lang}
+import play.api.i18n.{I18nSupport, Lang, Messages}
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import util.StringUtils._

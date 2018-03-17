@@ -7,8 +7,13 @@
 @import java.time.Instant
 @import models.project.VisibilityTypes
 
-@(project: Project)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig,
-        users: UserBase)
+@import models.admin.VisibilityChange
+@* visibilityChangesByDate *@
+@import models.user.User
+@import controllers.sugar.Requests.OreRequest
+@import models.admin.ProjectLogEntry
+@(project: Project, visibilityChanges: Seq[(VisibilityChange, Option[User])],
+        logs: Seq[ProjectLogEntry])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -36,16 +41,16 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @if(project.visibilityChanges.all.isEmpty) {
+                            @if(visibilityChanges.isEmpty) {
                                 <tr><td>No entries founds</td></tr>
                             }
-                            @project.visibilityChangesByDate.reverse.map { entry =>
+                            @visibilityChanges.reverse.map { case (entry, createdBy) =>
                                 <tr>
                                     <td>@VisibilityTypes.withId(entry.visibility)</td>
                                     <td>@prettifyDateAndTime(entry.createdAt.getOrElse(Timestamp.from(Instant.now())))</td>
                                     <td>@entry.renderComment()</td>
-                                    @if(entry.createdBy.isDefined) {
-                                        <td>@users.get(entry.createdBy.get).map(_.username).getOrElse("Unknown")</td>
+                                    @if(createdBy.isDefined) {
+                                        <td>@createdBy.get.name</td>
                                     } else {
                                         <td>Unknown</td>
                                     }
@@ -71,10 +76,10 @@
                     </div>
                     <table class="table table-condensed setting-no-border table-review-log">
                         <tbody>
-                            @if(project.logger.entries.all.isEmpty) {
+                            @if(logs.isEmpty) {
                                 <tr><td>No entries founds</td></tr>
                             }
-                            @project.logger.entries.all.map { entry =>
+                            @logs.foreach { entry =>
                                 <tr>
                                     <td>@entry.message</td>
                                     <td>@prettifyDateAndTime(entry.createdAt.getOrElse(Timestamp.from(Instant.now())))</td>

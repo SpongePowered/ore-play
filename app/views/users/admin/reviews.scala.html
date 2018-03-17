@@ -40,7 +40,7 @@
                         </span>
                         <span class="btn-group-sm">
                             @if(mostRecentUnfinishedReview.isDefined) {
-                                @if(headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
+                                @if(request.data.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
                                     <button class="btn btn-review-stop btn-danger"><i class="fa fa-times-circle-o"></i> @messages("review.stop")</button>
                                     <button class="btn btn-review-approve btn-success"><i class="fa fa-thumbs-up"></i> @messages("user.queue.approve")</button>
                                 } else {
@@ -55,7 +55,7 @@
             </div>
         </div>
         @if(mostRecentUnfinishedReview.isDefined) {
-            @if(headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
+            @if(request.data.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
                 <div class="row">
                     <div class="col-md-12">
                         <div class="input-group" style="width: 100%;

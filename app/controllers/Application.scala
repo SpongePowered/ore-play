@@ -56,6 +56,20 @@ final class Application @Inject()(data: DataHelper,
     Ok(views.linkout(remoteUrl))
   }
 
+  private def queryProjectRV = {
+    val tableProject = TableQuery[ProjectTableMain]
+    val tableVersion = TableQuery[VersionTable]
+    val userTable = TableQuery[UserTable]
+
+    for {
+      p <- tableProject
+      v <- tableVersion if p.recommendedVersionId === v.id
+      u <- userTable if p.userId === u.id
+    } yield {
+      (p, u, v)
+    }
+  }
+
   /**
     * Display the home page.
     *
@@ -66,49 +80,52 @@ final class Application @Inject()(data: DataHelper,
                sort: Option[Int],
                page: Option[Int],
                platform: Option[String]) = OreAction async { implicit request =>
-     // Get categories and sorting strategy
-     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
-     val actions = this.service.getSchema(classOf[ProjectSchema])
+    // Get categories and sorting strategy
+    val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
+    val actions = this.service.getSchema(classOf[ProjectSchema])
 
-     val visibleFilter = for {
-       currentUser <- this.users.current
-       canHideProjects <- if (currentUser.isDefined) currentUser.get can HideProjects in GlobalScope else Future.successful(false)
-     } yield {
-       val visibleFilter: ModelFilter[Project] = if (canHideProjects) ModelFilter.Empty
-       else ModelFilter[Project](_.visibility === VisibilityTypes.Public) +|| ModelFilter[Project](_.visibility === VisibilityTypes.New)
+    val canHideProjects = request.data(HideProjects)
+    val currentUserId = request.data.currentUser.flatMap(_.id).getOrElse(-1)
 
-       if (currentUser.isDefined) {
-         visibleFilter +|| (ModelFilter[Project](_.userId === currentUser.get.id.get)
-           +&& ModelFilter[Project](_.visibility =!= VisibilityTypes.SoftDelete))
-       } else visibleFilter
-     }
+    // TODO platform filter is not implemented
+    val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
+    val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
+    var categoryArray: Array[Category] = categories.map(Categories.fromString).orNull
+    val q = query.map(queryString => s"%${queryString.toLowerCase}%").getOrElse("%")
 
-     val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
-     val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
+    val pageSize = this.config.projects.get[Int]("init-load")
+    val p = page.getOrElse(1)
+    val offset = (p - 1) * pageSize
 
-     var categoryArray: Array[Category] = categories.map(Categories.fromString).orNull
-     val categoryFilter: ModelFilter[Project] = if (categoryArray != null)
-       actions.categoryFilter(categoryArray)
-     else
-       ModelFilter.Empty
+    val projectQuery = queryProjectRV filter { case (p, u, v) =>
+      (LiteralColumn(true) === canHideProjects) ||
+        (p.visibility === VisibilityTypes.Public) ||
+        (p.visibility === VisibilityTypes.New) ||
+        ((p.userId === currentUserId) && (p.visibility =!= VisibilityTypes.SoftDelete))
+    } filter { case (p, u, v) =>
+      (LiteralColumn(0) === categoryArray.length) || (p.category inSetBind categoryArray)
+    } filter {  case (p, u, v) =>
+      (p.name.toLowerCase like q) ||
+      (p.description.toLowerCase like q) ||
+      (p.ownerName.toLowerCase like q) ||
+      (p.pluginId.toLowerCase like q)
+    } drop offset take pageSize
 
-     val searchFilter: ModelFilter[Project] = query.map(actions.searchFilter).getOrElse(ModelFilter.Empty)
+    // Get projects
+    for {
+      projects <- service.DB.db.run(projectQuery.result)
+      tags <- Future.sequence(projects.map(_._3.tags))
+    } yield {
+      val data = projects zip tags map { case ((p, u, v), tags) =>
+        (p,u,v,tags)
+      }
 
-     val validFilter = ModelFilter[Project](_.recommendedVersionId =!= -1)
-     val filter = visibleFilter.map(_ +&& platformFilter +&& categoryFilter +&& searchFilter +&& validFilter)
+      if (categoryArray != null && Categories.visible.toSet.equals(categoryArray.toSet))
+        categoryArray = null
 
-     // Get projects
-     val pageSize = this.config.projects.get[Int]("init-load")
-     val p = page.getOrElse(1)
-     val offset = (p - 1) * pageSize
-     val future = filter.flatMap { filter =>
-       actions.collect(filter.fn, ordering, pageSize, offset)
-     }
+      Ok(views.home(data, Option(categoryArray), query.find(_.nonEmpty), p, ordering, pform))
+    }
 
-     if (categoryArray != null && Categories.visible.toSet.equals(categoryArray.toSet))
-       categoryArray = null
-
-     future.map(projects => Ok(views.home(projects, Option(categoryArray), query.find(_.nonEmpty), p, ordering, pform)))
    }
 
   /**
@@ -191,8 +208,22 @@ final class Application @Inject()(data: DataHelper,
     * @return Flag overview
     */
   def showFlags() = FlagAction.async { implicit request =>
-    this.service.access[Flag](classOf[Flag]).filterNot(_.isResolved)
-      .map(flags => Ok(views.users.admin.flags(flags)))
+    for {
+      flags <- this.service.access[Flag](classOf[Flag]).filterNot(_.isResolved)
+      users <- Future.sequence(flags.map(_.user))
+      projects <- Future.sequence(flags.map(_.project))
+      perms <- Future.sequence(projects.map { project =>
+        val perms =VisibilityTypes.values.map(_.permission).map { perm =>
+          request.user can perm in project map (value => (perm, value))
+        }
+        Future.sequence(perms).map(_.toMap)
+      })
+    } yield {
+      val data = flags zip users zip projects zip perms map { case ((((flag, user), project), perm)) =>
+        (flag, user, project, perm)
+      }
+      Ok(views.users.admin.flags(data))
+    }
   }
 
   /**
@@ -362,9 +393,19 @@ final class Application @Inject()(data: DataHelper,
   def UserAdminAction = Authenticated andThen PermissionAction[AuthRequest](UserAdmin)
 
   def userAdmin(user: String) = UserAdminAction.async { implicit request =>
-    this.users.withName(user).map {
-      case None => notFound
-      case Some(u) => Ok(views.users.admin.userAdmin(u))
+    this.users.withName(user).flatMap {
+      case None => Future.successful(notFound)
+      case Some(u) =>
+        for {
+          userData <- getUserData(request, user)
+          isOrga <- u.isOrganization
+          projectRoles <- if (isOrga) Future.successful(Seq.empty) else u.projectRoles.all
+          projects <- Future.sequence(projectRoles.map(_.project))
+          orgaData <- if (isOrga) getOrganizationData(request, user) else Future.successful(None)
+        } yield {
+          val pr = projects zip projectRoles
+          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.toSeq))
+        }
     }
   }
 
@@ -456,10 +497,41 @@ final class Application @Inject()(data: DataHelper,
 
     for {
       projectApprovals <- projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0)
+      perms <- Future.sequence(projectApprovals.map { project =>
+        val perms = VisibilityTypes.values.map(_.permission).map { perm =>
+          request.user can perm in project map (value => (perm, value))
+        }
+        Future.sequence(perms).map(_.toMap)
+      })
+      lastChangeRequests <- Future.sequence(projectApprovals.map(_.lastChangeRequest))
+      lastChangeRequesters <- Future.sequence(lastChangeRequests.map {
+                                case None => Future.successful(None)
+                                case Some(lcr) => lcr.created
+                              })
+      lastVisibilityChanges <- Future.sequence(projectApprovals.map(_.lastVisibilityChange))
+      lastVisibilityChangers <- Future.sequence(lastVisibilityChanges.map {
+                                  case None => Future.successful(None)
+                                  case Some(lcr) => lcr.created
+                                })
+
       projectChanges <- projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsChanges).fn, ProjectSortingStrategies.Default, -1, 0)
+      projectChangeRequests <- Future.sequence(projectChanges.map(_.lastChangeRequest))
+      projectVisibilityChanges <- Future.sequence(projectChanges.map(_.lastVisibilityChange))
+      projectVisibilityChangers <- Future.sequence(projectVisibilityChanges.map {
+        case None => Future.successful(None)
+        case Some(lcr) => lcr.created
+      })
+
     }
     yield {
-      Ok(views.users.admin.visibility(projectApprovals.seq, projectChanges.seq))
+      val needsApproval = projectApprovals zip perms zip lastChangeRequests zip lastChangeRequesters zip lastVisibilityChanges zip lastVisibilityChangers map { case (((((a,b),c),d),e),f) =>
+        (a,b,c,d.map(_.name),e,f.map(_.name))
+      }
+      val waitingProjects = projectChanges zip projectChangeRequests zip projectVisibilityChanges zip projectVisibilityChangers map { case (((a,b), c), d) =>
+        (a,b,c,d.map(_.name))
+      }
+
+      Ok(views.users.admin.visibility(needsApproval, waitingProjects))
     }
   }
 }

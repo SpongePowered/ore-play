@@ -1,6 +1,8 @@
 @*
 Documentation page within Project overview.
 *@
+
+@* TODO pages are sorted by name *@
 @import java.text.NumberFormat
 
 @import controllers.project.routes
@@ -13,24 +15,28 @@ Documentation page within Project overview.
 @import util.StringUtils._
 @import models.project.Project
 @import models.project.Page
+@import views.html.utils.alert
+@import views.html.utils.editor
 @import models.viewhelper.ProjectData
 
 @import controllers.sugar.Requests.OreRequest
 @(p: ProjectData,
+  rootPages: Seq[(Page, Seq[Page])],
   page: Page,
+  pageCount: Int,
   forceHideEditor: Boolean = false,
   editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @canEditPages = @{
-    userBase.current.isDefined && (userBase.current.get can EditPages in model) && !forceHideEditor
+    p(EditPages) && !forceHideEditor
 }
 
 @projects.view(p, "#docs") {
 
     <script type="text/javascript" src="@controllers.routes.Assets.at("javascripts/pageCollapse.js")"></script>
     <script nonce="@nonce">
-        pluginId = '@model.pluginId';
-        namespace = '@model.namespace';
+        pluginId = '@p.p.pluginId';
+        namespace = '@p.p.namespace';
     </script>
     @if(editorOpen) {
         <script nonce="@nonce">$(function() { $('.btn-edit').click(); });</script>
@@ -42,10 +48,10 @@ Documentation page within Project overview.
                 <div class="col-md-9">
                     <div class="row">
                         <div class="col-md-12">
-                            @utils.alert("error")
-                            @utils.editor(
-                                saveCall = routes.Pages.save(model.ownerName, model.slug, page.fullSlug),
-                                deleteCall = routes.Pages.delete(model.ownerName, model.slug, page.fullSlug),
+                            @alert("error")
+                            @editor(
+                                saveCall = routes.Pages.save(p.p.ownerName, p.p.slug, page.fullSlug),
+                                deleteCall = routes.Pages.delete(p.p.ownerName, p.p.slug, page.fullSlug),
                                 deletable = !page.isHome,
                                 enabled = canEditPages,
                                 raw = page.contents,
@@ -58,40 +64,39 @@ Documentation page within Project overview.
                 <div class="col-md-3">
 
                     <div class="stats minor">
-                        <p>@messages("project.category.info", model.category.title)</p>
-                        <p>@messages("project.publishDate", prettifyDate(model.createdAt.get))</p>
-                        <p>@model.viewCount views</p>
-                        <p>@NumberFormat.getInstance.format(model.downloadCount) total downloads</p>
-                        @defining(model.settings) { settings =>
-                            @settings.licenseName.map { licenseName =>
-                                <p>
-                                    @Html(messages("project.license.link"))
-                                    <a target="_blank" href="@settings.licenseUrl">@licenseName</a>
-                                </p>
-                            }
+                        <p>@messages("project.category.info", p.p.category.title)</p>
+                        <p>@messages("project.publishDate", prettifyDate(p.p.createdAt.get))</p>
+                        <p>@p.p.viewCount views</p>
+                        <p>@NumberFormat.getInstance.format(p.p.downloadCount) total downloads</p>
+                        @p.settings.licenseName.map { licenseName =>
+                            <p>
+                                @Html(messages("project.license.link"))
+                                <a target="_blank" href="@p.settings.licenseUrl">@licenseName</a>
+                            </p>
                         }
                     </div>
 
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <h3 class="pull-left panel-title">@messages("page.plural")</h3>
-                            @if(canEditPages && model.pages.size < config.projects.get[Int]("max-pages")) {
+                            @if(canEditPages && pageCount < config.projects.get[Int]("max-pages")) {
                                 <button data-toggle="modal" data-target="#new-page" title="New"
                                         class="new-page btn yellow btn-xs pull-right">
                                     <i class="fa fa-plus"></i>
                                 </button>
-                                @projects.pages.modalPageCreate(model)
+                                @projects.pages.modalPageCreate(p.p, rootPages.map(_._1))
                             }
                         </div>
                         <ul class="list-group">
                             <li class="list-group-item">
-                                <a href="@routes.Pages.show(model.ownerName, model.slug, Page.HomeName)">
+                                <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, Page.HomeName)">
                                     @Page.HomeName
                                 </a>
                             </li>
-                            @model.rootPages.filterNot(_.name.equals(Page.HomeName)).map { pg =>
+                            @rootPages.filterNot(_._1.name.equals(Page.HomeName)).foreach { case (pg, children) =>
+<div> @* TODO weird error? *@
                                 <li class="list-group-item">
-                                    @if(pg.children.nonEmpty) {
+                                    @if(children.nonEmpty) {
                                         @if(page.parentId != pg.id.get) {
                                             <a class="page-expand" data-page-id="@pg.id.get">
                                                 <i class="fa fa-plus-square-o"></i>
@@ -102,15 +107,15 @@ Documentation page within Project overview.
                                             </a>
                                         }
                                     }
-                                    <a href="@routes.Pages.show(model.ownerName, model.slug, pg.fullSlug)">
+                                    <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, pg.fullSlug)">
                                         @pg.name
                                     </a>
                                 </li>
                               @if(page.parentId != -1 && page.parentId == pg.id.get) {
                                   <div class="page-children" data-page-id="@pg.id.get">
-                                      @pg.children.sorted(_.name).map { child =>
+                                      @children.foreach { child =>
                                         <li class="list-group-item page-item-child">
-                                            <a href="@routes.Pages.show(model.ownerName, model.slug, child.fullSlug)">
+                                            <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, child.fullSlug)">
                                                 @child.name
                                             </a>
                                         </li>
@@ -118,13 +123,14 @@ Documentation page within Project overview.
                                   </div>
                               }
                             }
+</div>
                         </ul>
                     </div>
 
                     <!-- Member list -->
                     @users.memberList(
-                        model = model,
-                        settingsCall = routes.Projects.showSettings(model.ownerName, model.slug)
+                        j = p,
+                        settingsCall = routes.Projects.showSettings(p.p.ownerName, p.p.slug)
                     )
                 </div>
             </div>

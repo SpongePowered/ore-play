@@ -24,6 +24,14 @@ Versions page within Project overview.
 @versionRoutes = @{ controllers.project.routes.Versions }
 @channelRoutes = @{ controllers.project.routes.Channels }
 
+@versionCount = @{
+    if (visibleChannels.isEmpty) p.versions
+    else {
+        val channelFilter = channels.filter(c => visibleChannels.get.contains(c.name)).map(_.id.get)
+        versions.filter(v => channelFilter.contains(v.channelId)).size
+    }
+}
+
 @projects.view(p, "#versions") {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/versionList.js")"></script>
@@ -32,13 +40,9 @@ Versions page within Project overview.
     PROJECT_OWNER = '@p.p.ownerName';
     PROJECT_SLUG = '@p.p.slug';
     @if(visibleChannels.isDefined) {
-    CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
-    @defining(p.p.channels.filter(_.name.inSet(visibleChannels.get)).map(_.id.get)) { channelIds: Seq[Int] =>
-    TOTAL_VERSIONS = @p.p.versions.filter(_.channelId.inSet(channelIds)).size;
+        CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
     }
-    } else {
-    TOTAL_VERSIONS = @p.versions;
-    }
+    TOTAL_VERSIONS = @versionCount;
     </script>
 
     <div class="container version-container">

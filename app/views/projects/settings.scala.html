@@ -9,7 +9,8 @@
 @import models.viewhelper.ProjectData
 @import models.api.ProjectApiKey
 
-@(p: ProjectData, deploymentKey: Option[ProjectApiKey])(implicit messages: Messages, flash: Flash, request: Request[_], config: OreConfig)
+@import controllers.sugar.Requests.OreRequest
+@(p: ProjectData, deploymentKey: Option[ProjectApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -36,7 +37,7 @@
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">@messages("project.settings")</h3>
                         @if(p.hasUser && p.global(HideProjects)) {
-                            @projects.helper.btnHide(p.p, p.currentUser.get)
+                            @projects.helper.btnHide(p.p, p.permissions, p.currentUser.get)
 
                             <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
                                 <div class="modal-dialog" role="document">

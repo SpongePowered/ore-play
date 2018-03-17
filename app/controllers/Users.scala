@@ -5,6 +5,7 @@ import javax.inject.Inject
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
+import db.impl.{ProjectTableMain, UserTable, VersionTable}
 import db.impl.access.UserBase.ORDERING_PROJECTS
 import discourse.OreDiscourseApi
 import form.OreForms
@@ -129,23 +130,48 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]) = Action.async { implicit request =>
+  def showProjects(username: String, page: Option[Int]) = OreAction async { implicit request =>
     val pageSize = this.config.users.get[Int]("project-page-size")
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
     this.users.withName(username).flatMap {
       case None => Future.successful(NotFound)
       case Some(user) =>
-        user.projects.sortedMultipleOrders(
-          orderings = p => List(p.stars.desc, p.name.asc),
-          filter = _.recommendedVersionId =!= -1,
-          limit = pageSize,
-          offset = offset).map { projectSeq =>
-            val ud: UserData = null // TODO UserData
-            val od: Option[OrganizationData] = null // TODO Orgadata if user is orga
-            val starred: Seq[(Project, Version)] = null // TODO starred by user
-            Ok(views.users.projects(ud, od, projectSeq, starred, p))
+        for {
+          // TODO include orga projects?
+          projectSeq <- service.DB.db.run(queryUserProjects(user).drop(offset).take(pageSize).result)
+          tags <- Future.sequence(projectSeq.map(_._2.tags))
+          userData <- getUserData(request, username)
+          starred <- user.starred()
+          starredRv <- Future.sequence(starred.map(_.recommendedVersion))
+          orgaData <- getOrganizationData(request, username)
+        } yield {
+          val data = projectSeq zip tags map { case ((p, v), tags) =>
+            (p, user, v, tags)
+          }
+          val starredData = starred zip starredRv
+          Ok(views.users.projects(userData.get, orgaData, data, starredData, p))
         }
+    }
+  }
+
+  private def queryUserProjects(user: User) = {
+    queryProjectRV filter { case (p, v) =>
+      p.userId === user.id.get
+    } sortBy { case (p, v) =>
+      (p.stars.desc, p.name.asc)
+    }
+  }
+
+  private def queryProjectRV = {
+    val tableProject = TableQuery[ProjectTableMain]
+    val tableVersion = TableQuery[VersionTable]
+
+    for {
+      p <- tableProject
+      v <- tableVersion if p.recommendedVersionId === v.id
+    } yield {
+      (p, v)
     }
   }
 
@@ -238,7 +264,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * Shows a list of [[models.user.User]]s that have created a
     * [[models.project.Project]].
     */
-  def showAuthors(sort: Option[String], page: Option[Int]) = Action.async { implicit request =>
+  def showAuthors(sort: Option[String], page: Option[Int]) = OreAction async { implicit request =>
     val ordering = sort.getOrElse(ORDERING_PROJECTS)
     val p = page.getOrElse(1)
     this.users.getAuthors(ordering, p).map { u =>
@@ -262,9 +288,9 @@ class Users @Inject()(fakeUser: FakeUser,
           .getOrElse(NotificationFilters.Unread))
         .getOrElse(NotificationFilters.Unread)
 
-      Future.sequence(nFilter(user.notifications).map { notif =>
-        notif.origin.map((notif, _))
-      }) flatMap { notifications =>
+      nFilter(user.notifications).flatMap { l =>
+        Future.sequence(l.map(notif => notif.origin.map((notif, _))))
+      } flatMap { notifications =>
         // Get visible invites
         val iFilter: InviteFilter = inviteFilter
           .map(str => InviteFilters.values

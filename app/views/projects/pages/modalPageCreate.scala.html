@@ -2,7 +2,7 @@
 @import security.NonceFilter._
 @import models.project.Page
 @import ore.OreConfig
-@(model: Project)(implicit messages: Messages, request: RequestHeader, config: OreConfig)
+@(model: Project, rootPages: Seq[Page])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
 
 <script type="text/javascript" src="@routes.Assets.at("javascripts/pageEdit.js")"></script>
 <script nonce="@nonce">
@@ -43,7 +43,7 @@
                     <div class="setting-content">
                         <select class="form-control select-parent">
                             <option selected value="-1">&lt;none&gt;</option>
-                            @model.rootPages.filterNot(_.name.equals(Page.HomeName)).map { page =>
+                            @rootPages.filterNot(_.name.equals(Page.HomeName)).map { page =>
                               <option value="@page.id.get" data-slug="@page.slug">@page.name</option>
                             }
                         </select>

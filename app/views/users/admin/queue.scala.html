@@ -61,7 +61,7 @@ versions User is projectowner
                             </tr>
                         }
                         @underReview.map { case (project, version, channel, author, (review, unfinishedReview, reviewer)) =>
-                            <tr @if(unfinishedReview && h.isCurrentUser(review.userId)){ class="warning" }>
+                            <tr @if(unfinishedReview && request.data.isCurrentUser(review.userId)){ class="warning" }>
                                 <td>
                                     <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
                                         @project.ownerName/<string>@project.name</string>
@@ -83,7 +83,7 @@ versions User is projectowner
                                 </td>
                                 <td style="text-align: right; max-width: 40px">
                                 @if(unfinishedReview) {
-                                    @if(h.isCurrentUser(review.userId)) {
+                                    @if(request.data.isCurrentUser(review.userId)) {
                                         <i class="status fa fa-fw fa-play-circle fa-2x" style="color: green"></i>
                                     } else {
                                         <i class="status fa fa-fw fa-cog fa-2x" style="color: black"></i>

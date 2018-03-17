@@ -13,10 +13,11 @@
 @import models.user.User
 @import models.viewhelper.HeaderData
 @import scala.concurrent.ExecutionContext
-@(pending: PendingProject, userList: List[User], registeredUsers: Int, headerData: HeaderData)(implicit executionContext: ExecutionContext, messages: Messages, flash: Flash, request: Request[_], service: ModelService,
+@import controllers.sugar.Requests.OreRequest
+@(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit executionContext: ExecutionContext, messages: Messages, flash: Flash, request: OreRequest[_],
         forums: OreDiscourseApi, config: OreConfig, currentUser: User)
 
-@projects.helper.panelCreate(messages("project.create"), 3, headerData: HeaderData) {
+@projects.helper.panelCreate(messages("project.create"), 3) {
     <!-- Start panel -->
     <div class="panel-body">
         <!-- Info -->
@@ -28,7 +29,7 @@
         </div>
 
         @users.invite.form(
-            owner = service.await(pending.underlying.owner.user).get,
+            owner = owner,
             loadedUsers = userList,
             roleClass = classOf[ProjectRole]
         )

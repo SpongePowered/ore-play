@@ -19,7 +19,7 @@ import ore.permission.role.Lifted
 import ore.permission.role.RoleTypes.RoleType
 import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv}
-import play.api.i18n.MessagesApi
+import play.api.i18n.{I18nSupport, MessagesApi}
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.{Rep, TableQuery}
 import util.DataHelper
@@ -42,9 +42,12 @@ final class Reviews @Inject()(data: DataHelper,
                               extends OreBaseController {
 
   def showReviews(author: String, slug: String, versionString: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) andThen ProjectAction(author, slug)).async { implicit request =>
-        implicit val project = request.project
-        withVersionAsync(versionString) { implicit version =>
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) andThen ProjectAction(author, slug)).async { request =>
+      implicit val r = request.request
+      implicit val project = request.project
+      implicit val p = project.p
+
+      withVersionAsync(versionString) { implicit version =>
           version.mostRecentReviews.flatMap { reviews =>
             val unfinished = reviews.filter(r => r.createdAt.isDefined && r.endedAt.isEmpty).sorted(Review.ordering2).headOption
             Future.sequence(reviews.map { r =>
@@ -52,7 +55,7 @@ final class Reviews @Inject()(data: DataHelper,
                 (r, u.map(_.name))
               }
             }) map { rv =>
-              implicit val r = request.request
+              //implicit val m = messagesApi.preferred(request)
               Ok(views.users.admin.reviews(unfinished, rv))
             }
           }

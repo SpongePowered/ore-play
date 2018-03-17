@@ -9,7 +9,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import models.project.{Project, VisibilityTypes}
 import models.user.{SignOn, User}
-import models.viewhelper.{HeaderData, OrganizationData, ProjectData}
+import models.viewhelper.{HeaderData, OrganizationData, ProjectData, UserData}
 import ore.permission.scope.GlobalScope
 import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import play.api.mvc.Results.{Redirect, Unauthorized}
@@ -255,7 +255,7 @@ trait Actions extends Calls with ActionHelpers {
   def getProjectData(request: OreRequest[_], project: Project): Future[ProjectData] = {
     // TODO cache and fill
     Future.successful(
-      new ProjectData(request.data, project, null, null, null, null, null,null,null,null,null,null, null,null,null,null,null)
+      new ProjectData(request.data, project, null, false, null, 0, null,Map.empty,Seq.empty,false,false,false, 0,Seq.empty,0,None,null)
     )
   }
 
@@ -291,15 +291,18 @@ trait Actions extends Calls with ActionHelpers {
       implicit val r = request
 
       p match {
-        case None => Future.successful(None)
-        case Some(pr) =>
-          val processed = processProject(pr, Some(request.user))
-          processed.flatMap {
-            case None => Future.successful(None)
-            case Some(pro) => getProjectData(request, pro).map(Some(_))
-          } map(_.map(new AuthedProjectRequest[A](_, request)))
-        }
-      } map(_.toRight(notFound()))
+      case None => Future.successful(None)
+      case Some(pr) =>
+        val processed = processProject(pr, Some(request.user))
+        processed.flatMap {
+          case None => Future.successful(None)
+          case Some(pro) => getProjectData(request, pro).map(Some(_))
+        } map(_.map(new AuthedProjectRequest[A](_, request)))
+      }
+    } map { o =>
+      implicit val r = request
+      o.toRight(notFound())
+    }
 
   }
 
@@ -330,10 +333,17 @@ trait Actions extends Calls with ActionHelpers {
 
   }
 
-  def getOrganizationData(request: OreRequest[_], organization: String): Future[Option[OrganizationData]] = {
+  def getOrganizationData(request: OreRequest[_], organization: String)(implicit ec: ExecutionContext): Future[Option[OrganizationData]] = {
     // TODO cache
     this.organizations.withName(organization).map(_.map { orga =>
       OrganizationData(request.data, orga, null, null, null) // TODO fill
+    })
+  }
+
+  def getUserData(request: OreRequest[_], userName: String)(implicit ec: ExecutionContext): Future[Option[UserData]] = {
+    // TODO cache
+    this.users.withName(userName).map(_.map { user =>
+      UserData(request.data, user, false, 0, Seq.empty, Map.empty, Map.empty)
     })
   }
 

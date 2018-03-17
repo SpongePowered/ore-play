@@ -1,6 +1,7 @@
 package models.viewhelper
 
 import controllers.routes
+import models.user.role.OrganizationRole
 import models.user.{Organization, User}
 import ore.permission.Permission
 
@@ -16,7 +17,7 @@ case class UserData(headerData: HeaderData,
                     user: User,
                     isOrga: Boolean,
                     projectCount: Int,
-                    orgas: Seq[(Organization, User)],
+                    orgas: Seq[(Organization, OrganizationRole, User)],
                     userPerm: Map[Permission, Boolean],
                     orgaPerm: Map[Permission, Boolean]) {
 

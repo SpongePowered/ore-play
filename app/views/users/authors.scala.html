@@ -5,9 +5,10 @@
 @import ore.OreConfig
 @import ore.permission.role.GlobalRole
 @import security.NonceFilter._
+@import views.html.utils.userAvatar
 @import util.StringUtils._
-@(authors: Seq[User], ordering: String, page: Int)(implicit messages: Messages, request: Request[_],
-        service: ModelService, config: OreConfig, users: UserBase, projectBase: ProjectBase)
+@import controllers.sugar.Requests.OreRequest
+@(authors: Seq[User], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @pageSize = @{ config.users.get[Int]("author-page-size") }
 @direction = @{ if (ordering.startsWith("-")) "o-chevron-down" else "o-chevron-up" }
@@ -50,7 +51,7 @@
                 <tbody>
                     @authors.map { user =>
                       <tr>
-                          <td>@utils.userAvatar(user, clazz = "user-avatar-xs")</td>
+                          <td>@userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")</td>
                           <td>
                               <a href="@routes.Users.showProjects(user.username, None)">@user.username</a>
                           </td>

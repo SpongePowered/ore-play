@@ -40,7 +40,7 @@ trait StatTracker {
     ProjectView.bindFromRequest.map { statEntry =>
       this.viewSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
-          project.addView()
+          project.p.addView()
         }
       }
       f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
@@ -60,7 +60,7 @@ trait StatTracker {
       this.downloadSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
           version.addDownload()
-          request.project.addDownload()
+          request.project.p.addDownload()
         }
       }
       f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
