@@ -14,6 +14,7 @@ import ore.{OreConfig, OreEnv}
 import play.api.i18n.MessagesApi
 import play.api.libs.json.Json
 import controllers.sugar.Requests._
+import play.api.cache.AsyncCacheApi
 import security.spauth.SingleSignOnConsumer
 import views.{html => views}
 
@@ -31,6 +32,7 @@ class Organizations @Inject()(forms: OreForms,
                               implicit override val env: OreEnv,
                               implicit override val config: OreConfig,
                               implicit override val service: ModelService,
+                              implicit override val cache: AsyncCacheApi,
                               implicit override val messagesApi: MessagesApi) extends OreBaseController {
 
   private def EditOrganizationAction(organization: String)

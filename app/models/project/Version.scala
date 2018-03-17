@@ -182,7 +182,8 @@ case class Version(override val id: Option[Int] = None,
     }
   }
 
-  def tags(implicit ec: ExecutionContext): Future[List[Tag]] = {
+  def tags(implicit ec: ExecutionContext, service: ModelService = null): Future[List[Tag]] = {
+    schema(service)
     this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map { list =>
       list.toList
     }

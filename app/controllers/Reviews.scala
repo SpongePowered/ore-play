@@ -19,6 +19,7 @@ import ore.permission.role.Lifted
 import ore.permission.role.RoleTypes.RoleType
 import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv}
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.{I18nSupport, MessagesApi}
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.{Rep, TableQuery}
@@ -37,6 +38,7 @@ final class Reviews @Inject()(data: DataHelper,
                               implicit override val sso: SingleSignOnConsumer,
                               implicit override val messagesApi: MessagesApi,
                               implicit override val env: OreEnv,
+                              implicit override val cache: AsyncCacheApi,
                               implicit override val config: OreConfig,
                               implicit override val service: ModelService)
                               extends OreBaseController {

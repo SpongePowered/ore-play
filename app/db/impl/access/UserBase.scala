@@ -145,7 +145,7 @@ class UserBase(override val service: ModelService,
     * @param token  Token of session
     * @return       Session if found and has not expired
     */
-  def getSession(token: String)(implicit ec: ExecutionContext): Future[Option[Session]] =
+  private def getSession(token: String)(implicit ec: ExecutionContext): Future[Option[Session]] =
     this.service.access[Session](classOf[Session]).find(_.token === token).map { _.flatMap { session =>
       if (session.hasExpired) {
         session.remove()

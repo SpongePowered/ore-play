@@ -22,6 +22,7 @@ import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.Compiled
 import db.impl.OrePostgresDriver.api._
+import play.api.cache.AsyncCacheApi
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -38,6 +39,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                                     implicit override val env: OreEnv,
                                     implicit override val service: ModelService,
                                     implicit override val bakery: Bakery,
+                                    implicit override val cache: AsyncCacheApi,
                                     implicit override val sso: SingleSignOnConsumer,
                                     implicit override val messagesApi: MessagesApi)
                                     extends OreBaseController {

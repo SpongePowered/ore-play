@@ -34,6 +34,7 @@ import models.viewhelper.{HeaderData, ProjectData, VersionData}
 import ore.project.factory.TagAlias.ProjectTag
 import util.JavaUtils.autoClose
 import controllers.sugar.Requests._
+import play.api.cache.AsyncCacheApi
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -47,6 +48,7 @@ class Versions @Inject()(stats: StatTracker,
                          forums: OreDiscourseApi,
                          implicit override val bakery: Bakery,
                          implicit override val sso: SingleSignOnConsumer,
+                         implicit override val cache: AsyncCacheApi,
                          implicit override val messagesApi: MessagesApi,
                          implicit override val env: OreEnv,
                          implicit override val config: OreConfig,

@@ -10,6 +10,7 @@ import models.project.{Project, Version}
 import models.user.SignOn
 import models.viewhelper.HeaderData
 import ore.{OreConfig, OreEnv}
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.{I18nSupport, Lang, Messages}
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
@@ -25,10 +26,14 @@ abstract class OreBaseController(implicit val env: OreEnv,
                                  val config: OreConfig,
                                  val service: ModelService,
                                  override val bakery: Bakery,
-                                 override val sso: SingleSignOnConsumer)
+                                 override val sso: SingleSignOnConsumer,
+                                 implicit val cache: AsyncCacheApi
+                                )
                               extends InjectedController
                                 with Actions
                                 with I18nSupport {
+
+  implicit val db = service.DB.db
 
   implicit override val users: UserBase = this.service.getModelBase(classOf[UserBase])
   implicit override val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])

@@ -10,6 +10,7 @@ import models.viewhelper.ProjectData
 import ore.permission.EditChannels
 import ore.project.factory.ProjectFactory
 import ore.{OreConfig, OreEnv}
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
 import views.html.projects.{channels => views}
@@ -23,6 +24,7 @@ import scala.concurrent.Future
 class Channels @Inject()(forms: OreForms,
                          factory: ProjectFactory,
                          implicit override val bakery: Bakery,
+                         implicit override val cache: AsyncCacheApi,
                          implicit override val sso: SingleSignOnConsumer,
                          implicit override val messagesApi: MessagesApi,
                          implicit override val env: OreEnv,

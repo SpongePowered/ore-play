@@ -19,7 +19,7 @@ import ore.project.factory.ProjectFactory
 import ore.project.io.{InvalidPluginFileException, PluginUpload}
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
-import play.api.cache.SyncCacheApi
+import play.api.cache.{AsyncCacheApi, SyncCacheApi}
 import play.api.i18n.{Messages, MessagesApi}
 import play.api.mvc.AnyContent
 import security.spauth.SingleSignOnConsumer
@@ -35,7 +35,8 @@ import scala.concurrent.Future
 class Projects @Inject()(stats: StatTracker,
                          forms: OreForms,
                          factory: ProjectFactory,
-                         implicit val cache: SyncCacheApi,
+                         implicit val syncCache: SyncCacheApi,
+                         implicit override val cache: AsyncCacheApi,
                          implicit override val bakery: Bakery,
                          implicit override val sso: SingleSignOnConsumer,
                          implicit val forums: OreDiscourseApi,

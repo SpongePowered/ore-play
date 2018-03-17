@@ -11,6 +11,7 @@ import form.OreForms
 import models.project.{Page, Project}
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
 import util.StringUtils._
@@ -25,6 +26,7 @@ import scala.concurrent.Future
 class Pages @Inject()(forms: OreForms,
                       stats: StatTracker,
                       implicit override val bakery: Bakery,
+                      implicit override val cache: AsyncCacheApi,
                       implicit override val sso: SingleSignOnConsumer,
                       implicit override val messagesApi: MessagesApi,
                       implicit override val env: OreEnv,

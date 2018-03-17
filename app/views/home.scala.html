@@ -22,7 +22,7 @@ sorted according to different criteria.
 @import models.user.User
 @import models.project.Version
 @import models.project.Tag
-@(models: Seq[(Project, User, Version, Seq[Tag])], visibleCategories: Option[Array[Category]], query: Option[String], page: Int,
+@(models: Seq[(Project, User, Version, Seq[Tag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
 

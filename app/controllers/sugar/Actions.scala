@@ -16,7 +16,9 @@ import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc.{request, _}
 import controllers.sugar.Requests._
 import controllers.sugar.Requests
+import play.api.cache.AsyncCacheApi
 import security.spauth.SingleSignOnConsumer
+import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
@@ -195,17 +197,15 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def oreAction(implicit ec: ExecutionContext) = new ActionTransformer[Request, OreRequest] {
+  def oreAction(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionTransformer[Request, OreRequest] {
     def executionContext = ec
 
     def transform[A](request: Request[A]): Future[OreRequest[A]] = {
-      // TODO build and cache HeaderData here
-      val headerData: Future[HeaderData] = Future.successful(HeaderData())
-      headerData.map(new OreRequest(_, request))
+      HeaderData.of(request).map(new OreRequest(_, request))
     }
   }
 
-  def authAction(implicit ec: ExecutionContext) = new ActionRefiner[Request, AuthRequest] {
+  def authAction(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[Request, AuthRequest] {
     def executionContext = ec
 
     def refine[A](request: Request[A]): Future[Either[Result, AuthRequest[A]]] =
@@ -213,13 +213,11 @@ trait Actions extends Calls with ActionHelpers {
 
   }
 
-  private def maybeAuthRequest[A](request: Request[A], futUser: Future[Option[User]])(implicit ec: ExecutionContext): Future[Either[Result, AuthRequest[A]]] = {
+  private def maybeAuthRequest[A](request: Request[A], futUser: Future[Option[User]])(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi,db: JdbcBackend#DatabaseDef): Future[Either[Result, AuthRequest[A]]] = {
     futUser.flatMap {
       case None => onUnauthorized(request, ec).map(Left(_))
       case Some(user) => {
-        // TODO build and cache HeaderData here
-        val headerData: Future[HeaderData] = Future.successful(HeaderData())
-        headerData map(hd => Right(new AuthRequest[A](user, hd, request)))
+        HeaderData.of(request).map(hd => Right(new AuthRequest[A](user, hd, request)))
       }
     }
   }

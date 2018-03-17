@@ -21,6 +21,7 @@ import mail.{EmailFactory, Mailer}
 import models.project.{Project, Version}
 import models.viewhelper.{HeaderData, OrganizationData, UserData}
 import play.Logger
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
@@ -43,6 +44,7 @@ class Users @Inject()(fakeUser: FakeUser,
                       implicit override val messagesApi: MessagesApi,
                       implicit override val env: OreEnv,
                       implicit override val config: OreConfig,
+                      implicit override val cache: AsyncCacheApi,
                       implicit override val service: ModelService) extends OreBaseController {
 
   private val baseUrl = this.config.app.get[String]("baseUrl")

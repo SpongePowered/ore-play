@@ -23,6 +23,7 @@ import ore.permission.scope.GlobalScope
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
 import ore.{OreConfig, OreEnv, Platforms}
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
 import util.DataHelper
@@ -41,6 +42,7 @@ final class Application @Inject()(data: DataHelper,
                                   implicit override val messagesApi: MessagesApi,
                                   implicit override val env: OreEnv,
                                   implicit override val config: OreConfig,
+                                  implicit override val cache: AsyncCacheApi,
                                   implicit override val service: ModelService)
                                   extends OreBaseController {
 
@@ -90,7 +92,7 @@ final class Application @Inject()(data: DataHelper,
     // TODO platform filter is not implemented
     val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
     val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
-    var categoryArray: Array[Category] = categories.map(Categories.fromString).orNull
+    var categoryList: Seq[Category] = categories.map(Categories.fromString).map(_.toSeq).getOrElse(Seq.empty)
     val q = query.map(queryString => s"%${queryString.toLowerCase}%").getOrElse("%")
 
     val pageSize = this.config.projects.get[Int]("init-load")
@@ -103,7 +105,7 @@ final class Application @Inject()(data: DataHelper,
         (p.visibility === VisibilityTypes.New) ||
         ((p.userId === currentUserId) && (p.visibility =!= VisibilityTypes.SoftDelete))
     } filter { case (p, u, v) =>
-      (LiteralColumn(0) === categoryArray.length) || (p.category inSetBind categoryArray)
+      (LiteralColumn(0) === categoryList.length) || (p.category inSetBind categoryList)
     } filter {  case (p, u, v) =>
       (p.name.toLowerCase like q) ||
       (p.description.toLowerCase like q) ||
@@ -120,10 +122,10 @@ final class Application @Inject()(data: DataHelper,
         (p,u,v,tags)
       }
 
-      if (categoryArray != null && Categories.visible.toSet.equals(categoryArray.toSet))
-        categoryArray = null
+      if (categoryList != null && Categories.visible.toSet.equals(categoryList.toSet))
+        categoryList = null
 
-      Ok(views.home(data, Option(categoryArray), query.find(_.nonEmpty), p, ordering, pform))
+      Ok(views.home(data, Option(categoryList), query.find(_.nonEmpty), p, ordering, pform))
     }
 
    }
