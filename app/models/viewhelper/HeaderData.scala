@@ -8,6 +8,7 @@ import play.api.cache.AsyncCacheApi
 import play.api.mvc.Request
 import slick.lifted.TableQuery
 import db.impl.OrePostgresDriver.OreDriver._
+import db.impl.access.OrganizationBase
 import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -57,13 +58,17 @@ object HeaderData {
                    UserAdmin -> false,
                    HideProjects -> false))
 
-  def of[A](request: Request[A])(implicit asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[HeaderData] = {
+  def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
+      service: ModelService): Future[HeaderData] = {
     request.cookies.get("_oretoken") match {
       case None => Future.successful(unAuthenticated)
       case Some(cookie) =>
         getSessionUser(cookie.value).flatMap {
           case None => Future.successful(unAuthenticated)
-          case Some(user) => getHeaderData(user)
+          case Some(user) =>
+            user.service = service
+            user.organizationBase = service.getModelBase(classOf[OrganizationBase])
+            getHeaderData(user)
         }
     }
   }

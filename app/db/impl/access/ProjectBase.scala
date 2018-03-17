@@ -7,12 +7,13 @@ import java.util.Date
 
 import com.google.common.base.Preconditions._
 import db.impl.OrePostgresDriver.api._
-import db.impl.{ProjectTable, ProjectTableMain, VersionTable}
+import db.impl.{PageTable, ProjectTable, ProjectTableMain, VersionTable}
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
 import models.project.{Channel, Project, Version}
 import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
+import slick.lifted.TableQuery
 import util.FileUtils
 import util.StringUtils._
 
@@ -232,5 +233,22 @@ class ProjectBase(override val service: ModelService,
     // TODO: Instead, move to the "projects_deleted" table just in case we couldn't delete the topic
     project.remove()
   }
+
+
+  def queryProjectPages(project: Project)(implicit ec: ExecutionContext) = {
+    val tablePage = TableQuery[PageTable]
+    val pagesQuery = for {
+      (pp, p) <- tablePage joinLeft tablePage on (_.id === _.parentId)
+    } yield {
+      (pp, p)
+    }
+    val filtered = pagesQuery filter { case (pp, p) =>
+      pp.projectId === project.id
+    }
+
+    service.DB.db.run(filtered.result)
+      .map(_.groupBy(_._1).mapValues(_.flatMap(_._2))) // group by parent page
+  }
+
 
 }

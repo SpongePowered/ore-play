@@ -135,7 +135,7 @@ case class Page(override val id: Option[Int] = None,
     *
     * @return String
     */
-  def fullSlug: String = if (parentPage.isDefined) { s"${parentPage.get.slug}/${slug}" } else { slug }
+  def fullSlug(parentPage: Option[Page]): String = if (parentPage.isDefined) { s"${parentPage.get.slug}/$slug" } else { slug }
 
   /**
     * Returns access to this Page's children (if any).
@@ -145,7 +145,7 @@ case class Page(override val id: Option[Int] = None,
   def children: ModelAccess[Page]
   = this.service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.get))
 
-  def url(implicit project: Project) : String = project.url + "/pages/" + this.fullSlug
+  def url(implicit project: Project, parentPage: Option[Page]) : String = project.url + "/pages/" + this.fullSlug(parentPage)
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
 
 }

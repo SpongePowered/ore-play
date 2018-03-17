@@ -289,7 +289,7 @@ case class User(override val id: Option[Int] = None,
       case GlobalScope =>
         Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        this.userBase.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId).result).map { l =>
+        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId).result).map { l =>
           val ordering: Ordering[ProjectRole] = Ordering.by(m => m.roleType.trust)
           l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
         } flatMap { userTrust =>
@@ -321,7 +321,7 @@ case class User(override val id: Option[Int] = None,
           }
         }
       case oScope: OrganizationScope =>
-        oScope.organization.flatMap(_.memberships.getTrust(this))
+        oScope.organization.flatMap(o => o.memberships.getTrust(this))
       case _ =>
         throw new RuntimeException("unknown scope: " + scope)
     }
@@ -390,7 +390,7 @@ case class User(override val id: Option[Int] = None,
   /**
     * Fills this User with the information SpongeUser provides.
     *
-    * @param user SpongeUser
+    * @param user Sponge User
     * @return     This user
     */
   def fill(user: SpongeUser)(implicit config: OreConfig): Future[User] = {
@@ -488,6 +488,10 @@ case class User(override val id: Option[Int] = None,
   def toOrganization: Future[Organization] = Defined {
     this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get).map(
       _.getOrElse(throw new IllegalStateException("user is not an organization")))
+  }
+
+  def toMaybeOrganization: Future[Option[Organization]] = Defined {
+    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
   }
 
   /**

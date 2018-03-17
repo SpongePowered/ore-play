@@ -19,29 +19,44 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
   protected case class AndThen(user: User, p: Permission, not: Boolean)(implicit ec: ExecutionContext) {
     def in(subject: ScopeSubject): Future[Boolean] = {
       // Test org perms on projects
-      subject match {
+
+      val projectTested = subject match {
         case project: Project =>
-          val id = project.ownerId
-          project.service.getModelBase(classOf[OrganizationBase]).get(id).map { maybeOrg =>
-            if (maybeOrg.isDefined) {
-              // Project's owner is an organization
-              val org = maybeOrg.get
-              // Test the org scope and the project scope
-              // TODO remove confusing return in the middle here
-              return for {
-                orgTest <- org.scope.test(user, p)
-                projectTest <- project.scope.test(user, p)
-              } yield {
-                orgTest | projectTest
-              }
-            }
-          }
+          checkProjectPerm(project)
         case _ =>
+          Future.successful(false)
       }
-      for {
-        result <- subject.scope.test(user, p)
-      } yield {
-        if (not) !result else result
+
+      projectTested.flatMap {
+        case true => Future.successful(true)
+        case false =>
+          for {
+            result <- subject.scope.test(user, p)
+          } yield {
+            if (not) !result else result
+          }
+      }
+    }
+
+    private def checkProjectPerm(project: Project): Future[Boolean] = {
+      val pp = project.service.getModelBase(classOf[OrganizationBase]).get(project.ownerId)
+      pp.flatMap {
+        case None => Future.successful(false)
+        case Some(org) =>
+          // Test the org scope and the project scope
+          for {
+            orgTest <- org.scope.test(user, p)
+            projectTest <- project.scope.test(user, p)
+          } yield {
+            orgTest | projectTest
+          }
+      }
+    }
+
+    def in(subject: Option[ScopeSubject]): Future[Boolean] = {
+      subject match {
+        case None => Future.successful(false)
+        case Some(s) => this.in(s)
       }
     }
   }

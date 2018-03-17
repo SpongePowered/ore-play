@@ -85,9 +85,8 @@ case class Version(override val id: Option[Int] = None,
     * @return           Channel if present, None otherwise
     */
   def findChannelFrom(channels: Seq[Channel]): Option[Channel] = Defined {
-    if (channels == null)
-      return None
-    channels.find(_.id.get == this.channelId)
+    if (channels == null) None
+    else channels.find(_.id.get == this.channelId)
   }
 
   /**

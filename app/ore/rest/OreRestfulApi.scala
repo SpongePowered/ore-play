@@ -289,18 +289,20 @@ trait OreRestfulApi {
     this.projects.withPluginId(pluginId).flatMap {
       case None => Future.successful(None)
       case Some(project) =>
-        val pages = project.pages.sorted(_.name)
-        val result = if (parentId.isDefined) pages.map(_.filter(_.parentId == parentId.get)) else pages
-        result.map(seq =>
+        for {
+          pages <- project.pages.sorted(_.name)
+        } yield {
+          val seq = if (parentId.isDefined) pages.filter(_.parentId == parentId.get) else pages
+          val pageById = seq.map(p => (p.id.get, p)).toMap
           Some(toJson(seq.map(page => obj(
             "createdAt" -> page.createdAt,
             "id" -> page.id,
             "name" -> page.name,
             "parentId" -> page.parentId,
             "slug" -> page.slug,
-            "fullSlug" -> page.fullSlug
+            "fullSlug" -> page.fullSlug(pageById.get(page.parentId))
           ))))
-        )
+        }
     }
   }
 

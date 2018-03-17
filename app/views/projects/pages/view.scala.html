@@ -21,8 +21,9 @@ Documentation page within Project overview.
 
 @import controllers.sugar.Requests.OreRequest
 @(p: ProjectData,
-  rootPages: Seq[(Page, Seq[Page])],
+  rootPages: Map[Page, Seq[Page]],
   page: Page,
+  parentPage: Option[Page],
   pageCount: Int,
   forceHideEditor: Boolean = false,
   editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
@@ -50,8 +51,8 @@ Documentation page within Project overview.
                         <div class="col-md-12">
                             @alert("error")
                             @editor(
-                                saveCall = routes.Pages.save(p.p.ownerName, p.p.slug, page.fullSlug),
-                                deleteCall = routes.Pages.delete(p.p.ownerName, p.p.slug, page.fullSlug),
+                                saveCall = routes.Pages.save(p.p.ownerName, p.p.slug, page.fullSlug(parentPage)),
+                                deleteCall = routes.Pages.delete(p.p.ownerName, p.p.slug, page.fullSlug(parentPage)),
                                 deletable = !page.isHome,
                                 enabled = canEditPages,
                                 raw = page.contents,
@@ -84,7 +85,7 @@ Documentation page within Project overview.
                                         class="new-page btn yellow btn-xs pull-right">
                                     <i class="fa fa-plus"></i>
                                 </button>
-                                @projects.pages.modalPageCreate(p.p, rootPages.map(_._1))
+                                @projects.pages.modalPageCreate(p.p, rootPages.keys.toSeq)
                             }
                         </div>
                         <ul class="list-group">
@@ -93,8 +94,7 @@ Documentation page within Project overview.
                                     @Page.HomeName
                                 </a>
                             </li>
-                            @rootPages.filterNot(_._1.name.equals(Page.HomeName)).foreach { case (pg, children) =>
-<div> @* TODO weird error? *@
+                            @rootPages.filterNot(_._1.name.equals(Page.HomeName)).map { case (pg, children) =>
                                 <li class="list-group-item">
                                     @if(children.nonEmpty) {
                                         @if(page.parentId != pg.id.get) {
@@ -107,7 +107,7 @@ Documentation page within Project overview.
                                             </a>
                                         }
                                     }
-                                    <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, pg.fullSlug)">
+                                    <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, pg.fullSlug(None))">
                                         @pg.name
                                     </a>
                                 </li>
@@ -115,7 +115,7 @@ Documentation page within Project overview.
                                   <div class="page-children" data-page-id="@pg.id.get">
                                       @children.foreach { child =>
                                         <li class="list-group-item page-item-child">
-                                            <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, child.fullSlug)">
+                                            <a href="@routes.Pages.show(p.p.ownerName, p.p.slug, child.fullSlug(Some(pg)))">
                                                 @child.name
                                             </a>
                                         </li>
@@ -123,7 +123,6 @@ Documentation page within Project overview.
                                   </div>
                               }
                             }
-</div>
                         </ul>
                     </div>
 

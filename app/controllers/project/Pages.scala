@@ -73,11 +73,19 @@ class Pages @Inject()(forms: OreForms,
   def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { request =>
     val project = request.project
     implicit val r = request.request
-    val rootPages: Seq[(Page, Seq[Page])] = null // TODO get pages
-  val pageCount: Int = 0  //TODO get pagecount
+
     withPage(project.p, page).flatMap {
-      case (Some(p), b) => this.stats.projectViewed(_ => Ok(views.view(project, rootPages, p, pageCount, b)))(request)
       case (None, b) => Future.successful(notFound)
+      case (Some(p), b) =>
+        projects.queryProjectPages(project.p) flatMap { pages =>
+          val pageCount = pages.size + pages.values.map(_.size).sum
+          val parentPage = if (pages.contains(p)) None
+          else {
+            pages.find(p => p._2.contains(p)).map(_._1)
+          }
+          this.stats.projectViewed(_ => Ok(views.view(project, pages, p, parentPage, pageCount, b)))(request)
+
+        }
     }
   }
 
@@ -105,10 +113,15 @@ class Pages @Inject()(forms: OreForms,
           case Some(page) => Future.successful(page)
           case None => project.p.getOrCreatePage(name, parentId)
         }
-    } map { p =>
-      val rootPages: Seq[(Page, Seq[Page])] = null // TODO get pages
-      val pageCount: Int = 0 // TODO get pagecount
-      Ok(views.view(project, rootPages, p, pageCount, editorOpen = true))
+    } flatMap { p =>
+      projects.queryProjectPages(project.p) map { pages =>
+        val pageCount = pages.size + pages.values.map(_.size).sum
+        val parentPage = if (pages.contains(p)) None
+        else {
+          pages.find(p => p._2.contains(p)).map(_._1)
+        }
+        Ok(views.view(project, pages, p, parentPage, pageCount, editorOpen = true))
+      }
     }
   }
 

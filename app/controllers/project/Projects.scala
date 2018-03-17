@@ -8,9 +8,10 @@ import controllers.OreBaseController
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{AuthRequest, OreRequest}
 import db.ModelService
+import db.impl.PageTable
 import discourse.OreDiscourseApi
 import form.OreForms
-import models.project.{Note, VisibilityTypes}
+import models.project.{Note, Project, VisibilityTypes}
 import models.user.{Organization, User}
 import models.viewhelper.{HeaderData, ProjectData}
 import ore.permission._
@@ -23,7 +24,9 @@ import play.api.cache.{AsyncCacheApi, SyncCacheApi}
 import play.api.i18n.{Messages, MessagesApi}
 import play.api.mvc.AnyContent
 import security.spauth.SingleSignOnConsumer
+import slick.lifted.TableQuery
 import views.html.{projects => views}
+import db.impl.OrePostgresDriver.api._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -194,9 +197,11 @@ class Projects @Inject()(stats: StatTracker,
   def show(author: String, slug: String) = ProjectAction(author, slug) async { request =>
     val project = request.project
     implicit val r = request.request
-    val rootPages = null // TODO root pages
-    val pageCount: Int = 0 // TODO page count
-    this.stats.projectViewed(request => Ok(views.pages.view(project, rootPages, project.p.homePage, pageCount)))(request)
+
+    projects.queryProjectPages(project.p) flatMap { pages =>
+      val pageCount = pages.size + pages.values.map(_.size).sum
+      this.stats.projectViewed(request => Ok(views.pages.view(project, pages, project.p.homePage, None, pageCount)))(request)
+    }
   }
 
   /**

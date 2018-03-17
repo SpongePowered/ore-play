@@ -201,6 +201,7 @@ trait Actions extends Calls with ActionHelpers {
     def executionContext = ec
 
     def transform[A](request: Request[A]): Future[OreRequest[A]] = {
+      implicit val service = users.service
       HeaderData.of(request).map(new OreRequest(_, request))
     }
   }
@@ -217,24 +218,25 @@ trait Actions extends Calls with ActionHelpers {
     futUser.flatMap {
       case None => onUnauthorized(request, ec).map(Left(_))
       case Some(user) => {
+        implicit val service = users.service
         HeaderData.of(request).map(hd => Right(new AuthRequest[A](user, hd, request)))
       }
     }
   }
 
-  def projectAction(author: String, slug: String)(implicit ec: ExecutionContext) = new ActionRefiner[OreRequest, ProjectRequest] {
+  def projectAction(author: String, slug: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext = ec
 
     def refine[A](request: OreRequest[A]) = maybeProjectRequest(request, Actions.this.projects.withSlug(author, slug))
   }
 
-  def projectAction(pluginId: String)(implicit ec: ExecutionContext) = new ActionRefiner[OreRequest, ProjectRequest] {
+  def projectAction(pluginId: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: OreRequest[A]) = maybeProjectRequest(request, Actions.this.projects.withPluginId(pluginId))
   }
 
-  def maybeProjectRequest[A](r: OreRequest[A], project: Future[Option[Project]])(implicit ec: ExecutionContext): Future[Either[Result, ProjectRequest[A]]] = {
+  def maybeProjectRequest[A](r: OreRequest[A], project: Future[Option[Project]])(implicit asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request = r
     val pr = project.flatMap {
       case None => Future.successful(None)
@@ -243,18 +245,11 @@ trait Actions extends Calls with ActionHelpers {
     pr.flatMap {
       case None => Future.successful(Left(notFound()))
       case Some(p) => {
-        getProjectData(request, p).map { pd =>
+        ProjectData.of(request, p).map { pd =>
           Right(new ProjectRequest[A](pd, r))
         }
       }
     }
-  }
-
-  def getProjectData(request: OreRequest[_], project: Project): Future[ProjectData] = {
-    // TODO cache and fill
-    Future.successful(
-      new ProjectData(request.data, project, null, false, null, 0, null,Map.empty,Seq.empty,false,false,false, 0,Seq.empty,0,None,null)
-    )
   }
 
   def processProject(project: Project, user: Option[User])(implicit ec: ExecutionContext) : Future[Option[Project]] = {
@@ -282,7 +277,7 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def authedProjectActionImpl(project: Future[Option[Project]])(implicit ec: ExecutionContext) = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
+  def authedProjectActionImpl(project: Future[Option[Project]])(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
     def executionContext = ec
 
     def refine[A](request: AuthRequest[A]) = project.flatMap { p =>
@@ -294,7 +289,7 @@ trait Actions extends Calls with ActionHelpers {
         val processed = processProject(pr, Some(request.user))
         processed.flatMap {
           case None => Future.successful(None)
-          case Some(pro) => getProjectData(request, pro).map(Some(_))
+          case Some(pro) => ProjectData.of(request, pro).map(Some(_))
         } map(_.map(new AuthedProjectRequest[A](_, request)))
       }
     } map { o =>
@@ -304,9 +299,9 @@ trait Actions extends Calls with ActionHelpers {
 
   }
 
-  def authedProjectAction(author: String, slug: String)(implicit ec: ExecutionContext) = authedProjectActionImpl(projects.withSlug(author, slug))
+  def authedProjectAction(author: String, slug: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = authedProjectActionImpl(projects.withSlug(author, slug))
 
-  def authedProjectActionById(pluginId: String)(implicit ec: ExecutionContext) = authedProjectActionImpl(projects.withPluginId(pluginId))
+  def authedProjectActionById(pluginId: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = authedProjectActionImpl(projects.withPluginId(pluginId))
 
   def organizationAction(organization: String)(implicit ec: ExecutionContext) = new ActionRefiner[OreRequest, OrganizationRequest] {
     def executionContext = ec
