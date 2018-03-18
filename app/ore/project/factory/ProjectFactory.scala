@@ -111,9 +111,10 @@ trait ProjectFactory {
     if (!plugin.meta.get.getId.equals(project.pluginId))
       return Future.successful(Left("error.version.invalidPluginId"))
     val version = for {
-      projects <- project.channels.all
+      channels <- project.channels.all
+      settings <- project.settings
     } yield {
-      this.startVersion(plugin, project, projects.head.name)
+      this.startVersion(plugin, project, settings, channels.head.name)
     }
     version.flatMap { version =>
       val model = version.underlying
@@ -185,7 +186,7 @@ trait ProjectFactory {
     * @param project  Parent project
     * @return         PendingVersion instance
     */
-  def startVersion(plugin: PluginFile, project: Project, channelName: String): PendingVersion = {
+  def startVersion(plugin: PluginFile, project: Project, settings: ProjectSettings, channelName: String): PendingVersion = {
     val metaData = checkMeta(plugin)
     if (!metaData.getId.equals(project.pluginId))
       throw InvalidPluginFileException("error.plugin.invalidPluginId")
@@ -214,8 +215,7 @@ trait ProjectFactory {
       channelColor = this.config.defaultChannelColor,
       underlying = version,
       plugin = plugin,
-      // TODO remove await
-      createForumPost = if (project.id.isDefined) this.service.await(project.settings).get.forumSync else true,
+      createForumPost = settings.forumSync,
       cacheApi = cacheApi
       )
   }
