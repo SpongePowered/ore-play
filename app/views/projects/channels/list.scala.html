@@ -7,7 +7,6 @@
 @import views.html.utils
 @import models.viewhelper.ProjectData
 
-@* TODO make sure channel list is sorted before going into template *@
 @import controllers.sugar.Requests.OreRequest
 @(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

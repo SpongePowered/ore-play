@@ -150,7 +150,7 @@ trait OreRestfulApi {
     val tableVersion = TableQuery[VersionTable]
     for {
       v <- tableVersion if v.id inSetBind versions
-      t <- tableTags if t.id === v.tagIds.any // TODO check if this is correct
+      t <- tableTags if t.id === v.tagIds.any
     } yield {
       (v.id, t)
     }
@@ -215,10 +215,6 @@ trait OreRestfulApi {
         p.pluginId.toLowerCase === pluginId.toLowerCase
     }
 
-
-    // val grouped = filtered.groupBy(_._1.*)
-    // TODO grouped type is nothing for some reason :/ grouping in memory instead below
-
     val maxLoad = this.config.projects.get[Int]("init-version-load")
     val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
@@ -248,8 +244,6 @@ trait OreRestfulApi {
       p.pluginId.toLowerCase === pluginId.toLowerCase &&
       v.versionString.toLowerCase === name.toLowerCase
     }
-    // val grouped = filtered.groupBy(_._1.*)
-    // TODO grouped type is nothing for some reason :/
 
     for {
       data <- service.DB.db.run(filtered.result.headOption) // Get Project Version Channel and AuthorName
@@ -318,7 +312,6 @@ trait OreRestfulApi {
     } yield {
       (u, p.pluginId) // user and starred plugin ids
     }
-    // TODO get groupby user to work if possible
     baseQuery
   }
 

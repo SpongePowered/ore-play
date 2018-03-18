@@ -44,7 +44,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
     def writes(channel: Channel) = obj("name" -> channel.name, "color" -> channel.color.hex)
   }
 
-  /* TODO writes?
+  /*
   implicit val memberWrites = new Writes[ProjectMember] {
     def writes(member: ProjectMember) = {
       obj(
@@ -133,7 +133,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
   */
 
 
-  /*TODO writes?
+  /*
   implicit val userWrites = new Writes[User] {
     def writes(user: User) = {
       obj(

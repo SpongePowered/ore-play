@@ -78,7 +78,7 @@ class Pages @Inject()(forms: OreForms,
       case (None, b) => Future.successful(notFound)
       case (Some(p), b) =>
         projects.queryProjectPages(project.project) flatMap { pages =>
-          val pageCount = pages.size + pages.values.map(_.size).sum
+          val pageCount = pages.size + pages.map(_._2.size).sum
           val parentPage = if (pages.contains(p)) None
           else pages.collectFirst { case (pp, page) if page.contains(p) => pp }
           this.stats.projectViewed(_ => Ok(views.view(project, pages, p, parentPage, pageCount, b)))(request)
@@ -113,7 +113,7 @@ class Pages @Inject()(forms: OreForms,
         }
     } flatMap { p =>
       projects.queryProjectPages(project.project) map { pages =>
-        val pageCount = pages.size + pages.values.map(_.size).sum
+        val pageCount = pages.size + pages.map(_._2.size).sum
         val parentPage = if (pages.contains(p)) None
         else pages.collectFirst { case (pp, page) if page.contains(p) => pp }
         Ok(views.view(project, pages, p, parentPage, pageCount, editorOpen = true))

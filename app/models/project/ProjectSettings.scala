@@ -2,6 +2,7 @@ package models.project
 
 import java.nio.file.Files._
 import java.sql.Timestamp
+import java.time.Instant
 
 import db.impl._
 import db.impl.model.OreModel
@@ -179,6 +180,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
         }).flatMap { roles =>
           val notifications = roles.map { role =>
             Notification(
+              createdAt = Some(Timestamp.from(Instant.now())),
               userId = role.userId,
               originId = project.ownerId,
               notificationType = NotificationTypes.ProjectInvite,

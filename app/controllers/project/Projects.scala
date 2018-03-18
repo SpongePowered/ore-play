@@ -211,7 +211,7 @@ class Projects @Inject()(stats: StatTracker,
     implicit val r = request.request
 
     projects.queryProjectPages(project.project) flatMap { pages =>
-      val pageCount = pages.size + pages.values.map(_.size).sum
+      val pageCount = pages.size + pages.map(_._2.size).sum
       this.stats.projectViewed(request => Ok(views.pages.view(project, pages, project.project.homePage, None, pageCount)))(request)
     }
   }

@@ -17,6 +17,7 @@ import slick.lifted.TableQuery
 import util.FileUtils
 import util.StringUtils._
 
+import scala.collection.immutable.ListMap
 import scala.concurrent.{ExecutionContext, Future}
 
 class ProjectBase(override val service: ModelService,
@@ -246,8 +247,12 @@ class ProjectBase(override val service: ModelService,
       pp.projectId === project.id
     }
 
-    service.DB.db.run(filtered.result)
-      .map(_.groupBy(_._1).mapValues(_.flatMap(_._2))) // group by parent page
+    service.DB.db.run(filtered.result).map(_.groupBy(_._1)) map { grouped => // group by parent page
+      // Sort by key then lists too
+      grouped.toSeq.sortBy(_._1.name).map { case (pp, p) =>
+        (pp, p.flatMap(_._2).sortBy(_.name))
+      }
+    }
   }
 
 

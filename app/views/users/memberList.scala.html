@@ -105,7 +105,7 @@
                     @role.id.map { id =>
                         <p style="display: none;" class="role-id">@id</p>
                     }
-                    @if(j(EditSettings) && !role.roleType.trust.equals(Absolute)) {
+                    @if(editable && j(EditSettings) && !role.roleType.trust.equals(Absolute)) {
                         <a href="#">
                             <i style="padding-left:5px" class="fa fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
                         </a>

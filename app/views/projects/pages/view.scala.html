@@ -2,7 +2,6 @@
 Documentation page within Project overview.
 *@
 
-@* TODO pages are sorted by name *@
 @import java.text.NumberFormat
 
 @import controllers.project.routes
@@ -21,7 +20,7 @@ Documentation page within Project overview.
 
 @import controllers.sugar.Requests.OreRequest
 @(p: ProjectData,
-  rootPages: Map[Page, Seq[Page]],
+  rootPages: Seq[(Page, Seq[Page])],
   page: Page,
   parentPage: Option[Page],
   pageCount: Int,
@@ -85,7 +84,7 @@ Documentation page within Project overview.
                                         class="new-page btn yellow btn-xs pull-right">
                                     <i class="fa fa-plus"></i>
                                 </button>
-                                @projects.pages.modalPageCreate(p.project, rootPages.keys.toSeq)
+                                @projects.pages.modalPageCreate(p.project, rootPages.map(_._1))
                             }
                         </div>
                         <ul class="list-group">
