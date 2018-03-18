@@ -62,9 +62,15 @@ class Projects @Inject()(stats: StatTracker,
     *
     * @return Create project view
     */
-  def showCreator() = UserLock() { implicit request =>
-    val createdOrgas: Seq[Organization] = null // TODO
-    Ok(views.create(createdOrgas, None))
+  def showCreator() = UserLock() async { implicit request =>
+
+    for {
+      orgas <- request.user.organizations.all
+      createOrga <- Future.sequence(orgas.map(orga => request.user can CreateProject in orga))
+    } yield {
+      val createdOrgas = orgas zip createOrga filter (_._2) map (_._1)
+      Ok(views.create(createdOrgas.toSeq, None))
+    }
   }
 
   /**
@@ -103,13 +109,19 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Create project view
     */
-  def showCreatorWithMeta(author: String, slug: String) = UserLock() { implicit request =>
+  def showCreatorWithMeta(author: String, slug: String) = UserLock().async { implicit request =>
     this.factory.getPendingProject(author, slug) match {
       case None =>
-        Redirect(self.showCreator())
+        Future.successful(Redirect(self.showCreator()))
       case Some(pending) =>
-        val createdOrgas: Seq[Organization] = null // TODO
-        Ok(views.create(createdOrgas, Some(pending)))
+        for {
+          orgas <- request.user.organizations.all
+          owner <- pending.underlying.owner.user
+          createOrga <- Future.sequence(orgas.map(orga => owner can CreateProject in orga))
+        } yield {
+          val createdOrgas = orgas zip createOrga filter (_._2) map (_._1)
+          Ok(views.create(createdOrgas.toSeq, Some(pending)))
+        }
     }
   }
 

@@ -14,6 +14,7 @@ import play.api.cache.AsyncCacheApi
 import play.twirl.api.Html
 import slick.jdbc.JdbcBackend
 import db.impl.OrePostgresDriver.api._
+import ore.project.factory.PendingProject
 import slick.lifted.TableQuery
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -62,6 +63,44 @@ case class ProjectData(headerData: HeaderData,
 }
 
 object ProjectData {
+
+  def of[A](request: OreRequest[A], project: PendingProject)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
+
+    val projectOwner = request.data.currentUser.get
+
+    for {
+      orgaOwner <- projectOwner.toMaybeOrganization
+      canPostAsOwnerOrga <- request.data.currentUser.get can PostAsOrganization in orgaOwner
+      //perms <- perms(request.data.currentUser, project.underlying)
+    } yield  {
+      val settings = project.settings
+      val ownerRole = null // TODO?
+      val versions = 0
+      val members = Seq.empty
+      val uProjectFlags = false
+      val starred = false
+      val watching = false
+      val logSize = 0
+      val lastVisibilityChange = None
+      val lastVisibilityChangeUser = "-"
+
+      new ProjectData(request.data, project.underlying, projectOwner,
+        canPostAsOwnerOrga,
+        ownerRole,
+        versions,
+        settings,
+        Map.empty,
+        Seq.empty,//members.sortBy(_._1.roleType.trust).reverse,
+        uProjectFlags,
+        starred,
+        watching,
+        logSize,
+        Seq.empty,
+        0,
+        lastVisibilityChange,
+        lastVisibilityChangeUser)
+    }
+  }
 
   def of[A](request: OreRequest[A], project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
 

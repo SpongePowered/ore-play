@@ -75,11 +75,13 @@ class Versions @Inject()(stats: StatTracker,
     implicit val r = request.request
     implicit val p = project.project
     withVersionAsync(versionString) { version =>
-      version.channel.flatMap { channel =>
-        this.stats.projectViewed { request =>
-          val versionData: VersionData = null // TODO fill versionData
-          Ok(views.view(versionData))
+      for {
+        data <- VersionData.of(request, version)
+        response <- this.stats.projectViewed { request =>
+          Ok(views.view(data))
         }(request)
+      } yield {
+        response
       }
     }
   }
@@ -204,8 +206,7 @@ class Versions @Inject()(stats: StatTracker,
     for {
       channels <- project.project.channels.all
     } yield {
-      val doForumSync: Boolean = true // TODO get from project settings
-      Ok(views.create(project, doForumSync, None, Some(channels.toSeq), showFileControls = true))
+      Ok(views.create(project, project.settings.forumSync, None, Some(channels.toSeq), showFileControls = true))
     }
   }
 
@@ -264,14 +265,15 @@ class Versions @Inject()(stats: StatTracker,
               Future.successful(Redirect(self.showCreator(author, slug)))
             case Some(p) => p match {
               case pending: PendingProject =>
-                val doForumSync: Boolean = true // TODO get from project settings
-                val p: ProjectData = null // TODO ProjectData based on pending.underlying
-                Future.successful(Ok(views.create(p, doForumSync, Some(pendingVersion), None, showFileControls = false)))
+                ProjectData.of(request, pending).map { data =>
+                  Ok(views.create(data, data.settings.forumSync, Some(pendingVersion), None, showFileControls = false))
+                }
               case real: Project =>
-                real.channels.toSeq.map { channels =>
-                  val doForumSync: Boolean = true // TODO get from project settings
-                  val p: ProjectData = null // TODO ProjectData based on real
-                  Ok(views.create(p, doForumSync, Some(pendingVersion), Some(channels), showFileControls = true))
+                for {
+                  channels <- real.channels.toSeq
+                  data <- ProjectData.of(request, real)
+                } yield {
+                  Ok(views.create(data, data.settings.forumSync, Some(pendingVersion), Some(channels), showFileControls = true))
                 }
             }
           }

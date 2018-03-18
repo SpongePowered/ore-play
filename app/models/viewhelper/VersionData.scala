@@ -1,8 +1,14 @@
 package models.viewhelper
 
+import controllers.sugar.Requests.{OreRequest, ProjectRequest}
+import db.ModelService
 import models.project.{Channel, Project, Version}
 import ore.project.Dependency
 import ore.project.Dependency._
+import play.api.cache.AsyncCacheApi
+import slick.jdbc.JdbcBackend
+
+import scala.concurrent.{ExecutionContext, Future}
 
 // TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
@@ -27,5 +33,16 @@ case class VersionData(p: ProjectData, v: Version, c: Channel,
     dependencies.filterNot(_._1.pluginId.equals(SpongeApiId))
       .filterNot(_._1.pluginId.equals(MinecraftId))
       .filterNot(_._1.pluginId.equals(ForgeId))
+  }
+}
+
+object VersionData {
+  def of[A](request: ProjectRequest[A], version: Version)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[VersionData] = {
+    for {
+      _ <- Future.successful()
+      channel <- version.channel
+    } yield {
+      VersionData(request.project, version, channel, None, Seq.empty)
+    }
   }
 }

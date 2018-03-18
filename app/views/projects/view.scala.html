@@ -30,13 +30,13 @@ Base template for Project overview.
                         <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
                             @if(p.visibility == VisibilityTypes.New) {
                                 @messages("visibility.notice." + p.visibility.nameKey)
-                                @if(p.global(EditPages)) {
+                                @if(p(EditPages)) {
                                     <br>
                                     @messages("visibility.notice.author." + p.visibility.nameKey)
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/publish" style="margin-top: -.5em">Publish</a>
                                 }
                             } else { @if(p.visibility == VisibilityTypes.NeedsChanges) {
-                                @if(p.global(EditPages)) {
+                                @if(p(EditPages)) {
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                                 }
                                 <strong>@messages("visibility.notice." + p.visibility.nameKey)</strong>

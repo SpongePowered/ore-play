@@ -16,7 +16,6 @@ Page used for uploading and creating new projects.
 @import models.viewhelper.HeaderData
 @import models.user.Organization
 
-@* createProjectOrgas: TODO project.owner can CreateProject in _ for *@
 @import controllers.sugar.Requests.OreRequest
 @(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

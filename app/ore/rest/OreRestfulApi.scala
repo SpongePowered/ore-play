@@ -105,7 +105,7 @@ trait OreRestfulApi {
           "href" -> ('/' + p.ownerName + '/' + p.slug),
           //"members"       ->  p.memberships.members.filter(_.roles.exists(_.isAccepted)), // TODO members
           "channels"      ->  toJson(chans.getOrElse(p.id.get, Seq.empty)),
-          "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.get, Seq.empty))),                                                  // TODO channel(one) and tags
+          "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.get, Seq.empty))),    // TODO channel(one) and tags
           "category" -> obj("title" -> p.category.title, "icon" -> p.category.icon),
           "views" -> p.viewCount,
           "downloads" -> p.downloadCount,
