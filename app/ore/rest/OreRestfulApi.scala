@@ -208,7 +208,7 @@ trait OreRestfulApi {
     val filtered = channels.map { chan =>
       queryVersions.filter { case (p, v, vId, c, uName) =>
           // Only allow versions in the specified channels or all if none specified
-          c.name inSetBind chan.toLowerCase.split(",")
+          c.name.toLowerCase inSetBind chan.toLowerCase.split(",")
       }
     } getOrElse queryVersions filter {
       case (p, v, vId, c, uName) =>
@@ -225,7 +225,7 @@ trait OreRestfulApi {
       vTags <- service.DB.db.run(queryVersionTags(data.map(_._3)).result).map { p => p.groupBy(_._1) mapValues (_.map(_._2)) }
     } yield {
       val list = data.map { case (p, v, vId, c, uName) =>
-        writeVersion(v, p, c, Some(uName), vTags.getOrElse(vId, Seq.empty))
+        writeVersion(v, p, c, uName, vTags.getOrElse(vId, Seq.empty))
       }
       Some(toJson(list))
     }
@@ -250,13 +250,13 @@ trait OreRestfulApi {
       tags <- service.DB.db.run(queryVersionTags(data.map(_._3).toSeq).result).map(_.map(_._2)) // Get Tags
     } yield {
       data.map { case (p, v, _, c, uName) =>
-        writeVersion(v, p, c, Some(uName), tags)
+        writeVersion(v, p, c, uName, tags)
       }
     }
   }
 
 
-  private def queryVersions: Query[(ProjectTableMain, VersionTable, Rep[Int], ChannelTable, Rep[String]), (Project, Version, Int, Channel, String), Seq] = {
+  private def queryVersions: Query[(ProjectTableMain, VersionTable, Rep[Int], ChannelTable, Rep[Option[String]]), (Project, Version, Int, Channel, Option[String]), Seq] = {
     val tableProject = TableQuery[ProjectTableMain]
     val tableVersion = TableQuery[VersionTable]
     val tableChannels = TableQuery[ChannelTable]
@@ -264,11 +264,10 @@ trait OreRestfulApi {
 
     for {
       p <- tableProject
-      v <- tableVersion if p.id === v.projectId
-      c <- tableChannels if v.channelId === c.id
-      u <- tableUsers if v.authorId === u.id
+      (v, u) <- tableVersion joinLeft tableUsers on (_.authorId === _.id)
+      c <- tableChannels if v.channelId === c.id && p.id === v.projectId
     } yield {
-      (p, v, v.id, c, u.name)
+      (p, v, v.id, c, u.map(_.name))
     }
   }
 
