@@ -594,13 +594,17 @@ class Projects @Inject()(stats: StatTracker,
   }
 
   def showLog(author: String, slug: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
-      withProject(author, slug) { project =>
-
-        //TODO get data
-        val visChanges = null
-        val logs = null
-        Ok(views.log(project, visChanges, logs))
+    (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)) andThen ProjectAction(author, slug) async { request =>
+      implicit val r = request.request
+      val project = request.data.project
+      for {
+        changes <- project.visibilityChangesByDate
+        changedBy <- Future.sequence(changes.map(_.created))
+        logger <- project.logger
+        logs <- logger.entries.all
+      } yield {
+        val visChanges = changes zip changedBy
+        Ok(views.log(project, visChanges, logs.toSeq))
       }
     }
   }
