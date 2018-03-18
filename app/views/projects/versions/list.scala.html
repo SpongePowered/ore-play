@@ -12,7 +12,9 @@ Versions page within Project overview.
 @import db.impl.OrePostgresDriver.api._
 @import models.viewhelper.ProjectData
 @import controllers.sugar.Requests.OreRequest
+@import models.viewhelper.ScopedProjectData
 @(p: ProjectData,
+        sp: ScopedProjectData,
         channels: Seq[Channel],
         versions: Seq[Version],
         visibleChannels: Option[Array[String]],
@@ -32,7 +34,7 @@ Versions page within Project overview.
     }
 }
 
-@projects.view(p, "#versions") {
+@projects.view(p, sp, "#versions") {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/versionList.js")"></script>
     <script nonce="@nonce">
@@ -52,7 +54,7 @@ Versions page within Project overview.
 
                     <div class="panel-heading">
                         <h4 class="panel-title pull-left">@messages("project.versions")</h4>
-                        @if(p(EditVersions)) {
+                        @if(sp.perms(EditVersions)) {
                             <a href="@versionRoutes.showCreator(p.project.ownerName, p.project.slug)" class="btn yellow">
                             @messages("project.version.new")
                             </a>
@@ -100,7 +102,7 @@ Versions page within Project overview.
                             </li>
                         }
 
-                        @if(p(EditChannels)) {
+                        @if(sp.perms(EditChannels)) {
                             <li class="list-group-item text-right">
                                 <a class="btn yellow btn-xs" href="@channelRoutes.showList(p.project.ownerName, p.project.slug)">
                                     Edit
@@ -111,6 +113,7 @@ Versions page within Project overview.
                 </div>
                 @users.memberList(
                     j = p,
+                    perms = sp.permissions,
                     settingsCall = projectRoutes.showSettings(p.project.ownerName, p.project.slug)
                 )
             </div>

@@ -110,7 +110,7 @@ The main header displayed on each layout.
                             </a>
                         </li>
 
-                        @if(request.data.permissions(ReviewFlags)) {
+                        @if(request.data.globalPerm(ReviewFlags)) {
                             <li>
                                 <a href="@routes.Application.showFlags()">
                                     <span class="flags pull-left">
@@ -124,7 +124,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.permissions(ReviewVisibility)) {
+                        @if(request.data.globalPerm(ReviewVisibility)) {
                             <li>
                                 <a href="@routes.Application.showProjectVisibility()">
                                     <span class="flags pull-left">
@@ -138,7 +138,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.permissions(ReviewProjects)) {
+                        @if(request.data.globalPerm(ReviewProjects)) {
                             <li>
                                 <a href="@routes.Application.showQueue()">
                                     <span class="pull-left">
@@ -152,7 +152,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.permissions(ViewStats)) {
+                        @if(request.data.globalPerm(ViewStats)) {
                             <li>
                                 <a href="@routes.Application.showStats()">
                                     <span class="pull-left">
@@ -163,7 +163,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.permissions(ViewHealth)) {
+                        @if(request.data.globalPerm(ViewHealth)) {
                             <li>
                                 <a href="@routes.Application.showHealth()">
                                     <span class="pull-left">

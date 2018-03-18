@@ -19,11 +19,6 @@ case class VersionData(p: ProjectData, v: Version, c: Channel,
                        dependencies: Seq[(Dependency, Option[Project])]
                       ) {
 
-  def global = p.global
-
-  def hasUser = p.hasUser
-  def currentUser = p.currentUser
-
   def isRecommended = p.project.recommendedVersionId == v.id
 
   def fullSlug = s"""${p.fullSlug}/versions/${v.versionString}"""
@@ -44,7 +39,7 @@ object VersionData {
       approvedBy <- version.reviewer
       deps <- Future.sequence(version.dependencies.map(dep => dep.project.map((dep, _))))
     } yield {
-      VersionData(request.project,
+      VersionData(request.data,
         version,
         channel,
         approvedBy.map(_.name),

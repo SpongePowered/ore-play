@@ -19,7 +19,9 @@ Documentation page within Project overview.
 @import models.viewhelper.ProjectData
 
 @import controllers.sugar.Requests.OreRequest
+@import models.viewhelper.ScopedProjectData
 @(p: ProjectData,
+  sp: ScopedProjectData,
   rootPages: Seq[(Page, Seq[Page])],
   page: Page,
   parentPage: Option[Page],
@@ -28,10 +30,10 @@ Documentation page within Project overview.
   editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @canEditPages = @{
-    p(EditPages) && !forceHideEditor
+    sp.perms(EditPages) && !forceHideEditor
 }
 
-@projects.view(p, "#docs") {
+@projects.view(p, sp, "#docs") {
 
     <script type="text/javascript" src="@controllers.routes.Assets.at("javascripts/pageCollapse.js")"></script>
     <script nonce="@nonce">
@@ -128,6 +130,7 @@ Documentation page within Project overview.
                     <!-- Member list -->
                     @users.memberList(
                         j = p,
+                        perms = sp.permissions,
                         settingsCall = routes.Projects.showSettings(p.project.ownerName, p.project.slug)
                     )
                 </div>

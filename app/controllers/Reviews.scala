@@ -46,8 +46,8 @@ final class Reviews @Inject()(data: DataHelper,
   def showReviews(author: String, slug: String, versionString: String) = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) andThen ProjectAction(author, slug)).async { request =>
       implicit val r = request.request
-      implicit val project = request.project
-      implicit val p = project.project
+      implicit val data = request.data
+      implicit val p = data.project
 
       withVersionAsync(versionString) { implicit version =>
           version.mostRecentReviews.flatMap { reviews =>

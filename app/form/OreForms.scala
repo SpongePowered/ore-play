@@ -249,7 +249,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   })
 
   def evilAwaitChannel(c: String)(implicit request: ProjectRequest[_]): Option[Channel] = {
-    val value = request.project.project.channels.find(_.name.toLowerCase === c.toLowerCase)
+    val value = request.data.project.channels.find(_.name.toLowerCase === c.toLowerCase)
     // TODO remvove await
     this.service.await(value).getOrElse(None)
   }
@@ -258,7 +258,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "apiKey" -> nonEmptyText,
     "channel" -> channel,
     "recommended" -> default(boolean, true),
-    "forumPost" -> default(boolean, request.project.settings.forumSync))
+    "forumPost" -> default(boolean, request.data.settings.forumSync))
   (VersionDeployForm.apply)(VersionDeployForm.unapply))
 
   lazy val ReviewDescription = Form(single("content" -> text))

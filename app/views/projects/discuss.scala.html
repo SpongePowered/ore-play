@@ -11,11 +11,12 @@ Discussion page within Project overview.
 @import views.html.utils
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.ProjectData
-@(p: ProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, forums: DiscourseApi, config: OreConfig)
+@import models.viewhelper.ScopedProjectData
+@(p: ProjectData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, forums: DiscourseApi, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.view(p, "#discussion") {
+@projects.view(p, sp, "#discussion") {
 
     <script nonce="@nonce">
         DiscourseEmbed = {
@@ -36,7 +37,7 @@ Discussion page within Project overview.
 
                         @if(forums.isAvailable) {
 
-                              @if(p.canPostAsOwnerOrga) {
+                              @if(sp.canPostAsOwnerOrga) {
                                   <div class="pull-right push-down">
                                       <i class="minor">@messages("project.discuss.postAs")</i>
                                       <select name="poster" form="form-editor-save">

@@ -83,16 +83,16 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
   def createKey(version: String, pluginId: String) = {
     (Action andThen AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) async { implicit request =>
-      val project = request.project
+      val data = request.data
       this.forms.ProjectApiKeyCreate.bindFromRequest().fold( _ => Future.successful(BadRequest),
         {
           case keyType@Deployment =>
-            this.projectApiKeys.exists(k => k.projectId === project.project.id.get && k.keyType === keyType)
+            this.projectApiKeys.exists(k => k.projectId === data.project.id.get && k.keyType === keyType)
               .flatMap { exists =>
                 if (exists) Future.successful(BadRequest)
                 else {
                   this.projectApiKeys.add(ProjectApiKey(
-                    projectId = project.project.id.get,
+                    projectId = data.project.id.get,
                     keyType = keyType,
                     value = UUID.randomUUID().toString.replace("-", ""))).map { pak =>
                     Created(Json.toJson(pak))
@@ -111,7 +111,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
       this.forms.ProjectApiKeyRevoke.bindFromRequest().fold(
         _ => BadRequest,
         key => {
-          if (key.projectId != request.project.project.id.get)
+          if (key.projectId != request.data.project.id.get)
             BadRequest
           else {
             key.remove()
@@ -160,7 +160,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def deployVersion(version: String, pluginId: String, name: String) = ProjectAction(pluginId).async { implicit request =>
     version match {
       case "v1" =>
-        val project = request.project
+        val projectData = request.data
         this.forms.VersionDeploy.bindFromRequest().fold(
           hasErrors => Future.successful(BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))),
           formData => {
@@ -177,10 +177,10 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
             val compiled = Compiled(queryApiKey _)
 
-            val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, project.project.id.get).result)
+            val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.get).result)
             val dep = for {
               apiKey <- apiKeyExists
-              versionExists <- project.project.versions.exists(_.versionString === name)
+              versionExists <- projectData.project.versions.exists(_.versionString === name)
             } yield {
               if (!apiKey) Future.successful(Unauthorized(error("apiKey", "api.deploy.invalidKey")))
               else if (versionExists) Future.successful(BadRequest(error("versionName", "api.deploy.versionExists")))
@@ -199,7 +199,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                     case Left(err) => Future.successful(Left(err))
                     case Right(data) =>
                       try {
-                        this.factory.processSubsequentPluginUpload(data, user, project.project).map {
+                        this.factory.processSubsequentPluginUpload(data, user, projectData.project).map {
                           case Left(err) => Left(BadRequest(error("upload", err)))
                           case Right(pv) => Right(pv)
                         }
@@ -215,13 +215,13 @@ final class ApiController @Inject()(api: OreRestfulApi,
                       pendingVersion.channelName = formData.channel.name
                       pendingVersion.complete.map { newVersion =>
                         if (formData.recommended)
-                          project.project.setRecommendedVersion(newVersion._1)
-                        Created(api.writeVersion(newVersion._1, project.project, newVersion._2, None, newVersion._3))
+                          projectData.project.setRecommendedVersion(newVersion._1)
+                        Created(api.writeVersion(newVersion._1, projectData.project, newVersion._2, None, newVersion._3))
                       }
                   }
                 }
 
-                project.project.owner.user.flatMap(upload)
+                projectData.project.owner.user.flatMap(upload)
               }
             }
             dep.flatten

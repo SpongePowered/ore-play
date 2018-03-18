@@ -19,7 +19,7 @@ import ore.user.{FakeUser, Prompts}
 import ore.{OreConfig, OreEnv}
 import mail.{EmailFactory, Mailer}
 import models.project.{Project, Version}
-import models.viewhelper.{HeaderData, OrganizationData, UserData}
+import models.viewhelper.{HeaderData, OrganizationData, ScopedOrganizationData, UserData}
 import play.Logger
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
@@ -146,13 +146,15 @@ class Users @Inject()(fakeUser: FakeUser,
           userData <- getUserData(request, username)
           starred <- user.starred()
           starredRv <- Future.sequence(starred.map(_.recommendedVersion))
-          orgaData <- getOrganizationData(request, username)
+          orga <- getOrga(request, username)
+          orgaData <- OrganizationData.of(orga)
+          scopedOrgaData <- ScopedOrganizationData.of(request.currentUser, orga)
         } yield {
           val data = projectSeq zip tags map { case ((p, v), tags) =>
             (p, user, v, tags)
           }
           val starredData = starred zip starredRv
-          Ok(views.users.projects(userData.get, orgaData, data, starredData, p))
+          Ok(views.users.projects(userData.get, orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))), data, starredData, p))
         }
     }
   }

@@ -13,12 +13,13 @@
 @import models.viewhelper.HeaderData
 @import models.viewhelper.VersionData
 @import controllers.sugar.Requests.OreRequest
-@(v: VersionData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
+@import models.viewhelper.ScopedProjectData
+@(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@projects.view(v.p, "#versions", noButtons = true) {
+@projects.view(v.p, sp, "#versions", noButtons = true) {
 
     <div class="container">
         <!-- Version header -->
@@ -52,7 +53,7 @@
 
                         @if(v.v.isReviewed) {
                             <div>
-                                @if(v.global(ReviewProjects)) {
+                                @if(request.data.globalPerm(ReviewProjects)) {
                                     @v.approvedBy.zip(v.v.approvedAt).foreach( t =>
                                         <i class="minor">
                                             @Html(messages("version.approved.info", t._1.name, prettifyDate(t._2)))
@@ -70,7 +71,7 @@
 
                         <div>
 
-                            @if(!v.isRecommended && v.p(EditVersions)) {
+                            @if(!v.isRecommended && sp.perms(EditVersions)) {
                                 @form(action = versionRoutes.setRecommended(
                                     v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
                                     @CSRF.formField
@@ -80,7 +81,7 @@
                                 }
                             }
 
-                            @if(v.global(ReviewProjects)) {
+                            @if(request.data.globalPerm(ReviewProjects)) {
                                 @if(v.v.isReviewed) {
                                     <a href="@v.fullSlug/reviews" class="btn btn-info">@messages("review.log")</a>
                                 } else {
@@ -90,7 +91,7 @@
                                 }
                             }
 
-                            @if(v.p(EditVersions)) {
+                            @if(sp.perms(EditVersions)) {
                                 @if(v.p.versions == 1) {
                                     <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                        title="@messages("version.delete.cannotLast")">
@@ -138,7 +139,7 @@
                             saveCall = versionRoutes.saveDescription(
                                 v.p.project.ownerName, v.p.project.slug, v.v.versionString
                             ),
-                            enabled = v.p(EditVersions),
+                            enabled = sp.perms(EditVersions),
                             raw = v.v.description.getOrElse(""),
                             cooked = v.v.descriptionHtml,
                             subject = "Version"

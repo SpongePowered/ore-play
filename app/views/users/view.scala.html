@@ -109,7 +109,7 @@
                                 }
                             }
 
-                            @if(u.hasUser && u.global(UserAdmin)) {
+                            @if(request.data.globalPerm(UserAdmin)) {
                                 <a class="user-settings" href="@routes.Application.userAdmin(u.user.username)">
                                     <i class="fa fa-wrench" data-toggle="tooltip"
                                         data-placement="top" title="User Admin"></i>

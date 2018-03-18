@@ -36,11 +36,11 @@ trait StatTracker {
     * @param request Request to view the project
     */
   def projectViewed(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Future[Result] = {
-    val project = request.project
+    val data = request.data
     ProjectView.bindFromRequest.map { statEntry =>
       this.viewSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
-          project.project.addView()
+          data.project.addView()
         }
       }
       f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
@@ -60,7 +60,7 @@ trait StatTracker {
       this.downloadSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
           version.addDownload()
-          request.project.project.addDownload()
+          request.data.project.addDownload()
         }
       }
       f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))

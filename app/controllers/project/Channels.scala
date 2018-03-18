@@ -45,11 +45,11 @@ class Channels @Inject()(forms: OreForms,
     * @return View of channels
     */
   def showList(author: String, slug: String) = ChannelEditAction(author, slug).async { request =>
-    val project = request.project
-    project.project.channels.toSeq.map { list =>
+    val data = request.data
+    data.project.channels.toSeq.map { list =>
       implicit val r = request.request
       val listWithVersionCount = list.map(c => (c, 0)) // TODO count
-      Ok(views.list(request.project, listWithVersionCount))
+      Ok(views.list(request.data, listWithVersionCount))
     }
   }
 
@@ -64,7 +64,7 @@ class Channels @Inject()(forms: OreForms,
     this.forms.ChannelEdit.bindFromRequest.fold(
       hasErrors => Future.successful(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
       channelData => {
-        channelData.addTo(request.project.project).map { _.fold(
+        channelData.addTo(request.data.project).map { _.fold(
             error => Redirect(self.showList(author, slug)).withError(error),
             _ => Redirect(self.showList(author, slug))
           )
@@ -82,12 +82,12 @@ class Channels @Inject()(forms: OreForms,
     * @return View of channels
     */
   def save(author: String, slug: String, channelName: String) = ChannelEditAction(author, slug).async { implicit request =>
-    implicit val project = request.project
+    implicit val data = request.data
     this.forms.ChannelEdit.bindFromRequest.fold(
       hasErrors =>
         Future.successful(Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message)),
       channelData => {
-        implicit val p = project.project
+        implicit val p = data.project
         channelData.saveTo(channelName).map { _.map { error =>
             Redirect(self.showList(author, slug)).withError(error)
           } getOrElse {
@@ -108,8 +108,8 @@ class Channels @Inject()(forms: OreForms,
     * @return View of channels
     */
   def delete(author: String, slug: String, channelName: String) = ChannelEditAction(author, slug).async { implicit request =>
-    implicit val project = request.project
-    project.project.channels.all.flatMap { channels =>
+    implicit val data = request.data
+    data.project.channels.all.flatMap { channels =>
       if (channels.size == 1) {
         Future.successful(Redirect(self.showList(author, slug)).withError("error.channel.last"))
       } else {

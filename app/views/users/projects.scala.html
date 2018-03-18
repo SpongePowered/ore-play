@@ -11,7 +11,8 @@
 @import models.viewhelper.OrganizationData
 @import models.project.Tag
 @import controllers.sugar.Requests.OreRequest
-@(u: UserData, o: Option[OrganizationData], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
+@import models.viewhelper.ScopedOrganizationData
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @users.view(u) {
@@ -66,9 +67,10 @@
                     </div>
                 </div>
             } else {
-                @o.map { orgData =>
+                @o.map { case (orgData, scopedData) =>
                     @users.memberList(orgData,
                         editable = true,
+                        perms = scopedData.permissions,
                         saveCall = routes.Organizations.updateMembers(orgData.orga.name),
                         removeCall = routes.Organizations.removeMember(orgData.orga.name)
                     )

@@ -16,7 +16,8 @@ Base template for Project overview.
 @import controllers.project.routes._
 
 @import controllers.sugar.Requests.OreRequest
-@(p: ProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
+@import models.viewhelper.ScopedProjectData
+@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @bootstrap.layout(p.project.ownerName + " / " + p.project.name) {
 
@@ -30,13 +31,13 @@ Base template for Project overview.
                         <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
                             @if(p.visibility == VisibilityTypes.New) {
                                 @messages("visibility.notice." + p.visibility.nameKey)
-                                @if(p(EditPages)) {
+                                @if(sp.perms(EditPages)) {
                                     <br>
                                     @messages("visibility.notice.author." + p.visibility.nameKey)
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/publish" style="margin-top: -.5em">Publish</a>
                                 }
                             } else { @if(p.visibility == VisibilityTypes.NeedsChanges) {
-                                @if(p(EditPages)) {
+                                @if(sp.perms(EditPages)) {
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                                 }
                                 <strong>@messages("visibility.notice." + p.visibility.nameKey)</strong>
@@ -100,7 +101,7 @@ Base template for Project overview.
                                     </li>
                                 }
 
-                                @if(p.hasUser && p(EditSettings)) {
+                                @if(sp.perms(EditSettings)) {
                                     @* Show manager if permitted *@
                                     <li id="settings" class="">
                                         <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
@@ -140,17 +141,17 @@ Base template for Project overview.
                                 </span>
                             }
 
-                            @if(p.global.hasUser && !p.project.isDeleted) {
+                            @if(request.hasUser && !p.project.isDeleted) {
 
                                 <script nonce="@nonce">
                                     var projectOwner = "@p.project.ownerName";
                                     var projectSlug = "@p.project.slug";
-                                    var alreadyStarred = @p.starred;
+                                    var alreadyStarred = @sp.starred;
                                 </script>
 
-                                @if(!p.project.isOwner(p.global.currentUser.get)) {
+                                @if(!p.project.isOwner(request.currentUser.get)) {
                                     <button class="btn btn-default btn-star">
-                                        <i id="icon-star" @if(p.starred) {
+                                        <i id="icon-star" @if(sp.starred) {
                                             class="fa fa-star"
                                         } else {
                                             class="fa fa-star-o" }></i>
@@ -162,15 +163,15 @@ Base template for Project overview.
                                     </span>
                                 }
 
-                                <button class="btn btn-watch btn-default @if(p.watching) { watching }">
+                                <button class="btn btn-watch btn-default @if(sp.watching) { watching }">
                                     <i class="fa fa-eye"></i>
-                                    <span class="watch-status">@if(p.watching) { Unwatch } else { Watch }</span>
+                                    <span class="watch-status">@if(sp.watching) { Unwatch } else { Watch }</span>
                                 </button>
                             }
 
                             <!-- Flag button -->
-                            @if(p.hasUser && !p.currentUser.get.username.equals(p.project.ownerName)
-                                    && !p.uProjectFlags
+                            @if(request.hasUser && !request.currentUser.get.username.equals(p.project.ownerName)
+                                    && !sp.uProjectFlags
                                     && !p.project.isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
                                     <i class="fa fa-flag"></i> @messages("project.flag")
@@ -226,21 +227,21 @@ Base template for Project overview.
                                 </a>
                             }
 
-                            @if(p.hasUser && (p.global.permissions(ReviewFlags) || p.global.permissions(ViewLogs))) {
+                            @if(request.hasUser && (request.data.globalPerm(ReviewFlags) || request.data.globalPerm(ViewLogs))) {
                                 <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                     Admin actions
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-actions">
-                                    @if(p.global(ReviewFlags)) {
+                                    @if(request.data.globalPerm(ReviewFlags)) {
                                         <li><a href="@Projects.showFlags(p.project.ownerName, p.project.slug)">
                                             Flag history (@p.flagCount) </a></li>
                                     }
-                                    @if(p.global(ReviewFlags)) {
+                                    @if(request.data.globalPerm(ReviewFlags)) {
                                         <li><a href="@Projects.showNotes(p.project.ownerName, p.project.slug)">
                                             Staff notes (@p.noteCount) </a></li>
                                     }
-                                    @if(p.global(ViewLogs)) {
+                                    @if(request.data.globalPerm(ViewLogs)) {
                                         <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
                                             Log (@p.projectLogSize) </a></li>
                                     }

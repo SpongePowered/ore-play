@@ -8,8 +8,8 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import models.project.{Project, VisibilityTypes}
-import models.user.{SignOn, User}
-import models.viewhelper.{HeaderData, OrganizationData, ProjectData, UserData}
+import models.user.{Organization, SignOn, User}
+import models.viewhelper._
 import ore.permission.scope.GlobalScope
 import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import play.api.mvc.Results.{Redirect, Unauthorized}
@@ -225,19 +225,19 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def projectAction(author: String, slug: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, ProjectRequest] {
+  def projectAction(author: String, slug: String)(implicit  modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext = ec
 
     def refine[A](request: OreRequest[A]) = maybeProjectRequest(request, Actions.this.projects.withSlug(author, slug))
   }
 
-  def projectAction(pluginId: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, ProjectRequest] {
+  def projectAction(pluginId: String)(implicit  modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: OreRequest[A]) = maybeProjectRequest(request, Actions.this.projects.withPluginId(pluginId))
   }
 
-  def maybeProjectRequest[A](r: OreRequest[A], project: Future[Option[Project]])(implicit asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[Either[Result, ProjectRequest[A]]] = {
+  private def maybeProjectRequest[A](r: OreRequest[A], project: Future[Option[Project]])(implicit  modelService: ModelService, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request = r
     val pr = project.flatMap {
       case None => Future.successful(None)
@@ -245,15 +245,23 @@ trait Actions extends Calls with ActionHelpers {
     }
     pr.flatMap {
       case None => Future.successful(Left(notFound()))
-      case Some(p) => {
-        ProjectData.of(request, p).map { pd =>
-          Right(new ProjectRequest[A](pd, r))
+      case Some(p) =>
+        toProjectRequest(p) { case (data, scoped) =>
+          Right(new ProjectRequest[A](data, scoped, r))
         }
-      }
     }
   }
 
-  def processProject(project: Project, user: Option[User])(implicit ec: ExecutionContext) : Future[Option[Project]] = {
+  private def toProjectRequest[T](project: Project)(f: (ProjectData, ScopedProjectData) => T)(implicit request: OreRequest[_], modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = {
+    for {
+      data <- ProjectData.of(project)
+      scoped <- ScopedProjectData.of(request.data.currentUser, project)
+    } yield {
+      f(data, scoped)
+    }
+  }
+
+  private def processProject(project: Project, user: Option[User])(implicit ec: ExecutionContext) : Future[Option[Project]] = {
     if (project.visibility == VisibilityTypes.Public || project.visibility == VisibilityTypes.New) {
       Future.successful(Some(project))
     } else {
@@ -278,39 +286,40 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def authedProjectActionImpl(project: Future[Option[Project]])(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
+  def authedProjectActionImpl(project: Future[Option[Project]])(implicit  modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
     def executionContext = ec
 
     def refine[A](request: AuthRequest[A]) = project.flatMap { p =>
       implicit val r = request
 
       p match {
-        case None => Future.successful(None)
+        case None => Future.successful(Left(notFound()))
         case Some(pr) =>
           val processed = processProject(pr, Some(request.user))
           processed.flatMap {
-            case None => Future.successful(None)
-            case Some(pro) => ProjectData.of(request, pro).map(Some(_))
-          } map(_.map(new AuthedProjectRequest[A](_, request)))
+            case None => Future.successful(Left(notFound()))
+            case Some(p) =>
+              toProjectRequest(p) { case (data, scoped) =>
+                Right(new AuthedProjectRequest[A](data, scoped, request))
+              }
+          }
       }
-    } map { o =>
-      implicit val r = request
-      o.toRight(notFound())
     }
-
   }
 
-  def authedProjectAction(author: String, slug: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = authedProjectActionImpl(projects.withSlug(author, slug))
+  def authedProjectAction(author: String, slug: String)(implicit  modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = authedProjectActionImpl(projects.withSlug(author, slug))
 
-  def authedProjectActionById(pluginId: String)(implicit ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = authedProjectActionImpl(projects.withPluginId(pluginId))
+  def authedProjectActionById(pluginId: String)(implicit  modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = authedProjectActionImpl(projects.withPluginId(pluginId))
 
   def organizationAction(organization: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = new ActionRefiner[OreRequest, OrganizationRequest] {
     def executionContext = ec
 
     def refine[A](request: OreRequest[A]) = {
       implicit val r = request
-      getOrganizationData(request, organization).map { data =>
-        data.map(new OrganizationRequest[A](_, request)).toRight(notFound())
+      getOrga(request, organization).flatMap {
+        maybeOrgaRequest(_) { case (data, scoped) =>
+          new OrganizationRequest[A](data, scoped, request)
+        }
       }
     }
   }
@@ -320,19 +329,31 @@ trait Actions extends Calls with ActionHelpers {
 
     def refine[A](request: AuthRequest[A]) = {
       implicit val r = request
-      getOrganizationData(request, organization).map { data =>
-        data.map(new AuthedOrganizationRequest[A](_, request)).toRight(notFound())
+
+      getOrga(request, organization).flatMap {
+        maybeOrgaRequest(_) { case (data, scoped) =>
+          new AuthedOrganizationRequest[A](data, scoped, request)
+        }
       }
     }
 
   }
 
-  def getOrganizationData(request: OreRequest[_], organization: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef): Future[Option[OrganizationData]] = {
-    this.organizations.withName(organization).flatMap {
-      case None => Future.successful(None)
+  private def maybeOrgaRequest[T](maybeOrga: Option[Organization])(f: (OrganizationData, ScopedOrganizationData) => T)(implicit request: OreRequest[_], modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = {
+    maybeOrga match {
+      case None =>Future.successful(Left(notFound()))
       case Some(orga) =>
-        OrganizationData.of(request, orga).map(Some(_))
+        for {
+          data <- OrganizationData.of(orga)
+          scoped <- ScopedOrganizationData.of(request.data.currentUser, orga)
+        } yield {
+          Right(f(data, scoped))
+        }
     }
+  }
+
+  def getOrga(request: OreRequest[_], organization: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef): Future[Option[Organization]] = {
+    this.organizations.withName(organization)
   }
 
   def getUserData(request: OreRequest[_], userName: String)(implicit modelService: ModelService, ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef): Future[Option[UserData]] = {

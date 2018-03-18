@@ -71,17 +71,17 @@ class Pages @Inject()(forms: OreForms,
     * @return View of page
     */
   def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { request =>
-    val project = request.project
+    val data = request.data
     implicit val r = request.request
 
-    withPage(project.project, page).flatMap {
+    withPage(data.project, page).flatMap {
       case (None, b) => Future.successful(notFound)
       case (Some(p), b) =>
-        projects.queryProjectPages(project.project) flatMap { pages =>
+        projects.queryProjectPages(data.project) flatMap { pages =>
           val pageCount = pages.size + pages.map(_._2.size).sum
           val parentPage = if (pages.contains(p)) None
           else pages.collectFirst { case (pp, page) if page.contains(p) => pp }
-          this.stats.projectViewed(_ => Ok(views.view(project, pages, p, parentPage, pageCount, b)))(request)
+          this.stats.projectViewed(_ => Ok(views.view(data, request.scoped, pages, p, parentPage, pageCount, b)))(request)
 
         }
     }
@@ -98,25 +98,25 @@ class Pages @Inject()(forms: OreForms,
     */
   def showEditor(author: String, slug: String, pageName: String) = PageEditAction(author, slug).async { request =>
     implicit val r = request.request
-    val project = request.project
+    val data = request.data
     val parts = pageName.split("/")
     val p = parts.size match {
-      case 2 => project.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1))
+      case 2 => data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.flatMap(_.id).getOrElse(-1))
         .map((parts(1), _))
       case _ => Future{(parts(0), -1)}
     }
     p.flatMap {
       case (name, parentId) =>
-        project.project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
+        data.project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
           case Some(page) => Future.successful(page)
-          case None => project.project.getOrCreatePage(name, parentId)
+          case None => data.project.getOrCreatePage(name, parentId)
         }
     } flatMap { p =>
-      projects.queryProjectPages(project.project) map { pages =>
+      projects.queryProjectPages(data.project) map { pages =>
         val pageCount = pages.size + pages.map(_._2.size).sum
         val parentPage = if (pages.contains(p)) None
         else pages.collectFirst { case (pp, page) if page.contains(p) => pp }
-        Ok(views.view(project, pages, p, parentPage, pageCount, editorOpen = true))
+        Ok(views.view(data, request.scoped, pages, p, parentPage, pageCount, editorOpen = true))
       }
     }
   }
@@ -143,10 +143,10 @@ class Pages @Inject()(forms: OreForms,
       hasErrors =>
         Future.successful(Redirect(self.show(author, slug, page)).withError(hasErrors.errors.head.message)),
       pageData => {
-        val project = request.project
+        val data = request.data
         val parentId = pageData.parentId.getOrElse(-1)
         //noinspection ComparingUnrelatedTypes
-        project.project.rootPages.flatMap { rootPages =>
+        data.project.rootPages.flatMap { rootPages =>
           if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
             Future.successful(BadRequest("Invalid parent ID."))
           } else {
@@ -157,14 +157,14 @@ class Pages @Inject()(forms: OreForms,
               val parts = page.split("/")
 
               val created = if (parts.size == 2) {
-                project.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).flatMap { parent =>
+                data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).flatMap { parent =>
                   val parentId = parent.flatMap(_.id).getOrElse(-1)
                   val pageName = pageData.name.getOrElse(parts(1))
-                  project.project.getOrCreatePage(pageName, parentId, pageData.content)
+                  data.project.getOrCreatePage(pageName, parentId, pageData.content)
                 }
               } else {
                 val pageName = pageData.name.getOrElse(parts(0))
-                project.project.getOrCreatePage(pageName, parentId, pageData.content)
+                data.project.getOrCreatePage(pageName, parentId, pageData.content)
               }
               created.map { _ =>
                 Redirect(self.show(author, slug, page))
@@ -185,9 +185,9 @@ class Pages @Inject()(forms: OreForms,
     * @return Redirect to Project homepage
     */
   def delete(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
-    val project = request.project
+    val data = request.data
     for {
-      optionPage <- withPage(project.project, page)
+      optionPage <- withPage(data.project, page)
     } yield {
       if (optionPage._1.isDefined)
         this.service.access[Page](classOf[Page]).remove(optionPage._1.get)

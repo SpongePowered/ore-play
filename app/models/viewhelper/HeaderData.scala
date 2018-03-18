@@ -1,12 +1,14 @@
 package models.viewhelper
 
+import controllers.sugar.Requests.{ProjectRequest, ScopedRequest}
 import db.ModelService
 import db.impl.OrePostgresDriver.OreDriver._
 import db.impl.access.OrganizationBase
 import db.impl.{SessionTable, UserTable}
+import models.project.Project
 import models.user.User
 import ore.permission._
-import ore.permission.scope.GlobalScope
+import ore.permission.scope.{GlobalScope, Scope}
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.Request
 import slick.jdbc.JdbcBackend
@@ -20,10 +22,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 case class HeaderData(currentUser: Option[User] = None,
-                      permissions: Map[Permission, Boolean] = Map.empty,
-
-                      hasUnreadNotifications: Boolean = false,   // user.hasUnreadNotif
-                      unresolvedFlags: Boolean = false,         // flags.filterNot(_.isResolved).nonEmpty
+                      private val globalPermissions: Map[Permission, Boolean] = Map.empty,
+                      hasUnreadNotifications: Boolean = false, // user.hasUnreadNotif
+                      unresolvedFlags: Boolean = false, // flags.filterNot(_.isResolved).nonEmpty
                       hasProjectApprovals: Boolean = false, // >= 1 val futureApproval = projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0)
                       hasReviewQueue: Boolean = false // queue.nonEmpty
                      ) {
@@ -35,7 +36,13 @@ case class HeaderData(currentUser: Option[User] = None,
 
   def isCurrentUser(userId: Int) = currentUser.map(_.id).contains(userId)
 
-  def apply(permission: Permission): Boolean = permissions(permission)
+  def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
+
+  def projectPerm(perm: Permission)(implicit r: ProjectRequest[_] = null): Boolean = {
+    if (r == null) false // Not a scoped request
+    else r.scoped.permissions(perm)
+  }
+
 }
 
 object HeaderData {
@@ -53,6 +60,8 @@ object HeaderData {
 
   val unAuthenticated: HeaderData = HeaderData(None, noPerms)
 
+  def cacheKey(user: User) = s"""user${user.id.get}"""
+
   def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[HeaderData] = {
     request.cookies.get("_oretoken") match {
       case None => Future.successful(unAuthenticated)
@@ -62,7 +71,9 @@ object HeaderData {
           case Some(user) =>
             user.service = service
             user.organizationBase = service.getModelBase(classOf[OrganizationBase])
-            getHeaderData(user)
+            cache.getOrElseUpdate(cacheKey(user)) {
+              getHeaderData(user)
+            }
         }
     }
   }
@@ -95,7 +106,12 @@ object HeaderData {
     } yield {
       // TODO cache and fill
 
-      HeaderData(Some(user), perms, unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue)
+      HeaderData(Some(user),
+        perms,
+        unreadNotif,
+        unresolvedFlags,
+        hasProjectApprovals,
+        hasReviewQueue)
     }
   }
 

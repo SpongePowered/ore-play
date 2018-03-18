@@ -1,20 +1,18 @@
 package models.viewhelper
 
-import akka.stream.actor.ActorPublisherMessage.Request
 import controllers.sugar.Requests.OreRequest
-import db.impl.{ProjectMembersTable, ProjectRoleTable, UserTable}
+import db.impl.OrePostgresDriver.api._
+import db.impl.{ProjectRoleTable, UserTable}
 import models.admin.VisibilityChange
 import models.project._
 import models.user.User
-import models.user.role.{OrganizationRole, ProjectRole}
-import ore.organization.OrganizationMember
-import ore.permission._
+import models.user.role.ProjectRole
+import models.viewhelper.ScopedProjectData.cacheKey
 import ore.project.ProjectMember
-import play.api.cache.AsyncCacheApi
-import play.twirl.api.Html
-import slick.jdbc.JdbcBackend
-import db.impl.OrePostgresDriver.api._
 import ore.project.factory.PendingProject
+import play.api.Logger
+import play.api.cache.AsyncCacheApi
+import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -22,22 +20,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 // TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
-// TODO give this to templates with:
-
-
-
-case class ProjectData(headerData: HeaderData,
-                       joinable: Project,
+case class ProjectData(joinable: Project,
                        projectOwner: User,
-                       canPostAsOwnerOrga: Boolean, // a.currentUser.get can PostAsOrganization in owner.toOrganization
                        ownerRole: ProjectRole,
                        versions: Int, // project.versions.size
                        settings: ProjectSettings,
-                       permissions: Map[Permission, Boolean],
                        members: Seq[(ProjectRole, User)],
-                       uProjectFlags: Boolean,
-                       starred: Boolean,
-                       watching: Boolean,
                        projectLogSize: Int,
                        flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
                        noteCount: Int, // getNotes.size
@@ -50,11 +38,6 @@ case class ProjectData(headerData: HeaderData,
 
   def project: Project = joinable
 
-  def global = headerData
-
-  def hasUser = global.hasUser
-  def currentUser = global.currentUser
-
   def visibility = project.visibility
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
@@ -64,88 +47,76 @@ case class ProjectData(headerData: HeaderData,
 
 object ProjectData {
 
+  def cacheKey(project: Project) = "project" + project.id.get
+
   def of[A](request: OreRequest[A], project: PendingProject)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
 
     val projectOwner = request.data.currentUser.get
 
-    for {
-      orgaOwner <- projectOwner.toMaybeOrganization
-      canPostAsOwnerOrga <- request.data.currentUser.get can PostAsOrganization in orgaOwner
-      //perms <- perms(request.data.currentUser, project.underlying)
-    } yield  {
-      val settings = project.settings
-      val ownerRole = null // TODO?
-      val versions = 0
-      val members = Seq.empty
-      val uProjectFlags = false
-      val starred = false
-      val watching = false
-      val logSize = 0
-      val lastVisibilityChange = None
-      val lastVisibilityChangeUser = "-"
+    val settings = project.settings
+    val ownerRole = null // TODO?
+    val versions = 0
+    val members = Seq.empty
+    val uProjectFlags = false
+    val starred = false
+    val watching = false
+    val logSize = 0
+    val lastVisibilityChange = None
+    val lastVisibilityChangeUser = "-"
 
-      new ProjectData(request.data, project.underlying, projectOwner,
-        canPostAsOwnerOrga,
-        ownerRole,
-        versions,
-        settings,
-        Map.empty,
-        Seq.empty,//members.sortBy(_._1.roleType.trust).reverse,
-        uProjectFlags,
-        starred,
-        watching,
-        logSize,
-        Seq.empty,
-        0,
-        lastVisibilityChange,
-        lastVisibilityChangeUser)
-    }
+    val data = new ProjectData(project.underlying,
+      projectOwner,
+      ownerRole,
+      versions,
+      settings,
+      members,
+      logSize,
+      Seq.empty,
+      0,
+      lastVisibilityChange,
+      lastVisibilityChangeUser)
+
+    Future.successful(data)
   }
 
-  def of[A](request: OreRequest[A], project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
+  def of[A](project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
 
-    implicit val userBase = project.userBase
-    // TODO cache and fill
-    for {
-      settings <- project.settings
-      projectOwner <- project.owner.user
-      orgaOwner <- projectOwner.toMaybeOrganization
-      canPostAsOwnerOrga <- request.data.currentUser.get can PostAsOrganization in orgaOwner // TODO none.get
-      ownerRole <- project.owner.headRole
-      versions <- project.versions.size
-      perms <- perms(request.data.currentUser, project)
-      members <- members(project)
-      uProjectFlags <- request.data.currentUser.get.hasUnresolvedFlagFor(project) // TODO none.get
-      starred <- project.stars.contains(request.data.currentUser.get) // TODO none.get
-      watching <- project.watchers.contains(request.data.currentUser.get)  // TODO none.get
-      logSize <- project.logger.flatMap(_.entries.size)
-      flags <- project.flags.all
-      flagUsers <- Future.sequence(flags.map(_.user))
-      flagResolved <- Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1))))
-      lastVisibilityChange <- project.lastVisibilityChange
-      lastVisibilityChangeUser <- if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
-                                  else lastVisibilityChange.get.created.map(_.map(_.name).getOrElse("Unknown"))
-    } yield {
-      val noteCount = project.getNotes().size
-      val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
-        (fl, user.name, resolved.map(_.username))
+    cache.getOrElseUpdate(cacheKey(project)) {
+      implicit val userBase = project.userBase
+      for {
+        settings <- project.settings
+        projectOwner <- project.owner.user
+
+        ownerRole <- project.owner.headRole
+        versions <- project.versions.size
+        members <- members(project)
+
+        logSize <- project.logger.flatMap(_.entries.size)
+        flags <- project.flags.all
+        flagUsers <- Future.sequence(flags.map(_.user))
+        flagResolved <- Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1))))
+        lastVisibilityChange <- project.lastVisibilityChange
+        lastVisibilityChangeUser <- if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
+        else lastVisibilityChange.get.created.map(_.map(_.name).getOrElse("Unknown"))
+      } yield {
+        val noteCount = project.getNotes().size
+        val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
+          (fl, user.name, resolved.map(_.username))
+        }
+
+        new ProjectData(
+          project,
+          projectOwner,
+          ownerRole,
+          versions,
+          settings,
+          members.sortBy(_._1.roleType.trust).reverse,
+          logSize,
+          flagData.toSeq,
+          noteCount,
+          lastVisibilityChange,
+          lastVisibilityChangeUser)
       }
-
-      new ProjectData(request.data, project, projectOwner,
-        canPostAsOwnerOrga,
-        ownerRole,
-        versions,
-        settings,
-        perms,
-        members.sortBy(_._1.roleType.trust).reverse,
-        uProjectFlags,
-        starred,
-        watching,
-        logSize,
-        flagData.toSeq,
-        noteCount,
-        lastVisibilityChange,
-        lastVisibilityChangeUser)
     }
   }
 
@@ -160,32 +131,11 @@ object ProjectData {
       (r, u)
     }
 
-    val asd =db.run(query.result).map(_.map {
+    db.run(query.result).map(_.map {
       case (r, u) => (r, u)
     })
-    asd
   }
 
-  def perms(currentUser: Option[User], project: Project)(implicit ec: ExecutionContext): Future[Map[Permission, Boolean]] = {
-    if (currentUser.isEmpty) Future.successful(noPerms)
-    else {
-      val user = currentUser.get
-      for {
-        editPages <- user can EditPages in project map ((EditPages, _))
-        editSettings <- user can EditSettings in project map ((EditSettings, _))
-        editChannels <- user can EditChannels in project map ((EditChannels, _))
-        editVersions <- user can EditVersions in project map ((EditVersions, _))
-        visibilities <- Future.sequence(VisibilityTypes.values.map(_.permission).map(p => user can p in project map ((p, _))))
-      } yield {
-        val perms = visibilities + editPages + editSettings + editChannels + editVersions
-        perms.toMap
-      }
-    }
-  }
 
-  val noPerms = Map(EditPages -> false,
-      EditSettings -> false,
-      EditChannels -> false,
-      EditVersions -> false) ++ VisibilityTypes.values.map(_.permission).map((_, false)).toMap
 
 }

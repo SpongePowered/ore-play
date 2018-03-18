@@ -10,11 +10,12 @@
 @import models.api.ProjectApiKey
 
 @import controllers.sugar.Requests.OreRequest
-@(p: ProjectData, deploymentKey: Option[ProjectApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import models.viewhelper.ScopedProjectData
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[ProjectApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.view(p, "#settings") {
+@projects.view(p, sp, "#settings") {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/hideProject.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/iconUpload.js")"></script>
@@ -36,8 +37,8 @@
                 <div class="panel panel-default panel-settings">
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">@messages("project.settings")</h3>
-                        @if(p.hasUser && p.global(HideProjects)) {
-                            @projects.helper.btnHide(p.project, p.permissions, p.currentUser.get)
+                        @if(request.data.globalPerm(HideProjects)) {
+                            @projects.helper.btnHide(p.project, sp.permissions, request.currentUser.get)
 
                             <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
                                 <div class="modal-dialog" role="document">
@@ -183,7 +184,7 @@
                             <div class="clearfix"></div>
                         </div>
 
-                        @if(p.hasUser && p.global(HardRemoveProject)) {
+                        @if(request.data.globalPerm(HardRemoveProject)) {
                             <div class="setting striped">
                                 <div class="setting-description">
                                     <h4 class="danger">Hard Delete</h4>
@@ -217,6 +218,7 @@
                 </div>
                 @users.memberList(p,
                     editable = true,
+                    perms = sp.permissions,
                     removeCall = projectRoutes.removeMember(p.project.ownerName, p.project.slug),
                     settingsCall = projectRoutes.showSettings(p.project.ownerName, p.project.slug)
                 )

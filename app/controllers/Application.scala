@@ -15,7 +15,7 @@ import form.OreForms
 import models.admin.Review
 import models.project._
 import models.user.role._
-import models.viewhelper.HeaderData
+import models.viewhelper.{HeaderData, OrganizationData, ScopedOrganizationData}
 import ore.Platforms.Platform
 import ore.permission._
 import ore.permission.role.{Role, RoleTypes}
@@ -23,6 +23,7 @@ import ore.permission.scope.GlobalScope
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
 import ore.{OreConfig, OreEnv, Platforms}
+import play.api.Logger
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
@@ -83,11 +84,13 @@ final class Application @Inject()(data: DataHelper,
                page: Option[Int],
                platform: Option[String]) = OreAction async { implicit request =>
     // Get categories and sorting strategy
-    val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
 
-    val canHideProjects = request.data(HideProjects)
+
+    val canHideProjects = request.data.globalPerm(HideProjects)
     val currentUserId = request.data.currentUser.flatMap(_.id).getOrElse(-1)
 
+    // TODO ordering is not implemented
+    val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
     // TODO platform filter is not implemented
     val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
     // val platformFilter = pform.map(actions.platformFilter).getOrElse(ModelFilter.Empty)
@@ -111,22 +114,37 @@ final class Application @Inject()(data: DataHelper,
       (p.description.toLowerCase like q) ||
       (p.ownerName.toLowerCase like q) ||
       (p.pluginId.toLowerCase like q)
+    } sortBy { case (p, u, v) =>
+      p.lastUpdated.desc
     } drop offset take pageSize
 
-    // Get projects
-    for {
-      projects <- service.DB.db.run(projectQuery.result)
-      tags <- Future.sequence(projects.map(_._3.tags))
-    } yield {
-      val data = projects zip tags map { case ((p, u, v), t) =>
-        (p,u,v,t)
+    def queryProjects() = {
+      for {
+        projects <- service.DB.db.run(projectQuery.result)
+        tags <- Future.sequence(projects.map(_._3.tags))
+      } yield {
+        projects zip tags map { case ((p, u, v), t) =>
+          (p, u, v, t)
+        }
       }
-
-      val catList = if (Categories.visible.toSet.equals(categoryList.toSet)) Some(Seq.empty) else Some(categoryList)
-
-      Ok(views.home(data, catList, query.find(_.nonEmpty), p, ordering, pform))
     }
 
+    // TODO !!!!!!! make sure stuff that needs permission is cached differently
+    // it has to be impossible to get the cached version of an admin
+
+    val doCache = query.isEmpty
+
+    val data = if (doCache) {
+      val cacheKey = "homepage+" + categories + sort + page + platform + ":::" + canHideProjects + ":" + currentUserId
+      Logger.info("CacheKey: " + cacheKey)
+      cache.getOrElseUpdate(cacheKey)(queryProjects())
+    } else {
+      queryProjects()
+    }
+    data map { data =>
+      val catList = if (Categories.visible.toSet.equals(categoryList.toSet)) Some(Seq.empty) else Some(categoryList)
+      Ok(views.home(data, catList, query.find(_.nonEmpty), p, ordering, pform))
+    }
    }
 
   /**
@@ -401,7 +419,9 @@ final class Application @Inject()(data: DataHelper,
           isOrga <- u.isOrganization
           projectRoles <- if (isOrga) Future.successful(Seq.empty) else u.projectRoles.all
           projects <- Future.sequence(projectRoles.map(_.project))
-          orgaData <- if (isOrga) getOrganizationData(request, user) else Future.successful(None)
+          orga <- if (isOrga) getOrga(request, user) else Future.successful(None)
+          orgaData <- OrganizationData.of(orga)
+          scopedOrgaData <- ScopedOrganizationData.of(Some(request.user), orga)
         } yield {
           val pr = projects zip projectRoles
           Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.toSeq))
