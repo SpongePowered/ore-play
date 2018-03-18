@@ -45,10 +45,12 @@ class Channels @Inject()(forms: OreForms,
     * @return View of channels
     */
   def showList(author: String, slug: String) = ChannelEditAction(author, slug).async { request =>
-    val data = request.data
-    data.project.channels.toSeq.map { list =>
-      implicit val r = request.request
-      val listWithVersionCount = list.map(c => (c, 0)) // TODO count
+    implicit val r = request.request
+    for {
+      channels <- request.data.project.channels.toSeq
+      versionCount <- Future.sequence(channels.map(_.versions.size))
+    } yield {
+      val listWithVersionCount = channels zip versionCount
       Ok(views.list(request.data, listWithVersionCount))
     }
   }

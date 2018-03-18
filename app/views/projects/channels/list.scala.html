@@ -45,7 +45,7 @@
 
                         <table class="table no-border centered">
                             <tbody>
-                                @channels.foreach { case (channel, versions) =>
+                                @channels.map { case (channel, versions) =>
                                     <tr>
                                         <td>
                                             <div class="channel" style="background-color: @channel.color.hex">@channel.name</div>
