@@ -10,7 +10,9 @@ import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.StatSchema
 import models.project.Version
 import models.statistic.{ProjectView, VersionDownload}
+import models.viewhelper.ProjectData
 import ore.StatTracker.COOKIE_NAME
+import play.api.cache.AsyncCacheApi
 import play.api.mvc.{RequestHeader, Result}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -35,11 +37,12 @@ trait StatTracker {
     *
     * @param request Request to view the project
     */
-  def projectViewed(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Future[Result] = {
+  def projectViewed(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi, request: ProjectRequest[_]): Future[Result] = {
     val data = request.data
     ProjectView.bindFromRequest.map { statEntry =>
       this.viewSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
+          ProjectData.invalidateCache(data.project)
           data.project.addView()
         }
       }
@@ -55,12 +58,13 @@ trait StatTracker {
     * @param version Version to check downloads for
     * @param request Request to download the version
     */
-  def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Future[Result] = {
+  def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi,request: ProjectRequest[_]): Future[Result] = {
     VersionDownload.bindFromRequest(version).map { statEntry =>
       this.downloadSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
           version.addDownload()
           request.data.project.addDownload()
+          ProjectData.invalidateCache(request.data.project)
         }
       }
       f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))

@@ -3,8 +3,10 @@ package form.organization
 import db.impl.access.UserBase
 import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
+import models.viewhelper.HeaderData
 import ore.permission.role.RoleTypes
 import ore.user.notification.NotificationTypes
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -25,7 +27,7 @@ case class OrganizationMembersUpdate(override val users: List[Int],
   implicit val lang = Lang.defaultLang
 
   //noinspection ComparingUnrelatedTypes
-  def saveTo(organization: Organization)(implicit ex: ExecutionContext, messages: MessagesApi, users: UserBase) = {
+  def saveTo(organization: Organization)(implicit cache: AsyncCacheApi, ex: ExecutionContext, messages: MessagesApi, users: UserBase) = {
     if (!organization.isDefined)
       throw new RuntimeException("tried to update members on undefined organization")
 
@@ -51,6 +53,7 @@ case class OrganizationMembersUpdate(override val users: List[Int],
           Future.sequence(members.map(member => member.user.map((_, member))))
         } map { users =>
           users.find(_._1.name.equalsIgnoreCase(user.trim)).foreach { user =>
+            HeaderData.invalidateCache(user._1)
             user._2.headRole.map { role =>
                 role.setRoleType(orgRoleTypes.find(_.title.equals(roleUps(i))).getOrElse(throw new RuntimeException("supplied invalid role type")))
             }

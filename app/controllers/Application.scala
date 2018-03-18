@@ -15,7 +15,7 @@ import form.OreForms
 import models.admin.Review
 import models.project._
 import models.user.role._
-import models.viewhelper.{HeaderData, OrganizationData, ScopedOrganizationData}
+import models.viewhelper.{HeaderData, OrganizationData, ProjectData, ScopedOrganizationData}
 import ore.Platforms.Platform
 import ore.permission._
 import ore.permission.role.{Role, RoleTypes}
@@ -257,6 +257,8 @@ final class Application @Inject()(data: DataHelper,
       case Some(flag) =>
         users.current.map { user =>
           flag.setResolved(resolved, user)
+          ProjectData.invalidateCache(flag.projectId)
+          HeaderData.invalidateCache(user.get)
           Ok
         }
     }
@@ -291,6 +293,7 @@ final class Application @Inject()(data: DataHelper,
   def reset() = (Authenticated andThen PermissionAction[AuthRequest](ResetOre)) { implicit request =>
     this.config.checkDebug()
     this.data.reset
+    cache.removeAll()
     Redirect(ShowHome).withNewSession
   }
 
@@ -303,6 +306,7 @@ final class Application @Inject()(data: DataHelper,
     (Authenticated andThen PermissionAction[AuthRequest](SeedOre)) { implicit request =>
       this.config.checkDebug()
       this.data.seed(users, projects, versions, channels)
+      cache.removeAll()
       Redirect(ShowHome).withNewSession
     }
   }
@@ -442,7 +446,7 @@ final class Application @Inject()(data: DataHelper,
 
             def updateRoleTable[M <: RoleModel](modelAccess: ModelAccess[M], allowedType: Class[_ <: Role], ownerType: RoleTypes.RoleType, transferOwner: M => Future[Unit]) = {
               val id = (json \ "id").as[Int]
-              val asd = action match {
+              val status = action match {
                 case "setRole" => modelAccess.get(id).map {
                   case None => BadRequest
                   case Some(role) =>
@@ -470,7 +474,7 @@ final class Application @Inject()(data: DataHelper,
                     } else BadRequest
                 }
               }
-              asd
+              status
             }
 
             def transferOrgOwner(r: OrganizationRole) = {
@@ -484,12 +488,15 @@ final class Application @Inject()(data: DataHelper,
               case "orgRole" =>
                 isOrga.flatMap {
                   case true => Future.successful(BadRequest)
-                  case false => updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
+                  case false =>
+                    HeaderData.invalidateCache(user)
+                    updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
                 }
               case "memberRole" =>
                 isOrga.flatMap {
                   case false => Future.successful(BadRequest)
                   case true =>
+                    HeaderData.invalidateCache(user)
                     user.toOrganization.flatMap { orga =>
                       updateRoleTable(orga.memberships.roles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
                     }
@@ -497,7 +504,9 @@ final class Application @Inject()(data: DataHelper,
               case "projectRole" =>
                 isOrga.flatMap {
                   case true => Future.successful(BadRequest)
-                  case false => updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleTypes.ProjectOwner,
+                  case false =>
+                    HeaderData.invalidateCache(user)
+                    updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleTypes.ProjectOwner,
                     (r: ProjectRole) => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))))
                 }
               case _ => Future.successful(BadRequest)

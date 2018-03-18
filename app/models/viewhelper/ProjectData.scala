@@ -16,10 +16,14 @@ import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
 
 
 // TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
+/**
+  * Holds ProjetData that is the same for all users
+  */
 case class ProjectData(joinable: Project,
                        projectOwner: User,
                        ownerRole: ProjectRole,
@@ -79,9 +83,17 @@ object ProjectData {
     Future.successful(data)
   }
 
+  def invalidateCache(project: Project)(implicit cache: AsyncCacheApi) = {
+    cache.remove(cacheKey(project))
+  }
+
+  def invalidateCache(projectId: Int)(implicit cache: AsyncCacheApi) = {
+    cache.remove("project" + projectId)
+  }
+
   def of[A](project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
 
-    cache.getOrElseUpdate(cacheKey(project)) {
+    cache.getOrElseUpdate(cacheKey(project), 15.minutes) {
       implicit val userBase = project.userBase
       for {
         settings <- project.settings

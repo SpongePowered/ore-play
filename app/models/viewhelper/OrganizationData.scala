@@ -1,7 +1,7 @@
 package models.viewhelper
 
 import db.ModelService
-import models.project.Project
+import scala.concurrent.duration._
 import models.user.role.OrganizationRole
 import models.user.{Organization, User}
 import ore.organization.OrganizationMember
@@ -29,9 +29,13 @@ object OrganizationData {
 
   def cacheKey(orga: Organization) = "organization" + orga.id.get
 
+  def invalidateCache(organization: Organization)(implicit cache: AsyncCacheApi) = {
+    cache.remove(cacheKey(organization))
+  }
+
   def of[A](orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[OrganizationData] = {
 
-    cache.getOrElseUpdate(cacheKey(orga)) {
+    cache.getOrElseUpdate(cacheKey(orga), 15 minutes) {
       implicit val users = orga.userBase
       for {
         role <- orga.owner.headRole

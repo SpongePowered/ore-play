@@ -22,6 +22,7 @@ import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.Compiled
 import db.impl.OrePostgresDriver.api._
+import models.viewhelper.ProjectData
 import play.api.cache.AsyncCacheApi
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -216,6 +217,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                       pendingVersion.complete.map { newVersion =>
                         if (formData.recommended)
                           projectData.project.setRecommendedVersion(newVersion._1)
+                        ProjectData.invalidateCache(projectData.project)
                         Created(api.writeVersion(newVersion._1, projectData.project, newVersion._2, None, newVersion._3))
                       }
                   }

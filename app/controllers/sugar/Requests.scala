@@ -41,7 +41,8 @@ object Requests {
   /**
     * A request that holds a [[Project]].
     *
-    * @param project Project to hold
+    * @param data Project data to hold
+    * @param scoped scoped Project data to hold
     * @param request Request to wrap
     */
   class ProjectRequest[A](val data: ProjectData, val scoped: ScopedProjectData, val request: OreRequest[A]) extends WrappedRequest[A](request)
@@ -49,7 +50,8 @@ object Requests {
   /**
     * A request that holds a Project and a [[AuthRequest]].
     *
-    * @param project Project to hold
+    * @param data Project data to hold
+    * @param scoped scoped Project data to hold
     * @param request An [[AuthRequest]]
     */
   case class AuthedProjectRequest[A](override val data: ProjectData, override val scoped: ScopedProjectData, override val request: AuthRequest[A])
@@ -62,7 +64,8 @@ object Requests {
   /**
     * A request that holds an [[Organization]].
     *
-    * @param organization Organization to hold
+    * @param data Organization data to hold
+    * @param scoped scoped Organization data to hold
     * @param request      Request to wrap
     */
   class OrganizationRequest[A](val data: OrganizationData, val scoped: ScopedOrganizationData, val request: OreRequest[A]) extends WrappedRequest[A](request)
@@ -70,7 +73,8 @@ object Requests {
   /**
     * A request that holds an [[Organization]] and an [[AuthRequest]].
     *
-    * @param organization Organization to hold
+    * @param data Organization data to hold
+    * @param scoped scoped Organization data to hold
     * @param request      Request to wrap
     */
   case class AuthedOrganizationRequest[A](override val data: OrganizationData, override val scoped: ScopedOrganizationData, override val request: AuthRequest[A])

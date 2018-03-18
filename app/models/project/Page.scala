@@ -93,7 +93,7 @@ case class Page(override val id: Option[Int] = None,
         _ <- update(Contents)
         project <- this.project
         // Contents were updated, update on forums
-        _ <- if (this.name.equals(HomeName) && project.topicId != -1) this.forums.updateProjectTopic(project) else Future.successful()
+        _ <- if (this.name.equals(HomeName) && project.topicId != -1) this.forums.updateProjectTopic(project) else Future.successful(false)
       } yield {}
     }
   }

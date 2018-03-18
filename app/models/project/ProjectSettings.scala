@@ -19,6 +19,8 @@ import play.api.i18n.{Lang, MessagesApi}
 import slick.lifted.TableQuery
 import util.StringUtils._
 import db.impl.OrePostgresDriver.api._
+import models.viewhelper.{ProjectData, ScopedProjectData}
+import play.api.cache.AsyncCacheApi
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -142,7 +144,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
     * @param messages MessagesApi instance
     */
   //noinspection ComparingUnrelatedTypes
-  def save(project: Project, formData: ProjectSettingsForm)(implicit messages: MessagesApi, fileManager: ProjectFiles, ec: ExecutionContext): Future[_] = {
+  def save(project: Project, formData: ProjectSettingsForm)(implicit cache: AsyncCacheApi, messages: MessagesApi, fileManager: ProjectFiles, ec: ExecutionContext): Future[_] = {
     Logger.info("Saving project settings")
     Logger.info(formData.toString)
 
@@ -157,7 +159,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
 
     // Update the owner if needed
     val ownerSet = formData.ownerId.find(_ != project.ownerId) match {
-      case None => Future.successful()
+      case None => Future.successful(true)
       case Some(ownerId) => this.userBase.get(ownerId).flatMap(user => project.setOwner(user.get))}
     ownerSet.flatMap { _ =>
       // Update icon
@@ -195,15 +197,19 @@ case class ProjectSettings(override val id: Option[Int] = None,
           val usersTable = TableQuery[UserTable]
           // Select member userIds
           service.DB.db.run(usersTable.filter(_.name inSetBind formData.userUps).map(_.id).result).map { userIds =>
+            userIds.foreach(id => ScopedProjectData.invalidateCache(id, project))
             userIds zip formData.roleUps.map(role => projectRoleTypes.find(_.title.equals(role)).getOrElse(throw new RuntimeException("supplied invalid role type")))
           } map { _.map {
               case (userId, role) => updateMemberShip(userId).update(role)
             }
           } flatMap { updates =>
+
+            ProjectData.invalidateCache(project)
+
             service.DB.db.run(DBIO.sequence(updates))
           }
         }
-      } else Future.successful()
+      } else Future.successful(true)
     }
   }
 

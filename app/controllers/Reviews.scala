@@ -160,6 +160,7 @@ final class Reviews @Inject()(data: DataHelper,
 
     users.map { list =>
       list.map { id =>
+        HeaderData.invalidateCache(id)
         Notification(
           userId = id,
           originId = requestUser.id.get,
@@ -176,7 +177,7 @@ final class Reviews @Inject()(data: DataHelper,
         withVersionAsync(versionString) { version =>
           // Close old review
           val closeOldReview = version.mostRecentUnfinishedReview.flatMap {
-            case None => Future.successful()
+            case None => Future.successful(true)
             case Some(oldreview) =>
               for {
                 _ <- oldreview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "takeover"))
@@ -223,7 +224,7 @@ final class Reviews @Inject()(data: DataHelper,
                 case Some(currentUser) =>
                   if (recentReview.userId == currentUser.userId) {
                     recentReview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
-                  } else Future.successful()
+                  } else Future.successful(0)
               }.map( _ => Ok("Review"))
           }
         }

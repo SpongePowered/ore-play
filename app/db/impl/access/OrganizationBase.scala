@@ -4,9 +4,11 @@ import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
 import models.user.role.OrganizationRole
 import models.user.{Notification, Organization, User}
+import models.viewhelper.HeaderData
 import ore.OreConfig
 import ore.permission.role.RoleTypes
 import ore.user.notification.NotificationTypes
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import security.spauth.SpongeAuthApi
 import util.StringUtils
@@ -34,7 +36,7 @@ class OrganizationBase(override val service: ModelService,
     * @param ownerId  User ID of the organization owner
     * @return         New organization if successful, None otherwise
     */
-  def create(name: String, ownerId: Int, members: Set[OrganizationRole])(implicit ec: ExecutionContext): Future[Either[String, Organization]] = {
+  def create(name: String, ownerId: Int, members: Set[OrganizationRole])(implicit cache: AsyncCacheApi, ec: ExecutionContext): Future[Either[String, Organization]] = {
     Logger.info("Creating Organization...")
     Logger.info("Name     : " + name)
     Logger.info("Owner ID : " + ownerId)
@@ -69,7 +71,7 @@ class OrganizationBase(override val service: ModelService,
         org.toUser.map {
           case None => throw new IllegalStateException("User not created")
           case Some(userOrg) => userOrg.pullForumData.flatMap(_.pullSpongeData)
-            userOrg.setGlobalRoles(userOrg.globalRoles + RoleTypes.Organization) // TODO update future
+            userOrg.setGlobalRoles(userOrg.globalRoles + RoleTypes.Organization)
             userOrg
         } flatMap { owner =>
           // Add the owner
@@ -85,6 +87,7 @@ class OrganizationBase(override val service: ModelService,
           Future.sequence(members.map { role =>
             // TODO remove role.user db access we really only need the userid we already have for notifications
             org.memberships.addRole(role.copy(organizationId = org.id.get)).flatMap(_ => role.user).flatMap { user =>
+              HeaderData.invalidateCache(user)
               user.sendNotification(Notification(
                 originId = org.id.get,
                 notificationType = NotificationTypes.OrganizationInvite,

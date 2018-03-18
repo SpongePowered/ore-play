@@ -9,6 +9,7 @@ import db.impl.OrePostgresDriver.api._
 import db.{ModelFilter, ModelService}
 import form.OreForms
 import models.project.{Page, Project}
+import models.viewhelper.ProjectData
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.cache.AsyncCacheApi
@@ -81,7 +82,7 @@ class Pages @Inject()(forms: OreForms,
           val pageCount = pages.size + pages.map(_._2.size).sum
           val parentPage = if (pages.contains(p)) None
           else pages.collectFirst { case (pp, page) if page.contains(p) => pp }
-          this.stats.projectViewed(_ => Ok(views.view(data, request.scoped, pages, p, parentPage, pageCount, b)))(request)
+          this.stats.projectViewed(_ => Ok(views.view(data, request.scoped, pages, p, parentPage, pageCount, b)))(cache, request)
 
         }
     }
@@ -109,7 +110,9 @@ class Pages @Inject()(forms: OreForms,
       case (name, parentId) =>
         data.project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
           case Some(page) => Future.successful(page)
-          case None => data.project.getOrCreatePage(name, parentId)
+          case None =>
+            ProjectData.invalidateCache(request.data.project)
+            data.project.getOrCreatePage(name, parentId)
         }
     } flatMap { p =>
       projects.queryProjectPages(data.project) map { pages =>
@@ -166,6 +169,7 @@ class Pages @Inject()(forms: OreForms,
                 val pageName = pageData.name.getOrElse(parts(0))
                 data.project.getOrCreatePage(pageName, parentId, pageData.content)
               }
+              ProjectData.invalidateCache(request.data.project)
               created.map { _ =>
                 Redirect(self.show(author, slug, page))
               }

@@ -100,12 +100,15 @@ class Organizations @Inject()(forms: OreForms,
         role.organization.map { orga =>
           status match {
             case STATUS_DECLINE =>
+              HeaderData.invalidateCache(user)
               orga.memberships.removeRole(role)
               Ok
             case STATUS_ACCEPT =>
               role.setAccepted(true)
+              HeaderData.invalidateCache(user)
               Ok
             case STATUS_UNACCEPT =>
+              HeaderData.invalidateCache(user)
               role.setAccepted(false)
               Ok
             case _ =>
@@ -123,6 +126,7 @@ class Organizations @Inject()(forms: OreForms,
     * @return             Json response with errors if any
     */
   def updateAvatar(organization: String) = EditOrganizationAction(organization) { implicit request =>
+    // TODO implement me
     Ok
   }
 
@@ -137,6 +141,7 @@ class Organizations @Inject()(forms: OreForms,
       case None => BadRequest
       case Some(user) =>
         request.data.orga.memberships.removeMember(user)
+        HeaderData.invalidateCache(user)
         Redirect(ShowUser(organization))
     }
   }

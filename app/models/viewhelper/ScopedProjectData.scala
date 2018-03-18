@@ -9,7 +9,9 @@ import play.api.cache.AsyncCacheApi
 import scala.concurrent.{ExecutionContext, Future}
 
 // TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
-
+/**
+  * Holds ProjectData that is specific to a user
+  */
 object ScopedProjectData {
 
   def cacheKey(project: Project, user: User) = s"""project${project.id.get}foruser${user.id.get}"""
@@ -38,6 +40,10 @@ object ScopedProjectData {
       }
 
     } getOrElse Future.successful(noScope)
+  }
+
+  def invalidateCache(userId: Int, project: Project)(implicit cache: AsyncCacheApi) = {
+    cache.remove(s"""project${project.id.get}foruser${userId}""")
   }
 
   val noScope = ScopedProjectData()

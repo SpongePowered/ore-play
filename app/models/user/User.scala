@@ -304,7 +304,7 @@ case class User(override val id: Option[Int] = None,
             val memberTable = TableQuery[OrganizationMembersTable]
             val roleTable = TableQuery[OrganizationRoleTable]
 
-            // TODO check logic
+            // TODO review permission logic
             val query = for {
               p <- projectTable if p.id === pScope.projectId
               pm <- projectMembersTable if p.id === pm.projectId // Join members of project
@@ -384,7 +384,7 @@ case class User(override val id: Option[Int] = None,
     this.setGlobalRoles(user.groups
       .flatMap(group => RoleTypes.values.find(_.roleId == group.id).map(_.asInstanceOf[RoleType]))
       .toSet[RoleType])
-    Future.successful(this) // TODO updates above!
+    Future.successful(this)
   }
 
   /**
@@ -405,7 +405,7 @@ case class User(override val id: Option[Int] = None,
       } else
         url
     }.foreach(this.setAvatarUrl(_))
-    Future.successful(this) // TODO updates above!
+    Future.successful(this)
   }
 
   /**
