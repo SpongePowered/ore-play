@@ -6,14 +6,13 @@ import javax.inject.Inject
 import _root_.util.StringUtils._
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.{AuthRequest, OreRequest}
+import controllers.sugar.Requests.AuthRequest
 import db.ModelService
-import db.impl.PageTable
 import discourse.OreDiscourseApi
 import form.OreForms
-import models.project.{Note, Project, VisibilityTypes}
-import models.user.{Organization, User}
-import models.viewhelper.{HeaderData, ProjectData}
+import models.project.{Note, VisibilityTypes}
+import models.user.User
+import models.viewhelper.ProjectData
 import ore.permission._
 import ore.permission.scope.GlobalScope
 import ore.project.factory.ProjectFactory
@@ -21,12 +20,9 @@ import ore.project.io.{InvalidPluginFileException, PluginUpload}
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.cache.{AsyncCacheApi, SyncCacheApi}
-import play.api.i18n.{Messages, MessagesApi}
-import play.api.mvc.AnyContent
+import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
-import slick.lifted.TableQuery
 import views.html.{projects => views}
-import db.impl.OrePostgresDriver.api._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -423,11 +419,12 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Project manager
     */
-  def showSettings(author: String, slug: String) = SettingsEditAction(author, slug) { request =>
+  def showSettings(author: String, slug: String) = SettingsEditAction(author, slug) async { request =>
     implicit val r = request.request
     val projectData: ProjectData = request.data
-    val deployKey = None // TODO deployKey
-    Ok(views.settings(projectData, request.scoped, deployKey))
+    projectData.project.apiKeys.get(r.user.id.get).map { deployKey =>
+      Ok(views.settings(projectData, request.scoped, deployKey))
+    }
   }
 
   /**
@@ -645,11 +642,10 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug   Project slug
     */
   def showFlags(author: String, slug: String) = {
-    (Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)).async { implicit request =>
+    (Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)) andThen ProjectAction(author, slug) async { request =>
       implicit val r = request.request
       withProject(author, slug) { project =>
-        val p: ProjectData = null // TODO projectData
-        Ok(views.admin.flags(p))
+        Ok(views.admin.flags(request.data))
       }
     }
   }

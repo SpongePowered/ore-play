@@ -12,8 +12,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 // TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
-// TODO give this to templates with:
-
 case class VersionData(p: ProjectData, v: Version, c: Channel,
                        approvedBy: Option[String], // Reviewer if present
                        dependencies: Seq[(Dependency, Option[Project])]

@@ -57,7 +57,7 @@ Documentation page within Project overview.
                                 deletable = !page.isHome,
                                 enabled = canEditPages,
                                 raw = page.contents,
-                                cooked = page.html,
+                                cooked = page.html(Some(p.project)),
                                 subject = "Page",
                                 extraFormValue = page.name)
                         </div>

@@ -103,7 +103,7 @@ case class Page(override val id: Option[Int] = None,
     *
     * @return HTML representation
     */
-  def html: Html = RenderPage(this)
+  def html(project: Option[Project]): Html = RenderPage(this, project)
 
   /**
     * Returns true if this is the home page.
@@ -117,17 +117,18 @@ case class Page(override val id: Option[Int] = None,
     *
     * @return Optional Project
     */
-  // TODO remove await
-  def parentProject: Option[Project] = this.service.await(this.projectBase.get(projectId)).get
+  def parentProject(implicit ec: ExecutionContext): Future[Option[Project]] = this.projectBase.get(projectId)
 
   /**
     *
     * @return
     */
-  // TODO remove await
-  def parentPage: Option[Page] = {
-    if (parentProject.isDefined) this.service.await(parentProject.get.pages.find(ModelFilter[Page](_.id === parentId).fn)).get
-    else None
+  def parentPage(implicit ec: ExecutionContext): Future[Option[Page]] = {
+    parentProject.flatMap {
+      case None => Future.successful(None)
+      case Some(pp) =>
+        pp.pages.find(ModelFilter[Page](_.id === parentId).fn)
+    }
   }
 
   /**
@@ -236,12 +237,11 @@ object Page {
     Html(htmlRenderer.render(markdownParser.parse(markdown)))
   }
 
-  def RenderPage(page: Page)(implicit config: OreConfig): Html = {
+  def RenderPage(page: Page, project: Option[Project])(implicit config: OreConfig): Html = {
     if (linkResolver.isEmpty)
       linkResolver = Some(new ExternalLinkResolver.Factory(config))
 
     val options = new MutableDataSet().set[String](WikiLinkExtension.LINK_ESCAPE_CHARS, " +<>")
-    val project = page.parentProject
 
     if (project.isDefined)
       options.set[String](WikiLinkExtension.LINK_PREFIX, s"/${project.get.ownerName}/${project.get.slug}/pages/")

@@ -18,8 +18,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 // TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
-// TODO give this to templates with:
-
 
 case class HeaderData(currentUser: Option[User] = None,
                       private val globalPermissions: Map[Permission, Boolean] = Map.empty,

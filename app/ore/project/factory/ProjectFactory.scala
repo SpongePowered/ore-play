@@ -122,7 +122,7 @@ trait ProjectFactory {
         if (exists && this.config.projects.get[Boolean]("file-validate"))
           Left("error.version.duplicate")
         else {
-          // TODO cache version.cache()
+          version.cache()
           Right(version)
         }
       }

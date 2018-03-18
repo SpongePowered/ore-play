@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 // TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
-// TODO give this to templates with:
+// TODO separate Scoped UserData
 
 case class UserData(headerData: HeaderData,
                     user: User,

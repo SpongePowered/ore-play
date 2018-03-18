@@ -42,7 +42,7 @@ case class PendingProject(projects: ProjectBase,
   val pendingVersion: PendingVersion = {
     val version = this.factory.startVersion(this.file, this.underlying, this.settings, this.channelName)
     val model = version.underlying
-    // TODO cache version.cache()
+    version.cache()
     version
   }
 
