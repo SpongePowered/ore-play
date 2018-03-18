@@ -118,8 +118,8 @@ final class Application @Inject()(data: DataHelper,
       projects <- service.DB.db.run(projectQuery.result)
       tags <- Future.sequence(projects.map(_._3.tags))
     } yield {
-      val data = projects zip tags map { case ((p, u, v), tags) =>
-        (p,u,v,tags)
+      val data = projects zip tags map { case ((p, u, v), t) =>
+        (p,u,v,t)
       }
 
       val catList = if (Categories.visible.toSet.equals(categoryList.toSet)) Some(Seq.empty) else Some(categoryList)

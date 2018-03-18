@@ -314,14 +314,16 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug Project slug
     * @return Project icon
     */
-  def showIcon(author: String, slug: String) = ProjectAction(author, slug).async { implicit request =>
-    val project = request.project
-    implicit val r = request.request
-    this.projects.fileManager.getIconPath(project.project) match {
-      case None =>
-        project.project.owner.user.map(_.avatarUrl.map(Redirect(_)).getOrElse(notFound))
-      case Some(iconPath) =>
-        Future.successful(showImage(iconPath))
+  def showIcon(author: String, slug: String) = Action async { implicit request =>
+    this.projects.withSlug(author, slug).flatMap {
+      case None => Future.successful(NotFound)
+      case Some(project) =>
+        this.projects.fileManager.getIconPath(project) match {
+          case None =>
+            project.owner.user.map(_.avatarUrl.map(Redirect(_)).getOrElse(NotFound))
+          case Some(iconPath) =>
+            Future.successful(showImage(iconPath))
+        }
     }
   }
 

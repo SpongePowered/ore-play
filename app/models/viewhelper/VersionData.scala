@@ -38,11 +38,17 @@ case class VersionData(p: ProjectData, v: Version, c: Channel,
 
 object VersionData {
   def of[A](request: ProjectRequest[A], version: Version)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[VersionData] = {
+    implicit val base = version.projectBase
     for {
-      _ <- Future.successful()
       channel <- version.channel
+      approvedBy <- version.reviewer
+      deps <- Future.sequence(version.dependencies.map(dep => dep.project.map((dep, _))))
     } yield {
-      VersionData(request.project, version, channel, None, Seq.empty)
+      VersionData(request.project,
+        version,
+        channel,
+        approvedBy.map(_.name),
+        deps)
     }
   }
 }
