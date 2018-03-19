@@ -322,7 +322,7 @@ trait OreRestfulApi {
     * @return       List of users
     */
   def getUserList(limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
-    service.DB.db.run(queryUser.drop(offset.getOrElse(-1)).take(limit.getOrElse(-1)).result).map { l =>
+    service.DB.db.run(queryUser.drop(offset.getOrElse(-1)).take(limit.getOrElse(25)).result).map { l =>
       l.groupBy(_._1).mapValues(_.map(_._2)).toSeq // grouping in memory instead
     } flatMap { l =>
       writeUsers(l)

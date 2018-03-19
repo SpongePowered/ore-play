@@ -34,10 +34,15 @@ trait MembershipDossier {
 
   private def association
   = this.model.schema.getAssociation[MembersTable, User](this.membersTableClass, this.model)
-  private def roleAccess: ModelAccess[RoleType] = this.model.service.access[RoleType](roleClass)
+  def roleAccess: ModelAccess[RoleType] = this.model.service.access[RoleType](roleClass)
   private def addMember(user: User)(implicit ec: ExecutionContext) = this.association.add(user)
 
-  private def clearRoles(user: User) = this.roleAccess.removeAll(_.userId === user.id.get)
+  /**
+    * Clears the roles of a User
+    *
+    * @param user User instance
+    */
+  def clearRoles(user: User): Unit
 
   /**
     * Constructs a new member object of the MemberType.

@@ -128,6 +128,8 @@ case class Project(override val id: Option[Int] = None,
       }
     }
 
+    def clearRoles(user: User): Unit = this.roleAccess.removeAll({ s => (s.userId === user.id.get) && (s.projectId === id.get) })
+
   }
 
   def this(pluginId: String, name: String, owner: String, ownerId: Int) = {

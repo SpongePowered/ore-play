@@ -26,4 +26,6 @@
         userName
 }
 
-<a href="@url" class="user-avatar @clazz" title="@name" style="background-image: url(@src);" @for((k, v) <- attr) { @(s"$k=$v") }></a>
+<a href="@url" @for((k, v) <- attr) { @(s"$k=$v") }>
+    <img class="user-avatar @clazz" title="@name" src="@src" />
+</a>

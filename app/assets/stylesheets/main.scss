@@ -34,42 +34,38 @@ body {
 }
 
 .index-header {
-  padding-bottom: 24px;
+  padding-bottom: 1.5rem;
 }
 
 .index-header .alert {
   margin-bottom: 20px;
 }
 
-.logo {
-  height: 40px;
-}
-
-.sponsor-block {
-  max-width: 100%;
-}
-
 .sponsor {
-  float: right;
-  width: 100%;
-  height: 50px;
-  padding: 10px;
-  border-radius: 4px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  i {
-    font-size: 10px;
-    color: $sponge_dark_grey;
+  .logo {
+    max-width: 100%;
+    max-height: 40px;
   }
 
-  .logo {
-    max-height: 50px;
-    max-width: 100%;
-    height: auto;
-    z-index: 1;
+  span {
+    position: absolute;
+    left: 20px;
+    font-size: 1rem;
+    top: 5px;
+    font-weight: bold;
+  }
+
+  .panel.sponsor-panel {
+    margin-bottom: 0;
+    text-align: center;
+
+    > .panel-body {
+      padding-top: 25px;
+    }
+  }
+
+  @media (max-width: 992px) {
+    margin-top: 1.5rem;
   }
 }
 
@@ -95,38 +91,82 @@ form {
 /* project content */
 
 .project-list {
-  .list-group-item:not(.project-list-footer) {
-    padding: 15px;
-    white-space: nowrap;
+  .row {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+
+  @media (max-width: 767px) {
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+    }
+  }
+
+  .project {
+    padding: 10px 0;
+    margin-bottom: 0.25rem;
+
+    &:first-child {
+      margin-top: 0.25rem;
+    }
+  }
+
+  .title {
+    font-size: 2rem;
+    color: $sponge_grey;
+    font-weight: bold;
+  }
+
+  .description-column {
     overflow: hidden;
-  }
 
-  .list-group-item.project-list-footer {
-    padding: 0;
-    .btn { border: none; }
-  }
-
-  .stat {
-    margin-left: 10px;
-    a { color: gray; }
-    a:hover { color: darken(gray, 10%); }
-  }
-
-  .project-list-header {
-    a {
-      margin-top: 3px;
-      margin-right: 15px;
+    .description {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 
-  .project-title {
-    strong { font-size: 24px; }
-    strong, i {
-      display: table-cell;
-      vertical-align: middle;
+  .tags-line {
+    display: flex;
+    justify-content: flex-end;
+
+    @media (max-width: 480px) {
+      justify-content: flex-start;
+      margin-top: 0.5rem;
+    }
+
+    .tags {
+      margin-right: 0.5rem;
+    }
+
+    :last-child {
+      margin-right: 0;
+    }
+
+    .tag {
+      margin: 0;
     }
   }
 
+  .info {
+    display: flex;
+    justify-content: flex-end;
+
+    span {
+      margin-right: 1.5rem;
+
+      &:last-child {
+        margin-right: 0;
+      }
+
+      &.recommended-version a {
+        font-weight: bold;
+        color: #636363;
+      }
+    }
+  }
 }
 
 // category table
@@ -343,7 +383,7 @@ select.form-control, input.form-control {
 
 .tags {
   align-items: center;
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-start;
 
@@ -433,3 +473,51 @@ select.form-control, input.form-control {
 .project-hidden {
   box-shadow: inset -10px 0px red;
 }
+
+.full-size {
+  width: 100%;
+  height: 100%;
+}
+
+.aligned-row {
+  display: flex;
+  flex-flow: row wrap;
+
+  &::before {
+    display: block;
+  }
+}
+
+@media (min-width : 992px) {
+  .centered-content-row {
+    display: flex;
+    flex-flow: nowrap;
+    align-items: center;
+  }
+}
+
+.ore-banner {
+  .ore-logo {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+
+    img {
+      height: 6rem;
+      width: 6rem;
+    }
+  }
+
+  .text {
+    font-family: $sponge_headline_font;
+    display: inline-block;
+    padding-left: 0;
+    width: auto;
+
+    .headline {
+      font-weight: bold;
+      font-size: 2.75rem;
+    }
+  }
+}
+

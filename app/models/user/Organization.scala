@@ -3,10 +3,11 @@ package models.user
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
+import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.OreModel
-import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.impl.table.ModelKeys._
+import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.{Model, Named}
 import models.user.role.{OrganizationRole, RoleModel}
 import ore.organization.OrganizationMember
@@ -61,7 +62,7 @@ case class Organization(override val id: Option[Int] = None,
 
     def newMember(userId: Int)(implicit ec: ExecutionContext) = new OrganizationMember(this.model, userId)
 
-
+    def clearRoles(user: User): Unit = this.roleAccess.removeAll({ s => (s.userId === user.id.get) && (s.organizationId === id.get) })
 
     /**
       * Returns the highest level of [[ore.permission.role.Trust]] this user has.
@@ -75,6 +76,7 @@ case class Organization(override val id: Option[Int] = None,
         l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
       }
     }
+
   }
 
   /**
