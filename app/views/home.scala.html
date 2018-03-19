@@ -72,8 +72,9 @@ sorted according to different criteria.
     currentlyLoaded = @models.size;
     </script>
 
-    <div class="container" style="margin-top: 90px ;">
-            <!-- Header -->
+    <div class="container" style="margin-top: 63px; padding-top: 1.5rem">
+
+        <!-- Header -->
         <div class="index-header">
             <div class="row">
                 <div class="col-md-12">
@@ -82,22 +83,34 @@ sorted according to different criteria.
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-9"><img height="60" src="@routes.Assets.at("images/ore-desc.png")" /></div>
-                <div class="col-md-3 sponsor-block">
-                    <i>@messages("general.sponsoredBy")</i>
-                    <div class="sponsor">
-                        @defining(randomSponsor) { sponsor =>
-                            <a href="@sponsor._3">
-                                <img class="logo" src="@routes.Assets.at(sponsor._2)" />
-                            </a>
-                        }
+            <div class="row centered-content-row">
+                <div class="col-md-9 ore-banner">
+                        <div class="row aligned-row">
+                            <div class="col-xs-2 ore-logo">
+                                <img src="@routes.Assets.at("images/ore-colored.svg")" />
+                            </div>
+                            <div class="col-xs-10 text">
+                                <div class="headline">Ore</div>
+                                <div>A Minecraft package repository</div>
+                            </div>
+                        </div>
+                </div>
+                <div class="col-md-3 sponsor">
+                    <div class="panel sponsor-panel">
+                        <span>Sponsored by</span>
+                        <div class="panel-body">
+                            @defining(randomSponsor) { sponsor =>
+                                <a href="@sponsor._3">
+                                    <img class="logo" src="@routes.Assets.at(sponsor._2)" />
+                                </a>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-            <!-- Main content -->
+        <!-- Main content -->
         <div class="row project-content">
                 <!-- Project table -->
             <div class="col-md-9">
@@ -125,7 +138,7 @@ sorted according to different criteria.
                 )
             </div>
 
-                <!-- Sidebar -->
+            <!-- Sidebar -->
             <div class="col-md-3">
                     <!-- Ordering selection -->
                 <select class="form-control select-sort">
@@ -135,7 +148,7 @@ sorted according to different criteria.
                     }
                 </select>
 
-                    <!-- Category table -->
+                <!-- Category table -->
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("project.category.plural")</h3>
@@ -160,8 +173,8 @@ sorted according to different criteria.
                     </table>
                 </div>
 
-                    <!-- Platform list -->
-                <div class="panel panel-default">
+                <!-- Platform list -->
+                <!--<div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("general.platform")</h3>
                     </div>
@@ -190,7 +203,7 @@ sorted according to different criteria.
                             </a>
                         }
                     </ul>
-                </div>
+                </div>-->
             </div>
         </div>
     </div>

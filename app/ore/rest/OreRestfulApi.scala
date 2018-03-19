@@ -142,7 +142,7 @@ trait OreRestfulApi {
   def getUserList(limit: Option[Int], offset: Option[Int]): JsValue = toJson {
     this.service.await(this.service.collect(
       modelClass = classOf[User],
-      limit = limit.getOrElse(-1),
+      limit = limit.getOrElse(25),
       offset = offset.getOrElse(-1))
     ).get
   }

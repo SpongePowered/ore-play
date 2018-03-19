@@ -244,7 +244,7 @@ filters {
                 "'%NONCE-SOURCE%'"
                 "https://forums.spongepowered.org"
                 "https://forums-cdn.spongepowered.org"
-                "https://www.google-analytics.com/analytics.js"
+                "https://www.google-analytics.com"
             ]
             style-src = [
                 "self"

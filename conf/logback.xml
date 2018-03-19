@@ -5,14 +5,14 @@
 <configuration>
     <conversionRule conversionWord="coloredLevel" converterClass="play.api.libs.logback.ColoredLevel" />
 
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>[%d{HH:mm:ss.SSS}] %coloredLevel %logger{15} - %message%n%xException{10}</pattern>
         </encoder>
     </appender>
 
-    <appender name="ASYNCSTDOUT" class="ch.qos.logback.classic.AsyncAppender">
-        <appender-ref ref="STDOUT" />
+    <appender name="AsyncConsole" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="Console" />
     </appender>
 
     <!-- Sentry -->
@@ -23,12 +23,14 @@
     </appender>
 
     <root level="WARN">
-        <appender-ref ref="ASYNCSTDOUT" />
+        <appender-ref ref="Sentry" />
+        <appender-ref ref="AsyncConsole" />
     </root>
 
     <!-- Play -->
     <logger name="play" level="INFO" />
     <logger name="application" level="INFO" />
+    <logger name="slick" level="INFO" />
     <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
     <logger name="org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator" level="ERROR" />
 
@@ -45,5 +47,4 @@
     <logger name="Organizations" level="INFO" />
     <logger name="SSO" level="INFO" />
     <logger name="ProjectTask" level="INFO" />
-    <logger name="slick" level="INFO" />
 </configuration>
