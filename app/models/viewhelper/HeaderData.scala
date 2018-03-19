@@ -2,7 +2,7 @@ package models.viewhelper
 
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
-import db.impl.OrePostgresDriver.OreDriver._
+import db.impl.OrePostgresDriver.api._
 import db.impl.access.OrganizationBase
 import db.impl.{ProjectTableMain, SessionTable, UserTable, VersionTable}
 import models.project.VisibilityTypes
@@ -21,6 +21,7 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 case class HeaderData(currentUser: Option[User] = None,
                       private val globalPermissions: Map[Permission, Boolean] = Map.empty,
+                      hasNotice: Boolean = false,
                       hasUnreadNotifications: Boolean = false,
                       unresolvedFlags: Boolean = false,
                       hasProjectApprovals: Boolean = false,
@@ -120,13 +121,15 @@ object HeaderData {
 
     for {
       perms <- perms(Some(user))
-      unreadNotif <- user.hasUnreadNotifications
+      hasNotice <- user.hasNotice
+      unreadNotif <- user.notifications.filterNot(_.read).map(_.nonEmpty)
       unresolvedFlags <- user.flags.filterNot(_.isResolved).map(_.nonEmpty)
       hasProjectApprovals <- projectApproval(user)
       hasReviewQueue <- if (perms(ReviewProjects)) reviewQueue() else Future.successful(false)
     } yield {
         HeaderData(Some(user),
         perms,
+        hasNotice,
         unreadNotif,
         unresolvedFlags,
         hasProjectApprovals,

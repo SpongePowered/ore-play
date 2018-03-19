@@ -84,7 +84,7 @@ The main header displayed on each layout.
                     @* Show user controls *@
                 <li class="dropdown user-controls nav-icon">
                     <a href="#" class="drop-down-toggle user-toggle" data-toggle="dropdown">
-                        @if(request.data.hasUnreadNotifications) {
+                        @if(request.data.hasNotice) {
                             <span class="unread"></span>
                         }
                         <img height="32" width="32" class="user-avatar" src="@cu.avatarUrl.getOrElse(routes.Assets.at("images/spongie-mark.svg"))" />

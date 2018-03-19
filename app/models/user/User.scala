@@ -561,7 +561,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return True if has unread notifications
     */
-  def hasUnreadNotifications: Future[Boolean] = Defined {
+  def hasNotice: Future[Boolean] = Defined {
     val flags = this.service.access[Flag](classOf[Flag])
     val versions = this.service.access[Version](classOf[Version])
 
