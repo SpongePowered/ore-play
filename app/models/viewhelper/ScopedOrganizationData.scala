@@ -9,8 +9,6 @@ import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}
 
-// TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
-
 case class ScopedOrganizationData(permissions: Map[Permission, Boolean] = Map.empty)
 
 object ScopedOrganizationData {
@@ -23,14 +21,12 @@ object ScopedOrganizationData {
     implicit val users = orga.userBase
     if (currentUser.isEmpty) Future.successful(noScope)
     else {
-      cache.getOrElseUpdate(cacheKey(orga, currentUser.get)) {
-        for {
-          editSettings <- currentUser.get can EditSettings in orga map ((EditSettings, _))
-        } yield {
+      for {
+        editSettings <- currentUser.get can EditSettings in orga map ((EditSettings, _))
+      } yield {
 
-          val perms: Map[Permission, Boolean] = Seq(editSettings).toMap
-          ScopedOrganizationData(perms)
-        }
+        val perms: Map[Permission, Boolean] = Seq(editSettings).toMap
+        ScopedOrganizationData(perms)
       }
     }
   }

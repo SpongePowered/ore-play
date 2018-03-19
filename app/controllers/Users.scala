@@ -260,7 +260,6 @@ class Users @Inject()(fakeUser: FakeUser,
       user.setLocked(locked)
       if (!locked)
         this.mailer.push(this.emails.create(user, this.emails.AccountUnlocked))
-      HeaderData.invalidateCache(user)
       Redirect(ShowUser(username))
     }
   }
@@ -326,7 +325,6 @@ class Users @Inject()(fakeUser: FakeUser,
       case None => notFound
       case Some(notification) =>
         notification.setRead(read = true)
-        HeaderData.invalidateCache(request.user)
         Ok
     }
   }
@@ -344,7 +342,6 @@ class Users @Inject()(fakeUser: FakeUser,
         BadRequest
       case Some(prompt) =>
         request.user.markPromptRead(prompt)
-        HeaderData.invalidateCache(request.user)
         Ok
     }
   }

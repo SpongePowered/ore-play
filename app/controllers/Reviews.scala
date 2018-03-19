@@ -160,7 +160,6 @@ final class Reviews @Inject()(data: DataHelper,
 
     users.map { list =>
       list.map { id =>
-        HeaderData.invalidateCache(id)
         Notification(
           userId = id,
           originId = requestUser.id.get,

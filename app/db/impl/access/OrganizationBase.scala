@@ -87,7 +87,6 @@ class OrganizationBase(override val service: ModelService,
           Future.sequence(members.map { role =>
             // TODO remove role.user db access we really only need the userid we already have for notifications
             org.memberships.addRole(role.copy(organizationId = org.id.get)).flatMap(_ => role.user).flatMap { user =>
-              HeaderData.invalidateCache(user)
               user.sendNotification(Notification(
                 originId = org.id.get,
                 notificationType = NotificationTypes.OrganizationInvite,

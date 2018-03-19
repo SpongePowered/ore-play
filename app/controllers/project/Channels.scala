@@ -69,7 +69,6 @@ class Channels @Inject()(forms: OreForms,
         channelData.addTo(request.data.project).map { _.fold(
             error => Redirect(self.showList(author, slug)).withError(error),
             _ => {
-              ProjectData.invalidateCache(request.data.project)
               Redirect(self.showList(author, slug))
             }
 
@@ -97,7 +96,6 @@ class Channels @Inject()(forms: OreForms,
         channelData.saveTo(channelName).map { _.map { error =>
             Redirect(self.showList(author, slug)).withError(error)
           } getOrElse {
-            ProjectData.invalidateCache(request.data.project)
             Redirect(self.showList(author, slug))
           }
         }
@@ -135,7 +133,6 @@ class Channels @Inject()(forms: OreForms,
                   Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed")
                 } else {
                   this.projects.deleteChannel(channel)
-                  ProjectData.invalidateCache(request.data.project)
                   Redirect(self.showList(author, slug))
                 }
               }

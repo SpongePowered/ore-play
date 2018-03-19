@@ -42,7 +42,6 @@ trait StatTracker {
     ProjectView.bindFromRequest.map { statEntry =>
       this.viewSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
-          ProjectData.invalidateCache(data.project)
           data.project.addView()
         }
       }
@@ -64,7 +63,6 @@ trait StatTracker {
         case recorded => if (recorded.get) {
           version.addDownload()
           request.data.project.addDownload()
-          ProjectData.invalidateCache(request.data.project)
         }
       }
       f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))

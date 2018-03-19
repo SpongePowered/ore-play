@@ -89,7 +89,6 @@ class Projects @Inject()(stats: StatTracker,
               val pendingProject = this.factory.startProject(plugin)
               pendingProject.cache()
               val model = pendingProject.underlying
-              ProjectData.invalidateCache(model)
               Redirect(self.showCreatorWithMeta(model.ownerName, model.slug))
             } catch {
               case e: InvalidPluginFileException =>
@@ -145,7 +144,6 @@ class Projects @Inject()(stats: StatTracker,
                 val namespace = project.namespace
                 this.cache.set(namespace, pendingProject)
                 this.cache.set(namespace + '/' + version.underlying.versionString, version)
-                ProjectData.invalidateCache(project)
                 implicit val currentUser = request.user
 
                 val authors = pendingProject.file.meta.get.getAuthors.asScala
@@ -264,7 +262,6 @@ class Projects @Inject()(stats: StatTracker,
               }
           }
           val errors = poster.flatMap { post =>
-            ProjectData.invalidateCache(request.data.project)
             this.forums.postDiscussionReply(data.project, post, formData.content)
           }
           errors.map { errList =>
@@ -348,7 +345,6 @@ class Projects @Inject()(stats: StatTracker,
           FormError(ShowProject(data.project), hasErrors),
         formData => {
           data.project.flagFor(user, formData.reason, formData.comment)
-          ProjectData.invalidateCache(request.data.project)
           Redirect(self.show(author, slug)).flashing("reported" -> "true")
         }
       )
@@ -365,8 +361,6 @@ class Projects @Inject()(stats: StatTracker,
     */
   def setWatching(author: String, slug: String, watching: Boolean) = {
     AuthedProjectAction(author, slug) async { implicit request =>
-      ProjectData.invalidateCache(request.data.project)
-      HeaderData.invalidateCache(request.user)
       request.user.setWatching(request.data.project, watching).map(_ => Ok)
     }
   }
@@ -382,8 +376,6 @@ class Projects @Inject()(stats: StatTracker,
   def setStarred(author: String, slug: String, starred: Boolean) = {
     AuthedProjectAction(author, slug) { implicit request =>
       if (request.data.project.ownerId != request.user.userId) {
-        ProjectData.invalidateCache(request.data.project)
-        HeaderData.invalidateCache(request.user)
         request.data.project.setStarredBy(request.user, starred)
         Ok
       } else {
@@ -409,15 +401,12 @@ class Projects @Inject()(stats: StatTracker,
           status match {
             case STATUS_DECLINE =>
               dossier.removeRole(role)
-              ProjectData.invalidateCache(project)
               Ok
             case STATUS_ACCEPT =>
               role.setAccepted(true)
-              ProjectData.invalidateCache(project)
               Ok
             case STATUS_UNACCEPT =>
               role.setAccepted(false)
-              ProjectData.invalidateCache(project)
               Ok
             case _ =>
               BadRequest
@@ -459,7 +448,6 @@ class Projects @Inject()(stats: StatTracker,
           Files.createDirectories(pendingDir)
         Files.list(pendingDir).iterator().asScala.foreach(Files.delete)
         tmpFile.ref.moveTo(pendingDir.resolve(tmpFile.filename).toFile, replace = true)
-        ProjectData.invalidateCache(request.data.project)
         Ok
     }
   }
@@ -477,7 +465,6 @@ class Projects @Inject()(stats: StatTracker,
     fileManager.getIconPath(data.project).foreach(Files.delete)
     fileManager.getPendingIconPath(data.project).foreach(Files.delete)
     Files.delete(fileManager.getPendingIconDir(data.project.ownerName, data.project.name))
-    ProjectData.invalidateCache(request.data.project)
     Ok
   }
 
@@ -509,7 +496,6 @@ class Projects @Inject()(stats: StatTracker,
       case None => BadRequest
       case Some(user) =>
         request.data.project.memberships.removeMember(user)
-        ProjectData.invalidateCache(request.data.project)
         Redirect(self.showSettings(author, slug))
     }
   }
@@ -550,7 +536,6 @@ class Projects @Inject()(stats: StatTracker,
       case true =>
         val data = request.data
         this.projects.rename(data.project, newName).map { _ =>
-          ProjectData.invalidateCache(request.data.project)
           Redirect(self.show(author, data.project.slug))
         }
     }
@@ -577,7 +562,6 @@ class Projects @Inject()(stats: StatTracker,
             request.data.project.setVisibility(newVisibility, "", request.user.id.get)
           }
         }
-        ProjectData.invalidateCache(request.data.project)
         Ok
       }
 
@@ -595,7 +579,6 @@ class Projects @Inject()(stats: StatTracker,
     if (data.visibility == VisibilityTypes.New) {
       data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.get)
     }
-    ProjectData.invalidateCache(request.data.project)
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
 
@@ -610,7 +593,6 @@ class Projects @Inject()(stats: StatTracker,
     if (data.visibility == VisibilityTypes.NeedsChanges) {
       data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.get)
     }
-    ProjectData.invalidateCache(request.data.project)
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
 
@@ -641,7 +623,6 @@ class Projects @Inject()(stats: StatTracker,
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
       withProject(author, slug) { project =>
         this.projects.delete(project)
-        ProjectData.invalidateCache(project)
         Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name))
       }
     }
@@ -658,7 +639,6 @@ class Projects @Inject()(stats: StatTracker,
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
     data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { vc =>
-      ProjectData.invalidateCache(request.data.project)
       Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", data.project.name))
     }
   }
@@ -698,7 +678,6 @@ class Projects @Inject()(stats: StatTracker,
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
       withProject(author, slug) { project =>
         project.addNote(Note(this.forms.NoteDescription.bindFromRequest.get.trim, request.user.userId))
-        ProjectData.invalidateCache(project)
         Ok("Review")
       }
     }

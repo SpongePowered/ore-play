@@ -1,23 +1,20 @@
 package models.viewhelper
 
-import controllers.sugar.Requests.{ProjectRequest, ScopedRequest}
+import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.OreDriver._
 import db.impl.access.OrganizationBase
 import db.impl.{ProjectTableMain, SessionTable, UserTable, VersionTable}
-import models.project.{Project, VisibilityTypes}
+import models.project.VisibilityTypes
 import models.user.User
 import ore.permission._
-import ore.permission.scope.{GlobalScope, Scope}
+import ore.permission.scope.GlobalScope
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.Request
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-
-// TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
 /**
   * Holds global user specific data - When a User is not authenticated a dummy is used
@@ -63,14 +60,6 @@ object HeaderData {
 
   def cacheKey(user: User) = s"""user${user.id.get}"""
 
-  def invalidateCache(user: User)(implicit cache: AsyncCacheApi) = {
-    cache.remove(cacheKey(user))
-  }
-
-  def invalidateCache(userId: Int)(implicit cache: AsyncCacheApi) = {
-    cache.remove("user" + userId)
-  }
-
   def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[HeaderData] = {
     request.cookies.get("_oretoken") match {
       case None => Future.successful(unAuthenticated)
@@ -80,9 +69,7 @@ object HeaderData {
           case Some(user) =>
             user.service = service
             user.organizationBase = service.getModelBase(classOf[OrganizationBase])
-            cache.getOrElseUpdate(cacheKey(user), 15 minutes) {
-              getHeaderData(user)
-            }
+            getHeaderData(user)
         }
     }
   }

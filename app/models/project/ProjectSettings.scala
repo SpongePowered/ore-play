@@ -197,15 +197,12 @@ case class ProjectSettings(override val id: Option[Int] = None,
           val usersTable = TableQuery[UserTable]
           // Select member userIds
           service.DB.db.run(usersTable.filter(_.name inSetBind formData.userUps).map(_.id).result).map { userIds =>
-            userIds.foreach(id => ScopedProjectData.invalidateCache(id, project))
             userIds zip formData.roleUps.map(role => projectRoleTypes.find(_.title.equals(role)).getOrElse(throw new RuntimeException("supplied invalid role type")))
           } map { _.map {
+
               case (userId, role) => updateMemberShip(userId).update(role)
             }
           } flatMap { updates =>
-
-            ProjectData.invalidateCache(project)
-
             service.DB.db.run(DBIO.sequence(updates))
           }
         }

@@ -217,7 +217,6 @@ final class ApiController @Inject()(api: OreRestfulApi,
                       pendingVersion.complete.map { newVersion =>
                         if (formData.recommended)
                           projectData.project.setRecommendedVersion(newVersion._1)
-                        ProjectData.invalidateCache(projectData.project)
                         Created(api.writeVersion(newVersion._1, projectData.project, newVersion._2, None, newVersion._3))
                       }
                   }

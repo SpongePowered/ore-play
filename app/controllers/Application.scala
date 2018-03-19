@@ -135,9 +135,10 @@ final class Application @Inject()(data: DataHelper,
     val doCache = query.isEmpty
 
     val data = if (doCache) {
-      val cacheKey = "homepage+" + categories + sort + page + platform + ":::" + canHideProjects + ":" + currentUserId
-      Logger.info("CacheKey: " + cacheKey)
-      cache.getOrElseUpdate(cacheKey)(queryProjects())
+      //val cacheKey = "homepage+" + categories + sort + page + platform + ":::" + canHideProjects + ":" + currentUserId
+      //Logger.info("CacheKey: " + cacheKey)
+      //cache.getOrElseUpdate(cacheKey)(queryProjects())
+      queryProjects()
     } else {
       queryProjects()
     }
@@ -257,8 +258,6 @@ final class Application @Inject()(data: DataHelper,
       case Some(flag) =>
         users.current.map { user =>
           flag.setResolved(resolved, user)
-          ProjectData.invalidateCache(flag.projectId)
-          HeaderData.invalidateCache(user.get)
           Ok
         }
     }
@@ -489,14 +488,12 @@ final class Application @Inject()(data: DataHelper,
                 isOrga.flatMap {
                   case true => Future.successful(BadRequest)
                   case false =>
-                    HeaderData.invalidateCache(user)
                     updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
                 }
               case "memberRole" =>
                 isOrga.flatMap {
                   case false => Future.successful(BadRequest)
                   case true =>
-                    HeaderData.invalidateCache(user)
                     user.toOrganization.flatMap { orga =>
                       updateRoleTable(orga.memberships.roles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
                     }
@@ -505,7 +502,6 @@ final class Application @Inject()(data: DataHelper,
                 isOrga.flatMap {
                   case true => Future.successful(BadRequest)
                   case false =>
-                    HeaderData.invalidateCache(user)
                     updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleTypes.ProjectOwner,
                     (r: ProjectRole) => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))))
                 }

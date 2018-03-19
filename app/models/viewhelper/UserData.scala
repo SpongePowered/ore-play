@@ -12,9 +12,6 @@ import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}
 
-
-// TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
-
 // TODO separate Scoped UserData
 
 case class UserData(headerData: HeaderData,
@@ -50,7 +47,6 @@ object UserData {
   val noOrgaPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
   def of[A](request: OreRequest[A], user: User)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[UserData] = {
-    // TODO cache && fill
     for {
       isOrga <- user.isOrganization
       projectCount <- user.projects.size

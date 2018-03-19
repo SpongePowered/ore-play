@@ -7,19 +7,13 @@ import models.admin.VisibilityChange
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
-import models.viewhelper.ScopedProjectData.cacheKey
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
-import play.api.Logger
 import play.api.cache.AsyncCacheApi
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
-
-
-// TODO cache this! But keep in mind to invalidate caches when permission changes might occur or other stuff affecting the data in here
 
 /**
   * Holds ProjetData that is the same for all users
@@ -82,53 +76,42 @@ object ProjectData {
 
     Future.successful(data)
   }
-
-  def invalidateCache(project: Project)(implicit cache: AsyncCacheApi) = {
-    cache.remove(cacheKey(project))
-  }
-
-  def invalidateCache(projectId: Int)(implicit cache: AsyncCacheApi) = {
-    cache.remove("project" + projectId)
-  }
-
   def of[A](project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
 
-    cache.getOrElseUpdate(cacheKey(project), 15.minutes) {
-      implicit val userBase = project.userBase
-      for {
-        settings <- project.settings
-        projectOwner <- project.owner.user
+    implicit val userBase = project.userBase
+    for {
+      settings <- project.settings
+      projectOwner <- project.owner.user
 
-        ownerRole <- project.owner.headRole
-        versions <- project.versions.size
-        members <- members(project)
+      ownerRole <- project.owner.headRole
+      versions <- project.versions.size
+      members <- members(project)
 
-        logSize <- project.logger.flatMap(_.entries.size)
-        flags <- project.flags.all
-        flagUsers <- Future.sequence(flags.map(_.user))
-        flagResolved <- Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1))))
-        lastVisibilityChange <- project.lastVisibilityChange
-        lastVisibilityChangeUser <- if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
-        else lastVisibilityChange.get.created.map(_.map(_.name).getOrElse("Unknown"))
-      } yield {
-        val noteCount = project.getNotes().size
-        val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
-          (fl, user.name, resolved.map(_.username))
-        }
-
-        new ProjectData(
-          project,
-          projectOwner,
-          ownerRole,
-          versions,
-          settings,
-          members.sortBy(_._1.roleType.trust).reverse,
-          logSize,
-          flagData.toSeq,
-          noteCount,
-          lastVisibilityChange,
-          lastVisibilityChangeUser)
+      logSize <- project.logger.flatMap(_.entries.size)
+      flags <- project.flags.all
+      flagUsers <- Future.sequence(flags.map(_.user))
+      flagResolved <- Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1))))
+      lastVisibilityChange <- project.lastVisibilityChange
+      lastVisibilityChangeUser <- if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
+      else lastVisibilityChange.get.created.map(_.map(_.name).getOrElse("Unknown"))
+    } yield {
+      val noteCount = project.getNotes().size
+      val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
+        (fl, user.name, resolved.map(_.username))
       }
+
+      new ProjectData(
+        project,
+        projectOwner,
+        ownerRole,
+        versions,
+        settings,
+        members.sortBy(_._1.roleType.trust).reverse,
+        logSize,
+        flagData.toSeq,
+        noteCount,
+        lastVisibilityChange,
+        lastVisibilityChangeUser)
     }
   }
 

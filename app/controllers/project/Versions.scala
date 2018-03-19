@@ -232,7 +232,6 @@ class Versions @Inject()(stats: StatTracker,
               this.factory.processSubsequentPluginUpload(uploadData, user, request.data.project).map(_.fold(
                 err => Redirect(call).withError(err),
                 version => {
-                  ProjectData.invalidateCache(request.data.project)
                   version.underlying.setAuthorId(user.id.getOrElse(-1))
                   Redirect(self.showCreatorWithMeta(request.data.project.ownerName, slug, version.underlying.versionString))
                 }
@@ -347,7 +346,6 @@ class Versions @Inject()(stats: StatTracker,
                             if (versionData.recommended)
                               project.setRecommendedVersion(newVersion._1)
                             addUnstableTag(newVersion._1, versionData.unstable)
-                            ProjectData.invalidateCache(pendingVersion.project)
                             Redirect(self.show(author, slug, versionString))
                           }
                         }
@@ -358,7 +356,6 @@ class Versions @Inject()(stats: StatTracker,
                   // Found a pending project, create it with first version
                   pendingProject.complete.map { created =>
                     addUnstableTag(created._2, versionData.unstable)
-                    ProjectData.invalidateCache(pendingVersion.project)
                     Redirect(ShowProject(author, slug))
                   }
               }
@@ -409,7 +406,6 @@ class Versions @Inject()(stats: StatTracker,
       implicit val p = data.project
       withVersion(versionString) { version =>
         this.projects.deleteVersion(version)
-        ProjectData.invalidateCache(request.data.project)
         Redirect(self.showList(author, slug, None, None))
       }
     }

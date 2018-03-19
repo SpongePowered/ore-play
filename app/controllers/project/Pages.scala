@@ -111,7 +111,6 @@ class Pages @Inject()(forms: OreForms,
         data.project.pages.find(equalsIgnoreCase(_.slug, name)).flatMap {
           case Some(page) => Future.successful(page)
           case None =>
-            ProjectData.invalidateCache(request.data.project)
             data.project.getOrCreatePage(name, parentId)
         }
     } flatMap { p =>
@@ -169,7 +168,6 @@ class Pages @Inject()(forms: OreForms,
                 val pageName = pageData.name.getOrElse(parts(0))
                 data.project.getOrCreatePage(pageName, parentId, pageData.content)
               }
-              ProjectData.invalidateCache(request.data.project)
               created.map { _ =>
                 Redirect(self.show(author, slug, page))
               }

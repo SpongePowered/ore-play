@@ -53,7 +53,6 @@ case class OrganizationMembersUpdate(override val users: List[Int],
           Future.sequence(members.map(member => member.user.map((_, member))))
         } map { users =>
           users.find(_._1.name.equalsIgnoreCase(user.trim)).foreach { user =>
-            HeaderData.invalidateCache(user._1)
             user._2.headRole.map { role =>
                 role.setRoleType(orgRoleTypes.find(_.title.equals(roleUps(i))).getOrElse(throw new RuntimeException("supplied invalid role type")))
             }
