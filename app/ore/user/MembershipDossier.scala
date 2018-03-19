@@ -42,7 +42,7 @@ trait MembershipDossier {
     *
     * @param user User instance
     */
-  def clearRoles(user: User): Unit
+  def clearRoles(user: User):Future[Int]
 
   /**
     * Constructs a new member object of the MemberType.
