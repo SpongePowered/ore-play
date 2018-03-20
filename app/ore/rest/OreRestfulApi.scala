@@ -2,23 +2,21 @@ package ore.rest
 
 import java.lang.Math._
 import javax.inject.Inject
-import javax.swing.text.html.parser.TagStack
 
+import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.access.{ProjectBase, UserBase}
-import db.impl.schema.{ProjectSchema, ProjectTag, VersionSchema}
-import db.{ModelFilter, ModelService}
+import db.impl.schema.{ProjectSchema, ProjectTag}
 import models.project._
 import models.user.User
+import models.user.role.ProjectRole
 import ore.OreConfig
+import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
-import play.api.libs.json.{JsObject, JsString, JsValue}
 import play.api.libs.json.Json.{obj, toJson}
-import com.github.tminglei.slickpg.agg.PgAggFuncSupport.GeneralAggFunctions.arrayAgg
-import play.mvc.BodyParser.Json
-import slick.lifted.QueryBase
+import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 import util.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -73,7 +71,7 @@ trait OreRestfulApi {
 
       filtered sortBy { case (p, v, c) =>
         ordering.fn.apply(p)
-      } drop offset.getOrElse(-1) take lim
+      } drop offset.getOrElse(25) take lim
     }
 
     val query = filteredProjects(offset, lim)
@@ -87,6 +85,32 @@ trait OreRestfulApi {
     all.map(toJson(_))
   }
 
+  private def getMembers(projects: Seq[Int]) = {
+    val tableRoles = TableQuery[ProjectRoleTable]
+    val tableUsers = TableQuery[UserTable]
+
+    for {
+      r <- tableRoles if r.isAccepted === true && r.projectId.inSetBind(projects)
+      u <- tableUsers if r.userId === u.id
+    } yield {
+      (r, u)
+    }
+  }
+
+  def writeMembers(members: Seq[(ProjectRole, User)]) = {
+    val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.roleType))
+    members.map { case (_, user) =>
+      val roles = allRoles(user.id.get)
+      val trustOrder: Ordering[RoleType] = Ordering.by(_.trust)
+      obj(
+        "userId"    ->  user.id.get,
+        "name"      ->  user.name,
+        "roles"     ->  JsArray(roles.map(role => JsString(role.title))),
+        "headRole"  ->  roles.max(trustOrder).title
+      )
+    }
+  }
+
   private def writeProjects(projects: Seq[(Project, Version, Channel)])(implicit ec: ExecutionContext): Future[Seq[(Project, JsObject)]] = {
     val projectIds = projects.flatMap(_._1.id)
     val versionIds = projects.flatMap(_._2.id)
@@ -94,7 +118,9 @@ trait OreRestfulApi {
     for {
       chans <- service.DB.db.run(queryProjectChannels(projectIds).result).map { chans => chans.groupBy(_.projectId) }
       vTags <- service.DB.db.run(queryVersionTags(versionIds).result).map { p => p.groupBy(_._1) mapValues (_.map(_._2)) }
+      members <- service.DB.db.run(getMembers(projectIds).result).map(_.groupBy(_._1.projectId))
     } yield {
+
       projects.map { case (p, v, c) =>
         (p, obj(
           "pluginId" -> p.pluginId,
@@ -103,7 +129,7 @@ trait OreRestfulApi {
           "owner" -> p.ownerName,
           "description" -> p.description,
           "href" -> ('/' + p.ownerName + '/' + p.slug),
-          //"members"       ->  p.memberships.members.filter(_.roles.exists(_.isAccepted)), // TODO members
+          "members"       -> writeMembers(members.getOrElse(p.id.get, Seq.empty)),
           "channels"      ->  toJson(chans.getOrElse(p.id.get, Seq.empty)),
           "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.get, Seq.empty))),
           "category" -> obj("title" -> p.category.title, "icon" -> p.category.icon),
@@ -218,7 +244,7 @@ trait OreRestfulApi {
     val maxLoad = this.config.projects.get[Int]("init-version-load")
     val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
-    val limited = filtered.drop(offset.getOrElse(-1)).take(lim)
+    val limited = filtered.drop(offset.getOrElse(25)).take(lim)
 
     for {
       data <- service.DB.db.run(limited.result) // Get Project Version Channel and AuthorName
@@ -322,7 +348,7 @@ trait OreRestfulApi {
     * @return       List of users
     */
   def getUserList(limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
-    service.DB.db.run(queryUser.drop(offset.getOrElse(-1)).take(limit.getOrElse(25)).result).map { l =>
+    service.DB.db.run(queryUser.drop(offset.getOrElse(25)).take(limit.getOrElse(25)).result).map { l =>
       l.groupBy(_._1).mapValues(_.map(_._2)).toSeq // grouping in memory instead
     } flatMap { l =>
       writeUsers(l)
