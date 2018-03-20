@@ -3,6 +3,7 @@ package ore.permission
 import db.impl.access.OrganizationBase
 import models.project.Project
 import models.user.{Organization, User}
+import ore.permission.role.RoleTypes
 import ore.permission.scope.ScopeSubject
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,6 +19,16 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
 
   protected case class AndThen(user: User, p: Permission, not: Boolean)(implicit ec: ExecutionContext) {
     def in(subject: ScopeSubject): Future[Boolean] = {
+      // Special Ore Developer Case
+      if (user.globalRoles.contains(RoleTypes.OreDev)) {
+        if (p == ViewHealth
+          || p == ViewLogs
+          || p == ViewActivity
+          || p == ViewStats
+        ) {
+          return Future.successful(!not)
+        }
+      }
       // Test org perms on projects
 
       val projectTested = subject match {

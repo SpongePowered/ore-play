@@ -22,6 +22,7 @@ object RoleTypes extends Enumeration {
   val CommunityLeader = new  RoleType( 4, 59, classOf[GlobalRole], Default,  "Community Leader",   Amber)
   val Staff           = new  RoleType( 5, 3,  classOf[GlobalRole], Default,  "Sponge Staff",       Amber)
   val SpongeDev       = new  RoleType( 6, 41, classOf[GlobalRole], Default,  "Sponge Developer",   Green)
+  val OreDev          = new  RoleType(27, 66, classOf[GlobalRole], Default,  "Ore Developer",      Orange)
   val WebDev          = new  RoleType( 7, 45, classOf[GlobalRole], Default,  "Web Developer",      Blue)
   val Scribe          = new  RoleType( 8, 51, classOf[GlobalRole], Default,  "Sponge Documenter",  Aqua)
   val Support         = new  RoleType( 9, 43, classOf[GlobalRole], Default,  "Sponge Support",     Aqua)
