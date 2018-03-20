@@ -89,7 +89,6 @@ final class Application @Inject()(data: DataHelper,
     val canHideProjects = request.data.globalPerm(HideProjects)
     val currentUserId = request.data.currentUser.flatMap(_.id).getOrElse(-1)
 
-    // TODO ordering is not implemented
     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
     // TODO platform filter is not implemented
     val pform = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
@@ -115,7 +114,7 @@ final class Application @Inject()(data: DataHelper,
       (p.ownerName.toLowerCase like q) ||
       (p.pluginId.toLowerCase like q)
     } sortBy { case (p, u, v) =>
-      p.lastUpdated.desc
+      ordering.fn(p)
     } drop offset take pageSize
 
     def queryProjects() = {
@@ -129,20 +128,7 @@ final class Application @Inject()(data: DataHelper,
       }
     }
 
-    // TODO !!!!!!! make sure stuff that needs permission is cached differently
-    // it has to be impossible to get the cached version of an admin
-
-    val doCache = query.isEmpty
-
-    val data = if (doCache) {
-      //val cacheKey = "homepage+" + categories + sort + page + platform + ":::" + canHideProjects + ":" + currentUserId
-      //Logger.info("CacheKey: " + cacheKey)
-      //cache.getOrElseUpdate(cacheKey)(queryProjects())
-      queryProjects()
-    } else {
-      queryProjects()
-    }
-    data map { data =>
+    queryProjects() map { data =>
       val catList = if (Categories.visible.toSet.equals(categoryList.toSet)) Some(Seq.empty) else Some(categoryList)
       Ok(views.home(data, catList, query.find(_.nonEmpty), p, ordering, pform))
     }
@@ -232,7 +218,7 @@ final class Application @Inject()(data: DataHelper,
       users <- Future.sequence(flags.map(_.user))
       projects <- Future.sequence(flags.map(_.project))
       perms <- Future.sequence(projects.map { project =>
-        val perms =VisibilityTypes.values.map(_.permission).map { perm =>
+        val perms = VisibilityTypes.values.map(_.permission).map { perm =>
           request.user can perm in project map (value => (perm, value))
         }
         Future.sequence(perms).map(_.toMap)
@@ -291,7 +277,7 @@ final class Application @Inject()(data: DataHelper,
     */
   def reset() = (Authenticated andThen PermissionAction[AuthRequest](ResetOre)) { implicit request =>
     this.config.checkDebug()
-    this.data.reset
+    this.data.reset()
     cache.removeAll()
     Redirect(ShowHome).withNewSession
   }
@@ -328,7 +314,7 @@ final class Application @Inject()(data: DataHelper,
       case None => Future.successful(NotFound)
       case Some(u) =>
         val activities: Future[Seq[(Object, Option[Project])]] = u.id match {
-          case None => Future{Seq.empty}
+          case None => Future.successful(Seq.empty)
           case Some(id) =>
             val reviews = this.service.access[Review](classOf[Review])
               .filter(_.userId === id)
@@ -435,7 +421,7 @@ final class Application @Inject()(data: DataHelper,
   def updateUser(userName: String) = UserAdminAction.async { implicit request =>
     this.users.withName(userName).flatMap {
       case None => Future.successful(NotFound)
-      case Some(user) => {
+      case Some(user) =>
         this.forms.UserAdminUpdate.bindFromRequest.fold(
           _ => Future.successful(BadRequest),
           { case (thing, action, data) =>
@@ -509,7 +495,6 @@ final class Application @Inject()(data: DataHelper,
             }
 
           })
-      }
     }
   }
 

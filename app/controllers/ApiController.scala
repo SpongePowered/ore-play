@@ -62,9 +62,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                    limit: Option[Int], offset: Option[Int]) = Action.async {
     version match {
       case "v1" => this.api.getProjectList(categories, sort, q, limit, offset).map(Ok(_))
-      case _ => Future {
-        NotFound
-      }
+      case _ => Future.successful(NotFound)
     }
   }
 
@@ -78,7 +76,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def showProject(version: String, pluginId: String) = Action.async {
     version match {
       case "v1" => this.api.getProject(pluginId).map(ApiResult)
-      case _ => Future {NotFound}
+      case _ => Future.successful(NotFound)
     }
   }
 
@@ -180,8 +178,8 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
             val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.get).result)
             val dep = for {
-              apiKey <- apiKeyExists
-              versionExists <- projectData.project.versions.exists(_.versionString === name)
+              (apiKey, versionExists) <- apiKeyExists zip
+                                         projectData.project.versions.exists(_.versionString === name)
             } yield {
               if (!apiKey) Future.successful(Unauthorized(error("apiKey", "api.deploy.invalidKey")))
               else if (versionExists) Future.successful(BadRequest(error("versionName", "api.deploy.versionExists")))
@@ -214,7 +212,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                     case Right(pendingVersion) =>
                       pendingVersion.createForumPost = formData.createForumPost
                       pendingVersion.channelName = formData.channel.name
-                      pendingVersion.complete.map { newVersion =>
+                      pendingVersion.complete().map { newVersion =>
                         if (formData.recommended)
                           projectData.project.setRecommendedVersion(newVersion._1)
                         Created(api.writeVersion(newVersion._1, projectData.project, newVersion._2, None, newVersion._3))

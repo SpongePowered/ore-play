@@ -4,11 +4,11 @@ import java.util.UUID
 import javax.inject.Inject
 
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.ProjectRequest
+import controllers.sugar.Requests.{OreRequest, ProjectRequest}
 import db.ModelService
 import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.StatSchema
-import models.project.Version
+import models.project.{Project, Version}
 import models.statistic.{ProjectView, VersionDownload}
 import models.viewhelper.ProjectData
 import ore.StatTracker.COOKIE_NAME
@@ -37,15 +37,14 @@ trait StatTracker {
     *
     * @param request Request to view the project
     */
-  def projectViewed(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi, request: ProjectRequest[_]): Future[Result] = {
-    val data = request.data
-    ProjectView.bindFromRequest.map { statEntry =>
+  def projectViewed(projectRequest: ProjectRequest[_])(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi, request: OreRequest[_]): Future[Result] = {
+    ProjectView.bindFromRequest(projectRequest).map { statEntry =>
       this.viewSchema.record(statEntry).andThen {
         case recorded => if (recorded.get) {
-          data.project.addView()
+          projectRequest.data.project.addView()
         }
       }
-      f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
+      f(projectRequest).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
     }
   }
 

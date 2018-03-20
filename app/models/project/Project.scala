@@ -190,7 +190,7 @@ case class Project(override val id: Option[Int] = None,
       update(OwnerName)
       // TODO one update
     }
-    Future.successful()
+    Future.successful(0)
   }
 
   /**

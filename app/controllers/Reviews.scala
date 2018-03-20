@@ -68,14 +68,10 @@ final class Reviews @Inject()(data: DataHelper,
   def createReview(author: String, slug: String, versionString: String) = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
       withProjectAsync(author, slug) { implicit project =>
-        withVersionAsync(versionString) { implicit version =>
-          for {
-            currentUser <- users.current
-          } yield {
-            val review = new Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, currentUser.get.id.get, None, "")
-            this.service.insert(review)
-            Redirect(routes.Reviews.showReviews(author, slug, versionString))
-          }
+        withVersion(versionString) { implicit version =>
+          val review = new Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, request.user.id.get, None, "")
+          this.service.insert(review)
+          Redirect(routes.Reviews.showReviews(author, slug, versionString))
         }
       }
     }
@@ -105,9 +101,9 @@ final class Reviews @Inject()(data: DataHelper,
             case None => Future.successful(NotFound)
             case Some(review) =>
               for {
-                _ <- review.setEnded(Timestamp.from(Instant.now()))
+                (_, _) <- review.setEnded(Timestamp.from(Instant.now())) zip
                 // send notification that review happened
-                _ <- sendReviewNotification(project, version, request.user)
+                          sendReviewNotification(project, version, request.user)
               } yield {
                 Redirect(routes.Reviews.showReviews(author, slug, versionString))
               }
@@ -179,16 +175,15 @@ final class Reviews @Inject()(data: DataHelper,
             case None => Future.successful(true)
             case Some(oldreview) =>
               for {
-                _ <- oldreview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "takeover"))
-                _ <- oldreview.setEnded(Timestamp.from(Instant.now()))
+                (_, _) <- oldreview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim, System.currentTimeMillis(), "takeover")) zip
+                          oldreview.setEnded(Timestamp.from(Instant.now()))
               } yield {}
           }
 
           // Then make new one
           for {
-            _ <- closeOldReview
-            currentUser <- users.current
-            _ <- this.service.insert(Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, currentUser.get.id.get, None, ""))
+            (_, _) <- closeOldReview zip
+                      this.service.insert(Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, request.user.id.get, None, ""))
           } yield {
             Redirect(routes.Reviews.showReviews(author, slug, versionString))
           }
@@ -220,10 +215,12 @@ final class Reviews @Inject()(data: DataHelper,
             case None => Future.successful(Ok("Review"))
             case Some(recentReview) =>
               users.current.flatMap {
+                case None => Future.successful(1)
                 case Some(currentUser) =>
                   if (recentReview.userId == currentUser.userId) {
                     recentReview.addMessage(Message(this.forms.ReviewDescription.bindFromRequest.get.trim))
                   } else Future.successful(0)
+
               }.map( _ => Ok("Review"))
           }
         }

@@ -111,8 +111,8 @@ trait ProjectFactory {
     if (!plugin.meta.get.getId.equals(project.pluginId))
       return Future.successful(Left("error.version.invalidPluginId"))
     val version = for {
-      channels <- project.channels.all
-      settings <- project.settings
+      (channels, settings) <- project.channels.all zip
+                              project.settings
     } yield {
       this.startVersion(plugin, project, settings, channels.head.name)
     }
@@ -256,8 +256,8 @@ trait ProjectFactory {
     val project = pending.underlying
 
     val checks = for {
-      exists <- this.projects.exists(project)
-      available <- this.projects.isNamespaceAvailable(project.ownerName, project.slug)
+      (exists, available) <- this.projects.exists(project) zip
+                             this.projects.isNamespaceAvailable(project.ownerName, project.slug)
     } yield {
       checkArgument(!exists, "project already exists", "")
       checkArgument(available, "slug not available", "")
@@ -333,8 +333,7 @@ trait ProjectFactory {
 
     val channel = for {
       // Create channel if not exists
-      channel <- getOrCreateChannel(pending, project)
-      exists <- pendingVersion.exists
+      (channel, exists) <- getOrCreateChannel(pending, project) zip pendingVersion.exists
     } yield {
       if (exists && this.config.projects.get[Boolean]("file-validate"))
         throw new IllegalArgumentException("Version already exists.")

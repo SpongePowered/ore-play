@@ -33,7 +33,7 @@ case class HeaderData(currentUser: Option[User] = None,
 
   def hasUser = currentUser.isDefined
 
-  def isCurrentUser(userId: Int) = currentUser.map(_.id).contains(userId)
+  def isCurrentUser(userId: Int) = currentUser.flatMap(_.id).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
 
@@ -55,7 +55,7 @@ object HeaderData {
                   HideProjects -> false,
                   HardRemoveProject -> false,
                   UserAdmin -> false,
-    HideProjects -> false)
+                  HideProjects -> false)
 
   val unAuthenticated: HeaderData = HeaderData(None, noPerms)
 

@@ -16,7 +16,6 @@ import ore.permission.scope.OrganizationScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import slick.lifted.{Compiled, Rep, TableQuery}
-import db.impl.OrePostgresDriver.api._
 import slick.lifted
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -72,8 +71,7 @@ case class Organization(override val id: Option[Int] = None,
       */
     override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] = {
       this.userBase.service.DB.db.run(Organization.roleForTrustQuery(id.get).result).map { l =>
-        val ordering: Ordering[OrganizationRole] = Ordering.by(m => m.roleType.trust)
-        l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
+        l.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
       }
     }
 

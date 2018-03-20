@@ -160,7 +160,8 @@ case class ProjectSettings(override val id: Option[Int] = None,
     // Update the owner if needed
     val ownerSet = formData.ownerId.find(_ != project.ownerId) match {
       case None => Future.successful(true)
-      case Some(ownerId) => this.userBase.get(ownerId).flatMap(user => project.setOwner(user.get))}
+      case Some(ownerId) => this.userBase.get(ownerId).flatMap(user => project.setOwner(user.get))
+    }
     ownerSet.flatMap { _ =>
       // Update icon
       if (formData.updateIcon) {

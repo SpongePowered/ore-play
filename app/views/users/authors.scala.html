@@ -1,14 +1,12 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
 @import db.impl.access.UserBase._
-@import db.impl.access.{ProjectBase, UserBase}
 @import models.user.User
 @import ore.OreConfig
-@import ore.permission.role.GlobalRole
 @import security.NonceFilter._
-@import views.html.utils.userAvatar
 @import util.StringUtils._
-@import controllers.sugar.Requests.OreRequest
-@(authors: Seq[User], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@import views.html.utils.userAvatar
+@(authors: Seq[(User, Int)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @pageSize = @{ config.users.get[Int]("author-page-size") }
 @direction = @{ if (ordering.startsWith("-")) "o-chevron-down" else "o-chevron-up" }
@@ -49,7 +47,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @authors.map { user =>
+                    @authors.map { case (user, projectCount) =>
                       <tr>
                           <td>@userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")</td>
                           <td>
@@ -73,7 +71,7 @@
 
                           </td>
                           <td>@prettifyDate(user.joinDate.getOrElse(user.createdAt.get))</td>
-                          <td>@user.projects.size</td>
+                          <td>@projectCount</td>
                       </tr>
                     }
 

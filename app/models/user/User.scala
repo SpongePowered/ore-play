@@ -23,7 +23,7 @@ import org.spongepowered.play.discourse.model.DiscourseUser
 import play.api.mvc.Request
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.SpongeUser
-import slick.lifted.TableQuery
+import slick.lifted.{QueryBase, TableQuery}
 import util.StringUtils._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -289,9 +289,8 @@ case class User(override val id: Option[Int] = None,
       case GlobalScope =>
         Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId).result).map { l =>
-          val ordering: Ordering[ProjectRole] = Ordering.by(m => m.roleType.trust)
-          l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
+        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId).result).map { projectRoles =>
+          projectRoles.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
         } flatMap { userTrust =>
           if (!userTrust.equals(Default)) {
             Future.successful(userTrust)
@@ -316,7 +315,9 @@ case class User(override val id: Option[Int] = None,
             }
 
             service.DB.db.run(query.result).map { l =>
-              l.map(_.trust).find(t => !t.equals(Default)).getOrElse(Default) // Find first non default trust
+              l.collectFirst {  // Find first non default trust
+                case u if u.trust != Default => u.trust
+              }.getOrElse(Default)
             }
           }
         }

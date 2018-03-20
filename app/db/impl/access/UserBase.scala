@@ -64,19 +64,19 @@ class UserBase(override val service: ModelService,
     this.withName(name).flatMap {
       case None => Future.successful(None) // Name not found
       case Some(toCheck) =>
-        if (user.equals(toCheck)) Future.successful(Some(user)) // Same user
-        else {
-          // TODO remove double DB access for orga check
-          toCheck.isOrganization.flatMap {
-            case false => Future.successful(None) // Not an orga
-            case true => toCheck.toOrganization.flatMap { orga =>
-              user can perm in orga map { perm =>
-                if (perm) Some(toCheck) // Has Orga perm
-                else None // Has not Orga perm
-              }
+      if (user.equals(toCheck)) Future.successful(Some(user)) // Same user
+      else {
+        // TODO remove double DB access for orga check
+        toCheck.isOrganization.flatMap {
+          case false => Future.successful(None) // Not an orga
+          case true => toCheck.toOrganization.flatMap { orga =>
+            user can perm in orga map { perm =>
+              if (perm) Some(toCheck) // Has Orga perm
+              else None // Has not Orga perm
             }
           }
         }
+      }
     }
   }
 
@@ -87,7 +87,7 @@ class UserBase(override val service: ModelService,
     *
     * @return Users with at least one project
     */
-  def getAuthors(ordering: String = ORDERING_PROJECTS, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[User]] = {
+  def getAuthors(ordering: String = ORDERING_PROJECTS, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[(User, Int)]] = {
     // determine ordering
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
 
@@ -108,6 +108,8 @@ class UserBase(override val service: ModelService,
       val pageSize = this.config.users.get[Int]("author-page-size")
       val offset = (page - 1) * pageSize
       users.slice(offset, offset + pageSize)
+    } flatMap { users =>
+      Future.sequence(users.map(u => u.projects.size.map((u, _))))
     }
   }
 
@@ -162,15 +164,6 @@ class UserBase(override val service: ModelService,
     * @return         Authenticated user, if any, None otherwise
     */
   def current(implicit session: Request[_], ec: ExecutionContext): Future[Option[User]] = {
-    val asd = session.cookies.get("_oretoken") match {
-      case None => Future.successful(None)
-      case Some(cookie) => getSession(cookie.value).flatMap {
-        case None => Future.successful(None)
-        case Some(s) => s.user
-      }
-    }
-
-
     session.cookies.get("_oretoken") match {
       case None => Future.successful(None)
       case Some(cookie) => getSession(cookie.value).flatMap {

@@ -71,15 +71,15 @@ class Versions @Inject()(stats: StatTracker,
     * @return Version view
     */
   def show(author: String, slug: String, versionString: String) = ProjectAction(author, slug) async { request =>
-    implicit val project = request.data
+    implicit val data = request.data
     implicit val r = request.request
-    implicit val p = project.project
+    implicit val p = data.project
     withVersionAsync(versionString) { version =>
       for {
         data <- VersionData.of(request, version)
-        response <- this.stats.projectViewed { request =>
+        response <- this.stats.projectViewed(request) { request =>
           Ok(views.view(data, request.scoped))
-        }(cache, request)
+        }
       } yield {
         response
       }
@@ -183,9 +183,9 @@ class Versions @Inject()(stats: StatTracker,
 
         for {
           versions <- futureVersions
-          r <- this.stats.projectViewed { request =>
+          r <- this.stats.projectViewed(request) { request =>
             Ok(views.list(data, request.scoped, allChannels, versions, visibleNames, p))
-          }(cache, request)
+          }
         } yield {
           r
         }
@@ -203,9 +203,7 @@ class Versions @Inject()(stats: StatTracker,
   def showCreator(author: String, slug: String) = VersionEditAction(author, slug).async { request =>
     val data = request.data
     implicit val r = request.request
-    for {
-      channels <- data.project.channels.all
-    } yield {
+    data.project.channels.all.map { channels =>
       Ok(views.create(data, data.settings.forumSync, None, Some(channels.toSeq), showFileControls = true))
     }
   }
@@ -465,11 +463,11 @@ class Versions @Inject()(stats: StatTracker,
         } map {
           case None => false
           case Some(warn) =>
-          if (warn.hasExpired) {
-            warn.remove()
-            false
-          } else
-            true
+            if (!warn.hasExpired) true
+            else {
+              warn.remove()
+              false
+            }
         }
     }
   }

@@ -20,9 +20,9 @@ case class VersionData(p: ProjectData, v: Version, c: Channel,
 
 
   def filteredDependencies = {
-    dependencies.filterNot(_._1.pluginId.equals(SpongeApiId))
-      .filterNot(_._1.pluginId.equals(MinecraftId))
-      .filterNot(_._1.pluginId.equals(ForgeId))
+    dependencies.filterNot(_._1.pluginId == SpongeApiId)
+      .filterNot(_._1.pluginId == MinecraftId)
+      .filterNot(_._1.pluginId == ForgeId)
   }
 }
 

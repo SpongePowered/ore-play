@@ -49,7 +49,8 @@ object ProjectView {
     * @param request  Request to bind
     * @return         New ProjectView
     */
-  def bindFromRequest()(implicit ec: ExecutionContext, request: ProjectRequest[_], users: UserBase): Future[ProjectView] = {
+  def bindFromRequest(request: ProjectRequest[_])(implicit ec: ExecutionContext, users: UserBase): Future[ProjectView] = {
+    implicit val r = request.request
     checkNotNull(request, "null request", "")
     checkNotNull(users, "null user base", "")
     users.current.map { _.flatMap(_.id) } map { userId =>

@@ -9,11 +9,11 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import util.WSUtils.parseJson
 import play.api.libs.json._
-import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
+import play.api.libs.ws.{WSClient, WSResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 
 /**
   * Interfaces with the SpongeAuth Web API

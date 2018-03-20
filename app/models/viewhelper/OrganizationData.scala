@@ -27,7 +27,8 @@ object OrganizationData {
 
   def cacheKey(orga: Organization) = "organization" + orga.id.get
 
-  def of[A](orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[OrganizationData] = {
+  def of[A](orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
+                                service: ModelService): Future[OrganizationData] = {
     implicit val users = orga.userBase
     for {
       role <- orga.owner.headRole
@@ -40,7 +41,8 @@ object OrganizationData {
   }
 
 
-  def of[A](orga: Option[Organization])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[Option[OrganizationData]] = {
+  def of[A](orga: Option[Organization])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
+                                        service: ModelService): Future[Option[OrganizationData]] = {
     orga match {
       case None => Future.successful(None)
       case Some(o) => of(o).map(Some(_))

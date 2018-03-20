@@ -64,12 +64,12 @@ trait OreRestfulApi {
       }
       //categories.map(_.toSeq).map { cats =>
       val filtered = cats.map { ca =>
-        query.filter { case (p, v, c) =>
+        query.filter { case (p, _, _) =>
           p.category inSetBind ca
         }
       } getOrElse query
 
-      filtered sortBy { case (p, v, c) =>
+      filtered sortBy { case (p, _, _) =>
         ordering.fn.apply(p)
       } drop offset.getOrElse(25) take lim
     }

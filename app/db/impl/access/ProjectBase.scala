@@ -209,16 +209,15 @@ class ProjectBase(override val service: ModelService,
       proj <- rcUpdate
       channel <- version.channel
       noVersions <- channel.versions.isEmpty
+      _ <- {
+        val versionDir = this.fileManager.getVersionDir(proj.ownerName, project.name, version.name)
+        FileUtils.deleteDirectory(versionDir)
+        version.remove()
+      }
     } yield {
       // Delete channel if now empty
       if (noVersions) this.deleteChannel(channel)
       proj
-    }
-
-    channelCleanup.flatMap { proj =>
-      val versionDir = this.fileManager.getVersionDir(proj.ownerName, project.name, version.name)
-      FileUtils.deleteDirectory(versionDir)
-      version.remove()
     }
   }
 

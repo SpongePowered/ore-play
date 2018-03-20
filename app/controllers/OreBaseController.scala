@@ -42,7 +42,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
 
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn](classOf[SignOn])
 
-  override def notFound()(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())
+  override def notFound(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())
 
   /**
     * Executes the given function with the specified result or returns a
@@ -72,11 +72,11 @@ abstract class OreBaseController(implicit val env: OreEnv,
     */
   def withVersion(versionString: String)(fn: Version => Result)
                  (implicit request: OreRequest[_], project: Project): Future[Result]
-  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).map(_.map(fn).getOrElse(notFound()))
+  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).map(_.map(fn).getOrElse(notFound))
 
   def withVersionAsync(versionString: String)(fn: Version => Future[Result])
                  (implicit request: OreRequest[_], project: Project): Future[Result]
-  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).flatMap(_.map(fn).getOrElse(Future.successful(notFound())))
+  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).flatMap(_.map(fn).getOrElse(Future.successful(notFound)))
 
   def OreAction = Action andThen oreAction
 

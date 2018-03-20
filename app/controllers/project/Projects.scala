@@ -64,7 +64,9 @@ class Projects @Inject()(stats: StatTracker,
       orgas <- request.user.organizations.all
       createOrga <- Future.sequence(orgas.map(orga => request.user can CreateProject in orga))
     } yield {
-      val createdOrgas = orgas zip createOrga filter (_._2) map (_._1)
+      val createdOrgas = orgas zip createOrga collect {
+        case (orga, true) => orga
+      }
       Ok(views.create(createdOrgas.toSeq, None))
     }
   }
@@ -207,7 +209,7 @@ class Projects @Inject()(stats: StatTracker,
 
     projects.queryProjectPages(data.project) flatMap { pages =>
       val pageCount = pages.size + pages.map(_._2.size).sum
-      this.stats.projectViewed(request => Ok(views.pages.view(data, request.scoped, pages, data.project.homePage, None, pageCount)))(cache, request)
+      this.stats.projectViewed(request)(request => Ok(views.pages.view(data, request.scoped, pages, data.project.homePage, None, pageCount)))
     }
   }
 
@@ -233,7 +235,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showDiscussion(author: String, slug: String) = ProjectAction(author, slug) async { request =>
     implicit val r = request.request
-    this.stats.projectViewed(request => Ok(views.discuss(request.data, request.scoped)))(cache, request)
+    this.stats.projectViewed(request)(request => Ok(views.discuss(request.data, request.scoped)))
   }
 
   /**
@@ -424,7 +426,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showSettings(author: String, slug: String) = SettingsEditAction(author, slug) async { request =>
     implicit val r = request.request
-    val projectData: ProjectData = request.data
+    val projectData = request.data
     projectData.project.apiKeys.get(r.user.id.get).map { deployKey =>
       Ok(views.settings(projectData, request.scoped, deployKey))
     }
@@ -514,7 +516,7 @@ class Projects @Inject()(stats: StatTracker,
         hasErrors =>
           Future.successful(FormError(self.showSettings(author, slug), hasErrors)),
         formData => {
-          data.settings.save(data.project, formData).map { r =>
+          data.settings.save(data.project, formData).map { _ =>
             Redirect(self.show(author, slug))
           }
         }
@@ -638,7 +640,7 @@ class Projects @Inject()(stats: StatTracker,
   def softDelete(author: String, slug: String) = SettingsEditAction(author, slug).async { implicit request =>
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-    data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { vc =>
+    data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
       Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", data.project.name))
     }
   }

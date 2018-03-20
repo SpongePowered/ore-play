@@ -5,7 +5,7 @@ import controllers.sugar.Requests.OreRequest
 import db.ModelService
 import models.user.role.OrganizationRole
 import models.user.{Organization, User}
-import ore.permission.{EditSettings, Permission, ReviewFlags, ViewActivity}
+import ore.permission._
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.Request
 import slick.jdbc.JdbcBackend
@@ -31,7 +31,7 @@ case class UserData(headerData: HeaderData,
 
   def pgpFormCall = {
     user.pgpPubKey.map { _ =>
-      routes.Users.verify(Some(routes.Users.deletePgpPublicKey(user.name, None, None).path()))
+      routes.Users.verify(Some(routes.Users.deletePgpPublicKey(user.name, None, None).path))
     } getOrElse {
       routes.Users.savePgpPublicKey(user.name)
     }
@@ -43,7 +43,7 @@ case class UserData(headerData: HeaderData,
 
 object UserData {
 
-  val noUserPerms: Map[Permission, Boolean] = Map(ViewActivity -> false, ReviewFlags -> false)
+  val noUserPerms: Map[Permission, Boolean] = Map(ViewActivity -> false, ReviewFlags -> false, ReviewProjects -> false)
   val noOrgaPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
   def of[A](request: OreRequest[A], user: User)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[UserData] = {
@@ -53,10 +53,11 @@ object UserData {
       orga <- user.toMaybeOrganization
       viewActivity <- user can ViewActivity in user map ((ViewActivity, _))
       reviewFlags <- user can ReviewFlags in user map ((ReviewFlags, _))
+      reviewProjects <- user can ReviewProjects in user map ((ReviewProjects, _))
       editSettings <- user can EditSettings in orga map ((EditSettings, _))
     } yield {
 
-      val userPerms: Map[Permission, Boolean] = Seq(viewActivity, reviewFlags).toMap
+      val userPerms: Map[Permission, Boolean] = Seq(viewActivity, reviewFlags, reviewProjects).toMap
       val orgaPerms: Map[Permission, Boolean] = Seq(editSettings).toMap
 
       UserData(request.data,

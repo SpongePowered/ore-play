@@ -28,10 +28,7 @@ class OrganizationMember(val organization: Organization, override val userId: In
     * @return Top role
     */
   override def headRole(implicit ec: ExecutionContext): Future[OrganizationRole] =
-    this.roles.map(role => role.max(ordering))
-
-  private def ordering: Ordering[OrganizationRole]  =
-    Ordering.by(r => r.roleType.trust)
+    this.roles.map(role => role.maxBy(_.roleType.trust))
 
 }
 

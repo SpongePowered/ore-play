@@ -72,7 +72,7 @@ trait MembershipDossier {
   def addRole(role: RoleType)(implicit ec: ExecutionContext) = {
     role.user.flatMap { user =>
       this.roles.exists(_.userId === user.id.get).flatMap { exists =>
-        if (!exists) addMember(user) else Future.successful()
+        if (!exists) addMember(user) else Future.successful(user)
       } flatMap { _ =>
         this.roleAccess.add(role)
       }
@@ -109,7 +109,7 @@ trait MembershipDossier {
       (exists, user)
     }
     checks.flatMap {
-      case (exists, user) => if (!exists) removeMember(user) else Future.successful()
+      case (exists, user) => if (!exists) removeMember(user) else Future.successful(0)
     }
   }
 

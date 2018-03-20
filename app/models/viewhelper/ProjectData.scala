@@ -7,6 +7,7 @@ import models.admin.VisibilityChange
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
+import ore.permission.role.RoleTypes
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
 import play.api.cache.AsyncCacheApi
@@ -29,8 +30,7 @@ case class ProjectData(joinable: Project,
                        noteCount: Int, // getNotes.size
                        lastVisibilityChange: Option[VisibilityChange],
                        lastVisibilityChangeUser: String // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
-                      ) extends JoinableData[ProjectRole, ProjectMember, Project]()
-{
+                      ) extends JoinableData[ProjectRole, ProjectMember, Project] {
 
   def flagCount = flags.size
 
@@ -52,7 +52,7 @@ object ProjectData {
     val projectOwner = request.data.currentUser.get
 
     val settings = project.settings
-    val ownerRole = null // TODO?
+    val ownerRole = null
     val versions = 0
     val members = Seq.empty
     val uProjectFlags = false

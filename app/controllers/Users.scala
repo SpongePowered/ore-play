@@ -85,7 +85,7 @@ class Users @Inject()(fakeUser: FakeUser,
         case Some(spongeUser) =>
           // Complete authentication
           User.fromSponge(spongeUser).flatMap(this.users.getOrCreate).flatMap { user =>
-            user.pullForumData.flatMap(_.pullSpongeData).flatMap { u =>
+            user.pullForumData().flatMap(_.pullSpongeData()).flatMap { u =>
               this.redirectBack(request.flash.get("url").getOrElse("/"), u)
             }
           }
@@ -212,7 +212,6 @@ class Users @Inject()(fakeUser: FakeUser,
       hasErrors =>
         Redirect(ShowUser(username)).withError(hasErrors.errors.head.message),
       keySubmission => {
-        import writes._
         val keyInfo = keySubmission.info
         val user = request.user
         user.setPgpPubKey(keyInfo.raw)
