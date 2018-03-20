@@ -2,11 +2,9 @@
 The main header displayed on each layout.
 *@
 @import controllers.project.{routes => projectRoutes}
-@import models.viewhelper.HeaderData
+@import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import ore.permission._
-
-@import controllers.sugar.Requests.OreRequest
 @(user: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 

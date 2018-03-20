@@ -3,8 +3,7 @@ package db.impl.access
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
 import models.user.role.OrganizationRole
-import models.user.{Notification, Organization, User}
-import models.viewhelper.HeaderData
+import models.user.{Notification, Organization}
 import ore.OreConfig
 import ore.permission.role.RoleTypes
 import ore.user.notification.NotificationTypes

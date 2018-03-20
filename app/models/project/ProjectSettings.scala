@@ -4,6 +4,7 @@ import java.nio.file.Files._
 import java.sql.Timestamp
 import java.time.Instant
 
+import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -15,14 +16,11 @@ import ore.project.io.ProjectFiles
 import ore.project.{Categories, ProjectOwned}
 import ore.user.notification.NotificationTypes
 import play.api.Logger
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import slick.lifted.TableQuery
 import util.StringUtils._
-import db.impl.OrePostgresDriver.api._
-import models.viewhelper.{ProjectData, ScopedProjectData}
-import play.api.cache.AsyncCacheApi
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

@@ -1,7 +1,6 @@
 package ore
 
 import javax.inject.{Inject, Singleton}
-
 import models.project.Channel
 import ore.Colors._
 import org.spongepowered.plugin.meta.version.ComparableVersion

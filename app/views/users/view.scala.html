@@ -1,22 +1,14 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import models.user.User
+@import models.viewhelper.UserData
 @import ore.OreConfig
-@import ore.permission.{ViewActivity, ReviewFlags, ReviewProjects, EditSettings, UserAdmin}
-@import ore.permission.scope.GlobalScope
+@import ore.permission.{EditSettings, ReviewFlags, ReviewProjects, UserAdmin, ViewActivity}
 @import ore.user.Prompts
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
-@import views.html.utils.alert
-@import views.html.utils.userAvatar
-@import views.html.utils.modal
-@import views.html.utils.prompt
-@import models.viewhelper.HeaderData
-@import models.user.Organization
-@import models.viewhelper.UserData
-
-@import controllers.sugar.Requests.OreRequest
+@import views.html.utils.{alert, modal, prompt, userAvatar}
 @(u: UserData)(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @bootstrap.layout(u.user.username) {

@@ -5,21 +5,15 @@ Documentation page within Project overview.
 @import java.text.NumberFormat
 
 @import controllers.project.routes
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
-@import db.impl.OrePostgresDriver.api._
+@import models.project.Page
+@import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.EditPages
 @import security.NonceFilter._
 @import util.StringUtils._
-@import models.project.Project
-@import models.project.Page
-@import views.html.utils.alert
-@import views.html.utils.editor
-@import models.viewhelper.ProjectData
-
-@import controllers.sugar.Requests.OreRequest
-@import models.viewhelper.ScopedProjectData
+@import views.html.utils.{alert, editor}
 @(p: ProjectData,
   sp: ScopedProjectData,
   rootPages: Seq[(Page, Seq[Page])],

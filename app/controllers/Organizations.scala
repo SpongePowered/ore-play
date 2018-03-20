@@ -1,20 +1,16 @@
 package controllers
 
-import javax.inject.Inject
-
 import controllers.sugar.Bakery
 import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
-import models.viewhelper.HeaderData
+import javax.inject.Inject
 import ore.permission.EditSettings
 import ore.rest.OreWrites
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
-import play.api.i18n.MessagesApi
-import play.api.libs.json.Json
-import controllers.sugar.Requests._
 import play.api.cache.AsyncCacheApi
+import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
 import views.{html => views}
 

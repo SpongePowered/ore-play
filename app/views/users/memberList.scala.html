@@ -1,18 +1,14 @@
 @import db.ModelService
-@import db.impl.access.UserBase
 @import models.user.role.RoleModel
 @import ore.permission.EditSettings
-@import ore.permission.role.{Absolute, Role}
+@import ore.permission.role.Absolute
 @import ore.user.Member
 @import ore.{Joinable, OreConfig}
-@import views.html.helper.form
+@import views.html.helper.{CSRF, form}
 @import views.html.utils.userAvatar
-@import views.html.helper.CSRF
-@import models.viewhelper.HeaderData
 @* MemberData? with perms *@
-@import models.viewhelper.JoinableData
-
 @import controllers.sugar.Requests.OreRequest
+@import models.viewhelper.JoinableData
 @import ore.permission.Permission
 @(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_]]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])

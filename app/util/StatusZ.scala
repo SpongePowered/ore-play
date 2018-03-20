@@ -1,7 +1,6 @@
 package util
 
 import javax.inject.Inject
-
 import play.api.Configuration
 import play.api.libs.json.{JsObject, Json}
 

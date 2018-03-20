@@ -1,14 +1,12 @@
-@import db.ModelService
-@import db.impl.access.UserBase
-@import ore.OreConfig
-@import models.project.Project
-@import util.StringUtils._
-@import security.NonceFilter._
-
 @import java.sql.Timestamp
+
 @import controllers.sugar.Requests.OreRequest
-@import models.project.Note
+@import db.ModelService
+@import models.project.{Note, Project}
 @import models.user.User
+@import ore.OreConfig
+@import security.NonceFilter._
+@import util.StringUtils._
 
 
 @* @notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }*@

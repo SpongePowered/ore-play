@@ -1,22 +1,16 @@
 @*
 Page used for uploading and creating new projects.
 *@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
+@import models.project.Project
+@import models.user.Organization
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
-@import models.project.Project
 @import play.twirl.api.Html
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
-@import ore.permission.CreateProject
-@import models.project.Tag
-@import models.project.TagColors
 @import views.html.utils
-@import models.viewhelper.HeaderData
-@import models.user.Organization
-
-@import controllers.sugar.Requests.OreRequest
 @(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

@@ -1,20 +1,14 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.{Channel, Project, Version}
+@import models.project.{Channel, Version}
+@import models.viewhelper.ProjectData
 @import ore.OreConfig
 @import ore.project.factory.PendingVersion
 @import security.NonceFilter._
 @import util.StringUtils
 @import views.html.helper.{CSRF, form}
-@import views.html.utils.alert
-@import views.html.utils.editor
-@import models.project.Tag
-@import models.project.TagColors
-@import models.viewhelper.HeaderData
-
-@import controllers.sugar.Requests.OreRequest
-@import models.viewhelper.ProjectData
+@import views.html.utils.{alert, editor}
 @(project: ProjectData, forumSync: Boolean, pending: Option[PendingVersion],
   channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

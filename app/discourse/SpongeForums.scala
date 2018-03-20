@@ -1,9 +1,9 @@
 package discourse
 
 import java.nio.file.Path
-import javax.inject.{Inject, Singleton}
 
 import akka.actor.ActorSystem
+import javax.inject.{Inject, Singleton}
 import ore.{OreConfig, OreEnv}
 import play.api.libs.ws.WSClient
 

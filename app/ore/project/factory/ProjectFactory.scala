@@ -2,7 +2,6 @@ package ore.project.factory
 
 import java.nio.file.Files._
 import java.nio.file.StandardCopyOption
-import javax.inject.Inject
 
 import akka.actor.ActorSystem
 import com.google.common.base.Preconditions._
@@ -10,8 +9,9 @@ import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{ProjectBase, UserBase}
 import discourse.OreDiscourseApi
-import models.project._
+import javax.inject.Inject
 import models.project.TagColors.TagColor
+import models.project._
 import models.user.role.ProjectRole
 import models.user.{Notification, User}
 import ore.Colors.Color

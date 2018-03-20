@@ -3,9 +3,9 @@ package ore.user.notification
 import models.user.User
 import models.user.role.RoleModel
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.language.implicitConversions
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * A collection of ways to filter invites.

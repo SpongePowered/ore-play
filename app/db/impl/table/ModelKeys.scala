@@ -2,7 +2,7 @@ package db.impl.table
 
 import db.Named
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.{Describable, Downloadable, Hideable}
+import db.impl.model.common.{Describable, Downloadable}
 import db.table.key._
 import models.admin.{ProjectLogEntry, Review, VisibilityChange}
 import models.project.VisibilityTypes.Visibility

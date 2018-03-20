@@ -5,8 +5,8 @@ import java.sql.Timestamp
 import com.github.tminglei.slickpg.InetString
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
-import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import db.impl.table.StatTable
+import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import db.table.{AssociativeTable, ModelTable, NameColumn}
 import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
 import models.api.ProjectApiKey
@@ -22,7 +22,6 @@ import ore.project.FlagReasons.FlagReason
 import ore.project.io.DownloadTypes.DownloadType
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
-import db.impl.OrePostgresDriver.OreDriver.categoryTypeMapper
 import ore.user.notification.NotificationTypes.NotificationType
 
 /*

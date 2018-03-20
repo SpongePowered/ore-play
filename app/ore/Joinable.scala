@@ -1,6 +1,5 @@
 package ore
 
-import db.impl.access.UserBase
 import models.user.role.RoleModel
 import ore.permission.scope.ScopeSubject
 import ore.user.{Member, MembershipDossier}

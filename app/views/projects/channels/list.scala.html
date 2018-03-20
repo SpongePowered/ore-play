@@ -1,13 +1,11 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.{Channel, Project}
+@import models.project.Channel
+@import models.viewhelper.ProjectData
 @import ore.OreConfig
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
-@import models.viewhelper.ProjectData
-
-@import controllers.sugar.Requests.OreRequest
 @(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

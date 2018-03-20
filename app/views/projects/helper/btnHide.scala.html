@@ -1,7 +1,5 @@
-@import models.project.Project
-@import models.project.VisibilityTypes
+@import models.project.{Project, VisibilityTypes}
 @import models.user.User
-@import models.viewhelper.ProjectData
 @import ore.permission.Permission
 @(project: Project, perms: Map[Permission, Boolean], user: User)(implicit messages: Messages)
 

@@ -7,11 +7,11 @@ import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.{ReviewTable, VersionTable}
 import db.impl.model.OreModel
 import db.impl.model.common.{Describable, Downloadable}
 import db.impl.schema.VersionSchema
 import db.impl.table.ModelKeys._
+import db.impl.{ReviewTable, VersionTable}
 import models.admin.Review
 import models.statistic.VersionDownload
 import models.user.User
@@ -19,7 +19,6 @@ import ore.permission.scope.ProjectScope
 import ore.project.Dependency
 import play.twirl.api.Html
 import util.FileUtils
-import util.StringUtils.equalsIgnoreCase
 
 import scala.concurrent.{ExecutionContext, Future}
 

@@ -11,11 +11,11 @@ import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.typographic.TypographicExtension
-import com.vladsch.flexmark.ext.wikilink.{WikiLink, WikiLinkExtension}
+import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.html.renderer._
 import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
 import com.vladsch.flexmark.parser.Parser
-import com.vladsch.flexmark.util.options.{MutableDataHolder, MutableDataSet}
+import com.vladsch.flexmark.util.options.MutableDataSet
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.PageTable
@@ -23,9 +23,8 @@ import db.impl.model.OreModel
 import db.impl.schema.PageSchema
 import db.impl.table.ModelKeys._
 import db.{ModelFilter, Named}
-import models.project
-import ore.permission.scope.ProjectScope
 import ore.OreConfig
+import ore.permission.scope.ProjectScope
 import play.twirl.api.Html
 import util.StringUtils._
 

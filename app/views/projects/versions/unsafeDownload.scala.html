@@ -1,12 +1,9 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
+@import models.project.{Project, Version}
 @import ore.OreConfig
-@import models.project.Version
-@import models.project.Project
 @import ore.project.io.DownloadTypes.DownloadType
 @import views.html.helper.CSRF
-@import models.viewhelper.HeaderData
-@import controllers.sugar.Requests.OreRequest
 @(project: Project,
   target: Version,
   downloadType: DownloadType,

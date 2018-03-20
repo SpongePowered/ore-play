@@ -1,11 +1,11 @@
 package models.viewhelper
 
-import controllers.sugar.Requests.{OreRequest, ScopedRequest}
+import controllers.sugar.Requests.OreRequest
 import models.user.User
 import models.user.role.RoleModel
 import ore.Joinable
+import ore.permission.EditSettings
 import ore.permission.role.Role
-import ore.permission.{EditSettings, Permission}
 import ore.user.Member
 
 trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M]] {

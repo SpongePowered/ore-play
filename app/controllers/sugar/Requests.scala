@@ -3,9 +3,8 @@ package controllers.sugar
 import models.project.Project
 import models.user.{Organization, User}
 import models.viewhelper._
-import ore.permission.Permission
 import ore.permission.scope.ScopeSubject
-import play.api.mvc.{AnyContent, Request, WrappedRequest}
+import play.api.mvc.{Request, WrappedRequest}
 
 /**
   * Contains the custom WrappedRequests used by Ore.

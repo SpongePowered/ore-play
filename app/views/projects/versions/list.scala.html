@@ -1,18 +1,14 @@
 @*
 Versions page within Project overview.
 *@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
 @import db.impl.access.UserBase
+@import models.project.{Channel, Version}
+@import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.{EditChannels, EditVersions}
 @import security.NonceFilter._
-@import models.project.Project
-@import models.project.Channel
-@import models.project.Version
-@import db.impl.OrePostgresDriver.api._
-@import models.viewhelper.ProjectData
-@import controllers.sugar.Requests.OreRequest
-@import models.viewhelper.ScopedProjectData
 @(p: ProjectData,
         sp: ScopedProjectData,
         channels: Seq[Channel],

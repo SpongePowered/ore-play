@@ -1,6 +1,5 @@
 @import ore.OreConfig
-@import views.html.helper.form
-@import views.html.helper.CSRF
+@import views.html.helper.{CSRF, form}
 @()(implicit messages: Messages, config: OreConfig, request: Request[_])
 
 <div class="modal fade" id="channel-settings" tabindex="-1" role="dialog" aria-labelledBy="settings-label">

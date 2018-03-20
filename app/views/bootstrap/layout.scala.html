@@ -2,11 +2,10 @@
 Base layout template for website. Most templates within the project will extend
 this.
 *@
+@import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import play.twirl.api.Html
 @import security.NonceFilter._
-@import models.viewhelper.HeaderData
-@import controllers.sugar.Requests.OreRequest
 @(title: String, scripts: Boolean = true, header: Boolean = true, user: Boolean = true,
         footer: Boolean = true)(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
 

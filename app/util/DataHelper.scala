@@ -1,12 +1,11 @@
 package util
 
-import javax.inject.Inject
-
 import com.google.common.base.Preconditions.checkArgument
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.access.{ProjectBase, UserBase}
 import discourse.OreDiscourseApi
+import javax.inject.Inject
 import models.project.{Channel, Project, ProjectSettings, Version}
 import models.user.User
 import ore.OreConfig

@@ -1,14 +1,7 @@
-@import db.ModelService
-@import db.impl.OrePostgresDriver.api._
-@import ore.OreConfig
-@import db.impl.access.UserBase
-@import db.impl.access.ProjectBase
-@import models.project.Project
-@import models.project.VisibilityTypes
-@import models.viewhelper.HeaderData
-@import models.project.Version
-
 @import controllers.sugar.Requests.OreRequest
+@import db.ModelService
+@import models.project.{Project, Version}
+@import ore.OreConfig
 @(noTopicProjects: Seq[Project],
   topicDirtyProjects: Seq[Project],
   staleProjects: Seq[Project],

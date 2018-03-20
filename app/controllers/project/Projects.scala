@@ -1,7 +1,6 @@
 package controllers.project
 
 import java.nio.file.{Files, Path}
-import javax.inject.Inject
 
 import _root_.util.StringUtils._
 import controllers.OreBaseController
@@ -10,9 +9,9 @@ import controllers.sugar.Requests.AuthRequest
 import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
+import javax.inject.Inject
 import models.project.{Note, VisibilityTypes}
 import models.user.User
-import models.viewhelper.{HeaderData, ProjectData, ScopedProjectData}
 import ore.permission._
 import ore.permission.scope.GlobalScope
 import ore.project.factory.ProjectFactory

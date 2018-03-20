@@ -1,15 +1,12 @@
 package mail
 
-import javax.inject.Inject
-
 import controllers.sugar.Requests.OreRequest
 import db.ModelService
 import db.impl.access.UserBase
+import javax.inject.Inject
 import models.user.User
-import models.viewhelper.HeaderData
 import ore.OreConfig
 import play.api.i18n.{I18nSupport, Lang, MessagesApi}
-import play.api.mvc.Request
 
 final class EmailFactory @Inject()(override val messagesApi: MessagesApi,
                                    implicit val config: OreConfig,

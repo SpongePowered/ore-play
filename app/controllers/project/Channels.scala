@@ -1,12 +1,10 @@
 package controllers.project
 
-import javax.inject.Inject
-
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import db.ModelService
 import form.OreForms
-import models.viewhelper.ProjectData
+import javax.inject.Inject
 import ore.permission.EditChannels
 import ore.project.factory.ProjectFactory
 import ore.{OreConfig, OreEnv}

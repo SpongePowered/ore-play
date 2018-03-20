@@ -1,17 +1,14 @@
 package ore.project.factory
 
 import db.ModelService
-import db.impl.TagTable
 import db.impl.access.ProjectBase
-import models.project.{Project, ProjectSettings, Tag, Version}
+import models.project.{Project, ProjectSettings, Version}
 import models.user.role.ProjectRole
-import ore.project.Dependency._
 import ore.project.io.PluginFile
-import ore.{Cacheable, Colors, OreConfig}
+import ore.{Cacheable, OreConfig}
 import play.api.cache.SyncCacheApi
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
 
 /**
   * Represents a Project with an uploaded plugin that has not yet been

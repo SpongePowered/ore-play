@@ -2,9 +2,9 @@ package security
 
 import java.security.SecureRandom
 import java.util.Base64
-import javax.inject.Inject
 
 import akka.stream.Materializer
+import javax.inject.Inject
 import play.api.libs.typedmap.TypedKey
 import play.api.mvc.{Filter, RequestHeader, Result}
 

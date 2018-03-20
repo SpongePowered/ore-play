@@ -1,10 +1,9 @@
 package db.impl.service
 
-import javax.inject.{Inject, Singleton}
-
 import db.impl.{OreModelProcessor, OrePostgresDriver}
 import db.{ModelRegistry, ModelService}
 import discourse.OreDiscourseApi
+import javax.inject.{Inject, Singleton}
 import ore.{OreConfig, OreEnv}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.i18n.MessagesApi

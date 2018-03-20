@@ -1,7 +1,6 @@
 package models.viewhelper
 
 import db.ModelService
-import scala.concurrent.duration._
 import models.user.role.OrganizationRole
 import models.user.{Organization, User}
 import ore.organization.OrganizationMember

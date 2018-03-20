@@ -7,7 +7,6 @@ import models.user.role.OrganizationRole
 import models.user.{Organization, User}
 import ore.permission._
 import play.api.cache.AsyncCacheApi
-import play.api.mvc.Request
 import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}

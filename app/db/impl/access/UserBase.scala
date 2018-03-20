@@ -4,16 +4,12 @@ import java.sql.Timestamp
 import java.util.{Date, UUID}
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.OreModel
 import db.impl.schema.ProjectSchema
-import db.{ModelBase, ModelService, Named}
+import db.{ModelBase, ModelService}
 import models.user.{Session, User}
 import ore.OreConfig
 import ore.permission.Permission
-import ore.permission.scope.ScopeSubject
-import ore.user.UserOwned
 import play.api.mvc.Request
-import play.api.mvc.Results.Unauthorized
 import security.spauth.SpongeAuthApi
 import util.StringUtils._
 

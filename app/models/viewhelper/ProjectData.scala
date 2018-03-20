@@ -7,7 +7,6 @@ import models.admin.VisibilityChange
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
-import ore.permission.role.RoleTypes
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
 import play.api.cache.AsyncCacheApi

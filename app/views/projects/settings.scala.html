@@ -1,16 +1,12 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
+@import models.api.ProjectApiKey
+@import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.HideProjects
+@import ore.permission.{HardRemoveProject, HideProjects}
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
-@import ore.rest.ProjectApiKeyTypes._
-@import ore.permission.HardRemoveProject
 @import views.html.utils
-@import models.viewhelper.ProjectData
-@import models.api.ProjectApiKey
-
-@import controllers.sugar.Requests.OreRequest
-@import models.viewhelper.ScopedProjectData
 @(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[ProjectApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

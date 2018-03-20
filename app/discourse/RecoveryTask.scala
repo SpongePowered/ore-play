@@ -4,8 +4,8 @@ import akka.actor.Scheduler
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 
-import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Task to periodically retry failed Discourse requests.

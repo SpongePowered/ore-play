@@ -1,15 +1,12 @@
 package controllers.project
 
-import javax.inject.Inject
-
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.OreRequest
 import db.impl.OrePostgresDriver.api._
 import db.{ModelFilter, ModelService}
 import form.OreForms
+import javax.inject.Inject
 import models.project.{Page, Project}
-import models.viewhelper.ProjectData
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.cache.AsyncCacheApi

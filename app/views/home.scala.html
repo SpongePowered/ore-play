@@ -2,9 +2,10 @@
 The main entry point of Ore. This page displays a list of Projects that can be
 sorted according to different criteria.
 *@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.Project
+@import models.project.{Project, Tag, Version}
+@import models.user.User
 @import ore.Platforms.Platform
 @import ore.project.Categories._
 @import ore.project.ProjectSortingStrategies.{values, _}
@@ -13,15 +14,8 @@ sorted according to different criteria.
 @import play.api.Configuration
 @import security.NonceFilter._
 @import views.html.utils.alert
-@import scala.collection.JavaConversions._
 
-@import scala.collection.mutable
 @import scala.util.Random
-
-@import controllers.sugar.Requests.OreRequest
-@import models.user.User
-@import models.project.Version
-@import models.project.Tag
 @(models: Seq[(Project, User, Version, Seq[Tag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)

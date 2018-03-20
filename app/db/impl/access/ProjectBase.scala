@@ -7,7 +7,7 @@ import java.util.Date
 
 import com.google.common.base.Preconditions._
 import db.impl.OrePostgresDriver.api._
-import db.impl.{PageTable, ProjectTable, ProjectTableMain, VersionTable}
+import db.impl.{PageTable, ProjectTableMain, VersionTable}
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
 import models.project.{Channel, Project, Version}
@@ -17,7 +17,6 @@ import slick.lifted.TableQuery
 import util.FileUtils
 import util.StringUtils._
 
-import scala.collection.immutable.ListMap
 import scala.concurrent.{ExecutionContext, Future}
 
 class ProjectBase(override val service: ModelService,

@@ -3,7 +3,6 @@ package form.organization
 import db.impl.access.UserBase
 import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
-import models.viewhelper.HeaderData
 import ore.permission.role.RoleTypes
 import ore.user.notification.NotificationTypes
 import play.api.cache.AsyncCacheApi

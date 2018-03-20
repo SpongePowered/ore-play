@@ -1,12 +1,11 @@
 package controllers.project
 
-import java.io.InputStream
 import java.nio.file.Files._
 import java.nio.file.{Files, StandardCopyOption}
 import java.sql.Timestamp
 import java.util.{Date, UUID}
-import javax.inject.Inject
 
+import _root_.views.html.helper
 import com.github.tminglei.slickpg.InetString
 import controllers.OreBaseController
 import controllers.sugar.Bakery
@@ -15,29 +14,28 @@ import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import form.OreForms
+import javax.inject.Inject
 import models.project._
+import models.viewhelper.{ProjectData, VersionData}
 import ore.permission.{EditVersions, ReviewProjects}
+import ore.project.factory.TagAlias.ProjectTag
 import ore.project.factory.{PendingProject, ProjectFactory}
 import ore.project.io.DownloadTypes._
 import ore.project.io.{DownloadTypes, InvalidPluginFileException, PluginFile, PluginUpload}
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.Logger
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.libs.json.Json
-import play.api.mvc.{Request, Result}
+import play.api.mvc.Result
 import play.filters.csrf.CSRF
 import security.spauth.SingleSignOnConsumer
+import util.JavaUtils.autoClose
 import util.StringUtils._
 import views.html.projects.{versions => views}
-import _root_.views.html.helper
-import models.viewhelper.{HeaderData, ProjectData, ScopedProjectData, VersionData}
-import ore.project.factory.TagAlias.ProjectTag
-import util.JavaUtils.autoClose
-import controllers.sugar.Requests._
-import play.api.cache.AsyncCacheApi
 
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * Controller for handling Version related actions.

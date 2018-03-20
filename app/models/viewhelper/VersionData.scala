@@ -1,6 +1,6 @@
 package models.viewhelper
 
-import controllers.sugar.Requests.{OreRequest, ProjectRequest}
+import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import models.project.{Channel, Project, Version}
 import ore.project.Dependency

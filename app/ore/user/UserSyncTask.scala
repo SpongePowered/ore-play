@@ -1,15 +1,14 @@
 package ore.user
 
-import javax.inject.{Inject, Singleton}
-
 import akka.actor.ActorSystem
 import db.ModelService
 import db.impl.access.UserBase
+import javax.inject.{Inject, Singleton}
 import ore.OreConfig
 
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 /**
   * Task that is responsible for keeping Ore users synchronized with external

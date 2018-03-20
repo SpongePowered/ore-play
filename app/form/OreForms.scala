@@ -1,13 +1,13 @@
 package form
 
 import java.net.{MalformedURLException, URL}
-import javax.inject.Inject
 
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
+import javax.inject.Inject
 import models.api.ProjectApiKey
 import models.project.Channel
 import models.project.Page._
@@ -16,14 +16,12 @@ import ore.OreConfig
 import ore.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyTypes
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
-import play.api.data.{Form, FormError}
 import play.api.data.Forms._
 import play.api.data.format.Formatter
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
+import play.api.data.{Form, FormError}
 
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Collection of forms used in this application.

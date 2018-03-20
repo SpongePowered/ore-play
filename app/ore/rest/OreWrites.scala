@@ -1,15 +1,12 @@
 package ore.rest
 
-import javax.inject.Inject
-
 import db.ModelService
 import db.impl.access.ProjectBase
+import javax.inject.Inject
 import models.api.ProjectApiKey
 import models.project._
-import models.user.User
 import ore.OreConfig
-import ore.project.ProjectMember
-import play.api.libs.json.Json.{obj, arr, toJson}
+import play.api.libs.json.Json.obj
 import play.api.libs.json._
 import security.pgp.PGPPublicKeyInfo
 

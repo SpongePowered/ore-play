@@ -1,13 +1,13 @@
 package ore.rest
 
 import java.lang.Math._
-import javax.inject.Inject
 
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.{ProjectSchema, ProjectTag}
+import javax.inject.Inject
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole

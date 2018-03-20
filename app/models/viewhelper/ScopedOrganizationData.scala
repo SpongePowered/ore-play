@@ -1,7 +1,6 @@
 package models.viewhelper
 
 import db.ModelService
-import models.project.Project
 import models.user.{Organization, User}
 import ore.permission.{Permission, _}
 import play.api.cache.AsyncCacheApi

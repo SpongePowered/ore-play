@@ -1,19 +1,15 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
 @import discourse.OreDiscourseApi
+@import models.user.User
 @import models.user.role.ProjectRole
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
 @import play.twirl.api.Html
-@import views.html.helper.form
+@import views.html.helper.{CSRF, form}
 
-@import scala.collection.JavaConverters._
-@import scala.concurrent.TimeoutException
-@import views.html.helper.CSRF
-@import models.user.User
-@import models.viewhelper.HeaderData
 @import scala.concurrent.ExecutionContext
-@import controllers.sugar.Requests.OreRequest
 @(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit executionContext: ExecutionContext, messages: Messages, flash: Flash, request: OreRequest[_],
         forums: OreDiscourseApi, config: OreConfig, currentUser: User)
 

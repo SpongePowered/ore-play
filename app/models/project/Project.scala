@@ -3,6 +3,8 @@ package models.project
 import java.sql.Timestamp
 import java.time.Instant
 
+import _root_.util.StringUtils
+import _root_.util.StringUtils._
 import com.google.common.base.Preconditions._
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
@@ -15,9 +17,10 @@ import db.impl.table.ModelKeys._
 import db.{ModelService, Named}
 import models.admin.{ProjectLog, VisibilityChange}
 import models.api.ProjectApiKey
+import models.project.VisibilityTypes.{Public, Visibility}
 import models.statistic.ProjectView
 import models.user.User
-import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
+import models.user.role.ProjectRole
 import ore.permission.role.{Default, RoleTypes, Trust}
 import ore.permission.scope.ProjectScope
 import ore.project.Categories.Category
@@ -25,13 +28,9 @@ import ore.project.FlagReasons.FlagReason
 import ore.project.{Categories, ProjectMember}
 import ore.user.MembershipDossier
 import ore.{Joinable, OreConfig, Visitable}
-import play.api.libs.json._
 import play.api.libs.functional.syntax._
+import play.api.libs.json._
 import play.twirl.api.Html
-import _root_.util.StringUtils
-import _root_.util.StringUtils._
-import db.impl.access.UserBase
-import models.project.VisibilityTypes.{Public, Visibility}
 import slick.lifted
 import slick.lifted.{Rep, TableQuery}
 
@@ -180,7 +179,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param user User that owns project
     */
-  def setOwner(user: User): Future[Unit] = {
+  def setOwner(user: User): Future[Int] = {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     this._ownerId = user.id.get

@@ -1,25 +1,22 @@
 package controllers
 
-import javax.inject.Inject
-
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
-import db.impl.{ProjectTableMain, UserTable, VersionTable}
 import db.impl.access.UserBase.ORDERING_PROJECTS
+import db.impl.{ProjectTableMain, VersionTable}
 import discourse.OreDiscourseApi
 import form.OreForms
-import models.user.role.RoleModel
-import models.user.{Notification, SignOn, User}
+import javax.inject.Inject
+import mail.{EmailFactory, Mailer}
+import models.user.{SignOn, User}
+import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.rest.OreWrites
 import ore.user.notification.InviteFilters.InviteFilter
 import ore.user.notification.NotificationFilters.NotificationFilter
 import ore.user.notification.{InviteFilters, NotificationFilters}
 import ore.user.{FakeUser, Prompts}
 import ore.{OreConfig, OreEnv}
-import mail.{EmailFactory, Mailer}
-import models.project.{Project, Version}
-import models.viewhelper.{HeaderData, OrganizationData, ScopedOrganizationData, UserData}
 import play.Logger
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
@@ -27,8 +24,8 @@ import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import views.{html => views}
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
   * Controller for general user actions.

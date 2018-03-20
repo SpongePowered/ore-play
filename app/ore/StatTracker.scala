@@ -1,16 +1,15 @@
 package ore
 
 import java.util.UUID
-import javax.inject.Inject
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{OreRequest, ProjectRequest}
 import db.ModelService
 import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.StatSchema
-import models.project.{Project, Version}
+import javax.inject.Inject
+import models.project.Version
 import models.statistic.{ProjectView, VersionDownload}
-import models.viewhelper.ProjectData
 import ore.StatTracker.COOKIE_NAME
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{RequestHeader, Result}

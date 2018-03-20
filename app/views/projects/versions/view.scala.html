@@ -1,19 +1,12 @@
-@import db.ModelService
-@import db.impl.access.{ProjectBase, UserBase}
-@import models.project.{Channel, Project, Version}
-@import ore.OreConfig
-@import ore.permission.scope.GlobalScope
-@import ore.permission.{EditVersions, ReviewProjects}
-@import ore.project.Dependency.SpongeApiId
-@import util.StringUtils._
-@import ore.project.Dependency._
-@import views.html.helper.form
-@import views.html.helper.CSRF
-@import views.html.utils.editor
-@import models.viewhelper.HeaderData
-@import models.viewhelper.VersionData
 @import controllers.sugar.Requests.OreRequest
-@import models.viewhelper.ScopedProjectData
+@import db.ModelService
+@import models.viewhelper.{ScopedProjectData, VersionData}
+@import ore.OreConfig
+@import ore.permission.{EditVersions, ReviewProjects}
+@import ore.project.Dependency.{SpongeApiId, _}
+@import util.StringUtils._
+@import views.html.helper.{CSRF, form}
+@import views.html.utils.editor
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

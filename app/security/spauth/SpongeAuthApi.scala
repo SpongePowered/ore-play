@@ -1,9 +1,9 @@
 package security.spauth
 
 import java.util.concurrent.TimeoutException
-import javax.inject.Inject
 
 import com.google.common.base.Preconditions._
+import javax.inject.Inject
 import ore.OreConfig
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._

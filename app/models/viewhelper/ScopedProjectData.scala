@@ -3,7 +3,6 @@ package models.viewhelper
 import models.project.{Project, VisibilityTypes}
 import models.user.User
 import ore.permission._
-import play.api.Logger
 import play.api.cache.AsyncCacheApi
 
 import scala.concurrent.{ExecutionContext, Future}

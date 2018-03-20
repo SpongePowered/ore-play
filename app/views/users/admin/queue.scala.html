@@ -9,8 +9,8 @@
 @import models.admin.Review
 @import models.project.Channel
 @import models.user.User
-
 @import controllers.sugar.Requests.OreRequest
+
 @(underReview: Seq[(Project, Version, Channel, Option[String], (Review, Boolean, String))],
   versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 

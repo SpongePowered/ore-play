@@ -1,8 +1,7 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
 @import ore.OreConfig
 @import play.twirl.api.Html
-@import models.viewhelper.HeaderData
-@import controllers.sugar.Requests.OreRequest
 @(title: String, step: Int)(content: Html)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @bootstrap.layout(title) {

@@ -1,8 +1,8 @@
 package ore
 
 import java.nio.file.Paths
-import javax.inject.Inject
 
+import javax.inject.Inject
 import play.api.Environment
 
 /**

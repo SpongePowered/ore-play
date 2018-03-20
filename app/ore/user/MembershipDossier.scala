@@ -7,7 +7,7 @@ import db.impl.model.OreModel
 import db.table.AssociativeTable
 import models.user.User
 import models.user.role.RoleModel
-import ore.permission.role.{Default, Trust}
+import ore.permission.role.Trust
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions

@@ -1,14 +1,12 @@
 package filters
 
-import javax.inject.{Inject, Singleton}
-
 import akka.stream.Materializer
+import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 import play.api.http.HeaderNames.CONTENT_TYPE
 import play.api.mvc.{Filter, RequestHeader, Result}
 import play.filters.headers.SecurityHeadersFilter.CONTENT_SECURITY_POLICY_HEADER
 
-import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton

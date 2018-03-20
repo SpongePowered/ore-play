@@ -1,6 +1,5 @@
 package ore.project
 
-import com.google.common.base.{MoreObjects, Objects}
 import db.impl.access.UserBase
 import models.project.Project
 import models.user.role.ProjectRole

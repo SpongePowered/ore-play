@@ -4,18 +4,18 @@ import java.math.BigInteger
 import java.net.{URLDecoder, URLEncoder}
 import java.security.SecureRandom
 import java.util.Base64
+
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
-
 import org.apache.commons.codec.binary.Hex
 import play.api.Configuration
 import play.api.http.Status
 import play.api.libs.ws.WSClient
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 /**
   * Manages authentication to Sponge services.

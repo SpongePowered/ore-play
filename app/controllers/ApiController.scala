@@ -1,29 +1,28 @@
 package controllers
 
 import java.util.UUID
-import javax.inject.Inject
 
 import controllers.sugar.Bakery
 import db.ModelService
-import db.impl.{OrePostgresDriver, ProjectApiKeyTable}
+import db.impl.OrePostgresDriver.api._
+import db.impl.ProjectApiKeyTable
 import form.OreForms
+import javax.inject.Inject
 import models.api.ProjectApiKey
 import models.user.User
 import ore.permission.EditApiKeys
-import ore.project.factory.{PendingVersion, ProjectFactory}
+import ore.project.factory.ProjectFactory
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyTypes._
 import ore.rest.{OreRestfulApi, OreWrites}
 import ore.{OreConfig, OreEnv}
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import util.StatusZ
 import play.api.libs.json._
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.Compiled
-import db.impl.OrePostgresDriver.api._
-import models.viewhelper.ProjectData
-import play.api.cache.AsyncCacheApi
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

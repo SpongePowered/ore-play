@@ -2,7 +2,7 @@ package ore.organization
 
 import db.impl.access.UserBase
 import models.user.Organization
-import models.user.role.{OrganizationRole, ProjectRole}
+import models.user.role.OrganizationRole
 import ore.permission.scope.Scope
 import ore.user.Member
 

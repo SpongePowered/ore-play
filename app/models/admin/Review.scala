@@ -3,17 +3,17 @@ package models.admin
 import java.sql.Timestamp
 import java.time.Instant
 
-import util.StringUtils
-import ore.OreConfig
-import play.twirl.api.Html
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
 import db.Model
 import db.impl.ReviewTable
 import db.impl.model.OreModel
 import db.impl.schema.ReviewSchema
 import db.impl.table.ModelKeys._
 import models.project.{Page, Project, Version}
+import ore.OreConfig
+import play.api.libs.functional.syntax._
+import play.twirl.api.Html
+import util.StringUtils
+import play.api.libs.json._
 
 import scala.concurrent.Future
 

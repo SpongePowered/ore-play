@@ -2,21 +2,15 @@
 Base template for Project overview.
 *@
 
+@import controllers.project.routes._
+@import controllers.sugar.Requests.OreRequest
+@import models.project.VisibilityTypes
+@import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.EditSettings
+@import ore.permission.{EditPages, EditSettings, ReviewFlags, ViewLogs}
 @import ore.project.FlagReasons
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
-@import ore.permission.ReviewFlags
-@import ore.permission.ViewLogs
-@import ore.permission.scope.GlobalScope
-@import models.project.VisibilityTypes
-@import ore.permission.EditPages
-@import models.viewhelper.ProjectData
-@import controllers.project.routes._
-
-@import controllers.sugar.Requests.OreRequest
-@import models.viewhelper.ScopedProjectData
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @bootstrap.layout(p.project.ownerName + " / " + p.project.name) {

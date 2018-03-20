@@ -2,7 +2,6 @@ package controllers
 
 import java.sql.Timestamp
 import java.time.Instant
-import javax.inject.Inject
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
@@ -10,17 +9,17 @@ import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import form.OreForms
+import javax.inject.Inject
 import models.admin.{Message, Review}
 import models.project.{Project, Version}
 import models.user.{Notification, User}
-import models.viewhelper.HeaderData
 import ore.permission.ReviewProjects
 import ore.permission.role.Lifted
 import ore.permission.role.RoleTypes.RoleType
 import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.{Rep, TableQuery}
 import util.DataHelper

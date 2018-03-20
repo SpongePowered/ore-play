@@ -1,10 +1,8 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
+@import models.admin.VisibilityChange
 @import models.project.Project
 @import ore.OreConfig
-@import db.impl.access.UserBase
-
-@import models.admin.VisibilityChange
-@import controllers.sugar.Requests.OreRequest
 @* visChange1 is lastChangeRequest users.get(lastChangeRequest.get.createdBy.getOrElse(1)).map(_.username) *@
 @* visChange2 is users.get(project.lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @* visChange4 is users.get(lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@

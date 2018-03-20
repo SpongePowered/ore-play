@@ -9,14 +9,13 @@ import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.{Model, Named}
-import models.user.role.{OrganizationRole, RoleModel}
+import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Default, RoleTypes, Trust}
 import ore.permission.scope.OrganizationScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import slick.lifted.{Compiled, Rep, TableQuery}
-import slick.lifted
 
 import scala.concurrent.{ExecutionContext, Future}
 

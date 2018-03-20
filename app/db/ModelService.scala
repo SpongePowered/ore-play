@@ -9,8 +9,7 @@ import db.access.ModelAccess
 import db.table.{MappedType, ModelTable}
 import slick.ast.{AnonSymbol, Ref, SortBy}
 import slick.basic.DatabaseConfig
-import slick.jdbc.JdbcProfile
-import slick.jdbc.JdbcType
+import slick.jdbc.{JdbcProfile, JdbcType}
 import slick.lifted.{ColumnOrdered, WrappingQuery}
 import slick.util.ConstArray
 

@@ -2,8 +2,8 @@ package ore.user
 
 import java.sql.Timestamp
 import java.util.Date
-import javax.inject.Inject
 
+import javax.inject.Inject
 import models.user.User
 import ore.OreConfig
 import ore.permission.role.RoleTypes
