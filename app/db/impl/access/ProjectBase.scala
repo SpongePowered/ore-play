@@ -242,7 +242,7 @@ class ProjectBase(override val service: ModelService,
       (pp, p)
     }
     val filtered = pagesQuery filter { case (pp, p) =>
-      pp.projectId === project.id
+      pp.projectId === project.id && pp.parentId === -1
     }
 
     service.DB.db.run(filtered.result).map(_.groupBy(_._1)) map { grouped => // group by parent page

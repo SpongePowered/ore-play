@@ -78,7 +78,7 @@
             <div class="col-md-12">
                 <table class="table table-condensed setting-no-border table-review-log">
                     <tbody>
-                        @reviews.reverse.zipWithIndex.foreach { case ((item, name), index) =>
+                        @reviews.reverse.zipWithIndex.map { case ((item, name), index) =>
                             @if(item.endedAt.isDefined) {
                                 @if(reviews.size > (reviews.size-index)) {
                                     @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt.get))) {

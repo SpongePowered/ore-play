@@ -129,7 +129,7 @@
 
                 <!-- Roles -->
                 <ul class="user-roles">
-                    @u.orgas.foreach { case (organization, role, user) =>
+                    @u.orgas.map { case (organization, role, user) =>
                         <li class="organization-role" data-toggle="tooltip" data-placement="top"
                             data-title="@organization.name">
                             @userAvatar(Some(organization.name), user.avatarUrl, clazz = "user-avatar-xxs")

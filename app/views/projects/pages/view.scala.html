@@ -108,7 +108,7 @@ Documentation page within Project overview.
                                 </li>
                               @if(page.parentId != -1 && page.parentId == pg.id.get) {
                                   <div class="page-children" data-page-id="@pg.id.get">
-                                      @children.foreach { child =>
+                                      @children.map { child =>
                                         <li class="list-group-item page-item-child">
                                             <a href="@routes.Pages.show(p.project.ownerName, p.project.slug, child.fullSlug(Some(pg)))">
                                                 @child.name

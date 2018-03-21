@@ -47,7 +47,7 @@
                         @if(v.v.isReviewed) {
                             <div>
                                 @if(request.data.globalPerm(ReviewProjects)) {
-                                    @v.approvedBy.zip(v.v.approvedAt).foreach( t =>
+                                    @v.approvedBy.zip(v.v.approvedAt).map( t =>
                                         <i class="minor">
                                             @Html(messages("version.approved.info", t._1.name, prettifyDate(t._2)))
                                         </i>

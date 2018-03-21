@@ -42,7 +42,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                            @p.flags.foreach { case (flag, by, resolvedBy) =>
+                            @p.flags.map { case (flag, by, resolvedBy) =>
                                 <tr>
                                     <td>@by</td>
                                     <td>@flag.reason, @flag.comment</td>
