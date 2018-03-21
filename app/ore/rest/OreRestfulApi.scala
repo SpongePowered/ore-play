@@ -325,19 +325,17 @@ trait OreRestfulApi {
     }
   }
 
-  private def queryUser = {
-    val tableUsers = TableQuery[UserTable]
+  private def queryStars(users: Seq[User])  = {
+
     val tableStars = TableQuery[ProjectStarsTable]
     val tableProject = TableQuery[ProjectTableMain]
 
-    val baseQuery = for {
-      u <- tableUsers
-      s <- tableStars if u.id === s.userId
+    for {
+      s <- tableStars if s.userId inSetBind users.map(_.id.get)
       p <- tableProject if s.projectId === p.id
     } yield {
-      (u, p.pluginId) // user and starred plugin ids
+      (s.userId, p.pluginId)
     }
-    baseQuery
   }
 
   /**
@@ -348,33 +346,33 @@ trait OreRestfulApi {
     * @return       List of users
     */
   def getUserList(limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
-    service.DB.db.run(queryUser.drop(offset.getOrElse(25)).take(limit.getOrElse(25)).result).map { l =>
-      l.groupBy(_._1).mapValues(_.map(_._2)).toSeq // grouping in memory instead
-    } flatMap { l =>
-      writeUsers(l)
-    } map {
-      toJson(_)
+    for {
+      users <- service.DB.db.run(TableQuery[UserTable].drop(offset.getOrElse(25)).take(limit.getOrElse(25)).result)
+      writtenUsers <- writeUsers(users)
+    } yield {
+      toJson(writtenUsers)
     }
   }
 
-  def writeUsers(userList: Seq[(User, Seq[String])])(implicit ec: ExecutionContext): Future[Seq[JsObject]] = {
+  def writeUsers(userList: Seq[User])(implicit ec: ExecutionContext): Future[Seq[JsObject]] = {
 
     val query = queryProjectRV.filter {
-      case (p, v, c) => p.userId inSetBind userList.flatMap(_._1.id) // query all projects with given users
+      case (p, v, c) => p.userId inSetBind userList.flatMap(_.id) // query all projects with given users
     }
 
-    service.DB.db.run(query.result).flatMap { allProjects =>
-      writeProjects(allProjects)
-    } map { jsonProjects =>
-      jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
-    } map { projectsByUser =>
-      userList.map { case (user, starred) =>
+    for {
+      allProjects <- service.DB.db.run(query.result)
+      stars <- service.DB.db.run(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
+      jsonProjects <- writeProjects(allProjects)
+    } yield {
+      val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
+      userList.map { case user =>
         obj(
           "id"              ->  user.id,
           "createdAt"       ->  user.createdAt.get.toString,
           "username"        ->  user.username,
           "roles"           ->  user.globalRoles.map(_.title),
-          "starred"         ->  toJson(starred),
+          "starred"         ->  toJson(stars.getOrElse(user.id.get, Seq.empty)),
           "avatarUrl"       ->  user.avatarUrl,
           "projects"        ->  toJson(projectsByUser.get(user.id.get))
         )
@@ -389,16 +387,15 @@ trait OreRestfulApi {
     * @return         JSON user if found, None otherwise
     */
   def getUser(username: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
-    val queryOneUser = queryUser.filter { case (user, _) =>
-      user.name.toLowerCase === username.toLowerCase
+    val queryOneUser = TableQuery[UserTable].filter {
+      _.name.toLowerCase === username.toLowerCase
     }
 
-    service.DB.db.run(queryOneUser.result).map { l =>
-      l.groupBy(_._1).mapValues(_.map(_._2)).toSeq // grouping in memory instead
-    } flatMap { l =>
-      writeUsers(l)
-    } map {
-      _.headOption
+    for {
+      user <- service.DB.db.run(queryOneUser.result)
+      json <- writeUsers(user)
+    } yield {
+      json.headOption
     }
   }
 
