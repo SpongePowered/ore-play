@@ -312,7 +312,7 @@ trait OreRestfulApi {
           pages <- project.pages.sorted(_.name)
         } yield {
           val seq = if (parentId.isDefined) pages.filter(_.parentId == parentId.get) else pages
-          val pageById = seq.map(p => (p.id.get, p)).toMap
+          val pageById = pages.map(p => (p.id.get, p)).toMap
           Some(toJson(seq.map(page => obj(
             "createdAt" -> page.createdAt,
             "id" -> page.id,
