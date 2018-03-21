@@ -554,18 +554,19 @@ class Projects @Inject()(stats: StatTracker,
     (AuthedProjectAction(author, slug, requireUnlock = true)
       andThen ProjectPermissionAction(HideProjects)) async { implicit request =>
       val newVisibility = VisibilityTypes.withId(visibility)
-      request.user can newVisibility.permission in GlobalScope map { perm =>
+      request.user can newVisibility.permission in GlobalScope flatMap { perm =>
         if (perm) {
-          if (newVisibility.showModal) {
+          val change = if (newVisibility.showModal) {
             val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
             request.data.project.setVisibility(newVisibility, comment, request.user.id.get)
           } else {
             request.data.project.setVisibility(newVisibility, "", request.user.id.get)
           }
+          change.map(_ => Ok)
+        } else {
+          Future.successful(Unauthorized)
         }
-        Ok
       }
-
     }
   }
 

@@ -129,7 +129,7 @@ final class Application @Inject()(data: DataHelper,
     }
 
     queryProjects() map { data =>
-      val catList = if (Categories.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
+      val catList = if (categoryList.isEmpty || Categories.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
       Ok(views.home(data, catList, query.find(_.nonEmpty), p, ordering, pform))
     }
    }
