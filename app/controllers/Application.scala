@@ -429,7 +429,7 @@ final class Application @Inject()(data: DataHelper,
             import play.api.libs.json._
             val json = Json.parse(data)
 
-            def updateRoleTable[M <: RoleModel](modelAccess: ModelAccess[M], allowedType: Class[_ <: Role], ownerType: RoleTypes.RoleType, transferOwner: M => Future[Unit]) = {
+            def updateRoleTable[M <: RoleModel](modelAccess: ModelAccess[M], allowedType: Class[_ <: Role], ownerType: RoleTypes.RoleType, transferOwner: M => Future[Int]) = {
               val id = (json \ "id").as[Int]
               val status = action match {
                 case "setRole" => modelAccess.get(id).map {

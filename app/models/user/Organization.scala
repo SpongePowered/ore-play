@@ -85,7 +85,7 @@ case class Organization(override val id: Option[Int] = None,
 
   override def ownerId: Int = this._ownerId
 
-  override def transferOwner(member: OrganizationMember)(implicit ec: ExecutionContext): Future[Unit] = {
+  override def transferOwner(member: OrganizationMember)(implicit ec: ExecutionContext): Future[Int] = {
     // Down-grade current owner to "Admin"
     this.owner.user.flatMap { owner =>
       this.memberships.getRoles(owner).map { roles =>
@@ -93,10 +93,10 @@ case class Organization(override val id: Option[Int] = None,
              .foreach(_.setRoleType(RoleTypes.OrganizationAdmin))
       }
     } flatMap { _ =>
-      member.user.map { memberUser =>
+      member.user.flatMap { memberUser =>
         this.memberships.getRoles(memberUser).map { memberRoles =>
           memberRoles.foreach(_.setRoleType(RoleTypes.OrganizationOwner))
-        } map { _ =>
+        } flatMap { _ =>
           this.setOwner(memberUser)
         }
       }
@@ -109,13 +109,13 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @param user User that owns this organization
     */
-  def setOwner(user: User) = {
+  def setOwner(user: User): Future[Int] = {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     this._ownerId = user.id.get
     if (isDefined) {
       update(OrgOwnerId)
-    }
+    } else Future.successful(0)
   }
 
   /**

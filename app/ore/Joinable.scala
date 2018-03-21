@@ -23,7 +23,7 @@ trait Joinable[M <: Member[_ <: RoleModel]] extends ScopeSubject {
   /**
    * Transfers ownership of this object to the given member.
    */
-  def transferOwner(owner: M)(implicit ec: ExecutionContext): Future[Unit]
+  def transferOwner(owner: M)(implicit ec: ExecutionContext): Future[Int]
 
   /**
     * Returns this objects membership information.

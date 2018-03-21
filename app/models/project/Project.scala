@@ -158,7 +158,7 @@ case class Project(override val id: Option[Int] = None,
     */
   override def owner: ProjectMember = new ProjectMember(this, this.ownerId)
 
-  override def transferOwner(member: ProjectMember)(implicit ex: ExecutionContext): Future[Unit] = {
+  override def transferOwner(member: ProjectMember)(implicit ex: ExecutionContext): Future[Int] = {
     // Down-grade current owner to "Developer"
     this.owner.user.flatMap(u => this.memberships.getRoles(u)).map { roles =>
       roles.filter(_.roleType == RoleTypes.ProjectOwner)
