@@ -289,7 +289,7 @@ case class User(override val id: Option[Int] = None,
       case GlobalScope =>
         Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId).result).map { projectRoles =>
+        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId, this.id.get).result).map { projectRoles =>
           projectRoles.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
         } flatMap { userTrust =>
           if (!userTrust.equals(Default)) {

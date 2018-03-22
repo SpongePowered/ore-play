@@ -121,7 +121,7 @@ case class Project(override val id: Option[Int] = None,
       * @return Trust of user
       */
     override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] = {
-      this.userBase.service.DB.db.run(Project.roleForTrustQuery(id.get).result).map { l =>
+      this.userBase.service.DB.db.run(Project.roleForTrustQuery(id.get, user.id.get).result).map { l =>
         val ordering: Ordering[ProjectRole] = Ordering.by(m => m.roleType.trust)
         l.sorted(ordering).headOption.map(_.roleType.trust).getOrElse(Default)
       }
@@ -698,12 +698,12 @@ case class Note(message: String, user: Int, time: Long = System.currentTimeMilli
 
 object Project {
 
-  private def queryRoleForTrust(projectId: Rep[Int]) = {
+  private def queryRoleForTrust(projectId: Rep[Int], userId: Rep[Int]) = {
     val memberTable = TableQuery[ProjectMembersTable]
     val roleTable = TableQuery[ProjectRoleTable]
 
     for {
-      m <- memberTable if m.projectId === projectId
+      m <- memberTable if m.projectId === projectId && m.userId === userId
       r <- roleTable if m.userId === r.userId && r.projectId === projectId
     } yield {
       r
