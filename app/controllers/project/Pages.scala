@@ -165,7 +165,9 @@ class Pages @Inject()(forms: OreForms,
                 val pageName = pageData.name.getOrElse(parts(0))
                 data.project.getOrCreatePage(pageName, parentId, pageData.content)
               }
-              created.map { _ =>
+              created flatMap { createdPage =>
+                createdPage.setContents(pageData.content.getOrElse(createdPage.contents))
+              } map { _ =>
                 Redirect(self.show(author, slug, page))
               }
             }
