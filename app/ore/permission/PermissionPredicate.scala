@@ -50,17 +50,12 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
     }
 
     private def checkProjectPerm(project: Project): Future[Boolean] = {
-      val pp = project.service.getModelBase(classOf[OrganizationBase]).get(project.ownerId)
-      pp.flatMap {
-        case None => Future.successful(false)
-        case Some(org) =>
-          // Test the org scope and the project scope
-          for {
-            orgTest <- org.scope.test(user, p)
-            projectTest <- project.scope.test(user, p)
-          } yield {
-            orgTest | projectTest
-          }
+      for {
+        pp <- project.service.getModelBase(classOf[OrganizationBase]).get(project.ownerId)
+        orgTest <- if (pp.isEmpty) Future.successful(false) else pp.get.scope.test(user, p)
+        projectTest <- project.scope.test(user, p)
+      } yield {
+        orgTest || projectTest
       }
     }
 
