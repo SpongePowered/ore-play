@@ -72,10 +72,10 @@ class OrganizationBase(override val service: ModelService,
           case Some(userOrg) => userOrg.pullForumData().flatMap(_.pullSpongeData())
             userOrg.setGlobalRoles(userOrg.globalRoles + RoleTypes.Organization)
             userOrg
-        } flatMap { owner =>
+        } flatMap { orga =>
           // Add the owner
           org.memberships.addRole(OrganizationRole(
-            userId = owner.id.get,
+            userId = ownerId,
             organizationId = org.id.get,
             _roleType = RoleTypes.OrganizationOwner,
             _isAccepted = true))
