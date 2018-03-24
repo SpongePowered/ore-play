@@ -68,16 +68,9 @@ object UserData {
     for {
       isOrga <- user.isOrganization
       projectCount <- user.projects.size
-      orga <- user.toMaybeOrganization
-      viewActivity <- user can ViewActivity in user map ((ViewActivity, _))
-      reviewFlags <- user can ReviewFlags in user map ((ReviewFlags, _))
-      reviewProjects <- user can ReviewProjects in user map ((ReviewProjects, _))
-      editSettings <- user can EditSettings in orga map ((EditSettings, _))
+      (userPerms, orgaPerms) <- perms(request.currentUser)
       orgas <- db.run(queryRoles(user).result)
     } yield {
-
-      val userPerms: Map[Permission, Boolean] = Seq(viewActivity, reviewFlags, reviewProjects).toMap
-      val orgaPerms: Map[Permission, Boolean] = Seq(editSettings).toMap
 
       UserData(request.data,
               user,
@@ -86,8 +79,24 @@ object UserData {
               orgas,
               userPerms,
               orgaPerms)
-
     }
+  }
 
+  def perms(currentUser: Option[User])(implicit ec: ExecutionContext): Future[(Map[Permission, Boolean], Map[Permission, Boolean])] = {
+    if (currentUser.isEmpty) Future.successful((Map.empty, Map.empty))
+    else {
+      val user = currentUser.get
+      for {
+        orga <- user.toMaybeOrganization
+        viewActivity <- user can ViewActivity in user map ((ViewActivity, _))
+        reviewFlags <- user can ReviewFlags in user map ((ReviewFlags, _))
+        reviewProjects <- user can ReviewProjects in user map ((ReviewProjects, _))
+        editSettings <- user can EditSettings in orga map ((EditSettings, _))
+      } yield {
+        val userPerms: Map[Permission, Boolean] = Seq(viewActivity, reviewFlags, reviewProjects).toMap
+        val orgaPerms: Map[Permission, Boolean] = Seq(editSettings).toMap
+        (userPerms, orgaPerms)
+      }
+    }
   }
 }
