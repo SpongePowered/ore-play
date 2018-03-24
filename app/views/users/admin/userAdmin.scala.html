@@ -70,7 +70,7 @@
         <div class="row">
             @if(!user.isOrga) {
                 @panel("Organizations") {
-                    @roleTable[Organization, OrganizationRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._2, t._3.username)).toSet, orgRoles) { (org, role) =>
+                    @roleTable[Organization, OrganizationRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.username)).toSet, orgRoles) { (org, role) =>
                         <a href="@routes.Application.userAdmin(org.username)">
                             @org.username
                         </a>
