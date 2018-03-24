@@ -220,6 +220,8 @@ version.approved                =   Approved
 version.approved.info           =   <strong>{0}</strong> approved this version on <strong>{1}</strong>
 version.releaseBulletin         =   Release Bulletin
 version.releaseBulletin.info    =   What''s new in this release?
+version.delete.info             =   Are you sure you want to delete this version?
+version.delete.title            =   Delete version
 
 version.download.confirm        =   Notice | {0}/{1} {2}
 version.download.confirm.body   =   <p>This version has not been reviewed by our moderation staff and may not be safe for download.</p> <p><i>Disclaimer: We disclaim all responsibility for any harm to your server or system should you choose not to heed this warning.</i></p>
