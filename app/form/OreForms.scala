@@ -171,8 +171,16 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "parent-id" -> optional(number),
     "name" -> optional(text),
     "content" -> optional(text(
-      maxLength = MaxLength
-    )))(PageSaveForm.apply)(PageSaveForm.unapply))
+      maxLength = MaxLengthPage
+    )))(PageSaveForm.apply)(PageSaveForm.unapply) verifying("error.maxLength", pageSaveForm => {
+      val isHome = pageSaveForm.parentId.isEmpty && pageSaveForm.name.contains(HomeName)
+      val pageSize = pageSaveForm.content.getOrElse("").length
+      if (isHome)
+        pageSize <= MaxLength
+      else
+        pageSize <= MaxLengthPage
+    })
+  )
 
   /**
     * Submits a tagline change for a User.

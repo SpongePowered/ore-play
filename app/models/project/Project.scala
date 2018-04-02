@@ -538,7 +538,7 @@ case class Project(override val id: Option[Int] = None,
       case None => Page.Template(name, Page.HomeMessage)
       case Some(text) =>
         checkNotNull(text, "null contents", "")
-        checkArgument(text.length <= Page.MaxLength, "contents too long", "")
+        checkArgument(text.length <= Page.MaxLengthPage, "contents too long", "")
         text
     }
     val page = new Page(this.id.get, name, c, true, parentId)

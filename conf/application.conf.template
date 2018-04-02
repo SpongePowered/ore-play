@@ -90,6 +90,7 @@ ore {
         home.message = "Welcome to your new project!"
         min-len = 15
         max-len = 32000
+        page.max-len = 75000
         name.max-len = 255
     }
     
