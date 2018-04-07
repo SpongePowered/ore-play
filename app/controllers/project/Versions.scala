@@ -542,7 +542,10 @@ class Versions @Inject()(stats: StatTracker,
               "post" -> helper.CSRF(
                 self.confirmDownload(author, slug, target, Some(dlType.id), token)).absoluteURL())))
           } else {
-            warning.map(warn => MultipleChoices(views.unsafeDownload(data.project, version, dlType, token)).withCookies(warn.cookie))
+            for {
+              warn <- warning
+              nonReviewed <- version.channel.map(_.isNonReviewed)
+            } yield MultipleChoices(views.unsafeDownload(data.project, version, nonReviewed , dlType, token)).withCookies(warn.cookie)
           }
         }
       }

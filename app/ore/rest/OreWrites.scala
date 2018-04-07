@@ -38,7 +38,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
   }
 
   implicit val channelWrites = new Writes[Channel] {
-    def writes(channel: Channel) = obj("name" -> channel.name, "color" -> channel.color.hex)
+    def writes(channel: Channel) = obj("name" -> channel.name, "color" -> channel.color.hex, "nonReviewed" -> channel.isNonReviewed)
   }
 
   /*

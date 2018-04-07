@@ -521,3 +521,30 @@ select.form-control, input.form-control {
   }
 }
 
+#form-download {
+  margin: 0;
+}
+
+.text-bold {
+  font-weight: bold;
+}
+
+.text-italic {
+  font-style: italic;
+}
+
+@media(min-width: 768px) {
+  .pull-right-sm {
+    float: right;
+  }
+}
+
+@media (max-width: 767px) {
+  .mb-3-sm {
+    margin-bottom: 1rem;
+  }
+}
+
+.no-padding {
+  padding: 0;
+}

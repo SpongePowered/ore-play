@@ -27,6 +27,8 @@ var VERSIONS_PER_PAGE = 10;
 var PROJECT_OWNER = null;
 var PROJECT_SLUG = null;
 var TOTAL_VERSIONS = 0;
+var TEXT_NOT_APPROVED = "";
+var TEXT_NOT_APPROVED_CHANNEL = "";
 
 var page = 0;
 
@@ -183,7 +185,7 @@ function loadVersions(increment, scrollTop) {
                 downloadLink.append("<i class='fa fa-2x fa-download'></i>");
 
                 if (!version.staffApproved) {
-                    var text = "This version has not been reviewed by our moderation staff and may not be safe for download!";
+                    var text = channel.nonReviewed ? TEXT_NOT_APPROVED_CHANNEL : TEXT_NOT_APPROVED;
 
                     var warning = $("<i>");
                     warning.attr("title", text);
