@@ -71,7 +71,7 @@ trait OreRestfulApi {
 
       filtered sortBy { case (p, _, _) =>
         ordering.fn.apply(p)
-      } drop offset.getOrElse(25) take lim
+      } drop offset.getOrElse(0) take lim
     }
 
     val query = filteredProjects(offset, lim)
@@ -246,7 +246,7 @@ trait OreRestfulApi {
     val maxLoad = this.config.projects.get[Int]("init-version-load")
     val lim = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
-    val limited = filtered.drop(offset.getOrElse(25)).take(lim)
+    val limited = filtered.drop(offset.getOrElse(0)).take(lim)
 
     for {
       data <- service.DB.db.run(limited.result) // Get Project Version Channel and AuthorName
@@ -349,7 +349,7 @@ trait OreRestfulApi {
     */
   def getUserList(limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
     for {
-      users <- service.DB.db.run(TableQuery[UserTable].drop(offset.getOrElse(25)).take(limit.getOrElse(25)).result)
+      users <- service.DB.db.run(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(0)).result)
       writtenUsers <- writeUsers(users)
     } yield {
       toJson(writtenUsers)
