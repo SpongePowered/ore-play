@@ -86,12 +86,15 @@ ore {
     }
     
     pages {
-        home.name = "Home"
-        home.message = "Welcome to your new project!"
         min-len = 15
-        max-len = 32000
-        page.max-len = 75000
+        max-len = 75000
+        max-len-discourse-synced = 32000
         name.max-len = 255
+
+        home {
+            name = "Home"
+            message = "Welcome to your new project!"
+        }
     }
     
     projects {
