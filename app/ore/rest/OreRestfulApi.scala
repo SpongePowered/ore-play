@@ -349,7 +349,7 @@ trait OreRestfulApi {
     */
   def getUserList(limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
     for {
-      users <- service.DB.db.run(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(0)).result)
+      users <- service.DB.db.run(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(25)).result)
       writtenUsers <- writeUsers(users)
     } yield {
       toJson(writtenUsers)
