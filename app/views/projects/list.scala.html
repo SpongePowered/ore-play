@@ -7,10 +7,14 @@ Collection of all projects.
 @import ore.OreConfig
 @import ore.project.{Categories, Dependency}
 @import views.html.utils
+@import models.project.Page
 @(models: Seq[(Project, User, Version, Seq[Tag])], page: Int, pageSize: Int, call: Int => Call)(implicit messages: Messages, flash: Flash, config: OreConfig)
 
 @projectRoutes = @{
     controllers.project.routes.Projects
+}
+@pageRoutes = @{
+    controllers.project.routes.Pages
 }
 
 <ul class="list-group project-list">
@@ -28,7 +32,7 @@ Collection of all projects.
                     <div class="col-xs-12 col-sm-11">
                         <div class="row">
                             <div class="col-sm-6">
-                                <a class="title" href="@projectRoutes.show(project.ownerName, project.slug)">@project.name</a>
+                                <a class="title" href="@pageRoutes.show(project.ownerName, project.slug, Page.HomeName)">@project.name</a>
                             </div>
                             <div class="col-sm-6 hidden-xs">
                                 <div class="info minor">

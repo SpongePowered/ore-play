@@ -10,7 +10,7 @@ import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
-import models.project.{Note, VisibilityTypes}
+import models.project.{Note, Page, VisibilityTypes}
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -204,14 +204,8 @@ class Projects @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return View of project
     */
-  def show(author: String, slug: String) = ProjectAction(author, slug) async { request =>
-    val data = request.data
-    implicit val r = request.request
-
-    projects.queryProjectPages(data.project) flatMap { pages =>
-      val pageCount = pages.size + pages.map(_._2.size).sum
-      this.stats.projectViewed(request)(request => Ok(views.pages.view(data, request.scoped, pages, data.project.homePage, None, pageCount)))
-    }
+  def show(author: String, slug: String) = ProjectAction(author, slug) { request =>
+    Redirect(routes.Pages.show(author, slug, Page.HomeName))
   }
 
   /**

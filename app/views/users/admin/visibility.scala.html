@@ -7,10 +7,12 @@
 @* visChange2 is users.get(project.lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @* visChange4 is users.get(lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @import ore.permission.Permission
+@import models.project.Page
 @(needsApproval: Seq[(Project, Map[Permission, Boolean], Option[VisibilityChange], Option[String], Option[VisibilityChange], Option[String])],
  waitingProjects: Seq[(Project, Option[VisibilityChange], Option[VisibilityChange], Option[String])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
+@pageRoutes = @{controllers.project.routes.Pages}
 
 @bootstrap.layout("Project Visibility") {
 
@@ -43,7 +45,7 @@
                                             <span class="description">
                                                 <strong>@lastChangeRequester.getOrElse("Unknown")</strong>
                                                 <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                                                <a href="@pageRoutes.show(project.ownerName, project.slug, Page.HomeName)">
                                                     @project.ownerName/<strong>@project.slug</strong>
                                                 </a>
                                             </span>
@@ -70,7 +72,7 @@
                                                     <strong>Unknown</strong>
                                                 }
                                                 <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                                                <a href="@pageRoutes.show(project.ownerName, project.slug, Page.HomeName)">
                                                     @project.ownerName/<strong>@project.slug</strong>
                                                 </a>
                                             </span>
@@ -117,7 +119,7 @@
                                             <span class="description">
                                                 <strong>@lastVisibilityChanger.getOrElse("Unknown")</strong>
                                                 <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                                                <a href="@pageRoutes.show(project.ownerName, project.slug, Page.HomeName)">
                                                     @project.ownerName/<strong>@project.slug</strong>
                                                 </a>
                                             </span>

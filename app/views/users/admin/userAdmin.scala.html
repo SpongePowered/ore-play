@@ -6,6 +6,7 @@
 @import models.viewhelper.{OrganizationData, UserData}
 @import ore.OreConfig
 @import ore.permission.role.{GlobalRole, RoleTypes}
+@import models.project.Page
 @(user: UserData, orga: Option[OrganizationData], userProjectRoles: Seq[(Project, ProjectRole)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @prefix = @{"Edit " + (if(user.isOrga) "Organization" else "User") + ": "}
@@ -90,7 +91,7 @@
             <div class="row">
                 @panel("Projects") {
                     @roleTable[Project, ProjectRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, role) =>
-                        <a href="@controllers.project.routes.Projects.show(project.ownerName, project.slug)">
+                        <a href="@controllers.project.routes.Pages.show(project.ownerName, project.slug, Page.HomeName)">
                             @project.name
                         </a>
                     }
