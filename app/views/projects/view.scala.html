@@ -11,6 +11,7 @@ Base template for Project overview.
 @import ore.project.FlagReasons
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
+@import models.project.Page
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @bootstrap.layout(p.project.ownerName + " / " + p.project.name) {
@@ -57,7 +58,7 @@ Base template for Project overview.
                         <h1>
                             <a href="@routes.Users.showProjects(p.project.ownerName, None)">@p.project.ownerName</a>
                             / <strong>
-                            <a href="@Projects.show(p.project.ownerName, p.project.slug)">@p.project.name</a>
+                            <a href="@Pages.show(p.project.ownerName, p.project.slug, Page.HomeName)">@p.project.name</a>
                         </strong>
                         </h1>
                         @defining(p.project.description.getOrElse("")) { description =>
@@ -75,7 +76,7 @@ Base template for Project overview.
                             <ul class="nav navbar-nav">
                                 <!-- Tabs -->
                                 <li id="docs" class="">
-                                    <a href="@Projects.show(p.project.ownerName, p.project.slug)">
+                                    <a href="@Pages.show(p.project.ownerName, p.project.slug, Page.HomeName)">
                                         <i class="fa fa-book"></i> @messages("project.docs")</a>
                                 </li>
 

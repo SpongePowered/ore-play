@@ -6,6 +6,7 @@
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
 @import views.html.projects.{list => projectList}
+@import models.project.Page
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
@@ -35,7 +36,7 @@
                                 @starred.map { case (star, rv) =>
                                     <tr>
                                         <td>
-                                            <a href="@projectRoutes.Projects.show(star.ownerName, star.slug)"
+                                            <a href="@projectRoutes.Pages.show(star.ownerName, star.slug, Page.HomeName)"
                                                class="pull-left">
                                                 @star.ownerName/<strong>@star.name</strong>
                                             </a>

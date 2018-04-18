@@ -8,6 +8,7 @@
 @import models.user.User
 @import ore.OreConfig
 @import util.StringUtils._
+@import models.project.Page
 @(user: User, activities: Seq[(Object, Option[Project])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @bootstrap.layout(messages("activity.title") + user.username) {
@@ -53,7 +54,7 @@
                                         <td>@prettifyDateAndTime(tuple._1.asInstanceOf[Flag].resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
                                         <td>for:
                                             @if(tuple._2.isDefined) {
-                                                <a href="@controllers.project.routes.Projects.show(tuple._2.get.ownerName, tuple._2.get.slug)">
+                                                <a href="@controllers.project.routes.Pages.show(tuple._2.get.ownerName, tuple._2.get.slug, Page.HomeName)">
                                                     @tuple._2.get.ownerName / @tuple._2.get.name
                                                 </a>
                                             }
