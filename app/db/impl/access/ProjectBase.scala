@@ -6,11 +6,12 @@ import java.sql.Timestamp
 import java.util.Date
 
 import com.google.common.base.Preconditions._
+
 import db.impl.OrePostgresDriver.api._
 import db.impl.{PageTable, ProjectTableMain, VersionTable}
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
-import models.project.{Channel, Project, Version}
+import models.project.{Channel, Project, Version, VisibilityTypes}
 import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import slick.lifted.TableQuery
@@ -175,20 +176,26 @@ class ProjectBase(override val service: ModelService,
     }
   }
 
-  /**
-    * Irreversibly deletes this version.
-    *
-    * @param project Project context
-    */
-  def deleteVersion(version: Version)(implicit project: Project = null, ec: ExecutionContext) = {
+  def prepareDeleteVersion(version: Version)(implicit ec: ExecutionContext): Future[Project] =
     for {
-      proj <-  if (project != null) Future.successful(project) else version.project
-      size <- proj.versions.size
-      _ = checkArgument(size > 1, "only one version", "")
+      proj <- version.project
+      size <- proj.versions.filter(_.visibility === VisibilityTypes.Public).map(_.size) //TODO: Would be neat with a count method
+      _ = checkArgument(size > 1, "only one public version", "")
       _ = checkArgument(proj.id.get == version.projectId, "invalid context id", "")
       rv <- proj.recommendedVersion
       projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
-      _ = if (version.equals(rv)) proj.setRecommendedVersion(projects.filterNot(_.equals(version)).head)
+      _ = {
+        if (version == rv)
+          proj.setRecommendedVersion(projects.filter(v => v != version && !v.isDeleted).head)
+      }
+    } yield proj
+
+  /**
+    * Irreversibly deletes this version.
+    */
+  def deleteVersion(version: Version)(implicit ec: ExecutionContext) = {
+    for {
+      proj <- prepareDeleteVersion(version)
       channel <- version.channel
       noVersions <- channel.versions.isEmpty
       _ <- {

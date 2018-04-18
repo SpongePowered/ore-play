@@ -3,7 +3,7 @@ package models.viewhelper
 import controllers.sugar.Requests.OreRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.{ProjectRoleTable, UserTable}
-import models.admin.VisibilityChange
+import models.admin.ProjectVisibilityChange
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
@@ -24,13 +24,13 @@ import util.instances.future._
 case class ProjectData(joinable: Project,
                        projectOwner: User,
                        ownerRole: ProjectRole,
-                       versions: Int, // project.versions.size
+                       publicVersions: Int, // project.versions.size
                        settings: ProjectSettings,
                        members: Seq[(ProjectRole, User)],
                        projectLogSize: Int,
                        flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
                        noteCount: Int, // getNotes.size
-                       lastVisibilityChange: Option[VisibilityChange],
+                       lastVisibilityChange: Option[ProjectVisibilityChange],
                        lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
                        recommendedVersion: Option[Version]
                       ) extends JoinableData[ProjectRole, ProjectMember, Project] {
@@ -99,7 +99,7 @@ object ProjectData {
       project.settings,
       project.owner.user,
       project.owner.headRole,
-      project.versions.size,
+      project.versions.filter(_.visibility === VisibilityTypes.Public).map(_.size),
       members(project),
       project.logger.flatMap(_.entries.size),
       flagsFut,

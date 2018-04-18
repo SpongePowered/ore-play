@@ -8,16 +8,17 @@ import _root_.util.StringUtils._
 import _root_.util.instances.future._
 import _root_.util.functional.OptionT
 import com.google.common.base.Preconditions._
+
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.model.OreModel
-import db.impl.model.common.{Describable, Downloadable, Hideable}
+import db.impl.model.common.{Describable, Downloadable, Hideable, VisibilityChange}
 import db.impl.schema.ProjectSchema
 import db.impl.table.ModelKeys
 import db.impl.table.ModelKeys._
 import db.{ModelService, Named}
-import models.admin.{ProjectLog, VisibilityChange}
+import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.VisibilityTypes.{Public, Visibility}
 import models.statistic.ProjectView
@@ -35,7 +36,6 @@ import play.api.libs.json._
 import play.twirl.api.Html
 import slick.lifted
 import slick.lifted.{Rep, TableQuery}
-
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -97,6 +97,7 @@ case class Project(override val id: Option[Int] = None,
   override type M = Project
   override type T = ProjectTable
   override type S = ProjectSchema
+  override type ModelVisibilityChange = ProjectVisibilityChange
 
   /**
     * Contains all information for [[User]] memberships.
@@ -312,6 +313,9 @@ case class Project(override val id: Option[Int] = None,
 
   }
 
+  override def visibilityChanges: ModelAccess[ProjectVisibilityChange] =
+    this.schema.getChildren[ProjectVisibilityChange](classOf[ProjectVisibilityChange], this)
+
   /**
     * Returns true if this Project is visible.
     *
@@ -319,14 +323,7 @@ case class Project(override val id: Option[Int] = None,
     */
   override def visibility: Visibility = this._visibility
 
-  def isDeleted = visibility == VisibilityTypes.SoftDelete
-
-  /**
-    * Sets whether this project is visible.
-    *
-    * @param visibility True if visible
-    */
-  def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext) = {
+  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext) = {
     this._visibility = visibility
     if (isDefined) update(ModelKeys.Visibility)
 
@@ -336,21 +333,10 @@ case class Project(override val id: Option[Int] = None,
         0
     }
     cnt.flatMap { _ =>
-      val change = VisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
-      this.service.access[VisibilityChange](classOf[VisibilityChange]).add(change)
+      val change = ProjectVisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
+      this.service.access[ProjectVisibilityChange](classOf[ProjectVisibilityChange]).add(change)
     }
   }
-
-  /**
-    * Get VisibilityChanges
-    */
-  def visibilityChanges = this.schema.getChildren[VisibilityChange](classOf[VisibilityChange], this)
-  def visibilityChangesByDate(implicit ec: ExecutionContext) = visibilityChanges.all.map(_.toSeq.sortWith(byCreationDate))
-  def byCreationDate(first: VisibilityChange, second: VisibilityChange) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
-  def lastVisibilityChange(implicit ec: ExecutionContext): OptionT[Future, VisibilityChange] =
-    OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption))
-  def lastChangeRequest(implicit ec: ExecutionContext): OptionT[Future, VisibilityChange] =
-    OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => cr.visibility == VisibilityTypes.NeedsChanges.id).sortWith(byCreationDate).lastOption))
 
   /**
     * Returns the last time this [[Project]] was updated.

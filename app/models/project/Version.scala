@@ -4,15 +4,16 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.OreModel
-import db.impl.model.common.{Describable, Downloadable}
+import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionSchema
 import db.impl.table.ModelKeys._
 import db.impl.{ReviewTable, VersionTable}
-import models.admin.Review
+import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
 import ore.permission.scope.ProjectScope
@@ -23,6 +24,9 @@ import util.instances.future._
 import util.functional.OptionT
 
 import scala.concurrent.{ExecutionContext, Future}
+
+import db.impl.table.ModelKeys
+import models.project.VisibilityTypes.{Public, Visibility}
 
 /**
   * Represents a single version of a Project.
@@ -53,16 +57,19 @@ case class Version(override val id: Option[Int] = None,
                    private var _reviewerId: Int = -1,
                    private var _approvedAt: Option[Timestamp] = None,
                    private var _tagIds: List[Int] = List(),
+                   private var _visibility: Visibility = Public,
                    fileName: String,
                    signatureFileName: String)
                    extends OreModel(id, createdAt)
                      with ProjectScope
                      with Describable
-                     with Downloadable {
+                     with Downloadable
+                     with Hideable {
 
   override type M = Version
   override type T = VersionTable
   override type S = VersionSchema
+  override type ModelVisibilityChange = VersionVisibilityChange
 
   /**
     * Returns the name of this Channel.
@@ -234,6 +241,28 @@ case class Version(override val id: Option[Int] = None,
   def addDownload() = Defined {
     this._downloads += 1
     update(Downloads)
+  }
+
+  override def visibilityChanges: ModelAccess[VersionVisibilityChange] =
+    this.schema.getChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], this)
+
+  override def visibility: Visibility = this._visibility
+
+  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext): Future[VersionVisibilityChange] = {
+    this._visibility = visibility
+    if (isDefined) update(ModelKeys.Visibility)
+
+    val cnt = lastVisibilityChange.flatMap {
+      case Some(vc) =>
+        vc.setResolvedAt(Timestamp.from(Instant.now()))
+        vc.setResolvedById(creator)
+        Future.successful(0)
+      case None => Future.successful(0)
+    }
+    cnt.flatMap { _ =>
+      val change = VersionVisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
+      this.service.access[VersionVisibilityChange](classOf[VersionVisibilityChange]).add(change)
+    }
   }
 
   /**

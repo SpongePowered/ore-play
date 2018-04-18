@@ -132,7 +132,8 @@ POST    /:author/:slug/manage/hardDelete                            @controllers
 POST    /:author/:slug/manage/delete                                @controllers.project.Projects.softDelete(author, slug)
 POST    /:author/:slug/manage/members/remove                        @controllers.project.Projects.removeMember(author, slug)
 
-GET     /:author/:slug/log                                          @controllers.project.Projects.showLog(author, slug)
+GET     /:author/:slug/projectLog                                   @controllers.project.Projects.showLog(author, slug)
+GET     /:author/:slug/versionLog                                   @controllers.project.Versions.showLog(author, slug, versionString)
 GET     /:author/:slug/flags                                        @controllers.project.Projects.showFlags(author, slug)
 GET     /:author/:slug/notes                                        @controllers.project.Projects.showNotes(author, slug)
 POST    /:author/:slug/notes/addmessage                             @controllers.project.Projects.addMessage(author, slug)
@@ -168,7 +169,8 @@ POST    /:author/:slug/channels/:channel/delete                     @controllers
 GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug, channels: Option[String], page: Option[Int])
 
 POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version)
-POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.delete(author, slug, version)
+POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)
+POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
 
 GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean])
 +nocsrf

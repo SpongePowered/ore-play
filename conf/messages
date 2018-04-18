@@ -216,6 +216,7 @@ org.plural          =   Organizations
 version                         =   Version
 version.description             =   Description
 version.delete.cannotLast       =   Every project must have at least one version
+version.delete.alreadyDeleted   =   This version has already been deleted
 version.dependency.notOnOre     =   This plugin is not available for download on Ore
 version.dependency.no           =   This release has no dependencies
 version.create.pageTitle        =   Release a new version
@@ -232,7 +233,7 @@ version.approved                =   Approved
 version.approved.info           =   <strong>{0}</strong> approved this version on <strong>{1}</strong>
 version.releaseBulletin         =   Release Bulletin
 version.releaseBulletin.info    =   What''s new in this release?
-version.delete.info             =   Are you sure you want to delete this version?
+version.delete.info             =   Are you sure you want to delete this version? This action cannot be undone. Please explain why you want to delete it.
 version.delete.title            =   Delete version
 
 version.download.confirm.title                =   Download Warning for
@@ -258,6 +259,9 @@ version.download.confirm.body.api = \
 version.download.confirm.wget = Sorry, but Ore does not support the use of wget. \
   Please use the following curl instead:\n\
   curl -O -J -L "<url>"
+
+version.log.logger.title        = Project Log
+version.log.visibility.title    = Visibility Log
 
 channel.name                    =   Channel name
 channel.edit.title              =   Edit channel

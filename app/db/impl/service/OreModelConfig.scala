@@ -5,7 +5,7 @@ import db.impl._
 import db.impl.schema._
 import db.table.ModelAssociation
 import db.{ModelSchema, ModelService}
-import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
+import models.admin.{ProjectLog, ProjectLogEntry, ProjectVisibilityChange, Review, VersionVisibilityChange}
 import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
@@ -66,7 +66,8 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   val ProjectRolesSchema = new ModelSchema[ProjectRole](this, classOf[ProjectRole], TableQuery[ProjectRoleTable])
 
-  val VisibilityChangeSchema = new ModelSchema[VisibilityChange](this, classOf[VisibilityChange], TableQuery[VisibilityChangeTable])
+  val ProjectVisibilityChangeSchema = new ModelSchema[ProjectVisibilityChange](this, classOf[ProjectVisibilityChange], TableQuery[ProjectVisibilityChangeTable])
+  val VersionVisibilityChangeSchema = new ModelSchema[VersionVisibilityChange](this, classOf[VersionVisibilityChange], TableQuery[VersionVisibilityChangeTable])
 
   val ProjectSchema = new ProjectSchema(this, Users)
     .withChildren[Channel](classOf[Channel], _.projectId)
@@ -76,7 +77,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
     .withChildren[ProjectRole](classOf[ProjectRole], _.projectId)
     .withChildren[ProjectView](classOf[ProjectView], _.modelId)
     .withChildren[ProjectApiKey](classOf[ProjectApiKey], _.projectId)
-    .withChildren[VisibilityChange](classOf[VisibilityChange], _.projectId)
+    .withChildren[ProjectVisibilityChange](classOf[ProjectVisibilityChange], _.projectId)
     .withAssociation[ProjectWatchersTable, User](
       association = this.projectWatchers,
       selfReference = _.projectId,
@@ -112,6 +113,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
   val VersionSchema = new VersionSchema(this)
     .withChildren[VersionDownload](classOf[VersionDownload], _.modelId)
     .withChildren[Review](classOf[Review], _.versionId)
+    .withChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], _.versionId)
 
   val DownloadWarningSchema = new ModelSchema[DownloadWarning](
     this, classOf[DownloadWarning], TableQuery[DownloadWarningsTable])

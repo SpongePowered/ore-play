@@ -57,6 +57,7 @@ object HeaderData {
                   ViewLogs -> false,
                   HideProjects -> false,
                   HardRemoveProject -> false,
+                  HardRemoveVersion -> false,
                   UserAdmin -> false,
                   HideProjects -> false)
 
@@ -150,10 +151,11 @@ object HeaderData {
         user can ViewLogs in GlobalScope map ((ViewLogs, _)),
         user can HideProjects in GlobalScope map ((HideProjects, _)),
         user can HardRemoveProject in GlobalScope map ((HardRemoveProject, _)),
+        user can HardRemoveVersion in GlobalScope map ((HardRemoveProject, _)),
         user can UserAdmin in GlobalScope map ((UserAdmin, _)),
       ).parMapN {
-        case (reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, userAdmin) =>
-          val perms = Seq(reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, userAdmin)
+        case (reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, hardRemoveVersion, userAdmin) =>
+          val perms = Seq(reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, hardRemoveVersion, userAdmin)
           perms.toMap
       }
     }

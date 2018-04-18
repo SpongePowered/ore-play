@@ -8,6 +8,9 @@
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
 @import ore.permission.UploadVersions
+@import models.project.VisibilityTypes
+@import ore.permission.ReviewFlags
+@import ore.permission.ViewLogs
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -66,7 +69,7 @@
 
                         <div>
 
-                            @if(!v.isRecommended && sp.perms(EditVersions)) {
+                            @if(!v.isRecommended && sp.perms(EditVersions) && !v.v.isDeleted) {
                                 @form(action = versionRoutes.setRecommended(
                                     v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
                                     @CSRF.formField
@@ -86,18 +89,25 @@
                                 }
                             }
 
-                            @if(sp.perms(UploadVersions)) {
-                                @if(v.p.versions == 1) {
-                                    <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
-                                       title="@messages("version.delete.cannotLast")">
-                                        <i class="fa fa-trash"></i> @messages("general.delete")
-                                    </a>
-                                } else {
-                                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
-                                        <i class="fa fa-trash"></i> @messages("general.delete")
-                                    </button>
-                                }
-                            }
+                            @if(v.v.visibility == VisibilityTypes.SoftDelete) {
+								<a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
+								title="@messages("version.delete.alreadyDeleted")">
+									<i class="fa fa-trash"></i> @messages("general.delete")
+								</a>
+                            } else {
+								@if(sp.perms(UploadVersions)) {
+									@if(v.p.publicVersions == 1) {
+										<a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
+										title="@messages("version.delete.cannotLast")">
+											<i class="fa fa-trash"></i> @messages("general.delete")
+										</a>
+									} else {
+										<button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
+											<i class="fa fa-trash"></i> @messages("general.delete")
+										</button>
+									}
+								}
+							}
 
                             <div class="btn-group btn-download">
                                 <a href="@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)"
@@ -114,6 +124,16 @@
                                     <li><a href="#" class="copy-url" data-clipboard-text="@config.app.get[String]("baseUrl")@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)">Copy URL</a></li>
                                 </ul>
                             </div>
+
+                            @if(request.hasUser && request.data.globalPerm(ViewLogs)) {
+                                <button class="btn btn-alert dropdown-toggle" type="button" id="admin-version-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                    Admin actions
+                                    <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
+                                    <li><a href="@versionRoutes.showLog(v.p.project.ownerName, v.p.project.slug, v.v.versionString)">Log</a></li>
+                                </ul>
+                            }
 
                         </div>
                     </div>
@@ -212,7 +232,7 @@
         </div>
     </div>
 
-    @if(sp.perms(UploadVersions) && v.p.versions != 1) {
+    @if(sp.perms(UploadVersions) && v.p.publicVersions != 1) {
         <div class="modal fade" id="modal-delete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -222,9 +242,10 @@
                         </button>
                         <h4 class="modal-title" id="label-delete">@messages("version.delete.title")</h4>
                     </div>
-                    @form(action = versionRoutes.delete(v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
+                    @form(action = versionRoutes.softDelete(v.p.project.ownerName, v.p.project.slug, v.v.versionString)) {
                         <div class="modal-body">
-                        @messages("version.delete.info")
+                            @messages("version.delete.info")
+                            <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
                         </div>
                         <div class="modal-footer">
                             <div class="form-inline">

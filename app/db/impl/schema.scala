@@ -3,12 +3,13 @@ package db.impl
 import java.sql.Timestamp
 
 import com.github.tminglei.slickpg.InetString
+
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
 import db.impl.table.StatTable
-import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
+import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityChangeColumns, VisibilityColumn}
 import db.table.{AssociativeTable, ModelTable, NameColumn}
-import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
+import models.admin.{ProjectLog, ProjectLogEntry, ProjectVisibilityChange, Review, VersionVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.TagColors.TagColor
 import models.project._
@@ -162,7 +163,8 @@ class TagTable(tag: RowTag) extends ModelTable[ProjectTag](tag, "project_tags") 
 
 class VersionTable(tag: RowTag) extends ModelTable[Version](tag, "project_versions")
   with DownloadsColumn[Version]
-  with DescriptionColumn[Version] {
+  with DescriptionColumn[Version]
+  with VisibilityColumn[Version] {
 
   def versionString     =   column[String]("version_string")
   def dependencies      =   column[List[String]]("dependencies")
@@ -181,7 +183,7 @@ class VersionTable(tag: RowTag) extends ModelTable[Version](tag, "project_versio
 
   override def * = (id.?, createdAt.?, projectId, versionString, dependencies, assets.?, channelId,
                     fileSize, hash, authorId, description.?, downloads, isReviewed, reviewerId, approvedAt.?,
-                    tagIds, fileName, signatureFileName) <> ((Version.apply _).tupled, Version.unapply)
+                    tagIds, visibility, fileName, signatureFileName) <> ((Version.apply _).tupled, Version.unapply)
 }
 
 class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {
@@ -364,16 +366,13 @@ class ReviewTable(tag: RowTag) extends ModelTable[Review](tag, "project_version_
   override def * =  (id.?, createdAt.?, versionId, userId, endedAt.?, comment) <> ((Review.apply _).tupled, Review.unapply)
 }
 
-class VisibilityChangeTable(tag: RowTag) extends ModelTable[VisibilityChange](tag, "project_visibility_changes") {
+class ProjectVisibilityChangeTable(tag: RowTag)
+  extends ModelTable[ProjectVisibilityChange](tag, "project_visibility_changes")
+  with VisibilityChangeColumns[ProjectVisibilityChange] {
 
-  def createdBy         =   column[Int]("created_by")
-  def projectId         =   column[Int]("project_id")
-  def comment           =   column[String]("comment")
-  def resolvedAt        =   column[Timestamp]("resolved_at")
-  def resolvedBy        =   column[Int]("resolved_by")
-  def visibility        =   column[Int]("visibility")
+  def projectId = column[Int]("project_id")
 
-  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VisibilityChange.tupled, VisibilityChange.unapply)
+  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (ProjectVisibilityChange.tupled, ProjectVisibilityChange.unapply)
 }
 
 class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
@@ -387,4 +386,12 @@ class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, 
   def oldState           =  column[String]("old_state")
 
   override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState) <> (LoggedActionModel.tupled, LoggedActionModel.unapply)
+}
+class VersionVisibilityChangeTable(tag: RowTag)
+  extends ModelTable[VersionVisibilityChange](tag, "project_version_visibility_changes")
+    with VisibilityChangeColumns[VersionVisibilityChange] {
+
+  def versionId = column[Int]("version_id")
+
+  override def * = (id.?, createdAt.?, createdBy.?, versionId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VersionVisibilityChange.tupled, VersionVisibilityChange.unapply)
 }

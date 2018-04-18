@@ -3,12 +3,12 @@
 
 @import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import models.admin.{ProjectLogEntry, VisibilityChange}
+@import models.admin.{ProjectLogEntry, ProjectVisibilityChange}
 @import models.project.{Project, VisibilityTypes}
 @import models.user.User
 @import ore.OreConfig
 @import util.StringUtils._
-@(project: Project, visibilityChanges: Seq[(VisibilityChange, Option[User])],
+@(project: Project, visibilityChanges: Seq[(ProjectVisibilityChange, Option[User])],
         logs: Seq[ProjectLogEntry])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

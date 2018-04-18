@@ -23,7 +23,7 @@ Versions page within Project overview.
 @channelRoutes = @{ controllers.project.routes.Channels }
 
 @versionCount = @{
-    if (visibleChannels.isEmpty) p.versions
+    if (visibleChannels.isEmpty) p.publicVersions
     else {
         val channelFilter = channels.filter(c => visibleChannels.get.contains(c.name)).map(_.id.get)
         versions.count(v => channelFilter.contains(v.channelId))

@@ -176,7 +176,7 @@ trait OreRestfulApi {
     val tableTags = TableQuery[TagTable]
     val tableVersion = TableQuery[VersionTable]
     for {
-      v <- tableVersion if v.id inSetBind versions
+      v <- tableVersion if (v.id inSetBind versions) && v.visibility === VisibilityTypes.Public
       t <- tableTags if t.id === v.tagIds.any
     } yield {
       (v.id, t)
@@ -288,7 +288,7 @@ trait OreRestfulApi {
     for {
       p <- tableProject
       (v, u) <- tableVersion joinLeft tableUsers on (_.authorId === _.id)
-      c <- tableChannels if v.channelId === c.id && p.id === v.projectId
+      c <- tableChannels if v.channelId === c.id && p.id === v.projectId && v.visibility === VisibilityTypes.Public
     } yield {
       (p, v, v.id, c, u.map(_.name))
     }
@@ -401,7 +401,7 @@ trait OreRestfulApi {
     */
   def getTags(pluginId: String, version: String)(implicit ec: ExecutionContext): OptionT[Future, JsValue] = {
     this.projects.withPluginId(pluginId).flatMap { project =>
-      project.versions.find(equalsIgnoreCase(_.versionString, version)).semiFlatMap { v =>
+      project.versions.find(v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === VisibilityTypes.Public).semiFlatMap { v =>
         v.tags.map { tags =>
           obj(
             "pluginId" -> pluginId,

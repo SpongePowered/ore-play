@@ -6,7 +6,8 @@ import db.ModelService
 import db.access.ModelAccess
 import db.impl.VersionTable
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import models.project.{Project, Version}
+import db.impl.OrePostgresDriver.api._
+import models.project.{Project, Version, VisibilityTypes}
 import models.user.SignOn
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
@@ -21,6 +22,8 @@ import scala.language.higherKinds
 import controllers.OreBaseController.{BindFormEitherTPartiallyApplied, BindFormOptionTPartiallyApplied}
 import play.api.data.Form
 import util.functional.{EitherT, Monad, OptionT}
+
+import ore.permission.ReviewProjects
 
 /**
   * Represents a Secured base Controller for this application.
@@ -59,6 +62,12 @@ abstract class OreBaseController(implicit val env: OreEnv,
   def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[Future, Result, Project]
   = this.projects.withSlug(author, slug).toRight(notFound)
 
+  private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
+    val versionMatches = v.versionString.toLowerCase === versionString.toLowerCase
+    val isVisible = if(canSeeHiden) true.bind else v.visibility === VisibilityTypes.Public
+    versionMatches && isVisible
+  }
+
   /**
     * Gets a project with the specified versionString, or returns a notFound.
     *
@@ -69,7 +78,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     */
   def getVersion(project: Project, versionString: String)
                  (implicit request: OreRequest[_]): EitherT[Future, Result, Version]
-  = project.versions.find(equalsIgnoreCase[VersionTable](_.versionString, versionString)).toRight(notFound)
+  = project.versions.find(versionFindFunc(versionString, request.data.globalPerm(ReviewProjects))).toRight(notFound)
 
   /**
     * Gets a version with the specified author, project slug and version string
