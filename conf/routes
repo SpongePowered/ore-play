@@ -95,6 +95,7 @@ POST    /organizations/:organization/settings/members/remove        @controllers
 
 # ---------- Users ----------
 GET     /authors                                                    @controllers.Users.showAuthors(sort: Option[String], page: Option[Int])
+GET     /staff                                                      @controllers.Users.showStaff(sort: Option[String], page: Option[Int])
 
 GET     /notifications                                              @controllers.Users.showNotifications(notificationFilter: Option[String], inviteFilter: Option[String])
 POST    /notifications/read/:id                                     @controllers.Users.markNotificationRead(id: Int)

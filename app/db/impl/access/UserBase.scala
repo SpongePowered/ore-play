@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.util.{Date, UUID}
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.ProjectSchema
+import db.impl.schema.{ProjectSchema, UserSchema}
 import db.{ModelBase, ModelService}
 import models.user.{Session, User}
 import ore.OreConfig
@@ -12,8 +12,11 @@ import ore.permission.Permission
 import play.api.mvc.Request
 import security.spauth.SpongeAuthApi
 import util.StringUtils._
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import ore.permission.role
+import ore.permission.role.RoleTypes
+import ore.permission.role.RoleTypes.RoleType
 
 /**
   * Represents a central location for all Users.
@@ -109,7 +112,38 @@ class UserBase(override val service: ModelService,
     }
   }
 
+  /**
+    * Returns a page of [[User]]s that have Ore staff roles.
+    */
+  def getStaff(ordering: String = ORDERING_ROLE, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[User]] = {
+    // determine ordering
+    val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
+    val staffRoles = List(RoleTypes.Admin, RoleTypes.Mod)
+
+    val pageSize = this.config.users.get[Int]("author-page-size")
+    val offset = (page - 1) * pageSize
+
+    val dbio = this.service.getSchema(classOf[UserSchema]).baseQuery
+      .filter(u => u.globalRoles.asColumnOf[List[Int]] @& staffRoles.bind.asColumnOf[List[Int]])
+      .sortBy { users =>
+        sort match { // Sort
+          case ORDERING_JOIN_DATE => if(reverse) users.joinDate.asc else users.joinDate.desc
+          case ORDERING_ROLE => if(reverse) users.globalRoles.asc else users.globalRoles.desc
+          case ORDERING_USERNAME | _ => if(reverse) users.name.asc else users.joinDate.desc
+        }
+      }
+      .drop(offset)
+      .take(pageSize)
+      .result
+
+    service.DB.db.run(dbio)
+  }
+
   implicit val timestampOrdering: Ordering[Timestamp] = (x: Timestamp, y: Timestamp) => x compareTo y
+  implicit val rolesOrdering: Ordering[List[RoleType]] = (x: List[RoleType], y: List[RoleType]) => {
+    def maxOrZero[A, B: Ordering](xs: List[A])(f: A => B, zero: B) = if(xs.isEmpty) zero else xs.map(f).max
+    maxOrZero(x)(_.trust, role.Default) compareTo maxOrZero(y)(_.trust, role.Default)
+  }
 
   /**
     * Attempts to find the specified User in the database or creates a new User

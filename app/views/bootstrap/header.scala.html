@@ -79,6 +79,12 @@ The main header displayed on each layout.
                     <i class="icon fa fa-users"></i>
                 </li>
 
+                @if(request.data.globalPerm(ReviewProjects)) {
+                    <li class="nav-icon staff-icon" @tooltip(messages("project.viewStaff"))>
+                        <i class="icon fa fa-users TODO"></i>
+                    </li>
+                }
+
                     @* Show user controls *@
                 <li class="dropdown user-controls nav-icon">
                     <a href="#" class="drop-down-toggle user-toggle" data-toggle="dropdown">

@@ -3,7 +3,7 @@ package controllers
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.UserBase.ORDERING_PROJECTS
+import db.impl.access.UserBase.{ORDERING_PROJECTS, ORDERING_ROLE}
 import db.impl.{ProjectTableMain, VersionTable}
 import discourse.OreDiscourseApi
 import form.OreForms
@@ -269,6 +269,18 @@ class Users @Inject()(fakeUser: FakeUser,
     val p = page.getOrElse(1)
     this.users.getAuthors(ordering, p).map { u =>
       Ok(views.users.authors(u, ordering, p))
+    }
+  }
+
+
+  /**
+    * Shows a list of [[models.user.User]]s that have Ore staff roles.
+    */
+  def showStaff(sort: Option[String], page: Option[Int]) = OreAction async { implicit request =>
+    val ordering = sort.getOrElse(ORDERING_ROLE)
+    val p = page.getOrElse(1)
+    this.users.getStaff(ordering, p).map { u =>
+      Ok(views.users.staff(u, ordering, p))
     }
   }
 

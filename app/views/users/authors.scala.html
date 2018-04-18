@@ -19,28 +19,28 @@
 
 @bootstrap.layout("Authors - Ore") {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/authors.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.at("javascripts/userList.js")"></script>
     <script nonce="@nonce">CURRENT_PAGE = @page;</script>
 
     <div class="container" style="margin-top: 90px">
         <div class="panel panel-default">
-            <table class="table table-authors">
+            <table class="table table-users">
                 <thead>
                     <tr>
                         <td></td>
-                        <td @if(isActiveSort(ORDERING_USERNAME)) { class="author-sort" } >
+                        <td @if(isActiveSort(ORDERING_USERNAME)) { class="user-sort" } data-list="authors" >
                             Username
                             @if(isActiveSort(ORDERING_USERNAME)) { <i class="o @direction"></i> }
                         </td>
-                        <td @if(isActiveSort(ORDERING_ROLE)) { class="author-sort" } >
+                        <td @if(isActiveSort(ORDERING_ROLE)) { class="user-sort" } data-list="authors" >
                             Roles
                             @if(isActiveSort(ORDERING_ROLE)) { <i class="o @direction"></i> }
                         </td>
-                        <td @if(isActiveSort(ORDERING_JOIN_DATE)) { class="author-sort" } >
+                        <td @if(isActiveSort(ORDERING_JOIN_DATE)) { class="user-sort" } data-list="authors" >
                             Joined
                             @if(isActiveSort(ORDERING_JOIN_DATE)) { <i class="o @direction"></i> }
                         </td>
-                        <td @if(isActiveSort(ORDERING_PROJECTS)) { class="author-sort" } >
+                        <td @if(isActiveSort(ORDERING_PROJECTS)) { class="user-sort" } data-list="authors" >
                             Projects
                             @if(isActiveSort(ORDERING_PROJECTS)) { <i class="o @direction"></i> }
                         </td>
