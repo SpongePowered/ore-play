@@ -30,7 +30,7 @@
 
         <!-- Updated by JS -->
         <div class="alert alert-success alert-dismissable" role="alert" style="display: none;">
-            <button type="button" class="close" data-dismiss="alert" aria-label="@messages("general.close")">
+            <button type="button" class="close" data-dismiss="alert" aria-label="@messages("actions.close")">
                 <span aria-hidden="true">&times;</span>
             </button>
             <strong>Success!</strong> <span class="success"></span>
@@ -165,7 +165,7 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="@messages("general.close")">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="@messages("actions.close")">
                         <span aria-hidden="true">&times;</span>
                     </button>
 
@@ -231,15 +231,15 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">
-                        @messages("general.close")
+                        @messages("actions.close")
                         </button>
                         @if(u.user.pgpPubKey.isEmpty) {
                             <button type="submit" class="btn btn-primary">
-                            @messages("general.save")
+                            @messages("actions.save")
                             </button>
                         } else {
                             <button type="submit" class="btn btn-danger">
-                            @messages("general.delete")
+                            @messages("actions.delete")
                             </button>
                         }
                     </div>
@@ -266,7 +266,7 @@
         </div>
 
         <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">@messages("actions.close")</button>
             @form(action = routes.Users.verify(Some(routes.Users.setLocked(
                 user = u.user.username,
                 locked = !u.user.isLocked,
@@ -274,7 +274,7 @@
                 sig = None
             ).path())), 'class -> "form-inline") {
                 @CSRF.formField
-                <button type="submit" class="btn btn-primary">@messages("general.continue")</button>
+                <button type="submit" class="btn btn-primary">@messages("actions.continue")</button>
             }
         </div>
     }
@@ -295,9 +295,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">
-                    @messages("general.close")
+                    @messages("actions.close")
                 </button>
-                <input type="submit" value="@messages("general.save")" class="btn btn-primary" />
+                <input type="submit" value="@messages("actions.save")" class="btn btn-primary" />
             </div>
         }
     }
@@ -336,11 +336,11 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">
-                @messages("general.cancel")
+                @messages("actions.cancel")
                 </button>
                 <button type="submit" class="btn btn-primary">
                     <i class="fa fa-spinner fa-spin" style="display: none;"></i>
-                    @messages("general.update")
+                    @messages("actions.update")
                 </button>
             </div>
         }

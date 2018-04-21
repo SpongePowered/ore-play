@@ -21,12 +21,12 @@
             <div class="col-md-12 header-flags">
                 <h2>Flags</h2>
                 <h3 class="minor no-flags" @if(flags.nonEmpty) { style="display: none;" }>
-                    <i class="fa fa-thumbs-o-up"></i> @messages("user.flags.none")
+                    <i class="fa fa-thumbs-o-up"></i> @messages("admin.flags.none")
                 </h3>
                 
                 @if(flags.nonEmpty) {
                     <button class="btn-resolve-all btn btn-primary pull-right">
-                        <i class="fa fa-check"></i> <strong>@messages("user.flags.markAllResolved")</strong>
+                        <i class="fa fa-check"></i> <strong>@messages("admin.flags.markAllResolved")</strong>
                     </button>
                 }
             </div>
@@ -59,14 +59,14 @@
                                 <div class="col-xs-12">
                                     <span class="pull-right btn-group-sm">
                                         <a target="_blank" href="https://forums.spongepowered.org/users/@user.username" class="btn btn-default">
-                                            <i class="fa fa-reply"></i> @messages("user.flags.messageUser")
+                                            <i class="fa fa-reply"></i> @messages("admin.flags.messageUser")
                                         </a>
                                         <a target="_blank" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
-                                            <i class="fa fa-reply"></i> @messages("user.flags.messageOwner")
+                                            <i class="fa fa-reply"></i> @messages("admin.flags.messageOwner")
                                         </a>
                                         @projects.helper.btnHide(project, projectPerm, request.data.currentUser.get)
                                         <button type="submit" class="btn btn-primary btn-resolve">
-                                            <i class="fa fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
+                                            <i class="fa fa-check"></i> <strong>@messages("admin.flags.markResolved")</strong>
                                         </button>
                                     </span>
                                 </div>
@@ -82,7 +82,7 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="@messages("general.close")">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="@messages("actions.close")">
                         <span aria-hidden="true">&times;</span>
                     </button>
                     <h4 class="modal-title" style="color:black;">Comment</h4>
@@ -91,7 +91,7 @@
                     <textarea class="textarea-state-comment form-control" rows="3"></textarea>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
+                    <button class="btn btn-default" data-dismiss="modal">@messages("actions.close")</button>
                     <button class="btn btn-state-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
                 </div>
             </div>

@@ -140,7 +140,7 @@ The main header displayed on each layout.
                             <li>
                                 <a href="@routes.Application.showVersionApprovalQueue()">
                                     <span class="pull-left">
-                                        @messages("admin.versionApprovalQueue.title")
+                                        @messages("admin.queue.versions.title")
                                         @if(request.data.hasReviewQueue) {
                                             <span class="unread"></span>
                                         }
@@ -154,7 +154,7 @@ The main header displayed on each layout.
                             <li>
                                 <a href="@routes.Application.showStats()">
                                     <span class="pull-left">
-                                        @messages("user.stats")
+                                        @messages("admin.stats")
                                     </span>
                                     <i class="pull-right fa fa-area-chart"></i>
                                 </a>
@@ -176,7 +176,7 @@ The main header displayed on each layout.
                         <li role="separator" class="divider"></li>
                         <li>
                             <a href="@routes.Users.logOut(Some(request.path))">
-                                <span class="pull-left">@messages("general.signout")</span>
+                                <span class="pull-left">@messages("actions.signout")</span>
                                 <i class="pull-right fa fa-sign-out"></i>
                             </a>
                         </li>
@@ -186,9 +186,9 @@ The main header displayed on each layout.
                     <li>
                         <div class="btn-group-login">
                             <a href="@routes.Users.signUp()"
-                            class="btn btn-primary navbar-btn">@messages("general.signup")</a>
+                            class="btn btn-primary navbar-btn">@messages("actions.signup")</a>
                             <a href="@routes.Users.logIn(None, None, Some(request.path))"
-                            class="btn btn-primary navbar-btn">@messages("general.login")</a>
+                            class="btn btn-primary navbar-btn">@messages("actions.login")</a>
                         </div>
                     </li>
                 }

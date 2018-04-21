@@ -12,9 +12,6 @@ general.api                     =   API
 general.sponsors                =   Sponsors
 general.description             =   A Minecraft Package Repository
 general.title                   =   Ore - A Minecraft Package Repository
-general.signout                 =   Sign out
-general.signup                  =   Sign up
-general.login                   =   Log in
 general.toReply                 =   to reply to this discussion
 general.home                    =   Homepage
 general.forums                  =   Forums
@@ -24,22 +21,9 @@ general.javadocs                =   Javadocs
 general.plugins                 =   Plugins
 general.getsponge               =   Downloads
 general.irc                     =   Chat
-general.edit                    =   Edit
-general.cancel                  =   Cancel
-general.save                    =   Save
-general.preview                 =   Preview
-general.delete                  =   Delete
 general.name                    =   Name
-general.close                   =   Close
-general.continue                =   Continue
-general.download                =   Download
-general.upload                  =   Upload
-general.more                    =   More
 general.sponsoredBy             =   Sponsored By
 general.featuredSponsor         =   Featured Sponsor
-general.create                  =   Create
-general.remove                  =   Remove
-general.update                  =   Update
 general.forumsUnavailable       =   Sponge Forums are currently unavailable, please try again later.
 general.viewOnForums            =   View on Sponge Forums
 general.learnMore               =   Learn more
@@ -60,6 +44,14 @@ general.disclaimer              =   Disclaimer
 general.linkout.title           =   External Link Warning
 general.linkout.warning         =   You have clicked on an external link to "{0}". If you did not intend to visit this link, please go back. Otherwise, click continue.
 
+editor.deleteConfirm    =   Are you sure you want to delete {0}? This cannot be undone.
+
+###########################################################################################
+#                                        Admin Area                                       #
+###########################################################################################
+
+#==> Health Report
+
 admin.health.title = Ore Health Report
 admin.health.discuss = Missing discussion topic
 admin.health.hidden = Hidden projects
@@ -68,15 +60,55 @@ admin.health.topic = Failed discussion topic updates
 admin.health.platform = No platform detected
 admin.health.missingFile = Missing File
 
-admin.versionApprovalQueue.title  =   Version Approvals Queue
-admin.versionApprovalQueue.empty  =   There are no versions to review.
-admin.projectApprovalQueue.title  =   Project Approval Queue
-admin.projectApprovalQueue.empty  =   There are no projects to review.
+#==> Queues
+
 admin.queue.approve          =   Approve
 admin.queue.open             =   Approval queue
 admin.queue.progress         =   In Review
 
-editor.deleteConfirm    =   Are you sure you want to delete {0}? This cannot be undone.
+admin.queue.versions.title  =   Version Approvals Queue
+admin.queue.versions.empty  =   There are no versions to review.
+admin.queue.projects.title  =   Project Approval Queue
+admin.queue.projects.empty  =   There are no projects to review.
+
+#==> Flags
+
+admin.flags.none             =   There are no flags to review.
+admin.flags.markResolved     =   Mark resolved
+admin.flags.markAllResolved  =   Mark all resolved
+admin.flags.messageUser      =   Message user
+admin.flags.messageOwner     =   Message project owner
+
+#==> Stats
+admin.stats                   =   Stats
+
+###########################################################################################
+#                                          Actions                                        #
+###########################################################################################
+
+actions.close                   =   Close
+actions.continue                =   Continue
+actions.download                =   Download
+actions.upload                  =   Upload
+actions.edit                    =   Edit
+actions.cancel                  =   Cancel
+actions.save                    =   Save
+actions.preview                 =   Preview
+actions.delete                  =   Delete
+actions.create                  =   Create
+actions.remove                  =   Remove
+actions.update                  =   Update
+actions.more                    =   Show More
+
+#=> Auth Actions
+
+actions.signout                 =   Sign out
+actions.signup                  =   Sign up
+actions.login                   =   Log in
+
+###########################################################################################
+#                                      Error Messages                                     #
+###########################################################################################
 
 error.minLength                 =   Content too short.
 error.maxLength                 =   Content too long.
@@ -127,6 +159,8 @@ error.plugin.owner              =   Uploading under the wrong owner.
 
 error.spongeauth.auth           =   Couldn't connect to SpongeAuth.
 error.spongeauth.parse          =   That name is invalid, please choose a name without spaces or symbols.
+
+###########################################################################################
 
 page.edit.cannotDeleteHomepage  =   Your project's homepage cannot be deleted
 page.edit.maxPages              =   You have reached the maximum amount of allowed pages.
@@ -298,11 +332,6 @@ user.avatar.byFile          =   Update by file
 user.memberSince            =   A member since {0}
 user.viewOnForums           =   View on forums
 user.notFound               =   Could not find user
-user.flags.none             =   There are no flags to review.
-user.flags.markResolved     =   Mark resolved
-user.flags.markAllResolved  =   Mark all resolved
-user.flags.messageUser      =   Message user
-user.flags.messageOwner     =   Message project owner
 user.pgp.edit               =   PGP Public Key
 user.pgp.pubKey             =   PGP Public Key
 user.pgp.pubKey.info        =   Paste your PGP public key in it's entirety to the text box below. The submitted key must be associated with the email that is associated with your Sponge account.
@@ -314,7 +343,6 @@ user.lock.confirm           =   Are you sure you want to lock your account? You 
 user.unlock                 =   Unlock account
 user.unlock.confirm         =   Are you sure you want to unlock your account?
 user.enterPassword          =   Enter your password to continue:
-user.stats                  =   Stats
 
 notification.invite                 =   You have been invited to join the {0}
 notification.invites                =   Invites

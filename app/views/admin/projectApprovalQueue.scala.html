@@ -10,7 +10,7 @@
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@bootstrap.layout(messages("admin.projectApprovalQueue.title")) {
+@bootstrap.layout(messages("admin.queue.projects.title")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/hideProject.js")"></script>
 
@@ -30,7 +30,7 @@
                     <ul class="list-group list-flags-admin">
                         @if(needsApproval.isEmpty) {
                             <li class="list-group-item">
-                                <p>@messages("admin.projectApprovalQueue.empty")</p>
+                                <p>@messages("admin.queue.projects.empty")</p>
                             </li>
                         }
                         @needsApproval.map { case (project, projectPerms, lastChangeRequest, lastChangeRequester, lastStateChange, lastStateChanger) =>
