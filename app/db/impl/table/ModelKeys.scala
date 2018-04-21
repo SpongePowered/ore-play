@@ -4,8 +4,8 @@ import db.Named
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.{Describable, Downloadable}
 import db.table.key._
-import models.admin.{ProjectLogEntry, Review, VisibilityChange}
-import models.project.VisibilityTypes.Visibility
+import models.admin.{ProjectLogEntry, Review, ProjectStateChange}
+import models.project.ProjectStates.ProjectState
 import models.project._
 import models.statistic.StatEntry
 import models.user.role.RoleModel
@@ -24,7 +24,7 @@ object ModelKeys {
   val Name                  =   new StringKey[Named](_.name, _.name)
   val Downloads             =   new IntKey[Downloadable](_.downloads, _.downloadCount)
   val Description           =   new StringKey[Describable](_.description, _.description.orNull)
-  val Visibility            =   new MappedTypeKey[Project, Visibility](_.visibility, _.visibility)
+  val ProjectState          =   new MappedTypeKey[Project, ProjectState](_.state, _.state)
 
   // Project
   val OwnerId               =   new IntKey[Project](_.userId, _.ownerId)
@@ -110,7 +110,7 @@ object ModelKeys {
   val Comment               =   new StringKey[Review](_.comment, _.message)
   val EndedAt               =   new TimestampKey[Review](_.endedAt, _.endedAt.orNull)
 
-  // VisibilityChange
-  val ResolvedByVC          =   new IntKey[VisibilityChange](_.resolvedBy, _.resolvedBy.get)
-  val ResolvedAtVC          =   new TimestampKey[VisibilityChange](_.resolvedAt, _.resolvedAt.get)
+  // StateChange
+  val ResolvedByVC          =   new IntKey[ProjectStateChange](_.resolvedBy, _.resolvedBy.get)
+  val ResolvedAtVC          =   new TimestampKey[ProjectStateChange](_.resolvedAt, _.resolvedAt.get)
 }

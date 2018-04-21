@@ -13,8 +13,8 @@
 
 @bootstrap.layout("Flags") {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/flags.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/hideProject.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.at("public/javascripts/flags.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.at("public/javascripts/hideProject.js")"></script>
 
     <div class="container" style="margin-top: 90px;">
         <div class="row">
@@ -78,21 +78,21 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal-visibility-needschanges" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-needschanges">
+    <div class="modal fade" id="modal-state-comment" tabindex="-1" role="dialog" aria-labelledby="modal-state-comment">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="@messages("general.close")">
                         <span aria-hidden="true">&times;</span>
                     </button>
-                    <h4 class="modal-title">Needs Changes</h4>
+                    <h4 class="modal-title" style="color:black;">Comment</h4>
                 </div>
                 <div class="modal-body">
-                    <textarea class="textarea-needschanges form-control" rows="3"></textarea>
+                    <textarea class="textarea-state-comment form-control" rows="3"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
-                    <button class="btn btn-visibility-needschanges-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
+                    <button class="btn btn-state-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
                 </div>
             </div>
         </div>

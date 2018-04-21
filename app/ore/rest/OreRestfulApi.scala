@@ -196,8 +196,8 @@ trait OreRestfulApi {
     }
 
     allProjects.filter { case (p, v, c) =>
-      p.visibility =!= VisibilityTypes.SoftDelete &&
-      p.visibility =!= VisibilityTypes.NeedsChanges
+      p.state =!= ProjectStates.SoftDelete &&
+      p.state =!= ProjectStates.NeedsChanges
     }
   }
 

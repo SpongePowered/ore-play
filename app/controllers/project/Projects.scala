@@ -10,7 +10,7 @@ import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
-import models.project.{Note, VisibilityTypes}
+import models.project.{Note, ProjectStates}
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -549,20 +549,20 @@ class Projects @Inject()(stats: StatTracker,
     *
     * @param author     Project owner
     * @param slug       Project slug
-    * @param visibility Project visibility
+    * @param state      Project state
     * @return         Ok
     */
-  def setVisible(author: String, slug: String, visibility: Int) = {
+  def setState(author: String, slug: String, state: Int) = {
     (AuthedProjectAction(author, slug, requireUnlock = true)
       andThen ProjectPermissionAction(HideProjects)) async { implicit request =>
-      val newVisibility = VisibilityTypes.withId(visibility)
-      request.user can newVisibility.permission in GlobalScope flatMap { perm =>
+      val newState = ProjectStates.withId(state)
+      request.user can newState.permission in GlobalScope flatMap { perm =>
         if (perm) {
-          val change = if (newVisibility.showModal) {
+          val change = if (newState.showModal) {
             val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-            request.data.project.setVisibility(newVisibility, comment, request.user.id.get)
+            request.data.project.setState(newState, comment, request.user.id.get)
           } else {
-            request.data.project.setVisibility(newVisibility, "", request.user.id.get)
+            request.data.project.setState(newState, "", request.user.id.get)
           }
           change.map(_ => Ok)
         } else {
@@ -580,8 +580,8 @@ class Projects @Inject()(stats: StatTracker,
     */
   def publish(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
     val data = request.data
-    if (data.visibility == VisibilityTypes.New) {
-      data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.get)
+    if (data.state == ProjectStates.New) {
+      data.project.setState(ProjectStates.Public, "", request.user.id.get)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
@@ -594,8 +594,8 @@ class Projects @Inject()(stats: StatTracker,
     */
   def sendForApproval(author: String, slug: String) = SettingsEditAction(author, slug) { implicit request =>
     val data = request.data
-    if (data.visibility == VisibilityTypes.NeedsChanges) {
-      data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.get)
+    if (data.state == ProjectStates.NeedsChanges) {
+      data.project.setState(ProjectStates.NeedsApproval, "", request.user.id.get)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
@@ -605,7 +605,7 @@ class Projects @Inject()(stats: StatTracker,
       implicit val r = request.request
       val project = request.data.project
       for {
-        changes <- project.visibilityChangesByDate
+        changes <- project.stateChangesByDate
         changedBy <- Future.sequence(changes.map(_.created))
         logger <- project.logger
         logs <- logger.entries.all
@@ -642,7 +642,7 @@ class Projects @Inject()(stats: StatTracker,
   def softDelete(author: String, slug: String) = SettingsEditAction(author, slug).async { implicit request =>
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-    data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
+    data.project.setState(ProjectStates.SoftDelete, comment, request.user.id.get).map { _ =>
       Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", data.project.name))
     }
   }

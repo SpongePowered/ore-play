@@ -6,9 +6,9 @@ import com.github.tminglei.slickpg.InetString
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
 import db.impl.table.StatTable
-import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
+import db.impl.table.common.{DescriptionColumn, DownloadsColumn, StateColumn}
 import db.table.{AssociativeTable, ModelTable, NameColumn}
-import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
+import models.admin.{ProjectLog, ProjectLogEntry, Review, ProjectStateChange}
 import models.api.ProjectApiKey
 import models.project.TagColors.TagColor
 import models.project._
@@ -39,7 +39,7 @@ package object schema {
 trait ProjectTable extends ModelTable[Project]
   with NameColumn[Project]
   with DownloadsColumn[Project]
-  with VisibilityColumn[Project]
+  with StateColumn[Project]
   with DescriptionColumn[Project] {
 
   def pluginId              =   column[String]("plugin_id")
@@ -58,7 +58,7 @@ trait ProjectTable extends ModelTable[Project]
 
   override def * = (id.?, createdAt.?, pluginId, ownerName, userId, name, slug, recommendedVersionId.?, category,
                     description.?, stars, views, downloads, topicId, postId, isTopicDirty,
-                    visibility, lastUpdated, notes) <> ((Project.apply _).tupled, Project.unapply)
+                    state, lastUpdated, notes) <> ((Project.apply _).tupled, Project.unapply)
 
 }
 
@@ -364,14 +364,14 @@ class ReviewTable(tag: RowTag) extends ModelTable[Review](tag, "project_version_
   override def * =  (id.?, createdAt.?, versionId, userId, endedAt.?, comment) <> ((Review.apply _).tupled, Review.unapply)
 }
 
-class VisibilityChangeTable(tag: RowTag) extends ModelTable[VisibilityChange](tag, "project_visibility_changes") {
+class ProjectStateChangesTable(tag: RowTag) extends ModelTable[ProjectStateChange](tag, "project_state_changes") {
 
   def createdBy         =   column[Int]("created_by")
   def projectId         =   column[Int]("project_id")
   def comment           =   column[String]("comment")
   def resolvedAt        =   column[Timestamp]("resolved_at")
   def resolvedBy        =   column[Int]("resolved_by")
-  def visibility        =   column[Int]("visibility")
+  def newState        =   column[Int]("state")
 
-  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VisibilityChange.tupled, VisibilityChange.unapply)
+  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, newState) <> (ProjectStateChange.tupled, ProjectStateChange.unapply)
 }

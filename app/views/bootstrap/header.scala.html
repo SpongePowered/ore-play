@@ -122,9 +122,9 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.globalPerm(ReviewVisibility)) {
+                        @if(request.data.globalPerm(ReviewVersions)) {
                             <li>
-                                <a href="@routes.Application.showProjectVisibility()">
+                                <a href="@routes.Application.showProjectApprovalQueue()">
                                     <span class="flags pull-left">
                                         Project approvals
                                         @if(request.data.hasProjectApprovals) {
@@ -138,9 +138,9 @@ The main header displayed on each layout.
 
                         @if(request.data.globalPerm(ReviewProjects)) {
                             <li>
-                                <a href="@routes.Application.showQueue()">
+                                <a href="@routes.Application.showVersionApprovalQueue()">
                                     <span class="pull-left">
-                                        @messages("user.queue")
+                                        @messages("admin.versionApprovalQueue.title")
                                         @if(request.data.hasReviewQueue) {
                                             <span class="unread"></span>
                                         }

@@ -3,7 +3,7 @@ package models.viewhelper
 import controllers.sugar.Requests.OreRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.{ProjectRoleTable, UserTable}
-import models.admin.VisibilityChange
+import models.admin.ProjectStateChange
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
@@ -27,19 +27,19 @@ case class ProjectData(joinable: Project,
                        projectLogSize: Int,
                        flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
                        noteCount: Int, // getNotes.size
-                       lastVisibilityChange: Option[VisibilityChange],
-                       lastVisibilityChangeUser: String // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
+                       lastStateChange: Option[ProjectStateChange],
+                       lastStateChangeInitiator: String // users.get(project.lastStateChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
                       ) extends JoinableData[ProjectRole, ProjectMember, Project] {
 
   def flagCount = flags.size
 
   def project: Project = joinable
 
-  def visibility = project.visibility
+  def state = project.state
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
-  def renderVisibilityChange = lastVisibilityChange.map(_.renderComment())
+  def renderStateChange = lastStateChange.map(_.renderComment())
 }
 
 object ProjectData {
@@ -58,8 +58,8 @@ object ProjectData {
     val starred = false
     val watching = false
     val logSize = 0
-    val lastVisibilityChange = None
-    val lastVisibilityChangeUser = "-"
+    val lastStateChange = None
+    val lastStateChangeUser = "-"
 
     val data = new ProjectData(project.underlying,
       projectOwner,
@@ -70,8 +70,8 @@ object ProjectData {
       logSize,
       Seq.empty,
       0,
-      lastVisibilityChange,
-      lastVisibilityChangeUser)
+      lastStateChange,
+      lastStateChangeUser)
 
     Future.successful(data)
   }
@@ -90,9 +90,9 @@ object ProjectData {
       flags <- project.flags.all
       flagUsers <- Future.sequence(flags.map(_.user))
       flagResolved <- Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1))))
-      lastVisibilityChange <- project.lastVisibilityChange
-      lastVisibilityChangeUser <- if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
-      else lastVisibilityChange.get.created.map(_.map(_.name).getOrElse("Unknown"))
+      lastStateChange <- project.mostRecentStateChange
+      lastStateChangeUser <- if (lastStateChange.isEmpty) Future.successful("Unknown")
+      else lastStateChange.get.created.map(_.map(_.name).getOrElse("Unknown"))
     } yield {
       val noteCount = project.getNotes().size
       val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
@@ -109,8 +109,8 @@ object ProjectData {
         logSize,
         flagData.toSeq,
         noteCount,
-        lastVisibilityChange,
-        lastVisibilityChangeUser)
+        lastStateChange,
+        lastStateChangeUser)
     }
   }
 

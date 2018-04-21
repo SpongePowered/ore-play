@@ -10,14 +10,14 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.model.OreModel
-import db.impl.model.common.{Describable, Downloadable, Hideable}
+import db.impl.model.common.{Describable, Downloadable, StateClassifiable}
 import db.impl.schema.ProjectSchema
 import db.impl.table.ModelKeys
 import db.impl.table.ModelKeys._
 import db.{ModelService, Named}
-import models.admin.{ProjectLog, VisibilityChange}
+import models.admin.{ProjectLog, ProjectStateChange}
 import models.api.ProjectApiKey
-import models.project.VisibilityTypes.{Public, Visibility}
+import models.project.ProjectStates.{Public, ProjectState}
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectRole
@@ -55,7 +55,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param _topicId               ID of forum topic
   * @param _postId                ID of forum topic post ID
   * @param _isTopicDirty          Whether this project's forum topic needs to be updated
-  * @param _visibility            Whether this project is visible to the default user
+  * @param _state                 Projects state
   * @param _lastUpdated           Instant of last version release
   * @param _notes                 JSON notes
   */
@@ -75,7 +75,7 @@ case class Project(override val id: Option[Int] = None,
                    private var _topicId: Int = -1,
                    private var _postId: Int = -1,
                    private var _isTopicDirty: Boolean = false,
-                   private var _visibility: Visibility = Public,
+                   private var _state: ProjectState = Public,
                    private var _lastUpdated: Timestamp = null,
                    var _notes: String = "")
                    extends OreModel(id, createdAt)
@@ -83,7 +83,7 @@ case class Project(override val id: Option[Int] = None,
                      with Downloadable
                      with Named
                      with Describable
-                     with Hideable
+                     with StateClassifiable
                      with Joinable[ProjectMember]
                   with Visitable
 {
@@ -309,24 +309,24 @@ case class Project(override val id: Option[Int] = None,
   }
 
   /**
-    * Returns true if this Project is visible.
+    * Returns the current state of the project
     *
-    * @return True if visible
+    * @return the current state
     */
-  override def visibility: Visibility = this._visibility
+  override def state: ProjectState = this._state
 
-  def isDeleted = visibility == VisibilityTypes.SoftDelete
+  def isDeleted = state == ProjectStates.SoftDelete
 
   /**
-    * Sets whether this project is visible.
+    * Sets the project to a new state
     *
-    * @param visibility True if visible
+    * @param state the new project state
     */
-  def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext) = {
-    this._visibility = visibility
-    if (isDefined) update(ModelKeys.Visibility)
+  def setState(state: ProjectState, comment: String, creator: Int)(implicit ec: ExecutionContext) = {
+    this._state = state
+    if (isDefined) update(ModelKeys.ProjectState)
 
-    val cnt = lastVisibilityChange.flatMap {
+    val cnt = mostRecentStateChange.flatMap {
       case Some(vc) =>
         vc.setResolvedAt(Timestamp.from(Instant.now()))
         vc.setResolvedById(creator)
@@ -334,19 +334,19 @@ case class Project(override val id: Option[Int] = None,
       case None => Future.successful(0)
     }
     cnt.flatMap { _ =>
-      val change = VisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
-      this.service.access[VisibilityChange](classOf[VisibilityChange]).add(change)
+      val change = ProjectStateChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, state.id)
+      this.service.access[ProjectStateChange](classOf[ProjectStateChange]).add(change)
     }
   }
 
   /**
-    * Get VisibilityChanges
+    * Get state changes
     */
-  def visibilityChanges = this.schema.getChildren[VisibilityChange](classOf[VisibilityChange], this)
-  def visibilityChangesByDate(implicit ec: ExecutionContext) = visibilityChanges.all.map(_.toSeq.sortWith(byCreationDate))
-  def byCreationDate(first: VisibilityChange, second: VisibilityChange) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
-  def lastVisibilityChange(implicit ec: ExecutionContext): Future[Option[VisibilityChange]] = visibilityChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption)
-  def lastChangeRequest(implicit ec: ExecutionContext): Future[Option[VisibilityChange]] = visibilityChanges.all.map(_.toSeq.filter(cr => cr.visibility == VisibilityTypes.NeedsChanges.id).sortWith(byCreationDate).lastOption)
+  def stateChanges = this.schema.getChildren[ProjectStateChange](classOf[ProjectStateChange], this)
+  def stateChangesByDate(implicit ec: ExecutionContext) = stateChanges.all.map(_.toSeq.sortWith(byCreationDate))
+  def byCreationDate(first: ProjectStateChange, second: ProjectStateChange) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+  def mostRecentStateChange(implicit ec: ExecutionContext): Future[Option[ProjectStateChange]] = stateChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption)
+  def lastChangeRequest(implicit ec: ExecutionContext): Future[Option[ProjectStateChange]] = stateChanges.all.map(_.toSeq.filter(cr => cr.projectState == ProjectStates.NeedsChanges.id).sortWith(byCreationDate).lastOption)
 
   /**
     * Returns the last time this [[Project]] was updated.
@@ -723,7 +723,7 @@ object Project {
     private var _ownerName: String = _
     private var _ownerId: Int = -1
     private var _name: String = _
-    private var _visibility: Visibility = _
+    private var _state: ProjectState = _
 
     def pluginId(pluginId: String) = {
       this._pluginId = pluginId
@@ -745,8 +745,8 @@ object Project {
       this
     }
 
-    def visibility(visibility: Visibility) = {
-      this._visibility = visibility
+    def state(state: ProjectState) = {
+      this._state = state
       this
     }
 
@@ -761,7 +761,7 @@ object Project {
         _ownerId = this._ownerId,
         _name = this._name,
         _slug = slugify(this._name),
-        _visibility = this._visibility
+        _state = this._state
       ))
     }
 

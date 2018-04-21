@@ -103,9 +103,9 @@ final class Application @Inject()(data: DataHelper,
 
     val projectQuery = queryProjectRV filter { case (p, u, v) =>
       (LiteralColumn(true) === canHideProjects) ||
-        (p.visibility === VisibilityTypes.Public) ||
-        (p.visibility === VisibilityTypes.New) ||
-        ((p.userId === currentUserId) && (p.visibility =!= VisibilityTypes.SoftDelete))
+        (p.state === ProjectStates.Public) ||
+        (p.state === ProjectStates.New) ||
+        ((p.userId === currentUserId) && (p.state =!= ProjectStates.SoftDelete))
     } filter { case (p, u, v) =>
       (LiteralColumn(0) === categoryList.length) || (p.category inSetBind categoryList)
     } filter {  case (p, u, v) =>
@@ -135,11 +135,11 @@ final class Application @Inject()(data: DataHelper,
    }
 
   /**
-    * Shows the moderation queue for unreviewed versions.
+    * Shows the moderation approval queue for unreviewed versions.
     *
     * @return View of unreviewed versions.
     */
-  def showQueue() = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+  def showVersionApprovalQueue() = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
 
     val data = this.service.DB.db.run(queryQueue.result).flatMap { list =>
       service.DB.db.run(queryReviews(list.map(_._1.id.get)).result).map { reviewList =>
@@ -172,7 +172,7 @@ final class Application @Inject()(data: DataHelper,
         (p, v, c, a, u)
       }
 
-      Ok(views.users.admin.queue(reviewList, unReviewList))
+      Ok(views.admin.versionApprovalQueue(reviewList, unReviewList))
     }
 
   }
@@ -218,7 +218,7 @@ final class Application @Inject()(data: DataHelper,
       users <- Future.sequence(flags.map(_.user))
       projects <- Future.sequence(flags.map(_.project))
       perms <- Future.sequence(projects.map { project =>
-        val perms = VisibilityTypes.values.map(_.permission).map { perm =>
+        val perms = ProjectStates.values.map(_.permission).map { perm =>
           request.user can perm in project map (value => (perm, value))
         }
         Future.sequence(perms).map(_.toMap)
@@ -227,7 +227,7 @@ final class Application @Inject()(data: DataHelper,
       val data = flags zip users zip projects zip perms map { case ((((flag, user), project), perm)) =>
         (flag, user, project, perm)
       }
-      Ok(views.users.admin.flags(data))
+      Ok(views.admin.flags(data))
     }
   }
 
@@ -255,12 +255,12 @@ final class Application @Inject()(data: DataHelper,
       noTopicProjects <- projects.filter(p => p.topicId === -1 || p.postId === -1)
       topicDirtyProjects <- projects.filter(_.isTopicDirty)
       staleProjects <- projects.stale
-      notPublic <- projects.filterNot(_.visibility === VisibilityTypes.Public)
+      notPublic <- projects.filterNot(_.state === ProjectStates.Public)
       missingFileProjects <- projects.missingFile.flatMap { v =>
         Future.sequence(v.map { v => v.project.map(p => (v, p)) })
       }
     } yield {
-      Ok(views.users.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
+      Ok(views.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
     }
   }
 
@@ -393,7 +393,7 @@ final class Application @Inject()(data: DataHelper,
       flagsClosed     <- last10DaysCountQuery("project_flags", "resolved_at")
     }
     yield {
-      Ok(views.users.admin.stats(reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed))
+      Ok(views.admin.stats(reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed))
     }
   }
 
@@ -499,16 +499,17 @@ final class Application @Inject()(data: DataHelper,
   }
 
   /**
+    * Shows the moderation approval queue for unreviewed project.
     *
-    * @return Show page
+    * @return View of unreviewed projects.
     */
-  def showProjectVisibility() = (Authenticated andThen PermissionAction[AuthRequest](ReviewVisibility)) async { implicit request =>
+  def showProjectApprovalQueue() = (Authenticated andThen PermissionAction[AuthRequest](ReviewVersions)) async { implicit request =>
     val projectSchema = this.service.getSchema(classOf[ProjectSchema])
 
     for {
-      projectApprovals <- projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0)
+      projectApprovals <- projectSchema.collect(ModelFilter[Project](_.state === ProjectStates.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0)
       perms <- Future.sequence(projectApprovals.map { project =>
-        val perms = VisibilityTypes.values.map(_.permission).map { perm =>
+        val perms = ProjectStates.values.map(_.permission).map { perm =>
           request.user can perm in project map (value => (perm, value))
         }
         Future.sequence(perms).map(_.toMap)
@@ -518,30 +519,30 @@ final class Application @Inject()(data: DataHelper,
                                 case None => Future.successful(None)
                                 case Some(lcr) => lcr.created
                               })
-      lastVisibilityChanges <- Future.sequence(projectApprovals.map(_.lastVisibilityChange))
-      lastVisibilityChangers <- Future.sequence(lastVisibilityChanges.map {
+      lastStateChanges <- Future.sequence(projectApprovals.map(_.mostRecentStateChange))
+      lastStateChangers <- Future.sequence(lastStateChanges.map {
                                   case None => Future.successful(None)
                                   case Some(lcr) => lcr.created
                                 })
 
-      projectChanges <- projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsChanges).fn, ProjectSortingStrategies.Default, -1, 0)
+      projectChanges <- projectSchema.collect(ModelFilter[Project](_.state === ProjectStates.NeedsChanges).fn, ProjectSortingStrategies.Default, -1, 0)
       projectChangeRequests <- Future.sequence(projectChanges.map(_.lastChangeRequest))
-      projectVisibilityChanges <- Future.sequence(projectChanges.map(_.lastVisibilityChange))
-      projectVisibilityChangers <- Future.sequence(projectVisibilityChanges.map {
+      projectStateChanges <- Future.sequence(projectChanges.map(_.mostRecentStateChange))
+      projectStateChangers <- Future.sequence(projectStateChanges.map {
         case None => Future.successful(None)
         case Some(lcr) => lcr.created
       })
 
     }
     yield {
-      val needsApproval = projectApprovals zip perms zip lastChangeRequests zip lastChangeRequesters zip lastVisibilityChanges zip lastVisibilityChangers map { case (((((a,b),c),d),e),f) =>
+      val needsApproval = projectApprovals zip perms zip lastChangeRequests zip lastChangeRequesters zip lastStateChanges zip lastStateChangers map { case (((((a,b),c),d),e),f) =>
         (a,b,c,d.map(_.name),e,f.map(_.name))
       }
-      val waitingProjects = projectChanges zip projectChangeRequests zip projectVisibilityChanges zip projectVisibilityChangers map { case (((a,b), c), d) =>
+      val waitingProjects = projectChanges zip projectChangeRequests zip projectStateChanges zip projectStateChangers map { case (((a,b), c), d) =>
         (a,b,c,d.map(_.name))
       }
 
-      Ok(views.users.admin.visibility(needsApproval, waitingProjects))
+      Ok(views.admin.projectApprovalQueue(needsApproval, waitingProjects))
     }
   }
 }

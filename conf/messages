@@ -68,6 +68,14 @@ admin.health.topic = Failed discussion topic updates
 admin.health.platform = No platform detected
 admin.health.missingFile = Missing File
 
+admin.versionApprovalQueue.title  =   Version Approvals Queue
+admin.versionApprovalQueue.empty  =   There are no versions to review.
+admin.projectApprovalQueue.title  =   Project Approval Queue
+admin.projectApprovalQueue.empty  =   There are no projects to review.
+admin.queue.approve          =   Approve
+admin.queue.open             =   Approval queue
+admin.queue.progress         =   In Review
+
 editor.deleteConfirm    =   Are you sure you want to delete {0}? This cannot be undone.
 
 error.minLength                 =   Content too short.
@@ -189,10 +197,22 @@ project.page.name.info          =   Enter a title for your new page.
 project.page.parent             =   Parent page
 project.page.parent.info        =   Select a parent page (optional)
 
+project.state.public               = Public
+project.state.public.notice        = None
+project.state.new                  = New
+project.state.new.notice           = This project is new, and the author may not have finished writing the documentation.
+project.state.new.notice_author    = Click ''Publish'' to publish. This project will automatically be moved from the new stage in 24 hours.
+project.state.needsChanges         = Needs Changes
+project.state.needsChanges.notice  = This project requires changes:
+project.state.needsApproval        = Needs Approval
+project.state.needsApproval.notice = You have send the project for review
+project.state.softDelete           = Soft Deleted
+project.state.softDelete.notice    = Project deleted by {0}
+
 project.back = Go back
 
 project.log.logger.title        = Project Log
-project.log.visibility.title    = Visibility Log
+project.log.project_state.title    = Project State Log
 
 org.create          =   New Organization
 org.create.title    =   Create a new Organization
@@ -283,11 +303,6 @@ user.flags.markResolved     =   Mark resolved
 user.flags.markAllResolved  =   Mark all resolved
 user.flags.messageUser      =   Message user
 user.flags.messageOwner     =   Message project owner
-user.queue                  =   Version approvals
-user.queue.none             =   There are no versions to review.
-user.queue.approve          =   Approve
-user.queue.open             =   Approval queue
-user.queue.progress         =   In Review
 user.pgp.edit               =   PGP Public Key
 user.pgp.pubKey             =   PGP Public Key
 user.pgp.pubKey.info        =   Paste your PGP public key in it's entirety to the text box below. The submitted key must be associated with the email that is associated with your Sponge account.
@@ -362,15 +377,3 @@ activity.title = Activity:
 
 notes = Notes
 notes.addmessage = Add message
-
-visibility.name.public          = Public
-visibility.name.new             = New
-visibility.name.needsChanges    = Needs changes
-visibility.name.needsApproval   = Needs approval
-visibility.name.softDelete      = Soft deleted
-visibility.notice.public        = None
-visibility.notice.new           = This project is new, and the author may not have finished writing the documentation.
-visibility.notice.author.new    = Click ''Publish'' to publish. This project will automatically be moved from the new stage in 24 hours.
-visibility.notice.needsChanges  = This project requires changes:
-visibility.notice.needsApproval = You have send the project for review
-visibility.notice.softDelete    = Project deleted by {0}

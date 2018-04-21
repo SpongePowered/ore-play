@@ -4,8 +4,8 @@ import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
 import db.table.key.Aliases
 import models.project.TagColors.TagColor
-import models.project.VisibilityTypes.Visibility
-import models.project.{TagColors, VisibilityTypes}
+import models.project.ProjectStates.ProjectState
+import models.project.{TagColors, ProjectStates}
 import ore.Colors
 import ore.Colors.Color
 import ore.permission.role.RoleTypes
@@ -49,7 +49,7 @@ trait OrePostgresDriver extends ExPostgresProfile with PgArraySupport with PgAgg
     ).to(_.toList)
     implicit val downloadTypeTypeMapper = MappedJdbcType.base[DownloadType, Int](_.id, DownloadTypes.apply)
     implicit val projectApiKeyTypeTypeMapper = MappedJdbcType.base[ProjectApiKeyType, Int](_.id, ProjectApiKeyTypes.apply)
-    implicit val visibiltyTypeMapper = MappedJdbcType.base[Visibility, Int](_.id, VisibilityTypes.withId)
+    implicit val projectStateMapper = MappedJdbcType.base[ProjectState, Int](_.id, ProjectStates.withId)
   }
 
 }

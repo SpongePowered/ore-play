@@ -1,18 +1,16 @@
 @import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import models.admin.VisibilityChange
+@import models.admin.ProjectStateChange
 @import models.project.Project
 @import ore.OreConfig
-@* visChange1 is lastChangeRequest users.get(lastChangeRequest.get.createdBy.getOrElse(1)).map(_.username) *@
-@* visChange2 is users.get(project.lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
-@* visChange4 is users.get(lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @import ore.permission.Permission
-@(needsApproval: Seq[(Project, Map[Permission, Boolean], Option[VisibilityChange], Option[String], Option[VisibilityChange], Option[String])],
- waitingProjects: Seq[(Project, Option[VisibilityChange], Option[VisibilityChange], Option[String])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+
+@(needsApproval: Seq[(Project, Map[Permission, Boolean], Option[ProjectStateChange], Option[String], Option[ProjectStateChange], Option[String])],
+ waitingProjects: Seq[(Project, Option[ProjectStateChange], Option[ProjectStateChange], Option[String])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@bootstrap.layout("Project Visibility") {
+@bootstrap.layout(messages("admin.projectApprovalQueue.title")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/hideProject.js")"></script>
 
@@ -32,10 +30,10 @@
                     <ul class="list-group list-flags-admin">
                         @if(needsApproval.isEmpty) {
                             <li class="list-group-item">
-                                <p>No projects found.</p>
+                                <p>@messages("admin.projectApprovalQueue.empty")</p>
                             </li>
                         }
-                        @needsApproval.map { case (project, projectPerms, lastChangeRequest, lastChangeRequester, lastVisibilityChange, lastVisibilityChanger) =>
+                        @needsApproval.map { case (project, projectPerms, lastChangeRequest, lastChangeRequester, lastStateChange, lastStateChanger) =>
                             @if(lastChangeRequest.isDefined) {
                                 <li data-flag-id="@project.id.get" class="list-group-item">
                                     <div class="row">
@@ -64,8 +62,8 @@
                                     <div class="row">
                                         <div class="col-xs-12 col-md-8">
                                             <span class="description">
-                                                @if(lastVisibilityChange.isDefined) {
-                                                    <strong>@lastVisibilityChanger.getOrElse("Unknown")</strong>
+                                                @if(lastStateChange.isDefined) {
+                                                    <strong>@lastStateChanger.getOrElse("Unknown")</strong>
                                                 } else {
                                                     <strong>Unknown</strong>
                                                 }
@@ -109,13 +107,13 @@
                                 <p>No projects found.</p>
                             </li>
                         }
-                        @waitingProjects.map { case (project, lastChangeRequest, lastVisibilityChange, lastVisibilityChanger) =>
+                        @waitingProjects.map { case (project, lastChangeRequest, lastStateChange, lastStateChanger) =>
                             @if(lastChangeRequest.isDefined) {
                                 <li data-flag-id="@project.id.get" class="list-group-item">
                                     <div class="row">
                                         <div class="col-xs-12">
                                             <span class="description">
-                                                <strong>@lastVisibilityChanger.getOrElse("Unknown")</strong>
+                                                <strong>@lastStateChanger.getOrElse("Unknown")</strong>
                                                 <span class="minor"> requested changes on </span>
                                                 <a href="@projectRoutes.show(project.ownerName, project.slug)">
                                                     @project.ownerName/<strong>@project.slug</strong>
@@ -136,7 +134,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
+    <div class="modal fade" id="modal-state-comment" tabindex="-1" role="dialog" aria-labelledby="modal-state-comment">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -146,11 +144,11 @@
                     <h4 class="modal-title" style="color:black;">Comment</h4>
                 </div>
                 <div class="modal-body">
-                    <textarea class="textarea-visibility-comment form-control" rows="3"></textarea>
+                    <textarea class="textarea-state-comment form-control" rows="3"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-default">Close</button>
-                    <button class="btn btn-visibility-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
+                    <button class="btn btn-state-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
                 </div>
             </div>
         </div>

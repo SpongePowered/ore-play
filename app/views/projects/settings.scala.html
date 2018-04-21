@@ -36,7 +36,7 @@
                         @if(request.data.globalPerm(HideProjects)) {
                             @projects.helper.btnHide(p.project, sp.permissions, request.currentUser.get)
 
-                            <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
+                            <div class="modal fade" id="modal-state-comment" tabindex="-1" role="dialog" aria-labelledby="modal-state-comment">
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -46,11 +46,11 @@
                                             <h4 class="modal-title" style="color:black;">Comment</h4>
                                         </div>
                                         <div class="modal-body">
-                                            <textarea class="textarea-visibility-comment form-control" rows="3"></textarea>
+                                            <textarea class="textarea-state-comment form-control" rows="3"></textarea>
                                         </div>
                                         <div class="modal-footer">
                                             <button class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
-                                            <button class="btn btn-visibility-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
+                                            <button class="btn btn-state-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
                                         </div>
                                     </div>
                                 </div>
@@ -187,7 +187,7 @@
                                     <p>Once you delete a project, it cannot be recovered.</p>
                                 </div>
                                 <div class="setting-content">
-                                    <button class="btn btn-delete btn-danger btn-visibility-change" data-project="@p.project.ownerName/@p.project.slug" data-level="-99" data-modal="true">
+                                    <button class="btn btn-delete btn-danger btn-state-change" data-project="@p.project.ownerName/@p.project.slug" data-level="-99" data-modal="true">
                                         <strong>Hard Delete</strong>
                                     </button>
                                 </div>

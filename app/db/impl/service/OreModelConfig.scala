@@ -5,7 +5,7 @@ import db.impl._
 import db.impl.schema._
 import db.table.ModelAssociation
 import db.{ModelSchema, ModelService}
-import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
+import models.admin.{ProjectLog, ProjectLogEntry, Review, ProjectStateChange}
 import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
@@ -66,7 +66,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   val ProjectRolesSchema = new ModelSchema[ProjectRole](this, classOf[ProjectRole], TableQuery[ProjectRoleTable])
 
-  val VisibilityChangeSchema = new ModelSchema[VisibilityChange](this, classOf[VisibilityChange], TableQuery[VisibilityChangeTable])
+  val StateChangeSchema = new ModelSchema[ProjectStateChange](this, classOf[ProjectStateChange], TableQuery[ProjectStateChangesTable])
 
   val ProjectSchema = new ProjectSchema(this, Users)
     .withChildren[Channel](classOf[Channel], _.projectId)
@@ -76,7 +76,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
     .withChildren[ProjectRole](classOf[ProjectRole], _.projectId)
     .withChildren[ProjectView](classOf[ProjectView], _.modelId)
     .withChildren[ProjectApiKey](classOf[ProjectApiKey], _.projectId)
-    .withChildren[VisibilityChange](classOf[VisibilityChange], _.projectId)
+    .withChildren[ProjectStateChange](classOf[ProjectStateChange], _.projectId)
     .withAssociation[ProjectWatchersTable, User](
       association = this.projectWatchers,
       selfReference = _.projectId,

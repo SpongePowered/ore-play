@@ -4,7 +4,7 @@ Base template for Project overview.
 
 @import controllers.project.routes._
 @import controllers.sugar.Requests.OreRequest
-@import models.project.VisibilityTypes
+@import models.project.ProjectStates
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.{EditPages, EditSettings, ReviewFlags, ViewLogs}
@@ -19,32 +19,32 @@ Base template for Project overview.
 
     <div class="project-header-container">
         <div class="container">
-            @if(p.visibility != VisibilityTypes.Public) {
+            @if(p.state != ProjectStates.Public) {
                 <div class="row">
                     <div class="col-xs-12">
                         <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
-                            @if(p.visibility == VisibilityTypes.New) {
-                                @messages("visibility.notice." + p.visibility.nameKey)
+                            @if(p.state == ProjectStates.New) {
+                                @messages("project.state.new.notice")
                                 @if(sp.perms(EditPages)) {
                                     <br>
-                                    @messages("visibility.notice.author." + p.visibility.nameKey)
+                                    @messages("project.state.new.notice_author")
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/publish" style="margin-top: -.5em">Publish</a>
                                 }
-                            } else { @if(p.visibility == VisibilityTypes.NeedsChanges) {
+                            } else { @if(p.state == ProjectStates.NeedsChanges) {
                                 @if(sp.perms(EditPages)) {
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                                 }
-                                <strong>@messages("visibility.notice." + p.visibility.nameKey)</strong>
+                                <strong>@messages("project.state.needsChanges.notice")</strong>
                                 <br>
-                                @p.renderVisibilityChange.getOrElse("Unknown")
+                                @p.renderStateChange.getOrElse("Unknown")
 
-                            } else { @if(p.visibility == VisibilityTypes.SoftDelete) {
+                            } else { @if(p.state == ProjectStates.SoftDelete) {
 
-                                @messages("visibility.notice." + p.visibility.nameKey, p.lastVisibilityChangeUser)
-                                @p.renderVisibilityChange.getOrElse("")
+                                @messages("project.state.softDelete.notice", p.lastStateChangeInitiator)
+                                @p.renderStateChange.getOrElse("")
 
                             } else {
-                                @messages("visibility.notice." + p.visibility.nameKey)
+                                @messages("project.state." + p.state.nameKey + ".notice")
                             }}}
                         </div>
                     </div>
