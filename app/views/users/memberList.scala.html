@@ -45,7 +45,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <button type="button" class="close" data-dismiss="modal"
-                                aria-label="@messages("actions.close")">
+                                aria-label="@messages("actions.general.close")">
                             <span aria-hidden="true">&times;</span>
                         </button>
                         <h4 class="modal-title" id="label-user-delete">@messages("project.removeMember")</h4>
@@ -56,9 +56,9 @@
                             @CSRF.formField
                             <input type="hidden" name="username" />
                             <button type="button" class="btn btn-default" data-dismiss="modal">
-                                @messages("actions.close")
+                                @messages("actions.general.close")
                             </button>
-                            <button type="submit" class="btn btn-danger">@messages("actions.remove")</button>
+                            <button type="submit" class="btn btn-danger">@messages("actions.general.remove")</button>
                         }
                     </div>
                 </div>

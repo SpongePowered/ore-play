@@ -55,7 +55,7 @@ sorted according to different criteria.
     }
 }
 
-@bootstrap.layout(messages("general.title")) {
+@bootstrap.layout(messages("application.name") + " - " + messages("application.description")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/home.js")"></script>
     <script nonce="@nonce">

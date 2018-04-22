@@ -40,7 +40,7 @@
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="@messages("actions.close")">
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="@messages("actions.general.close")">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
                                             <h4 class="modal-title" style="color:black;">Comment</h4>
@@ -49,7 +49,7 @@
                                             <textarea class="textarea-state-comment form-control" rows="3"></textarea>
                                         </div>
                                         <div class="modal-footer">
-                                            <button class="btn btn-default" data-dismiss="modal">@messages("actions.close")</button>
+                                            <button class="btn btn-default" data-dismiss="modal">@messages("actions.general.close")</button>
                                             <button class="btn btn-state-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
                                         </div>
                                     </div>
@@ -150,7 +150,7 @@
                         <!-- Rename -->
                         <div class="setting">
                             <div class="setting-description">
-                                <h4 class="danger">@messages("project.rename")</h4>
+                                <h4 class="danger">@messages("actions.general.rename")</h4>
                                 <p>@messages("project.rename.info")</p>
                             </div>
                             <div class="setting-content">
@@ -159,7 +159,7 @@
                                        maxlength="@config.projects.get[Int]("max-name-len")">
                                 <button id="btn-rename" data-toggle="modal" data-target="#modal-rename"
                                         class="btn btn-warning" disabled>
-                                    @messages("project.rename")
+                                    @messages("actions.general.rename")
                                 </button>
                             </div>
                             <div class="clearfix"></div>
@@ -227,7 +227,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal"
-                    aria-label="@messages("actions.cancel")">
+                    aria-label="@messages("actions.general.cancel")">
                         <span aria-hidden="true">&times;</span>
                     </button>
                     <h4 class="modal-title" id="label-rename">@messages("project.rename.title")</h4>
@@ -242,7 +242,7 @@
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("channel.edit.close")
                         </button>
-                        <input type="submit" name="rename" value="@messages("project.rename")" class="btn btn-warning">
+                        <input type="submit" name="rename" value="@messages("actions.general.rename")" class="btn btn-warning">
                         }
                     </div>
                 </div>
@@ -271,7 +271,7 @@
                         @messages("channel.edit.close")
                         </button>
                         <input type="submit" name="delete"
-                        value="@messages("actions.delete")" class="btn btn-danger">
+                        value="@messages("actions.general.delete")" class="btn btn-danger">
                     </div>
                 </div>
                 }

@@ -1,37 +1,52 @@
 # Strings localized for en-US locale
 
-general.appName                 =   Ore
-general.projectName             =   Sponge
-general.organization            =   SpongePowered
-general.terms                   =   Terms of Service
-general.contact                 =   Support Forum
-general.about                   =   About
-general.issues                  =   Issues
-general.source                  =   Source
-general.api                     =   API
-general.sponsors                =   Sponsors
-general.description             =   A Minecraft Package Repository
-general.title                   =   Ore - A Minecraft Package Repository
+###########################################################################################
+#                                       Application                                       #
+###########################################################################################
+
+application.name                =   Ore
+application.description         =   A Minecraft Package Repository
+application.organization        =   Sponge
+application.organization.full   =   SpongePowered
+
+###########################################################################################
+#                                           Links                                         #
+###########################################################################################
+
+#=> Header
+
+links.home                    =   Homepage
+links.forums                  =   Forums
+links.code                    =   Code
+links.docs                    =   Docs
+links.javadocs                =   Javadocs
+links.plugins                 =   Plugins
+links.downloads               =   Downloads
+links.irc                     =   Chat
+
+#=> Footer
+
+links.terms                   =   Terms of Service
+links.support                 =   Support Forum
+links.issues                  =   Issues
+links.source                  =   Source
+links.api                     =   API
+links.sponsors                =   Sponsors
+
+###########################################################################################
+
 general.toReply                 =   to reply to this discussion
-general.home                    =   Homepage
-general.forums                  =   Forums
-general.code                    =   Code
-general.docs                    =   Docs
-general.javadocs                =   Javadocs
-general.plugins                 =   Plugins
-general.getsponge               =   Downloads
-general.irc                     =   Chat
+
 general.name                    =   Name
 general.sponsoredBy             =   Sponsored By
 general.featuredSponsor         =   Featured Sponsor
 general.forumsUnavailable       =   Sponge Forums are currently unavailable, please try again later.
 general.viewOnForums            =   View on Sponge Forums
-general.learnMore               =   Learn more
+
 general.optional                =   optional
 general.spongeApi               =   SpongeAPI
 general.minecraft               =   Minecraft
 general.forge                   =   Forge
-general.sponge                  =   Sponge
 general.spongePlugin            =   Sponge Plugin
 general.spongePlugin.tooltip    =   To mark your project as a Sponge plugin, add spongeapi as a dependency.
 general.forgeMod                =   Forge Mod
@@ -62,7 +77,6 @@ admin.health.missingFile = Missing File
 
 #==> Queues
 
-admin.queue.approve          =   Approve
 admin.queue.open             =   Approval queue
 admin.queue.progress         =   In Review
 
@@ -86,25 +100,52 @@ admin.stats                   =   Stats
 #                                          Actions                                        #
 ###########################################################################################
 
-actions.close                   =   Close
-actions.continue                =   Continue
-actions.download                =   Download
-actions.upload                  =   Upload
-actions.edit                    =   Edit
-actions.cancel                  =   Cancel
-actions.save                    =   Save
-actions.preview                 =   Preview
-actions.delete                  =   Delete
-actions.create                  =   Create
-actions.remove                  =   Remove
-actions.update                  =   Update
-actions.more                    =   Show More
+#=> General Actions
+
+actions.general.close         =   Close
+actions.general.continue      =   Continue
+actions.general.download      =   Download
+actions.general.upload        =   Upload
+actions.general.edit          =   Edit
+actions.general.cancel        =   Cancel
+actions.general.save          =   Save
+actions.general.preview       =   Preview
+actions.general.delete        =   Delete
+actions.general.create        =   Create
+actions.general.remove        =   Remove
+actions.general.update        =   Update
+actions.general.more          =   Show More
+actions.general.approve       =   Approve
+actions.general.learnMore     =   Learn more
+actions.general.rename        =   Rename
 
 #=> Auth Actions
 
-actions.signout                 =   Sign out
-actions.signup                  =   Sign up
-actions.login                   =   Log in
+actions.auth.signout          =   Sign out
+actions.auth.signup           =   Sign up
+actions.auth.login            =   Log in
+
+###########################################################################################
+#                                          Project                                        #
+###########################################################################################
+
+project.author                  =   Author
+project.category                =   Category
+project.category.plural         =   Categories
+
+#=> States
+
+project.state.public                  =     Public
+project.state.public.notice           =     None
+project.state.new                     =     New
+project.state.new.notice              =     This project is new, and the author may not have finished writing the documentation.
+project.state.new.noticeToAuthor      =     Click ''Publish'' to publish. This project will automatically be moved from the new stage in 24 hours.
+project.state.needsChanges            =     Needs Changes
+project.state.needsChanges.notice     =     This project requires changes:
+project.state.needsApproval           =     Needs Approval
+project.state.needsApproval.notice    =     You have send the project for review
+project.state.softDelete              =     Soft Deleted
+project.state.softDelete.notice       =     Project deleted by {0}
 
 ###########################################################################################
 #                                      Error Messages                                     #
@@ -168,9 +209,7 @@ page.new.title                  =   Create a new page
 page.new.error                  =   Error creating page
 page.plural                     =   Pages
 
-project.author                  =   Author
-project.category                =   Category
-project.category.plural         =   Categories
+
 project.delete.title            =   Delete project
 project.delete.info             =   Are you sure you want to delete your Project? This action cannot be undone. Please explain why you want to delete it.
 project.download.recommend      =   Download the latest recommended version
@@ -180,7 +219,7 @@ project.flag                    =   Flag
 project.flag.plural             =   Flags
 project.create                  =   New Project
 project.owner                   =   Owner
-project.rename                  =   Rename
+
 project.rename.title            =   Rename project
 project.rename.info             =   Changing your projects name can have undesired consequences. We will not setup any redirects.
 project.discuss                 =   Discuss
@@ -231,17 +270,7 @@ project.page.name.info          =   Enter a title for your new page.
 project.page.parent             =   Parent page
 project.page.parent.info        =   Select a parent page (optional)
 
-project.state.public               = Public
-project.state.public.notice        = None
-project.state.new                  = New
-project.state.new.notice           = This project is new, and the author may not have finished writing the documentation.
-project.state.new.notice_author    = Click ''Publish'' to publish. This project will automatically be moved from the new stage in 24 hours.
-project.state.needsChanges         = Needs Changes
-project.state.needsChanges.notice  = This project requires changes:
-project.state.needsApproval        = Needs Approval
-project.state.needsApproval.notice = You have send the project for review
-project.state.softDelete           = Soft Deleted
-project.state.softDelete.notice    = Project deleted by {0}
+
 
 project.back = Go back
 
