@@ -35,7 +35,7 @@ Discussion page within Project overview.
 
                               @if(sp.canPostAsOwnerOrga) {
                                   <div class="pull-right push-down">
-                                      <i class="minor">@messages("project.discuss.postAs")</i>
+                                      <i class="minor">@messages("project.actions.discuss.postAs")</i>
                                       <select name="poster" form="form-editor-save">
                                           <option selected>@request.data.currentUser.get.name</option>
                                           <option>@p.projectOwner.name</option>

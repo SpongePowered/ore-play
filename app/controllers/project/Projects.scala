@@ -627,7 +627,7 @@ class Projects @Inject()(stats: StatTracker,
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
       withProject(author, slug) { project =>
         this.projects.delete(project)
-        Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name))
+        Redirect(ShowHome).withSuccess(this.messagesApi("project.info.deleted", project.name))
       }
     }
   }
@@ -643,7 +643,7 @@ class Projects @Inject()(stats: StatTracker,
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
     data.project.setState(ProjectStates.SoftDelete, comment, request.user.id.get).map { _ =>
-      Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", data.project.name))
+      Redirect(ShowHome).withSuccess(this.messagesApi("project.info.deleted", data.project.name))
     }
   }
 

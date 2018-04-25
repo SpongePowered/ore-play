@@ -102,22 +102,23 @@ admin.stats                   =   Stats
 
 #=> General Actions
 
-actions.general.close         =   Close
-actions.general.continue      =   Continue
-actions.general.download      =   Download
-actions.general.upload        =   Upload
-actions.general.edit          =   Edit
-actions.general.cancel        =   Cancel
-actions.general.save          =   Save
-actions.general.preview       =   Preview
-actions.general.delete        =   Delete
-actions.general.create        =   Create
-actions.general.remove        =   Remove
-actions.general.update        =   Update
-actions.general.more          =   Show More
-actions.general.approve       =   Approve
-actions.general.learnMore     =   Learn more
-actions.general.rename        =   Rename
+actions.general.close         =    Close
+actions.general.continue      =    Continue
+actions.general.download      =    Download
+actions.general.upload        =    Upload
+actions.general.edit          =    Edit
+actions.general.cancel        =    Cancel
+actions.general.save          =    Save
+actions.general.preview       =    Preview
+actions.general.delete        =    Delete
+actions.general.create        =    Create
+actions.general.remove        =    Remove
+actions.general.update        =    Update
+actions.general.more          =    Show More
+actions.general.approve       =    Approve
+actions.general.learnMore     =    Learn more
+actions.general.rename        =    Rename
+actions.general.back          =    Go back
 
 #=> Auth Actions
 
@@ -129,9 +130,15 @@ actions.auth.login            =   Log in
 #                                          Project                                        #
 ###########################################################################################
 
-project.author                  =   Author
+project.owner                   =   Owner
 project.category                =   Category
 project.category.plural         =   Categories
+project.docs                    =   Docs
+project.versions                =   Versions
+project.downloads               =   Downloads
+project.stars                   =   Stars
+project.icon                    =   Project icon
+project.flags                   =   Flags
 
 #=> States
 
@@ -146,6 +153,73 @@ project.state.needsApproval           =     Needs Approval
 project.state.needsApproval.notice    =     You have send the project for review
 project.state.softDelete              =     Soft Deleted
 project.state.softDelete.notice       =     Project deleted by {0}
+
+#=> Creation
+
+project.create.title                 =   Create a new project
+project.create.uid                   =   Unique ID
+project.create.selectFile            =   Select plugin file
+project.create.destination           =   Project will be created at {0}
+project.create.infoText.head         =   A project contains your downloads and the documentation for your plugin.
+project.create.infoText.guidelines   =   Before continuing, please review the <a href="https://docs.spongepowered.org/stable/en/ore/guidelines.html">Ore Submission Guidelines</a>.
+project.create.infoText.bottom       =   Begin by uploading your plugin JAR file with a valid <i>mcmod.info</i> file in the first level or a ZIP file with your valid plugin JAR in the first level. Plugins with missing or incomplete metadata files will not be accepted.
+project.create.infoText.pgp          =   To upload files to Ore, you must first add a PGP Public Key to your account and all files must be uploaded with a corresponding signature. <a href="https://docs.spongepowered.org/master/en/ore/publish.html">Learn more</a>
+project.create.issue-input           =   Issue tracker URL
+project.create.source-input          =   Source code URL
+
+#=> Settings
+
+project.settings.title                =     Settings
+project.settings.members              =     Members
+project.settings.license              =     License
+project.settings.license.info         =     What can people do (and not do) with your project?
+project.settings.deployKey.title      =     Deployment key
+project.settings.deployKey.info       =     Generate a unique deployment key to enable build deployment from Gradle
+project.settings.deployKey.generate   =     Generate key
+project.settings.deployKey.revoke     =     Revoke key
+project.settings.forumSync            =     Create posts on the forums
+project.settings.forumSync.info       =     Sets if events like a new release should automatically create a post on the forums
+
+#=> Logs
+
+project.log.general.title    =    Project Log
+project.log.states.title     =    Project State Log
+
+#=> Pages
+
+project.page.plural        =   Pages
+project.page.name          =   Page name
+project.page.name.info     =   Enter a title for your new page.
+project.page.parent        =   Parent page
+project.page.parent.info   =   Select a parent page (optional)
+project.page.new.title            =   Create a new page
+project.page.new.error            =   Error creating page
+project.page.new.error.maxPages   =   You have reached the maximum amount of allowed pages.
+project.page.delete.error.home    =   Your project's homepage cannot be deleted
+
+#=> Actions
+
+project.actions.new                     =   New Project
+project.actions.rename                  =   Rename project
+project.actions.rename.warning          =   Changing your projects name can have undesired consequences. We will not setup any redirects.
+project.actions.flag                    =   Flag
+project.actions.removeMember            =   Remove member
+project.actions.removeMember.confirm    =   Are you sure you want to remove this user?
+project.actions.delete                  =   Delete project
+project.actions.delete.confirm          =   Are you sure you want to delete your Project? This action cannot be undone. Please explain why you want to delete it.
+project.actions.downloadRecommended     =   Download the latest recommended version
+project.actions.discuss                 =   Discuss
+project.actions.discuss.postAs          =   Posting as:
+project.actions.viewCreators            =   View project creators.
+
+#=> Info
+
+project.info.license            =   Licensed under
+project.info.category           =   Category: {0}
+project.info.publishDate        =   Published on {0}
+project.info.members.head       =   Project members are other users of Ore that have special access to your project. Different user "roles" define what a user can and cannot do to your project.
+project.info.members.bottom     =   Ore was able to find <strong>{0}</strong> users who are registered with Ore in your plugin file.
+project.info.deleted            =   Project "{0}" was deleted successfully.
 
 ###########################################################################################
 #                                      Error Messages                                     #
@@ -203,80 +277,6 @@ error.spongeauth.parse          =   That name is invalid, please choose a name w
 
 ###########################################################################################
 
-page.edit.cannotDeleteHomepage  =   Your project's homepage cannot be deleted
-page.edit.maxPages              =   You have reached the maximum amount of allowed pages.
-page.new.title                  =   Create a new page
-page.new.error                  =   Error creating page
-page.plural                     =   Pages
-
-
-project.delete.title            =   Delete project
-project.delete.info             =   Are you sure you want to delete your Project? This action cannot be undone. Please explain why you want to delete it.
-project.download.recommend      =   Download the latest recommended version
-project.download.recommend.warn =   This project's recommended version has not been reviewed by our moderation staff and may not be safe for download.
-project.download.warn           =   This version has not been reviewed by our moderation staff and may not be safe for download.
-project.flag                    =   Flag
-project.flag.plural             =   Flags
-project.create                  =   New Project
-project.owner                   =   Owner
-
-project.rename.title            =   Rename project
-project.rename.info             =   Changing your projects name can have undesired consequences. We will not setup any redirects.
-project.discuss                 =   Discuss
-project.discuss.postAs          =   Posting as:
-project.docs                    =   Docs
-project.settings                =   Settings
-project.settings.members        =   Members
-project.settings.license        =   License
-project.settings.license.info   =   What can people do (and not do) with your project?
-project.settings.deployKey      =   Deployment key
-project.settings.deployKey.info =   Generate a unique deployment key to enable build deployment from Gradle
-project.settings.genKey         =   Generate key
-project.settings.revokeKey      =   Revoke key
-project.settings.forumSync      =   Create posts on the forums
-project.settings.forumSync.info =   Sets if events like a new release should automatically create a post on the forums
-project.versions                =   Versions
-project.downloads               =   Downloads
-project.starred                 =   Stars
-project.views                   =   Views
-project.top                     =   Top
-project.hot                     =   Hot
-project.new                     =   New
-project.latest                  =   Latest
-project.create.title            =   Create a new project
-project.create.uid              =   Unique ID
-project.create.selectFile       =   Select plugin file
-project.create.destination      =   Project will be created at {0}
-project.create.infoText.head    =   A project contains your downloads and the documentation for your plugin.
-project.create.infoText.guidelines = Before continuing, please review the <a href="https://docs.spongepowered.org/stable/en/ore/guidelines.html">Ore Submission Guidelines</a>.
-project.create.infoText.bottom  =   Begin by uploading your plugin JAR file with a valid <i>mcmod.info</i> file in the first level or a ZIP file with your valid plugin JAR in the first level. Plugins with missing or incomplete metadata files will not be accepted.
-project.create.infoText.pgp     =   To upload files to Ore, you must first add a PGP Public Key to your account and all files must be uploaded with a corresponding signature. <a href="https://docs.spongepowered.org/master/en/ore/publish.html">Learn more</a>
-project.create.issue-input      =   Issue tracker URL
-project.create.source-input     =   Source code URL
-project.icon                    =   Project icon
-project.version.new             =   New Version
-project.members.infoText.head   =   Project members are other users of Ore that have special access to your project. Different user "roles" define what a user can and cannot do to your project.
-project.members.infoText.bottom =   Ore was able to find <strong>{0}</strong> users who are registered with Ore in your plugin file.
-project.search                  =   Search for projects.
-project.viewAuthors             =   View project creators.
-project.removeMember            =   Remove member
-project.removeMember.confirm    =   Are you sure you want to remove this user?
-project.deleted                 =   Project "{0}" deleted.
-project.license.link            =   Licensed under
-project.category.info           =   Category: {0}
-project.publishDate             =   Published on {0}
-project.page.name               =   Page name
-project.page.name.info          =   Enter a title for your new page.
-project.page.parent             =   Parent page
-project.page.parent.info        =   Select a parent page (optional)
-
-
-
-project.back = Go back
-
-project.log.logger.title        = Project Log
-project.log.project_state.title    = Project State Log
-
 org.create          =   New Organization
 org.create.title    =   Create a new Organization
 org.info            =   Organizations allow you group users provide closer collaboration between them within your projects on Ore.
@@ -286,6 +286,7 @@ org.welcome.confirm =   Got it!
 org.users.add       =   Add User
 org.users.save      =   Save Users
 
+project.version.new             =   New Version
 version                         =   Version
 version.description             =   Description
 version.delete.cannotLast       =   Every project must have at least one version

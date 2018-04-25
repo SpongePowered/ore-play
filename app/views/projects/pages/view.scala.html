@@ -60,13 +60,13 @@ Documentation page within Project overview.
                 <div class="col-md-3">
 
                     <div class="stats minor">
-                        <p>@messages("project.category.info", p.project.category.title)</p>
-                        <p>@messages("project.publishDate", prettifyDate(p.project.createdAt.get))</p>
+                        <p>@messages("project.info.category", p.project.category.title)</p>
+                        <p>@messages("project.info.publishDate", prettifyDate(p.project.createdAt.get))</p>
                         <p>@p.project.viewCount views</p>
                         <p>@NumberFormat.getInstance.format(p.project.downloadCount) total downloads</p>
                         @p.settings.licenseName.map { licenseName =>
                             <p>
-                                @Html(messages("project.license.link"))
+                                @Html(messages("project.info.license"))
                                 <a target="_blank" href="@p.settings.licenseUrl">@licenseName</a>
                             </p>
                         }
@@ -74,7 +74,7 @@ Documentation page within Project overview.
 
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                            <h3 class="pull-left panel-title">@messages("page.plural")</h3>
+                            <h3 class="pull-left panel-title">@messages("project.page.plural")</h3>
                             @if(canEditPages && pageCount < config.projects.get[Int]("max-pages")) {
                                 <button data-toggle="modal" data-target="#new-page" title="New"
                                         class="new-page btn yellow btn-xs pull-right">

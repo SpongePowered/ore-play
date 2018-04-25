@@ -64,7 +64,7 @@ The main header displayed on each layout.
                     <ul class="user-dropdown dropdown-menu" aria-label="Create new&hellip;">
                         <li>
                             <a href="@projectRoutes.Projects.showCreator()">
-                                <span class="pull-left">@messages("project.create")</span>
+                                <span class="pull-left">@messages("project.actions.new")</span>
                                 <i class="pull-right fa fa-book"></i>
                             </a>
                             <a href="@routes.Organizations.showCreator()">
@@ -75,7 +75,7 @@ The main header displayed on each layout.
                     </ul>
                 </li>
 
-                <li class="nav-icon authors-icon" @tooltip(messages("project.viewAuthors"))>
+                <li class="nav-icon authors-icon" @tooltip(messages("project.actions.viewCreators"))>
                     <i class="icon fa fa-users"></i>
                 </li>
 
@@ -112,7 +112,7 @@ The main header displayed on each layout.
                             <li>
                                 <a href="@routes.Application.showFlags()">
                                     <span class="flags pull-left">
-                                        @messages("project.flag.plural")
+                                        @messages("project.flags")
                                         @if(request.data.unresolvedFlags) {
                                             <span class="unread"></span>
                                         }

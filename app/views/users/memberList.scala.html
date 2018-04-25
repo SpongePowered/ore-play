@@ -48,9 +48,9 @@
                                 aria-label="@messages("actions.general.close")">
                             <span aria-hidden="true">&times;</span>
                         </button>
-                        <h4 class="modal-title" id="label-user-delete">@messages("project.removeMember")</h4>
+                        <h4 class="modal-title" id="label-user-delete">@messages("project.actions.removeMember")</h4>
                     </div>
-                    <div class="modal-body">@messages("project.removeMember.confirm")</div>
+                    <div class="modal-body">@messages("project.actions.removeMember.confirm")</div>
                     <div class="modal-footer">
                         @form(action = removeCall, 'class -> "form-inline") {
                             @CSRF.formField

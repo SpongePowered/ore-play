@@ -90,7 +90,7 @@ Base template for Project overview.
                                     <li id="discussion" class="">
                                         <a href="@Projects.showDiscussion(
                                             p.project.ownerName, p.project.slug)">
-                                            <i class="fa fa-users"></i> @messages("project.discuss")
+                                            <i class="fa fa-users"></i> @messages("project.actions.discuss")
                                         </a>
                                     </li>
                                 }
@@ -99,7 +99,7 @@ Base template for Project overview.
                                     @* Show manager if permitted *@
                                     <li id="settings" class="">
                                         <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
-                                            <i class="fa fa-cog"></i> @messages("project.settings")
+                                            <i class="fa fa-cog"></i> @messages("project.settings.title")
                                         </a>
                                     </li>
                                 }
@@ -168,7 +168,7 @@ Base template for Project overview.
                                     && !sp.uProjectFlags
                                     && !p.project.isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
-                                    <i class="fa fa-flag"></i> @messages("project.flag")
+                                    <i class="fa fa-flag"></i> @messages("project.actions.flag")
                                 </button>
                                 <div class="modal fade" id="modal-flag" tabindex="-1" role="dialog"
                                      aria-labelledby="label-flag">
@@ -215,7 +215,7 @@ Base template for Project overview.
                             <!-- Download button -->
                             @if(!p.project.isDeleted) {
                                 <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
-                                title="@messages("project.download.recommend")" data-toggle="tooltip"
+                                title="@messages("project.actions.downloadRecommended")" data-toggle="tooltip"
                                 data-placement="bottom" class="btn btn-primary">
                                     <i class="fa fa-download"></i> @messages("actions.general.download")
                                 </a>

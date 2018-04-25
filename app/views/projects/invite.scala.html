@@ -13,14 +13,14 @@
 @(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit executionContext: ExecutionContext, messages: Messages, flash: Flash, request: OreRequest[_],
         forums: OreDiscourseApi, config: OreConfig, currentUser: User)
 
-@projects.helper.panelCreate(messages("project.create"), 3) {
+@projects.helper.panelCreate(messages("project.actions.new"), 3) {
     <!-- Start panel -->
     <div class="panel-body">
         <!-- Info -->
         <div class="minor create-blurb">
-            <p>@messages("project.members.infoText.head")</p>
+            <p>@messages("project.info.members.head")</p>
             <p>
-                @Html(messages("project.members.infoText.bottom", registeredUsers))
+                @Html(messages("project.info.members.bottom", registeredUsers))
             </p>
         </div>
 
