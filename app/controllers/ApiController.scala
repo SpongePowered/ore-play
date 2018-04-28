@@ -334,10 +334,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
           val add_groups = query.get("add_groups")
 
           this.users.get(external_id.get.toInt).map { optUser =>
-
-            if (!optUser.isDefined) {
-              BadRequest(Json.obj("errors" -> Seq("User not found")))
-            } else {
+            if (optUser.isDefined) {
               val user = optUser.get
 
               email.foreach(user.setEmail)
@@ -346,12 +343,15 @@ final class ApiController @Inject()(api: OreRestfulApi,
               avatar_url.foreach(user.setAvatarUrl)
               add_groups.foreach(groups =>
                 user.setGlobalRoles(
-                  groups.split(",").flatMap(group => RoleTypes.values.find(_.title == group).map(_.asInstanceOf[RoleType])).toSet[RoleType]
+                    if(groups.trim == "")
+                      Set.empty
+                    else
+                      groups.split(",").map(group => RoleTypes.withInternalName(group)).toSet[RoleType]
                 )
               )
-
-              Ok(Json.obj("status" -> "success"))
             }
+
+            Ok(Json.obj("status" -> "success"))
           }
         }
       }
