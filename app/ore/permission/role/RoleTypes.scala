@@ -37,19 +37,19 @@ object RoleTypes extends Enumeration {
 
   // Project
 
-  val ProjectOwner   = new RoleType(17, "Owner",    -1, classOf[ProjectRole], Absolute, "Owner",    Transparent, isAssignable = false)
-  val ProjectDev     = new RoleType(18, "Developer",-2, classOf[ProjectRole], Standard, "Developer",Transparent)
-  val ProjectEditor  = new RoleType(19, "Editor",   -3, classOf[ProjectRole], Limited,  "Editor",   Transparent)
-  val ProjectSupport = new RoleType(20, "Support",  -4, classOf[ProjectRole], Default,  "Support",  Transparent)
+  val ProjectOwner   = new RoleType(17, "Project_Owner",    -1, classOf[ProjectRole], Absolute, "Owner",    Transparent, isAssignable = false)
+  val ProjectDev     = new RoleType(18, "Project_Developer",-2, classOf[ProjectRole], Standard, "Developer",Transparent)
+  val ProjectEditor  = new RoleType(19, "Project_Editor",   -3, classOf[ProjectRole], Limited,  "Editor",   Transparent)
+  val ProjectSupport = new RoleType(20, "Project_Support",  -4, classOf[ProjectRole], Default,  "Support",  Transparent)
 
   // Organization
 
-  val Organization        = new RoleType(21, "Organization",64, classOf[OrganizationRole], Absolute, "Organization", Purple, isAssignable = false)
-  val OrganizationOwner   = new RoleType(22, "Owner",       -5, classOf[OrganizationRole], Absolute, "Owner",        Purple, isAssignable = false)
-  val OrganizationAdmin   = new RoleType(26, "Admin",       -9, classOf[OrganizationRole], Lifted,   "Admin",        Purple)
-  val OrganizationDev     = new RoleType(23, "Developer",   -6, classOf[OrganizationRole], Standard, "Developer",    Transparent)
-  val OrganizationEditor  = new RoleType(24, "Editor",      -7, classOf[OrganizationRole], Limited,  "Editor",       Transparent)
-  val OrganizationSupport = new RoleType(25, "Support",     -8, classOf[OrganizationRole], Default,  "Support",      Transparent)
+  val Organization        = new RoleType(21, "Organization",             64, classOf[OrganizationRole], Absolute, "Organization", Purple, isAssignable = false)
+  val OrganizationOwner   = new RoleType(22, "Organization_Owner",       -5, classOf[OrganizationRole], Absolute, "Owner",        Purple, isAssignable = false)
+  val OrganizationAdmin   = new RoleType(26, "Organization_Admin",       -9, classOf[OrganizationRole], Lifted,   "Admin",        Purple)
+  val OrganizationDev     = new RoleType(23, "Organization_Developer",   -6, classOf[OrganizationRole], Standard, "Developer",    Transparent)
+  val OrganizationEditor  = new RoleType(24, "Organization_Editor",      -7, classOf[OrganizationRole], Limited,  "Editor",       Transparent)
+  val OrganizationSupport = new RoleType(25, "Organization_Support",     -8, classOf[OrganizationRole], Default,  "Support",      Transparent)
 
   /**
     * Returns the role with the specified external ID.
