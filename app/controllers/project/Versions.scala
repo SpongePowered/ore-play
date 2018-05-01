@@ -5,7 +5,6 @@ import java.nio.file.{Files, StandardCopyOption}
 import java.sql.Timestamp
 import java.util.{Date, UUID}
 
-import _root_.views.html.helper
 import com.github.tminglei.slickpg.InetString
 import controllers.OreBaseController
 import controllers.sugar.Bakery
@@ -27,7 +26,7 @@ import play.api.Logger
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.libs.json.Json
-import play.api.mvc.Result
+import play.api.mvc.{Request, Result}
 import play.filters.csrf.CSRF
 import security.spauth.SingleSignOnConsumer
 import util.JavaUtils.autoClose
@@ -504,15 +503,6 @@ class Versions @Inject()(stats: StatTracker,
         if (version.isReviewed)
           Future.successful(Redirect(ShowProject(author, slug)))
         else {
-          val userAgent = request.headers.get("User-Agent")
-          var curl: Boolean = false
-          var wget: Boolean = false
-          if (userAgent.isDefined) {
-            val ua = userAgent.get.toLowerCase
-            curl = ua.startsWith("curl/")
-            wget = ua.startsWith("wget/")
-          }
-
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
           val token = UUID.randomUUID().toString
@@ -527,25 +517,39 @@ class Versions @Inject()(stats: StatTracker,
             versionId = version.id.get,
             address = InetString(StatTracker.remoteAddress)))
 
-          if (wget) {
-            Future.successful(
-            MultipleChoices(this.messagesApi("version.download.confirm.wget"))
-              .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\""))
-          } else if (curl) {
-            Future.successful(MultipleChoices(this.messagesApi("version.download.confirm.body.plain",
-              self.confirmDownload(author, slug, target, Some(dlType.id), token).absoluteURL(),
-              CSRF.getToken.get.value) + "\n")
-              .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\""))
-          } else if (api.getOrElse(false)) {
-            Future.successful(MultipleChoices(Json.obj(
-              "message" -> this.messagesApi("version.download.confirm.body.api").split('\n'),
-              "post" -> helper.CSRF(
-                self.confirmDownload(author, slug, target, Some(dlType.id), token)).absoluteURL())))
+          if (api.getOrElse(false)) {
+            warning.map { warn =>
+              MultipleChoices(Json.obj(
+                "message" -> this.messagesApi("version.download.confirm.body.api").split('\n'),
+                "post" ->  self.confirmDownload(author, slug, target, Some(dlType.id), token).absoluteURL(),
+                "url" -> self.downloadJarById(p.pluginId, version.name, Some(token)).absoluteURL(),
+                "token" -> token)
+              )
+            }
           } else {
-            for {
-              warn <- warning
-              nonReviewed <- version.channel.map(_.isNonReviewed)
-            } yield MultipleChoices(views.unsafeDownload(data.project, version, nonReviewed , dlType, token)).withCookies(warn.cookie)
+            val userAgent = request.headers.get("User-Agent")
+            var curl = false
+            var wget = false
+            userAgent.map(_.toLowerCase).foreach { ua =>
+              curl = ua.startsWith("curl/")
+              wget = ua.startsWith("wget/")
+            }
+
+            if (wget) {
+              Future.successful(
+                MultipleChoices(this.messagesApi("version.download.confirm.wget"))
+                  .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\""))
+            } else if (curl) {
+              Future.successful(MultipleChoices(this.messagesApi("version.download.confirm.body.plain",
+                self.confirmDownload(author, slug, target, Some(dlType.id), token).absoluteURL(),
+                CSRF.getToken.get.value) + "\n")
+                .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\""))
+            } else {
+              for {
+                warn <- warning
+                nonReviewed <- version.channel.map(_.isNonReviewed)
+              } yield MultipleChoices(views.unsafeDownload(data.project, version, nonReviewed , dlType, token)).withCookies(warn.cookie)
+            }
           }
         }
       }
@@ -561,57 +565,67 @@ class Versions @Inject()(stats: StatTracker,
         if (version.isReviewed)
           Future.successful(Redirect(ShowProject(author, slug)))
         else {
-          val addr = InetString(StatTracker.remoteAddress)
-          val dlType = downloadType
-            .flatMap(i => DownloadTypes.values.find(_.id == i))
-            .getOrElse(DownloadTypes.UploadedFile)
-          // find warning
-          this.warnings.find { warn =>
-            (warn.address === addr) &&
-              (warn.token === token) &&
-              (warn.versionId === version.id.get) &&
-              !warn.isConfirmed &&
-              (warn.downloadId === -1)
-          } flatMap {
-            case None => Future.successful(Redirect(ShowProject(author, slug)))
-            case Some(warn) =>
-            if (warn.hasExpired) {
-              // warning has expired
-              warn.remove()
-              Future.successful(Redirect(ShowProject(author, slug)))
-            } else {
-              // warning confirmed and redirect to download
-              warn.setConfirmed()
-              // create record of download
-              val downloads = this.service.access[UnsafeDownload](classOf[UnsafeDownload])
-              this.users.current.flatMap { user =>
-                val userId = user.flatMap(_.id)
-                downloads.add(UnsafeDownload(
-                  userId = userId,
-                  address = addr,
-                  downloadType = dlType))
-              } map { dl =>
-                warn.setDownload(dl)
-              } map { _ =>
-                dlType match {
-                  case UploadedFile =>
-                    Redirect(self.download(author, slug, target, Some(token)))
-                  case JarFile =>
-                    Redirect(self.downloadJar(author, slug, target, Some(token)))
-                  case SignatureFile =>
-                    // Note: Shouldn't get here in the first place since sig files
-                    // don't need confirmation, but added as a failsafe.
-                    Redirect(self.downloadSignature(author, slug, target))
-                  case _ =>
-                    throw new Exception("unknown download type: " + downloadType)
-                }
+          confirmDownload0(version.id.get, downloadType, token).map {
+            case None => Redirect(ShowProject(author, slug))
+            case Some(dl) =>
+              dl.downloadType match {
+                case UploadedFile =>
+                  Redirect(self.download(author, slug, target, Some(token)))
+                case JarFile =>
+                  Redirect(self.downloadJar(author, slug, target, Some(token)))
+                case SignatureFile =>
+                  // Note: Shouldn't get here in the first place since sig files
+                  // don't need confirmation, but added as a failsafe.
+                  Redirect(self.downloadSignature(author, slug, target))
+                case _ =>
+                  throw new Exception("unknown download type: " + downloadType)
               }
-            }
           }
         }
       }
     }
   }
+
+  /**
+    * Confirms the download and prepares the unsafe download.
+    */
+  private def confirmDownload0(versionId: Int, downloadType: Option[Int],token: String)(implicit requestHeader: Request[_]): Future[Option[UnsafeDownload]] = {
+    val addr = InetString(StatTracker.remoteAddress)
+    val dlType = downloadType
+      .flatMap(i => DownloadTypes.values.find(_.id == i))
+      .getOrElse(DownloadTypes.UploadedFile)
+    // find warning
+    this.warnings.find { warn =>
+      (warn.address === addr) &&
+        (warn.token === token) &&
+        (warn.versionId === versionId) &&
+        !warn.isConfirmed &&
+        (warn.downloadId === -1)
+    } flatMap {
+      case None => Future.successful(None)
+      case Some(warn) =>
+        if (warn.hasExpired) {
+          // warning has expired
+          warn.remove()
+          Future.successful(None)
+        } else {
+          // warning confirmed and redirect to download
+          val downloads = this.service.access[UnsafeDownload](classOf[UnsafeDownload])
+          for {
+            user <- this.users.current
+            _ <- warn.setConfirmed()
+            unsafeDownload <- downloads.add(UnsafeDownload(
+                                            userId = user.flatMap(_.id),
+                                            address = addr,
+                                            downloadType = dlType))
+            _ <- warn.setDownload(unsafeDownload)
+          } yield {
+            Some(unsafeDownload)
+          }
+        }
+    }
+  }
+
 
   /**
     * Sends the specified project's current recommended version to the client.
@@ -718,8 +732,16 @@ class Versions @Inject()(stats: StatTracker,
       implicit val data = request.data
       implicit val p = data.project
       implicit val r = request.request
-      withVersionAsync(versionString)(version =>
-        sendJar(data.project, version, token, api = true))
+      withVersionAsync(versionString) { version =>
+        if (token.isDefined) {
+          request.headers
+          confirmDownload0(version.id.get, Some(JarFile.id), token.get)(request.request).flatMap { _ =>
+            sendJar(data.project, version, token, api = true)
+          }
+        } else {
+          sendJar(data.project, version, token, api = true)
+        }
+      }
     }
   }
 
