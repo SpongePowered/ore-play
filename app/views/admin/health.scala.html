@@ -87,7 +87,7 @@
                     @notPublicProjects.map { project =>
                         <div class="list-group-item">
                             <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                <strong>@project.namespace</strong> <small>@messages("visibility.name." + project.visibility.nameKey)</small>
+                                <strong>@project.namespace</strong> <small>@messages("project.state." + project.state.nameKey)</small>
                             </a>
                         </div>
                     }

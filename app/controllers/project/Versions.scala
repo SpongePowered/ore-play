@@ -653,7 +653,7 @@ class Versions @Inject()(stats: StatTracker,
                       token: Option[String],
                       api: Boolean = false)
                      (implicit request: ProjectRequest[_]): Future[Result] = {
-    if (project.visibility == VisibilityTypes.SoftDelete) {
+    if (project.state == ProjectStates.SoftDelete) {
       return Future.successful(NotFound)
     }
     checkConfirmation(project, version, token).flatMap { passed =>
@@ -795,7 +795,7 @@ class Versions @Inject()(stats: StatTracker,
   }
 
   private def sendSignatureFile(version: Version, project: Project)(implicit request: OreRequest[_]): Result = {
-    if (project.visibility == VisibilityTypes.SoftDelete) {
+    if (project.state == ProjectStates.SoftDelete) {
       notFound
     } else {
       val path = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(version.signatureFileName)

@@ -3,7 +3,7 @@ package models.admin
 import java.sql.Timestamp
 
 import db.Model
-import db.impl.VisibilityChangeTable
+import db.impl.ProjectStateChangesTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import models.project.Page
@@ -12,24 +12,24 @@ import play.twirl.api.Html
 
 import scala.concurrent.Future
 
-case class VisibilityChange(override val id: Option[Int] = None,
-                            override val createdAt: Option[Timestamp] = None,
-                            createdBy: Option[Int] = None,
-                            projectId: Int = -1,
-                            comment: String,
-                            var resolvedAt: Option[Timestamp] = None,
-                            var resolvedBy: Option[Int] = None,
-                            visibility: Int = 1) extends OreModel(id, createdAt) {
+case class ProjectStateChange(override val id: Option[Int] = None,
+                              override val createdAt: Option[Timestamp] = None,
+                              createdBy: Option[Int] = None,
+                              projectId: Int,
+                              comment: String,
+                              var resolvedAt: Option[Timestamp] = None,
+                              var resolvedBy: Option[Int],
+                              projectState: Int) extends OreModel(id, createdAt) {
   /** Self referential type */
-  override type M = VisibilityChange
+  override type M = ProjectStateChange
   /** The model's table */
-  override type T = VisibilityChangeTable
+  override type T = ProjectStateChangesTable
 
   /** Render the comment as Html */
   def renderComment(): Html = Page.Render(comment)
 
   /** Check if the change has been dealt with */
-  def isResolved: Boolean = !resolvedAt.isEmpty
+  def isResolved: Boolean = resolvedAt.nonEmpty
 
   def created: Future[Option[User]] = {
     if (createdBy.isEmpty) Future.successful(None)

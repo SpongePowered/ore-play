@@ -10,7 +10,7 @@ import db.impl._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
-import models.project.{Flag, Project, Version, VisibilityTypes}
+import models.project.{Flag, Project, Version, ProjectStates}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.OreConfig
 import ore.permission._
@@ -338,7 +338,7 @@ case class User(override val id: Option[Int] = None,
     val starsPerPage = this.config.users.get[Int]("stars-per-page")
     val limit = if (page < 1) -1 else starsPerPage
     val offset = (page - 1) * starsPerPage
-    val filter = ModelFilter[Project](_.visibility === VisibilityTypes.Public) +|| ModelFilter[Project](_.visibility === VisibilityTypes.New)
+    val filter = ModelFilter[Project](_.state === ProjectStates.Public) +|| ModelFilter[Project](_.state === ProjectStates.New)
     this.schema.getAssociation[ProjectStarsTable, Project](classOf[ProjectStarsTable], this)
       .sorted(ordering = _.name, filter = filter.fn, limit = limit, offset = offset)
   }

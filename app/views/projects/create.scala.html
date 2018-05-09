@@ -15,7 +15,7 @@ Page used for uploading and creating new projects.
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
+@projects.helper.panelCreate(messages("project.actions.new"), if (pending.isEmpty) 1 else 2) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectCreateValidate.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>
@@ -129,7 +129,7 @@ Page used for uploading and creating new projects.
                             </a>
 
                             @* Disabled until JS determines meta is valid *@
-                            <button title="Continue" type="submit" name="create" value="@messages("general.continue")"
+                            <button title="Continue" type="submit" name="create" value="@messages("actions.general.continue")"
                                     class="pull-right continue-btn btn btn-default" disabled>
                                 <i class="fa fa-spinner fa-spin"></i>
                             </button>

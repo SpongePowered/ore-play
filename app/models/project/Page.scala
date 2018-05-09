@@ -85,7 +85,7 @@ case class Page(override val id: Option[Int] = None,
     */
   def setContents(_contents: String)(implicit ec: ExecutionContext): Future[Page] = {
     checkNotNull(_contents, "null contents", "")
-    checkArgument((this.isHome && _contents.length <= MaxLength) || _contents.length <= MaxLengthPage, "contents too long", "")
+    checkArgument(_contents.length <= MaxLength(this.isHome), "contents too long", "")
     this._contents = _contents
     if (!isDefined) Future.successful(this)
     else {
@@ -269,12 +269,8 @@ object Page {
   /**
     * The maximum amount of characters the home page may have.
     */
-  def MaxLength(implicit config: OreConfig): Int = config.pages.get[Int]("max-len")
-
-  /**
-    * The maximum amount of characters a page may have.
-    */
-  def MaxLengthPage(implicit config: OreConfig): Int = config.pages.get[Int]("page.max-len")
+  def MaxLength(discourseSynced: Boolean = false)(implicit config: OreConfig): Int =
+    if(discourseSynced) config.pages.get[Int]("max-len-discourse-synced") else config.pages.get[Int]("max-len")
 
   /**
     * Returns a template for new Pages.

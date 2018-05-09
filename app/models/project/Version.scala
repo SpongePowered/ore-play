@@ -101,7 +101,7 @@ case class Version(override val id: Option[Int] = None,
     * @param _description Version description
     */
   def setDescription(_description: String) = {
-    checkArgument(_description == null || _description.length <= Page.MaxLength, "content too long", "")
+    checkArgument(_description == null || _description.length <= Page.MaxLength(true), "content too long", "")
     this._description = Option(_description)
     if (isDefined) update(Description)
   }

@@ -89,11 +89,11 @@
                                 @if(v.p.versions == 1) {
                                     <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                        title="@messages("version.delete.cannotLast")">
-                                        <i class="fa fa-trash"></i> @messages("general.delete")
+                                        <i class="fa fa-trash"></i> @messages("actions.general.delete")
                                     </a>
                                 } else {
                                     <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
-                                        <i class="fa fa-trash"></i> @messages("general.delete")
+                                        <i class="fa fa-trash"></i> @messages("actions.general.delete")
                                     </button>
                                 }
                             }
@@ -101,7 +101,7 @@
                             <a href="@versionRoutes.download(
                                 v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)"
                                class="btn btn-primary">
-                                <i class="fa fa-download"></i> @messages("general.download")
+                                <i class="fa fa-download"></i> @messages("actions.general.download")
                             </a>
 
                         </div>
@@ -221,7 +221,7 @@
                                 <button type="button" class="btn btn-default" data-dismiss="modal">
                                 @messages("channel.edit.close")
                                 </button>
-                                <input type="submit" name="delete" value="@messages("general.delete")" class="btn btn-danger">
+                                <input type="submit" name="delete" value="@messages("actions.general.delete")" class="btn btn-danger">
                             </div>
                         </div>
                     }

@@ -21,8 +21,8 @@
         PROJECT_OWNER = "@p.project.ownerName";
         PROJECT_SLUG = "@p.project.slug";
         pluginId = "@p.project.pluginId";
-        keyGenText = "@messages("project.settings.genKey")";
-        keyRevokeText = "@messages("project.settings.revokeKey")";
+        keyGenText = "@messages("project.settings.deployKey.generate")";
+        keyRevokeText = "@messages("project.settings.deployKey.revoke")";
     </script>
 
     <div class="container">
@@ -32,25 +32,25 @@
                 <!-- Main settings -->
                 <div class="panel panel-default panel-settings">
                     <div class="panel-heading">
-                        <h3 class="panel-title pull-left">@messages("project.settings")</h3>
+                        <h3 class="panel-title pull-left">@messages("project.settings.title")</h3>
                         @if(request.data.globalPerm(HideProjects)) {
                             @projects.helper.btnHide(p.project, sp.permissions, request.currentUser.get)
 
-                            <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
+                            <div class="modal fade" id="modal-state-comment" tabindex="-1" role="dialog" aria-labelledby="modal-state-comment">
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="@messages("general.close")">
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="@messages("actions.general.close")">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
                                             <h4 class="modal-title" style="color:black;">Comment</h4>
                                         </div>
                                         <div class="modal-body">
-                                            <textarea class="textarea-visibility-comment form-control" rows="3"></textarea>
+                                            <textarea class="textarea-state-comment form-control" rows="3"></textarea>
                                         </div>
                                         <div class="modal-footer">
-                                            <button class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
-                                            <button class="btn btn-visibility-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
+                                            <button class="btn btn-default" data-dismiss="modal">@messages("actions.general.close")</button>
+                                            <button class="btn btn-state-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
                                         </div>
                                     </div>
                                 </div>
@@ -120,7 +120,7 @@
 
                         <div class="setting">
                             <div class="setting-description">
-                                <h4>@messages("project.settings.deployKey")</h4>
+                                <h4>@messages("project.settings.deployKey.title")</h4>
                                 <p>
                                     @messages("project.settings.deployKey.info")
                                     <a href="#"><i class="fa fa-question-circle"></i></a>
@@ -135,12 +135,12 @@
                                 @deploymentKey.map { key =>
                                   <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id.get">
                                       <i class="fa fa-spinner fa-spin" style="display: none;"></i>
-                                      @messages("project.settings.revokeKey")
+                                      @messages("project.settings.deployKey.revoke")
                                   </button>
                                 }.getOrElse {
                                     <button class="btn btn-info btn-block btn-key-gen">
                                         <i class="fa fa-spinner fa-spin" style="display: none;"></i>
-                                        @messages("project.settings.genKey")
+                                        @messages("project.settings.deployKey.generate")
                                     </button>
                                 }
                             </div>
@@ -150,8 +150,8 @@
                         <!-- Rename -->
                         <div class="setting">
                             <div class="setting-description">
-                                <h4 class="danger">@messages("project.rename")</h4>
-                                <p>@messages("project.rename.info")</p>
+                                <h4 class="danger">@messages("actions.general.rename")</h4>
+                                <p>@messages("project.actions.rename.warning")</p>
                             </div>
                             <div class="setting-content">
                                 <input form="rename" id="name" name="name" class="form-control" type="text"
@@ -159,7 +159,7 @@
                                        maxlength="@config.projects.get[Int]("max-name-len")">
                                 <button id="btn-rename" data-toggle="modal" data-target="#modal-rename"
                                         class="btn btn-warning" disabled>
-                                    @messages("project.rename")
+                                    @messages("actions.general.rename")
                                 </button>
                             </div>
                             <div class="clearfix"></div>
@@ -187,7 +187,7 @@
                                     <p>Once you delete a project, it cannot be recovered.</p>
                                 </div>
                                 <div class="setting-content">
-                                    <button class="btn btn-delete btn-danger btn-visibility-change" data-project="@p.project.ownerName/@p.project.slug" data-level="-99" data-modal="true">
+                                    <button class="btn btn-delete btn-danger btn-state-change" data-project="@p.project.ownerName/@p.project.slug" data-level="-99" data-modal="true">
                                         <strong>Hard Delete</strong>
                                     </button>
                                 </div>
@@ -227,13 +227,13 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal"
-                    aria-label="@messages("general.cancel")">
+                    aria-label="@messages("actions.general.cancel")">
                         <span aria-hidden="true">&times;</span>
                     </button>
-                    <h4 class="modal-title" id="label-rename">@messages("project.rename.title")</h4>
+                    <h4 class="modal-title" id="label-rename">@messages("project.actions.rename")</h4>
                 </div>
                 <div class="modal-body">
-                @messages("project.rename.info")
+                @messages("project.actions.rename.warning")
                 </div>
                 <div class="modal-footer">
                     <div class="form-inline">
@@ -242,7 +242,7 @@
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("channel.edit.close")
                         </button>
-                        <input type="submit" name="rename" value="@messages("project.rename")" class="btn btn-warning">
+                        <input type="submit" name="rename" value="@messages("actions.general.rename")" class="btn btn-warning">
                         }
                     </div>
                 </div>
@@ -257,11 +257,11 @@
                     <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
                         <span aria-hidden="true">&times;</span>
                     </button>
-                    <h4 class="modal-title" id="label-delete">@messages("project.delete.title")</h4>
+                    <h4 class="modal-title" id="label-delete">@messages("project.actions.delete")</h4>
                 </div>
                 @form(action = projectRoutes.softDelete(p.project.ownerName, p.project.slug)) {
                 <div class="modal-body">
-                    @messages("project.delete.info")
+                    @messages("project.actions.delete.confirm")
                     <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
                 </div>
                 <div class="modal-footer">
@@ -271,7 +271,7 @@
                         @messages("channel.edit.close")
                         </button>
                         <input type="submit" name="delete"
-                        value="@messages("general.delete")" class="btn btn-danger">
+                        value="@messages("actions.general.delete")" class="btn btn-danger">
                     </div>
                 </div>
                 }

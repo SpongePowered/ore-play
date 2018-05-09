@@ -24,33 +24,33 @@ var ICON = 'fa-eye';
  */
 
 $(function() {
-    $('.btn-visibility-change').click(function () {
+    $('.btn-state-change').click(function () {
         var project = $(this).data('project');
-        var visibilityLevel = $(this).data('level');
+        var newState = $(this).data('level');
         var needsModal = $(this).data('modal');
         var spinner = $('button[data-project="'  + project + '"]').find('i');
         spinner.removeClass(ICON).addClass('fa-spinner fa-spin');
         if (needsModal) {
             $('.modal-title').html($(this).text().trim() + ": comment");
-            $('#modal-visibility-comment').modal('show');
-            $('.btn-visibility-comment-submit').data('project', project);
-            $('.btn-visibility-comment-submit').data('level', visibilityLevel);
+            $('#modal-state-comment').modal('show');
+            $('.btn-state-comment-submit').data('project', project);
+            $('.btn-state-comment-submit').data('level', newState);
             spinner.addClass(ICON).removeClass('fa-spinner fa-spin');
         } else {
-            sendVisibilityRequest(project, visibilityLevel, '', spinner);
+            sendStateRequest(project, newState, '', spinner);
         }
     });
 
-    $('.btn-visibility-comment-submit').click(function () {
+    $('.btn-state-comment-submit').click(function () {
         var project = $(this).data('project');
-        var visibilityLevel = $(this).data('level');
+        var newState = $(this).data('level');
         var spinner = $(this).find('i');
         spinner.removeClass(ICON).addClass('fa-spinner fa-spin');
-        sendVisibilityRequest(project, visibilityLevel, $('.textarea-visibility-comment').val(), spinner);
+        sendStateRequest(project, newState, $('.textarea-state-comment').val(), spinner);
 
     });
 
-    function sendVisibilityRequest(project, level, comment, spinner) {
+    function sendStateRequest(project, level, comment, spinner) {
         var _url = '/' + project + (level == -99 ? '/manage/hardDelete' : '/visible/' + level);
         $.ajax({
             type: 'post',

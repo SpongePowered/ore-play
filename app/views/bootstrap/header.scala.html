@@ -18,34 +18,34 @@ The main header displayed on each layout.
         <div id="sp-logo-container">
             <a class="logo" href="@routes.Application.showHome(None, None, None, None, None)">
                 <img src="@config.sponge.get[String]("logo")">
-                <span>@messages("general.projectName")</span>
+                <span>@messages("application.organization")</span>
                 <i class="fa fa-fw fa-chevron-down"></i>
             </a>
             <div id="sp-logo-menu">
                 <ul id="sp-logo-dropdown">
                     <li><a href="https://www.spongepowered.org">
-                        <i class="fa-fw fa fa-home"></i>@messages("general.home")
+                        <i class="fa-fw fa fa-home"></i>@messages("links.home")
                     </a></li>
                     <li><a href="https://forums.spongepowered.org">
-                        <i class="fa-fw fa fa-comments"></i>@messages("general.forums")
+                        <i class="fa-fw fa fa-comments"></i>@messages("links.forums")
                     </a></li>
                     <li><a href="https://github.com/SpongePowered">
-                        <i class="fa-fw fa fa-code"></i>@messages("general.code")
+                        <i class="fa-fw fa fa-code"></i>@messages("links.code")
                     </a></li>
                     <li><a href="https://docs.spongepowered.org">
-                        <i class="fa-fw fa fa-book"></i>@messages("general.docs")
+                        <i class="fa-fw fa fa-book"></i>@messages("links.docs")
                     </a></li>
                     <li><a href="https://jd.spongepowered.org">
-                        <i class="fa-fw fa fa-graduation-cap"></i>@messages("general.javadocs")
+                        <i class="fa-fw fa fa-graduation-cap"></i>@messages("links.javadocs")
                     </a></li>
                     <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None)">
-                        <i class="fa-fw fa fa-plug"></i>@messages("general.plugins")
+                        <i class="fa-fw fa fa-plug"></i>@messages("links.plugins")
                     </a></li>
                     <li><a href="https://www.spongepowered.org/downloads">
-                        <i class="fa-fw fa fa-download"></i>@messages("general.getsponge")
+                        <i class="fa-fw fa fa-download"></i>@messages("links.downloads")
                     </a></li>
                     <li><a href="https://www.spongepowered.org/chat">
-                        <i class="fa-fw fa fa-comment"></i>@messages("general.irc")
+                        <i class="fa-fw fa fa-comment"></i>@messages("links.irc")
                     </a></li>
                 </ul>
             </div>
@@ -64,7 +64,7 @@ The main header displayed on each layout.
                     <ul class="user-dropdown dropdown-menu" aria-label="Create new&hellip;">
                         <li>
                             <a href="@projectRoutes.Projects.showCreator()">
-                                <span class="pull-left">@messages("project.create")</span>
+                                <span class="pull-left">@messages("project.actions.new")</span>
                                 <i class="pull-right fa fa-book"></i>
                             </a>
                             <a href="@routes.Organizations.showCreator()">
@@ -75,7 +75,7 @@ The main header displayed on each layout.
                     </ul>
                 </li>
 
-                <li class="nav-icon authors-icon" @tooltip(messages("project.viewAuthors"))>
+                <li class="nav-icon authors-icon" @tooltip(messages("project.actions.viewCreators"))>
                     <i class="icon fa fa-users"></i>
                 </li>
 
@@ -112,7 +112,7 @@ The main header displayed on each layout.
                             <li>
                                 <a href="@routes.Application.showFlags()">
                                     <span class="flags pull-left">
-                                        @messages("project.flag.plural")
+                                        @messages("project.flags")
                                         @if(request.data.unresolvedFlags) {
                                             <span class="unread"></span>
                                         }
@@ -122,9 +122,9 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.globalPerm(ReviewVisibility)) {
+                        @if(request.data.globalPerm(ReviewVersions)) {
                             <li>
-                                <a href="@routes.Application.showProjectVisibility()">
+                                <a href="@routes.Application.showProjectApprovalQueue()">
                                     <span class="flags pull-left">
                                         Project approvals
                                         @if(request.data.hasProjectApprovals) {
@@ -138,9 +138,9 @@ The main header displayed on each layout.
 
                         @if(request.data.globalPerm(ReviewProjects)) {
                             <li>
-                                <a href="@routes.Application.showQueue()">
+                                <a href="@routes.Application.showVersionApprovalQueue()">
                                     <span class="pull-left">
-                                        @messages("user.queue")
+                                        @messages("admin.queue.versions.title")
                                         @if(request.data.hasReviewQueue) {
                                             <span class="unread"></span>
                                         }
@@ -154,7 +154,7 @@ The main header displayed on each layout.
                             <li>
                                 <a href="@routes.Application.showStats()">
                                     <span class="pull-left">
-                                        @messages("user.stats")
+                                        @messages("admin.stats")
                                     </span>
                                     <i class="pull-right fa fa-area-chart"></i>
                                 </a>
@@ -176,7 +176,7 @@ The main header displayed on each layout.
                         <li role="separator" class="divider"></li>
                         <li>
                             <a href="@routes.Users.logOut(Some(request.path))">
-                                <span class="pull-left">@messages("general.signout")</span>
+                                <span class="pull-left">@messages("actions.auth.signout")</span>
                                 <i class="pull-right fa fa-sign-out"></i>
                             </a>
                         </li>
@@ -186,9 +186,9 @@ The main header displayed on each layout.
                     <li>
                         <div class="btn-group-login">
                             <a href="@routes.Users.signUp()"
-                            class="btn btn-primary navbar-btn">@messages("general.signup")</a>
+                            class="btn btn-primary navbar-btn">@messages("actions.auth.signup")</a>
                             <a href="@routes.Users.logIn(None, None, Some(request.path))"
-                            class="btn btn-primary navbar-btn">@messages("general.login")</a>
+                            class="btn btn-primary navbar-btn">@messages("actions.auth.login")</a>
                         </div>
                     </li>
                 }

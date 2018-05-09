@@ -18,20 +18,20 @@
 @import java.time.Instant
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("user.queue")) {
+@bootstrap.layout(messages("admin.queue.versions.title")) {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/queue.js")"></script>
 
     <div class="container" style="margin-top: 90px">
         <div class="row">
             <div class="col-md-12 header-flags">
-                <h2>@messages("user.queue.progress")</h2>
+                <h2>@messages("admin.queue.progress")</h2>
             </div>
         </div>
         <div class="row">
             <div class="col-md-12">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h4 class="panel-title pull-left">@messages("user.queue.progress")</h4>
+                        <h4 class="panel-title pull-left">@messages("admin.queue.progress")</h4>
                         <div class="clearfix"></div>
                     </div>
                     <table class="table table-hover">
@@ -108,14 +108,14 @@
         </div>
         <div class="row">
             <div class="col-md-12 header-flags">
-                <h2>@messages("user.queue.open")</h2>
+                <h2>@messages("admin.queue.open")</h2>
             </div>
         </div>
         <div class="row">
             <div class="col-md-12">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        <h4 class="panel-title pull-left">@messages("user.queue.open")</h4>
+                        <h4 class="panel-title pull-left">@messages("admin.queue.open")</h4>
                         <div class="clearfix"></div>
                     </div>
                     <table class="table table-hover">
@@ -132,7 +132,7 @@
                         @if(versions.isEmpty) {
                             <tr>
                                 <th rowspan="5">
-                                    <h3><i class="fa fa-thumbs-o-up"></i> @messages("user.queue.none")</h3>
+                                    <h3><i class="fa fa-thumbs-o-up"></i> @messages("admin.queue.versions.empty")</h3>
                                 </th>
                             </tr>
                         }
@@ -173,7 +173,7 @@
     <script nonce="@nonce">
         $(function(){
             var momentNow = moment();
-            var maxDifference = @config.ore.get[Configuration]("queue").getOptional[Int]("max-review-time").getOrElse(86400000);
+            var maxDifference = @config.ore.get[Configuration]("versionApprovalQueue").getOptional[Int]("max-review-time").getOrElse(86400000);
             $('span[data-ago]').each(function() {
                 var momentAgo = moment($(this).data('ago'))
                 $(this).text($(this).data('title') + momentAgo.fromNow());

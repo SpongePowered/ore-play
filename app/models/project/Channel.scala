@@ -18,7 +18,7 @@ import ore.permission.scope.ProjectScope
   * @param id           Unique identifier
   * @param createdAt    Instant of creation
   * @param _isNonReviewed Whether this channel should be excluded from the staff
-  *                     approval queue
+  *                       approval queue
   * @param _name        Name of channel
   * @param _color       Color used to represent this Channel
   * @param projectId    ID of project this channel belongs to

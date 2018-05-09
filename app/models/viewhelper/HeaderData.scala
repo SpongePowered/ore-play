@@ -5,7 +5,7 @@ import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.OrganizationBase
 import db.impl.{ProjectTableMain, SessionTable, UserTable, VersionTable}
-import models.project.VisibilityTypes
+import models.project.ProjectStates
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -25,7 +25,7 @@ case class HeaderData(currentUser: Option[User] = None,
                       hasUnreadNotifications: Boolean = false,
                       unresolvedFlags: Boolean = false,
                       hasProjectApprovals: Boolean = false,
-                      hasReviewQueue: Boolean = false // queue.nonEmpty
+                      hasReviewQueue: Boolean = false // versionApprovalQueue.nonEmpty
                      ) {
 
   // Just some helpers in templates:
@@ -47,7 +47,7 @@ case class HeaderData(currentUser: Option[User] = None,
 object HeaderData {
 
   val noPerms: Map[Permission, Boolean] = Map(ReviewFlags -> false,
-                  ReviewVisibility -> false,
+                  ReviewVersions -> false,
                   ReviewProjects -> false,
                   ViewStats -> false,
                   ViewHealth -> false,
@@ -97,7 +97,7 @@ object HeaderData {
 
     val tableProject = TableQuery[ProjectTableMain]
     val query = for {
-      p <- tableProject if p.userId === user.id.get && p.visibility === VisibilityTypes.NeedsApproval
+      p <- tableProject if p.userId === user.id.get && p.state === ProjectStates.NeedsApproval
     } yield {
       p
     }
@@ -144,7 +144,7 @@ object HeaderData {
       val user = currentUser.get
       for {
         reviewFlags       <- user can ReviewFlags in GlobalScope map ((ReviewFlags, _))
-        reviewVisibility  <- user can ReviewVisibility in GlobalScope map ((ReviewVisibility, _))
+        reviewVersions  <- user can ReviewVersions in GlobalScope map ((ReviewVersions, _))
         reviewProjects    <- user can ReviewProjects in GlobalScope map ((ReviewProjects, _))
         viewStats         <- user can ViewStats in GlobalScope map ((ViewStats, _))
         viewHealth        <- user can ViewHealth in GlobalScope map ((ViewHealth, _))
@@ -154,7 +154,7 @@ object HeaderData {
         userAdmin         <- user can UserAdmin in GlobalScope map ((UserAdmin, _))
         hideProjects      <- user can HideProjects in GlobalScope map ((HideProjects, _))
       } yield {
-        val perms = Seq(reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, userAdmin, hideProjects)
+        val perms = Seq(reviewFlags, reviewVersions, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, userAdmin, hideProjects)
         perms toMap
       }
     }

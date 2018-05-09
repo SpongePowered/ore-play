@@ -70,7 +70,7 @@ class OreModelService @Inject()(override val env: OreEnv,
     registerSchema(OrganizationSchema)
     registerSchema(OrganizationRoleSchema)
     registerSchema(ProjectApiKeySchema)
-    registerSchema(VisibilityChangeSchema)
+    registerSchema(StateChangeSchema)
 
     Logger.info(
       "Database initialized:\n" +

@@ -1,6 +1,6 @@
 package models.viewhelper
 
-import models.project.{Project, VisibilityTypes}
+import models.project.{Project, ProjectStates}
 import models.user.User
 import ore.permission._
 import play.api.cache.AsyncCacheApi
@@ -29,9 +29,9 @@ object ScopedProjectData {
         editSettings <- user can EditSettings in project map ((EditSettings, _))
         editChannels <- user can EditChannels in project map ((EditChannels, _))
         editVersions <- user can EditVersions in project map ((EditVersions, _))
-        visibilities <- Future.sequence(VisibilityTypes.values.map(_.permission).map(p => user can p in project map ((p, _))))
+        states <- Future.sequence(ProjectStates.values.map(_.permission).map(p => user can p in project map ((p, _))))
       } yield {
-        val perms = visibilities + editPages + editSettings + editChannels + editVersions
+        val perms = states + editPages + editSettings + editChannels + editVersions
         ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, perms.toMap)
       }
     } getOrElse Future.successful(noScope)
