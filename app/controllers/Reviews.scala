@@ -175,7 +175,7 @@ final class Reviews @Inject()(data: DataHelper,
           userId = id,
           originId = requestUser.id.get,
           notificationType = NotificationTypes.VersionReviewed,
-          message = messagesApi("notification.project.reviewed", project.slug, version.versionString)
+          messageArgs = List("notification.project.reviewed", project.slug, version.versionString)
         )
       }
     } map (notificationTable ++= _) flatMap (service.DB.db.run(_)) // Batch insert all notifications

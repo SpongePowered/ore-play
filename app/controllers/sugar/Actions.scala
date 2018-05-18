@@ -16,6 +16,7 @@ import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc._
+import play.api.i18n.Messages
 import security.spauth.SingleSignOnConsumer
 import slick.jdbc.JdbcBackend
 
@@ -203,7 +204,11 @@ trait Actions extends Calls with ActionHelpers {
 
     def transform[A](request: Request[A]): Future[OreRequest[A]] = {
       implicit val service: ModelService = users.service
-      HeaderData.of(request).map(new OreRequest(_, request))
+      HeaderData.of(request).map { data =>
+        val requestWithLang =
+          data.currentUser.flatMap(_.lang).fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
+        new OreRequest(data, requestWithLang)
+      }
     }
   }
 

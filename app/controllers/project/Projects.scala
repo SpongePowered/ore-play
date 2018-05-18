@@ -659,7 +659,7 @@ class Projects @Inject()(stats: StatTracker,
       getProject(author, slug).map { project =>
         this.projects.delete(project)
         UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.getOrElse(-1), "null", project.visibility.nameKey)
-        Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name))
+        Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name))
       }.merge
     }
   }
@@ -676,7 +676,7 @@ class Projects @Inject()(stats: StatTracker,
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
     data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
       UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.SoftDelete.nameKey, data.project.visibility.nameKey)
-      Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", data.project.name))
+      Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", data.project.name))
     }
   }
 

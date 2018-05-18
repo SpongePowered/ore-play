@@ -192,7 +192,7 @@ class Users @Inject()(fakeUser: FakeUser,
       tagline <- bindFormEitherT[Future](this.forms.UserTagline)(_ => BadRequest)
     } yield {
       if (tagline.length > maxLen) {
-        Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))
+        Redirect(ShowUser(user)).flashing("error" -> request.messages.apply("error.tagline.tooLong", maxLen))
       } else {
         user.setTagline(tagline)
         Redirect(ShowUser(user))

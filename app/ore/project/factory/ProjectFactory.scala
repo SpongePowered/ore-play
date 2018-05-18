@@ -24,7 +24,7 @@ import ore.project.io.{InvalidPluginFileException, PluginFile, PluginUpload, Pro
 import ore.user.notification.NotificationTypes
 import org.spongepowered.plugin.meta.PluginMetadata
 import play.api.cache.SyncCacheApi
-import play.api.i18n.{Lang, MessagesApi}
+import play.api.i18n.Messages
 import security.pgp.PGPVerifier
 import util.StringUtils._
 import util.functional.{EitherT, OptionT}
@@ -55,11 +55,9 @@ trait ProjectFactory {
   val pgp: PGPVerifier = new PGPVerifier
   val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
-  implicit val messages: MessagesApi
   implicit val config: OreConfig
   implicit val forums: OreDiscourseApi
   implicit val env: OreEnv = this.fileManager.env
-  implicit val lang: Lang = Lang.defaultLang
 
   var isPgpEnabled: Boolean = this.config.security.get[Boolean]("requirePgp")
 
@@ -71,7 +69,7 @@ trait ProjectFactory {
     * @param owner      Upload owner
     * @return           Loaded PluginFile
     */
-  def processPluginUpload(uploadData: PluginUpload, owner: User): PluginFile = {
+  def processPluginUpload(uploadData: PluginUpload, owner: User)(implicit messages: Messages): PluginFile = {
     val pluginFileName = uploadData.pluginFileName
     var signatureFileName = uploadData.signatureFileName
 
@@ -296,7 +294,7 @@ trait ProjectFactory {
           user.sendNotification(Notification(
             originId = ownerId,
             notificationType = NotificationTypes.ProjectInvite,
-            message = messages("notification.project.invite", role.roleType.title, project.name)
+            messageArgs = List("notification.project.invite", role.roleType.title, project.name)
           ))
         }
       }
@@ -366,7 +364,7 @@ trait ProjectFactory {
       val tags = spongeTag ++ forgeTag
 
       // Notify watchers
-      this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project, messages))
+      this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
 
       project.setLastUpdated(this.service.theTime)
 
@@ -446,6 +444,5 @@ class OreProjectFactory @Inject()(override val service: ModelService,
                                   override val config: OreConfig,
                                   override val forums: OreDiscourseApi,
                                   override val cacheApi: SyncCacheApi,
-                                  override val messages: MessagesApi,
                                   override val actorSystem: ActorSystem)
                                   extends ProjectFactory

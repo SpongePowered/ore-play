@@ -3,7 +3,6 @@ package controllers
 import java.util.{Base64, UUID}
 
 import akka.http.scaladsl.model.Uri
-import javax.inject.Inject
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
@@ -22,7 +21,7 @@ import ore.rest.ProjectApiKeyTypes._
 import ore.rest.{OreRestfulApi, OreWrites}
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, Messages, MessagesApi}
 import util.StatusZ
 import util.functional.{EitherT, OptionT, Id}
 import util.instances.future._
@@ -173,7 +172,8 @@ final class ApiController @Inject()(api: OreRestfulApi,
     }
   }
 
-  private def error(key: String, error: String) = Json.obj("errors" -> Map(key -> List(this.messagesApi(error))))
+  private def error(key: String, error: String)(implicit messages: Messages) =
+    Json.obj("errors" -> Map(key -> List(messages(error))))
 
   def deployVersion(version: String, pluginId: String, name: String): Action[AnyContent] = ProjectAction(pluginId).async { implicit request =>
     version match {

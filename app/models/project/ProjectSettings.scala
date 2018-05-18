@@ -49,7 +49,6 @@ case class ProjectSettings(override val id: Option[Int] = None,
                            private var _forumSync: Boolean = true)
                            extends OreModel(id, createdAt) with ProjectOwned {
 
-  implicit val lang: Lang = Lang.defaultLang
   override type M = ProjectSettings
   override type T = ProjectSettingsTable
 
@@ -198,7 +197,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
               userId = role.userId,
               originId = project.ownerId,
               notificationType = NotificationTypes.ProjectInvite,
-              message = messages("notification.project.invite", role.roleType.title, project.name))
+              messageArgs = List("notification.project.invite", role.roleType.title, project.name))
           }
 
           service.DB.db.run(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications

@@ -10,8 +10,8 @@ import models.user.User
 import ore.user.UserOwned
 import org.apache.commons.codec.digest.DigestUtils
 import org.spongepowered.plugin.meta.{McModInfo, PluginMetadata}
-import play.api.i18n.{Lang, MessagesApi}
 
+import play.api.i18n.Messages
 import scala.collection.JavaConverters._
 import scala.util.control.Breaks._
 
@@ -21,8 +21,6 @@ import scala.util.control.Breaks._
   * @param _path Path to uploaded file
   */
 class PluginFile(private var _path: Path, val signaturePath: Path, val user: User) extends UserOwned {
-
-  implicit val lang: Lang = Lang.defaultLang
 
   private val MetaFileName = "mcmod.info"
 
@@ -83,7 +81,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     * @return Result of parse
     */
   @throws[InvalidPluginFileException]
-  def loadMeta()(implicit messages: MessagesApi): PluginMetadata = {
+  def loadMeta()(implicit messages: Messages): PluginMetadata = {
     var jarIn: JarInputStream = null
     try {
       // Find plugin JAR
@@ -102,12 +100,12 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
       }
 
       if (!metaFound)
-        throw InvalidPluginFileException("error.plugin.metaNotFound")
+        throw InvalidPluginFileException(messages("error.plugin.metaNotFound"))
 
       // Read the meta file
       val metaList = McModInfo.DEFAULT.read(jarIn).asScala.toList
       if (metaList.isEmpty)
-        throw InvalidPluginFileException("error.plugin.metaNotFound")
+        throw InvalidPluginFileException(messages("error.plugin.metaNotFound"))
 
       // Parse plugin meta info
       val meta = metaList.head
@@ -131,7 +129,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
       if (jarIn != null)
         jarIn.close()
       else
-        throw InvalidPluginFileException("error.plugin.unexpected")
+        throw InvalidPluginFileException(messages("error.plugin.unexpected"))
     }
   }
 
@@ -141,7 +139,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     * @return InputStream of JAR
     */
   @throws[IOException]
-  def newJarStream: InputStream = {
+  def newJarStream(implicit messages: Messages): InputStream = {
     if (this.path.toString.endsWith(".jar"))
       Files.newInputStream(this.path)
     else {
@@ -150,7 +148,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     }
   }
 
-  private def findTopLevelJar(zip: ZipFile): ZipEntry = {
+  private def findTopLevelJar(zip: ZipFile)(implicit messages: Messages): ZipEntry = {
     if (this.path.toString.endsWith(".jar"))
       throw new Exception("Plugin is already JAR")
 
@@ -168,7 +166,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     }
 
     if (pluginEntry == null)
-      throw InvalidPluginFileException("error.plugin.jarNotFound")
+      throw InvalidPluginFileException(messages("error.plugin.jarNotFound"))
     pluginEntry
   }
 

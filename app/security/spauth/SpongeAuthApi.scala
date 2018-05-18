@@ -17,6 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
 import play.api.Configuration
+import play.api.i18n.Lang
 
 /**
   * Interfaces with the SpongeAuth Web API
@@ -36,7 +37,8 @@ trait SpongeAuthApi {
     (JsPath \ "id").read[Int] and
     (JsPath \ "username").read[String] and
     (JsPath \ "email").read[String] and
-    (JsPath \ "avatar_url").readNullable[String]
+    (JsPath \ "avatar_url").readNullable[String] and
+    (JsPath \ "language").readNullable[String].map(_.flatMap(Lang.get))
   )(SpongeUser.apply _)
 
   /**

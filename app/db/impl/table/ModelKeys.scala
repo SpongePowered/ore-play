@@ -14,6 +14,7 @@ import ore.Colors.Color
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
 import ore.user.Prompts.Prompt
+import play.api.i18n.Lang
 
 /**
   * Collection of String keys used for table bindings within Models.
@@ -63,6 +64,7 @@ object ModelKeys {
   val JoinDate              =   new TimestampKey[User](_.joinDate, _.joinDate.orNull)
   val AvatarUrl             =   new StringKey[User](_.avatarUrl, _.avatarUrl.orNull)
   val ReadPrompts           =   new Key[User, List[Prompt]](_.readPrompts, _.readPrompts.toList)
+  val Language              =   new Key[User, Lang](_.lang, _.lang.orNull)
 
   // Organization
   val OrgOwnerId            =   new IntKey[Organization](_.userId, _.owner.userId)

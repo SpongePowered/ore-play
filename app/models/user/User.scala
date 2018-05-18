@@ -31,6 +31,8 @@ import util.functional.OptionT
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Breaks._
 
+import play.api.i18n.Lang
+
 /**
   * Represents a Sponge user.
   *
@@ -53,7 +55,8 @@ case class User(override val id: Option[Int] = None,
                 private var _readPrompts: List[Prompt] = List(),
                 private var _pgpPubKey: Option[String] = None,
                 private var _lastPgpPubKeyUpdate: Option[Timestamp] = None,
-                private var _isLocked: Boolean = false)
+                private var _isLocked: Boolean = false,
+                private var _lang: Option[Lang] = None)
                 extends OreModel(id, createdAt)
                   with UserOwned
                   with ScopeSubject
@@ -249,6 +252,26 @@ case class User(override val id: Option[Int] = None,
   }
 
   /**
+    * Returns this user's current language.
+    */
+  def lang: Option[Lang] = _lang
+
+  /**
+    * Returns this user's current language, or the default language if none
+    * was configured.
+    */
+  implicit def langOrDefault: Lang = _lang.getOrElse(Lang.defaultLang)
+
+  /**
+    * Sets this user's language.
+    * @param lang The new language.
+    */
+  def setLang(lang: Option[Lang]) = {
+    this._lang = lang
+    if(isDefined) update(Language)
+  }
+
+  /**
     * Returns this user's global [[RoleType]]s.
     *
     * @return Global RoleTypes
@@ -385,6 +408,7 @@ case class User(override val id: Option[Int] = None,
     if (user != null) {
       this.setUsername(user.username)
       this.setEmail(user.email)
+      this.setLang(user.lang)
       user.avatarUrl.map { url =>
         if (!url.startsWith("http")) {
           val baseUrl = config.security.get[String]("api.url")

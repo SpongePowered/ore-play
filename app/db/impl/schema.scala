@@ -24,6 +24,7 @@ import ore.project.io.DownloadTypes.DownloadType
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
 import ore.user.notification.NotificationTypes.NotificationType
+import play.api.i18n.Lang
 
 /*
  * Database schema definitions. Changes must be first applied as an evolutions
@@ -234,9 +235,10 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
   def joinDate              =   column[Timestamp]("join_date")
   def avatarUrl             =   column[String]("avatar_url")
   def readPrompts           =   column[List[Prompt]]("read_prompts")
+  def lang                  =   column[Lang]("language")
 
   override def * = (id.?, createdAt.?, fullName.?, name, email.?, tagline.?, globalRoles, joinDate.?,
-                    avatarUrl.?, readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked) <> ((User.apply _).tupled,
+                    avatarUrl.?, readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked, lang.?) <> ((User.apply _).tupled,
                     User.unapply)
 
 }
@@ -323,11 +325,11 @@ class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "noti
   def userId            =   column[Int]("user_id")
   def originId          =   column[Int]("origin_id")
   def notificationType  =   column[NotificationType]("notification_type")
-  def message           =   column[String]("message")
+  def messageArgs       =   column[List[String]]("messageArgs")
   def action            =   column[String]("action")
   def read              =   column[Boolean]("read")
 
-  override def * = (id.?, createdAt.?, userId, originId, notificationType, message, action.?,
+  override def * = (id.?, createdAt.?, userId, originId, notificationType, messageArgs, action.?,
                     read) <> (Notification.tupled, Notification.unapply)
 
 }

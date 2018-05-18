@@ -25,7 +25,6 @@ class OrganizationBase(override val service: ModelService,
                        extends ModelBase[Organization] {
 
   override val modelClass: Class[Organization] = classOf[Organization]
-  implicit val lang: Lang = Lang.defaultLang
 
   val Logger = play.api.Logger("Organizations")
 
@@ -88,7 +87,7 @@ class OrganizationBase(override val service: ModelService,
               user.sendNotification(Notification(
                 originId = org.id.get,
                 notificationType = NotificationTypes.OrganizationInvite,
-                message = this.messages("notification.organization.invite", role.roleType.title, org.username)
+                messageArgs = List("notification.organization.invite", role.roleType.title, org.username)
               ))
             }
           })

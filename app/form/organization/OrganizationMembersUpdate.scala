@@ -27,8 +27,6 @@ case class OrganizationMembersUpdate(override val users: List[Int],
                                      userUps: List[String],
                                      roleUps: List[String]) extends TOrganizationRoleSetBuilder {
 
-  implicit val lang: Lang = Lang.defaultLang
-
   //noinspection ComparingUnrelatedTypes
   def saveTo(organization: Organization)(implicit cache: AsyncCacheApi, ex: ExecutionContext, messages: MessagesApi, users: UserBase): Unit = {
     if (!organization.isDefined)
@@ -50,11 +48,12 @@ case class OrganizationMembersUpdate(override val users: List[Int],
     for (role <- this.build()) {
       val user = role.user
       dossier.addRole(role.copy(organizationId = orgId))
-      user.flatMap {
-        _.sendNotification(Notification(
+      user.flatMap { user =>
+        import user.langOrDefault
+        user.sendNotification(Notification(
           originId = orgId,
           notificationType = NotificationTypes.OrganizationInvite,
-          message = messages("notification.organization.invite", role.roleType.title, organization.name)
+          messageArgs = List("notification.organization.invite", role.roleType.title, organization.name)
         ))
       }
     }

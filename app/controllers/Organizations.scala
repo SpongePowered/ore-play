@@ -46,7 +46,7 @@ class Organizations @Inject()(forms: OreForms,
     */
   def showCreator(): Action[AnyContent] = UserLock().async { implicit request =>
     request.user.ownedOrganizations.size.map { size =>
-      if (size >= this.createLimit) Redirect(ShowHome).withError(this.messagesApi("error.org.createLimit", this.createLimit))
+      if (size >= this.createLimit) Redirect(ShowHome).withError(request.messages.apply("error.org.createLimit", this.createLimit))
       else {
         Ok(views.createOrganization())
       }
