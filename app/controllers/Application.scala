@@ -2,6 +2,7 @@ package controllers
 
 import java.sql.Timestamp
 import java.time.Instant
+
 import javax.inject.Inject
 
 import controllers.sugar.Bakery
@@ -10,11 +11,12 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.schema.{ProjectSchema, ReviewSchema, VersionSchema}
-import db.{ModelFilter, ModelSchema, ModelService}
+import db.{Model, ModelFilter, ModelSchema, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.project._
 import models.user.role._
+import models.user.{Session => DbSession}
 import models.viewhelper.{HeaderData, OrganizationData, ProjectData, ScopedOrganizationData}
 import ore.Platforms.Platform
 import ore.permission._
@@ -29,9 +31,10 @@ import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
 import util.DataHelper
 import views.{html => views}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+
+import models.api.ProjectApiKey
 
 /**
   * Main entry point for application.
@@ -304,6 +307,29 @@ final class Application @Inject()(data: DataHelper,
   def migrate() = (Authenticated andThen PermissionAction[AuthRequest](MigrateOre)) { implicit request =>
     this.data.migrate()
     Redirect(ShowHome)
+  }
+
+  private def deleteBefore[M <: Model](clazz: Class[M], before: Timestamp) =
+    service.deleteWhere(clazz, _.createdAt < before)
+
+  /**
+    * Deletes all API keys up to a certain point in time.
+    */
+  def deleteApiKeys() = (Authenticated andThen PermissionAction[AuthRequest](DeleteApiKeys)).async { implicit request =>
+    forms.beforeTimestamp.bindFromRequest().fold(
+      err => Future.successful(Redirect(ShowHome).withError(err.errors.map(_.message).mkString(", "))),
+      deleteTime => deleteBefore(classOf[ProjectApiKey], deleteTime).map(_ => Redirect(ShowHome))
+    )
+  }
+
+  /**
+    * Deletes all API keys up to a certain point in time.
+    */
+  def invalidateSessions() = (Authenticated andThen PermissionAction[AuthRequest](InvalidateSessions)).async { implicit request =>
+    forms.beforeTimestamp.bindFromRequest().fold(
+      err => Future.successful(Redirect(ShowHome).withError(err.errors.map(_.message).mkString(", "))),
+      deleteTime => deleteBefore(classOf[DbSession], deleteTime).map(_ => Redirect(ShowHome))
+    )
   }
 
   /**
