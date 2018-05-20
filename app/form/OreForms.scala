@@ -285,4 +285,6 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "sig" -> nonEmptyText,
     "api_key" -> nonEmptyText
   ))
+
+  lazy val beforeTimestamp = Form(single("from" -> sqlTimestamp))
 }
