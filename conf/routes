@@ -52,6 +52,7 @@ GET     /api/:version/projects                                      @controllers
 GET     /api/:version/projects/:pluginId                            @controllers.ApiController.showProject(version, pluginId)
 
 GET     /api/:version/projects/:pluginId/versions                   @controllers.ApiController.listVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/:version/projects/:pluginId/versionsAll                @controllers.ApiController.listAllVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.showVersion(version, pluginId, name)
 POST    /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.deployVersion(version, pluginId, name)
 
@@ -166,7 +167,7 @@ POST    /:author/:slug/channels/:channel/delete                     @controllers
 
 # ---------- Versions ----------
 
-GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug, channels: Option[String], page: Option[Int])
+GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug, channels: Option[String])
 
 POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version)
 POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)

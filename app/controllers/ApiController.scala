@@ -10,9 +10,10 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectApiKeyTable
 import form.OreForms
 import javax.inject.Inject
+
 import models.api.ProjectApiKey
 import models.user.User
-import ore.permission.EditApiKeys
+import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.permission.role.RoleTypes
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.factory.{PendingVersion, ProjectFactory}
@@ -131,9 +132,28 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def listVersions(version: String, pluginId: String, channels: Option[String],
                    limit: Option[Int], offset: Option[Int]) = Action.async {
     version match {
-      case "v1" => this.api.getVersionList(pluginId, channels, limit, offset).map(Some.apply).map(ApiResult)
+      case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = true).map(ApiResult)
       case _ => Future.successful(NotFound)
     }
+  }
+
+  /**
+    * Almost like [[listVersions()]] but more intended for internal use. Shows all versions, but need authentification.
+    *
+    * @param version  API version string
+    * @param pluginId Project plugin ID
+    * @param channels Channels to get versions from
+    * @param limit    Amount to take
+    * @param offset   Amount to drop
+    * @return         List of versions
+    */
+  def listAllVersions(version: String, pluginId: String, channels: Option[String],
+      limit: Option[Int], offset: Option[Int]) =
+    (AuthedProjectActionById(pluginId) andThen PermissionAction(ReviewProjects)).async {
+      version match {
+        case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(ApiResult)
+        case _ => Future.successful(NotFound)
+      }
   }
 
   /**

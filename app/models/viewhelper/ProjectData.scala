@@ -24,7 +24,7 @@ import util.instances.future._
 case class ProjectData(joinable: Project,
                        projectOwner: User,
                        ownerRole: ProjectRole,
-                       publicVersions: Int, // project.versions.size
+                       publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
                        settings: ProjectSettings,
                        members: Seq[(ProjectRole, User)],
                        projectLogSize: Int,
@@ -99,7 +99,7 @@ object ProjectData {
       project.settings,
       project.owner.user,
       project.owner.headRole,
-      project.versions.filter(_.visibility === VisibilityTypes.Public).map(_.size),
+      project.versions.count(_.visibility === VisibilityTypes.Public),
       members(project),
       project.logger.flatMap(_.entries.size),
       flagsFut,

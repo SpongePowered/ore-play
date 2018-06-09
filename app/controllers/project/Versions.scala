@@ -165,46 +165,34 @@ class Versions @Inject()(stats: StatTracker,
     * @param channels Visible channels
     * @return View of project
     */
-  def showList(author: String, slug: String, channels: Option[String], page: Option[Int]) = {
+  def showList(author: String, slug: String, channels: Option[String]) = {
     ProjectAction(author, slug).async { request =>
       val data = request.data
       implicit val r = request.request
+
       data.project.channels.toSeq.flatMap { allChannels =>
-        var visibleNames: Option[Array[String]] = channels.map(_.toLowerCase.split(','))
-        val visible: Option[Array[Channel]] = visibleNames.map(_.map { name =>
-          allChannels.find(_.name.equalsIgnoreCase(name))
-        }).map(_.flatten)
-
-        val visibleIds: Array[Int] = visible.map(_.map(_.id.get)).getOrElse(allChannels.map(_.id.get).toArray)
-
-        val pageSize = this.config.projects.get[Int]("init-version-load")
-        val p = page.getOrElse(1)
-        val hasReviewPerm = request.request.data.globalPerm(ReviewProjects)
+        val visibleNames = channels.fold(allChannels.map(_.name.toLowerCase))(_.toLowerCase.split(',').toSeq)
+        val visible = allChannels.filter(ch => visibleNames.contains(ch.name.toLowerCase))
+        val visibleIds = visible.map(_.id.get)
 
         def versionFilter(v: VersionTable): Rep[Boolean] = {
           val inChannel = v.channelId inSetBind visibleIds
-          val isVisible = v.visibility === VisibilityTypes.Public
+          val isVisible =
+            if(r.data.globalPerm(ReviewProjects)) true: Rep[Boolean]
+            else v.visibility === VisibilityTypes.Public
           inChannel && isVisible
         }
 
-        val futureVersions = data.project.versions.sorted(
-          ordering = _.createdAt.desc,
-          filter = versionFilter,
-          offset = pageSize * (p - 1),
-          limit = pageSize)
+        val futureVersionCount = data.project.versions.count(versionFilter)
 
-        if (visibleNames.isDefined && visibleNames.get.toSet.equals(allChannels.map(_.name.toLowerCase).toSet)) {
-          visibleNames = None
-        }
+        val visibleNamesForView = if(visibleNames == allChannels.map(_.name.toLowerCase)) Nil else visibleNames
 
         for {
-          versions <- futureVersions
+          versionCount <- futureVersionCount
           r <- this.stats.projectViewed(request) { request =>
-            Ok(views.list(data, request.scoped, allChannels, versions, visibleNames, p))
+            Ok(views.list(data, request.scoped, allChannels, versionCount, visibleNamesForView))
           }
-        } yield {
-          r
-        }
+        } yield r
       }
     }
   }
@@ -402,7 +390,7 @@ class Versions @Inject()(stats: StatTracker,
       getProjectVersion(author, slug, versionString).map { version =>
         this.projects.deleteVersion(version)
         UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.getOrElse(-1), "null", "")
-        Redirect(self.showList(author, slug, None, None))
+        Redirect(self.showList(author, slug, None))
       }.merge
     }
   }
@@ -422,7 +410,7 @@ class Versions @Inject()(stats: StatTracker,
       version <- getVersion(project, versionString)
       _ <- EitherT.right[Result](this.projects.prepareDeleteVersion(version))
       _ <- EitherT.right[Result](version.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get))
-    } yield Redirect(self.showList(author, slug, None, None))
+    } yield Redirect(self.showList(author, slug, None))
   }
 
   def showLog(author: String, slug: String, versionString: String) = {
