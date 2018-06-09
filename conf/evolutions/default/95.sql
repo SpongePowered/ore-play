@@ -1,9 +1,9 @@
 # --- !Ups
 
-ALTER TABLE users ADD COLUMN language VARCHAR(255);
+ALTER TABLE users ADD COLUMN language VARCHAR(16);
 
 ALTER TABLE notifications ADD COLUMN messageArgs VARCHAR(255)[];
-UPDATE notifications SET messageArgs = [message];
+UPDATE notifications SET messageArgs = ARRAY[message];
 
 ALTER TABLE notifications DROP COLUMN message;
 
