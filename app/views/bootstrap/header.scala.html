@@ -21,6 +21,19 @@ The main header displayed on each layout.
                 <span>@messages("general.projectName")</span>
                 <i class="fa fa-fw fa-chevron-down"></i>
             </a>
+
+
+            <li>
+                <a href="https://forums.spongepowered.org/c/plugins/plugin-releases">
+                    <i class="fa fa-fw fa-plug"></i>Plugins
+                </a>
+            </li>
+            <li class="active">
+                <a href="https://ore.spongepowered.org/">
+                    <i class="fa fa-fw fa-download"></i>Ore <b>Beta</b>
+                </a>
+            </li>
+
             <div id="sp-logo-menu">
                 <ul id="sp-logo-dropdown">
                     <li><a href="https://www.spongepowered.org">
@@ -38,8 +51,11 @@ The main header displayed on each layout.
                     <li><a href="https://jd.spongepowered.org">
                         <i class="fa-fw fa fa-graduation-cap"></i>@messages("general.javadocs")
                     </a></li>
-                    <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None)">
+                    <li><a href="https://forums.spongepowered.org/c/plugins/plugin-releases">
                         <i class="fa-fw fa fa-plug"></i>@messages("general.plugins")
+                    </a></li>
+                    <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None)">
+                        <i class="fa-fw fa fa-plug"></i>@messages("general.appName") <b>Beta</b>
                     </a></li>
                     <li><a href="https://www.spongepowered.org/downloads">
                         <i class="fa-fw fa fa-download"></i>@messages("general.getsponge")
