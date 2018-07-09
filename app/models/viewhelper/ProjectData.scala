@@ -50,7 +50,7 @@ case class ProjectData(joinable: Project,
 
 object ProjectData {
 
-  def cacheKey(project: Project): String = "project" + project.id.get
+  def cacheKey(project: Project): String = "project" + project.id.value
 
   def of[A](request: OreRequest[A], project: PendingProject)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): ProjectData = {
 
@@ -138,7 +138,7 @@ object ProjectData {
     val tableRole = TableQuery[ProjectRoleTable]
 
     val query = for {
-      r <- tableRole if r.projectId === project.id.get
+      r <- tableRole if r.projectId === project.id.value
       u <- tableUser if r.userId === u.id
     } yield {
       (r, u)

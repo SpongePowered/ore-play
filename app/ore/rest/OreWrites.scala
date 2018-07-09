@@ -19,8 +19,8 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
 
   implicit val projectApiKeyWrites: Writes[ProjectApiKey] = new Writes[ProjectApiKey] {
     def writes(key: ProjectApiKey): JsObject = obj(
-      "id" -> key.id.get,
-      "createdAt" -> key.createdAt.get,
+      "id" -> key.id.value,
+      "createdAt" -> key.createdAt.value,
       "keyType" -> obj("id" -> key.keyType.id, "name" -> key.keyType.name),
       "projectId" -> key.projectId,
       "value" -> key.value
@@ -29,8 +29,8 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
 
   implicit val pageWrites: Writes[Page] = new Writes[Page] {
     def writes(page: Page): JsObject = obj(
-      "id" -> page.id.get,
-      "createdAt" -> page.createdAt.get.toString,
+      "id" -> page.id.value,
+      "createdAt" -> page.createdAt.value.toString,
       "parentId" -> page.parentId,
       "name" -> page.name,
       "slug" -> page.slug
@@ -57,7 +57,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
   implicit val tagWrites: Writes[Tag] = new Writes[Tag] {
     override def writes(tag: Tag): JsValue = {
       obj(
-        "id" -> tag.id,
+        "id" -> tag.id.value,
         "name" -> tag.name,
         "data" -> tag.data,
         "backgroundColor" -> tag.color.background,

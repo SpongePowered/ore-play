@@ -88,7 +88,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
   def createKey(version: String, pluginId: String): Action[AnyContent] =
     (Action andThen AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) async { implicit request =>
-      val projectId = request.data.project.id.get
+      val projectId = request.data.project.id.value
       val res = for {
         keyType <- bindFormOptionT[Future](this.forms.ProjectApiKeyCreate)
         if keyType == Deployment
@@ -109,7 +109,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     (AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
       val res = for {
         key <- bindFormOptionT[Id](this.forms.ProjectApiKeyRevoke)
-        if key.projectId == request.data.project.id.get
+        if key.projectId == request.data.project.id.value
       } yield {
         key.remove()
         Ok
@@ -191,7 +191,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
           val compiled = Compiled(queryApiKey _)
 
-          val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.get).result)
+          val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.value).result)
 
           EitherT.liftF(apiKeyExists)
             .filterOrElse(apiKey => apiKey, Unauthorized(error("apiKey", "api.deploy.invalidKey")))

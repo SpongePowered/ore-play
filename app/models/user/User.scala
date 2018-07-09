@@ -3,7 +3,8 @@ package models.user
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
-import db.{ModelFilter, Named}
+
+import db.{ModelFilter, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
@@ -26,7 +27,6 @@ import slick.lifted.{QueryBase, TableQuery}
 import util.StringUtils._
 import util.instances.future._
 import util.functional.OptionT
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Breaks._
 
@@ -42,8 +42,8 @@ import play.api.i18n.Lang
   * @param _email    Email
   * @param _tagline  The user configured "tagline" displayed on the user page.
   */
-case class User(override val id: Option[Int] = None,
-                override val createdAt: Option[Timestamp] = None,
+case class User(override val id: ObjectId = ObjectId.Uninitialized,
+                override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                 private var _name: Option[String] = None,
                 private var _username: String = null,
                 private var _email: Option[String] = None,
@@ -313,7 +313,7 @@ case class User(override val id: Option[Int] = None,
       case GlobalScope =>
         Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId, this.id.get).result).map { projectRoles =>
+        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId, this.id.value).result).map { projectRoles =>
           projectRoles.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
         } flatMap { userTrust =>
           if (!userTrust.equals(Default)) {
@@ -458,7 +458,7 @@ case class User(override val id: Option[Int] = None,
     * @return True if organization
     */
   def isOrganization(implicit ec: ExecutionContext): Future[Boolean] = Defined {
-    this.service.getModelBase(classOf[OrganizationBase]).exists(_.id === this.id.get)
+    this.service.getModelBase(classOf[OrganizationBase]).exists(_.id === this.id.value)
   }
 
   /**
@@ -467,12 +467,12 @@ case class User(override val id: Option[Int] = None,
     * @return Organization
     */
   def toOrganization(implicit ec: ExecutionContext): Future[Organization] = Defined {
-    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
+    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.value)
       .getOrElse(throw new IllegalStateException("user is not an organization"))
   }
 
   def toMaybeOrganization(implicit ec: ExecutionContext): OptionT[Future, Organization] = Defined {
-    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
+    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.value)
   }
 
   /**
@@ -515,7 +515,7 @@ case class User(override val id: Option[Int] = None,
   def hasUnresolvedFlagFor(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
-    this.flags.exists(f => f.projectId === project.id.get && !f.isResolved)
+    this.flags.exists(f => f.projectId === project.id.value && !f.isResolved)
   }
 
   /**
@@ -534,7 +534,7 @@ case class User(override val id: Option[Int] = None,
   def sendNotification(notification: Notification)(implicit ec: ExecutionContext): Future[Notification] = {
     checkNotNull(notification, "null notification", "")
     this.config.debug("Sending notification: " + notification, -1)
-    this.service.access[Notification](classOf[Notification]).add(notification.copy(userId = this.id.get))
+    this.service.access[Notification](classOf[Notification]).add(notification.copy(userId = this.id.value))
   }
 
   /**
@@ -583,11 +583,8 @@ case class User(override val id: Option[Int] = None,
   def url: String = this.username
 
   override val scope: GlobalScope.type = GlobalScope
-
-  override def userId: Int = this.id.get
-
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): User = this.copy(createdAt = theTime)
-
+  override def userId: ObjectReference = this.id.value
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): User = this.copy(createdAt = theTime)
 }
 
 object User {
@@ -601,7 +598,7 @@ object User {
   def fromSponge(toConvert: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext): User = {
     val user = User()
     user.fill(toConvert)
-    user.copy(id = Some(toConvert.id))
+    user.copy(id = ObjectId(toConvert.id))
   }
 
 }

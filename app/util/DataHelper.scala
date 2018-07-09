@@ -1,17 +1,18 @@
 package util
 
 import com.google.common.base.Preconditions.checkArgument
-import db.ModelService
+
+import db.{ModelService, ObjectId}
 import db.access.ModelAccess
 import db.impl.access.{ProjectBase, UserBase}
 import discourse.OreDiscourseApi
 import javax.inject.Inject
+
 import models.project.{Channel, Project, ProjectSettings, Version}
 import models.user.User
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
 import play.api.cache.SyncCacheApi
-
 import scala.concurrent.ExecutionContext
 
 /**
@@ -74,26 +75,26 @@ final class DataHelper @Inject()(config: OreConfig,
     var projectNum = 0
     for (i <- 0 until users) {
       Logger.info(Math.ceil(i / users.asInstanceOf[Float] * 100).asInstanceOf[Int].toString + "%")
-      this.users.add(User(id = Some(i), _username = s"User-$i")).map { user =>
+      this.users.add(User(id = ObjectId(i), _username = s"User-$i")).map { user =>
         // Create some projects
         for (j <- 0 until projects) {
           val pluginId = s"plugin$projectNum"
           this.projects.add(Project.Builder(this.service)
             .pluginId(pluginId)
             .ownerName(user.name)
-            .ownerId(user.id.get)
+            .ownerId(user.id.value)
             .name(s"Project$projectNum")
             .build()) map { project =>
             project.updateSettings(this.service.processor.process(ProjectSettings()))
             // Now create some additional versions for this project
             var versionNum = 0
             for (k <- 0 until channels) {
-              this.channels.add(new Channel(s"channel$k", Channel.Colors(k), project.id.get)) map { channel =>
+              this.channels.add(new Channel(s"channel$k", Channel.Colors(k), project.id.value)) map { channel =>
                 for (l <- 0 until versions) {
                   this.versions.add(Version(
-                    projectId = project.id.get,
+                    projectId = project.id.value,
                     versionString = versionNum.toString,
-                    channelId = channel.id.get,
+                    channelId = channel.id.value,
                     fileSize = 1,
                     hash = "none",
                     _authorId = i,

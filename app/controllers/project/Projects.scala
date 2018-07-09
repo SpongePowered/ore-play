@@ -179,14 +179,14 @@ class Projects @Inject()(stats: StatTracker,
   private def orgasUserCanUploadTo(user: User): Future[Set[Int]] = {
     for {
       all <- user.organizations.all
-      canCreate <- Future.traverse(all)(org => user can CreateProject in org map { perm => (org.id.get, perm)})
+      canCreate <- Future.traverse(all)(org => user can CreateProject in org map { perm => (org.id.value, perm)})
     } yield {
       // Filter by can Create Project
       val others = canCreate.collect {
         case (id, perm) if perm => id
       }
 
-      others + user.id.get // Add self
+      others + user.id.value // Add self
     }
   }
 
@@ -641,9 +641,9 @@ class Projects @Inject()(stats: StatTracker,
         if (perm) {
           val change = if (newVisibility.showModal) {
             val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-            request.data.project.setVisibility(newVisibility, comment, request.user.id.get)
+            request.data.project.setVisibility(newVisibility, comment, request.user.id.value)
           } else {
-            request.data.project.setVisibility(newVisibility, "", request.user.id.get)
+            request.data.project.setVisibility(newVisibility, "", request.user.id.value)
           }
 
           this.forums.changeTopicVisibility(request.data.project, VisibilityTypes.isPublic(newVisibility))
@@ -666,7 +666,7 @@ class Projects @Inject()(stats: StatTracker,
   def publish(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug) { implicit request =>
     val data = request.data
     if (data.visibility == VisibilityTypes.New) {
-      data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.get)
+      data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.value)
       UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.Public.nameKey, VisibilityTypes.New.nameKey)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
@@ -681,7 +681,7 @@ class Projects @Inject()(stats: StatTracker,
   def sendForApproval(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug) { implicit request =>
     val data = request.data
     if (data.visibility == VisibilityTypes.NeedsChanges) {
-      data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.get)
+      data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.value)
       UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.NeedsApproval.nameKey, VisibilityTypes.NeedsChanges.nameKey)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
@@ -729,7 +729,7 @@ class Projects @Inject()(stats: StatTracker,
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
     val oldVisibility = data.project.visibility.nameKey
-    data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
+    data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.value).map { _ =>
 
       this.forums.changeTopicVisibility(data.project, false)
 

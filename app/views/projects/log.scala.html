@@ -15,6 +15,51 @@
 
 @bootstrap.layout(messages("project.log.logger.title", project.namespace)) {
     <div class="container" style="margin-top: 90px;">
+<<<<<<< master
+=======
+        <div class="row">
+            <div class="col-md-12">
+                <h1>@messages("project.log.visibility.title") <a href="@projectRoutes.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a></h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title pull-left">@messages("project.log.visibility.title")</h4>
+                        <div class="clearfix"></div>
+                    </div>
+                    <table class="table table-condensed setting-no-border table-review-log">
+                        <thead>
+                            <tr>
+                                <th>State</th>
+                                <th>Time</th>
+                                <th>Comment</th>
+                                <th>Set by</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if(visibilityChanges.isEmpty) {
+                                <tr><td>No entries founds</td></tr>
+                            }
+                            @visibilityChanges.reverse.map { case (entry, createdBy) =>
+                                <tr>
+                                    <td>@VisibilityTypes.withId(entry.visibility)</td>
+                                    <td>@prettifyDateAndTime(entry.createdAt.value)</td>
+                                    <td>@entry.renderComment()</td>
+                                    @if(createdBy.isDefined) {
+                                        <td>@createdBy.get.name</td>
+                                    } else {
+                                        <td>Unknown</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+>>>>>>> Replace Option id and timestamp with custom types
 
         <div class="row">
             <div class="col-md-12">
@@ -36,7 +81,7 @@
                             @logs.map { entry =>
                                 <tr>
                                     <td>@entry.message</td>
-                                    <td>@prettifyDateAndTime(entry.createdAt.getOrElse(Timestamp.from(Instant.now())))</td>
+                                    <td>@prettifyDateAndTime(entry.createdAt.value)</td>
                                 </tr>
                             }
                         </tbody>

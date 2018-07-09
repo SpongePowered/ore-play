@@ -173,7 +173,7 @@ class Versions @Inject()(stats: StatTracker,
       data.project.channels.toSeq.flatMap { allChannels =>
         val visibleNames = channels.fold(allChannels.map(_.name.toLowerCase))(_.toLowerCase.split(',').toSeq)
         val visible = allChannels.filter(ch => visibleNames.contains(ch.name.toLowerCase))
-        val visibleIds = visible.map(_.id.get)
+        val visibleIds = visible.map(_.id.value)
 
         def versionFilter(v: VersionTable): Rep[Boolean] = {
           val inChannel = v.channelId inSetBind visibleIds
@@ -239,7 +239,7 @@ class Versions @Inject()(stats: StatTracker,
           EitherT.leftT[Future, PendingVersion](Redirect(call).withErrors(Option(e.getMessage).toList))
       }
     }.map { pendingVersion =>
-      pendingVersion.underlying.setAuthorId(user.id.getOrElse(-1))
+      pendingVersion.underlying.setAuthorId(user.id.value)
       Redirect(self.showCreatorWithMeta(request.data.project.ownerName, slug, pendingVersion.underlying.versionString))
     }.merge
   }
@@ -355,7 +355,7 @@ class Versions @Inject()(stats: StatTracker,
         .filter(t => t.name === "Unstable" && t.data === "").map { tagsWithVersion =>
         if (tagsWithVersion.isEmpty) {
           val tag = Tag(
-            _versionIds = List(version.id.get),
+            _versionIds = List(version.id.value),
             name = "Unstable",
             data = "",
             color = TagColors.Unstable
@@ -368,7 +368,7 @@ class Versions @Inject()(stats: StatTracker,
           }
         } else {
           val tag = tagsWithVersion.head
-          tag.addVersionId(version.id.get)
+          tag.addVersionId(version.id.value)
           version.addTag(tag)
         }
       }
@@ -505,7 +505,7 @@ class Versions @Inject()(stats: StatTracker,
       .flatMap { tkn =>
         this.warnings.find { warn =>
           (warn.token === tkn) &&
-            (warn.versionId === version.id.get) &&
+            (warn.versionId === version.id.value) &&
             (warn.address === InetString(StatTracker.remoteAddress)) &&
             warn.isConfirmed
         }
@@ -562,7 +562,7 @@ class Versions @Inject()(stats: StatTracker,
           val warning = this.warnings.add(DownloadWarning(
             expiration = expiration,
             token = token,
-            versionId = version.id.get,
+            versionId = version.id.value,
             address = InetString(StatTracker.remoteAddress)))
 
           if (api.getOrElse(false)) {
@@ -608,7 +608,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val r: OreRequest[_] = request.request
       getVersion(request.data.project, target)
         .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
-        .flatMap(version => confirmDownload0(version.id.get, downloadType, token).toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload")))
+        .flatMap(version => confirmDownload0(version.id.value, downloadType, token).toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload")))
         .map { dl =>
           dl.downloadType match {
             case UploadedFile =>
@@ -655,7 +655,7 @@ class Versions @Inject()(stats: StatTracker,
         user <- this.users.current.value
         _ <- warn.setConfirmed()
         unsafeDownload <- downloads.add(UnsafeDownload(
-          userId = user.flatMap(_.id),
+          userId = user.map(_.id.value),
           address = addr,
           downloadType = dlType))
         _ <- warn.setDownload(unsafeDownload)
@@ -768,7 +768,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val r: OreRequest[AnyContent] = request.request
       getVersion(project, versionString).semiFlatMap { version =>
         optToken.map { token =>
-          confirmDownload0(version.id.get, Some(JarFile.id), token)(request.request).value.flatMap { _ =>
+          confirmDownload0(version.id.value, Some(JarFile.id), token)(request.request).value.flatMap { _ =>
             sendJar(project, version, optToken, api = true)
           }
         }.getOrElse(sendJar(project, version, optToken, api = true))

@@ -173,7 +173,7 @@ trait ProjectFactory {
     val project = Project.Builder(this.service)
       .pluginId(metaData.id.get)
       .ownerName(owner.name)
-      .ownerId(owner.id.get)
+      .ownerId(owner.id.value)
       .name(metaData.get[String]("name").getOrElse("name not found"))
       .visibility(VisibilityTypes.New)
       .build()
@@ -207,12 +207,12 @@ trait ProjectFactory {
       .versionString(metaData.version.get)
       .dependencyIds(metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList)
       .description(metaData.get[String]("description").getOrElse(""))
-      .projectId(project.id.getOrElse(-1)) // Version might be for an uncreated project
+      .projectId(project.id.unsafeToOption.getOrElse(-1)) // Version might be for an uncreated project
       .fileSize(path.toFile.length)
       .hash(plugin.md5)
       .fileName(path.getFileName.toString)
       .signatureFileName(plugin.signaturePath.getFileName.toString)
-      .authorId(plugin.user.id.get)
+      .authorId(plugin.user.id.value)
       .build()
 
     Right(PendingVersion(
@@ -290,7 +290,7 @@ trait ProjectFactory {
       } = newProject.memberships
       val owner = newProject.owner
       val ownerId = owner.userId
-      val projectId = newProject.id.get
+      val projectId = newProject.id.value
 
       dossier.addRole(new ProjectRole(ownerId, RoleType.ProjectOwner, projectId, accepted = true, visible = true))
       pending.roles.map { role =>
@@ -327,7 +327,7 @@ trait ProjectFactory {
     for {
       channelCount <- project.channels.size
       _ = checkState(channelCount < this.config.projects.get[Int]("max-channels"), "channel limit reached", "")
-      channel <- this.service.access[Channel](classOf[Channel]).add(new Channel(name, color, project.id.get))
+      channel <- this.service.access[Channel](classOf[Channel]).add(new Channel(name, color, project.id.value))
     } yield channel
   }
 
@@ -353,8 +353,8 @@ trait ProjectFactory {
           dependencyIds = pendingVersion.dependencyIds,
           _description = pendingVersion.description,
           assets = pendingVersion.assets,
-          projectId = project.id.get,
-          channelId = channel.id.get,
+          projectId = project.id.value,
+          channelId = channel.id.value,
           fileSize = pendingVersion.fileSize,
           hash = pendingVersion.hash,
           _authorId = pendingVersion.authorId,

@@ -158,7 +158,7 @@ class Users @Inject()(fakeUser: FakeUser,
 
   private def queryUserProjects(user: User) = {
     queryProjectRV filter { case (p, v) =>
-      p.userId === user.id.get
+      p.userId === user.id.value
     } sortBy { case (p, v) =>
       (p.stars.desc, p.name.asc)
     }

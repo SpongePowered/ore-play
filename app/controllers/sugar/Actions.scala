@@ -144,7 +144,7 @@ trait Actions extends Calls with ActionHelpers {
     */
   def isNonceValid(nonce: String)(implicit ec: ExecutionContext): Future[Boolean] = this.signOns.find(_.nonce === nonce).exists {
     signOn =>
-      if (signOn.isCompleted || new Date().getTime - signOn.createdAt.get.getTime > 600000)
+      if (signOn.isCompleted || new Date().getTime - signOn.createdAt.value.getTime > 600000)
         false
       else {
         signOn.setCompleted()
@@ -180,7 +180,7 @@ trait Actions extends Calls with ActionHelpers {
       } yield Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)
 
       OptionT.fromOption[Future](auth).flatMap(identity).cata(Some(Unauthorized), spongeUser =>
-        if (spongeUser.id == request.user.id.get)
+        if (spongeUser.id == request.user.id.value)
           None
         else
           Some(Unauthorized))

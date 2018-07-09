@@ -1,13 +1,13 @@
 package models.user.role
 
-import java.sql.Timestamp
-
 import db.impl.ProjectRoleTable
 import ore.Visitable
 import ore.permission.role.RoleType
 import ore.permission.scope.ProjectScope
 
 import scala.concurrent.{ExecutionContext, Future}
+
+import db.{ObjectId, ObjectTimestamp}
 
 /**
   * Represents a [[ore.project.ProjectMember]]'s role in a
@@ -20,8 +20,8 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param _roleType  Type of role
   * @param projectId  ID of project this role belongs to
   */
-case class ProjectRole(override val id: Option[Int] = None,
-                       override val createdAt: Option[Timestamp] = None,
+case class ProjectRole(override val id: ObjectId = ObjectId.Uninitialized,
+                       override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                        override val userId: Int,
                        override val projectId: Int,
                        private val _roleType: RoleType,
@@ -33,8 +33,8 @@ case class ProjectRole(override val id: Option[Int] = None,
   override type T = ProjectRoleTable
 
   def this(userId: Int, roleType: RoleType, projectId: Int, accepted: Boolean, visible: Boolean) = this(
-    id = None,
-    createdAt = None,
+    id = ObjectId.Uninitialized,
+    createdAt = ObjectTimestamp.Uninitialized,
     userId = userId,
     _roleType = roleType,
     projectId = projectId,
@@ -42,6 +42,5 @@ case class ProjectRole(override val id: Option[Int] = None,
   )
 
   override def subject(implicit ec: ExecutionContext): Future[Visitable] = this.project
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectRole = this.copy(id = id, createdAt = theTime)
-
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectRole = this.copy(id = id, createdAt = theTime)
 }

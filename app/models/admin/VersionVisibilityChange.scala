@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.Model
+import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.VersionVisibilityChangeTable
 import db.impl.model.OreModel
 import db.impl.model.common.VisibilityChange
@@ -15,10 +15,10 @@ import play.twirl.api.Html
 import util.functional.OptionT
 import util.instances.future._
 
-case class VersionVisibilityChange(override val id: Option[Int] = None,
-                            override val createdAt: Option[Timestamp] = None,
-                            createdBy: Option[Int] = None,
-                            projectId: Int = -1,
+case class VersionVisibilityChange(override val id: ObjectId = ObjectId.Uninitialized,
+                            override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                            createdBy: Option[ObjectReference] = None,
+                            projectId: ObjectReference = -1,
                             comment: String,
                             var resolvedAt: Option[Timestamp] = None,
                             var resolvedBy: Option[Int] = None,
@@ -48,10 +48,7 @@ case class VersionVisibilityChange(override val id: Option[Int] = None,
     * Set the resolvedBy user
     * @param user
     */
-  def setResolvedBy(user: User): Future[Int] = {
-    this.resolvedBy = user.id
-    update(ResolvedByVC)
-  }
+  def setResolvedBy(user: User): Future[Int] = setResolvedById(user.id.value)
   def setResolvedById(userId: Int): Future[Int] = {
     this.resolvedBy = Some(userId)
     update(ResolvedByVC)
@@ -64,5 +61,5 @@ case class VersionVisibilityChange(override val id: Option[Int] = None,
     * @param theTime Timestamp
     * @return Copy of model
     */
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(id = id, createdAt = createdAt)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
 }

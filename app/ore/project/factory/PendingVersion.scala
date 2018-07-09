@@ -10,6 +10,8 @@ import play.api.cache.SyncCacheApi
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.ObjectId
+
 package object TagAlias {
   type ProjectTag = models.project.Tag
 }

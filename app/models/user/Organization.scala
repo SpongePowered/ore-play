@@ -8,7 +8,7 @@ import db.impl.access.UserBase
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
-import db.{Model, Named}
+import db.{Model, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Default, RoleType, Trust}
@@ -31,10 +31,10 @@ import util.functional.OptionT
   * @param createdAt      Date of creation
   * @param _ownerId        The ID of the [[User]] that owns this organization
   */
-case class Organization(override val id: Option[Int] = None,
-                        override val createdAt: Option[Timestamp] = None,
+case class Organization(override val id: ObjectId = ObjectId.Uninitialized,
+                        override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                         username: String,
-                        private var _ownerId: Int)
+                        private var _ownerId: ObjectReference)
                         extends OreModel(id, createdAt)
                           with UserOwned
                           with OrganizationScope
@@ -72,7 +72,7 @@ case class Organization(override val id: Option[Int] = None,
 
     def newMember(userId: Int)(implicit ec: ExecutionContext) = new OrganizationMember(this.model, userId)
 
-    def clearRoles(user: User): Future[Int] = this.roleAccess.removeAll({ s => (s.userId === user.id.get) && (s.organizationId === id.get) })
+    def clearRoles(user: User): Future[Int] = this.roleAccess.removeAll({ s => (s.userId === user.id.value) && (s.organizationId === id.value) })
 
     /**
       * Returns the highest level of [[ore.permission.role.Trust]] this user has.
@@ -81,7 +81,7 @@ case class Organization(override val id: Option[Int] = None,
       * @return Trust of user
       */
     override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] = {
-      this.userBase.service.DB.db.run(Organization.roleForTrustQuery(id.get, user.id.get).result).map { l =>
+      this.userBase.service.DB.db.run(Organization.roleForTrustQuery(id.value, user.id.value).result).map { l =>
         l.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
       }
     }
@@ -124,7 +124,7 @@ case class Organization(override val id: Option[Int] = None,
   def setOwner(user: User): Future[Int] = {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
-    this._ownerId = user.id.get
+    this._ownerId = user.id.value
     if (isDefined) {
       update(OrgOwnerId)
     } else Future.successful(0)
@@ -140,8 +140,8 @@ case class Organization(override val id: Option[Int] = None,
   override val name: String = this.username
   override def url: String = this.username
   override val userId: Int = this._ownerId
-  override def organizationId: Int = this.id.get
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(createdAt = theTime)
+  override def organizationId: ObjectReference = this.id.value
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(createdAt = theTime)
 
 }
 

@@ -44,7 +44,7 @@ case class OrganizationMembersUpdate(override val users: List[Int],
 
       type RoleType = OrganizationRole
     } = organization.memberships
-    val orgId = organization.id.get
+    val orgId = organization.id.value
     for (role <- this.build()) {
       val user = role.user
       dossier.addRole(role.copy(organizationId = orgId))

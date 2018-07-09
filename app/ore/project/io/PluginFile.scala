@@ -172,6 +172,6 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     pluginEntry
   }
 
-  override def userId: Int = this.user.id.get
+  override def userId: Int = this.user.id.value
 
 }

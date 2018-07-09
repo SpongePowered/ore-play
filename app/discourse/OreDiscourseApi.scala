@@ -74,7 +74,7 @@ trait OreDiscourseApi extends DiscourseApi {
   def createProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     if (!this.isEnabled)
       return Future.successful(true)
-    checkArgument(project.id.isDefined, "undefined project", "")
+    checkArgument(project.isDefined, "undefined project", "")
     val content = this.templates.projectTopic(project)
     val title = this.templates.projectTitle(project)
     val resultPromise: Promise[Boolean] = Promise()
@@ -133,7 +133,7 @@ trait OreDiscourseApi extends DiscourseApi {
   def updateProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     if (!this.isEnabled)
       return Future.successful(true)
-    checkArgument(project.id.isDefined, "undefined project", "")
+    checkArgument(project.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
     checkArgument(project.postId != -1, "undefined post id", "")
 
@@ -240,9 +240,9 @@ trait OreDiscourseApi extends DiscourseApi {
   def postVersionRelease(project: Project, version: Version, content: Option[String])(implicit ec: ExecutionContext): Future[List[String]] = {
     if (!this.isEnabled)
       return Future.successful(List.empty)
-    checkArgument(project.id.isDefined, "undefined project", "")
-    checkArgument(version.id.isDefined, "undefined version", "")
-    checkArgument(version.projectId == project.id.get, "invalid version project pair", "")
+    checkArgument(project.isDefined, "undefined project", "")
+    checkArgument(version.isDefined, "undefined version", "")
+    checkArgument(version.projectId == project.id.value, "invalid version project pair", "")
     project.owner.user.flatMap { user =>
       postDiscussionReply(
         project,
@@ -286,7 +286,7 @@ trait OreDiscourseApi extends DiscourseApi {
   def deleteProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     if (!this.isEnabled)
       return Future.successful(true)
-    checkArgument(project.id.isDefined, "undefined project", "")
+    checkArgument(project.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
 
     def logFailure(): Unit = Logger.warn(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")

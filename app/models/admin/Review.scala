@@ -3,7 +3,7 @@ package models.admin
 import java.sql.Timestamp
 import java.time.Instant
 
-import db.Model
+import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.ReviewTable
 import db.impl.model.OreModel
 import db.impl.schema.ReviewSchema
@@ -29,10 +29,10 @@ import play.api.i18n.Messages
   * @param endedAt      When the approval process ended
   * @param message      Message of why it ended
   */
-case class Review(override val id: Option[Int] = None,
-                  override val createdAt: Option[Timestamp] = None,
-                  versionId: Int = -1,
-                  userId: Int,
+case class Review(override val id: ObjectId = ObjectId.Uninitialized,
+                  override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                  versionId: ObjectReference = -1,
+                  userId: ObjectReference,
                   var endedAt: Option[Timestamp],
                   var message: String) extends OreModel(id, createdAt) {
 
@@ -114,7 +114,7 @@ case class Review(override val id: Option[Int] = None,
     * @param theTime Timestamp
     * @return Copy of model
     */
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(id = id, createdAt = createdAt)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
 
   /**
     * Helper function to decode the json
@@ -144,11 +144,11 @@ case class Message(message: String, time: Long = System.currentTimeMillis(), act
 object Review {
   def ordering: Ordering[(Review, _)] = {
     // TODO make simple + check order
-    Ordering.by(_._1.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+    Ordering.by(_._1.createdAt.unsafeToOption.getOrElse(Timestamp.from(Instant.MIN)).getTime)
   }
 
   def ordering2: Ordering[Review] = {
     // TODO make simple + check order
-    Ordering.by(_.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+    Ordering.by(_.createdAt.unsafeToOption.getOrElse(Timestamp.from(Instant.MIN)).getTime)
   }
 }

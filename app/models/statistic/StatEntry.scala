@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
-import db.Model
+import db.{Model, ObjectId, ObjectTimestamp}
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import db.impl.table.StatTable
@@ -24,8 +24,8 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param cookie     Browser cookie
   * @param _userId     User ID
   */
-abstract class StatEntry[Subject <: Model](override val id: Option[Int] = None,
-                                           override val createdAt: Option[Timestamp] = None,
+abstract class StatEntry[Subject <: Model](override val id: ObjectId = ObjectId.Uninitialized,
+                                           override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                                            val modelId: Int,
                                            val address: InetString,
                                            val cookie: String,
@@ -57,7 +57,7 @@ abstract class StatEntry[Subject <: Model](override val id: Option[Int] = None,
   def setUser(user: User) = {
     checkNotNull(user, "user is null", "")
     checkArgument(user.isDefined, "undefined user", "")
-    this._userId = user.id
+    this._userId = Some(user.id.value)
     if (isDefined) update(UserId)
   }
 

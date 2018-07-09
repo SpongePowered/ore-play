@@ -5,7 +5,7 @@ import java.time.Instant
 
 import controllers.sugar.{Bakery, Requests}
 import controllers.sugar.Requests.AuthRequest
-import db.ModelService
+import db.{ModelService, ObjectId, ObjectTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import form.OreForms
@@ -57,7 +57,7 @@ final class Reviews @Inject()(data: DataHelper,
           Future.traverse(reviews)(r => r.userBase.get(r.userId).map(_.name).value.tupleLeft(r))
         )
       } yield {
-        val unfinished = reviews.filter(r => r.createdAt.isDefined && r.endedAt.isEmpty).sorted(Review.ordering2).headOption
+        val unfinished = reviews.filter(r => r.createdAt.unsafeToOption.isDefined && r.endedAt.isEmpty).sorted(Review.ordering2).headOption
         implicit val v: Version = version
         Ok(views.users.admin.reviews(unfinished, rv))
       }
@@ -68,7 +68,7 @@ final class Reviews @Inject()(data: DataHelper,
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
       getProjectVersion(author, slug, versionString).map { version =>
-        val review = new Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, request.user.id.get, None, "")
+        val review = new Review(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), version.id.value, request.user.id.value, None, "")
         this.service.insert(review)
         Redirect(routes.Reviews.showReviews(author, slug, versionString))
       }.merge
@@ -160,7 +160,7 @@ final class Reviews @Inject()(data: DataHelper,
 
   private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
 
-    val users: Future[Seq[Int]] = this.service.DB.db.run(notificationUsersQuery(project.id.get, version.authorId, None).result).map { list =>
+    val users: Future[Seq[Int]] = this.service.DB.db.run(notificationUsersQuery(project.id.value, version.authorId, None).result).map { list =>
       list.filter {
         case (_, Some(level)) => level.trust.level >= Lifted.level
         case (_, None) => true
@@ -173,7 +173,7 @@ final class Reviews @Inject()(data: DataHelper,
       list.map { id =>
         Notification(
           userId = id,
-          originId = requestUser.id.get,
+          originId = requestUser.id.value,
           notificationType = NotificationTypes.VersionReviewed,
           messageArgs = List("notification.project.reviewed", project.slug, version.versionString)
         )
@@ -192,14 +192,14 @@ final class Reviews @Inject()(data: DataHelper,
             (
               oldreview.addMessage(Message(message.trim, System.currentTimeMillis(), "takeover")),
               oldreview.setEnded(Some(Timestamp.from(Instant.now()))),
-              this.service.insert(Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, request.user.id.get, None, ""))
+              this.service.insert(Review(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), version.id.value, request.user.id.value, None, ""))
             ).parMapN { (_, _, _) => () }
           }.getOrElse(())
 
           // Then make new one
           val result = (
             closeOldReview,
-            this.service.insert(Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, request.user.id.get, None, ""))
+            this.service.insert(Review(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), version.id.value, request.user.id.value, None, ""))
           ).parTupled
           EitherT.right[Result](result)
         }

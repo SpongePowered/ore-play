@@ -1,7 +1,5 @@
 package db
 
-import java.sql.Timestamp
-
 import scala.concurrent.Future
 
 import com.google.common.base.Preconditions.checkNotNull
@@ -13,7 +11,7 @@ import scala.language.implicitConversions
 /**
   * Represents a Model that may or may not exist in the database.
   */
-abstract class Model(val id: Option[Int], val createdAt: Option[Timestamp]) { self =>
+abstract class Model(val id: ObjectId, val createdAt: ObjectTimestamp) { self =>
 
   /** Self referential type */
   type M <: Model { type M = self.M }
@@ -50,7 +48,7 @@ abstract class Model(val id: Option[Int], val createdAt: Option[Timestamp]) { se
     *
     * @return True if defined in database
     */
-  def isDefined: Boolean = this.id.isDefined
+  def isDefined: Boolean = this.id.unsafeToOption.isDefined
 
   /**
     * Returns the ModelActions associated with this Model.
@@ -73,7 +71,7 @@ abstract class Model(val id: Option[Int], val createdAt: Option[Timestamp]) { se
     * @param theTime  Timestamp
     * @return         Copy of model
     */
-  def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model
+  def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model
 
   /**
     * Returns true if this model has been processed internally by some

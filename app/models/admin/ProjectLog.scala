@@ -1,15 +1,12 @@
 package models.admin
 
-import java.sql.Timestamp
-
-import db.ModelFilter
+import db.{ModelFilter, ObjectId, ObjectReference, ObjectTimestamp}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectLogTable
 import db.impl.model.OreModel
 import ore.project.ProjectOwned
 import util.instances.future._
-
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -19,9 +16,9 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param createdAt  Instant of creation
   * @param projectId  ID of project log is for
   */
-case class ProjectLog(override val id: Option[Int] = None,
-                      override val createdAt: Option[Timestamp] = None,
-                      override val projectId: Int)
+case class ProjectLog(override val id: ObjectId = ObjectId.Uninitialized,
+                      override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                      override val projectId: ObjectReference)
                       extends OreModel(id, createdAt) with ProjectOwned {
 
   override type T = ProjectLogTable
@@ -42,7 +39,7 @@ case class ProjectLog(override val id: Option[Int] = None,
     */
   def err(message: String)(implicit ec: ExecutionContext): Future[ProjectLogEntry] = Defined {
     val entries = this.service.access[ProjectLogEntry](
-      classOf[ProjectLogEntry], ModelFilter[ProjectLogEntry](_.logId === this.id.get))
+      classOf[ProjectLogEntry], ModelFilter[ProjectLogEntry](_.logId === this.id.value))
     val tag = "error"
     entries.find(e => e.message === message && e.tag === tag).map { entry =>
       entry.setOoccurrences(entry.occurrences + 1)
@@ -50,13 +47,12 @@ case class ProjectLog(override val id: Option[Int] = None,
       entry
     }.getOrElseF {
       entries.add(ProjectLogEntry(
-        logId = this.id.get,
+        logId = this.id.value,
         tag = tag,
         message = message,
         _lastOccurrence = this.service.theTime))
     }
   }
 
-  def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectLog = this.copy(id = id, createdAt = theTime)
-
+  def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLog = this.copy(id = id, createdAt = theTime)
 }

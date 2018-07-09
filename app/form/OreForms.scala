@@ -234,7 +234,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
         .toRight(required(key))
     }
 
-    def unbind(key: String, value: ProjectApiKey): Map[String, String] = Map(key -> value.id.get.toString)
+    def unbind(key: String, value: ProjectApiKey): Map[String, String] = Map(key -> value.id.value.toString)
   })
 
   def evilAwaitpProjectApiKey(key: Int)(implicit ec: ExecutionContext): Option[ProjectApiKey] = {

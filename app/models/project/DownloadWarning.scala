@@ -5,7 +5,7 @@ import java.sql.Timestamp
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 import controllers.sugar.Bakery
-import db.Expirable
+import db.{Expirable, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.DownloadWarningsTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -28,14 +28,14 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param address      Address of client who landed on the warning
   * @param _downloadId  Download ID
   */
-case class DownloadWarning(override val id: Option[Int] = None,
-                           override val createdAt: Option[Timestamp] = None,
+case class DownloadWarning(override val id: ObjectId = ObjectId.Uninitialized,
+                           override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                            override val expiration: Timestamp,
                            token: String,
-                           versionId: Int,
+                           versionId: ObjectReference,
                            address: InetString,
                            private var _isConfirmed: Boolean = false,
-                           private var _downloadId: Int = -1) extends OreModel(id, createdAt) with Expirable {
+                           private var _downloadId: ObjectReference = -1) extends OreModel(id, createdAt) with Expirable {
 
   override type M = DownloadWarning
   override type T = DownloadWarningsTable
@@ -52,7 +52,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
     *
     * @return Download ID
     */
-  def downloadId: Int = this._downloadId
+  def downloadId: ObjectReference = this._downloadId
 
   /**
     * Returns the download this warning was for.
@@ -74,7 +74,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
   def setDownload(download: UnsafeDownload): Future[Int] = Defined {
     checkNotNull(download, "null download", "")
     checkArgument(download.isDefined, "undefined download", "")
-    this._downloadId = download.id.get
+    this._downloadId = download.id.value
     update(DownloadId)
   }
 
@@ -88,8 +88,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
     bakery.bake(COOKIE, this.token)
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): DownloadWarning = this.copy(id = id, createdAt = theTime)
-
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): DownloadWarning = this.copy(id = id, createdAt = theTime)
 }
 
 object DownloadWarning {

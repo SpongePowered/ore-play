@@ -1,8 +1,7 @@
 package models.project
 
-import java.sql.Timestamp
-
 import com.github.tminglei.slickpg.InetString
+import db.{ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.UnsafeDownloadsTable
 import db.impl.model.OreModel
 import ore.project.io.DownloadTypes.DownloadType
@@ -16,15 +15,14 @@ import ore.project.io.DownloadTypes.DownloadType
   * @param address      Address of client
   * @param downloadType Type of download
   */
-case class UnsafeDownload(override val id: Option[Int] = None,
-                          override val createdAt: Option[Timestamp] = None,
-                          userId: Option[Int] = None,
+case class UnsafeDownload(override val id: ObjectId = ObjectId.Uninitialized,
+                          override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                          userId: Option[ObjectReference] = None,
                           address: InetString,
                           downloadType: DownloadType) extends OreModel(id, createdAt) {
 
   override type M = UnsafeDownload
   override type T = UnsafeDownloadsTable
 
-  def copyWith(id: Option[Int], theTime: Option[Timestamp]): UnsafeDownload = this.copy(id = id, createdAt = theTime)
-
+  def copyWith(id: ObjectId, theTime: ObjectTimestamp): UnsafeDownload = this.copy(id = id, createdAt = theTime)
 }

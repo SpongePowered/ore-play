@@ -1,15 +1,14 @@
 package models.api
 
-import java.sql.Timestamp
-
+import db.{ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.ProjectApiKeyTable
 import db.impl.model.OreModel
 import ore.project.ProjectOwned
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 
-case class ProjectApiKey(override val id: Option[Int] = None,
-                         override val createdAt: Option[Timestamp] = None,
-                         override val projectId: Int,
+case class ProjectApiKey(override val id: ObjectId = ObjectId.Uninitialized,
+                         override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                         override val projectId: ObjectReference,
                          keyType: ProjectApiKeyType,
                          value: String)
                          extends OreModel(id, createdAt) with ProjectOwned {
@@ -17,6 +16,5 @@ case class ProjectApiKey(override val id: Option[Int] = None,
   override type T = ProjectApiKeyTable
   override type M = ProjectApiKey
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectApiKey = this.copy(id = id, createdAt = theTime)
-
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectApiKey = this.copy(id = id, createdAt = theTime)
 }

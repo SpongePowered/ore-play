@@ -1,7 +1,6 @@
 package models.project
 
 import java.net.{URI, URISyntaxException}
-import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
 import com.vladsch.flexmark.ast.{MailLink, Node}
@@ -22,7 +21,7 @@ import db.impl.PageTable
 import db.impl.model.OreModel
 import db.impl.schema.PageSchema
 import db.impl.table.ModelKeys._
-import db.{ModelFilter, Named}
+import db.{ModelFilter, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.OreConfig
 import ore.permission.scope.ProjectScope
 import play.twirl.api.Html
@@ -44,10 +43,10 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param _contents    Markdown contents
   * @param isDeletable  True if can be deleted by the user
   */
-case class Page(override val id: Option[Int] = None,
-                override val createdAt: Option[Timestamp] = None,
-                override val projectId: Int = -1,
-                parentId: Int = -1,
+case class Page(override val id: ObjectId = ObjectId.Uninitialized,
+                override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                override val projectId: ObjectReference = -1,
+                parentId: ObjectReference = -1,
                 override val name: String,
                 slug: String,
                 isDeletable: Boolean = true,
@@ -144,11 +143,11 @@ case class Page(override val id: Option[Int] = None,
     * @return Page's children
     */
   def children: ModelAccess[Page]
-  = this.service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.get))
+  = this.service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.value))
 
   def url(implicit project: Project, parentPage: Option[Page]) : String = project.url + "/pages/" + this.fullSlug(parentPage)
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Page = this.copy(id = id, createdAt = theTime)
 
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Page = this.copy(id = id, createdAt = theTime)
 }
 
 object Page {

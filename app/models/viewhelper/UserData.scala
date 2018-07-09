@@ -56,7 +56,7 @@ object UserData {
     val userTable = TableQuery[UserTable]
 
     for {
-      r <- roleTable if r.userId === user.id.get
+      r <- roleTable if r.userId === user.id.value
       o <- orgaTable if r.organizationId === o.id
       u <- userTable if o.id === u.id
       uo <- userTable if o.userId === uo.id

@@ -14,7 +14,7 @@ import util.syntax._
   */
 object ScopedProjectData {
 
-  def cacheKey(project: Project, user: User) = s"""project${project.id.get}foruser${user.id.get}"""
+  def cacheKey(project: Project, user: User) = s"""project${project.id.value}foruser${user.id.value}"""
 
   def of(currentUser: Option[User], project: Project)(implicit ec: ExecutionContext, cache: AsyncCacheApi): Future[ScopedProjectData] = {
     currentUser.map { user =>

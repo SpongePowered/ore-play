@@ -1,7 +1,5 @@
 package models.statistic
 
-import java.sql.Timestamp
-
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 import controllers.sugar.Requests.ProjectRequest
@@ -13,6 +11,8 @@ import util.instances.future._
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.{ObjectId, ObjectTimestamp}
+
 /**
   * Represents a unique download on a Project Version.
   *
@@ -23,8 +23,8 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param cookie     Browser cookie
   * @param _userId     User ID
   */
-case class VersionDownload(override val id: Option[Int] = None,
-                           override val createdAt: Option[Timestamp] = None,
+case class VersionDownload(override val id: ObjectId = ObjectId.Uninitialized,
+                           override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                            override val modelId: Int,
                            override val address: InetString,
                            override val cookie: String,
@@ -34,7 +34,7 @@ case class VersionDownload(override val id: Option[Int] = None,
   override type M = VersionDownload
   override type T = VersionDownloadsTable
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): VersionDownload = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): VersionDownload = this.copy(id = id, createdAt = theTime)
 
 }
 
@@ -53,9 +53,9 @@ object VersionDownload {
     checkArgument(version.isDefined, "undefined version", "")
     checkNotNull(request, "null request", "")
     checkNotNull(users, "null user base", "")
-    users.current.subflatMap(_.id).value.map { userId =>
+    users.current.map(_.id.value).value.map { userId =>
       val dl = VersionDownload(
-        modelId = version.id.get,
+        modelId = version.id.value,
         address = InetString(remoteAddress),
         cookie = currentCookie,
         _userId = userId

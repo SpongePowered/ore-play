@@ -1,39 +1,40 @@
 package models.project
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import db.impl.{OrePostgresDriver, TagTable}
 import db.table.MappedType
-import db.{ModelService, Named}
+import db.{ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.TagColors.TagColor
 import slick.jdbc.JdbcType
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Tag(override val id: Option[Int] = None,
+case class Tag(override val id: ObjectId = ObjectId.Uninitialized,
                private var _versionIds: List[Int],
                name: String,
                data: String,
                color: TagColor)
-  extends OreModel(id, None)
+  extends OreModel(id, ObjectTimestamp.Uninitialized)
     with Named {
+
+  override val createdAt: ObjectTimestamp = ObjectTimestamp(Timestamp.from(Instant.EPOCH))
 
   override type M = Tag
   override type T = TagTable
 
-  def versionIds: List[Int] = this._versionIds
+  def versionIds: List[ObjectReference] = this._versionIds
 
-  def addVersionId(versionId: Int): Unit = {
+  def addVersionId(versionId: ObjectReference): Unit = {
     this._versionIds = this._versionIds :+ versionId
     if (isDefined) {
       update(TagVersionIds)
     }
   }
-
-  def copyWith(id: Option[Int], theTime: Option[Timestamp]): Tag = this.copy(id = id)
 
   /**
     * Used to convert a ghost tag to a normal tag
@@ -51,6 +52,7 @@ case class Tag(override val id: Option[Int] = None,
     } yield tag
   }
 
+  def copyWith(id: ObjectId, theTime: ObjectTimestamp): Tag = this.copy(id = id)
 }
 
 object TagColors extends Enumeration {

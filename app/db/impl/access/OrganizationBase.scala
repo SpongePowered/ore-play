@@ -1,6 +1,6 @@
 package db.impl.access
 
-import db.{ModelBase, ModelService}
+import db.{ModelBase, ModelService, ObjectId}
 import discourse.OreDiscourseApi
 import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
@@ -59,8 +59,8 @@ class OrganizationBase(override val service: ModelService,
       // Next we will create the Organization on Ore itself. This contains a
       // reference to the Sponge user ID, the organization's username and a
       // reference to the User owner of the organization.
-      Logger.debug("Creating on Ore...")
-      this.add(Organization(id = Some(spongeUser.id), username = name, _ownerId = ownerId))
+      Logger.info("Creating on Ore...")
+      this.add(Organization(id = ObjectId(spongeUser.id), username = name, _ownerId = ownerId))
     }.semiFlatMap { org =>
       // Every organization model has a regular User companion. Organizations
       // are just normal users with additional information. Adding the
@@ -72,7 +72,7 @@ class OrganizationBase(override val service: ModelService,
         _ <- // Add the owner
           org.memberships.addRole(OrganizationRole(
             userId = ownerId,
-            organizationId = org.id.get,
+            organizationId = org.id.value,
             _roleType = RoleType.OrganizationOwner,
             _isAccepted = true))
         _ <- {
@@ -81,9 +81,9 @@ class OrganizationBase(override val service: ModelService,
 
           Future.sequence(members.map { role =>
             // TODO remove role.user db access we really only need the userid we already have for notifications
-            org.memberships.addRole(role.copy(organizationId = org.id.get)).flatMap(_ => role.user).flatMap { user =>
+            org.memberships.addRole(role.copy(organizationId = org.id.value)).flatMap(_ => role.user).flatMap { user =>
               user.sendNotification(Notification(
-                originId = org.id.get,
+                originId = org.id.value,
                 notificationType = NotificationTypes.OrganizationInvite,
                 messageArgs = List("notification.organization.invite", role.roleType.title, org.username)
               ))

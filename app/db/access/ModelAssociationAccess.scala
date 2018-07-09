@@ -15,7 +15,7 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](service: Mod
   extends ModelAccess[M](service, childClass, ModelFilter[M] { child =>
     val assocQuery = for {
       row <- assoc.assocTable
-      if parentRef(row) === parent.id.get
+      if parentRef(row) === parent.id.value
     } yield childRef(row)
     val childrenIds: Seq[Int] = service.await(service.DB.db.run(assocQuery.result)).get
     child.id inSetBind childrenIds

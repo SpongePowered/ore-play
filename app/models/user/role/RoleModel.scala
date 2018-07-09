@@ -14,6 +14,8 @@ import ore.permission.role.RoleType
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.{ObjectId, ObjectTimestamp}
+
 /**
   * Represents a [[Role]] in something like a [[models.project.Project]] or
   * [[models.user.Organization]].
@@ -24,8 +26,8 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param _roleType    Type of Role
   * @param _isAccepted  True if has been accepted
   */
-abstract class RoleModel(override val id: Option[Int],
-                         override val createdAt: Option[Timestamp],
+abstract class RoleModel(override val id: ObjectId,
+                         override val createdAt: ObjectTimestamp,
                          override val userId: Int,
                          private var _roleType: RoleType,
                          private var _isAccepted: Boolean = false)

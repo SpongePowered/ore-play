@@ -3,6 +3,8 @@ package db.impl
 import java.sql.Timestamp
 
 import com.github.tminglei.slickpg.InetString
+
+import db.{ObjectId, ObjectTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
 import db.impl.table.StatTable
@@ -24,6 +26,12 @@ import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
 import ore.user.notification.NotificationTypes.NotificationType
 import play.api.i18n.Lang
+import shapeless._
+import nat._
+import syntax.std.function._
+import syntax.std.tuple._
+import ops.function._
+import ops.hlist._
 
 /*
  * Database schema definitions. Changes must be first applied as an evolutions
@@ -35,6 +43,40 @@ import play.api.i18n.Lang
 package object schema {
   type RowTag = slick.lifted.Tag
   type ProjectTag = models.project.Tag
+
+  def convertApply[F, Rest <: HList, R](f: F)(
+    implicit toHList: FnToProduct.Aux[F, ObjectId :: ObjectTimestamp :: Rest => R], 
+    fromHList: FnFromProduct[Option[Int] :: Option[Timestamp] :: Rest => R]
+  ): fromHList.Out = {
+    val objHListFun: ObjectId :: ObjectTimestamp :: Rest => R = toHList(f)
+    val optHListFun: Option[Int] :: Option[Timestamp] :: Rest => R = {
+      case id :: time :: rest => objHListFun(ObjectId.unsafeFromOption(id) :: ObjectTimestamp.unsafeFromOption(time) :: rest)
+    }
+    val normalFun: fromHList.Out = fromHList.apply(optHListFun)
+
+    normalFun
+  }
+
+  def convertUnapply[P <: Product, A, Repr <: HList, Rest <: HList](f: A => Option[P])(
+    implicit
+    fromTuple: Generic.Aux[P, Repr],
+    at0: At.Aux[Repr, _0, ObjectId],
+    at1: At.Aux[Repr, _1, ObjectTimestamp],
+    drop2: Drop.Aux[Repr, _2, Rest],
+    toTuple: Tupler[Option[Int] :: Option[Timestamp] :: Rest]
+  ): A => Option[toTuple.Out] = a => {
+    val optProd: Option[P] = f(a)
+    val mappedOptProd: Option[toTuple.Out] = optProd.map { prod =>
+      val repr: Repr = fromTuple.to(prod)
+      val id: ObjectId = at0(repr)
+      val time: ObjectTimestamp = at1(repr)
+      val rest: Rest = drop2(repr)
+      val newGen: Option[Int] :: Option[Timestamp] :: Rest = id.unsafeToOption :: time.unsafeToOption :: rest
+      toTuple(newGen)
+    }
+
+    mappedOptProd
+  }
 }
 
 trait ProjectTable extends ModelTable[Project]
@@ -57,9 +99,12 @@ trait ProjectTable extends ModelTable[Project]
   def lastUpdated           =   column[Timestamp]("last_updated")
   def notes                 =   column[String]("notes")
 
-  override def * = (id.?, createdAt.?, pluginId, ownerName, userId, name, slug, recommendedVersionId.?, category,
-                    description.?, stars, views, downloads, topicId, postId, isTopicDirty,
-                    visibility, lastUpdated, notes) <> ((Project.apply _).tupled, Project.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(Project.unapply)
+    (id.?, createdAt.?, pluginId, ownerName, userId, name, slug, recommendedVersionId.?, category,
+      description.?, stars, views, downloads, topicId, postId, isTopicDirty,
+      visibility, lastUpdated, notes) <> (convertApply(Project.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -77,8 +122,11 @@ class ProjectSettingsTable(tag: RowTag) extends ModelTable[ProjectSettings](tag,
   def licenseUrl            =   column[String]("license_url")
   def forumSync             =   column[Boolean]("forum_sync")
 
-  override def * = (id.?, createdAt.?, projectId, homepage.?, issues.?, source.?, licenseName.?,
-                    licenseUrl.?, forumSync) <> (ProjectSettings.tupled, ProjectSettings.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(ProjectSettings.unapply)
+    (id.?, createdAt.?, projectId, homepage.?, issues.?, source.?, licenseName.?,
+      licenseUrl.?, forumSync) <> (convertApply(ProjectSettings.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -94,8 +142,11 @@ class ProjectWatchersTable(tag: RowTag)
 
 class ProjectViewsTable(tag: RowTag) extends StatTable[ProjectView](tag, "project_views", "project_id") {
 
-  override def * = (id.?, createdAt.?, modelId, address, cookie,
-                    userId.?) <> ((ProjectView.apply _).tupled, ProjectView.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(ProjectView.unapply)
+    (id.?, createdAt.?, modelId, address, cookie,
+      userId.?) <> (convertApply(ProjectView.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -112,7 +163,10 @@ class ProjectLogTable(tag: RowTag) extends ModelTable[ProjectLog](tag, "project_
 
   def projectId = column[Int]("project_id")
 
-  override def * = (id.?, createdAt.?, projectId) <> (ProjectLog.tupled, ProjectLog.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(ProjectLog.unapply)
+    (id.?, createdAt.?, projectId) <> (convertApply(ProjectLog.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -124,8 +178,11 @@ class ProjectLogEntryTable(tg: RowTag) extends ModelTable[ProjectLogEntry](tg, "
   def occurrences = column[Int]("occurrences")
   def lastOccurrence = column[Timestamp]("last_occurrence")
 
-  override def * = (id.?, createdAt.?, logId, tag, message, occurrences, lastOccurrence) <> (ProjectLogEntry.tupled,
-                    ProjectLogEntry.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(ProjectLogEntry.unapply)
+    (id.?, createdAt.?, logId, tag, message, occurrences, lastOccurrence) <> (convertApply(ProjectLogEntry.apply _).tupled,
+      convertedUnapply)
+  }
 
 }
 
@@ -137,8 +194,11 @@ class PageTable(tag: RowTag) extends ModelTable[Page](tag, "project_pages") with
   def contents      =   column[String]("contents")
   def isDeletable   =   column[Boolean]("is_deletable")
 
-  override def * = (id.?, createdAt.?, projectId, parentId, name, slug, isDeletable,
-                    contents) <> ((Page.apply _).tupled, Page.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(Page.unapply)
+    (id.?, createdAt.?, projectId, parentId, name, slug, isDeletable,
+      contents) <> (convertApply(Page.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -148,8 +208,11 @@ class ChannelTable(tag: RowTag) extends ModelTable[Channel](tag, "project_channe
   def projectId     = column[Int]("project_id")
   def isNonReviewed = column[Boolean]("is_non_reviewed")
 
-  override def * = (id.?, createdAt.?, projectId, name, color, isNonReviewed) <> ((Channel.apply _).tupled,
-                    Channel.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(Channel.unapply)
+    (id.?, createdAt.?, projectId, name, color, isNonReviewed) <> (convertApply(Channel.apply _).tupled,
+      convertedUnapply)
+  }
 }
 
 class TagTable(tag: RowTag) extends ModelTable[ProjectTag](tag, "project_tags") with NameColumn[ProjectTag] {
@@ -158,7 +221,15 @@ class TagTable(tag: RowTag) extends ModelTable[ProjectTag](tag, "project_tags") 
   def data       = column[String]("data")
   def color      = column[TagColor]("color")
 
-  override def * = (id.?, versionIds, name, data, color) <> ((Tag.apply _).tupled, Tag.unapply)
+  override def * = {
+    val convertedApply: ((Option[Int], List[Int], String, String, TagColor)) => ProjectTag = {
+      case (id, versionIds, name, data, color) => Tag(ObjectId.unsafeFromOption(id), versionIds, name, data, color)
+    }
+    val convertedUnapply: PartialFunction[ProjectTag, (Option[Int], List[Int], String, String, TagColor)] = {
+      case Tag(id, versionIds, name, data, color) => (id.unsafeToOption, versionIds, name, data, color)
+    }
+    (id.?, versionIds, name, data, color) <> (convertedApply, convertedUnapply.lift)
+  }
 }
 
 class VersionTable(tag: RowTag) extends ModelTable[Version](tag, "project_versions")
@@ -182,9 +253,12 @@ class VersionTable(tag: RowTag) extends ModelTable[Version](tag, "project_versio
   def tagIds            =   column[List[Int]]("tags")
   def isNonReviewed     =   column[Boolean]("is_non_reviewed")
 
-  override def * = (id.?, createdAt.?, projectId, versionString, dependencies, assets.?, channelId,
-                    fileSize, hash, authorId, description.?, downloads, isReviewed, reviewerId, approvedAt.?,
-                    tagIds, visibility, fileName, signatureFileName, isNonReviewed) <> ((Version.apply _).tupled, Version.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(Version.unapply)
+    (id.?, createdAt.?, projectId, versionString, dependencies, assets.?, channelId,
+      fileSize, hash, authorId, description.?, downloads, isReviewed, reviewerId, approvedAt.?,
+      tagIds, visibility, fileName, signatureFileName, isNonReviewed) <> (convertApply(Version.apply _).tupled, convertedUnapply)
+  }
 }
 
 class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {
@@ -196,8 +270,11 @@ class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag
   def downloadId = column[Int]("download_id")
   def isConfirmed = column[Boolean]("is_confirmed")
 
-  override def * = (id.?, createdAt.?, expiration, token, versionId, address, isConfirmed,
-                    downloadId) <> ((DownloadWarning.apply _).tupled, DownloadWarning.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(DownloadWarning.unapply)
+    (id.?, createdAt.?, expiration, token, versionId, address, isConfirmed,
+      downloadId) <> (convertApply(DownloadWarning.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -207,16 +284,22 @@ class UnsafeDownloadsTable(tag: RowTag) extends ModelTable[UnsafeDownload](tag, 
   def address = column[InetString]("address")
   def downloadType = column[DownloadType]("download_type")
 
-  override def * = (id.?, createdAt.?, userId.?, address, downloadType) <> (UnsafeDownload.tupled,
-                    UnsafeDownload.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(UnsafeDownload.unapply)
+    (id.?, createdAt.?, userId.?, address, downloadType) <> (convertApply(UnsafeDownload.apply _).tupled,
+      convertedUnapply)
+  }
 
 }
 
 class VersionDownloadsTable(tag: RowTag)
   extends StatTable[VersionDownload](tag, "project_version_downloads", "version_id") {
 
-  override def * = (id.?, createdAt.?, modelId, address, cookie, userId.?) <> ((VersionDownload.apply _).tupled,
-                    VersionDownload.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(VersionDownload.unapply)
+    (id.?, createdAt.?, modelId, address, cookie, userId.?) <> (convertApply(VersionDownload.apply _).tupled,
+      convertedUnapply)
+  }
 
 }
 
@@ -237,10 +320,12 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
   def readPrompts           =   column[List[Prompt]]("read_prompts")
   def lang                  =   column[Lang]("language")
 
-  override def * = (id.?, createdAt.?, fullName.?, name, email.?, tagline.?, globalRoles, joinDate.?,
-                    avatarUrl.?, readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked, lang.?) <> ((User.apply _).tupled,
-                    User.unapply)
-
+  override def * = {
+    val convertedUnapply = convertUnapply(User.unapply)
+    (id.?, createdAt.?, fullName.?, name, email.?, tagline.?, globalRoles, joinDate.?,
+      avatarUrl.?, readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked, lang.?) <> (convertApply(User.apply _).tupled,
+      convertedUnapply)
+  }
 }
 
 class SessionTable(tag: RowTag) extends ModelTable[DbSession](tag, "user_sessions") {
@@ -249,7 +334,10 @@ class SessionTable(tag: RowTag) extends ModelTable[DbSession](tag, "user_session
   def username = column[String]("username")
   def token = column[String]("token")
 
-  def * = (id.?, createdAt.?, expiration, username, token) <> (DbSession.tupled, DbSession.unapply)
+  def * = {
+    val convertedUnapply = convertUnapply(DbSession.unapply)
+    (id.?, createdAt.?, expiration, username, token) <> (convertApply(DbSession.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -258,7 +346,10 @@ class SignOnTable(tag: RowTag) extends ModelTable[SignOn](tag, "user_sign_ons") 
   def nonce = column[String]("nonce")
   def isCompleted = column[Boolean]("is_completed")
 
-  def * = (id.?, createdAt.?, nonce, isCompleted) <> (SignOn.tupled, SignOn.unapply)
+  def * = {
+    val convertedUnapply = convertUnapply(SignOn.unapply)
+    (id.?, createdAt.?, nonce, isCompleted) <> (convertApply(SignOn.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -267,7 +358,10 @@ class OrganizationTable(tag: RowTag) extends ModelTable[Organization](tag, "orga
   override def id   =   column[Int]("id", O.PrimaryKey)
   def userId        =   column[Int]("user_id")
 
-  override def * = (id.?, createdAt.?, name, userId) <> ((Organization.apply _).tupled, Organization.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(Organization.unapply)
+    (id.?, createdAt.?, name, userId) <> (convertApply(Organization.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -295,8 +389,11 @@ class OrganizationRoleTable(tag: RowTag)
 
   def organizationId = column[Int]("organization_id")
 
-  override def * = (id.?, createdAt.?, userId, organizationId, roleType,
-                    isAccepted) <> (OrganizationRole.tupled, OrganizationRole.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(OrganizationRole.unapply)
+    (id.?, createdAt.?, userId, organizationId, roleType,
+      isAccepted) <> (convertApply(OrganizationRole.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -306,8 +403,11 @@ class ProjectRoleTable(tag: RowTag)
 
   def projectId = column[Int]("project_id")
 
-  override def * = (id.?, createdAt.?, userId, projectId, roleType, isAccepted) <> (ProjectRole.tupled,
-                    ProjectRole.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(ProjectRole.unapply)
+    (id.?, createdAt.?, userId, projectId, roleType, isAccepted) <> (convertApply(ProjectRole.apply _).tupled,
+      convertedUnapply)
+  }
 
 }
 
@@ -329,9 +429,11 @@ class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "noti
   def action            =   column[String]("action")
   def read              =   column[Boolean]("read")
 
-  override def * = (id.?, createdAt.?, userId, originId, notificationType, messageArgs, action.?,
-                    read) <> (Notification.tupled, Notification.unapply)
-
+  override def * = {
+    val convertedUnapply = convertUnapply(Notification.unapply)
+    (id.?, createdAt.?, userId, originId, notificationType, messageArgs, action.?,
+      read) <> (convertApply(Notification.apply _).tupled, convertedUnapply)
+  }
 }
 
 class FlagTable(tag: RowTag) extends ModelTable[Flag](tag, "project_flags") {
@@ -344,7 +446,10 @@ class FlagTable(tag: RowTag) extends ModelTable[Flag](tag, "project_flags") {
   def resolvedAt  =   column[Timestamp]("resolved_at")
   def resolvedBy  =   column[Int]("resolved_by")
 
-  override def * = (id.?, createdAt.?, projectId, userId, reason, comment, isResolved, resolvedAt.?, resolvedBy.?) <> (Flag.tupled, Flag.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(Flag.unapply)
+    (id.?, createdAt.?, projectId, userId, reason, comment, isResolved, resolvedAt.?, resolvedBy.?) <> (convertApply(Flag.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -354,7 +459,10 @@ class ProjectApiKeyTable(tag: RowTag) extends ModelTable[ProjectApiKey](tag, "pr
   def keyType = column[ProjectApiKeyType]("key_type")
   def value = column[String]("value")
 
-  override def * = (id.?, createdAt.?, projectId, keyType, value) <> (ProjectApiKey.tupled, ProjectApiKey.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(ProjectApiKey.unapply)
+    (id.?, createdAt.?, projectId, keyType, value) <> (convertApply(ProjectApiKey.apply _).tupled, convertedUnapply)
+  }
 
 }
 
@@ -365,7 +473,10 @@ class ReviewTable(tag: RowTag) extends ModelTable[Review](tag, "project_version_
   def endedAt           =   column[Timestamp]("ended_at")
   def comment           =   column[String]("comment")
 
-  override def * =  (id.?, createdAt.?, versionId, userId, endedAt.?, comment) <> ((Review.apply _).tupled, Review.unapply)
+  override def * =  {
+    val convertedUnapply = convertUnapply(Review.unapply)
+    (id.?, createdAt.?, versionId, userId, endedAt.?, comment) <> (convertApply(Review.apply _).tupled, convertedUnapply)
+  }
 }
 
 class ProjectVisibilityChangeTable(tag: RowTag)
@@ -374,7 +485,10 @@ class ProjectVisibilityChangeTable(tag: RowTag)
 
   def projectId = column[Int]("project_id")
 
-  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (ProjectVisibilityChange.tupled, ProjectVisibilityChange.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(ProjectVisibilityChange.unapply)
+    (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (convertApply(ProjectVisibilityChange.apply _).tupled, convertedUnapply)
+  }
 }
 
 class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {

@@ -5,7 +5,7 @@ import java.util.{Date, UUID}
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectSchema, UserSchema}
-import db.{ModelBase, ModelService}
+import db.{ModelBase, ModelService, ObjectId, ObjectTimestamp}
 import models.user.{Session, User}
 import ore.OreConfig
 import ore.permission.Permission
@@ -84,7 +84,7 @@ class UserBase(override val service: ModelService,
     this.service.getSchema(classOf[ProjectSchema]).distinctAuthors.map { users =>
       sort match { // Sort
         case ORDERING_PROJECTS => users.sortBy(u => (service.await(u.projects.size).get, u.username))
-        case ORDERING_JOIN_DATE => users.sortBy(u => (u.joinDate.getOrElse(u.createdAt.get), u.username))
+        case ORDERING_JOIN_DATE => users.sortBy(u => (u.joinDate.getOrElse(u.createdAt.value), u.username))
         case ORDERING_USERNAME => users.sortBy(_.username)
         case ORDERING_ROLE => users.sortBy(_.globalRoles.toList.sortBy(_.trust).headOption.map(_.trust.level).getOrElse(-1))
         case _ => users.sortBy(u => (service.await(u.projects.size).get, u.username))
@@ -155,7 +155,7 @@ class UserBase(override val service: ModelService,
     val maxAge = this.config.play.get[Int]("http.session.maxAge")
     val expiration = new Timestamp(new Date().getTime + maxAge * 1000L)
     val token = UUID.randomUUID().toString
-    val session = Session(None, None, expiration, user.username, token)
+    val session = Session(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, expiration, user.username, token)
     this.service.access[Session](classOf[Session]).add(session)
   }
 

@@ -101,10 +101,10 @@ trait OreRestfulApi {
   def writeMembers(members: Seq[(ProjectRole, User)]): Seq[JsObject] = {
     val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.roleType))
     members.map { case (_, user) =>
-      val roles = allRoles(user.id.get)
+      val roles = allRoles(user.id.value)
       val trustOrder: Ordering[RoleType] = Ordering.by(_.trust)
       obj(
-        "userId"    ->  user.id.get,
+        "userId"    ->  user.id.value,
         "name"      ->  user.name,
         "roles"     ->  JsArray(roles.map(role => JsString(role.title))),
         "headRole"  ->  roles.max(trustOrder).title
@@ -113,8 +113,8 @@ trait OreRestfulApi {
   }
 
   private def writeProjects(projects: Seq[(Project, Version, Channel)])(implicit ec: ExecutionContext): Future[Seq[(Project, JsObject)]] = {
-    val projectIds = projects.flatMap(_._1.id)
-    val versionIds = projects.flatMap(_._2.id)
+    val projectIds = projects.map(_._1.id.value)
+    val versionIds = projects.map(_._2.id.value)
 
     for {
       chans <- service.DB.db.run(queryProjectChannels(projectIds).result).map { chans => chans.groupBy(_.projectId) }
@@ -125,14 +125,14 @@ trait OreRestfulApi {
       projects.map { case (p, v, c) =>
         (p, obj(
           "pluginId" -> p.pluginId,
-          "createdAt" -> p.createdAt.get.toString,
+          "createdAt" -> p.createdAt.value.toString,
           "name" -> p.name,
           "owner" -> p.ownerName,
           "description" -> p.description,
           "href" -> ('/' + p.ownerName + '/' + p.slug),
-          "members"       -> writeMembers(members.getOrElse(p.id.get, Seq.empty)),
-          "channels"      ->  toJson(chans.getOrElse(p.id.get, Seq.empty)),
-          "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.get, Seq.empty))),
+          "members"       -> writeMembers(members.getOrElse(p.id.value, Seq.empty)),
+          "channels"      ->  toJson(chans.getOrElse(p.id.value, Seq.empty)),
+          "recommended"   ->  toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.value, Seq.empty))),
           "category" -> obj("title" -> p.category.title, "icon" -> p.category.icon),
           "views" -> p.viewCount,
           "downloads" -> p.downloadCount,
@@ -147,8 +147,8 @@ trait OreRestfulApi {
       obj("pluginId" -> dependency.pluginId, "version" -> dependency.version)
     }
     val json = obj(
-      "id"            ->  v.id.get,
-      "createdAt"     ->  v.createdAt.get.toString,
+      "id"            ->  v.id.value,
+      "createdAt"     ->  v.createdAt.value.toString,
       "name"          ->  v.versionString,
       "dependencies"  ->  dependencies,
       "pluginId"      ->  p.pluginId,
@@ -313,10 +313,10 @@ trait OreRestfulApi {
           pages <- project.pages.sorted(_.name)
         } yield {
           val seq = if (parentId.isDefined) pages.filter(_.parentId == parentId.get) else pages
-          val pageById = pages.map(p => (p.id.get, p)).toMap
+          val pageById = pages.map(p => (p.id.value, p)).toMap
           toJson(seq.map(page => obj(
-            "createdAt" -> page.createdAt,
-            "id" -> page.id,
+            "createdAt" -> page.createdAt.value,
+            "id" -> page.id.value,
             "name" -> page.name,
             "parentId" -> page.parentId,
             "slug" -> page.slug,
@@ -332,7 +332,7 @@ trait OreRestfulApi {
     val tableProject = TableQuery[ProjectTableMain]
 
     for {
-      s <- tableStars if s.userId inSetBind users.map(_.id.get)
+      s <- tableStars if s.userId inSetBind users.map(_.id.value)
       p <- tableProject if s.projectId === p.id
     } yield {
       (s.userId, p.pluginId)
@@ -358,7 +358,7 @@ trait OreRestfulApi {
   def writeUsers(userList: Seq[User])(implicit ec: ExecutionContext): Future[Seq[JsObject]] = {
 
     val query = queryProjectRV.filter {
-      case (p, v, c) => p.userId inSetBind userList.flatMap(_.id) // query all projects with given users
+      case (p, v, c) => p.userId inSetBind userList.map(_.id.value) // query all projects with given users
     }
 
     for {
@@ -369,13 +369,13 @@ trait OreRestfulApi {
       val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
       userList.map { user =>
         obj(
-          "id"              ->  user.id,
-          "createdAt"       ->  user.createdAt.get.toString,
+          "id"              ->  user.id.value,
+          "createdAt"       ->  user.createdAt.value.toString,
           "username"        ->  user.username,
           "roles"           ->  user.globalRoles.map(_.title),
-          "starred"         ->  toJson(stars.getOrElse(user.id.get, Seq.empty)),
+          "starred"         ->  toJson(stars.getOrElse(user.id.value, Seq.empty)),
           "avatarUrl"       ->  user.avatarUrl,
-          "projects"        ->  toJson(projectsByUser.getOrElse(user.id.get, Nil))
+          "projects"        ->  toJson(projectsByUser.getOrElse(user.id.value, Nil))
         )
       }
     }

@@ -25,6 +25,7 @@ import util.StringUtils._
 import scala.concurrent.{ExecutionContext, Future}
 
 import ore.user.MembershipDossier
+import db.{ObjectId, ObjectReference, ObjectTimestamp}
 
 /**
   * Represents a [[Project]]'s settings.
@@ -38,9 +39,9 @@ import ore.user.MembershipDossier
   * @param _licenseName Project license name
   * @param _licenseUrl  Project license URL
   */
-case class ProjectSettings(override val id: Option[Int] = None,
-                           override val createdAt: Option[Timestamp] = None,
-                           override val projectId: Int = -1,
+case class ProjectSettings(override val id: ObjectId = ObjectId.Uninitialized,
+                           override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                           override val projectId: ObjectReference = -1,
                            homepage: Option[String] = None,
                            private var _issues: Option[String] = None,
                            private var _source: Option[String] = None,
@@ -189,11 +190,11 @@ case class ProjectSettings(override val id: Option[Int] = None,
           type RoleType = ProjectRole
         } = project.memberships
         Future.sequence(formData.build().map { role =>
-          dossier.addRole(role.copy(projectId = project.id.get))
+          dossier.addRole(role.copy(projectId = project.id.value))
         }).flatMap { roles =>
           val notifications = roles.map { role =>
             Notification(
-              createdAt = Some(Timestamp.from(Instant.now())),
+              createdAt = ObjectTimestamp(Timestamp.from(Instant.now())),
               userId = role.userId,
               originId = project.ownerId,
               notificationType = NotificationTypes.ProjectInvite,
@@ -232,6 +233,5 @@ case class ProjectSettings(override val id: Option[Int] = None,
   }
   private lazy val updateMemberShip = Compiled(memberShipUpdate _)
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectSettings = this.copy(id = id, createdAt = theTime)
-
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectSettings = this.copy(id = id, createdAt = theTime)
 }

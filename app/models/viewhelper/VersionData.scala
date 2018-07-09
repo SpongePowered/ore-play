@@ -17,7 +17,7 @@ case class VersionData(p: ProjectData, v: Version, c: Channel,
                        approvedBy: Option[String], // Reviewer if present
                        dependencies: Seq[(Dependency, Option[Project])]) {
 
-  def isRecommended: Boolean = p.project.recommendedVersionId == v.id
+  def isRecommended: Boolean = p.project.recommendedVersionId.contains(v.id.value)
 
   def fullSlug = s"""${p.fullSlug}/versions/${v.versionString}"""
 

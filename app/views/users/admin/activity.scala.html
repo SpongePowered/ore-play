@@ -39,7 +39,7 @@
                                         <td>@prettifyDateAndTime(tuple._1.asInstanceOf[Review].endedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
                                         <td>for:
                                             @if(tuple._2.isDefined) {
-                                                <a href="@controllers.routes.Reviews.showReviews(tuple._2.get.ownerName, tuple._2.get.slug, tuple._1.asInstanceOf[Review].id.getOrElse(-1).toString)">
+                                                <a href="@controllers.routes.Reviews.showReviews(tuple._2.get.ownerName, tuple._2.get.slug, tuple._1.asInstanceOf[Review].id.value.toString)">
                                                     @tuple._2.get.ownerName / @tuple._2.get.name
                                                 </a>
                                             }
