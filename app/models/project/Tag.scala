@@ -3,9 +3,9 @@ package models.project
 import java.sql.Timestamp
 
 import db.Named
-import db.impl.{OrePostgresDriver, TagTable}
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
+import db.impl.{OrePostgresDriver, TagTable}
 import db.table.MappedType
 import models.project.TagColors.TagColor
 import slick.jdbc.JdbcType

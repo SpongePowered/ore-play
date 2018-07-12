@@ -108,6 +108,8 @@ $(function() {
 
     $('.authors-icon').click(function() { window.location = '/authors'; });
 
+    $('.staff-icon').click(function() { window.location = '/staff'; });
+
     $('.btn-spinner').click(function() {
         var iconClass = $(this).data('icon');
         $(this).find('.' + iconClass).removeClass(iconClass).addClass('fa-spinner fa-spin');
@@ -168,15 +170,8 @@ $(function() {
         }
     });
 
-    $(".unsafe-link-back").click(function () {
+    $(".link-go-back").click(function () {
         window.history.back();
-    });
-
-    $(".unsafe-link-continue").click(function () {
-        var remote = $(".unsafe-link-continue").data("remote");
-
-        location.replace(location.href);
-        location.replace(remote);
     });
 });
 

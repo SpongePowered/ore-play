@@ -15,7 +15,8 @@ case class VersionData(unstable: Boolean,
                        override val channelName: String,
                        override protected val channelColorHex: String,
                        override val nonReviewed: Boolean,
-                       content: Option[String])
+                       content: Option[String],
+                       forumPost: Boolean)
                       (implicit override val config: OreConfig,
                        override val factory: ProjectFactory)
                        extends TChannelData

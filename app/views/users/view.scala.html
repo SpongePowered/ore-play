@@ -1,45 +1,24 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
-@import models.user.User
+@import models.viewhelper.UserData
 @import ore.OreConfig
-@import ore.permission.{ViewActivity, ReviewFlags, ReviewProjects, EditSettings, UserAdmin}
-@import ore.permission.scope.GlobalScope
+@import ore.permission.{EditSettings, ReviewFlags, ReviewProjects, UserAdmin, ViewActivity}
 @import ore.user.Prompts
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
-@(user: User)(content: Html)(implicit messages: Messages, flash: Flash, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase)
+@import views.html.utils.{alert, modal, prompt, userAvatar}
+@(u: UserData)(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
-@canEditOrganization = @{
-    user.isOrganization && users.current.isDefined && (users.current.get can EditSettings in user.toOrganization)
-}
-
-@pgpFormClass = @{
-    user.pgpPubKey.map(key => "pgp-delete").getOrElse("")
-}
-
-@pgpFormCall = @{
-    user.pgpPubKey.map { key =>
-        routes.Users.verify(Some(routes.Users.deletePgpPublicKey(user.name, None, None).path()))
-    } getOrElse {
-        routes.Users.savePgpPublicKey(user.name)
-    }
-}
-
-@lockIcon = @{
-    if (user.isLocked) "fa-lock" else "fa-unlock-alt"
-}
-
-@bootstrap.layout(user.username) {
+@bootstrap.layout(u.user.username) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/userPage.js")"></script>
-    <script nonce="@nonce">USERNAME = '@user.username';</script>
+    <script nonce="@nonce">USERNAME = '@u.user.username';</script>
 
     <div class="container" style="margin-top: 90px">
 
-        @utils.alert("error")
+        @alert("error")
 
         @flash.get("pgp-updated").map { updated =>
           <script nonce="@nonce">
@@ -62,36 +41,37 @@
             <div class="header-body">
                 <!-- Title -->
                 <span class="user-badge">
-                    @utils.userAvatar(
-                        user = user,
-                        clazz = "user-avatar-md" + (if (canEditOrganization) " organization-avatar" else ""),
+                    @userAvatar(
+                        userName = Some(u.user.name),
+                        avatarUrl = u.user.avatarUrl,
+                        clazz = "user-avatar-md" + (if (u.orgaPerm.getOrElse(EditSettings, false)) " organization-avatar" else ""),
                         href = "#",
-                        attr = if (canEditOrganization) Map(
+                        attr = if (u.orgaPerm.getOrElse(EditSettings, false)) Map(
                             "data-toggle" -> "modal",
                             "data-target" -> "#modal-avatar") else Map())
 
-                    @if(canEditOrganization) {
+                    @if(u.orgaPerm.getOrElse(EditSettings, false)) {
                         <div class="edit-avatar" style="display: none;">
                             <i class="fa fa-edit"></i> @messages("user.editAvatar")
                         </div>
 
-                        @if(!users.current.get.readPrompts.contains(Prompts.ChangeAvatar)) {
-                            @utils.prompt(Prompts.ChangeAvatar, "popover-avatar")
+                        @if(!u.currentUser.get.readPrompts.contains(Prompts.ChangeAvatar)) {
+                            @prompt(Prompts.ChangeAvatar, "popover-avatar")
                         }
                     }
 
                     <span class="user-title">
                         <h1 class="username">
-                            @user.username
+                            @u.user.username
 
-                            @if(user.isCurrent && !user.isOrganization) {
-                                <a class="user-settings" href="@config.security.getString("api.url").get/accounts/settings">
+                            @if(u.isCurrent && !u.isOrga) {
+                                <a class="user-settings" href="@config.security.get[String]("api.url")/accounts/settings">
                                     <i class="fa fa-cog" data-toggle="tooltip"
                                         data-placement="top" title="Settings"></i>
                                 </a>
 
                                 <span data-toggle="modal" data-target="#modal-lock">
-                                    <i class="fa @lockIcon action-lock-account" data-toggle="tooltip"
+                                    <i class="fa @{if (u.user.isLocked) "fa-lock" else "fa-unlock-alt"} action-lock-account" data-toggle="tooltip"
                                         data-placement="top" title="@messages("user.lock")"></i>
                                 </span>
 
@@ -100,29 +80,29 @@
                                         data-placement="top" title="@messages("user.pgp.pubKey")"></i>
                                 </span>
 
-                                @if(!users.current.get.readPrompts.contains(Prompts.PGP)) {
-                                    @utils.prompt(Prompts.PGP, "popover-pgp")
+                                @if(!u.currentUser.get.readPrompts.contains(Prompts.PGP)) {
+                                    @prompt(Prompts.PGP, "popover-pgp")
                                 }
                             }
 
-                            @if(!user.isCurrent && user.pgpPubKey.isDefined) {
+                            @if(!u.isCurrent && u.user.pgpPubKey.isDefined) {
                                 <span data-toggle="modal" data-target="#modal-pgp-show">
                                     <i class="fa fa-key action-pgp" data-toggle="tooltip"
                                         data-placement="top" title="@messages("user.pgp.pubKey")"></i>
                                 </span>
                             }
 
-                            @if(users.current.isDefined && (users.current.get can ViewActivity in user)) {
-                                @if((user can ReviewFlags in user) || (user can ReviewProjects in user)) {
-                                    <a class="user-settings" href="@routes.Application.showActivities(user.name)">
+                            @if(u.hasUser && u.userPerm(ViewActivity)) {
+                                @if(u.userPerm(ReviewFlags) || u.userPerm(ReviewProjects)) {
+                                    <a class="user-settings" href="@routes.Application.showActivities(u.user.name)">
                                         <i class="fa fa-calendar" data-toggle="tooltip"
                                         data-placement="top" title="Activity"></i>
                                     </a>
                                 }
                             }
 
-                            @if(users.current.isDefined && (users.current.get can UserAdmin in GlobalScope)) {
-                                <a class="user-settings" href="@routes.Application.userAdmin(user.username)">
+                            @if(request.data.globalPerm(UserAdmin)) {
+                                <a class="user-settings" href="@routes.Application.userAdmin(u.user.username)">
                                     <i class="fa fa-wrench" data-toggle="tooltip"
                                         data-placement="top" title="User Admin"></i>
                                 </a>
@@ -131,14 +111,14 @@
 
                         <div class="user-tag">
                             <i class="minor">
-                                @if(user.tagline.isDefined) {
-                                    @user.tagline.get
-                                } else { @if(user.isCurrent) {
+                                @if(u.user.tagline.isDefined) {
+                                    @u.user.tagline.get
+                                } else { @if(u.isCurrent) {
                                     Add a tagline
                                 }}
                             </i>
 
-                            @if(user.isCurrent) {
+                            @if(u.isCurrent) {
                                 <a href="#" data-toggle="modal" data-target="#modal-tagline">
                                     <i class="fa fa-edit"></i>
                                 </a>
@@ -149,14 +129,14 @@
 
                 <!-- Roles -->
                 <ul class="user-roles">
-                    @user.organizations.all.map { organization =>
+                    @u.orgas.map { case (organization, user, role, owner) =>
                         <li class="organization-role" data-toggle="tooltip" data-placement="top"
                             data-title="@organization.name">
-                            @utils.userAvatar(organization.toUser, clazz = "user-avatar-xxs")
+                            @userAvatar(Some(organization.name), user.avatarUrl, clazz = "user-avatar-xxs")
                         </li>
                     }
 
-                    @defining(user.globalRoles.toList.sortBy(_.trust).lastOption) { roleOpt =>
+                    @defining(u.user.globalRoles.toList.sortBy(_.trust).lastOption) { roleOpt =>
                         @roleOpt.map { role =>
                             <li class="user-role channel" style="background-color: @role.color.hex">@role.title</li>
                         }
@@ -164,15 +144,13 @@
                 </ul>
 
                 <div class="user-info">
-                    @defining(user.projects.size) { size =>
-                        <i class="minor">@size&nbsp;@if(size == 1){project}else{projects}</i><br/>
-                    }
+                    <i class="minor">@u.projectCount&nbsp;@if(u.projectCount == 1){project}else{projects}</i><br/>
                     <i class="minor">
                     @messages(
                         "user.memberSince",
-                        user.joinDate.map(prettifyDate).getOrElse(prettifyDate(user.createdAt.get)))
+                        u.user.joinDate.map(prettifyDate).getOrElse(prettifyDate(u.user.createdAt.get)))
                     </i><br/>
-                    <a href="https://forums.spongepowered.org/users/@user.username">
+                    <a href="https://forums.spongepowered.org/users/@u.user.username">
                         @messages("user.viewOnForums") <i class="fa fa-external-link"></i>
                     </a>
                 </div>
@@ -200,7 +178,7 @@
                     </h4>
                 </div>
 
-                @form(action = pgpFormCall, 'id -> "form-pgp", 'class -> pgpFormClass) {
+                @form(action = u.pgpFormCall, 'id -> "form-pgp", 'class -> u.pgpFormClass) {
                     @CSRF.formField
                     <div class="modal-body">
                         <div class="alert alert-danger" style="display: none;">
@@ -210,7 +188,7 @@
                         <div class="setting setting-no-border setting-pgp">
                             <div class="row pgp-header">
                                 <h4>@messages("user.pgp.pubKey")</h4>
-                                @user.pgpPubKeyInfo.map { keyInfo =>
+                                @u.user.pgpPubKeyInfo.map { keyInfo =>
                                     <div class="dates minor">
                                         <i>Created on @prettifyDate(keyInfo.createdAt)</i><br/>
                                         @keyInfo.expirationDate.map { expirationDate =>
@@ -221,7 +199,7 @@
                             </div>
 
                             <div class="row">
-                                @user.pgpPubKeyInfo.map { keyInfo =>
+                                @u.user.pgpPubKeyInfo.map { keyInfo =>
                                     <table width="100%">
                                         <tr>
                                             <td><strong>ID</strong></td>
@@ -238,11 +216,11 @@
                                     </table>
                                 }
 
-                                @if(user.pgpPubKey.isEmpty) {
+                                @if(u.user.pgpPubKey.isEmpty) {
                                     <p>@messages("user.pgp.pubKey.info")</p>
                                 }
 
-                                @if(user.pgpPubKey.isEmpty) {
+                                @if(u.user.pgpPubKey.isEmpty) {
                                     <textarea class="form-control" name="pgp-pub-key" rows="10"></textarea>
                                     <i class="pull-right"><a href="#TODO">@messages("user.pgp.help")</a></i>
                                 }
@@ -255,7 +233,7 @@
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("general.close")
                         </button>
-                        @if(user.pgpPubKey.isEmpty) {
+                        @if(u.user.pgpPubKey.isEmpty) {
                             <button type="submit" class="btn btn-primary">
                             @messages("general.save")
                             </button>
@@ -270,16 +248,16 @@
         </div>
     </div>
 
-    @utils.modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
-        @if(user.pgpPubKey.isDefined) {
-            <pre style="text-align: center">@user.pgpPubKey.get</pre>
+    @modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
+        @if(u.user.pgpPubKey.isDefined) {
+            <pre style="text-align: center">@u.user.pgpPubKey.get</pre>
         }
     }
 
-    @utils.modal("modal-lock", "label-lock", if (user.isLocked) "user.unlock" else "user.lock") {
+    @modal("modal-lock", "label-lock", if (u.user.isLocked) "user.unlock" else "user.lock") {
         <div class="modal-body">
             <p class="minor">
-                @if(user.isLocked) {
+                @if(u.user.isLocked) {
                     @messages("user.unlock.confirm")
                 } else {
                     @messages("user.lock.confirm")
@@ -290,8 +268,8 @@
         <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
             @form(action = routes.Users.verify(Some(routes.Users.setLocked(
-                user = user.username,
-                locked = !user.isLocked,
+                user = u.user.username,
+                locked = !u.user.isLocked,
                 sso = None,
                 sig = None
             ).path())), 'class -> "form-inline") {
@@ -301,8 +279,8 @@
         </div>
     }
 
-    @utils.modal("modal-tagline", "label-tagline", "user.tagline.edit") {
-        @form(action = routes.Users.saveTagline(user.username)) {
+    @modal("modal-tagline", "label-tagline", "user.tagline.edit") {
+        @form(action = routes.Users.saveTagline(u.user.username)) {
             @CSRF.formField
             <div class="modal-body">
                 <div class="setting setting-no-border">
@@ -310,8 +288,8 @@
                         <h4>@messages("user.tagline")</h4>
                         <p>@messages("user.tagline.info")</p>
                     </div>
-                    <input class="form-control" type="text" value="@user.tagline.getOrElse("")" id="tagline"
-                           name="tagline" maxlength="@config.users.getInt("max-tagline-len").get" />
+                    <input class="form-control" type="text" value="@u.user.tagline.getOrElse("")" id="tagline"
+                           name="tagline" maxlength="@config.users.get[Int]("max-tagline-len")" />
                 </div>
                 <div class="clearfix"></div>
             </div>
@@ -324,8 +302,8 @@
         }
     }
 
-    @utils.modal("modal-avatar", "label-avatar", "user.editAvatar") {
-        @form(action = routes.Organizations.updateAvatar(user.name), 'id -> "form-avatar",
+    @modal("modal-avatar", "label-avatar", "user.editAvatar") {
+        @form(action = routes.Organizations.updateAvatar(u.user.name), 'id -> "form-avatar",
             'enctype -> "multipart/form-data") {
             @CSRF.formField
             <div class="modal-body">

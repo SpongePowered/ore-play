@@ -5,7 +5,8 @@
   source: Option[String] = None,
   licenseName: Option[String] = None,
   licenseUrl: Option[String] = None,
-  selected: Option[Category] = None)(implicit messages: Messages)
+  selected: Option[Category] = None,
+  forumSync: Boolean = true)(implicit messages: Messages)
 
 <script type="text/javascript" src="@routes.Assets.at("javascripts/projectManage.js")"></script>
 
@@ -80,6 +81,20 @@
         </div>
         <input type="text" name="license-url" class="form-control" form="@form"
                placeholder="https://github.com/SpongePowered/SpongeAPI/LICENSE.md" value="@licenseUrl">
+    </div>
+    <div class="clearfix"></div>
+</div>
+
+<div class="setting">
+    <div class="setting-description">
+        <h4>@messages("project.settings.forumSync")</h4>
+        <p>@messages("project.settings.forumSync.info")</p>
+    </div>
+    <div class="setting-content">
+        <label>
+            <input @if(forumSync) { checked } value="true" form="@form" type="checkbox" id="forum-sync" name="forum-sync">
+            Make forum posts
+        </label>
     </div>
     <div class="clearfix"></div>
 </div>

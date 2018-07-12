@@ -1,14 +1,14 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.{ProjectBase, UserBase}
-@import models.user.Notification
+@import models.user.{Notification, User}
 @import models.user.role.RoleModel
-@import ore.OreConfig
+@import ore.{OreConfig, Visitable}
 @import ore.user.notification.InviteFilters.InviteFilter
 @import ore.user.notification.NotificationFilters.NotificationFilter
 @import ore.user.notification.{InviteFilters, NotificationFilters}
-@(notifications: Seq[Notification], invites: Seq[RoleModel], notificationFilter: NotificationFilter,
-        inviteFilter: InviteFilter)(implicit messages: Messages, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase, projects: ProjectBase)
+@import views.html.utils.userAvatar
+@(notifications: Seq[(Notification, User)], invites: Seq[(RoleModel, Visitable)], notificationFilter: NotificationFilter,
+        inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @notificationFilterOption(option: NotificationFilter) = @{
     if (option.equals(notificationFilter)) {
@@ -21,8 +21,6 @@
         Html("selected")
     }
 }
-
-@subjectType(model: RoleModel) = @{ model.subject.getClass.getSimpleName }
 
 @bootstrap.layout(messages("notification.plural")) {
 
@@ -70,11 +68,11 @@
                         </div>
 
                         <ul class="list-group">
-                        @notifications.map { notification =>
+                        @notifications.map { case (notification, origin) =>
                             <li class="list-group-item notification" data-action="@notification.action.getOrElse("none")"
                             data-id="@notification.id.get">
 
-                                @utils.userAvatar(notification.origin, clazz = "user-avatar-s")
+                                @userAvatar(Some(origin.name), origin.avatarUrl, clazz = "user-avatar-s")
                                 @notification.message
 
                                 @if(!notification.isRead) {
@@ -108,24 +106,23 @@
                     <!-- Invites content -->
                     <div class="col-xs-12">
 
-                    @for((invite, i) <- invites.zipWithIndex) {
+                    @for(((invite, subject), i) <- invites.zipWithIndex) {
                         @if(i % 2 == 0) {
                             <div class="row">
                             }
 
                         <div class="invite col-xs-12 col-md-6">
                             <div class="invite-content" data-id="@invite.id.get"
-                            data-type="@subjectType(invite).toLowerCase">
-                            @defining(invite.subject) { subject =>
+                            data-type="@subject.getClass.getSimpleName.toLowerCase">
                                 <span class="minor">
                                     <i class="dismiss pull-left fa fa-times" style="display: none;"></i>
-                                    <span class="pull-right"><i class="fa fa-tag"></i> @subjectType(invite)</span>
+                                    <span class="pull-right"><i class="fa fa-tag"></i> @subject.getClass.getSimpleName</span>
                                 </span>
                                 <br/>
 
                                 <div class="invite-message invite-choice" style="display: auto;">
                                     <p>
-                                        @messages("notification.invite", subjectType(invite).toLowerCase)
+                                        @messages("notification.invite", subject.getClass.getSimpleName.toLowerCase)
                                         <a href="@subject.url">@subject.name</a>.
                                     </p>
                                     <button class="btn btn-invite btn-accept btn-sm btn-success">
@@ -153,7 +150,6 @@
                                 </div>
 
                                 <i class="minor invite-loading fa fa-5x fa-spinner fa-spin" style="display: none;"></i>
-                            }
                             </div>
                         </div>
 

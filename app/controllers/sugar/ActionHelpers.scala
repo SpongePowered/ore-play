@@ -1,7 +1,9 @@
 package controllers.sugar
 
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+
 import play.api.data.Form
+import play.api.i18n.Messages
 import play.api.mvc.Results.Redirect
 import play.api.mvc.{Call, Result}
 
@@ -35,6 +37,20 @@ trait ActionHelpers {
       * @return       Result with error
       */
     def withError(error: String) = result.flashing("error" -> error)
+
+    /**
+      * Adds one or more errors messages to the result.
+      *
+      * @param errors  Error messages
+      * @return        Result with errors
+      */
+    //TODO: Use NEL[String] if we get the type
+    def withErrors(errors: Seq[String])(implicit messages: Messages): Result = errors match {
+      case Seq()       => result
+      case Seq(single) => withError(messages(single))
+      case multiple    =>
+        result.flashing("error" -> multiple.map(s => messages(s)).mkString("• ", "<br>• ", ""), "error-israw" -> "true")
+    }
 
     /**
       * Adds a success message to the result.

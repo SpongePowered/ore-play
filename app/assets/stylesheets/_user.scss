@@ -6,10 +6,6 @@
 
 .user-avatar {
   @include rounded-corners();
-  display: inline-block;
-  -webkit-background-size: cover;
-  background-size: cover;
-  background-position: center;
 }
 
 .user-avatar-xxs {
@@ -219,7 +215,7 @@ textarea[name="pgp-pub-key"] {
 
 // authors page
 
-.table-authors {
+.table-users {
   tbody > tr > td { vertical-align: middle; }
   tbody > tr.authors-footer > td:last-child {
     padding: 0;
@@ -236,7 +232,7 @@ textarea[name="pgp-pub-key"] {
     td:first-child { width: 40px; }
     td:not(:first-child) { cursor: pointer; }
     td:hover:not(:first-child) { background-color: #222; }
-    .author-sort { background-color: #292929; }
+    .user-sort { background-color: #292929; }
     .o-chevron-up { @extend .fa-chevron-up; }
     .o-chevron-down { @extend .fa-chevron-down; }
     .o {

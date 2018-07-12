@@ -13,6 +13,11 @@
         <button type="button" class="close" data-dismiss="alert" aria-label="@messages("general.close")">
             <span aria-hidden="true">&times;</span>
         </button>
-        @Html(messages(message))
+
+        @if(flash.get(s"$alertType-israw").contains("true")) {
+            @Html(message)
+        } else {
+            @(messages(message))
+        }
     </div>
 }

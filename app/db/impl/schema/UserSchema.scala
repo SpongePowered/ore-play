@@ -4,8 +4,9 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.UserTable
 import db.{ModelSchema, ModelService}
 import models.user.User
+import scala.concurrent.{ExecutionContext, Future}
 
-import scala.concurrent.Future
+import util.functional.OptionT
 
 /**
   * User related queries.
@@ -15,7 +16,7 @@ import scala.concurrent.Future
 class UserSchema(override val service: ModelService)
   extends ModelSchema[User](service, classOf[User], TableQuery[UserTable]) {
 
-  override def like(user: User): Future[Option[User]]
+  override def like(user: User)(implicit ec: ExecutionContext): OptionT[Future, User]
   = this.service.find[User](this.modelClass, _.name.toLowerCase === user.username.toLowerCase)
 
 }

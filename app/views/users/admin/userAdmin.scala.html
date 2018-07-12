@@ -1,15 +1,14 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.{UserBase, ProjectBase, OrganizationBase}
-@import models.user.User
+@import models.project.Project
+@import models.user.{Organization, User}
 @import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
-@import ore.permission.role.{RoleTypes, GlobalRole}
-@import ore.{OreConfig, OreEnv}
+@import models.viewhelper.{OrganizationData, UserData}
+@import ore.OreConfig
+@import ore.permission.role.{GlobalRole, RoleTypes}
+@(user: UserData, orga: Option[OrganizationData], userProjectRoles: Seq[(Project, ProjectRole)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
-@(user: User)(implicit messages: Messages, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase, projects: ProjectBase, organizations: OrganizationBase)
-
-@isOrg = @{user.isOrganization}
-@prefix = @{"Edit " + (if(isOrg) "Organization" else "User") + ": "}
+@prefix = @{"Edit " + (if(user.isOrga) "Organization" else "User") + ": "}
 
 @orgRoles = @{RoleTypes.values.filter(r => r.roleClass == classOf[OrganizationRole] && (r.isAssignable || r == RoleTypes.OrganizationOwner))}
 @projectRoles = @{RoleTypes.values.filter(r => r.roleClass == classOf[ProjectRole] && (r.isAssignable || r == RoleTypes.ProjectOwner))}
@@ -26,14 +25,14 @@
     </div>
 }
 
-@roleTable[M <: RoleModel](keyName: String, tableType: String, getOwner: M => User, roles: Set[M], roleTypes: Set[RoleTypes.Value])(showKey: M => Html) = {
+@roleTable[T, M <: RoleModel](keyName: String, tableType: String, withOwner: Boolean, roles: Set[(T, M, String)], roleTypes: Set[RoleTypes.Value])(showKey: (T, M) => Html) = {
     <table class="table role-table">
-        <tr><th>@keyName</th>@if(getOwner != null) {<th>Owner</th>}<th>Role</th><th>Accepted</th></tr>
-        @for(role <- roles) {
+        <tr><th>@keyName</th>@if(withOwner) {<th>Owner</th>}<th>Role</th><th>Accepted</th></tr>
+        @roles.map { case (t, role, owner) =>
         <tr data-role-type="@tableType" data-role-id="@role.id">
-            <td>@showKey(role)</td>
-            @if(getOwner != null) {
-                <td><a href="@routes.Application.userAdmin(getOwner(role).username)">@{getOwner(role).username}</a></td>
+            <td>@showKey(t, role)</td>
+            @if(withOwner) {
+                <td><a href="@routes.Application.userAdmin(owner)">@{owner}</a></td>
             }
             @if(!role.roleType.isAssignable) {
                 <td colspan="3">
@@ -54,14 +53,14 @@
     </table>
 }
 
-@bootstrap.layout(prefix + user.username) {
+@bootstrap.layout(prefix + user.user.username) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/userAdmin.js")"></script>
 
     <div class="container" style="margin-top: 90px;">
         <div class="row">
             <div class="col-md-12">
-                <h1>@prefix<a href="@routes.Users.showProjects(user.username, None)">@user.username</a></h1>
+                <h1>@prefix<a href="@routes.Users.showProjects(user.user.username, None)">@user.user.username</a></h1>
             </div>
         </div>
 
@@ -69,44 +68,44 @@
         <div class="col-md-9">
 
         <div class="row">
-            @if(!isOrg) {
+            @if(!user.isOrga) {
                 @panel("Organizations") {
-                    @roleTable[OrganizationRole]("Organization", "orgRole", _.organization.owner, user.organizationRoles.all, orgRoles) { role =>
-                        <a href="@routes.Application.userAdmin(role.organization.username)">
-                            @role.organization.username
+                    @roleTable[Organization, OrganizationRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.username)).toSet, orgRoles) { (org, role) =>
+                        <a href="@routes.Application.userAdmin(org.username)">
+                            @org.username
                         </a>
                     }
                 }
             } else {
                 @panel("Members") {
-                    @roleTable[OrganizationRole]("User", "memberRole", null, user.toOrganization.memberships.roles.all, orgRoles) { role =>
-                        <a href="@routes.Application.userAdmin(role.user.username)">
-                            @role.user.username
+                    @roleTable[User, OrganizationRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, role) =>
+                        <a href="@routes.Application.userAdmin(user.username)">
+                            @user.username
                         </a>
                     }
                 }
             }
         </div>
-        @if(!isOrg) {
-        <div class="row">
-            @panel("Projects") {
-                @roleTable[ProjectRole]("Project", "projectRole", _.project.owner, user.projectRoles.all, projectRoles) { role =>
-                    <a href="@controllers.project.routes.Projects.show(role.project.ownerName, role.project.slug)">
-                        @role.project.name
-                    </a>
+        @if(!user.isOrga) {
+            <div class="row">
+                @panel("Projects") {
+                    @roleTable[Project, ProjectRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, role) =>
+                        <a href="@controllers.project.routes.Projects.show(project.ownerName, project.slug)">
+                            @project.name
+                        </a>
+                    }
                 }
-            }
-        </div>
+            </div>
         }
         </div>
 
         @panel("Other Administration", size=3) {
             <div class="list-group">
                 <div class="list-group-item">
-                    <a href="@config.security.getString("api.url").get/admin/accounts/user/@user.id/change/">SpongeAuth Profile</a>
+                    <a href="@config.security.get[String]("api.url")/admin/accounts/user/@user.user.id/change/">SpongeAuth Profile</a>
                 </div>
                 <div class="list-group-item">
-                    <a href="https://forums.spongepowered.org/users/@user.username">Forum Profile</a>
+                    <a href="https://forums.spongepowered.org/users/@user.user.username">Forum Profile</a>
                 </div>
             </div>
         }

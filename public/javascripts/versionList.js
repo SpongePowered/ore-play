@@ -27,6 +27,8 @@ var VERSIONS_PER_PAGE = 10;
 var PROJECT_OWNER = null;
 var PROJECT_SLUG = null;
 var TOTAL_VERSIONS = 0;
+var TEXT_NOT_APPROVED = "";
+var TEXT_NOT_APPROVED_CHANNEL = "";
 
 var page = 0;
 
@@ -36,8 +38,18 @@ var page = 0;
  * ==================================================
  */
 
+function createPage(page) {
+    var pageTemplate = $("<li>");
+    pageTemplate.addClass("page");
+    var link = $("<a>");
+    link.text(page);
+    pageTemplate.append(link);
+
+    return pageTemplate;
+}
+
 function loadVersions(increment, scrollTop) {
-    var versionList = $('.version-list');
+    var versionList = $('.version-table');
 
     var offset = (page + increment - 1) * VERSIONS_PER_PAGE;
     var url = '/api/projects/' + PLUGIN_ID + '/versions?offset=' + offset;
@@ -47,51 +59,148 @@ function loadVersions(increment, scrollTop) {
         url: url,
         dataType: 'json',
         success: function (versions) {
-            var content = "";
+            var versionTable = $(".version-table tbody");
+            versionTable.empty();
 
             versions.forEach(function (version) {
+                var row = $("<tr>");
+
+                // ==> Base Info (channel, name)
+                var baseInfo = $("<td>");
+                baseInfo.addClass("base-info");
+
+                var nameElement = $("<div>");
+                nameElement.addClass("name");
+                var nameLink = $("<a>");
+                nameLink.text(version.name);
+                nameLink.attr("href", version.href);
+                nameElement.append(nameLink);
+                baseInfo.append(nameElement);
+
                 var channel = version.channel;
-                var tags = version.tags;
+                var channelElement = $("<span>");
+                channelElement.addClass("channel");
+                channelElement.text(channel.name);
+                channelElement.css("background", channel.color);
+                baseInfo.append(channelElement);
 
-                var tagsHtml = "";
-                tags.forEach(function (tag) {
-                    var style = "background:" + tag.backgroundColor +";border-color:" + tag.backgroundColor + ";color:" + tag.foregroundColor;
+                row.append(baseInfo);
 
-                    if(tag.data !== "" && tag.data !== "null") {
-                        tagsHtml += "<div class='tags has-addons'><span style='" + style + "' class='tag'>" + tag.name + "</span><span class='tag'>" + tag.data + "</span></div>";
-                    } else {
-                        tagsHtml += "<div class='tags'><span style='" + style + "' class='tag'>" + tag.name + "</span></div>";
+                // => Tags
+
+                var tags = $("<td>");
+                tags.addClass("version-tags");
+                version.tags.forEach(function (tag) {
+                    var hasData = (tag.data !== "" && tag.data !== "null" && tag.data != null);
+
+                    var tagContainer = $("<div>");
+                    tagContainer.addClass("tags");
+                    if(hasData) {
+                        tagContainer.addClass("has-addons");
                     }
+
+                    var tagElement = $("<span>");
+                    tagElement.addClass("tag");
+                    tagElement.text(tag.name);
+                    tagElement.css("background", tag.backgroundColor);
+                    tagElement.css("border-color", tag.backgroundColor);
+                    tagElement.css("color", tag.foregroundColor);
+                    tagContainer.append(tagElement);
+
+                    if(hasData) {
+                        var tagDataElement = $("<span>");
+                        tagDataElement.addClass("tag");
+                        tagDataElement.text(tag.data);
+                        tagContainer.append(tagDataElement);
+                    }
+
+                    tags.append(tagContainer);
                 });
 
-                // Build result row
-                var versionTemplate = $('.version-template').clone().removeAttr('id');
+                row.append(tags);
 
-                versionTemplate.find('.channel').text(channel.name).css("background", channel.color);
-                versionTemplate.find('.name').html("<a href='" + version.href + "'>" + version.name + "</a>");
-                versionTemplate.find('.version-tags').html(tagsHtml);
-                versionTemplate.find('.information-one .created').text(moment(version.createdAt).format("MMM D, YYYY"));
-                versionTemplate.find('.information-one .size').text(filesize(version.fileSize));
+                // => Information One (created, size)
+
+                var infoOne = $("<td>");
+                infoOne.addClass("information-one");
+
+                var createdContainer = $("<div>");
+                createdContainer.append("<i class='fa fa-calendar'></i>");
+
+                var created = $("<span>");
+                created.text(moment(version.createdAt).format("MMM D, YYYY"));
+                createdContainer.append(created);
+
+                infoOne.append(createdContainer);
+
+
+                var sizeContainer = $("<div>");
+                sizeContainer.append("<i class='fa fa-file-o'></i>");
+
+                var size = $("<span>");
+                size.text(filesize(version.fileSize));
+                sizeContainer.append(size);
+
+                infoOne.append(sizeContainer);
+                row.append(infoOne);
+
+                // => Information Two (author, download count)
+
+                var infoTwo = $("<td>");
+                infoTwo.addClass("information-two");
+
                 if(version.author != null) {
-                    versionTemplate.find('.information-two .author').show();
-                    versionTemplate.find('.information-two .author-name').text(version.author);
-                }
-                versionTemplate.find('.information-two .download-count').text(version.downloads);
+                    var authorContainer = $("<div>");
+                    authorContainer.addClass("author");
+                    authorContainer.append("<i class='fa fa-key'></i>");
 
-                var downloadLink = versionTemplate.find('.download .download-link');
-                var tooltip = "";
+                    var author = $("<span>");
+                    author.text(version.author);
+                    author.attr("title", "This version is signed by " + version.author);
+                    author.attr("data-toggle", "tooltip");
+                    author.attr("data-placement", "bottom");
+
+                    authorContainer.append(author);
+                    infoTwo.append(authorContainer);
+                }
+
+                var downloadContainer = $("<div>");
+                downloadContainer.append("<i class='fa fa-download'></i>");
+                var downloads = $("<span>");
+                downloads.text(version.downloads + " Downloads");
+                downloadContainer.append(downloads);
+                infoTwo.append(downloadContainer);
+
+                row.append(infoTwo);
+
+                // => Download
+
+                var download = $("<td>");
+                download.addClass("download");
+
+                var downloadLink = $("<a>");
+                downloadLink.addClass("download-link");
                 downloadLink.attr('href', version.href +  '/download/');
 
+                downloadLink.append("<i class='fa fa-2x fa-download'></i>");
+
                 if (!version.staffApproved) {
-                    var text = "This version has not been reviewed by our moderation staff and may not be safe for download!";
-                    downloadLink.html(downloadLink.html() + "<i title='" + text + "' data-toggle='tooltip' data-placement='bottom' class='fa fa-exclamation-circle'></i>")
+                    var text = channel.nonReviewed ? TEXT_NOT_APPROVED_CHANNEL : TEXT_NOT_APPROVED;
+
+                    var warning = $("<i>");
+                    warning.attr("title", text);
+                    warning.attr("data-toggle", "tooltip");
+                    warning.attr("data-placement", "bottom");
+                    warning.addClass("fa fa-exclamation-circle");
+
+                    downloadLink.append(warning);
                 }
 
-                downloadLink.attr('title', tooltip);
+                download.append(downloadLink);
+                row.append(download);
 
-                content += "<tr class='version'>" + versionTemplate.html() + "</tr>";
+                versionTable.append(row);
             });
-            versionList.html(content);
 
             // Sets the new page number
             page += increment;
@@ -101,57 +210,82 @@ function loadVersions(increment, scrollTop) {
 
                 // Sets up the pagination
                 var pagination = $(".version-panel .pagination");
+                pagination.empty();
+
+                var prev = $("<li>");
+                prev.addClass("prev");
+                if(page === 1) {
+                    prev.addClass("disabled");
+                }
+                prev.append("<a>&laquo;</a>");
+                pagination.append(prev);
 
                 var left = totalPages - page;
-                content = "";
+
+                // Dot Template
+                var dotTemplate = $("<li>");
+                dotTemplate.addClass("disabled");
+                var dotLink = $("<a>");
+                dotLink.text("...");
+                dotTemplate.append(dotLink);
 
                 // [First] ...
                 if(totalPages > 3 && page >= 3) {
-                    content += "<li class='page'><a>" + 1 + "</a></li>";
+                    pagination.append(createPage(1));
 
                     if(page > 3) {
-                        content += "<li class='disabled'><a>...</a></li>"
+                        pagination.append(dotTemplate);
                     }
                 }
 
                 //=> [current - 1] [current] [current + 1] logic
                 if(totalPages > 2) {
                     if(left === 0) {
-                        content += "<li class='page'><a>" + (totalPages - 2) + "</a></li>" // Adds a third page if current page is last page
+                        pagination.append(createPage((totalPages - 2)))
                     }
                 }
 
                 if(page !== 1) {
-                    content += "<li class='page'><a>" + (page - 1) + "</a></li>"
+                    pagination.append(createPage((page -1)))
                 }
 
-                content += "<li class='page active'><a>" + page + "</a></li>";
+                var activePage = $("<li>");
+                activePage.addClass("page active");
+                var link = $("<a>");
+                link.text(page);
+                activePage.append(link);
+                pagination.append(activePage);
+
 
                 if((page + 1) <= totalPages) {
-                    content += "<li class='page'><a>" + (page + 1) + "</a></li>";
+                    pagination.append(createPage(page + 1))
                 }
 
                 if(totalPages > 2) {
                     if(page === 1) {
-                        content += "<li class='page'><a>" + (page + 2) + "</a></li>" // Adds a third page if current page is first page
+                        pagination.append(createPage(page + 2)) // Adds a third page if current page is first page
                     }
                 }
 
                 // [Last] ...
                 if(totalPages > 3 && left > 1) {
                     if(left > 2) {
-                        content += "<li class='disabled'><a>...</a></li>"
+                        pagination.append(dotTemplate.clone());
                     }
 
-                    content += "<li class='page'><a>" + totalPages + "</a></li>"
+                    pagination.append(createPage(totalPages));
                 }
 
                 // Builds the pagination
-                pagination.html(
-                    "<li class='prev" + (page === 1 ? " disabled" : "") + "'><a>&laquo;</a></li>" +
-                    content +
-                    "<li class='next" + (TOTAL_VERSIONS / VERSIONS_PER_PAGE <= page ? " disabled" : "") + "'><a>&raquo;</a></li>"
-                );
+
+                var next = $("<li>");
+                next.addClass("next");
+                if(TOTAL_VERSIONS / VERSIONS_PER_PAGE <= page) {
+                    next.addClass("disabled");
+                }
+                next.append("<a>&raquo;</a>");
+
+                pagination.append(next);
 
                 // Prev & Next Buttons
                 pagination.find('.next').click(function () {
@@ -185,7 +319,7 @@ function loadVersions(increment, scrollTop) {
             $(".panel-pagination").show();
 
             if(scrollTop === true) {
-                $("html, body").animate({ scrollTop: $('.version-list').offset().top - 130 }, 250);
+                $("html, body").animate({ scrollTop: $('.version-table').offset().top - 130 }, 250);
             }
         }
     });

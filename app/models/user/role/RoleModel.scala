@@ -5,13 +5,14 @@ import java.sql.Timestamp
 import com.google.common.base.Preconditions._
 import db.impl.RoleTable
 import db.impl.model.OreModel
-import db.impl.model.common.Hideable
 import db.impl.table.ModelKeys
 import db.impl.table.ModelKeys._
 import models.user.User
 import ore.Visitable
 import ore.permission.role.Role
 import ore.permission.role.RoleTypes.RoleType
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents a [[Role]] in something like a [[models.project.Project]] or
@@ -39,18 +40,7 @@ abstract class RoleModel(override val id: Option[Int],
     *
     * @return Subject of Role
     */
-  def subject: Visitable
-
-  /**
-    * Sets this role's [[RoleType]].
-    *
-    * @param _roleType Role type to set
-    */
-  def roleType_=(_roleType: RoleType) = {
-    checkNotNull(_roleType, "null role type", "")
-    this._roleType = _roleType
-    if (isDefined) update(ModelKeys.RoleType)
-  }
+  def subject(implicit ec: ExecutionContext): Future[Visitable]
 
   /**
     * Sets whether this role has been accepted by the [[User]] it belongs to.
@@ -71,10 +61,15 @@ abstract class RoleModel(override val id: Option[Int],
 
   override def roleType = this._roleType
 
-}
-
-object RoleModel {
-
-  implicit def ordering[A <: RoleModel]: Ordering[A] = Ordering.by(_.roleType.trust)
+  /**
+    * Sets this role's [[RoleType]].
+    *
+    * @param _roleType Role type to set
+    */
+  def setRoleType(_roleType: RoleType) = {
+    checkNotNull(_roleType, "null role type", "")
+    this._roleType = _roleType
+    if (isDefined) update(ModelKeys.RoleType)
+  }
 
 }

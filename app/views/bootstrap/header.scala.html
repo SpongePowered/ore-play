@@ -2,30 +2,14 @@
 The main header displayed on each layout.
 *@
 @import controllers.project.{routes => projectRoutes}
-@import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.{Flag, Version}
+@import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@import ore.permission.scope.GlobalScope
 @import ore.permission._
-@import db.impl.schema.ProjectSchema
-@import db.ModelFilter
-@import models.project.Project
-@import models.project.VisibilityTypes
-@import db.impl.OrePostgresDriver.api._
-@import ore.project.ProjectSortingStrategies
+@(user: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
-@(user: Boolean = true)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig,
-        users: UserBase)
-
-@flags = @{ service.access[Flag](classOf[Flag]) }
 
 @tooltip(title: String) = @{
     Html("data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"" + title + "\"")
-}
-
-@queue = @{
-    service.access[Version](classOf[Version]).filterNot(_.isReviewed)
 }
 
 <nav id="topbar" class="navbar-main navbar-inverse">
@@ -33,7 +17,7 @@ The main header displayed on each layout.
         <!-- Left navbar -->
         <div id="sp-logo-container">
             <a class="logo" href="@routes.Application.showHome(None, None, None, None, None)">
-                <img src="@config.sponge.getString("logo").get">
+                <img src="@config.sponge.get[String]("logo")">
                 <span>@messages("general.projectName")</span>
                 <i class="fa fa-fw fa-chevron-down"></i>
             </a>
@@ -70,7 +54,7 @@ The main header displayed on each layout.
         <!-- Right navbar -->
         @if(user) {
             <ul class="nav navbar-nav navbar-collapse collapse navbar-right">
-                @users.current.map { user =>
+                @request.data.currentUser.map { cu =>
 
                 <li class="dropdown nav-icon new-controls">
                     <a href="#" class="drop-down-toggle" data-toggle="dropdown">
@@ -95,19 +79,25 @@ The main header displayed on each layout.
                     <i class="icon fa fa-users"></i>
                 </li>
 
+                @if(request.data.globalPerm(ReviewProjects)) {
+                    <li class="nav-icon staff-icon" @tooltip(messages("project.viewStaff"))>
+                        <i class="icon fa fa-user-md"></i>
+                    </li>
+                }
+
                     @* Show user controls *@
                 <li class="dropdown user-controls nav-icon">
                     <a href="#" class="drop-down-toggle user-toggle" data-toggle="dropdown">
-                        @if(user.hasUnreadNotifications) {
+                        @if(request.data.hasNotice) {
                             <span class="unread"></span>
                         }
-                        <img height="32" width="32" class="user-avatar" src="@user.avatarUrl.getOrElse(routes.Assets.at("images/spongie-mark.svg"))" />
+                        <img height="32" width="32" class="user-avatar" src="@cu.avatarUrl.getOrElse(routes.Assets.at("images/spongie-mark.svg"))" />
                         <span class="caret"></span>
                     </a>
                     <ul class="user-dropdown dropdown-menu" aria-label="@messages("aria.dropdown.menu", 1)">
                         <li>
-                            <a href="@routes.Users.showProjects(user.username, None)">
-                                <span class="pull-left">@user.username</span>
+                            <a href="@routes.Users.showProjects(cu.username, None)">
+                                <span class="pull-left">@cu.username</span>
                                 <i class="pull-right fa fa-user"></i>
                             </a>
                         </li>
@@ -116,7 +106,7 @@ The main header displayed on each layout.
                             <a href="@routes.Users.showNotifications(None, None)">
                                 <span class="pull-left">
                                     @messages("notification.plural")
-                                    @if(user.notifications.filterNot(_.read).nonEmpty) {
+                                    @if(request.data.hasUnreadNotifications) {
                                         <span class="unread"></span>
                                     }
                                 </span>
@@ -124,12 +114,12 @@ The main header displayed on each layout.
                             </a>
                         </li>
 
-                        @if(user can ReviewFlags in GlobalScope) {
+                        @if(request.data.globalPerm(ReviewFlags)) {
                             <li>
                                 <a href="@routes.Application.showFlags()">
                                     <span class="flags pull-left">
                                         @messages("project.flag.plural")
-                                        @if(flags.filterNot(_.isResolved).nonEmpty) {
+                                        @if(request.data.unresolvedFlags) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -138,31 +128,12 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(user can ReviewVisibility in GlobalScope) {
+                        @if(request.data.globalPerm(ReviewVisibility)) {
                             <li>
                                 <a href="@routes.Application.showProjectVisibility()">
                                     <span class="flags pull-left">
                                         Project approvals
-                                        @{
-                                            val projectSchema = service.getSchema(classOf[ProjectSchema])
-                                            val futureApproval = projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0)
-                                            val projectApprovals = service.await(futureApproval).get
-                                            if (projectApprovals.size >= 1) {
-                                                <span class="unread"></span>
-                                            }
-                                        }
-                                    </span>
-                                    <i class="pull-right fa fa-thumbs-up"></i>
-                                </a>
-                            </li>
-                        }
-
-                        @if(user can ReviewProjects in GlobalScope) {
-                            <li>
-                                <a href="@routes.Application.showQueue()">
-                                    <span class="pull-left">
-                                        @messages("user.queue")
-                                        @if(queue.nonEmpty) {
+                                        @if(request.data.hasProjectApprovals) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -171,7 +142,21 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(user can ViewStats in GlobalScope) {
+                        @if(request.data.globalPerm(ReviewProjects)) {
+                            <li>
+                                <a href="@routes.Application.showQueue()">
+                                    <span class="pull-left">
+                                        @messages("user.queue")
+                                        @if(request.data.hasReviewQueue) {
+                                            <span class="unread"></span>
+                                        }
+                                    </span>
+                                    <i class="pull-right fa fa-thumbs-up"></i>
+                                </a>
+                            </li>
+                        }
+
+                        @if(request.data.globalPerm(ViewStats)) {
                             <li>
                                 <a href="@routes.Application.showStats()">
                                     <span class="pull-left">
@@ -182,7 +167,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(user can ViewHealth in GlobalScope) {
+                        @if(request.data.globalPerm(ViewHealth)) {
                             <li>
                                 <a href="@routes.Application.showHealth()">
                                     <span class="pull-left">
@@ -193,6 +178,16 @@ The main header displayed on each layout.
                             </li>
                         }
 
+                        @if(request.data.globalPerm(ViewLogs)) {
+                            <li>
+                                <a href="@routes.Application.showLog()">
+                                    <span class="pull-left">
+                                    @messages("admin.log.title")
+                                    </span>
+                                    <i class="pull-right fa fa-list"></i>
+                                </a>
+                            </li>
+                        }
 
                         <li role="separator" class="divider"></li>
                         <li>

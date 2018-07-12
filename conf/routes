@@ -9,19 +9,25 @@ GET     /*path/                                                     @controllers
 GET     /admin/user/:user                                           @controllers.Application.userAdmin(user)
 POST    /admin/user/:user/update                                    @controllers.Application.updateUser(user)
 #GET     /admin/reset                                                @controllers.Application.reset()
-GET     /admin/seed                                                 @controllers.Application.seed(users: Int ?= 200, projects: Int ?= 1, versions: Int ?= 2, channels: Int ?= 2)
+#GET     /admin/seed                                                 @controllers.Application.seed(users: Int ?= 200, projects: Int ?= 1, versions: Int ?= 2, channels: Int ?= 2)
 #GET     /admin/migrate                                              @controllers.Application.migrate()
 GET     /admin/approval/versions                                    @controllers.Application.showQueue()
+GET     /admin/approval/versions/:page                              @controllers.Application.showQueueWithPage(page: Int)
 GET     /admin/approval/projects                                    @controllers.Application.showProjectVisibility()
 GET     /admin/flags                                                @controllers.Application.showFlags()
 GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: Int, resolved: Boolean)
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats()
+GET     /admin/log                                                  @controllers.Application.showLog()
+GET     /admin/log/:page                                            @controllers.Application.showLogWithPage(page: Int)
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
 
 # ---------- API (v1) ----------
++nocsrf
+POST    /api/sync_sso                                               @controllers.ApiController.syncSso()
+
 GET     /api/projects                                               @controllers.ApiController.listProjects(version = "v1", categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/projects/:pluginId                                     @controllers.ApiController.showProject(version = "v1", pluginId)
 
@@ -93,6 +99,7 @@ POST    /organizations/:organization/settings/members/remove        @controllers
 
 # ---------- Users ----------
 GET     /authors                                                    @controllers.Users.showAuthors(sort: Option[String], page: Option[Int])
+GET     /staff                                                      @controllers.Users.showStaff(sort: Option[String], page: Option[Int])
 
 GET     /notifications                                              @controllers.Users.showNotifications(notificationFilter: Option[String], inviteFilter: Option[String])
 POST    /notifications/read/:id                                     @controllers.Users.markNotificationRead(id: Int)
@@ -164,6 +171,7 @@ POST    /:author/:slug/versions/:version/approve                    @controllers
 POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.delete(author, slug, version)
 
 GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean])
++nocsrf
 POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token)
 
 GET     /:author/:slug/versions/recommended/download                @controllers.project.Versions.downloadRecommended(author, slug, token: Option[String])
@@ -192,6 +200,7 @@ POST    /:author/:slug/versions/:version/reviews/approve            @controllers
 POST    /:author/:slug/versions/:version/reviews/takeover           @controllers.Reviews.takeoverReview(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers.Reviews.addMessage(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: Int)
+POST    /:author/:slug/versions/:version/reviews/reopen             @controllers.Reviews.reopenReview(author, slug, version)
 
 
 # ---------- Other ----------

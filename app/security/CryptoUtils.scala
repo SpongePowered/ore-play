@@ -2,10 +2,10 @@ package security
 
 import java.security.SecureRandom
 import java.util.Base64
-import javax.crypto.spec.SecretKeySpec
-import javax.crypto.{Cipher, Mac}
 
 import com.google.common.base.Preconditions._
+import javax.crypto.spec.SecretKeySpec
+import javax.crypto.{Cipher, Mac}
 import org.apache.commons.codec.binary.Hex
 
 /**

@@ -1,17 +1,16 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.{Channel, Project, Version}
+@import models.project.{Channel, Version}
+@import models.viewhelper.ProjectData
 @import ore.OreConfig
 @import ore.project.factory.PendingVersion
 @import security.NonceFilter._
 @import util.StringUtils
 @import views.html.helper.{CSRF, form}
-@import models.project.Tag
-@import models.project.TagColors
-@(project: Project, pending: Option[PendingVersion],
-  channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash,
-        request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
+@import views.html.utils.{alert, editor}
+@(project: ProjectData, forumSync: Boolean, pending: Option[PendingVersion],
+  channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @mainWidth = {
     @pending.map(_ => "col-md-10").getOrElse("col-md-12")
@@ -35,11 +34,11 @@
 
                     <div class="create-body panel-body">
                         <div class="minor create-blurb">
-                            <p>@Html(messages("version.create.info", project.name))</p>
+                            <p>@Html(messages("version.create.info", project.project.name))</p>
                             <p>@Html(messages("project.create.infoText.pgp"))</p>
                         </div>
 
-                        @utils.alert("error")
+                        @alert("error")
 
                         @if(pending.isDefined) {
                             @* Show plugin meta *@
@@ -56,7 +55,7 @@
                                                 @version.description.map { description =>
                                                   @description
                                                 }.getOrElse {
-                                                    @project.description.getOrElse(messages("version.create.noDescription"))
+                                                    @project.project.description.getOrElse(messages("version.create.noDescription"))
                                                 }
                                             </td>
                                         </tr>
@@ -140,6 +139,17 @@
                                                 </td>
                                             </tr>
                                         }
+
+                                        <tr>
+                                            <td><strong>Create forum post</strong></td>
+                                            <td class="rv">
+                                                <div class="checkbox-inline">
+                                                    <input form="form-publish" name="forum-post" type="checkbox"
+                                                            @if(project.project.id.isEmpty || forumSync) { checked } value="true"/>
+                                                </div>
+                                                <div class="clearfix"></div>
+                                            </td>
+                                        </tr>
                                     </table>
                                 </div>
 
@@ -149,7 +159,7 @@
                                             <h3>@messages("version.releaseBulletin")</h3>
                                             <p>@messages("version.releaseBulletin.info")</p>
 
-                                            @utils.editor(
+                                            @editor(
                                                 savable = false,
                                                 enabled = true,
                                                 raw = version.description.getOrElse(""),
@@ -164,7 +174,7 @@
                         }
 
                         @if(showFileControls) {
-                            @form(action = projectRoutes.Versions.upload(project.ownerName, project.slug),
+                            @form(action = projectRoutes.Versions.upload(project.project.ownerName, project.project.slug),
                                 'enctype -> "multipart/form-data", 'id -> "form-upload") {
                                 @CSRF.formField
                                 <label class="btn btn-default pull-left" for="pluginFile">
@@ -173,7 +183,7 @@
                                     @messages("version.create.selectFile")
                                 </label>
 
-                                @projects.utils.alertFile()
+                                @projects.helper.alertFile()
                             }
                         }
 
@@ -181,7 +191,7 @@
                             @* Ready to go! *@
                             @defining(pending.get.underlying) { version: Version =>
                                 @form(action = projectRoutes.Versions.publish(
-                                    project.ownerName, project.slug, version.versionString),
+                                    project.project.ownerName, project.project.slug, version.versionString),
                                     'id -> "form-publish", 'class -> "pull-right") {
                                     @CSRF.formField
                                     @if(!showFileControls) {
@@ -194,7 +204,7 @@
                                     <div @if(!showFileControls) { class="btn-group" } >
                                         @if(!showFileControls) {
                                             <a href="@projectRoutes.Projects.showCreatorWithMeta(
-                                                project.ownerName, project.name)" title="Back"
+                                                project.project.ownerName, project.project.name)" title="Back"
                                                class="btn btn-default">
                                                 <i class="fa fa-arrow-left"></i>
                                             </a>
@@ -213,17 +223,17 @@
                     <span class="pull-right tos">
                         <i>@Html(messages(
                             "project.create.destination",
-                            "<strong>" + project.ownerName + "/" + StringUtils.slugify(project.name) + "</strong>"))
+                            "<strong>" + project.project.ownerName + "/" + StringUtils.slugify(project.project.name) + "</strong>"))
                         </i>
                     </span>
                 }
             </div>
             @if(pending.isDefined) {
-                @projects.utils.createSteps(4)
+                @projects.helper.createSteps(4)
             }
         </div>
     </div>
 
-    @projects.channels.utils.modalManage()
+    @projects.channels.helper.modalManage()
 
 }

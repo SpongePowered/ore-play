@@ -4,6 +4,8 @@ import db.impl.OrePostgresDriver.api._
 import db.table.{AssociativeTable, ModelAssociation}
 import db.{Model, ModelFilter, ModelService}
 
+import scala.concurrent.{ExecutionContext, Future}
+
 class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](service: ModelService,
                                                                     parent: Model,
                                                                     parentRef: Assoc => Rep[Int],
@@ -19,12 +21,11 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](service: Mod
     child.id inSetBind childrenIds
   }) {
 
-  override def add(model: M): M = {
-    this.service.await(this.assoc.assoc(this.parent, model))
-    model
+  override def add(model: M)(implicit ec: ExecutionContext): Future[M] = {
+    this.assoc.assoc(this.parent, model).map(_ => model)
   }
 
-  override def remove(model: M) = this.service.await(this.assoc.disassoc(this.parent, model)).get
+  override def remove(model: M) = this.assoc.disassoc(this.parent, model)
 
   override def removeAll(filter: M#T => Rep[Boolean] = _ => true) = throw new UnsupportedOperationException
 

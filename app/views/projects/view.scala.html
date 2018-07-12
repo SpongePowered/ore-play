@@ -1,73 +1,50 @@
 @*
 Base template for Project overview.
 *@
-@import controllers.project.{routes => projectRoutes}
-@import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.Project
-@import models.user.User
+
+@import controllers.project.routes._
+@import controllers.sugar.Requests.OreRequest
+@import models.project.VisibilityTypes
+@import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.EditSettings
+@import ore.permission.{EditPages, EditSettings, ReviewFlags, ViewLogs}
 @import ore.project.FlagReasons
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
-@import ore.permission.ReviewProjects
-@import ore.permission.ReviewFlags
-@import ore.permission.ViewLogs
-@import ore.permission.scope.GlobalScope
-@import models.project.VisibilityTypes
-@import ore.permission.EditPages
-@(project: Project, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages,
-        request: Request[_], flash: Flash, service: ModelService, config: OreConfig, users: UserBase)
+@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
-@hasUser = @{ users.current.isDefined }
-@user = @{ users.current.get }
-@isOwner(user: User) = @{ user.id.get == project.ownerId }
-@projectRoutes = @{ controllers.project.routes.Projects }
-@versionRoutes = @{ controllers.project.routes.Versions }
-@canAdminFlag = @{ hasUser && (user can ReviewFlags in GlobalScope) }
-@canAdminNotes = @{ hasUser && (user can ReviewFlags in GlobalScope) }
-@canAdminLog = @{ hasUser && (user can ViewLogs in GlobalScope) }
-@canEditPages = @{ hasUser && (user can EditPages in project) }
-@isDeleted = @{ project.visibility == VisibilityTypes.SoftDelete }
-
-@bootstrap.layout(project.ownerName + " / " + project.name) {
+@bootstrap.layout(p.project.ownerName + " / " + p.project.name) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDetail.js")"></script>
 
     <div class="project-header-container">
         <div class="container">
-            @if(project.visibility != VisibilityTypes.Public) {
+            @if(p.visibility != VisibilityTypes.Public) {
                 <div class="row">
                     <div class="col-xs-12">
                         <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
-                            @if(project.visibility == VisibilityTypes.New) {
-                                @messages("visibility.notice." + project.visibility.nameKey)
-                                @if(canEditPages) {
+                            @if(p.visibility == VisibilityTypes.New) {
+                                @messages("visibility.notice." + p.visibility.nameKey)
+                                @if(sp.perms(EditPages)) {
                                     <br>
-                                    @messages("visibility.notice.author." + project.visibility.nameKey)
-                                    <a class="btn btn-success pull-right" href="/@project.ownerName/@project.slug/manage/publish" style="margin-top: -.5em">Publish</a>
+                                    @messages("visibility.notice.author." + p.visibility.nameKey)
+                                    <a class="btn btn-success pull-right" href="@p.fullSlug/manage/publish" style="margin-top: -.5em">Publish</a>
                                 }
-                            } else { @if(project.visibility == VisibilityTypes.NeedsChanges) {
-                                @if(canEditPages) {
-                                    <a class="btn btn-success pull-right" href="/@project.ownerName/@project.slug/manage/sendforapproval">Send for approval</a>
+                            } else { @if(p.visibility == VisibilityTypes.NeedsChanges) {
+                                @if(sp.perms(EditPages)) {
+                                    <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                                 }
-                                <strong>@messages("visibility.notice." + project.visibility.nameKey)</strong>
+                                <strong>@messages("visibility.notice." + p.visibility.nameKey)</strong>
                                 <br>
-                                @if(project.lastVisibilityChange.isDefined) {
-                                    @project.lastVisibilityChange.get.renderComment()
-                                } else {
-                                    Unknown
-                                }
-                            } else { @if(project.visibility == VisibilityTypes.SoftDelete) {
-                                @if(project.lastVisibilityChange.isDefined) {
-                                    @messages("visibility.notice." + project.visibility.nameKey, users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown"))
-                                    @project.lastVisibilityChange.get.renderComment()
-                                } else {
-                                    @messages("visibility.notice." + project.visibility.nameKey, "Unknown")
-                                }
+                                @p.renderVisibilityChange.getOrElse("Unknown")
+
+                            } else { @if(p.visibility == VisibilityTypes.SoftDelete) {
+
+                                @messages("visibility.notice." + p.visibility.nameKey, p.lastVisibilityChangeUser)
+                                @p.renderVisibilityChange.getOrElse("")
+
                             } else {
-                                @messages("visibility.notice." + project.visibility.nameKey)
+                                @messages("visibility.notice." + p.visibility.nameKey)
                             }}}
                         </div>
                     </div>
@@ -78,12 +55,12 @@ Base template for Project overview.
                 <div class="col-md-12">
                     <div class="project-header pull-left">
                         <h1>
-                            <a href="@routes.Users.showProjects(project.ownerName, None)">@project.ownerName</a>
+                            <a href="@routes.Users.showProjects(p.project.ownerName, None)">@p.project.ownerName</a>
                             / <strong>
-                            <a href="@projectRoutes.show(project.ownerName, project.slug)">@project.name</a>
+                            <a href="@Projects.show(p.project.ownerName, p.project.slug)">@p.project.name</a>
                         </strong>
                         </h1>
-                        @defining(project.description.getOrElse("")) { description =>
+                        @defining(p.project.description.getOrElse("")) { description =>
                             <i class="minor" title="@description">@description</i>
                         }
                     </div>
@@ -98,53 +75,51 @@ Base template for Project overview.
                             <ul class="nav navbar-nav">
                                 <!-- Tabs -->
                                 <li id="docs" class="">
-                                    <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                                    <a href="@Projects.show(p.project.ownerName, p.project.slug)">
                                         <i class="fa fa-book"></i> @messages("project.docs")</a>
                                 </li>
 
                                 <li id="versions" class="">
-                                    <a href="@versionRoutes.showList(
-                                        project.ownerName, project.slug, None, None)">
+                                    <a href="@Versions.showList(
+                                        p.project.ownerName, p.project.slug, None, None)">
                                         <i class="fa fa-download"></i> @messages("project.versions")
                                     </a>
                                 </li>
 
-                                @if(project.topicId != -1) {
+                                @if(p.project.topicId != -1) {
                                     <li id="discussion" class="">
-                                        <a href="@projectRoutes.showDiscussion(
-                                            project.ownerName, project.slug)">
+                                        <a href="@Projects.showDiscussion(
+                                            p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-users"></i> @messages("project.discuss")
                                         </a>
                                     </li>
                                 }
 
-                                @if(hasUser && (user can EditSettings in project)) {
+                                @if(sp.perms(EditSettings)) {
                                     @* Show manager if permitted *@
                                     <li id="settings" class="">
-                                        <a href="@projectRoutes.showSettings(project.ownerName, project.slug)">
+                                        <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-cog"></i> @messages("project.settings")
                                         </a>
                                     </li>
                                 }
 
-                                @defining(project.settings) { settings =>
-                                    @settings.issues.map { issues =>
-                                        <li id="issues">
-                                            <a title="@issues" target="_blank"
-                                                href="@projectRoutes.showIssues(
-                                                    project.ownerName, project.slug)">
-                                                <i class="fa fa-bug"></i> Issues <i class="fa fa-external-link"></i></a>
-                                        </li>
-                                    }
+                                @p.settings.issues.map { issues =>
+                                    <li id="issues">
+                                        <a title="@issues" target="_blank"
+                                            href="@Projects.showIssues(
+                                                p.project.ownerName, p.project.slug)">
+                                            <i class="fa fa-bug"></i> Issues <i class="fa fa-external-link"></i></a>
+                                    </li>
+                                }
 
-                                    @settings.source.map { source =>
-                                        <li id="source">
-                                            <a title="@source" target="_blank"
-                                            href="@projectRoutes.showSource(project.ownerName, project.slug)">
-                                                <i class="fa fa-code"></i> Source <i class="fa fa-external-link"></i>
-                                            </a>
-                                        </li>
-                                    }
+                                @p.settings.source.map { source =>
+                                    <li id="source">
+                                        <a title="@source" target="_blank"
+                                        href="@Projects.showSource(p.project.ownerName, p.project.slug)">
+                                            <i class="fa fa-code"></i> Source <i class="fa fa-external-link"></i>
+                                        </a>
+                                    </li>
                                 }
                             </ul>
                             <script nonce="@nonce">$(function() { $(".nav").find("@active").addClass("active"); });</script>
@@ -160,44 +135,38 @@ Base template for Project overview.
                                 </span>
                             }
 
-                            @if(hasUser && !isDeleted) {
+                            @if(request.hasUser && !p.project.isDeleted) {
 
                                 <script nonce="@nonce">
-                                    var projectOwner = "@project.ownerName";
-                                    var projectSlug = "@project.slug";
+                                    var projectOwner = "@p.project.ownerName";
+                                    var projectSlug = "@p.project.slug";
+                                    var alreadyStarred = @sp.starred;
                                 </script>
 
-                                @defining(project.stars.contains(user)) { alreadyStarred =>
-
-                                    <script nonce="@nonce">var alreadyStarred = @alreadyStarred;</script>
-
-                                    @if(!isOwner(user)) {
-                                        <button class="btn btn-default btn-star">
-                                            <i id="icon-star" @if(alreadyStarred) {
-                                                class="fa fa-star"
-                                            } else {
-                                                class="fa fa-star-o" }></i>
-                                            <span class="starred"> @project.starCount</span>
-                                        </button>
-                                    } else {
-                                        <span class="minor stars-static">
-                                            <i class="fa fa-star"></i> @project.starCount
-                                        </span>
-                                    }
-                                }
-
-                                @defining(user.watching.contains(project)) { watching =>
-                                    <button class="btn btn-watch btn-default @if(watching) { watching }">
-                                        <i class="fa fa-eye"></i>
-                                        <span class="watch-status">@if(watching) { Unwatch } else { Watch }</span>
+                                @if(!p.project.isOwner(request.currentUser.get)) {
+                                    <button class="btn btn-default btn-star">
+                                        <i id="icon-star" @if(sp.starred) {
+                                            class="fa fa-star"
+                                        } else {
+                                            class="fa fa-star-o" }></i>
+                                        <span class="starred"> @p.project.starCount</span>
                                     </button>
+                                } else {
+                                    <span class="minor stars-static">
+                                        <i class="fa fa-star"></i> @p.project.starCount
+                                    </span>
                                 }
+
+                                <button class="btn btn-watch btn-default @if(sp.watching) { watching }">
+                                    <i class="fa fa-eye"></i>
+                                    <span class="watch-status">@if(sp.watching) { Unwatch } else { Watch }</span>
+                                </button>
                             }
 
                             <!-- Flag button -->
-                            @if(hasUser && !user.username.equals(project.ownerName)
-                                    && !user.hasUnresolvedFlagFor(project)
-                                    && !isDeleted) {
+                            @if(request.hasUser && !request.currentUser.get.username.equals(p.project.ownerName)
+                                    && !sp.uProjectFlags
+                                    && !p.project.isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
                                     <i class="fa fa-flag"></i> @messages("project.flag")
                                 </button>
@@ -212,8 +181,8 @@ Base template for Project overview.
                                                 </button>
                                                 <h4 class="modal-title" id="label-flag">Flag project</h4>
                                             </div>
-                                            @form(action = projectRoutes.flag(
-                                                project.ownerName, project.slug)) {
+                                            @form(action = Projects.flag(
+                                                p.project.ownerName, p.project.slug)) {
                                                 @CSRF.formField
                                                 <div class="modal-body">
                                                     <ul class="list-group list-flags">
@@ -244,33 +213,33 @@ Base template for Project overview.
                             }
 
                             <!-- Download button -->
-                            @if(!isDeleted) {
-                                <a href="@versionRoutes.downloadRecommended(project.ownerName, project.slug, None)"
+                            @if(!p.project.isDeleted) {
+                                <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
                                 title="@messages("project.download.recommend")" data-toggle="tooltip"
                                 data-placement="bottom" class="btn btn-primary">
                                     <i class="fa fa-download"></i> @messages("general.download")
                                 </a>
                             }
 
-                            @if(hasUser && (canAdminFlag || canAdminNotes || canAdminLog)) {
+                            @if(request.hasUser && (request.data.globalPerm(ReviewFlags) || request.data.globalPerm(ViewLogs))) {
                                 <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                     Admin actions
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-actions">
-                                    @if(canAdminFlag) {
-                                        <li><a href="@projectRoutes.showFlags(project.ownerName, project.slug)">
-                                            Flag history (@project.flags.size) </a></li>
+                                    @if(request.data.globalPerm(ReviewFlags)) {
+                                        <li><a href="@Projects.showFlags(p.project.ownerName, p.project.slug)">
+                                            Flag history (@p.flagCount) </a></li>
                                     }
-                                    @if(canAdminNotes) {
-                                        <li><a href="@projectRoutes.showNotes(project.ownerName, project.slug)">
-                                            Staff notes (@project.getNotes().size) </a></li>
+                                    @if(request.data.globalPerm(ReviewFlags)) {
+                                        <li><a href="@Projects.showNotes(p.project.ownerName, p.project.slug)">
+                                            Staff notes (@p.noteCount) </a></li>
                                     }
-                                    @if(canAdminLog) {
-                                        <li><a href="@projectRoutes.showLog(project.ownerName, project.slug)">
-                                            Log (@project.logger.entries.size) </a></li>
+                                    @if(request.data.globalPerm(ViewLogs)) {
+                                        <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
+                                            Log (@p.projectLogSize) </a></li>
                                     }
-                                    <li><a href="https://forums.spongepowered.org/users/@project.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
+                                    <li><a href="https://forums.spongepowered.org/users/@p.project.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
                                 </ul>
                             }
                         </div>

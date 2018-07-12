@@ -1,12 +1,13 @@
 package discourse
 
 import java.nio.file.Path
-import javax.inject.{Inject, Singleton}
 
 import akka.actor.ActorSystem
+import javax.inject.{Inject, Singleton}
 import ore.{OreConfig, OreEnv}
 import play.api.libs.ws.WSClient
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 /**
@@ -20,18 +21,20 @@ class SpongeForums @Inject()(env: OreEnv,
 
   private val conf = this.config.forums
 
-  isEnabled = this.conf.getBoolean("api.enabled").get
+  isEnabled = this.conf.get[Boolean]("api.enabled")
+  isDebugMode = this.config.ore.get[Boolean]("debug")
 
-  override val key: String = this.conf.getString("api.key").get
-  override val admin: String = this.conf.getString("api.admin").get
-  override val timeout: Duration = this.conf.getInt("api.timeout").get.millis
-  override val url: String = this.conf.getString("baseUrl").get
-  override val baseUrl: String = this.config.app.getString("baseUrl").get
+  override val key: String = this.conf.get[String]("api.key")
+  override val admin: String = this.conf.get[String]("api.admin")
+  override val timeout: Duration = this.conf.get[FiniteDuration]("api.timeout")
+  override val url: String = this.conf.get[String]("baseUrl")
+  override val baseUrl: String = this.config.app.get[String]("baseUrl")
 
-  override val categorySlug: String = this.conf.getString("embed.categorySlug").get
+  override val categorySlug: String = this.conf.get[String]("embed.categorySlug")
   override val topicTemplatePath: Path = this.env.conf.resolve("discourse/project_topic.md")
   override val versionReleasePostTemplatePath: Path = this.env.conf.resolve("discourse/version_post.md")
   override val scheduler = this.actorSystem.scheduler
-  override val retryRate: FiniteDuration = this.conf.getInt("embed.retryRate").get.millis
+  override val bootstrapExecutionContext: ExecutionContext = this.actorSystem.dispatcher
+  override val retryRate = this.conf.get[FiniteDuration]("embed.retryRate")
 
 }

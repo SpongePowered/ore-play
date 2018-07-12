@@ -9,15 +9,15 @@ import db.access.ModelAccess
 import db.table.{MappedType, ModelTable}
 import slick.ast.{AnonSymbol, Ref, SortBy}
 import slick.basic.DatabaseConfig
-import slick.jdbc.JdbcProfile
-import slick.jdbc.JdbcType
+import slick.jdbc.{JdbcProfile, JdbcType}
 import slick.lifted.{ColumnOrdered, WrappingQuery}
 import slick.util.ConstArray
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
+
+import util.functional.OptionT
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.
@@ -113,7 +113,7 @@ trait ModelService {
     * @param action   Action to run
     * @return         Processed result
     */
-  def doAction[R](action: AbstractModelAction[R]): Future[R]
+  def doAction[R](action: AbstractModelAction[R])(implicit ec: ExecutionContext): Future[R]
   = DB.db.run(action).map(r => action.processResult(this, r))
 
   /**
@@ -133,7 +133,7 @@ trait ModelService {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M <: Model](model: M): Future[M] = {
+  def insert[M <: Model](model: M)(implicit ec: ExecutionContext): Future[M] = {
     val toInsert = model.copyWith(None, Some(theTime)).asInstanceOf[M]
     val models = newAction[M](model.getClass)
     doAction {
@@ -183,14 +183,14 @@ trait ModelService {
     * @param filter  Filter
     * @return        Optional result
     */
-  def find[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean]): Future[Option[M]] = {
+  def find[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean])(implicit ec: ExecutionContext): OptionT[Future, M] = {
     val modelPromise = Promise[Option[M]]
     val query = newAction[M](modelClass).filter(filter).take(1)
     doAction(query.result).andThen {
       case Failure(thrown) => modelPromise.failure(thrown)
       case Success(result) => modelPromise.success(result.headOption)
     }
-    modelPromise.future
+    OptionT(modelPromise.future)
   }
 
   /**
@@ -228,7 +228,7 @@ trait ModelService {
     * @param id   Model with ID
     * @return     Model if present, None otherwise
     */
-  def get[M <: Model](modelClass: Class[M], id: Int, filter: M#T => Rep[Boolean] = null): Future[Option[M]]
+  def get[M <: Model](modelClass: Class[M], id: Int, filter: M#T => Rep[Boolean] = null)(implicit ec: ExecutionContext): OptionT[Future, M]
   = find[M](modelClass, (IdFilter[M](id) && filter).fn)
 
   /**
@@ -240,7 +240,7 @@ trait ModelService {
     * @tparam M         Model type
     * @return           Seq of models in ID set
     */
-  def in[M <: Model](modelClass: Class[M], ids: Set[Int], filter: M#T => Rep[Boolean] = null): Future[Seq[M]]
+  def in[M <: Model](modelClass: Class[M], ids: Set[Int], filter: M#T => Rep[Boolean] = null)(implicit ec: ExecutionContext): Future[Seq[M]]
   = this.filter[M](modelClass, (ModelFilter[M](_.id inSetBind ids) && filter).fn)
 
   /**
@@ -251,7 +251,7 @@ trait ModelService {
     * @return       Collection of models
     */
   def collect[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean] = null,
-                          sort: M#T => ColumnOrdered[_] = null, limit: Int = -1, offset: Int = -1): Future[Seq[M]] = {
+                          sort: M#T => ColumnOrdered[_] = null, limit: Int = -1, offset: Int = -1)(implicit ec: ExecutionContext): Future[Seq[M]] = {
     var query = newAction[M](modelClass)
     if (filter != null) query = query.filter(filter)
     if (sort != null) query = query.sortBy(sort)
@@ -264,7 +264,7 @@ trait ModelService {
     * Same as collect but with multiple sorted columns
     */
   def collectMultipleSorts[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean] = null,
-                          sort: M#T => List[ColumnOrdered[_]] = null, limit: Int = -1, offset: Int = -1): Future[Seq[M]] = {
+                          sort: M#T => List[ColumnOrdered[_]] = null, limit: Int = -1, offset: Int = -1)(implicit ec: ExecutionContext): Future[Seq[M]] = {
     var query = newAction[M](modelClass)
     if (filter != null) query = query.filter(filter)
     if (sort != null)  {
@@ -289,7 +289,7 @@ trait ModelService {
     * @return       Filtered models
     */
   def filter[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean], limit: Int = -1,
-                         offset: Int = -1): Future[Seq[M]]
+                         offset: Int = -1)(implicit ec: ExecutionContext): Future[Seq[M]]
   = collect(modelClass, filter, null.asInstanceOf[M#T => ColumnOrdered[_]], limit, offset)
 
   /**
@@ -303,14 +303,14 @@ trait ModelService {
     * @return           Sorted models
     */
   def sorted[M <: Model](modelClass: Class[M], sort: M#T => ColumnOrdered[_], filter: M#T => Rep[Boolean] = null,
-                         limit: Int = -1, offset: Int = -1): Future[Seq[M]]
+                         limit: Int = -1, offset: Int = -1)(implicit ec: ExecutionContext): Future[Seq[M]]
   = collect(modelClass, filter, sort, limit, offset)
 
   /**
     * Same as sorted but with multiple sorts
     */
   def sortedMultipleOrders[M <: Model](modelClass: Class[M], sorts: M#T => List[ColumnOrdered[_]], filter: M#T => Rep[Boolean] = null,
-                         limit: Int = -1, offset: Int = -1): Future[Seq[M]]
+                         limit: Int = -1, offset: Int = -1)(implicit ec: ExecutionContext): Future[Seq[M]]
   = collectMultipleSorts(modelClass, filter, sorts, limit, offset)
 
 }

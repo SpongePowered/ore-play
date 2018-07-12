@@ -1,40 +1,28 @@
 @import db.ModelService
-@import db.impl.access.UserBase
 @import models.user.role.RoleModel
 @import ore.permission.EditSettings
-@import ore.permission.role.{Absolute, Role}
+@import ore.permission.role.Absolute
 @import ore.user.Member
 @import ore.{Joinable, OreConfig}
-@import views.html.helper.form
-@import views.html.helper.CSRF
-@(model: Joinable[_ <: Member[_]], editable: Boolean = false, removeCall: Call = null,
-        settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, service: ModelService,
-        config: OreConfig, userBase: UserBase, request: Request[_])
-
-@canEdit = @{
-    editable && userBase.current.isDefined && (userBase.current.get can EditSettings in model)
-}
-
-@shouldShowMember(member: Member[_ <: RoleModel]) = @{
-    val headRole = member.headRole
-    val isCurrentUsersProject = userBase.current.isDefined && userBase.current.get.username.equals(model.owner.user.name)
-    canEdit || headRole.isAccepted || isCurrentUsersProject
-}
-
-@roleClass = @{
-    model.owner.headRole.getClass.asInstanceOf[Class[_ <: Role]]
-}
+@import views.html.helper.{CSRF, form}
+@import views.html.utils.userAvatar
+@* MemberData? with perms *@
+@import controllers.sugar.Requests.OreRequest
+@import models.viewhelper.JoinableData
+@import ore.permission.Permission
+@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_]]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
+        settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 
 <!-- TODO: Pagination -->
 
-@if(model.memberships.members.nonEmpty) {
+@if(j.members.nonEmpty) {
 
-    @if(canEdit) {
+    @if(editable && perms.getOrElse(EditSettings, false)) {
         <script type="text/javascript" src="@routes.Assets.at("javascripts/userSearch.js")"></script>
         <script type="text/javascript" src="@routes.Assets.at("javascripts/memberList.js")"></script>
 
         @users.invite.roleSelect(
-            roleClass = roleClass,
+            roleClass = j.roleClass,
             id = "select-role",
             classes = "pull-right",
             hidden = true
@@ -44,10 +32,10 @@
         <ul style="display: none;">
             <li id="row-user" class="list-group-item">
                 <input type="hidden" />
-                @utils.userAvatar(null, clazz = "user-avatar-xs")
+                @userAvatar(None, None, clazz = "user-avatar-xs")
                 <a class="username"></a>
                 <i class="fa fa-times user-cancel"></i>
-                @users.invite.roleSelect(roleClass = roleClass, classes="pull-right")
+                @users.invite.roleSelect(roleClass = j.roleClass, classes="pull-right")
             </li>
         </ul>
 
@@ -82,7 +70,7 @@
         <div class="panel-heading">
             <h3 class="pull-left panel-title">@messages("project.settings.members")</h3>
 
-            @if(userBase.current.isDefined && (userBase.current.get can EditSettings in model)) {
+            @if(perms.getOrElse(EditSettings, false)) {
                 <div class="pull-right">
                     @if(!editable && settingsCall != null) {
                         <a href="@settingsCall"
@@ -106,39 +94,35 @@
 
         <ul class="list-members list-group">
             <!-- Member list -->
-            @model.memberships.members.toList.sorted.reverse.map { member =>
-                @if(shouldShowMember(member)) {
-                    <li class="list-group-item">
-                        @utils.userAvatar(member.user, clazz = "user-avatar-xs")
-                        <a class="username" href="@routes.Users.showProjects(member.username, None)">
-                            @member.username
+            @j.filteredMembers.map { case (role, user) =>
+                <li class="list-group-item">
+                    @userAvatar(Some(user.username), user.avatarUrl, clazz = "user-avatar-xs")
+                <a class="username" href="@routes.Users.showProjects(user.username, None)">
+                @user.username
+                </a>
+                    @role.id.map { id =>
+                        <p style="display: none;" class="role-id">@id</p>
+                    }
+                    @if(editable && perms.getOrElse(EditSettings, false) && !role.roleType.trust.equals(Absolute)) {
+                        <a href="#">
+                            <i style="padding-left:5px" class="fa fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
                         </a>
-                        @defining(member.headRole.id) { id: Option[Int] =>
-                            @if(id.isDefined) {
-                                <p style="display: none;" class="role-id">@id.get</p>
-                            }
-                        }
-                        @if(canEdit && !member.headRole.roleType.trust.equals(Absolute)) {
-                            <a href="#">
-                                <i style="padding-left:5px" class="fa fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
-                            </a>
-                            <a href="#"><i style="padding-left:5px" class="fa fa-edit"></i></a>
-                        }
+                        <a href="#"><i style="padding-left:5px" class="fa fa-edit"></i></a>
+                    }
 
-                        <span class="minor pull-right">
-                            @if(!member.headRole.isAccepted) {
-                                <span class="minor">(Invited as @member.headRole.roleType.title)</span>
-                            } else {
-                                @member.headRole.roleType.title
-                            }
-                        </span>
-
-                    </li>
+                <span class="minor pull-right">
+                @if(!role.isAccepted) {
+                    <span class="minor">(Invited as @role.roleType.title)</span>
+                } else {
+                    @role.roleType.title
                 }
+                </span>
+
+                </li>
             }
 
             <!-- User search -->
-            @if(canEdit) {
+            @if(perms.getOrElse(EditSettings, false)) {
                 <li class="list-group-item">
                     @users.invite.userSearch()
                 </li>

@@ -1,75 +1,59 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
 @import discourse.OreDiscourseApi
+@import models.user.User
 @import models.user.role.ProjectRole
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
 @import play.twirl.api.Html
-@import views.html.helper.form
+@import views.html.helper.{CSRF, form}
 
-@import scala.collection.JavaConverters._
-@import scala.concurrent.TimeoutException
-@import views.html.helper.CSRF
-@(pending: PendingProject)(implicit messages: Messages, flash: Flash, request: Request[_], service: ModelService,
-        forums: OreDiscourseApi, config: OreConfig, userBase: UserBase)
+@import scala.concurrent.ExecutionContext
+@(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit executionContext: ExecutionContext, messages: Messages, flash: Flash, request: OreRequest[_],
+        forums: OreDiscourseApi, config: OreConfig, currentUser: User)
 
-@registeredUsers(users: List[String]) = @{
-    try {
-        forums.await(forums.countUsers(users))
-    } catch {
-        case e: TimeoutException => 0
-    }
-}
-
-@projects.utils.panelCreate(messages("project.create"), 3) {
-    @defining(userBase.current.get) { user =>
-
-        <!-- Start panel -->
-        <div class="panel-body">
-            <!-- Info -->
-            <div class="minor create-blurb">
-                <p>@messages("project.members.infoText.head")</p>
-                <p>
-                    @Html(messages("project.members.infoText.bottom",
-                        registeredUsers(pending.file.meta.get.getAuthors.asScala.toList)))
-                </p>
-            </div>
-
-            @users.invite.form(
-                owner = pending.underlying.owner,
-                loadedUsers = pending.file.meta.get.getAuthors
-                        .filterNot(_.equals(user.username))
-                        .flatMap(userBase.withName).toSeq,
-                roleClass = classOf[ProjectRole]
-            )
-
-            <!-- Submission form -->
-            @form(action = projectRoutes.Projects.showFirstVersionCreator(
-                pending.underlying.ownerName,
-                pending.underlying.slug),
-                'id -> "form-continue") {
-
-                @CSRF.formField
-
-                <div class="btn-group pull-right">
-                    <a href="@projectRoutes.Projects.showCreatorWithMeta(
-                        pending.underlying.ownerName,
-                        pending.underlying.slug)"
-                       title="Back" class="pull-left btn btn-default">
-                        <i class="fa fa-arrow-left"></i>
-                    </a>
-
-                    @* Disabled until JS determines meta is valid *@
-                    <button title="Continue" type="submit" name="submit" value="@messages("general.continue")"
-                            class="pull-right continue-btn btn btn-primary">
-                        <i class="fa fa-arrow-right"></i>
-                    </button>
-                </div>
-
-            }
-
+@projects.helper.panelCreate(messages("project.create"), 3) {
+    <!-- Start panel -->
+    <div class="panel-body">
+        <!-- Info -->
+        <div class="minor create-blurb">
+            <p>@messages("project.members.infoText.head")</p>
+            <p>
+                @Html(messages("project.members.infoText.bottom", registeredUsers))
+            </p>
         </div>
 
-    }
+        @users.invite.form(
+            owner = owner,
+            loadedUsers = userList,
+            roleClass = classOf[ProjectRole]
+        )
+
+        <!-- Submission form -->
+        @form(action = projectRoutes.Projects.showFirstVersionCreator(
+            pending.underlying.ownerName,
+            pending.underlying.slug),
+            'id -> "form-continue") {
+
+            @CSRF.formField
+
+            <div class="btn-group pull-right">
+                <a href="@projectRoutes.Projects.showCreatorWithMeta(
+                    pending.underlying.ownerName,
+                    pending.underlying.slug)"
+                   title="Back" class="pull-left btn btn-default">
+                    <i class="fa fa-arrow-left"></i>
+                </a>
+
+                @* Disabled until JS determines meta is valid *@
+                <button title="Continue" type="submit" name="submit" value="@messages("general.continue")"
+                        class="pull-right continue-btn btn btn-primary">
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+            </div>
+
+        }
+
+    </div>
 }

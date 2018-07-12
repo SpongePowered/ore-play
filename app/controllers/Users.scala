@@ -1,27 +1,32 @@
 package controllers
 
-import javax.inject.Inject
-
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.UserBase.ORDERING_PROJECTS
+import db.impl.access.UserBase.{ORDERING_PROJECTS, ORDERING_ROLE}
+import db.impl.{ProjectTableMain, VersionTable}
 import discourse.OreDiscourseApi
 import form.OreForms
-import models.user.role.RoleModel
-import models.user.{Notification, SignOn, User}
+import javax.inject.Inject
+import mail.{EmailFactory, Mailer}
+import models.user.{SignOn, User}
+import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.rest.OreWrites
 import ore.user.notification.InviteFilters.InviteFilter
 import ore.user.notification.NotificationFilters.NotificationFilter
 import ore.user.notification.{InviteFilters, NotificationFilters}
 import ore.user.{FakeUser, Prompts}
 import ore.{OreConfig, OreEnv}
-import mail.{EmailFactory, Mailer}
 import play.Logger
+import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.mvc._
 import security.spauth.SingleSignOnConsumer
 import views.{html => views}
+import util.instances.future._
+import util.syntax._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Controller for general user actions.
@@ -37,9 +42,10 @@ class Users @Inject()(fakeUser: FakeUser,
                       implicit override val messagesApi: MessagesApi,
                       implicit override val env: OreEnv,
                       implicit override val config: OreConfig,
-                      implicit override val service: ModelService) extends BaseController {
+                      implicit override val cache: AsyncCacheApi,
+                      implicit override val service: ModelService)(implicit val ec: ExecutionContext) extends OreBaseController {
 
-  private val baseUrl = this.config.app.getString("baseUrl").get
+  private val baseUrl = this.config.app.get[String]("baseUrl")
 
   /**
     * Redirect to auth page for SSO authentication.
@@ -59,7 +65,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param sig  Incoming signature from auth
     * @return     Logged in home
     */
-  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]) = Action { implicit request =>
+  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]) = Action.async { implicit request =>
     if (this.fakeUser.isEnabled) {
       // Log in as fake user (debug only)
       this.config.checkDebug()
@@ -68,17 +74,19 @@ class Users @Inject()(fakeUser: FakeUser,
     } else if (sso.isEmpty || sig.isEmpty) {
       val nonce = SingleSignOnConsumer.nonce
       this.signOns.add(SignOn(nonce = nonce))
-      redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce))
+      Future.successful(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
     } else {
       // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
-      this.sso.authenticate(sso.get, sig.get)(isNonceValid) match {
-        case None =>
-          Redirect(ShowHome).withError("error.loginFailed")
-        case Some(spongeUser) =>
-          // Complete authentication
-          val user = this.users.getOrCreate(User.fromSponge(spongeUser)).pullForumData().pullSpongeData()
-          this.redirectBack(request.flash.get("url").getOrElse("/"), user)
-      }
+      this.sso.authenticate(sso.get, sig.get)(isNonceValid).semiFlatMap { spongeUser =>
+        // Complete authentication
+        val fromSponge = User.fromSponge(spongeUser)
+        for {
+          user <- this.users.getOrCreate(fromSponge)
+          _ <- user.pullForumData()
+          _ <- user.pullSpongeData()
+          result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
+        } yield result
+      }.getOrElse(Redirect(ShowHome).withError("error.loginFailed"))
     }
   }
 
@@ -103,7 +111,7 @@ class Users @Inject()(fakeUser: FakeUser,
   }
 
   private def redirectBack(url: String, user: User)
-  = Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.getInt("http.session.maxAge").get)
+  = Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.get[Int]("http.session.maxAge"))
 
   /**
     * Clears the current session.
@@ -121,20 +129,50 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]) = Action { implicit request =>
-    val pageSize = this.config.users.getInt("project-page-size").get
+  def showProjects(username: String, page: Option[Int]) = OreAction async { implicit request =>
+    val pageSize = this.config.users.get[Int]("project-page-size")
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
-    this.users.withName(username).map { u =>
-      (u, u.projects.sortedMultipleOrders(
-        orderings = p => List(p.stars.desc, p.name.asc),
-        filter = _.recommendedVersionId =!= -1,
-        limit = pageSize,
-        offset = offset))
-    } map {
-      case (user, projectSeq) => Ok(views.users.projects(user, projectSeq, p))
-    } getOrElse {
-      notFound
+    this.users.withName(username).semiFlatMap { user =>
+      for {
+        // TODO include orga projects?
+        projectSeq <- service.DB.db.run(queryUserProjects(user).drop(offset).take(pageSize).result)
+        starred <- user.starred()
+        orga <- getOrga(request, username).value
+        (tags, userData, starredRv, orgaData, scopedOrgaData) <- (
+          Future.sequence(projectSeq.map(_._2.tags)),
+          getUserData(request, username).value,
+          Future.sequence(starred.map(_.recommendedVersion)),
+          OrganizationData.of(orga).value,
+          ScopedOrganizationData.of(request.currentUser, orga).value
+        ).parTupled
+      } yield {
+        val data = projectSeq zip tags map { case ((p, v), tags) =>
+          (p, user, v, tags)
+        }
+        val starredData = starred zip starredRv
+        Ok(views.users.projects(userData.get, orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))), data, starredData, p))
+      }
+    }.getOrElse(notFound)
+  }
+
+  private def queryUserProjects(user: User) = {
+    queryProjectRV filter { case (p, v) =>
+      p.userId === user.id.get
+    } sortBy { case (p, v) =>
+      (p.stars.desc, p.name.asc)
+    }
+  }
+
+  private def queryProjectRV = {
+    val tableProject = TableQuery[ProjectTableMain]
+    val tableVersion = TableQuery[VersionTable]
+
+    for {
+      p <- tableProject
+      v <- tableVersion if p.recommendedVersionId === v.id
+    } yield {
+      (p, v)
     }
   }
 
@@ -144,16 +182,22 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username   User to update
     * @return           View of user page
     */
-  def saveTagline(username: String) = UserAction(username) { implicit request =>
-    val tagline = this.forms.UserTagline.bindFromRequest.get.trim
-    val maxLen = this.config.users.getInt("max-tagline-len").get
-    val user = this.users.withName(username).get
-    if (tagline.length > maxLen) {
-      Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))
-    } else {
-      user.tagline = tagline
-      Redirect(ShowUser(user))
+  def saveTagline(username: String) = UserAction(username).async { implicit request =>
+    val maxLen = this.config.users.get[Int]("max-tagline-len")
+
+    val res = for {
+      user <- this.users.withName(username).toRight(NotFound)
+      tagline <- bindFormEitherT[Future](this.forms.UserTagline)(_ => BadRequest)
+    } yield {
+      if (tagline.length > maxLen) {
+        Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))
+      } else {
+        user.setTagline(tagline)
+        Redirect(ShowUser(user))
+      }
     }
+
+    res.merge
   }
 
   /**
@@ -168,12 +212,11 @@ class Users @Inject()(fakeUser: FakeUser,
       hasErrors =>
         Redirect(ShowUser(username)).withError(hasErrors.errors.head.message),
       keySubmission => {
-        import writes._
         val keyInfo = keySubmission.info
         val user = request.user
-        user.pgpPubKey = keyInfo.raw
+        user.setPgpPubKey(keyInfo.raw)
         if (user.lastPgpPubKeyUpdate.isDefined)
-          user.lastPgpPubKeyUpdate = this.service.theTime // Not set the first time
+          user.setLastPgpPubKeyUpdate(this.service.theTime) // Not set the first time
 
         // Send email notification
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
@@ -196,8 +239,8 @@ class Users @Inject()(fakeUser: FakeUser,
       if (user.pgpPubKey.isEmpty)
         BadRequest
       else {
-        user.pgpPubKey = null
-        user.lastPgpPubKeyUpdate = this.service.theTime
+        user.setPgpPubKey(null)
+        user.setLastPgpPubKeyUpdate(this.service.theTime)
         Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
       }
     }
@@ -224,10 +267,24 @@ class Users @Inject()(fakeUser: FakeUser,
     * Shows a list of [[models.user.User]]s that have created a
     * [[models.project.Project]].
     */
-  def showAuthors(sort: Option[String], page: Option[Int]) = Action { implicit request =>
+  def showAuthors(sort: Option[String], page: Option[Int]) = OreAction async { implicit request =>
     val ordering = sort.getOrElse(ORDERING_PROJECTS)
     val p = page.getOrElse(1)
-    Ok(views.users.authors(this.users.getAuthors(ordering, p), ordering, p))
+    this.users.getAuthors(ordering, p).map { u =>
+      Ok(views.users.authors(u, ordering, p))
+    }
+  }
+
+
+  /**
+    * Shows a list of [[models.user.User]]s that have Ore staff roles.
+    */
+  def showStaff(sort: Option[String], page: Option[Int]) = OreAction async { implicit request =>
+    val ordering = sort.getOrElse(ORDERING_ROLE)
+    val p = page.getOrElse(1)
+    this.users.getStaff(ordering, p).map { u =>
+      Ok(views.users.staff(u, ordering, p))
+    }
   }
 
   /**
@@ -236,29 +293,27 @@ class Users @Inject()(fakeUser: FakeUser,
     * @return Unread notifications
     */
   def showNotifications(notificationFilter: Option[String], inviteFilter: Option[String]) = {
-    Authenticated { implicit request =>
+    Authenticated.async { implicit request =>
       val user = request.user
 
       // Get visible notifications
       val nFilter: NotificationFilter = notificationFilter
-        .map(str => NotificationFilters.values
-          .find(_.name.equalsIgnoreCase(str))
-          .getOrElse(NotificationFilters.Unread))
+        .flatMap(str => NotificationFilters.values.find(_.name.equalsIgnoreCase(str)))
         .getOrElse(NotificationFilters.Unread)
-      val notifications: Seq[Notification] = nFilter(user.notifications)
 
-      // Get visible invites
       val iFilter: InviteFilter = inviteFilter
-        .map(str => InviteFilters.values
-          .find(_.name.equalsIgnoreCase(str))
-          .getOrElse(InviteFilters.All))
+        .flatMap(str => InviteFilters.values.find(_.name.equalsIgnoreCase(str)))
         .getOrElse(InviteFilters.All)
-      val invites: Seq[RoleModel] = iFilter(user)
 
-      Ok(views.users.notifications(
-        notifications,
-        invites,
-        nFilter, iFilter))
+      val notificationsFut = nFilter(user.notifications).flatMap(l => Future.sequence(l.map(notif => notif.origin.map((notif, _)))))
+      val invitesFut = iFilter(user).flatMap(invites => Future.sequence(invites.map {invite => invite.subject.map((invite, _))}))
+
+      (notificationsFut, invitesFut).parMapN { (notifications, invites) =>
+        Ok(views.users.notifications(
+          notifications,
+          invites,
+          nFilter, iFilter))
+      }
     }
   }
 
@@ -268,14 +323,11 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param id Notification ID
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
-  def markNotificationRead(id: Int) = Authenticated { implicit request =>
-    request.user.notifications.get(id) match {
-      case None =>
-        notFound
-      case Some(notification) =>
-        notification.setRead(read = true)
-        Ok
-    }
+  def markNotificationRead(id: Int) = Authenticated.async { implicit request =>
+    request.user.notifications.get(id).map { notification =>
+      notification.setRead(read = true)
+      Ok
+    }.getOrElse(notFound)
   }
 
   /**

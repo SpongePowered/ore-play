@@ -1,10 +1,9 @@
 package db.impl.service
 
-import javax.inject.{Inject, Singleton}
-
 import db.impl.{OreModelProcessor, OrePostgresDriver}
 import db.{ModelRegistry, ModelService}
 import discourse.OreDiscourseApi
+import javax.inject.{Inject, Singleton}
 import ore.{OreConfig, OreEnv}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.i18n.MessagesApi
@@ -36,7 +35,7 @@ class OreModelService @Inject()(override val env: OreEnv,
     this, Users, Projects, Organizations, this.config, this.forums, this.auth)
   override lazy val driver = OrePostgresDriver
   override lazy val DB = db.get[JdbcProfile]
-  override lazy val DefaultTimeout: Duration = this.config.app.getInt("db.default-timeout").get.seconds
+  override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
 
   import registry.{registerModelBase, registerSchema}
 
@@ -72,6 +71,7 @@ class OreModelService @Inject()(override val env: OreEnv,
     registerSchema(OrganizationRoleSchema)
     registerSchema(ProjectApiKeySchema)
     registerSchema(VisibilityChangeSchema)
+    registerSchema(UserActionLogSchema)
 
     Logger.info(
       "Database initialized:\n" +

@@ -1,10 +1,9 @@
 package db.impl.schema
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.{VersionDownloadsTable, VersionTable}
+import db.impl.VersionTable
 import db.{ModelFilter, ModelSchema, ModelService}
 import models.project.Version
-import models.statistic.VersionDownload
 
 import scala.concurrent.Future
 

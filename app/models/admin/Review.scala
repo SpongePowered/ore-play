@@ -1,17 +1,21 @@
 package models.admin
 
 import java.sql.Timestamp
-import util.StringUtils
-import ore.OreConfig
-import play.twirl.api.Html
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
+import java.time.Instant
+
 import db.Model
 import db.impl.ReviewTable
 import db.impl.model.OreModel
 import db.impl.schema.ReviewSchema
 import db.impl.table.ModelKeys._
-import models.project.{Project, Version, Page}
+import models.project.{Page, Project, Version}
+import ore.OreConfig
+import play.api.libs.functional.syntax._
+import play.twirl.api.Html
+import util.StringUtils
+import play.api.libs.json._
+
+import scala.concurrent.Future
 
 
 /**
@@ -53,7 +57,7 @@ case class Review(override val id: Option[Int] = None,
     * @param message
     * @return
     */
-  def addMessage(message: Message) = {
+  def addMessage(message: Message): Future[Int] = {
 
     /**
       * Helper function to encode to json
@@ -97,8 +101,8 @@ case class Review(override val id: Option[Int] = None,
     * @param time
     * @return
     */
-  def setEnded(time: Timestamp) = {
-    this.endedAt = Some(time)
+  def setEnded(time: Option[Timestamp]): Future[Int] = {
+    this.endedAt = time
     update(EndedAt)
   }
 
@@ -133,4 +137,17 @@ case class Message(message: String, time: Long = System.currentTimeMillis(), act
   def isTakeover() = action.equalsIgnoreCase("takeover")
   def isStop() = action.equalsIgnoreCase("stop")
   def render(implicit oreConfig: OreConfig): Html = Page.Render(message)
+}
+
+
+object Review {
+  def ordering: Ordering[(Review, _)] = {
+    // TODO make simple + check order
+    Ordering.by(_._1.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+  }
+
+  def ordering2: Ordering[Review] = {
+    // TODO make simple + check order
+    Ordering.by(_.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+  }
 }

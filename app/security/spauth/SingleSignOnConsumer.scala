@@ -4,18 +4,19 @@ import java.math.BigInteger
 import java.net.{URLDecoder, URLEncoder}
 import java.security.SecureRandom
 import java.util.Base64
+
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
-
 import org.apache.commons.codec.binary.Hex
 import play.api.Configuration
 import play.api.http.Status
 import play.api.libs.ws.WSClient
+import util.functional.OptionT
+import util.instances.future._
 
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
   * Manages authentication to Sponge services.
@@ -39,7 +40,7 @@ trait SingleSignOnConsumer {
     *
     * @return True if available
     */
-  def isAvailable: Boolean = Await.result(this.ws.url(this.loginUrl).get().map(_.status == Status.OK).recover {
+  def isAvailable(implicit ec: ExecutionContext): Boolean = Await.result(this.ws.url(this.loginUrl).get().map(_.status == Status.OK).recover {
     case _: Exception => false
   }, this.timeout)
 
@@ -105,13 +106,13 @@ trait SingleSignOnConsumer {
     *                       marks the nonce as invalid so it cannot be used again
     * @return               [[SpongeUser]] if successful
     */
-  def authenticate(payload: String, sig: String)(isNonceValid: String => Boolean): Option[SpongeUser] = {
+  def authenticate(payload: String, sig: String)(isNonceValid: String => Future[Boolean])(implicit ec: ExecutionContext): OptionT[Future, SpongeUser] = {
     Logger.info("Authenticating SSO payload...")
     Logger.info(payload)
     Logger.info("Signed with : " + sig)
     if (!hmac_sha256(payload.getBytes(this.CharEncoding)).equals(sig)) {
       Logger.info("<FAILURE> Could not verify payload against signature.")
-      return None
+      return OptionT.none[Future, SpongeUser]
     }
 
     // decode payload
@@ -142,18 +143,18 @@ trait SingleSignOnConsumer {
 
     if (externalId == -1 || username == null || email == null || nonce == null) {
       Logger.info("<FAILURE> Incomplete payload.")
-      return None
+      return OptionT.none[Future, SpongeUser]
     }
 
-    if (!isNonceValid(nonce)) {
-      Logger.info("<FAILURE> Invalid nonce.")
-      return None
+    OptionT.liftF(isNonceValid(nonce)).subflatMap {
+      case false =>
+        Logger.info("<FAILURE> Invalid nonce.")
+        None
+      case true =>
+        val user = SpongeUser(externalId, username, email, Option(avatarUrl))
+        Logger.info("<SUCCESS> " + user)
+        Some(user)
     }
-
-    val user = SpongeUser(externalId, username, email, Option(avatarUrl))
-    Logger.info("<SUCCESS> " + user)
-
-    Some(user)
   }
 
   private def hmac_sha256(data: Array[Byte]): String = {
@@ -175,12 +176,12 @@ object SingleSignOnConsumer {
 
 class SpongeSingleSignOnConsumer @Inject()(override val ws: WSClient, config: Configuration) extends SingleSignOnConsumer {
 
-  private val conf = this.config.getConfig("security").get
+  private val conf = this.config.get[Configuration]("security")
 
-  override val loginUrl = this.conf.getString("sso.loginUrl").get
-  override val signupUrl = this.conf.getString("sso.signupUrl").get
-  override val verifyUrl = this.conf.getString("sso.verifyUrl").get
-  override val secret = this.conf.getString("sso.secret").get
-  override val timeout = this.conf.getLong("sso.timeout").get.millis
+  override val loginUrl = this.conf.get[String]("sso.loginUrl")
+  override val signupUrl = this.conf.get[String]("sso.signupUrl")
+  override val verifyUrl = this.conf.get[String]("sso.verifyUrl")
+  override val secret = this.conf.get[String]("sso.secret")
+  override val timeout = this.conf.get[FiniteDuration]("sso.timeout")
 
 }

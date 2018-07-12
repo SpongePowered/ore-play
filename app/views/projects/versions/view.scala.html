@@ -1,34 +1,18 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.{ProjectBase, UserBase}
-@import models.project.{Channel, Project, Version}
+@import models.viewhelper.{ScopedProjectData, VersionData}
 @import ore.OreConfig
-@import ore.permission.scope.GlobalScope
 @import ore.permission.{EditVersions, ReviewProjects}
-@import ore.project.Dependency.SpongeApiId
+@import ore.project.Dependency.{SpongeApiId, _}
 @import util.StringUtils._
-@import ore.project.Dependency._
-@import views.html.helper.form
-@import views.html.helper.CSRF
-@(project: Project, channel: Channel, version: Version)(implicit messages: Messages, request: Request[_], flash: Flash,
-        service: ModelService, config: OreConfig, users: UserBase, projectBase: ProjectBase)
-
-@hasUser = @{ users.current.isDefined }
-@user = @{ users.current.get }
-@canEdit = @{ hasUser && (user can EditVersions in project) }
-@canApprove = @{ hasUser && (user can ReviewProjects in GlobalScope) }
-@isRecommended = @{ project.recommendedVersion.equals(version) }
+@import views.html.helper.{CSRF, form}
+@import views.html.utils.editor
+@(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@filterDependencies = @{
-    version.dependencies
-            .filterNot(_.pluginId.equals(SpongeApiId))
-            .filterNot(_.pluginId.equals(MinecraftId))
-            .filterNot(_.pluginId.equals(ForgeId))
-}
-
-@projects.view(project, "#versions", noButtons = true) {
+@projects.view(v.p, sp, "#versions", noButtons = true) {
 
     <div class="container">
         <!-- Version header -->
@@ -36,36 +20,37 @@
             <div class="col-md-12 version-header">
                 <!-- Title -->
                 <div class="clearfix">
-                    <h1 class="pull-left">@version.versionString</h1>
-                    <span class="channel channel-head" style="background-color: @channel.color.hex;">@channel.name</span>
+                    <h1 class="pull-left">@v.v.versionString</h1>
+                    <span class="channel channel-head" style="background-color: @v.c.color.hex;">@v.c.name</span>
                 </div>
 
                 <!-- User info -->
                 <p class="user date pull-left">
-                    <a href="@routes.Users.showProjects(project.ownerName, None)">
-                        <strong>@project.ownerName</strong>
+                    <a href="@routes.Users.showProjects(v.p.project.ownerName, None)">
+                        <strong>@v.p.project.ownerName</strong>
                     </a>
-                    released this version on @prettifyDate(version.createdAt.get)
+                    released this version on @prettifyDate(v.v.createdAt.get)
                 </p>
 
                 <!-- Buttons -->
 
                 <div class="pull-right version-actions">
                     <div class="version-icons">
-                        @if(isRecommended) {
+                        @if(v.isRecommended) {
                             <div>
                                 <i data-toggle="tooltip" data-placement="left"
                                    title="@messages("version.recommended")"
-                                   class="recommended fa fa-diamond"></i>
+                                   class="recommended fa fa-diamond pull-right"></i>
                             </div>
+                            <div class="clearfix"></div>
                         }
 
-                        @if(version.isReviewed) {
+                        @if(v.v.isReviewed) {
                             <div>
-                                @if(canApprove) {
-                                    @version.reviewer.flatMap(r => version.approvedAt.map((r, _))).map { t =>
+                                @if(request.data.globalPerm(ReviewProjects)) {
+                                    @v.approvedBy.zip(v.v.approvedAt).map { t =>
                                         <i class="minor">
-                                            @Html(messages("version.approved.info", t._1.name, prettifyDate(t._2)))
+                                            @Html(messages("version.approved.info", t._1, prettifyDate(t._2)))
                                         </i>
                                     }
                                 }
@@ -76,13 +61,13 @@
                     </div>
 
                     <div class="version-buttons pull-right">
-                        <div><span class="date">@version.humanFileSize</span></div>
+                        <div><span class="date">@v.v.humanFileSize</span></div>
 
                         <div>
 
-                            @if(!isRecommended && canEdit) {
+                            @if(!v.isRecommended && sp.perms(EditVersions)) {
                                 @form(action = versionRoutes.setRecommended(
-                                    project.ownerName, project.slug, version.versionString), 'class -> "form-inline") {
+                                    v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
                                     @CSRF.formField
                                     <button type="submit" class="btn btn-info">
                                         <i class="fa fa-diamond"></i> Set recommended
@@ -90,36 +75,31 @@
                                 }
                             }
 
-                            @if(canApprove) {
-                                @if(version.isReviewed) {
-                                    <a href="/@project.ownerName/@project.slug/versions/@version.versionString/reviews" class="btn btn-info">@messages("review.log")</a>
+                            @if(request.data.globalPerm(ReviewProjects)) {
+                                @if(v.v.isReviewed) {
+                                    <a href="@v.fullSlug/reviews" class="btn btn-info">@messages("review.log")</a>
                                 } else {
-                                    <a href="/@project.ownerName/@project.slug/versions/@version.versionString/reviews" class="btn btn-success">
+                                    <a href="@v.fullSlug/reviews" class="btn btn-success">
                                         <i class="fa fa-thumps-up"></i> @messages("review.start")
                                     </a>
                                 }
                             }
 
-                            @if(canEdit) {
-                                @if(project.versions.size == 1) {
+                            @if(sp.perms(EditVersions)) {
+                                @if(v.p.versions == 1) {
                                     <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                        title="@messages("version.delete.cannotLast")">
                                         <i class="fa fa-trash"></i> @messages("general.delete")
                                     </a>
                                 } else {
-                                    @form(action = versionRoutes.delete(
-                                        project.ownerName, project.slug, version.versionString),
-                                        'class -> "form-inline") {
-                                        @CSRF.formField
-                                        <button type="submit" class="btn btn-danger">
-                                            <i class="fa fa-trash"></i> @messages("general.delete")
-                                        </button>
-                                    }
+                                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
+                                        <i class="fa fa-trash"></i> @messages("general.delete")
+                                    </button>
                                 }
                             }
 
                             <a href="@versionRoutes.download(
-                                project.ownerName, project.slug, version.versionString, None)"
+                                v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)"
                                class="btn btn-primary">
                                 <i class="fa fa-download"></i> @messages("general.download")
                             </a>
@@ -135,7 +115,7 @@
         <div class="row version-description">
             <div id="description" class="col-md-8">
                 <div class="row">
-                    @if(!version.isReviewed) {
+                    @if(!v.v.isReviewed) {
                         <div class="col-md-12">
                             <div class="alert-review alert alert-info" role="alert">
                                 <i class="fa fa-info-circle"></i>
@@ -144,13 +124,13 @@
                         </div>
                     }
                     <div class="col-md-12">
-                        @utils.editor(
+                        @editor(
                             saveCall = versionRoutes.saveDescription(
-                                project.ownerName, project.slug, version.versionString
+                                v.p.project.ownerName, v.p.project.slug, v.v.versionString
                             ),
-                            enabled = canEdit,
-                            raw = version.description.getOrElse(""),
-                            cooked = version.descriptionHtml,
+                            enabled = sp.perms(EditVersions),
+                            raw = v.v.description.getOrElse(""),
+                            cooked = v.v.descriptionHtml,
                             subject = "Version"
                         )
                     </div>
@@ -158,7 +138,7 @@
             </div>
 
 
-            @if(version.dependencies.nonEmpty) {
+            @if(v.v.dependencies.nonEmpty) {
                 <!-- Dependencies -->
                 <div class="col-md-4">
                     <div class="panel panel-default">
@@ -167,7 +147,7 @@
                         </div>
                         <ul class="list-group">
 
-                            @version.dependencies.find(_.pluginId.equals(SpongeApiId)).map { spongeApi =>
+                            @v.v.dependencies.find(_.pluginId.equals(SpongeApiId)).map { spongeApi =>
                                 <li class="list-group-item">
                                     <a href="https://www.spongepowered.org/downloads">
                                         <strong>@messages("general.spongeApi")</strong>
@@ -176,7 +156,7 @@
                                 </li>
                             }
 
-                            @version.dependencies.find(_.pluginId.equals(MinecraftId)).map { minecraft =>
+                            @v.v.dependencies.find(_.pluginId.equals(MinecraftId)).map { minecraft =>
                                 <li class="list-group-item">
                                     <a href="https://minecraft.net">
                                         <strong>@messages("general.minecraft")</strong>
@@ -185,7 +165,7 @@
                                 </li>
                             }
 
-                            @version.dependencies.find(_.pluginId.equals(ForgeId)).map { forge =>
+                            @v.v.dependencies.find(_.pluginId.equals(ForgeId)).map { forge =>
                                 <li class="list-group-item">
                                     <a href="http://files.minecraftforge.net">
                                         <strong>@messages("general.forge")</strong>
@@ -194,24 +174,22 @@
                                 </li>
                             }
 
-                            @filterDependencies.map { depend =>
+                            @v.filteredDependencies.map { case (depend, project)=>
                                 <li class="list-group-item">
-                                    @defining(depend.project) { project =>
-                                        @if(project.isDefined) {
-                                            <a href="@projectRoutes.show(
-                                                project.get.ownerName, project.get.slug)">
-                                                <strong>@project.get.name</strong>
-                                            </a>
-                                        } else {
-                                            <div class="minor">
-                                                @depend.pluginId
-                                                <i class="fa fa-question-circle"
-                                                   title="@messages("version.dependency.notOnOre")"
-                                                   data-toggle="tooltip" data-placement="right"></i>
-                                            </div>
-                                        }
-                                        <p class="version-string">@depend.version</p>
+                                    @if(project.isDefined) {
+                                        <a href="@projectRoutes.show(
+                                            project.get.ownerName, project.get.slug)">
+                                            <strong>@project.get.name</strong>
+                                        </a>
+                                    } else {
+                                        <div class="minor">
+                                            @depend.pluginId
+                                            <i class="fa fa-question-circle"
+                                               title="@messages("version.dependency.notOnOre")"
+                                               data-toggle="tooltip" data-placement="right"></i>
+                                        </div>
                                     }
+                                    <p class="version-string">@depend.version</p>
                                 </li>
                             }
                         </ul>
@@ -223,4 +201,32 @@
         </div>
     </div>
 
+    @if(sp.perms(EditVersions) && v.p.versions != 1) {
+        <div class="modal fade" id="modal-delete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title" id="label-delete">@messages("version.delete.title")</h4>
+                    </div>
+                    @form(action = versionRoutes.delete(v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
+                        <div class="modal-body">
+                        @messages("version.delete.info")
+                        </div>
+                        <div class="modal-footer">
+                            <div class="form-inline">
+                                @CSRF.formField
+                                <button type="button" class="btn btn-default" data-dismiss="modal">
+                                @messages("channel.edit.close")
+                                </button>
+                                <input type="submit" name="delete" value="@messages("general.delete")" class="btn btn-danger">
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 }

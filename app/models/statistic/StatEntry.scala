@@ -8,7 +8,11 @@ import db.Model
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import db.impl.table.StatTable
+import util.instances.future._
+import util.functional.OptionT
 import models.user.User
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents a statistic entry in a StatTable.
@@ -18,14 +22,14 @@ import models.user.User
   * @param modelId    ID of model the stat is on
   * @param address    Client address
   * @param cookie     Browser cookie
-  * @param userId     User ID
+  * @param _userId     User ID
   */
 abstract class StatEntry[Subject <: Model](override val id: Option[Int] = None,
                                            override val createdAt: Option[Timestamp] = None,
                                            val modelId: Int,
                                            val address: InetString,
                                            val cookie: String,
-                                           private var userId: Option[Int] = None)
+                                           private var _userId: Option[Int] = None)
                                            extends OreModel(id, createdAt) { self =>
 
   override type M <: StatEntry[Subject] { type M = self.M }
@@ -39,17 +43,26 @@ abstract class StatEntry[Subject <: Model](override val id: Option[Int] = None,
     *
     * @return User of entry
     */
-  def user: Option[User] = this.userId.flatMap(this.userBase.get)
+  def user(implicit ec: ExecutionContext): OptionT[Future, User] = {
+    OptionT.fromOption[Future](this._userId).flatMap(this.userBase.get(_))
+  }
+
+  def userId = _userId
 
   /**
     * Sets the User associated with this entry, if any.
     *
     * @param user User of entry
     */
-  def user_=(user: User) = {
+  def setUser(user: User) = {
     checkNotNull(user, "user is null", "")
     checkArgument(user.isDefined, "undefined user", "")
-    this.userId = user.id
+    this._userId = user.id
+    if (isDefined) update(UserId)
+  }
+
+  def setUserId(userId: Int) = {
+    this._userId = Some(userId)
     if (isDefined) update(UserId)
   }
 

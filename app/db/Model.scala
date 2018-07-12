@@ -41,7 +41,7 @@ abstract class Model(val id: Option[Int], val createdAt: Option[Timestamp]) { se
   /**
     * Removes this model from it's table.
     */
-  def remove() = Defined(this.service.await(this.service.delete(this.asInstanceOf[M])))
+  def remove() = Defined(this.service.delete(this.asInstanceOf[M]))
 
   /**
     * Returns true if this Project is defined in the database.

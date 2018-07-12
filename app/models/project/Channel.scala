@@ -2,6 +2,8 @@ package models.project
 
 import java.sql.Timestamp
 
+import scala.concurrent.Future
+
 import com.google.common.base.Preconditions._
 import db.Named
 import db.impl.ChannelTable
@@ -51,7 +53,7 @@ case class Channel(override val id: Option[Int] = None,
     *
     * @param _name    New channel name
     */
-  def name_=(_name: String) = Defined {
+  def setName(_name: String) = Defined {
     checkNotNull(_name, "null name", "")
     checkArgument(this.config.isValidChannelName(_name), "invalid name", "")
     this._name = _name
@@ -70,11 +72,13 @@ case class Channel(override val id: Option[Int] = None,
     *
     * @param _color Color of channel
     */
-  def color_=(_color: Color) = Defined {
+  def setColor(_color: Color) = Defined {
     checkNotNull(_color, "null color", "")
     this._color = _color
     update(ModelKeys.Color)
   }
+
+  def isReviewed: Boolean = !this._isNonReviewed
 
   def isNonReviewed: Boolean = this._isNonReviewed
 
@@ -82,6 +86,7 @@ case class Channel(override val id: Option[Int] = None,
     this._isNonReviewed = isNonReviewed
     if (isDefined)
       update(IsNonReviewed)
+    else Future.unit
   }
 
   /**

@@ -10,7 +10,7 @@ import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole}
-import models.user.{Notification, Organization, SignOn, User}
+import models.user._
 
 package object schema {
   type ProjectTag = models.project.Tag
@@ -144,5 +144,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
     this, classOf[OrganizationRole], TableQuery[OrganizationRoleTable])
 
   val ProjectApiKeySchema = new ModelSchema[ProjectApiKey](this, classOf[ProjectApiKey], TableQuery[ProjectApiKeyTable])
+
+  val UserActionLogSchema = new ModelSchema[LoggedActionModel](this, classOf[LoggedActionModel], TableQuery[LoggedActionTable])
 
 }

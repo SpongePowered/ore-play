@@ -1,83 +1,49 @@
 @*
 Versions page within Project overview.
 *@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
 @import db.impl.access.UserBase
+@import models.project.{Channel, Version}
+@import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.{EditChannels, EditVersions}
 @import security.NonceFilter._
-@import models.project.Project
-@import models.project.Channel
-@import models.project.Version
-@import db.impl.OrePostgresDriver.api._
-@(model: Project,
+@(p: ProjectData,
+        sp: ScopedProjectData,
         channels: Seq[Channel],
         versions: Seq[Version],
         visibleChannels: Option[Array[String]],
-        page: Int)(implicit messages: Messages, request: Request[_], flash: Flash,
+        page: Int)(implicit messages: Messages, request: OreRequest[_], flash: Flash,
         service: ModelService, config: OreConfig, userBase: UserBase)
 
-@pageSize = @{ config.projects.getInt("init-version-load").get }
+@pageSize = @{ config.projects.get[Int]("init-version-load") }
 @projectRoutes = @{ controllers.project.routes.Projects }
 @versionRoutes = @{ controllers.project.routes.Versions }
 @channelRoutes = @{ controllers.project.routes.Channels }
 
-@projects.view(model, "#versions") {
+@versionCount = @{
+    if (visibleChannels.isEmpty) p.versions
+    else {
+        val channelFilter = channels.filter(c => visibleChannels.get.contains(c.name)).map(_.id.get)
+        versions.count(v => channelFilter.contains(v.channelId))
+    }
+}
+
+@projects.view(p, sp, "#versions") {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/versionList.js")"></script>
     <script nonce="@nonce">
-    PLUGIN_ID = '@model.pluginId';
-    PROJECT_OWNER = '@model.ownerName';
-    PROJECT_SLUG = '@model.slug';
+    PLUGIN_ID = '@p.project.pluginId';
+    PROJECT_OWNER = '@p.project.ownerName';
+    PROJECT_SLUG = '@p.project.slug';
     @if(visibleChannels.isDefined) {
-    CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
-    @defining(model.channels.filter(_.name.inSet(visibleChannels.get)).map(_.id.get)) { channelIds: Seq[Int] =>
-    TOTAL_VERSIONS = @model.versions.filter(_.channelId.inSet(channelIds)).size;
+        CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
     }
-    } else {
-    TOTAL_VERSIONS = @model.versions.size;
-    }
+    TOTAL_VERSIONS = @versionCount;
+    TEXT_NOT_APPROVED = '@messages("version.download.confirm.reviewedChannel")';
+    TEXT_NOT_APPROVED_CHANNEL = '@messages("version.download.confirm.nonReviewedChannel")';
     </script>
-
-
-    <table class="template">
-        <tbody>
-            <tr class="version-template">
-                <td class="base-info">
-                    <div class="name"></div>
-                    <span class="channel"></span>
-                </td>
-                <td class="version-tags"></td>
-                <td class="information-one">
-                    <div>
-                        <i class="fa fa-calendar"></i>
-                        <span class="created"></span>
-                    </div>
-                    <div>
-                        <i class="fa fa-file-o"></i>
-                        <span class="size"></span>
-                    </div>
-                </td>
-                <td class="information-two">
-                    <div class="author">
-                        <i class="fa fa-key"></i>
-                        <span>Signed by:</span>
-                        <span class="author-name"></span>
-                    </div>
-                    <div>
-                        <i class="fa fa-download"></i>
-                        <span class="download-count"></span>
-                        <span>Downloads</span>
-                    </div>
-                </td>
-                <td class="download">
-                    <a class="download-link">
-                        <i class="fa fa-2x fa-download"></i>
-                    </a>
-                </td>
-            </tr>
-        </tbody>
-    </table>
 
     <div class="container version-container">
         <div class="row">
@@ -86,8 +52,8 @@ Versions page within Project overview.
 
                     <div class="panel-heading">
                         <h4 class="panel-title pull-left">@messages("project.versions")</h4>
-                        @if(userBase.current.isDefined && (userBase.current.get can EditVersions in model)) {
-                            <a href="@versionRoutes.showCreator(model.ownerName, model.slug)" class="btn yellow">
+                        @if(sp.perms(EditVersions)) {
+                            <a href="@versionRoutes.showCreator(p.project.ownerName, p.project.slug)" class="btn yellow">
                             @messages("project.version.new")
                             </a>
                         }
@@ -97,7 +63,10 @@ Versions page within Project overview.
                     <div class="loading">
                         <i class="fa fa-spinner fa-spin"></i>
                     </div>
-                    <table class="table version-list"></table>
+
+                    <table class="version-table table">
+                        <tbody></tbody>
+                    </table>
 
                     <div class="panel-pagination">
                         <ul class="pagination">
@@ -131,9 +100,9 @@ Versions page within Project overview.
                             </li>
                         }
 
-                        @if(userBase.current.isDefined && (userBase.current.get can EditChannels in model)) {
+                        @if(sp.perms(EditChannels)) {
                             <li class="list-group-item text-right">
-                                <a class="btn yellow btn-xs" href="@channelRoutes.showList(model.ownerName, model.slug)">
+                                <a class="btn yellow btn-xs" href="@channelRoutes.showList(p.project.ownerName, p.project.slug)">
                                     Edit
                                 </a>
                             </li>
@@ -141,8 +110,9 @@ Versions page within Project overview.
                     </ul>
                 </div>
                 @users.memberList(
-                    model = model,
-                    settingsCall = projectRoutes.showSettings(model.ownerName, model.slug)
+                    j = p,
+                    perms = sp.permissions,
+                    settingsCall = projectRoutes.showSettings(p.project.ownerName, p.project.slug)
                 )
             </div>
         </div>

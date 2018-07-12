@@ -1,8 +1,8 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
+@import models.viewhelper.HeaderData
 @import ore.{OreConfig, OreEnv}
-@()(implicit messages: Messages, session: Session, request: Request[_] = null,
-        service: ModelService, config: OreConfig, users: UserBase, env: OreEnv)
+@()(implicit headerData: HeaderData, messages: Messages, session: Session, request: OreRequest[_] = null, config: OreConfig, env: OreEnv)
 
 @bootstrap.layout("Error", user = false) {
 

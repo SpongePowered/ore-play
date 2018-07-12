@@ -2,14 +2,12 @@
 Base layout template for website. Most templates within the project will extend
 this.
 *@
-@import db.ModelService
-@import db.impl.access.UserBase
+@import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import play.twirl.api.Html
 @import security.NonceFilter._
 @(title: String, scripts: Boolean = true, header: Boolean = true, user: Boolean = true,
-        footer: Boolean = true)(content: Html)(implicit messages: Messages, request: Request[_], service: ModelService,
-        config: OreConfig, users: UserBase)
+        footer: Boolean = true)(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
 
 <!DOCTYPE html>
 <html>
@@ -22,7 +20,7 @@ this.
 
         <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
 
-        <link rel="icon" href="@config.sponge.getString("icon")">
+        <link rel="icon" href="@config.sponge.get[String]("icon")">
         <link rel="stylesheet" type="text/css" href="@routes.Assets.at("highlight/styles/default.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.at("bootstrap/css/bootstrap.min.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.at("stylesheets/main.css")" />

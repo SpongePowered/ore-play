@@ -3,6 +3,8 @@ package db.access
 import db.impl.OrePostgresDriver.api._
 import db.{Model, ModelFilter, ModelService}
 
+import scala.concurrent.ExecutionContext
+
 /**
   * An immutable version of [[ModelAccess]].
   *
@@ -19,7 +21,7 @@ case class ImmutableModelAccess[M <: Model]
 
   def this(mutable: ModelAccess[M]) = this(mutable.service, mutable.modelClass, mutable.baseFilter)
 
-  override def add(model: M) = throw new UnsupportedOperationException
+  override def add(model: M)(implicit ec: ExecutionContext) = throw new UnsupportedOperationException
   override def remove(model: M) = throw new UnsupportedOperationException
   override def removeAll(filter: M#T => Rep[Boolean]) = throw new UnsupportedOperationException
 

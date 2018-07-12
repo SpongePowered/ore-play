@@ -8,6 +8,8 @@ import ore.Visitable
 import ore.permission.role.RoleTypes.RoleType
 import ore.permission.scope.OrganizationScope
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Represents a [[RoleModel]] within an [[models.user.Organization]].
   *
@@ -32,7 +34,7 @@ case class OrganizationRole(override val id: Option[Int] = None,
 
   def this(userId: Int, roleType: RoleType) = this(userId = userId, _roleType = roleType)
 
-  override def subject: Visitable = this.organization
+  override def subject(implicit ec: ExecutionContext): Future[Visitable] = this.organization
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(id = id, createdAt = theTime)
 
 }

@@ -1,10 +1,13 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import models.project.Flag
+@import models.project.{Flag, Project}
+@import models.user.User
 @import ore.OreConfig
-@import db.impl.access.UserBase
-@import db.impl.access.ProjectBase
-@(flags: Seq[Flag])(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig,
-        users: UserBase, projectBase: ProjectBase)
+@import ore.permission.Permission
+@import views.html.utils.userAvatar
+
+@* project perms for all visibilities *@
+@(flags: Seq[(Flag, User, Project, Map[Permission, Boolean])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -31,20 +34,20 @@
         <div class="row">
             <div class="col-md-12">
                 <ul class="list-group list-flags-admin">
-                    @flags.map { flag =>
+                    @flags.map { case (flag, user, project, projectPerm) =>
                         <li data-flag-id="@flag.id.get" class="list-group-item">
                             <div class="row">
                                 <div class="col-xs-12 col-md-1" style="width: 40px;">
-                                    <a href="@routes.Users.showProjects(flag.user.username, None)">
-                                        @utils.userAvatar(flag.user, clazz = "user-avatar-xs")
+                                    <a href="@routes.Users.showProjects(user.username, None)">
+                                        @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
                                     </a>
                                 </div>
                                 <div class="col-xs-12 col-md-5">
                                     <span class="description">
-                                        <strong>@flag.user.username</strong>
+                                        <strong>@user.username</strong>
                                         <span class="minor"> reported </span>
-                                        <a href="@projectRoutes.show(flag.project.ownerName, flag.project.slug)">
-                                            @flag.project.ownerName/<strong>@flag.project.slug</strong>
+                                        <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                                            @project.ownerName/<strong>@project.slug</strong>
                                         </a>
                                         <span class="minor"> for </span>
                                         <strong>@flag.reason.title</strong>
@@ -55,13 +58,13 @@
                                 </div>
                                 <div class="col-xs-12">
                                     <span class="pull-right btn-group-sm">
-                                        <a target="_blank" href="https://forums.spongepowered.org/users/@flag.user.username" class="btn btn-default">
+                                        <a target="_blank" href="https://forums.spongepowered.org/users/@user.username" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageUser")
                                         </a>
-                                        <a target="_blank" href="https://forums.spongepowered.org/users/@flag.project.ownerName" class="btn btn-default">
+                                        <a target="_blank" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageOwner")
                                         </a>
-                                        @projects.utils.btnHide(flag.project, users.current.get)
+                                        @projects.helper.btnHide(project, projectPerm, request.data.currentUser.get)
                                         <button type="submit" class="btn btn-primary btn-resolve">
                                             <i class="fa fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
                                         </button>

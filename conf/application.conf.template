@@ -25,19 +25,24 @@ application {
 
 # Play configuration
 play {
-    crypto.secret                      =   "changeme"
-    crypto.secret                      =   ${?APPLICATION_SECRET}
     i18n.langs                         =   [ "en", "en-US" ]
     evolutions.autocommit              =   false
     evolutions.db.default.autoApply    =   true
-    http.session.maxAge                =   2419200 # 4 weeks
-    http.parser.maxDiskBuffer          =   20MB
-    http.parser.maxMemoryBuffer        =   1000000
-    ws.timeout.connection              =   10000
-    filters.headers.contentSecurityPolicy = "default-src 'self'; script-src 'self' '%NONCE-SOURCE%' https://forums.spongepowered.org https://forums-cdn.spongepowered.org https://www.google-analytics.com/analytics.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://forums-cdn.spongepowered.org; img-src 'self' https:; font-src 'self' https://fonts.gstatic.com; frame-src https://forums.spongepowered.org; frame-ancestors 'none'; block-all-mixed-content"
-    filters.headers.contentSecurityPolicy = ${?CONTENT_SECURITY_POLICY}
-    filters.enabled                   += "filters.MimeKeyedCspFilter"
+    ws.timeout.connection              =   10000ms
+    filters.headers.contentSecurityPolicy = null
+    filters.enabled                    =  ${play.filters.enabled} ["security.NonceFilter", "filters.MimeKeyedCspFilter"]
     filters.csrf.body.bufferSize       =   1000000
+    filters.hosts {
+        allowed = [".spongepowered.org", "localhost:9000"]
+    }
+
+    http {
+        secret.key                       =   "changeme"
+        secret.key                       =   ${?APPLICATION_SECRET}
+        session.maxAge                   =   2419200 # 4 weeks
+        parser.maxDiskBuffer             =   20MB
+        parser.maxMemoryBuffer           =   1000000
+    }
 }
 
 security {
@@ -52,7 +57,7 @@ security {
         url = ${?SPONGE_AUTH_URL}
         key = "changeme"
         key = ${?SPONGE_AUTH_API_KEY}
-        timeout = 10000
+        timeout = 10000ms
     }
 
     sso {
@@ -61,7 +66,9 @@ security {
         verifyUrl = ${security.api.url}"/sso/sudo/"
         secret = "changeme"
         secret = ${?SPONGE_AUTH_SSO_SECRET}
-        timeout = 10000
+        timeout = 10000ms
+        apikey = "changeme"
+        apikey = ${?SPONGE_AUTH_SSO_API_KEY}
     }
 }
 
@@ -69,7 +76,7 @@ security {
 ore {
     date-format =  "MMM dd, yyyy"
     date-and-time-format = "MMM dd, yyyy HH:mm"
-    debug       =  true
+    debug       =  false
     debug-level =  3
     # Used in /admin/seed route. Run "gradle build" in OreTestPlugin before using that route
     test-plugin = "OreTestPlugin/build/libs/ore-test-plugin-dev-SNAPSHOT.jar"
@@ -87,6 +94,7 @@ ore {
         home.message = "Welcome to your new project!"
         min-len = 15
         max-len = 32000
+        page.max-len = 75000
         name.max-len = 255
     }
 
@@ -101,7 +109,7 @@ ore {
         tmp-file-save = false
         icon-size = 200
         staleAge = 2419200
-        check-interval = 300000                  // 1 hour (millis)
+        check-interval = 300000ms                  // 1 hour (millis)
         draft-expire = 86400000                  // 1 day (millis)
     }
 
@@ -139,7 +147,7 @@ mail {
     smtp.port          =   ${?ORE_SMTP_PORT}
     confirm.maxAge     =   600000                      // 10 minutes (millis)
     transport.protocol =   "smtps"                     // The outgoing transport protocol
-    interval           =   30000                       // 30 seconds (millis)
+    interval           =   30s                      // 30 seconds (millis)
 
     // Custom properties to be added to the Properties object that is passed to
     // the JavaMail session. These might vary from SMTP server to server. This
@@ -174,14 +182,15 @@ slick.dbs.default {
 # Discourse SSO
 discourse {
     baseUrl           =   "https://forums.spongepowered.org"
-    embed.retryRate   =   60000
+    embed.retryRate   =   60000ms
     embed.categorySlug = ore
 
     api {
         enabled       =   true
+        key           =   "changeme"
         key           =   ${?DISCOURSE_API_KEY}
         admin         =   windy
-        timeout       =   10000
+        timeout       =   10000ms
     }
 }
 
@@ -240,7 +249,7 @@ filters {
                 "'%NONCE-SOURCE%'"
                 "https://forums.spongepowered.org"
                 "https://forums-cdn.spongepowered.org"
-                "https://www.google-analytics.com/analytics.js"
+                "https://www.google-analytics.com"
             ]
             style-src = [
                 "self"
@@ -260,6 +269,12 @@ filters {
                 "https://forums.spongepowered.org"
             ]
             frame-ancestors = [
+                "none"
+            ]
+            base-uri = [
+                "none"
+            ]
+            object-src = [
                 "none"
             ]
             block-all-mixed-content = []

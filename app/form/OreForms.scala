@@ -1,26 +1,27 @@
 package form
 
 import java.net.{MalformedURLException, URL}
-import javax.inject.Inject
 
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
+import javax.inject.Inject
 import models.api.ProjectApiKey
-import models.project.Channel
+import models.project.{Channel, Page}
 import models.project.Page._
 import models.user.role.ProjectRole
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyTypes
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
-import play.api.data.{Form, FormError}
 import play.api.data.Forms._
 import play.api.data.format.Formatter
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
+import play.api.data.{Form, FormError}
 
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 /**
@@ -101,7 +102,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "userUps" -> list(text),
     "roleUps" -> list(text),
     "update-icon" -> boolean,
-    "owner" -> optional(number).verifying(ownerIdInList(organisationUserCanUploadTo))
+    "owner" -> optional(number).verifying(ownerIdInList(organisationUserCanUploadTo)),
+    "forum-sync" -> boolean
   )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply))
 
   /**
@@ -170,8 +172,16 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "parent-id" -> optional(number),
     "name" -> optional(text),
     "content" -> optional(text(
-      maxLength = MaxLength
-    )))(PageSaveForm.apply)(PageSaveForm.unapply))
+      maxLength = MaxLengthPage
+    )))(PageSaveForm.apply)(PageSaveForm.unapply) verifying("error.maxLength", pageSaveForm => {
+      val isHome = pageSaveForm.parentId.isEmpty && pageSaveForm.name.contains(HomeName)
+      val pageSize = pageSaveForm.content.getOrElse("").length
+      if (isHome)
+        pageSize <= MaxLength
+      else
+        pageSize <= MaxLengthPage
+    })
+  )
 
   /**
     * Submits a tagline change for a User.
@@ -196,7 +206,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "channel-color-input" -> text.verifying(
       "Invalid channel color.", c => Channel.Colors.exists(_.hex.equalsIgnoreCase(c))),
     "non-reviewed" -> default(boolean, false),
-    "content" -> optional(text)
+    "content" -> optional(text),
+    "forum-post" -> boolean
   )(VersionData.apply)(VersionData.unapply))
 
   /**
@@ -216,31 +227,47 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
 
   def required(key: String) = Seq(FormError(key, "error.required", Nil))
 
-  val projectApiKey = of[ProjectApiKey](new Formatter[ProjectApiKey] {
-    val projectApiKeys = OreForms.this.service.access[ProjectApiKey](classOf[ProjectApiKey])
-    def bind(key: String, data: Map[String, String]) =
+  def projectApiKey(implicit ec: ExecutionContext) = of[ProjectApiKey](new Formatter[ProjectApiKey] {
+    def bind(key: String, data: Map[String, String]) = {
       data.get(key).
-        flatMap(id => Try(id.toInt).toOption.flatMap(this.projectApiKeys.get(_)))
+        flatMap(id => Try(id.toInt).toOption.flatMap(evilAwaitpProjectApiKey(_)))
         .toRight(required(key))
+    }
+
     def unbind(key: String, value: ProjectApiKey): Map[String, String] = Map(key -> value.id.get.toString)
   })
 
-  lazy val ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))
+  def evilAwaitpProjectApiKey(key: Int)(implicit ec: ExecutionContext): Option[ProjectApiKey] = {
+    val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+    // TODO remvove await
+    this.service.await(projectApiKeys.get(key).value).getOrElse(None)
+  }
 
-  def channel(implicit request: ProjectRequest[_]) = of[Channel](new Formatter[Channel] {
-    def bind(key: String, data: Map[String, String]) =
+  def ProjectApiKeyRevoke(implicit ec: ExecutionContext) = Form(single("id" -> projectApiKey))
+
+  def channel(implicit request: ProjectRequest[_], ec: ExecutionContext) = of[Channel](new Formatter[Channel] {
+    def bind(key: String, data: Map[String, String]) = {
       data.get(key)
-        .flatMap(c => request.project.channels.find(_.name.toLowerCase === c.toLowerCase))
+        .flatMap(evilAwaitChannel(_))
         .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
+    }
+
     def unbind(key: String, value: Channel) = Map(key -> value.name.toLowerCase)
   })
 
-  def VersionDeploy(implicit request: ProjectRequest[_]) = Form(mapping(
+  def evilAwaitChannel(c: String)(implicit request: ProjectRequest[_], ec: ExecutionContext): Option[Channel] = {
+    val value = request.data.project.channels.find(_.name.toLowerCase === c.toLowerCase)
+    // TODO remvove await
+    this.service.await(value.value).getOrElse(None)
+  }
+
+  def VersionDeploy(implicit request: ProjectRequest[_], ec: ExecutionContext) = Form(mapping(
     "apiKey" -> nonEmptyText,
     "channel" -> channel,
-    "recommended" -> default(boolean, true))
+    "recommended" -> default(boolean, true),
+    "forumPost" -> default(boolean, request.data.settings.forumSync),
+    "changelog" -> optional(text(minLength = Page.MinLength, maxLength = Page.MaxLength)))
   (VersionDeployForm.apply)(VersionDeployForm.unapply))
-
 
   lazy val ReviewDescription = Form(single("content" -> text))
 
@@ -253,4 +280,10 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   lazy val NoteDescription = Form(single("content" -> text))
 
   lazy val NeedsChanges = Form(single("comment" -> text))
+
+  lazy val SyncSso = Form(tuple(
+    "sso" -> nonEmptyText,
+    "sig" -> nonEmptyText,
+    "api_key" -> nonEmptyText
+  ))
 }

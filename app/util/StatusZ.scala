@@ -1,7 +1,6 @@
 package util
 
 import javax.inject.Inject
-
 import play.api.Configuration
 import play.api.libs.json.{JsObject, Json}
 
@@ -30,8 +29,10 @@ final class StatusZ @Inject()(config: Configuration) {
     JobName -> env(JobName),
     BuildTag -> env(BuildTag),
     SpongeEnv -> env(SpongeEnv),
-    Service -> this.config.getString("sponge.service").getOrElse[String]("unknown")
+    Service -> string("sponge.service", "unknown")
   )
+
+  private def string(key: String, default: String): String = this.config.getOptional[String](key).getOrElse(default) // Weird stuff
 
   private def env(key: String) = sys.env.getOrElse(key, "unknown")
 

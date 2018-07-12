@@ -6,7 +6,7 @@ import javax.inject.{Inject, Singleton}
 
 import akka.actor.ActorSystem
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectSchema
 import db.{ModelFilter, ModelService}
@@ -17,11 +17,11 @@ import ore.OreConfig
   * Task that is responsible for publishing New projects
   */
 @Singleton
-class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig) extends Runnable {
+class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig)(implicit ec: ExecutionContext) extends Runnable {
 
   val Logger = play.api.Logger("ProjectTask")
-  val interval = this.config.projects.getLong("check-interval").get.millis
-  val draftExpire: Long = this.config.projects.getLong("draft-expire").getOrElse(86400000)
+  val interval = this.config.projects.get[FiniteDuration]("check-interval")
+  val draftExpire: Long = this.config.projects.getOptional[Long]("draft-expire").getOrElse(86400000)
 
   /**
     * Starts the task.
@@ -48,7 +48,7 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
       val createdAt = project.createdAt.getOrElse(Timestamp.from(Instant.now())).getTime
       if (createdAt < dayAgo) {
         Logger.info(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-        project.setVisibility(VisibilityTypes.Public, "Changed by task", project.owner)
+        project.setVisibility(VisibilityTypes.Public, "Changed by task", project.ownerId)
       }
     })
 

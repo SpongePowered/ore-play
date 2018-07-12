@@ -1,19 +1,20 @@
 package ore
 
 import java.util.UUID
-import javax.inject.Inject
 
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.ProjectRequest
+import controllers.sugar.Requests.{OreRequest, ProjectRequest}
 import db.ModelService
 import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.StatSchema
+import javax.inject.Inject
 import models.project.Version
 import models.statistic.{ProjectView, VersionDownload}
 import ore.StatTracker.COOKIE_NAME
+import play.api.cache.AsyncCacheApi
 import play.api.mvc.{RequestHeader, Result}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Helper class for handling tracking of statistics.
@@ -34,15 +35,16 @@ trait StatTracker {
     *
     * @param request Request to view the project
     */
-  def projectViewed(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Result = {
-    val project = request.project
-    val statEntry = ProjectView.bindFromRequest
-    this.viewSchema.record(statEntry).andThen {
-      case recorded => if (recorded.get) {
-        project.addView()
+  def projectViewed(projectRequest: ProjectRequest[_])(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi, request: OreRequest[_],
+      ec: ExecutionContext): Future[Result] = {
+    ProjectView.bindFromRequest(projectRequest).map { statEntry =>
+      this.viewSchema.record(statEntry).andThen {
+        case recorded => if (recorded.get) {
+          projectRequest.data.project.addView()
+        }
       }
+      f(projectRequest).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
     }
-    f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
   }
 
   /**
@@ -53,15 +55,17 @@ trait StatTracker {
     * @param version Version to check downloads for
     * @param request Request to download the version
     */
-  def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(implicit request: ProjectRequest[_]): Result = {
-    val statEntry = VersionDownload.bindFromRequest(version)
-    this.downloadSchema.record(statEntry).andThen {
-      case recorded => if (recorded.get) {
-        version.addDownload()
-        request.project.addDownload()
+  def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi,request: ProjectRequest[_],
+      ec: ExecutionContext): Future[Result] = {
+    VersionDownload.bindFromRequest(version).map { statEntry =>
+      this.downloadSchema.record(statEntry).andThen {
+        case recorded => if (recorded.get) {
+          version.addDownload()
+          request.data.project.addDownload()
+        }
       }
+      f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
     }
-    f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
   }
 
 }

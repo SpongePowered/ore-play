@@ -4,9 +4,11 @@ import db.access.{ImmutableModelAccess, ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.table.{AssociativeTable, ModelAssociation, ModelTable}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
+
+import util.functional.OptionT
+import util.instances.future._
 
 /**
   * Defines a set of [[Model]] behaviors such as relationships between other
@@ -130,7 +132,7 @@ class ModelSchema[M <: Model](val service: ModelService,
     * @tparam S           Sibling model type
     * @return             Sibling
     */
-  def getSibling[S <: Model](siblingClass: Class[S], model: M): Future[Option[S]] = {
+  def getSibling[S <: Model](siblingClass: Class[S], model: M)(implicit ec: ExecutionContext): OptionT[Future, S] = {
     val ref: M => Int = this.siblings(siblingClass)
     this.service.get[S](siblingClass, ref(model))
   }
@@ -141,9 +143,9 @@ class ModelSchema[M <: Model](val service: ModelService,
     * @param model  Model to get or create
     * @return       Existing or newly created model
     */
-  def getOrInsert(model: M): Future[M] = {
+  def getOrInsert(model: M)(implicit ec: ExecutionContext): Future[M] = {
     val modelPromise = Promise[M]
-    like(model).onComplete {
+    like(model).value.onComplete {
       case Failure(thrown) => modelPromise.failure(thrown)
       case Success(modelOpt) => modelOpt match {
         case Some(existing) => modelPromise.success(existing)
@@ -159,6 +161,6 @@ class ModelSchema[M <: Model](val service: ModelService,
     * @param model  Model to find
     * @return       Model if found
     */
-  def like(model: M): Future[Option[M]] = Future(None)
+  def like(model: M)(implicit ec: ExecutionContext): OptionT[Future, M] = OptionT.none[Future, M]
 
 }

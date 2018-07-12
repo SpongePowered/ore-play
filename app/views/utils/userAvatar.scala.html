@@ -1,10 +1,9 @@
-@import models.user.User
-@(user: User, call: Call = null, clazz: String = "", attr: Map[String, String] = Map(), href: String = null)
+@(userName: Option[String], avatarUrl: Option[String], call: Call = null, clazz: String = "", attr: Map[String, String] = Map(), href: String = null)
 
 @src = @{
     if (call == null) {
-        if (user != null)
-            user.avatarUrl.getOrElse("")
+        if (userName.nonEmpty)
+            avatarUrl.getOrElse("")
         else
             ""
     } else
@@ -14,17 +13,19 @@
 @url = @{
     if (href != null)
         href
-    else if (user == null)
+    else if (userName.isEmpty)
         "#"
     else
-        routes.Users.showProjects(user.name, None).url
+        routes.Users.showProjects(userName.get, None).url
 }
 
 @name = @{
-    if (user == null)
+    if (userName.isEmpty)
         ""
     else
-        user.name
+        userName
 }
 
-<a href="@url" class="user-avatar @clazz" title="@name" style="background-image: url(@src);" @for((k, v) <- attr) { @(s"$k=$v") }></a>
+<a href="@url" @for((k, v) <- attr) { @(s"$k=$v") }>
+    <img class="user-avatar @clazz" title="@name" src="@src" />
+</a>

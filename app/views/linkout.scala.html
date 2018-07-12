@@ -1,9 +1,7 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
 @import ore.{OreConfig, OreEnv}
-
-@(remoteUrl: String)(implicit messages: Messages, session: Session, requestHeader: RequestHeader, request: Request[_] = null,
-        service: ModelService, config: OreConfig, users: UserBase, env: OreEnv)
+@(remoteUrl: String)(implicit messages: Messages, session: Session, requestHeader: RequestHeader, request: OreRequest[_], config: OreConfig, env: OreEnv)
 
 @bootstrap.layout(messages("general.linkout.title")) {
 
@@ -18,10 +16,10 @@
                     </div>
                     <div class="panel-body">
                         <p>@messages("general.linkout.warning", remoteUrl)</p>
-                        <a class="pull-left unsafe-link-back">
+                        <a class="pull-left link-go-back">
                             <i class="fa fa-arrow-left"></i> @messages("project.back")
                         </a>
-                        <a class="unsafe-link-continue" data-remote="@remoteUrl">
+                        <a href="@remoteUrl">
                             <button class="pull-right btn btn-primary">
                             @messages("general.continue")
                             </button>

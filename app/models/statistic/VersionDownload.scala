@@ -9,6 +9,9 @@ import db.impl.VersionDownloadsTable
 import db.impl.access.UserBase
 import models.project.Version
 import ore.StatTracker._
+import util.instances.future._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents a unique download on a Project Version.
@@ -18,15 +21,15 @@ import ore.StatTracker._
   * @param modelId    ID of model the stat is on
   * @param address    Client address
   * @param cookie     Browser cookie
-  * @param userId     User ID
+  * @param _userId     User ID
   */
 case class VersionDownload(override val id: Option[Int] = None,
                            override val createdAt: Option[Timestamp] = None,
                            override val modelId: Int,
                            override val address: InetString,
                            override val cookie: String,
-                           private var userId: Option[Int] = None)
-                           extends StatEntry[Version](id, createdAt, modelId, address, cookie, userId) {
+                           private var _userId: Option[Int] = None)
+                           extends StatEntry[Version](id, createdAt, modelId, address, cookie, _userId) {
 
   override type M = VersionDownload
   override type T = VersionDownloadsTable
@@ -45,20 +48,22 @@ object VersionDownload {
     * @param request  Request to bind
     * @return         New VersionDownload
     */
-  def bindFromRequest(version: Version)(implicit request: ProjectRequest[_], users: UserBase): VersionDownload = {
+  def bindFromRequest(version: Version)(implicit ec: ExecutionContext, request: ProjectRequest[_], users: UserBase): Future[VersionDownload] = {
     checkNotNull(version, "null version", "")
     checkArgument(version.isDefined, "undefined version", "")
     checkNotNull(request, "null request", "")
     checkNotNull(users, "null user base", "")
-    val userId = users.current.flatMap(_.id)
-    val dl = VersionDownload(
-      modelId = version.id.get,
-      address = InetString(remoteAddress),
-      cookie = currentCookie,
-      userId = userId
-    )
-    dl.userBase = users
-    dl
+    users.current.subflatMap(_.id).value.map { userId =>
+      val dl = VersionDownload(
+        modelId = version.id.get,
+        address = InetString(remoteAddress),
+        cookie = currentCookie,
+        _userId = userId
+      )
+      dl.userBase = users
+      dl
+    }
+
   }
 
 }

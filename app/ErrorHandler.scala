@@ -1,8 +1,7 @@
-import javax.inject._
-
 import _root_.db.ModelService
-import _root_.db.impl.access.{ProjectBase, UserBase}
 import discourse.OreDiscourseApi
+import javax.inject._
+import models.viewhelper.HeaderData
 import ore.{OreConfig, OreEnv}
 import play.api._
 import play.api.http.DefaultHttpErrorHandler
@@ -27,9 +26,10 @@ class ErrorHandler @Inject()(env: Environment,
                                with I18nSupport {
 
   override def onProdServerError(request: RequestHeader, exception: UsefulException) = {
-    implicit val users: UserBase = service.getModelBase(classOf[UserBase])
-    implicit val projects: ProjectBase = service.getModelBase(classOf[ProjectBase])
     implicit val session = request.session
+    implicit val requestImpl = request
+    implicit val headerData = HeaderData() // Empty HeaderData on error
+
     Future.successful {
       if (exception.cause.isInstanceOf[TimeoutException])
         GatewayTimeout(views.html.errors.timeout())
@@ -39,10 +39,10 @@ class ErrorHandler @Inject()(env: Environment,
   }
 
   override def onNotFound(request: RequestHeader, message: String): Future[Result] = {
-    implicit val users: UserBase = service.getModelBase(classOf[UserBase])
-    implicit val projects: ProjectBase = service.getModelBase(classOf[ProjectBase])
     implicit val session = request.session
-    implicit val impRequest = request
+    implicit val requestImpl = request
+    implicit val headerData = HeaderData() // Empty HeaderData on error
+
     Future.successful(NotFound(views.html.errors.notFound()))
   }
 

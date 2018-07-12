@@ -1,14 +1,18 @@
-@import db.ModelService
-@import db.impl.access.UserBase
-@import ore.OreConfig
-@import models.project.Project
-@import util.StringUtils._
-@import security.NonceFilter._
-
 @import java.sql.Timestamp
-@(project: Project)(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase)
 
-@notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }
+@import controllers.sugar.Requests.OreRequest
+@import db.ModelService
+@import models.project.{Note, Project}
+@import models.user.User
+@import ore.OreConfig
+@import security.NonceFilter._
+@import util.StringUtils._
+
+
+@* @notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }*@
+
+@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -49,10 +53,10 @@
             <div class="col-md-12">
                 <table class="table table-condensed setting-no-border table-notes-log">
                     <tbody>
-                        @notes.map { note =>
+                        @notes.map { case (note, user) =>
                             <tr>
                                 <td class="note-fixed-with">@prettifyDateAndTime(new Timestamp(note.time))</td>
-                                <td class="note-fixed-with"><strong>@users.get(note.user).map(_.username).getOrElse("Unknown")</strong></td>
+                                <td class="note-fixed-with"><strong>@user.map(_.name).getOrElse("Unknown")</strong></td>
                                 <td>@note.render</td>
                             </tr>
                         }

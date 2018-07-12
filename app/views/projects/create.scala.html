@@ -1,23 +1,21 @@
 @*
 Page used for uploading and creating new projects.
 *@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
+@import models.project.Project
+@import models.user.Organization
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
-@import models.project.Project
 @import play.twirl.api.Html
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
-@import ore.permission.CreateProject
-@import models.project.Tag
-@import models.project.TagColors
-@(pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: Request[_],
-        service: ModelService, config: OreConfig, users: UserBase)
+@import views.html.utils
+@(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.utils.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
+@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectCreateValidate.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>
@@ -51,18 +49,15 @@ Page used for uploading and creating new projects.
                             <tr>
                                 <td colspan="2"><strong>@messages("project.owner")</strong></td>
                                 <td>
-                                    @defining(project.owner.organizations.all
-                                            .filter(project.owner can CreateProject in _)) { organizations =>
-                                        @if(organizations.nonEmpty) {
-                                            <select name="owner" form="continue">
-                                                <option value="@project.ownerId" selected>@project.ownerName</option>
-                                                @organizations.map { organization =>
-                                                  <option value="@organization.id.get">@organization.name</option>
-                                                }
-                                            </select>
-                                        } else {
-                                            @project.ownerName
-                                        }
+                                    @if(createProjectOrgas.nonEmpty) {
+                                        <select name="owner" form="continue">
+                                            <option value="@project.ownerId" selected>@project.ownerName</option>
+                                            @createProjectOrgas.map { organization =>
+                                                <option value="@organization.id.get">@organization.name</option>
+                                            }
+                                        </select>
+                                    } else {
+                                        @project.ownerName
                                     }
                                 </td>
                             </tr>
@@ -82,9 +77,9 @@ Page used for uploading and creating new projects.
                                     @defining(pending.get.pendingVersion.underlying.description) { description =>
                                         <input form="continue" class="form-control" type="text" id="description"
                                                name="description"
-                                               maxlength="@config.projects.getInt("max-desc-len").get"
-                                            @description.map { value =>
-                                               value="@value"
+                                               maxlength="@config.projects.get[Int]("max-desc-len")"
+                                            @description.map { v =>
+                                               value="@v"
                                             }.getOrElse {
                                                placeholder="@messages("version.create.noDescription")"
                                             }
@@ -108,7 +103,7 @@ Page used for uploading and creating new projects.
 
         @if(pending.isDefined) {
             @* Category select *@
-            @projects.utils.inputSettings("continue")
+            @projects.helper.inputSettings("continue")
         }
 
         <div class="create-buttons">
@@ -143,7 +138,7 @@ Page used for uploading and creating new projects.
                 }
             }
 
-            @projects.utils.alertFile()
+            @projects.helper.alertFile()
         </div>
     </div>
 

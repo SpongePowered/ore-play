@@ -1,12 +1,12 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.OrePostgresDriver.api._
+@import models.project.{Project, Version}
 @import ore.OreConfig
-@import db.impl.access.UserBase
-@import db.impl.access.ProjectBase
-@import models.project.Project
-@import models.project.VisibilityTypes
-@()(implicit messages: Messages, request: Request[_], service: ModelService, config: OreConfig, users: UserBase,
-        projects: ProjectBase)
+@(noTopicProjects: Seq[Project],
+  topicDirtyProjects: Seq[Project],
+  staleProjects: Seq[Project],
+  notPublicProjects: Seq[Project],
+  missingFileProjects: Seq[(Version, Project)])(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
@@ -26,7 +26,7 @@
                         <h4 class="panel-title">@messages("admin.health.discuss")</h4>
                     </div>
                     <div class="panel-body list-group list-group-health">
-                        @projects.filter(p => p.topicId === -1 || p.postId === -1).map { project =>
+                        @noTopicProjects.map { project =>
                           <div class="list-group-item">
                               <a class="pull-left" href="@projectRoutes.show(project.ownerName, project.slug)">
                                   <strong>@project.namespace</strong>
@@ -46,7 +46,7 @@
                         <h4 class="panel-title">@messages("admin.health.topic")</h4>
                     </div>
                     <div class="panel-body list-group list-group-health">
-                    @projects.filter(_.isTopicDirty).map { project =>
+                    @topicDirtyProjects.map { project =>
                         <div class="list-group-item">
                             <a class="pull-left" href="@projectRoutes.show(project.ownerName, project.slug)">
                                 <strong>@project.namespace</strong>
@@ -68,7 +68,7 @@
                         <h4 class="panel-title">@messages("admin.health.stale")</h4>
                     </div>
                     <div class="panel-body list-group list-group-health">
-                        @projects.stale.map { project =>
+                        @staleProjects.map { project =>
                           <div class="list-group-item">
                               <a href="@projectRoutes.show(project.ownerName, project.slug)">
                                   <strong>@project.namespace</strong>
@@ -84,7 +84,7 @@
                         <h4 class="panel-title">@messages("admin.health.hidden")</h4>
                     </div>
                     <div class="panel-body list-group list-group-health">
-                    @projects.filterNot(_.visibility === VisibilityTypes.Public).map { project =>
+                    @notPublicProjects.map { project =>
                         <div class="list-group-item">
                             <a href="@projectRoutes.show(project.ownerName, project.slug)">
                                 <strong>@project.namespace</strong> <small>@messages("visibility.name." + project.visibility.nameKey)</small>
@@ -112,13 +112,11 @@
                         <h4 class="panel-title">@messages("admin.health.missingFile")</h4>
                     </div>
                     <div class="panel-body list-group list-group-health">
-                        @projects.missingFile.map { version =>
+                        @missingFileProjects.map { case (version, project) =>
                           <div class="list-group-item">
-                              @defining(version.project) { project: Project =>
-                                  <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
-                                      <strong>@project.namespace/@version.name</strong>
-                                  </a>
-                              }
+                              <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
+                                  <strong>@project.namespace/@version.name</strong>
+                              </a>
                           </div>
                         }
                     </div>

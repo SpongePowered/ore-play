@@ -7,20 +7,22 @@ import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.{ReviewTable, VersionTable}
 import db.impl.model.OreModel
 import db.impl.model.common.{Describable, Downloadable}
 import db.impl.schema.VersionSchema
 import db.impl.table.ModelKeys._
+import db.impl.{ReviewTable, VersionTable}
 import models.admin.Review
 import models.statistic.VersionDownload
 import models.user.User
-import ore.Visitable
 import ore.permission.scope.ProjectScope
 import ore.project.Dependency
 import play.twirl.api.Html
 import util.FileUtils
-import util.StringUtils.equalsIgnoreCase
+import util.instances.future._
+import util.functional.OptionT
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents a single version of a Project.
@@ -56,8 +58,7 @@ case class Version(override val id: Option[Int] = None,
                    extends OreModel(id, createdAt)
                      with ProjectScope
                      with Describable
-                     with Downloadable
-                     with Visitable {
+                     with Downloadable {
 
   override type M = Version
   override type T = VersionTable
@@ -68,14 +69,15 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Name of channel
     */
-  override def name: String = this.versionString
+  def name: String = this.versionString
 
   /**
     * Returns the channel this version belongs to.
     *
     * @return Channel
     */
-  def channel: Channel = this.service.access[Channel](classOf[Channel]).get(this.channelId).get
+  def channel(implicit ec: ExecutionContext): Future[Channel] =
+    this.service.access[Channel](classOf[Channel]).get(this.channelId).getOrElse(throw new NoSuchElementException("None of Option"))
 
   /**
     * Returns the channel this version belongs to from the specified collection
@@ -85,9 +87,8 @@ case class Version(override val id: Option[Int] = None,
     * @return           Channel if present, None otherwise
     */
   def findChannelFrom(channels: Seq[Channel]): Option[Channel] = Defined {
-    if (channels == null)
-      return None
-    channels.find(_.id.get == this.channelId)
+    if (channels == null) None
+    else channels.find(_.id.get == this.channelId)
   }
 
   /**
@@ -102,7 +103,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @param _description Version description
     */
-  def description_=(_description: String) = {
+  def setDescription(_description: String) = {
     checkArgument(_description == null || _description.length <= Page.MaxLength, "content too long", "")
     this._description = Option(_description)
     if (isDefined) update(Description)
@@ -121,7 +122,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Base URL for version
     */
-  override def url: String = this.project.url + "/versions/" + this.versionString
+  def url(implicit project: Project): String = project.url + "/versions/" + this.versionString
 
   /**
     * Returns true if this version has been reviewed by the moderation staff.
@@ -142,9 +143,9 @@ case class Version(override val id: Option[Int] = None,
 
   def authorId: Int = this._authorId
 
-  def author: Option[User] = this.userBase.get(this._authorId)
+  def author(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._authorId)
 
-  def authorId_=(authorId: Int) = {
+  def setAuthorId(authorId: Int) = {
     this._authorId = authorId
     // If the project is in the Database
     if (isDefined) {
@@ -154,23 +155,28 @@ case class Version(override val id: Option[Int] = None,
 
   def reviewerId: Int = this._reviewerId
 
-  def reviewer: Option[User] = this.userBase.get(this._reviewerId)
+  def reviewer(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._reviewerId)
 
-  def reviewer_=(reviewer: User) = Defined {
+  def setReviewer(reviewer: User) = Defined {
     this._reviewerId = reviewer.id.get
+    update(ReviewerId)
+  }
+
+  def setReviewerId(reviewer: Int) = Defined {
+    this._reviewerId = reviewer
     update(ReviewerId)
   }
 
   def approvedAt: Option[Timestamp] = this._approvedAt
 
-  def approvedAt_=(approvedAt: Timestamp) = Defined {
+  def setApprovedAt(approvedAt: Timestamp) = Defined {
     this._approvedAt = Option(approvedAt)
     update(ApprovedAt)
   }
 
   def tagIds: List[Int] = this._tagIds
 
-  def tagIds_=(tags: List[Int]) = {
+  def setTagIds(tags: List[Int]) = {
     this._tagIds = tags
     if(isDefined) update(TagIds)
   }
@@ -182,19 +188,17 @@ case class Version(override val id: Option[Int] = None,
     }
   }
 
-  def tags: List[Tag] = {
-    tagIds.map { id =>
-      this.service.access[Tag](classOf[Tag]).find(_.id === id).get
+  def tags(implicit ec: ExecutionContext, service: ModelService = null): Future[List[Tag]] = {
+    schema(service)
+    this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map { list =>
+      list.toSet.toList
     }
   }
 
-  def isSpongePlugin: Boolean = {
-    tags.map(_.name).contains("Sponge")
-  }
 
-  def isForgeMod: Boolean = {
-    tags.map(_.name).contains("Forge")
-  }
+  def isSpongePlugin(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Sponge"))
+
+  def isForgeMod(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Forge"))
 
   /**
     * Returns this Versions plugin dependencies.
@@ -253,9 +257,17 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return True if exists
     */
-  def exists: Boolean = {
-    this.projectId != -1 && (this.service.await(this.schema.hashExists(this.projectId, this.hash)).get
-      || this.project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase))
+  def exists(implicit ec: ExecutionContext): Future[Boolean] = {
+    if (this.projectId == -1) Future.successful(false)
+    else {
+      for {
+        hashExists <- this.schema.hashExists(this.projectId, this.hash)
+        project <- this.project
+        pExists <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
+      } yield {
+        hashExists && pExists
+      }
+    }
   }
 
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
@@ -264,10 +276,10 @@ case class Version(override val id: Option[Int] = None,
 
   def byCreationDate(first: Review, second: Review) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
   def reviewEntries = this.schema.getChildren[Review](classOf[Review], this)
-  def unfinishedReviews: Seq[Review] = reviewEntries.all.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate)
-  def mostRecentUnfinishedReview: Option[Review] = unfinishedReviews.headOption
-  def mostRecentReviews: Seq[Review] = reviewEntries.toSeq.sortWith(byCreationDate)
-  def reviewById(id: Int): Option[Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
+  def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate))
+  def mostRecentUnfinishedReview(implicit ec: ExecutionContext): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
+  def mostRecentReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
+  def reviewById(id: Int)(implicit ec: ExecutionContext): OptionT[Future, Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
   def equalsInt[T <: Table[_]](int1: T => Rep[Int], int2: Int): T => Rep[Boolean] = int1(_) === int2
 
 }

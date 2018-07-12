@@ -12,7 +12,7 @@ import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import models.project.{Flag, Project, Version, VisibilityTypes}
 import models.user.role.{OrganizationRole, ProjectRole}
-import ore.{OreConfig, Visitable}
+import ore.OreConfig
 import ore.permission._
 import ore.permission.role.RoleTypes.{DonorType, RoleType}
 import ore.permission.role._
@@ -23,9 +23,12 @@ import org.spongepowered.play.discourse.model.DiscourseUser
 import play.api.mvc.Request
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.SpongeUser
+import slick.lifted.{QueryBase, TableQuery}
 import util.StringUtils._
+import util.instances.future._
+import util.functional.OptionT
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Breaks._
 
 /**
@@ -54,8 +57,7 @@ case class User(override val id: Option[Int] = None,
                 extends OreModel(id, createdAt)
                   with UserOwned
                   with ScopeSubject
-                  with Named
-                  with Visitable {
+                  with Named {
 
   override type M = User
   override type T = UserTable
@@ -79,10 +81,10 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _username Username of User
     */
-  def username_=(_username: String) = {
+  def setUsername(_username: String) = {
     checkNotNull(_username, "username cannot be null", "")
     this._username = _username
-    if (isDefined) update(Name)
+    if (isDefined) update(UserName)
   }
 
   /**
@@ -97,7 +99,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _email User email
     */
-  def email_=(_email: String) = {
+  def setEmail(_email: String) = {
     this._email = Option(_email)
     if (isDefined) update(Email)
   }
@@ -116,7 +118,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param pgpPubKey PGP public key
     */
-  def pgpPubKey_=(pgpPubKey: String) = {
+  def setPgpPubKey(pgpPubKey: String) = {
     this._pgpPubKey = Option(pgpPubKey)
     if (isDefined) update(PGPPubKey)
   }
@@ -143,7 +145,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _lastPgpPubKeyUpdate Last time this User updated their public key
     */
-  def lastPgpPubKeyUpdate_=(_lastPgpPubKeyUpdate: Timestamp) = Defined {
+  def setLastPgpPubKeyUpdate(_lastPgpPubKeyUpdate: Timestamp) = Defined {
     this._lastPgpPubKeyUpdate = Option(_lastPgpPubKeyUpdate)
     update(LastPGPPubKeyUpdate)
   }
@@ -154,7 +156,7 @@ case class User(override val id: Option[Int] = None,
     * @return True if key is ready for use
     */
   def isPgpPubKeyReady: Boolean = this.pgpPubKey.isDefined && this.lastPgpPubKeyUpdate.forall { lastUpdate =>
-    val cooldown = this.config.security.getLong("keyChangeCooldown").get
+    val cooldown = this.config.security.get[Long]("keyChangeCooldown")
     val minTime = new Timestamp(lastUpdate.getTime + cooldown)
     minTime.before(this.service.theTime)
   }
@@ -188,7 +190,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _fullName Full name of user
     */
-  def fullName_=(_fullName: String) = {
+  def setFullName(_fullName: String) = {
     this._name = Option(_fullName)
     if (isDefined) update(FullName)
   }
@@ -206,7 +208,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _joinDate Sponge join date
     */
-  def joinDate_=(_joinDate: Timestamp) = {
+  def setJoinDate(_joinDate: Timestamp) = {
     this._joinDate = Option(_joinDate)
     if (isDefined) update(JoinDate)
   }
@@ -223,7 +225,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _avatarUrl Avatar url
     */
-  def avatarUrl_=(_avatarUrl: String) = {
+  def setAvatarUrl(_avatarUrl: String) = {
     this._avatarUrl = Option(_avatarUrl)
     if (isDefined) update(AvatarUrl)
   }
@@ -240,8 +242,8 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _tagline Tagline to display
     */
-  def tagline_=(_tagline: String) = {
-    checkArgument(_tagline.length <= this.config.users.getInt("max-tagline-len").get, "tagline too long", "")
+  def setTagline(_tagline: String) = {
+    checkArgument(_tagline.length <= this.config.users.get[Int]("max-tagline-len"), "tagline too long", "")
     this._tagline = Option(nullIfEmpty(_tagline))
     if (isDefined) update(Tagline)
   }
@@ -258,7 +260,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _globalRoles Roles to set
     */
-  def globalRoles_=(_globalRoles: Set[RoleType]) = {
+  def setGlobalRoles(_globalRoles: Set[RoleType]) = {
     var roles = _globalRoles
     if (roles == null)
       roles = Set.empty
@@ -283,29 +285,45 @@ case class User(override val id: Option[Int] = None,
     *
     * @return Highest level of trust
     */
-  def trustIn(scope: Scope = GlobalScope): Trust = Defined {
+  def trustIn(scope: Scope = GlobalScope)(implicit ec: ExecutionContext): Future[Trust] = Defined {
     scope match {
       case GlobalScope =>
-        this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default)
+        Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        val members = pScope.project.memberships
-        var trust = members.getTrust(this)
-        if (trust.equals(Default)) {
-          breakable {
-            for (member <- members.members) {
-              if (member.isOrganization) {
-                val orgTrust = trustIn(member.toOrganization)
-                if (!orgTrust.equals(Default)) {
-                  trust = orgTrust
-                  break
-                }
-              }
+        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId, this.id.get).result).map { projectRoles =>
+          projectRoles.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
+        } flatMap { userTrust =>
+          if (!userTrust.equals(Default)) {
+            Future.successful(userTrust)
+          } else {
+
+            val projectTable = TableQuery[ProjectTableMain]
+            val projectMembersTable = TableQuery[ProjectMembersTable]
+            val orgaTable = TableQuery[OrganizationTable]
+
+            val memberTable = TableQuery[OrganizationMembersTable]
+            val roleTable = TableQuery[OrganizationRoleTable]
+
+            // TODO review permission logic
+            val query = for {
+              p <- projectTable if p.id === pScope.projectId
+              pm <- projectMembersTable if p.id === pm.projectId // Join members of project
+              o <- orgaTable if pm.userId == o.userId            // Filter out non organizations
+              m <- memberTable if m.organizationId === o.id
+              r <- roleTable if m.userId === r.userId && r.organizationId === o.id
+            } yield {
+              r.roleType
+            }
+
+            service.DB.db.run(query.result).map { l =>
+              l.collectFirst {  // Find first non default trust
+                case u if u.trust != Default => u.trust
+              }.getOrElse(Default)
             }
           }
         }
-        trust
       case oScope: OrganizationScope =>
-        oScope.organization.memberships.getTrust(this)
+        oScope.organization.flatMap(o => o.memberships.getTrust(this))
       case _ =>
         throw new RuntimeException("unknown scope: " + scope)
     }
@@ -317,11 +335,11 @@ case class User(override val id: Option[Int] = None,
     * @param page Page of user stars
     * @return     Projects user has starred
     */
-  def starred(page: Int = -1): Seq[Project] = Defined {
-    val starsPerPage = this.config.users.getInt("stars-per-page").get
+  def starred(page: Int = -1)(implicit ec: ExecutionContext): Future[Seq[Project]] = Defined {
+    val starsPerPage = this.config.users.get[Int]("stars-per-page")
     val limit = if (page < 1) -1 else starsPerPage
     val offset = (page - 1) * starsPerPage
-    val filter = ModelFilter[Project](_.visibility === VisibilityTypes.Public) +|| ModelFilter[Project](_.visibility === VisibilityTypes.New)
+    val filter = VisibilityTypes.isPublicFilter[Project]
     this.schema.getAssociation[ProjectStarsTable, Project](classOf[ProjectStarsTable], this)
       .sorted(ordering = _.name, filter = filter.fn, limit = limit, offset = offset)
   }
@@ -331,11 +349,12 @@ case class User(override val id: Option[Int] = None,
     *
     * @return True if currently authenticated user
     */
-  def isCurrent(implicit request: Request[_]): Boolean = {
+  def isCurrent(implicit request: Request[_], ec: ExecutionContext): Future[Boolean] = {
     checkNotNull(request, "null request", "")
-    this.service.getModelBase(classOf[UserBase]).current.exists { user =>
-        user.equals(this) || (this.isOrganization && this.toOrganization.owner.user.equals(user))
-    }
+    this.service.getModelBase(classOf[UserBase]).current.semiFlatMap { user =>
+      if(user == this) Future.successful(true)
+      else this.toMaybeOrganization.semiFlatMap(_.owner.user).contains(user)
+    }.exists(identity)
   }
 
   /**
@@ -343,41 +362,37 @@ case class User(override val id: Option[Int] = None,
     * non-missing mutable fields.
     *
     * @param user User to fill with
-    * @return     This user
     */
-  def fill(user: DiscourseUser): User = {
-    if (user == null)
-      return this
-    this.username = user.username
-    user.createdAt.foreach(this.joinDate_=)
-    user.email.foreach(this.email_=)
-    user.fullName.foreach(this.fullName_=)
-    user.avatarTemplate.foreach(this.avatarUrl_=)
-    this.globalRoles = user.groups
-      .flatMap(group => RoleTypes.values.find(_.roleId == group.id).map(_.asInstanceOf[RoleType]))
-      .toSet[RoleType]
-    this
+  def fill(user: DiscourseUser): Unit = {
+    if (user != null) {
+      this.setUsername(user.username)
+      user.createdAt.foreach(this.setJoinDate)
+      user.email.foreach(this.setEmail)
+      user.fullName.foreach(this.setFullName)
+      user.avatarTemplate.foreach(this.setAvatarUrl)
+      this.setGlobalRoles(user.groups
+        .flatMap(group => RoleTypes.values.find(_.roleId == group.id).map(_.asInstanceOf[RoleType]))
+        .toSet[RoleType])
+    }
   }
 
   /**
     * Fills this User with the information SpongeUser provides.
     *
-    * @param user SpongeUser
-    * @return     This user
+    * @param user Sponge User
     */
-  def fill(user: SpongeUser)(implicit config: OreConfig): User = {
-    if (user == null)
-      return this
-    this.username = user.username
-    this.email = user.email
-    user.avatarUrl.map { url =>
-      if (!url.startsWith("http")) {
-        val baseUrl = config.security.getString("api.url").get
-        baseUrl + url
-      } else
-        url
-    }.foreach(this.avatarUrl = _)
-    this
+  def fill(user: SpongeUser)(implicit config: OreConfig): Unit = {
+    if (user != null) {
+      this.setUsername(user.username)
+      this.setEmail(user.email)
+      user.avatarUrl.map { url =>
+        if (!url.startsWith("http")) {
+          val baseUrl = config.security.get[String]("api.url")
+          baseUrl + url
+        } else
+          url
+      }.foreach(this.setAvatarUrl)
+    }
   }
 
   /**
@@ -385,11 +400,9 @@ case class User(override val id: Option[Int] = None,
     *
     * @return This user
     */
-  def pullForumData(): User = {
-    this.forums.await(this.forums.fetchUser(this.name).recover {
-      case e: Exception => None // couldn't connect, ignore
-    }).foreach(fill)
-    this
+  def pullForumData()(implicit ec: ExecutionContext): Future[Unit] = {
+    // Exceptions are ignored
+    OptionT(this.forums.fetchUser(this.name).recover{case _: Exception => None}).cata((), fill)
   }
 
   /**
@@ -397,8 +410,8 @@ case class User(override val id: Option[Int] = None,
     *
     * @return This user
     */
-  def pullSpongeData(): User = this.auth.getUser(this.name).map(fill).getOrElse {
-    throw new Exception("user doesn't exist on SpongeAuth?")
+  def pullSpongeData()(implicit ec: ExecutionContext): Future[Unit] = {
+    this.auth.getUser(this.name).cata((), fill)
   }
 
   /**
@@ -414,7 +427,7 @@ case class User(override val id: Option[Int] = None,
     * @param name   Name of project
     * @return       Owned project, if any, None otherwise
     */
-  def getProject(name: String): Option[Project] = this.projects.find(equalsIgnoreCase(_.name, name))
+  def getProject(name: String)(implicit ec: ExecutionContext): OptionT[Future, Project] = this.projects.find(equalsIgnoreCase(_.name, name))
 
   /**
     * Returns a [[ModelAccess]] of [[ProjectRole]]s.
@@ -450,7 +463,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return True if organization
     */
-  def isOrganization: Boolean = Defined {
+  def isOrganization(implicit ec: ExecutionContext): Future[Boolean] = Defined {
     this.service.getModelBase(classOf[OrganizationBase]).exists(_.id === this.id.get)
   }
 
@@ -459,9 +472,13 @@ case class User(override val id: Option[Int] = None,
     *
     * @return Organization
     */
-  def toOrganization: Organization = Defined {
+  def toOrganization(implicit ec: ExecutionContext): Future[Organization] = Defined {
     this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
       .getOrElse(throw new IllegalStateException("user is not an organization"))
+  }
+
+  def toMaybeOrganization(implicit ec: ExecutionContext): OptionT[Future, Organization] = Defined {
+    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
   }
 
   /**
@@ -477,15 +494,14 @@ case class User(override val id: Option[Int] = None,
     * @param project Project to update status on
     * @param watching True if watching
     */
-  def setWatching(project: Project, watching: Boolean) = {
+  def setWatching(project: Project, watching: Boolean)(implicit ec: ExecutionContext) = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     val contains = this.watching.contains(project)
-    if (watching) {
-      if (!contains)
-        this.watching.add(project)
-    } else if (contains)
-      this.watching.remove(project)
+    contains.map {
+      case true => if (!watching) this.watching.remove(project)
+      case false => if (watching) this.watching.add(project)
+    }
   }
 
   /**
@@ -502,7 +518,7 @@ case class User(override val id: Option[Int] = None,
     * @param project  Project to check
     * @return         True if has pending flag on Project
     */
-  def hasUnresolvedFlagFor(project: Project): Boolean = {
+  def hasUnresolvedFlagFor(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     this.flags.exists(f => f.projectId === project.id.get && !f.isResolved)
@@ -521,7 +537,7 @@ case class User(override val id: Option[Int] = None,
     * @param notification Notification to send
     * @return Future result
     */
-  def sendNotification(notification: Notification) = {
+  def sendNotification(notification: Notification)(implicit ec: ExecutionContext) = {
     checkNotNull(notification, "null notification", "")
     this.config.debug("Sending notification: " + notification, -1)
     this.service.access[Notification](classOf[Notification]).add(notification.copy(userId = this.id.get))
@@ -532,14 +548,22 @@ case class User(override val id: Option[Int] = None,
     *
     * @return True if has unread notifications
     */
-  def hasUnreadNotifications: Boolean = Defined {
+  def hasNotice(implicit ec: ExecutionContext): Future[Boolean] = Defined {
     val flags = this.service.access[Flag](classOf[Flag])
     val versions = this.service.access[Version](classOf[Version])
-    val hasFlags = (this can ReviewFlags in GlobalScope) && flags.filterNot(_.isResolved).nonEmpty
-    val hasReview = (this can ReviewProjects in GlobalScope) &&
-      !versions.filterNot(_.isReviewed).forall(_.channel.isNonReviewed)
-    val hasNotifications = this.notifications.filterNot(_.read).nonEmpty
-    hasFlags || hasReview || hasNotifications
+
+    for {
+      hasFlags <- this can ReviewFlags in GlobalScope
+      hasReview <- this can ReviewProjects in GlobalScope
+      resolvedFlags <- flags.filterNot(_.isResolved)
+      reviewedVersions <- versions.filterNot(_.isReviewed)
+      channels <- Future.sequence(reviewedVersions.map(_.channel))
+      notifications <- this.notifications.filterNot(_.read)
+    } yield {
+      (hasFlags && resolvedFlags.nonEmpty) ||
+        (hasReview && !channels.forall(_.isNonReviewed)) ||
+        notifications.nonEmpty
+    }
   }
 
   /**
@@ -560,8 +584,8 @@ case class User(override val id: Option[Int] = None,
     if (isDefined) update(ReadPrompts)
   }
 
-  override val name = this.username
-  override val url = this.username
+  def name = this.username
+  def url = this.username
   override val scope = GlobalScope
   override def userId = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(createdAt = theTime)
@@ -573,18 +597,26 @@ object User {
   /**
     * Creates a new [[User]] from the specified [[DiscourseUser]].
     *
-    * @param user User to convert
-    * @return     Ore User
+    * @param toConvert User to convert
+    * @return          Ore User
     */
   @deprecated("use fromSponge instead", "Oct 14, 2016, 1:45 PM PDT")
-  def fromDiscourse(user: DiscourseUser) = User().fill(user).copy(id = Some(user.id))
+  def fromDiscourse(toConvert: DiscourseUser)(implicit ec: ExecutionContext): User = {
+    val user = User()
+    user.fill(toConvert)
+    user.copy(id = Some(toConvert.id))
+  }
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].
     *
-    * @param user User to convert
-    * @return     Ore user
+    * @param toConvert User to convert
+    * @return          Ore user
     */
-  def fromSponge(user: SpongeUser)(implicit config: OreConfig) = User().fill(user).copy(id = Some(user.id))
+  def fromSponge(toConvert: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext): User = {
+    val user = User()
+    user.fill(toConvert)
+    user.copy(id = Some(toConvert.id))
+  }
 
 }

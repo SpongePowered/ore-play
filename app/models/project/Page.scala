@@ -11,11 +11,11 @@ import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.typographic.TypographicExtension
-import com.vladsch.flexmark.ext.wikilink.{WikiLink, WikiLinkExtension}
+import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.html.renderer._
 import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
 import com.vladsch.flexmark.parser.Parser
-import com.vladsch.flexmark.util.options.{MutableDataHolder, MutableDataSet}
+import com.vladsch.flexmark.util.options.MutableDataSet
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.PageTable
@@ -23,11 +23,14 @@ import db.impl.model.OreModel
 import db.impl.schema.PageSchema
 import db.impl.table.ModelKeys._
 import db.{ModelFilter, Named}
-import models.project
+import ore.OreConfig
 import ore.permission.scope.ProjectScope
-import ore.{OreConfig, Visitable}
 import play.twirl.api.Html
 import util.StringUtils._
+import util.instances.future._
+import util.functional.OptionT
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents a documentation page within a project.
@@ -51,8 +54,7 @@ case class Page(override val id: Option[Int] = None,
                 private var _contents: String)
                 extends OreModel(id, createdAt)
                   with ProjectScope
-                  with Named
-                  with Visitable {
+                  with Named {
 
   override type M = Page
   override type T = PageTable
@@ -83,16 +85,20 @@ case class Page(override val id: Option[Int] = None,
     *
     * @param _contents Markdown contents
     */
-  def contents_=(_contents: String) = {
+  def setContents(_contents: String)(implicit ec: ExecutionContext): Future[Page] = {
     checkNotNull(_contents, "null contents", "")
-    checkArgument(_contents.length <= MaxLength, "contents too long", "")
+    checkArgument((this.isHome && _contents.length <= MaxLength) || _contents.length <= MaxLengthPage, "contents too long", "")
     this._contents = _contents
-    if (isDefined) {
-      update(Contents)
-      // Contents were updated, update on forums
-      val project = this.project
-      if (this.name.equals(HomeName) && project.topicId != -1)
-        this.forums.updateProjectTopic(project)
+    if (!isDefined) Future.successful(this)
+    else {
+      for {
+        _ <- update(Contents)
+        project <- this.project
+        // Contents were updated, update on forums
+        _ <- if (this.name.equals(HomeName) && project.topicId != -1) this.forums.updateProjectTopic(project) else Future.successful(false)
+      } yield {
+        this
+      }
     }
   }
 
@@ -101,7 +107,7 @@ case class Page(override val id: Option[Int] = None,
     *
     * @return HTML representation
     */
-  def html: Html = RenderPage(this)
+  def html(project: Option[Project]): Html = RenderPage(this, project)
 
   /**
     * Returns true if this is the home page.
@@ -115,20 +121,22 @@ case class Page(override val id: Option[Int] = None,
     *
     * @return Optional Project
     */
-  def parentProject: Option[Project] = this.projectBase.get(projectId)
+  def parentProject(implicit ec: ExecutionContext): OptionT[Future, Project] = this.projectBase.get(projectId)
 
   /**
     *
     * @return
     */
-  def parentPage: Option[Page] = if (parentProject.isDefined) { parentProject.get.pages.find(ModelFilter[Page](_.id === parentId).fn).lastOption } else { None }
+  def parentPage(implicit ec: ExecutionContext): OptionT[Future, Page] = {
+    parentProject.flatMap(_.pages.find(ModelFilter[Page](_.id === parentId).fn))
+  }
 
   /**
     * Get the /:parent/:child
     *
     * @return String
     */
-  def fullSlug: String = if (parentPage.isDefined) { s"${parentPage.get.slug}/${slug}" } else { slug }
+  def fullSlug(parentPage: Option[Page]): String = parentPage.fold(slug)(pp => s"${pp.slug}/$slug")
 
   /**
     * Returns access to this Page's children (if any).
@@ -138,7 +146,7 @@ case class Page(override val id: Option[Int] = None,
   def children: ModelAccess[Page]
   = this.service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.get))
 
-  override def url: String = this.project.url + "/pages/" + this.fullSlug
+  def url(implicit project: Project, parentPage: Option[Page]) : String = project.url + "/pages/" + this.fullSlug(parentPage)
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
 
 }
@@ -179,7 +187,7 @@ object Page {
             controllers.routes.Application.linkOut(urlString).toString
           }
         } else {
-          val trustedUrlHosts = this.config.app.getStringSeq("trustedUrlHosts").get
+          val trustedUrlHosts = this.config.app.get[Seq[String]]("trustedUrlHosts")
           val checkSubdomain = (trusted: String) => trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1));
           if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) {
             urlString
@@ -229,12 +237,11 @@ object Page {
     Html(htmlRenderer.render(markdownParser.parse(markdown)))
   }
 
-  def RenderPage(page: Page)(implicit config: OreConfig): Html = {
+  def RenderPage(page: Page, project: Option[Project])(implicit config: OreConfig): Html = {
     if (linkResolver.isEmpty)
       linkResolver = Some(new ExternalLinkResolver.Factory(config))
 
     val options = new MutableDataSet().set[String](WikiLinkExtension.LINK_ESCAPE_CHARS, " +<>")
-    val project = page.parentProject
 
     if (project.isDefined)
       options.set[String](WikiLinkExtension.LINK_PREFIX, s"/${project.get.ownerName}/${project.get.slug}/pages/")
@@ -245,22 +252,27 @@ object Page {
   /**
     * The name of each Project's homepage.
     */
-  def HomeName(implicit config: OreConfig): String = config.pages.getString("home.name").get
+  def HomeName(implicit config: OreConfig): String = config.pages.get[String]("home.name")
 
   /**
     * The template body for the Home page.
     */
-  def HomeMessage(implicit config: OreConfig): String = config.pages.getString("home.message").get
+  def HomeMessage(implicit config: OreConfig): String = config.pages.get[String]("home.message")
 
   /**
     * The minimum amount of characters a page may have.
     */
-  def MinLength(implicit config: OreConfig): Int = config.pages.getInt("min-len").get
+  def MinLength(implicit config: OreConfig): Int = config.pages.get[Int]("min-len")
+
+  /**
+    * The maximum amount of characters the home page may have.
+    */
+  def MaxLength(implicit config: OreConfig): Int = config.pages.get[Int]("max-len")
 
   /**
     * The maximum amount of characters a page may have.
     */
-  def MaxLength(implicit config: OreConfig): Int = config.pages.getInt("max-len").get
+  def MaxLengthPage(implicit config: OreConfig): Int = config.pages.get[Int]("page.max-len")
 
   /**
     * Returns a template for new Pages.

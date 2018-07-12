@@ -2,19 +2,21 @@ package security
 
 import java.security.SecureRandom
 import java.util.Base64
-import javax.inject.Inject
 
 import akka.stream.Materializer
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import javax.inject.Inject
+import play.api.libs.typedmap.TypedKey
 import play.api.mvc.{Filter, RequestHeader, Result}
 
 import scala.concurrent.Future
 
 object NonceFilter {
 
+  val NonceKey: TypedKey[String] = TypedKey("nonce")
+
   def nonce(implicit request: RequestHeader): String = {
     if (request != null) {
-      request.tags("nonce")
+      request.attrs.get(NonceKey).getOrElse("")
     } else {
       ""
     }
@@ -27,10 +29,15 @@ class NonceFilter @Inject() (implicit val mat: Materializer) extends Filter {
   private val random = new SecureRandom()
 
   override def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
+    import mat.executionContext
     val nonce = generateNonce
-    next(request.withTag("nonce", nonce)).map { result =>
-      result.withHeaders("Content-Security-Policy" -> result.header.headers("Content-Security-Policy")
-        .replace("%NONCE-SOURCE%", s"nonce-$nonce"))
+    next(request.addAttr(NonceFilter.NonceKey, nonce)).map { result =>
+      if(result.header.headers.contains("Content-Security-Policy")) {
+        result.withHeaders("Content-Security-Policy" -> result.header.headers("Content-Security-Policy")
+          .replace("%NONCE-SOURCE%", s"nonce-$nonce"))
+      }
+
+      result
     }
   }
 

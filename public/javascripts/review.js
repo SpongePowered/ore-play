@@ -130,4 +130,18 @@ $(function() {
             }
         });
     });
+
+    $('.btn-review-reopen').click(function() {
+        var icon = $(this).find('i').removeClass('fa-terminal').addClass('fa-spinner fa-spin');
+        $(this).attr("disabled", "disabled");
+        $.ajax({
+            type: 'post',
+            url: '/' + versionPath + '/reviews/reopen',
+            data: { csrfToken: csrf },
+            complete: function() { icon.removeClass('fa-spinner fa-spin').addClass('fa-terminal'); },
+            success: function() {
+                location.reload();
+            }
+        });
+    });
 });

@@ -8,7 +8,11 @@ import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import models.project.Page
 import models.user.User
+import util.functional.OptionT
+import util.instances.future._
 import play.twirl.api.Html
+
+import scala.concurrent.{ExecutionContext, Future}
 
 case class VisibilityChange(override val id: Option[Int] = None,
                             override val createdAt: Option[Timestamp] = None,
@@ -29,6 +33,10 @@ case class VisibilityChange(override val id: Option[Int] = None,
   /** Check if the change has been dealt with */
   def isResolved: Boolean = !resolvedAt.isEmpty
 
+  def created(implicit ec: ExecutionContext): OptionT[Future, User] = {
+    OptionT.fromOption[Future](createdBy).flatMap(userBase.get(_))
+  }
+
   /**
     * Set the resolvedAt time
     * @param time
@@ -44,6 +52,10 @@ case class VisibilityChange(override val id: Option[Int] = None,
     */
   def setResolvedBy(user: User) = {
     this.resolvedBy = user.id
+    update(ResolvedByVC)
+  }
+  def setResolvedById(userId: Int) = {
+    this.resolvedBy = Some(userId)
     update(ResolvedByVC)
   }
 

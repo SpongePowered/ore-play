@@ -1,38 +1,38 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.Project
+@import models.project.{Project, Tag, Version}
 @import models.user.User
+@import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
 @import views.html.projects.{list => projectList}
-@(user: User, models: Seq[Project], page: Int)(implicit messages: Messages, flash: Flash, request: Request[_],
-        service: ModelService, config: OreConfig, userBase: UserBase)
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
+        page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
-@users.view(user) {
+@users.view(u) {
 
     <div class="row">
         <div class="col-md-8">
         @projectList(
             models = models,
             page = page,
-            pageSize = config.users.getInt("project-page-size").get,
-            call = page => routes.Users.showProjects(user.username, Some(page))
+            pageSize = config.users.get[Int]("project-page-size"),
+            call = page => routes.Users.showProjects(u.user.name, Some(page))
         )
         </div>
 
         <div class="col-md-4">
-            @if(!user.isOrganization) {
+            @if(!u.isOrga) {
                 <div class="panel-stars panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title"><i class="fa fa-star"></i> @messages("project.starred")</h3>
                     </div>
                     <table class="table panel-body">
                         <tbody>
-                        @defining(user.starred(1)) { stars =>
-                            @if(stars.isEmpty) {
-                                <tr><td><i class="minor">@messages("user.noStars", user.username)</i></td></tr>
+                            @if(starred.isEmpty) {
+                                <tr><td><i class="minor">@messages("user.noStars", u.user.name)</i></td></tr>
                             } else {
-                                @stars.map { star =>
+                                @starred.map { case (star, rv) =>
                                     <tr>
                                         <td>
                                             <a href="@projectRoutes.Projects.show(star.ownerName, star.slug)"
@@ -40,7 +40,7 @@
                                                 @star.ownerName/<strong>@star.name</strong>
                                             </a>
                                             <div class="pull-right">
-                                                <span class="minor">@star.recommendedVersion.versionString</span>
+                                                <span class="minor">@rv.versionString</span>
                                                 @defining(star.category) { category =>
                                                     <i title="@category.title" class="fa fa-fw @category.icon"></i>
                                                 }
@@ -49,7 +49,6 @@
                                     </tr>
                                 }
                             }
-                        }
                         </tbody>
                     </table>
 
@@ -62,12 +61,12 @@
                     </div>
                 </div>
             } else {
-                @defining(user.toOrganization) { organization =>
-                    @users.memberList(
-                        model = organization,
+                @o.map { case (orgData, scopedData) =>
+                    @users.memberList(orgData,
                         editable = true,
-                        saveCall = routes.Organizations.updateMembers(organization.name),
-                        removeCall = routes.Organizations.removeMember(organization.name)
+                        perms = scopedData.permissions,
+                        saveCall = routes.Organizations.updateMembers(orgData.orga.name),
+                        removeCall = routes.Organizations.removeMember(orgData.orga.name)
                     )
                 }
             }

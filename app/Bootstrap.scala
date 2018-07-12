@@ -1,9 +1,9 @@
 import java.security.Security
-import javax.inject.{Inject, Singleton}
 
 import db.ModelService
 import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
+import javax.inject.{Inject, Singleton}
 import ore.OreConfig
 import ore.project.ProjectTask
 import ore.user.UserSyncTask
@@ -34,7 +34,7 @@ trait Bootstrap {
 
   this.projectTask.start()
 
-  if (this.config.security.getBoolean("requirePgp").get)
+  if (this.config.security.get[Boolean]("requirePgp"))
     Security.addProvider(new BouncyCastleProvider)
 
   Logger.info(s"Ore Initialized (${System.currentTimeMillis() - time}ms).")

@@ -5,8 +5,10 @@
     font-size: 4em;
   }
 
-  .version-list {
-    display: none;
+  .version-table {
+    i.fa {
+      margin-right: 0.5rem;
+    }
 
     tr > td {
       cursor: default;
@@ -93,10 +95,6 @@
 
         &.information-two {
           width: 20%;
-
-          .author {
-            display: none;
-          }
         }
 
         &.download {

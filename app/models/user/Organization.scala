@@ -3,17 +3,21 @@ package models.user
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
+import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.OreModel
-import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.impl.table.ModelKeys._
+import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.{Model, Named}
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
-import ore.permission.role.RoleTypes
+import ore.permission.role.{Default, RoleTypes, Trust}
 import ore.permission.scope.OrganizationScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
+import slick.lifted.{Compiled, Rep, TableQuery}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents an Ore Organization. An organization is like a [[User]] in the
@@ -23,12 +27,12 @@ import ore.{Joinable, Visitable}
   *
   * @param id             Unique ID
   * @param createdAt      Date of creation
-  * @param ownerId        The ID of the [[User]] that owns this organization
+  * @param _ownerId        The ID of the [[User]] that owns this organization
   */
 case class Organization(override val id: Option[Int] = None,
                         override val createdAt: Option[Timestamp] = None,
                         username: String,
-                        private var ownerId: Int)
+                        private var _ownerId: Int)
                         extends OreModel(id, createdAt)
                           with UserOwned
                           with OrganizationScope
@@ -54,7 +58,21 @@ case class Organization(override val id: Option[Int] = None,
     val roleClass: Class[RoleType] = classOf[OrganizationRole]
     val model: ModelType = Organization.this
 
-    def newMember(userId: Int) = new OrganizationMember(this.model, userId)
+    def newMember(userId: Int)(implicit ec: ExecutionContext) = new OrganizationMember(this.model, userId)
+
+    def clearRoles(user: User): Future[Int] = this.roleAccess.removeAll({ s => (s.userId === user.id.get) && (s.organizationId === id.get) })
+
+    /**
+      * Returns the highest level of [[ore.permission.role.Trust]] this user has.
+      *
+      * @param user User to get trust of
+      * @return Trust of user
+      */
+    override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] = {
+      this.userBase.service.DB.db.run(Organization.roleForTrustQuery(id.get, user.id.get).result).map { l =>
+        l.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
+      }
+    }
 
   }
 
@@ -63,14 +81,26 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @return User that owns organization
     */
-  override def owner: OrganizationMember = new OrganizationMember(this, this.ownerId)
+  override def owner: OrganizationMember = new OrganizationMember(this, this._ownerId)
 
-  override def transferOwner(member: OrganizationMember) {
+  override def ownerId: Int = this._ownerId
+
+  override def transferOwner(member: OrganizationMember)(implicit ec: ExecutionContext): Future[Int] = {
     // Down-grade current owner to "Admin"
-    this.memberships.getRoles(this.owner.user).filter(_.roleType == RoleTypes.OrganizationOwner)
-      .foreach(_.roleType = RoleTypes.OrganizationAdmin);
-    this.memberships.getRoles(member.user).foreach(_.roleType = RoleTypes.OrganizationOwner);
-    this.owner = member.user;
+    for {
+      owner <- this.owner.user
+      roles <- this.memberships.getRoles(owner)
+      memberUser <- member.user
+      memberRoles <- this.memberships.getRoles(memberUser)
+      setOwner <- this.setOwner(memberUser)
+    } yield {
+      roles.filter(_.roleType == RoleTypes.OrganizationOwner)
+        .foreach(_.setRoleType(RoleTypes.OrganizationAdmin))
+
+      memberRoles.foreach(_.setRoleType(RoleTypes.OrganizationOwner))
+
+      setOwner
+    }
   }
 
 
@@ -79,13 +109,13 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @param user User that owns this organization
     */
-  def owner_=(user: User) = {
+  def setOwner(user: User): Future[Int] = {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
-    this.ownerId = user.id.get
+    this._ownerId = user.id.get
     if (isDefined) {
       update(OrgOwnerId)
-    }
+    } else Future.successful(0)
   }
 
   /**
@@ -93,12 +123,28 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @return This Organization as a User
     */
-  def toUser = this.service.getModelBase(classOf[UserBase]).withName(this.username).get
+  def toUser(implicit ec: ExecutionContext) = this.service.getModelBase(classOf[UserBase]).withName(this.username)
 
   override val name: String = this.username
-  override def url: String = this.toUser.url
-  override val userId: Int = this.ownerId
+  override def url: String = this.username
+  override val userId: Int = this._ownerId
   override def organizationId: Int = this.id.get
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(createdAt = theTime)
 
+}
+
+object Organization {
+  lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
+
+  private def queryRoleForTrust(orgId: Rep[Int], userId: Rep[Int]) = {
+    val memberTable = TableQuery[OrganizationMembersTable]
+    val roleTable = TableQuery[OrganizationRoleTable]
+
+    for {
+      m <- memberTable if m.organizationId === orgId && m.userId === userId
+      r <- roleTable if m.userId === r.userId && r.organizationId === orgId
+    } yield {
+      r
+    }
+  }
 }

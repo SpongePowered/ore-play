@@ -19,7 +19,7 @@ object StringUtils {
     * @return     Standard formatted date
     */
   def prettifyDate(date: Date)(implicit config: OreConfig): String
-  = new SimpleDateFormat(config.ore.getString("date-format").get).format(date)
+  = new SimpleDateFormat(config.ore.get[String]("date-format")).format(date)
 
   /**
     * Returns a URL readable string from the specified string.
@@ -77,5 +77,5 @@ object StringUtils {
     * @return     Standard formatted date
     */
   def prettifyDateAndTime(date: Date)(implicit config: OreConfig): String
-  = new SimpleDateFormat(config.ore.getString("date-and-time-format").get).format(date)
+  = new SimpleDateFormat(config.ore.get[String]("date-and-time-format")).format(date)
 }

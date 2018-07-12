@@ -1,17 +1,14 @@
 package ore.project.factory
 
 import db.ModelService
-import db.impl.TagTable
 import db.impl.access.ProjectBase
-import models.project.{Project, ProjectSettings, Tag}
+import models.project.{Project, ProjectSettings, Version}
 import models.user.role.ProjectRole
-import ore.project.Dependency._
 import ore.project.io.PluginFile
-import ore.{Cacheable, Colors, OreConfig}
-import play.api.cache.CacheApi
-import util.PendingAction
+import ore.{Cacheable, OreConfig}
+import play.api.cache.SyncCacheApi
 
-import scala.util.Try
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Represents a Project with an uploaded plugin that has not yet been
@@ -27,10 +24,9 @@ case class PendingProject(projects: ProjectBase,
                           channelName: String,
                           implicit val config: OreConfig,
                           var roles: Set[ProjectRole] = Set(),
-                          override val cacheApi: CacheApi)
+                          override val cacheApi: SyncCacheApi)
                          (implicit service: ModelService)
-                          extends PendingAction[Project]
-                            with Cacheable {
+                           extends Cacheable {
 
   /**
     * The [[Project]]'s internal settings.
@@ -41,22 +37,27 @@ case class PendingProject(projects: ProjectBase,
     * The first [[PendingVersion]] for this PendingProject.
     */
   val pendingVersion: PendingVersion = {
-    val version = this.factory.startVersion(this.file, this.underlying, this.channelName)
+    val version = this.factory.startVersion(this.file, this.underlying, this.settings, this.channelName)
     val model = version.underlying
     version.cache()
     version
   }
 
-  override def complete(): Try[Project] = Try {
+  def complete()(implicit ec: ExecutionContext): Future[(Project, Version)] = {
     free()
-    val newProject = this.factory.createProject(this).get
-    this.pendingVersion.project = newProject
-    val newVersion = this.factory.createVersion(this.pendingVersion).get
-    newProject.recommendedVersion = newVersion
-    newProject
+    for {
+      newProject <- this.factory.createProject(this)
+      newVersion <- {
+        this.pendingVersion.project = newProject
+        this.factory.createVersion(this.pendingVersion)
+      }
+    } yield {
+      newProject.setRecommendedVersion(newVersion._1)
+      (newProject, newVersion._1)
+    }
   }
 
-  override def cancel() = {
+  def cancel()(implicit ec: ExecutionContext) = {
     free()
     this.file.delete()
     if (this.underlying.isDefined)

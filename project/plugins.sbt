@@ -1,7 +1,7 @@
 logLevel := Level.Warn
+evictionWarningOptions in update := EvictionWarningOptions.default.withWarnTransitiveEvictions(false).withWarnDirectEvictions(false).withWarnScalaVersionEviction(false)
 
 resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.5.12")
-
-addSbtPlugin("org.irundaia.sbt" % "sbt-sassify" % "1.4.2")
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.6.15")
+addSbtPlugin("org.irundaia.sbt" % "sbt-sassify" % "1.4.12")

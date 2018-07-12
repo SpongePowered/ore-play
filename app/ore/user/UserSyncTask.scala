@@ -1,14 +1,13 @@
 package ore.user
 
-import javax.inject.{Inject, Singleton}
-
 import akka.actor.ActorSystem
 import db.ModelService
 import db.impl.access.UserBase
+import javax.inject.{Inject, Singleton}
 import ore.OreConfig
 
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Task that is responsible for keeping Ore users synchronized with external
@@ -17,10 +16,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
   * @param models ModelService instance
   */
 @Singleton
-final class UserSyncTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig) extends Runnable {
+final class UserSyncTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig)(implicit ec: ExecutionContext) extends Runnable {
 
   val Logger = play.api.Logger("UserSync")
-  val interval = this.config.users.getLong("syncRate").get.millis
+  val interval = this.config.users.get[Long]("syncRate").millis
 
   /**
     * Starts the task.
@@ -34,10 +33,16 @@ final class UserSyncTask @Inject()(models: ModelService, actorSystem: ActorSyste
     * Synchronizes all users with external site data.
     */
   def run() = {
-    val users = this.models.getModelBase(classOf[UserBase]).all
-    Logger.info(s"Synchronizing ${users.size} users with external site data...")
-    users.foreach(user => user.pullForumData().pullSpongeData())
-    Logger.info("Done")
+    this.models.getModelBase(classOf[UserBase]).all.map { users =>
+      Logger.info(s"Synchronizing ${users.size} users with external site data...")
+      Future.sequence(users.map { user =>
+        user.pullForumData()
+        user.pullSpongeData()
+      }).map { _ =>
+        Logger.info("Done")
+      }
+    }
+
   }
 
 }

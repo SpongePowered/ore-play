@@ -10,9 +10,8 @@ import models.user.User
 import org.spongepowered.play.discourse.DiscourseApi
 import util.StringUtils._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 /**
@@ -45,7 +44,8 @@ trait OreDiscourseApi extends DiscourseApi {
 
   private var recovery: RecoveryTask = _
 
-  isDebugMode = true
+  //This executionContext should only be used in start() which is called from Bootstrap
+  def bootstrapExecutionContext: ExecutionContext
 
   /**
     * Initializes and starts this API instance.
@@ -56,7 +56,7 @@ trait OreDiscourseApi extends DiscourseApi {
       return
     }
     checkNotNull(this.projects, "projects are null", "")
-    this.recovery = new RecoveryTask(this.scheduler, this.retryRate, this, this.projects)
+    this.recovery = new RecoveryTask(this.scheduler, this.retryRate, this, this.projects)(bootstrapExecutionContext)
     this.recovery.start()
     Logger.info("Discourse API initialized.")
   }
@@ -67,9 +67,9 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project Project to create topic for.
     * @return        True if successful
     */
-  def createProjectTopic(project: Project): Future[Boolean] = {
+  def createProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     if (!this.isEnabled)
-      return Future(true)
+      return Future.successful(true)
     checkArgument(project.id.isDefined, "undefined project", "")
     val content = this.templates.projectTopic(project)
     val title = this.templates.projectTitle(project)
@@ -90,7 +90,7 @@ trait OreDiscourseApi extends DiscourseApi {
             s"Content: $content\n" +
             s"Errors: ${errors.toString}"
           Logger.warn(message)
-          project.logger.err(message)
+          project.logger.map(_.err(message))
         case Right(topic) =>
           // Topic created!
           // Catch some unexpected cases (should never happen)
@@ -100,8 +100,8 @@ trait OreDiscourseApi extends DiscourseApi {
             throw new RuntimeException("project post user isn't owner?")
 
           // Update the post and topic id in the project
-          project.topicId = topic.topicId
-          project.postId = topic.postId
+          project.setTopicId(topic.topicId)
+          project.setPostId(topic.postId)
 
           Logger.info(
             s"New project topic:\n" +
@@ -126,9 +126,9 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project  Project to update topic for
     * @return         True if successful
     */
-  def updateProjectTopic(project: Project): Future[Boolean] = {
+  def updateProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     if (!this.isEnabled)
-      return Future(true)
+      return Future.successful(true)
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
     checkArgument(project.postId != -1, "undefined post id", "")
@@ -151,7 +151,7 @@ trait OreDiscourseApi extends DiscourseApi {
         s"Topic ID: $topicId\n" +
         s"Title: $title\n" +
         s"Errors: ${errors.toString}"
-      project.logger.err(message)
+      project.logger.map(_.err(message))
       Logger.warn(message)
     }
 
@@ -208,10 +208,10 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param content  Post content
     * @return         List of errors Discourse returns
     */
-  def postDiscussionReply(project: Project, user: User, content: String): Future[List[String]] = {
+  def postDiscussionReply(project: Project, user: User, content: String)(implicit ec: ExecutionContext): Future[List[String]] = {
     if (!this.isEnabled) {
       Logger.warn("Tried to post discussion with API disabled?") // Shouldn't be reachable
-      return Future(List.empty)
+      return Future.successful(List.empty)
     }
     checkArgument(project.topicId != -1, "undefined topic id", "")
     // It's OK if Discourse responds with errors here, we will just show them to the user
@@ -232,21 +232,22 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param version Version of project
     * @return
     */
-  def postVersionRelease(project: Project, version: Version, content: String): Future[List[String]] = {
+  def postVersionRelease(project: Project, version: Version, content: Option[String])(implicit ec: ExecutionContext): Future[List[String]] = {
     if (!this.isEnabled)
-      return Future(List.empty)
+      return Future.successful(List.empty)
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(version.id.isDefined, "undefined version", "")
     checkArgument(version.projectId == project.id.get, "invalid version project pair", "")
-    val cont = if (content.isEmpty) None else Some(content)
-    postDiscussionReply(
-      project = project,
-      user = project.owner,
-      content = this.templates.versionRelease(project, version, cont)).map { errors =>
-      if (errors.nonEmpty) {
-        errors.foreach(project.logger.err(_))
+    project.owner.user.flatMap { user =>
+      postDiscussionReply(
+        project,
+        user,
+        content = this.templates.versionRelease(project, version, content)).map { errors =>
+        if (errors.nonEmpty) {
+          errors.foreach(error => project.logger.map(_.err(error)))
+        }
+        errors
       }
-      errors
     }
   }
 
@@ -256,9 +257,9 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project  Project to delete topic for
     * @return         True if deleted
     */
-  def deleteProjectTopic(project: Project): Future[Boolean] = {
+  def deleteProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     if (!this.isEnabled)
-      return Future(true)
+      return Future.successful(true)
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
 
@@ -271,8 +272,8 @@ trait OreDiscourseApi extends DiscourseApi {
           logFailure()
           resultPromise.success(false)
         } else {
-          project.topicId = -1
-          project.postId = -1
+          project.setTopicId(-1)
+          project.setPostId(-1)
           Logger.info(s"Successfully deleted project topic for: ${project.url}.")
           resultPromise.success(true)
         }
@@ -291,9 +292,9 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param users  Users to check
     * @return       Amount on discourse
     */
-  def countUsers(users: List[String]): Future[Int] = {
+  def countUsers(users: List[String])(implicit ec: ExecutionContext): Future[Int] = {
     if (!this.isEnabled)
-      return Future(0)
+      return Future.successful(0)
     var futures: Seq[Future[Boolean]] = Seq.empty
     for (user <- users) {
       futures :+= userExists(user).recover {
@@ -312,7 +313,7 @@ trait OreDiscourseApi extends DiscourseApi {
     def projectTitle(project: Project) = project.name + project.description.map(d => s" - $d").getOrElse("")
 
     /** Generates the content for a project topic. */
-    def projectTopic(project: Project) = readAndFormatFile(
+    def projectTopic(project: Project)(implicit ec: ExecutionContext) = readAndFormatFile(
       OreDiscourseApi.this.topicTemplatePath,
       project.name,
       OreDiscourseApi.this.baseUrl + '/' + project.url,
@@ -320,13 +321,16 @@ trait OreDiscourseApi extends DiscourseApi {
     )
 
     /** Generates the content for a version release post. */
-    def versionRelease(project: Project, version: Version, content: Option[String]) = readAndFormatFile(
-      OreDiscourseApi.this.versionReleasePostTemplatePath,
-      project.name,
-      OreDiscourseApi.this.baseUrl + '/' + project.url,
-      OreDiscourseApi.this.baseUrl + '/' + version.url,
-      content.getOrElse("*No description given.*")
-    )
+    def versionRelease(project: Project, version: Version, content: Option[String]) = {
+      implicit val p = project
+      readAndFormatFile(
+        OreDiscourseApi.this.versionReleasePostTemplatePath,
+        project.name,
+        OreDiscourseApi.this.baseUrl + '/' + project.url,
+        OreDiscourseApi.this.baseUrl + '/' + version.url,
+        content.getOrElse("*No description given.*")
+      )
+    }
 
   }
 

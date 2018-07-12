@@ -5,8 +5,8 @@ import java.sql.Timestamp
 import com.github.tminglei.slickpg.InetString
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
-import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import db.impl.table.StatTable
+import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import db.table.{AssociativeTable, ModelTable, NameColumn}
 import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
 import models.api.ProjectApiKey
@@ -14,7 +14,7 @@ import models.project.TagColors.TagColor
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
-import models.user.{Notification, Organization, SignOn, User, Session => DbSession}
+import models.user.{LoggedActionContext, Notification, Organization, SignOn, User, LoggedAction, LoggedActionModel, Session => DbSession}
 import ore.Colors.Color
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
@@ -23,7 +23,6 @@ import ore.project.io.DownloadTypes.DownloadType
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
 import ore.user.notification.NotificationTypes.NotificationType
-import slick.lifted.ProvenShape
 
 /*
  * Database schema definitions. Changes must be first applied as an evolutions
@@ -75,9 +74,10 @@ class ProjectSettingsTable(tag: RowTag) extends ModelTable[ProjectSettings](tag,
   def source                =   column[String]("source")
   def licenseName           =   column[String]("license_name")
   def licenseUrl            =   column[String]("license_url")
+  def forumSync             =   column[Boolean]("forum_sync")
 
   override def * = (id.?, createdAt.?, projectId, homepage.?, issues.?, source.?, licenseName.?,
-                    licenseUrl.?) <> (ProjectSettings.tupled, ProjectSettings.unapply)
+                    licenseUrl.?, forumSync) <> (ProjectSettings.tupled, ProjectSettings.unapply)
 
 }
 
@@ -263,7 +263,7 @@ class OrganizationTable(tag: RowTag) extends ModelTable[Organization](tag, "orga
   override def id   =   column[Int]("id", O.PrimaryKey)
   def userId        =   column[Int]("user_id")
 
-  override def * = (id.?, createdAt.?, name, userId) <> (Organization.tupled, Organization.unapply)
+  override def * = (id.?, createdAt.?, name, userId) <> ((Organization.apply _).tupled, Organization.unapply)
 
 }
 
@@ -374,4 +374,17 @@ class VisibilityChangeTable(tag: RowTag) extends ModelTable[VisibilityChange](ta
   def visibility        =   column[Int]("visibility")
 
   override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VisibilityChange.tupled, VisibilityChange.unapply)
+}
+
+class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
+
+  def userId             =  column[Int]("user_id")
+  def address            =  column[InetString]("address")
+  def action             =  column[LoggedAction]("action")
+  def actionContext      =  column[LoggedActionContext]("action_context")
+  def actionContextId      =  column[Int]("action_context_id")
+  def newState           =  column[String]("new_state")
+  def oldState           =  column[String]("old_state")
+
+  override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState) <> (LoggedActionModel.tupled, LoggedActionModel.unapply)
 }

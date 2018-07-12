@@ -1,30 +1,26 @@
+@import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.OrePostgresDriver.api._
-@import db.impl.access.UserBase
-@import models.project.Project
+@import models.api.ProjectApiKey
+@import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.HideProjects
-@import ore.permission.scope.GlobalScope
+@import ore.permission.{HardRemoveProject, HideProjects}
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
-@import ore.rest.ProjectApiKeyTypes._
-@import ore.permission.HardRemoveProject
-@(project: Project)(implicit messages: Messages, flash: Flash, request: Request[_], service: ModelService,
-        config: OreConfig, userBase: UserBase)
+@import views.html.utils
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[ProjectApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
-@deploymentKey = @{project.apiKeys.find(_.keyType === Deployment)}
 
-@projects.view(project, "#settings") {
+@projects.view(p, sp, "#settings") {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/hideProject.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/iconUpload.js")"></script>
     <script type="text/javascript" src="@routes.Assets.at("javascripts/keyGen.js")"></script>
     <script nonce="@nonce">
-        projectName = "@project.name";
-        PROJECT_OWNER = "@project.ownerName";
-        PROJECT_SLUG = "@project.slug";
-        pluginId = "@project.pluginId";
+        projectName = "@p.project.name";
+        PROJECT_OWNER = "@p.project.ownerName";
+        PROJECT_SLUG = "@p.project.slug";
+        pluginId = "@p.project.pluginId";
         keyGenText = "@messages("project.settings.genKey")";
         keyRevokeText = "@messages("project.settings.revokeKey")";
     </script>
@@ -37,8 +33,8 @@
                 <div class="panel panel-default panel-settings">
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">@messages("project.settings")</h3>
-                        @if(userBase.current.isDefined && (userBase.current.get can HideProjects in GlobalScope)) {
-                            @projects.utils.btnHide(project, userBase.current.get)
+                        @if(request.data.globalPerm(HideProjects)) {
+                            @projects.helper.btnHide(p.project, sp.permissions, request.currentUser.get)
 
                             <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
                                 <div class="modal-dialog" role="document">
@@ -63,19 +59,18 @@
                     </div>
 
                     <div class="panel-body">
-                        @defining(project.settings) { settings =>
-                            @projects.utils.inputSettings(
-                                form = "save",
-                                issues = settings.issues,
-                                source = settings.source,
-                                licenseName = settings.licenseName,
-                                licenseUrl = settings.licenseUrl,
-                                selected = Some(project.category)
-                            )
-                        }
+                        @projects.helper.inputSettings(
+                            form = "save",
+                            issues = p.settings.issues,
+                            source = p.settings.source,
+                            licenseName = p.settings.licenseName,
+                            licenseUrl = p.settings.licenseUrl,
+                            selected = Some(p.project.category),
+                            forumSync = p.settings.forumSync
+                        )
 
                         <!-- Description -->
-                        @defining(config.projects.getInt("max-desc-len").get) { maxLength =>
+                        @defining(config.projects.get[Int]("max-desc-len")) { maxLength =>
                             <div class="setting">
                                 <div class="setting-description">
                                     <h4>Description</h4>
@@ -83,7 +78,7 @@
                                 </div>
                                 <input form="save" class="form-control" type="text" id="description"
                                        name="description" maxlength="@maxLength"
-                                    @project.description.map { description =>
+                                    @p.project.description.map { description =>
                                         value="@description"
                                     }.getOrElse {
                                         placeholder="@messages("version.create.noDescription")"
@@ -101,8 +96,9 @@
                                     <h4>Icon</h4>
 
                                     @utils.userAvatar(
-                                        user = project.owner,
-                                        call = projectRoutes.showIcon(project.ownerName, project.slug),
+                                        Some(p.projectOwner.name),
+                                        p.projectOwner.avatarUrl,
+                                        call = projectRoutes.showIcon(p.project.ownerName, p.project.slug),
                                         clazz = "user-avatar-md")
 
                                     <input class="form-control-static" type="file" id="icon" name="icon" />
@@ -159,8 +155,8 @@
                             </div>
                             <div class="setting-content">
                                 <input form="rename" id="name" name="name" class="form-control" type="text"
-                                       value="@project.name"
-                                       maxlength="@config.projects.getInt("max-name-len").get">
+                                       value="@p.project.name"
+                                       maxlength="@config.projects.get[Int]("max-name-len")">
                                 <button id="btn-rename" data-toggle="modal" data-target="#modal-rename"
                                         class="btn btn-warning" disabled>
                                     @messages("project.rename")
@@ -184,14 +180,14 @@
                             <div class="clearfix"></div>
                         </div>
 
-                        @if(userBase.current.isDefined && (userBase.current.get can HardRemoveProject in GlobalScope)) {
+                        @if(request.data.globalPerm(HardRemoveProject)) {
                             <div class="setting striped">
                                 <div class="setting-description">
                                     <h4 class="danger">Hard Delete</h4>
                                     <p>Once you delete a project, it cannot be recovered.</p>
                                 </div>
                                 <div class="setting-content">
-                                    <button class="btn btn-delete btn-danger btn-visibility-change" data-project="@project.ownerName/@project.slug" data-level="-99" data-modal="true">
+                                    <button class="btn btn-delete btn-danger btn-visibility-change" data-project="@p.project.ownerName/@p.project.slug" data-level="-99" data-modal="true">
                                         <strong>Hard Delete</strong>
                                     </button>
                                 </div>
@@ -199,7 +195,7 @@
                             </div>
                         }
 
-                        @form(action = projectRoutes.save(project.ownerName, project.slug), 'id -> "save",
+                        @form(action = projectRoutes.save(p.project.ownerName, p.project.slug), 'id -> "save",
                             'class -> "pull-right") {
                             @CSRF.formField
                             <input type="hidden" id="update-icon" name="update-icon" value="false" />
@@ -216,11 +212,11 @@
                 <div class="alert alert-danger" role="alert" @if(flash.get("error").isEmpty) { style="display: none;" }>
                     <strong>Whoops!</strong> <span>@flash.get("error").getOrElse("")</span>
                 </div>
-                @users.memberList(
-                    model = project,
+                @users.memberList(p,
                     editable = true,
-                    removeCall = projectRoutes.removeMember(project.ownerName, project.slug),
-                    settingsCall = projectRoutes.showSettings(project.ownerName, project.slug)
+                    perms = sp.permissions,
+                    removeCall = projectRoutes.removeMember(p.project.ownerName, p.project.slug),
+                    settingsCall = projectRoutes.showSettings(p.project.ownerName, p.project.slug)
                 )
             </div>
         </div>
@@ -241,7 +237,7 @@
                 </div>
                 <div class="modal-footer">
                     <div class="form-inline">
-                    @form(action = projectRoutes.rename(project.ownerName, project.slug), 'id -> "rename") {
+                    @form(action = projectRoutes.rename(p.project.ownerName, p.project.slug), 'id -> "rename") {
                         @CSRF.formField
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("channel.edit.close")
@@ -263,7 +259,7 @@
                     </button>
                     <h4 class="modal-title" id="label-delete">@messages("project.delete.title")</h4>
                 </div>
-                @form(action = projectRoutes.softDelete(project.ownerName, project.slug)) {
+                @form(action = projectRoutes.softDelete(p.project.ownerName, p.project.slug)) {
                 <div class="modal-body">
                     @messages("project.delete.info")
                     <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
