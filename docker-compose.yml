@@ -6,15 +6,14 @@ version: "2"
 services:
   app:
     build: .
+    depends_on:
+      - 'db'
+      - 'spongeauth'
     ports:
       - "9000:9000"
-#    depends_on:
-#     - spongeauth
-    links:
-      - "db"
-      - "spongeauth"
+    stdin_open: true
   db:
-    image: postgres:9.6
+    build: '.docker/db/'
     restart: always
 #    volumes:
 #      - ore-db:/var/lib/postgresql
@@ -24,4 +23,6 @@ services:
       POSTGRES_DB: ore
   spongeauth:
     image: spongepowered/spongeauth
+    depends_on:
+      - 'db'
 
