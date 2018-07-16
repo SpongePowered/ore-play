@@ -1,0 +1,25 @@
+version: "2"
+
+volumes:
+  spongeauth-db:
+
+services:
+  db:
+    image: postgres:9.6
+    volumes:
+      - spongeauth-db:/var/lib/postgresql
+    environment:
+      POSTGRES_USER: spongeauth
+      POSTGRES_PASSWORD: spongeauth
+      POSTGRES_DB: spongeauth
+  mail:
+    image: mailhog/mailhog:latest
+    ports:
+      - "8025:8025"
+  spongeauth:
+    image: spongepowered/spongeauth:latest
+    ports:
+      - "8000:8000"
+    links:
+      - "db"
+      - "mail"
