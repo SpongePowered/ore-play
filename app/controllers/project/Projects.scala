@@ -99,7 +99,7 @@ class Projects @Inject()(stats: StatTracker,
               Redirect(self.showCreatorWithMeta(model.ownerName, model.slug))
             } catch {
               case e: InvalidPluginFileException =>
-                Redirect(self.showCreator()).withError(Option(e.getMessage).getOrElse(""))
+                Redirect(self.showCreator()).withErrors(Option(e.getMessage).toList)
             }
         }
     }
@@ -115,7 +115,7 @@ class Projects @Inject()(stats: StatTracker,
   def showCreatorWithMeta(author: String, slug: String) = UserLock().async { implicit request =>
     this.factory.getPendingProject(author, slug) match {
       case None =>
-        Future.successful(Redirect(self.showCreator()))
+        Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
       case Some(pending) =>
         for {
           (orgas, owner) <- (request.user.organizations.all, pending.underlying.owner.user).parTupled
@@ -137,7 +137,7 @@ class Projects @Inject()(stats: StatTracker,
   def showInvitationForm(author: String, slug: String) = UserLock().async { implicit request =>
     orgasUserCanUploadTo(request.user) flatMap { organisationUserCanUploadTo =>
         this.factory.getPendingProject(author, slug) match {
-          case None => Future.successful(Redirect(self.showCreator()))
+          case None => Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
           case Some(pendingProject) =>
             this.forms.ProjectSave(organisationUserCanUploadTo.toSeq).bindFromRequest().fold(
               hasErrors =>
@@ -190,7 +190,10 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showFirstVersionCreator(author: String, slug: String) = UserLock() { implicit request =>
     val res = for {
-      pendingProject <- EitherT.fromOption[Id](this.factory.getPendingProject(author, slug), Redirect(self.showCreator()))
+      pendingProject <- EitherT.fromOption[Id](this.factory.getPendingProject(author, slug), Redirect(self.showCreator()).withError(
+
+
+        "error.project.timeout"))
       roles <- bindFormEitherT[Id](this.forms.ProjectMemberRoles)(_ => BadRequest: Result)
     } yield {
       pendingProject.roles = roles.build()
@@ -252,7 +255,7 @@ class Projects @Inject()(stats: StatTracker,
   def postDiscussionReply(author: String, slug: String) = AuthedProjectAction(author, slug) async { implicit request =>
     this.forms.ProjectReply.bindFromRequest.fold(
       hasErrors =>
-        Future.successful(Redirect(self.showDiscussion(author, slug)).withError(hasErrors.errors.head.message)),
+        Future.successful(Redirect(self.showDiscussion(author, slug)).withFormErrors(hasErrors.errors)),
       formData => {
         val data = request.data
         if (data.project.topicId == -1)
@@ -268,7 +271,7 @@ class Projects @Inject()(stats: StatTracker,
             errors <- this.forums.postDiscussionReply(data.project, poster, formData.content)
           } yield {
             val result = Redirect(self.showDiscussion(author, slug))
-            if (errors.nonEmpty) result.withError(errors.head) else result
+            if (errors.nonEmpty) result.withErrors(errors) else result
           }
         }
       }

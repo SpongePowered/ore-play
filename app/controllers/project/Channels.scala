@@ -65,7 +65,7 @@ class Channels @Inject()(forms: OreForms,
     */
   def create(author: String, slug: String) = ChannelEditAction(author, slug).async { implicit request =>
     val res = for {
-      channelData <- bindFormEitherT[Future](this.forms.ChannelEdit)(hasErrors => Redirect(self.showList(author, slug)).withError(hasErrors.errors.head.message))
+      channelData <- bindFormEitherT[Future](this.forms.ChannelEdit)(hasErrors => Redirect(self.showList(author, slug)).withFormErrors(hasErrors.errors))
       _ <- channelData.addTo(request.data.project).leftMap(error => Redirect(self.showList(author, slug)).withError(error))
     } yield Redirect(self.showList(author, slug))
 
@@ -84,7 +84,7 @@ class Channels @Inject()(forms: OreForms,
     implicit val project: Project = request.data.project
 
     val res = for {
-      channelData <- bindFormEitherT[Future](this.forms.ChannelEdit)(hasErrors => Redirect(self.showList(author, slug)).withErrors(hasErrors.errors.flatMap(_.messages)))
+      channelData <- bindFormEitherT[Future](this.forms.ChannelEdit)(hasErrors => Redirect(self.showList(author, slug)).withFormErrors(hasErrors.errors))
       _ <- channelData.saveTo(channelName).leftMap(errors => Redirect(self.showList(author, slug)).withErrors(errors))
     } yield Redirect(self.showList(author, slug))
 

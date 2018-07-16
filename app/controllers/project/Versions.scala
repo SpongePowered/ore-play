@@ -234,7 +234,7 @@ class Versions @Inject()(stats: StatTracker,
       }
       catch {
         case e: InvalidPluginFileException =>
-          EitherT.leftT[Future, PendingVersion](Redirect(call).withError(Option(e.getMessage).getOrElse("")))
+          EitherT.leftT[Future, PendingVersion](Redirect(call).withErrors(Option(e.getMessage).toList))
       }
     }.map { pendingVersion =>
       pendingVersion.underlying.setAuthorId(user.id.getOrElse(-1))
@@ -266,7 +266,7 @@ class Versions @Inject()(stats: StatTracker,
           Ok(views.create(data, data.settings.forumSync, Some(pendingVersion), channels, showFileControls = channels.isDefined))
         }
 
-      success.getOrElse(Redirect(self.showCreator(author, slug)))
+      success.getOrElse(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }
 
   private def pendingOrReal(author: String, slug: String): OptionT[Future, Either[PendingProject, Project]] = {
@@ -291,14 +291,14 @@ class Versions @Inject()(stats: StatTracker,
       this.factory.getPendingVersion(author, slug, versionString) match {
         case None =>
           // Not found
-          Future.successful(Redirect(self.showCreator(author, slug)))
+          Future.successful(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
         case Some(pendingVersion) =>
           // Get submitted channel
           this.forms.VersionCreate.bindFromRequest.fold(
             hasErrors => {
               // Invalid channel
               val call = self.showCreatorWithMeta(author, slug, versionString)
-              Future.successful(Redirect(call).withError(hasErrors.errors.head.message))
+              Future.successful(Redirect(call).withErrors(hasErrors.errors.flatMap(_.messages)))
             },
 
             versionData => {
@@ -481,7 +481,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val r = request.request
       val project = request.data.project
       getVersion(project, target)
-        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)))
+        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
         .semiFlatMap { version =>
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
@@ -539,8 +539,8 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug) async { request =>
       implicit val r: OreRequest[_] = request.request
       getVersion(request.data.project, target)
-        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)))
-        .flatMap(version => confirmDownload0(version.id.get, downloadType, token).toRight(Redirect(ShowProject(author, slug))))
+        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
+        .flatMap(version => confirmDownload0(version.id.get, downloadType, token).toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload")))
         .map { dl =>
           dl.downloadType match {
             case UploadedFile =>

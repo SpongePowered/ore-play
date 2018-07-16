@@ -33,11 +33,10 @@ class NonceFilter @Inject() (implicit val mat: Materializer) extends Filter {
     val nonce = generateNonce
     next(request.addAttr(NonceFilter.NonceKey, nonce)).map { result =>
       if(result.header.headers.contains("Content-Security-Policy")) {
-        result.withHeaders("Content-Security-Policy" -> result.header.headers("Content-Security-Policy")
-          .replace("%NONCE-SOURCE%", s"nonce-$nonce"))
+        result.withHeaders("Content-Security-Policy" -> result.header.headers("Content-Security-Policy").replace("%NONCE-SOURCE%", s"nonce-$nonce"))
+      } else {
+        result
       }
-
-      result
     }
   }
 

@@ -1,6 +1,7 @@
 package controllers
 
 import controllers.sugar.Bakery
+import controllers.sugar.Requests.AuthRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.{ORDERING_PROJECTS, ORDERING_ROLE}
@@ -11,6 +12,7 @@ import javax.inject.Inject
 import mail.{EmailFactory, Mailer}
 import models.user.{SignOn, User}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
+import ore.permission.ReviewProjects
 import ore.rest.OreWrites
 import ore.user.notification.InviteFilters.InviteFilter
 import ore.user.notification.NotificationFilters.NotificationFilter
@@ -210,7 +212,7 @@ class Users @Inject()(fakeUser: FakeUser,
   def savePgpPublicKey(username: String) = UserAction(username) { implicit request =>
     this.forms.UserPgpPubKey.bindFromRequest.fold(
       hasErrors =>
-        Redirect(ShowUser(username)).withError(hasErrors.errors.head.message),
+        Redirect(ShowUser(username)).withFormErrors(hasErrors.errors),
       keySubmission => {
         val keyInfo = keySubmission.info
         val user = request.user
@@ -279,7 +281,7 @@ class Users @Inject()(fakeUser: FakeUser,
   /**
     * Shows a list of [[models.user.User]]s that have Ore staff roles.
     */
-  def showStaff(sort: Option[String], page: Option[Int]) = OreAction async { implicit request =>
+  def showStaff(sort: Option[String], page: Option[Int]) = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
     val ordering = sort.getOrElse(ORDERING_ROLE)
     val p = page.getOrElse(1)
     this.users.getStaff(ordering, p).map { u =>

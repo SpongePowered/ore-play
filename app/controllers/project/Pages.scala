@@ -138,7 +138,7 @@ class Pages @Inject()(forms: OreForms,
   def save(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
     this.forms.PageEdit.bindFromRequest().fold(
       hasErrors =>
-        Future.successful(Redirect(self.show(author, slug, page)).withError(hasErrors.errors.head.message)),
+        Future.successful(Redirect(self.show(author, slug, page)).withFormErrors(hasErrors.errors)),
       pageData => {
         val data = request.data
         val parentId = pageData.parentId.getOrElse(-1)

@@ -69,11 +69,7 @@ object RoleTypes extends Enumeration {
     * @param internalName Internal name
     * @return UserRole with specified internal name
     */
-  def withInternalName(internalName: String): RoleType = this.values.find(_.internalName == internalName).getOrElse {
-    // Throw an exception instead of returning an Option to match Enumeration
-    // behavior
-    throw new NoSuchElementException
-  }
+  def withInternalName(internalName: String): Option[RoleType] = this.values.find(_.internalName == internalName).map(value => convert(value))
 
   /**
     * Represents a User role.

@@ -119,6 +119,10 @@ error.plugin.notSponge          =   Project is marked as a Sponge Plugin and new
 error.plugin.notForge           =   Project is marked as a Forge Mod and new version contains no dependency to Forge.
 error.plugin.fileName           =   Filename already in use. Please rename your file and try again.
 error.plugin.owner              =   Uploading under the wrong owner.
+error.plugin.stateChanged       =   Something changed when you tried to download the plugin. Please try again.
+error.plugin.noConfirmDownload  =   Could not verify your confirmation. It might have timed out, already been used, or something might have changed on your end.
+error.plugin.timeout            =   Version upload timed out, or you have not uploaded a plugin file.
+error.project.timeout           =   Project creation timed out, or you have not uploaded a plugin file.
 
 error.spongeauth.auth           =   Couldn't connect to SpongeAuth.
 error.spongeauth.parse          =   That name is invalid, please choose a name without spaces or symbols.
