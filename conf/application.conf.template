@@ -11,7 +11,7 @@ application {
     uploadsDir = ${?UPLOADS_DIR}
 
     # Add a dot at the start of the url to trust all subdomains
-    trustedUrlHosts     =   [ ".spongepowered.org" ]
+    trustedUrlHosts     =   [ ".spongepowered.org", "spongeauth" ]
 
     fakeUser {
         enabled    =   false
@@ -173,7 +173,7 @@ slick.dbs.default {
         url = ${?JDBC_DATABASE_URL}
         user = "root"
         user = ${?JDBC_DATABASE_USERNAME}
-        password = "ore"
+        password = ""
         password = ${?JDBC_DATABASE_PASSWORD}
     }
 }

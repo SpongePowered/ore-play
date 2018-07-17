@@ -1,8 +1,5 @@
 version: "2"
 
-#volumes:
-#  ore-db:
-
 services:
   app:
     build: .
@@ -15,14 +12,13 @@ services:
   db:
     build: '.docker/db/'
     restart: always
-#    volumes:
-#      - ore-db:/var/lib/postgresql
     environment:
       POSTGRES_USER: root
-      POSTGRES_PASSWORD: ore
+      POSTGRES_PASSWORD: ""
       POSTGRES_DB: ore
   spongeauth:
     image: spongepowered/spongeauth
     depends_on:
       - 'db'
-
+    ports:
+      - "8000:8000"
