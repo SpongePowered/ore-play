@@ -231,7 +231,7 @@ trait OreRestfulApi {
     * @return         JSON list of versions
     */
   def getVersionList(pluginId: String, channels: Option[String],
-                     limit: Option[Int], offset: Option[Int], onlyPublic: Boolean)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
+                     limit: Option[Int], offset: Option[Int], onlyPublic: Boolean)(implicit ec: ExecutionContext): Future[JsValue] = {
     val filtered = channels.map { chan =>
       queryVersions(onlyPublic).filter { case (p, v, vId, c, uName) =>
           // Only allow versions in the specified channels or all if none specified

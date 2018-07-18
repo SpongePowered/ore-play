@@ -3,14 +3,16 @@ package models.admin
 import java.sql.Timestamp
 
 import db.Model
-import db.impl.ProjectVisibilityChangeTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import models.project.Page
 import models.user.User
+import util.functional.OptionT
+import util.instances.future._
 import play.twirl.api.Html
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
+import db.impl.ProjectVisibilityChangeTable
 import db.impl.model.common.VisibilityChange
 
 case class ProjectVisibilityChange(override val id: Option[Int] = None,
@@ -29,16 +31,12 @@ case class ProjectVisibilityChange(override val id: Option[Int] = None,
   /** Render the comment as Html */
   def renderComment(): Html = Page.Render(comment)
 
-  def created: Future[Option[User]] = {
-    if (createdBy.isEmpty) Future.successful(None)
-    else {
-      userBase.get(createdBy.get)
-    }
+  def created(implicit ec: ExecutionContext): OptionT[Future, User] = {
+    OptionT.fromOption[Future](createdBy).flatMap(userBase.get(_))
   }
 
   /**
     * Set the resolvedAt time
-    * @param time
     */
   def setResolvedAt(time: Timestamp) = {
     this.resolvedAt = Some(time)
@@ -47,7 +45,6 @@ case class ProjectVisibilityChange(override val id: Option[Int] = None,
 
   /**
     * Set the resolvedBy user
-    * @param user
     */
   def setResolvedBy(user: User) = {
     this.resolvedBy = user.id

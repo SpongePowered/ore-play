@@ -199,7 +199,7 @@ class ProjectBase(override val service: ModelService,
       channel <- version.channel
       noVersions <- channel.versions.isEmpty
       _ <- {
-        val versionDir = this.fileManager.getVersionDir(proj.ownerName, project.name, version.name)
+        val versionDir = this.fileManager.getVersionDir(proj.ownerName, proj.name, version.name)
         FileUtils.deleteDirectory(versionDir)
         version.remove()
       }

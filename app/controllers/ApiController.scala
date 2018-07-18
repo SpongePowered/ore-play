@@ -132,7 +132,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   def listVersions(version: String, pluginId: String, channels: Option[String],
                    limit: Option[Int], offset: Option[Int]) = Action.async {
     version match {
-      case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = true).map(ApiResult)
+      case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = true).map(Some.apply).map(ApiResult)
       case _ => Future.successful(NotFound)
     }
   }
@@ -151,7 +151,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
       limit: Option[Int], offset: Option[Int]) =
     (AuthedProjectActionById(pluginId) andThen PermissionAction(ReviewProjects)).async {
       version match {
-        case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(ApiResult)
+        case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)
         case _ => Future.successful(NotFound)
       }
   }

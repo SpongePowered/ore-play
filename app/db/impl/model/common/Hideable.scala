@@ -10,6 +10,7 @@ import db.access.ModelAccess
 import db.impl.table.common.VisibilityColumn
 import models.project.VisibilityTypes
 import models.project.VisibilityTypes.Visibility
+import util.functional.OptionT
 
 /**
   * Represents a [[Model]] that has a toggleable visibility.
@@ -47,10 +48,10 @@ trait Hideable extends Model { self =>
   def byCreationDate(first: ModelVisibilityChange, second: ModelVisibilityChange): Boolean =
     first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
 
-  def lastVisibilityChange(implicit ec: ExecutionContext): Future[Option[ModelVisibilityChange]] =
-    visibilityChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption)
+  def lastVisibilityChange(implicit ec: ExecutionContext): OptionT[Future, ModelVisibilityChange] =
+    OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption))
 
-  def lastChangeRequest(implicit ec: ExecutionContext): Future[Option[ModelVisibilityChange]] =
-    visibilityChanges.all.map(_.toSeq.filter(cr => cr.visibility == VisibilityTypes.NeedsChanges.id).sortWith(byCreationDate).lastOption)
+  def lastChangeRequest(implicit ec: ExecutionContext): OptionT[Future, ModelVisibilityChange] =
+    OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => cr.visibility == VisibilityTypes.NeedsChanges.id).sortWith(byCreationDate).lastOption))
 
 }

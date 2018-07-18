@@ -2,7 +2,7 @@ package models.admin
 
 import java.sql.Timestamp
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 import db.Model
 import db.impl.VersionVisibilityChangeTable
@@ -12,6 +12,8 @@ import db.impl.table.ModelKeys._
 import models.project.Page
 import models.user.User
 import play.twirl.api.Html
+import util.functional.OptionT
+import util.instances.future._
 
 case class VersionVisibilityChange(override val id: Option[Int] = None,
                             override val createdAt: Option[Timestamp] = None,
@@ -29,11 +31,8 @@ case class VersionVisibilityChange(override val id: Option[Int] = None,
   /** Render the comment as Html */
   def renderComment(): Html = Page.Render(comment)
 
-  def created: Future[Option[User]] = {
-    if (createdBy.isEmpty) Future.successful(None)
-    else {
-      userBase.get(createdBy.get)
-    }
+  def created(implicit ec: ExecutionContext): OptionT[Future, User] = {
+    OptionT.fromOption[Future](createdBy).flatMap(userBase.get(_))
   }
 
   /**

@@ -411,6 +411,8 @@ class Versions @Inject()(stats: StatTracker,
       _ <- EitherT.right[Result](this.projects.prepareDeleteVersion(version))
       _ <- EitherT.right[Result](version.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get))
     } yield Redirect(self.showList(author, slug, None))
+
+    res.merge
   }
 
   def showLog(author: String, slug: String, versionString: String) = {
@@ -420,7 +422,7 @@ class Versions @Inject()(stats: StatTracker,
       val res = for {
         version <- getVersion(project, versionString)
         changes <- EitherT.right[Result](version.visibilityChangesByDate)
-        changedBy <- EitherT.right[Result](Future.sequence(changes.map(_.created)))
+        changedBy <- EitherT.right[Result](Future.sequence(changes.map(_.created.value)))
       } yield {
         val visChanges = changes zip changedBy
         Ok(views.log(project, version, visChanges))

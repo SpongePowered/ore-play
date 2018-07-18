@@ -252,14 +252,12 @@ case class Version(override val id: Option[Int] = None,
     this._visibility = visibility
     if (isDefined) update(ModelKeys.Visibility)
 
-    val cnt = lastVisibilityChange.flatMap {
-      case Some(vc) =>
+    val cnt = lastVisibilityChange.map { vc =>
         vc.setResolvedAt(Timestamp.from(Instant.now()))
         vc.setResolvedById(creator)
-        Future.successful(0)
-      case None => Future.successful(0)
+        0
     }
-    cnt.flatMap { _ =>
+    cnt.value.flatMap { _ =>
       val change = VersionVisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
       this.service.access[VersionVisibilityChange](classOf[VersionVisibilityChange]).add(change)
     }
