@@ -22,18 +22,6 @@ The main header displayed on each layout.
                 <i class="fa fa-fw fa-chevron-down"></i>
             </a>
 
-
-            <li>
-                <a href="https://forums.spongepowered.org/c/plugins/plugin-releases">
-                    <i class="fa fa-fw fa-plug"></i>Plugins
-                </a>
-            </li>
-            <li class="active">
-                <a href="https://ore.spongepowered.org/">
-                    <i class="fa fa-fw fa-download"></i>Ore <b>Beta</b>
-                </a>
-            </li>
-
             <div id="sp-logo-menu">
                 <ul id="sp-logo-dropdown">
                     <li><a href="https://www.spongepowered.org">
@@ -55,7 +43,7 @@ The main header displayed on each layout.
                         <i class="fa-fw fa fa-plug"></i>@messages("general.plugins")
                     </a></li>
                     <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None)">
-                        <img src="https://spongepowered.org/assets/img/icons/ore.svg" alt="" style="height: 15px" class="fa"> @messages("general.appName") <sup>Beta</sup>
+                        <img src="https://spongepowered.org/assets/img/icons/ore.svg" alt="" class="fa-fw fa ore-nav">@messages("general.appName") <sup>Beta</sup>
                     </a></li>
                     <li><a href="https://www.spongepowered.org/downloads">
                         <i class="fa-fw fa fa-download"></i>@messages("general.getsponge")
