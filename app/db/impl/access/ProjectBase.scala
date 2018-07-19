@@ -11,11 +11,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.{PageTable, ProjectTableMain, VersionTable}
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
-<<<<<<< master
-import models.project.{Channel, Project, Version, VisibilityTypes}
-=======
-import models.project.{Channel, Page, Project, Version}
->>>>>>> Specify the return type in most places where they should be specified
+import models.project.{Channel, Page, Project, Version, VisibilityTypes}
 import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import slick.lifted.TableQuery
