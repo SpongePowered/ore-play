@@ -164,19 +164,19 @@ case class Version(override val id: Option[Int] = None,
 
   def reviewer(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._reviewerId)
 
-  def setReviewer(reviewer: User) = Defined {
+  def setReviewer(reviewer: User): Future[Int] = Defined {
     this._reviewerId = reviewer.id.get
     update(ReviewerId)
   }
 
-  def setReviewerId(reviewer: Int) = Defined {
+  def setReviewerId(reviewer: Int): Future[Int] = Defined {
     this._reviewerId = reviewer
     update(ReviewerId)
   }
 
   def approvedAt: Option[Timestamp] = this._approvedAt
 
-  def setApprovedAt(approvedAt: Timestamp) = Defined {
+  def setApprovedAt(approvedAt: Timestamp): Future[Int] = Defined {
     this._approvedAt = Option(approvedAt)
     update(ApprovedAt)
   }
@@ -226,7 +226,7 @@ case class Version(override val id: Option[Int] = None,
     * @return         True if has dependency on ID
     */
   //noinspection ComparingUnrelatedTypes
-  def hasDependency(pluginId: String) = this.dependencies.exists(_.pluginId.equals(pluginId))
+  def hasDependency(pluginId: String): Boolean = this.dependencies.exists(_.pluginId.equals(pluginId))
 
   /**
     * Returns the amount of unique downloads this Version has.
@@ -238,7 +238,7 @@ case class Version(override val id: Option[Int] = None,
   /**
     * Adds a download to the amount of unique downloads this Version has.
     */
-  def addDownload() = Defined {
+  def addDownload(): Future[Int] = Defined {
     this._downloads += 1
     update(Downloads)
   }
@@ -268,7 +268,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Recorded downloads
     */
-  def downloadEntries = this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
+  def downloadEntries: ModelAccess[VersionDownload] = this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
 
   /**
     * Returns a human readable file size for this Version.
@@ -297,12 +297,12 @@ case class Version(override val id: Option[Int] = None,
     }
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
-  override def hashCode() = this.id.hashCode
-  override def equals(o: Any) = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.get == this.id.get
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Version = this.copy(id = id, createdAt = theTime)
+  override def hashCode(): Int = this.id.hashCode
+  override def equals(o: Any): Boolean = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.get == this.id.get
 
-  def byCreationDate(first: Review, second: Review) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
-  def reviewEntries = this.schema.getChildren[Review](classOf[Review], this)
+  def byCreationDate(first: Review, second: Review): Boolean = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+  def reviewEntries: ModelAccess[Review] = this.schema.getChildren[Review](classOf[Review], this)
   def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate))
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
   def mostRecentReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
@@ -331,57 +331,57 @@ object Version {
     private var _signatureFileName: String = _
     private var _tagIds: List[Int] = List()
 
-    def versionString(versionString: String) = {
+    def versionString(versionString: String): Builder = {
       this._versionString = versionString
       this
     }
 
-    def dependencyIds(dependencyIds: List[String]) = {
+    def dependencyIds(dependencyIds: List[String]): Builder = {
       this._dependencyIds = dependencyIds
       this
     }
 
-    def description(description: String) = {
+    def description(description: String): Builder = {
       this._description = description
       this
     }
 
-    def projectId(projectId: Int) = {
+    def projectId(projectId: Int): Builder = {
       this._projectId = projectId
       this
     }
 
-    def fileSize(fileSize: Long) = {
+    def fileSize(fileSize: Long): Builder = {
       this._fileSize = fileSize
       this
     }
 
-    def hash(hash: String) = {
+    def hash(hash: String): Builder = {
       this._hash = hash
       this
     }
 
-    def authorId(authorId: Int) = {
+    def authorId(authorId: Int): Builder = {
       this._authorId = authorId
       this
     }
 
-    def fileName(fileName: String) = {
+    def fileName(fileName: String): Builder = {
       this._fileName = fileName
       this
     }
 
-    def signatureFileName(signatureFileName: String) = {
+    def signatureFileName(signatureFileName: String): Builder = {
       this._signatureFileName = signatureFileName
       this
     }
 
-    def tagIds(tagIds: List[Int]) = {
+    def tagIds(tagIds: List[Int]): Builder = {
       this._tagIds = tagIds
       this
     }
 
-    def build() = {
+    def build(): Version = {
       checkArgument(this._fileSize != -1, "invalid file size", "")
       this.service.processor.process(Version(
         versionString = checkNotNull(this._versionString, "name null", ""),

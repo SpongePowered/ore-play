@@ -35,6 +35,8 @@ import slick.lifted.Compiled
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.access.ModelAccess
+
 /**
   * Ore API (v1)
   */
@@ -55,7 +57,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
   import writes._
 
   val files = new ProjectFiles(this.env)
-  val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)
 
@@ -66,7 +68,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @return           JSON view of projects
     */
   def listProjects(version: String, categories: Option[String], sort: Option[Int], q: Option[String],
-                   limit: Option[Int], offset: Option[Int]) = Action.async {
+                   limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getProjectList(categories, sort, q, limit, offset).map(Ok(_))
       case _ => Future.successful(NotFound)
@@ -80,14 +82,14 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param pluginId   Plugin ID of project
     * @return           Project with Plugin ID
     */
-  def showProject(version: String, pluginId: String) = Action.async {
+  def showProject(version: String, pluginId: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getProject(pluginId).map(ApiResult)
       case _ => Future.successful(NotFound)
     }
   }
 
-  def createKey(version: String, pluginId: String) =
+  def createKey(version: String, pluginId: String): Action[AnyContent] =
     (Action andThen AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) async { implicit request =>
       val projectId = request.data.project.id.get
       val res = for {
@@ -106,7 +108,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
       res.getOrElse(BadRequest)
     }
 
-  def revokeKey(version: String, pluginId: String) =
+  def revokeKey(version: String, pluginId: String): Action[AnyContent] =
     (AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
       val res = for {
         key <- bindFormOptionT[Id](this.forms.ProjectApiKeyRevoke)
@@ -130,7 +132,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @return         List of versions
     */
   def listVersions(version: String, pluginId: String, channels: Option[String],
-                   limit: Option[Int], offset: Option[Int]) = Action.async {
+                   limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = true).map(Some.apply).map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -164,7 +166,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param name     Version name
     * @return         JSON view of Version
     */
-  def showVersion(version: String, pluginId: String, name: String) = Action.async {
+  def showVersion(version: String, pluginId: String, name: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getVersion(pluginId, name).map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -173,7 +175,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
   private def error(key: String, error: String) = Json.obj("errors" -> Map(key -> List(this.messagesApi(error))))
 
-  def deployVersion(version: String, pluginId: String, name: String) = ProjectAction(pluginId).async { implicit request =>
+  def deployVersion(version: String, pluginId: String, name: String): Action[AnyContent] = ProjectAction(pluginId).async { implicit request =>
     version match {
       case "v1" =>
         val projectData = request.data
@@ -235,7 +237,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     }
   }
 
-  def listPages(version: String, pluginId: String, parentId: Option[Int]) = Action.async {
+  def listPages(version: String, pluginId: String, parentId: Option[Int]): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getPages(pluginId, parentId).value.map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -250,7 +252,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param offset   Offset to drop
     * @return         List of users
     */
-  def listUsers(version: String, limit: Option[Int], offset: Option[Int]) = Action.async {
+  def listUsers(version: String, limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getUserList(limit, offset).map(Ok(_))
       case _ => Future.successful(NotFound)
@@ -264,7 +266,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param username   Username of user
     * @return           User with username
     */
-  def showUser(version: String, username: String) = Action.async {
+  def showUser(version: String, username: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getUser(username).map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -279,7 +281,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param versionName Version of the plugin
     * @return Tags for the version of the plugin
     */
-  def listTags(version: String, plugin: String, versionName: String) = Action.async {
+  def listTags(version: String, plugin: String, versionName: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getTags(plugin, versionName).value.map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -300,7 +302,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     */
   def showStatusZ = Action(Ok(this.status.json))
 
-  def syncSso() = Action.async { implicit request =>
+  def syncSso(): Action[AnyContent] = Action.async { implicit request =>
     val confApiKey = this.config.security.get[String]("sso.apikey")
     val confSecret = this.config.security.get[String]("sso.secret")
 

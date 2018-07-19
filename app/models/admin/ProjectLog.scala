@@ -57,6 +57,6 @@ case class ProjectLog(override val id: Option[Int] = None,
     }
   }
 
-  def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectLog = this.copy(id = id, createdAt = theTime)
 
 }

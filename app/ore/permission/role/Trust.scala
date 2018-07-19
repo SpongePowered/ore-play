@@ -5,7 +5,7 @@ package ore.permission.role
   */
 sealed trait Trust extends Ordered[Trust] {
   def level: Int
-  override def compare(that: Trust) = this.level - that.level
+  override def compare(that: Trust): Int = this.level - that.level
 }
 
 /**

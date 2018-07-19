@@ -5,27 +5,27 @@ import ore.permission.role._
 /**
   * Represents a permission for a user to do something in the application.
   */
-sealed trait Permission { def trust: Trust }
-case object ResetOre            extends Permission { val trust = Absolute   }
-case object SeedOre             extends Permission { val trust = Absolute   }
-case object MigrateOre          extends Permission { val trust = Absolute   }
-case object HardRemoveProject   extends Permission { val trust = Absolute   }
-case object HardRemoveVersion   extends Permission { val trust = Absolute }
-case object CreateProject       extends Permission { val trust = Absolute   }
-case object ViewIp              extends Permission { val trust = Absolute   }
-case object EditSettings        extends Permission { val trust = Lifted     }
-case object ViewLogs            extends Permission { val trust = Lifted     }
-case object UserAdmin           extends Permission { val trust = Lifted     }
-case object EditApiKeys         extends Permission { val trust = Lifted     }
-case object UploadVersions      extends Permission { val trust = Publish    }
-case object ReviewFlags         extends Permission { val trust = Moderation }
-case object ReviewProjects      extends Permission { val trust = Moderation }
-case object HideProjects        extends Permission { val trust = Moderation }
-case object EditChannels        extends Permission { val trust = Moderation }
-case object ReviewVisibility    extends Permission { val trust = Moderation }
-case object ViewHealth          extends Permission { val trust = Moderation }
-case object PostAsOrganization  extends Permission { val trust = Moderation }
-case object ViewActivity        extends Permission { val trust = Moderation }
-case object ViewStats           extends Permission { val trust = Moderation }
-case object EditPages           extends Permission { val trust = Limited    }
-case object EditVersions        extends Permission { val trust = Limited    }
+sealed abstract case class Permission(trust: Trust)
+case object ResetOre            extends Permission(Absolute)
+case object SeedOre             extends Permission(Absolute)
+case object MigrateOre          extends Permission(Absolute)
+case object HardRemoveProject   extends Permission(Absolute)
+case object HardRemoveVersion   extends Permission(Absolute)
+case object CreateProject       extends Permission(Absolute)
+case object ViewIp              extends Permission(Absolute)
+case object EditSettings        extends Permission(Lifted)
+case object ViewLogs            extends Permission(Lifted)
+case object UserAdmin           extends Permission(Lifted)
+case object EditApiKeys         extends Permission(Lifted)
+case object UploadVersions      extends Permission(Publish)
+case object ReviewFlags         extends Permission(Moderation)
+case object ReviewProjects      extends Permission(Moderation)
+case object HideProjects        extends Permission(Moderation)
+case object EditChannels        extends Permission(Moderation)
+case object ReviewVisibility    extends Permission(Moderation)
+case object ViewHealth          extends Permission(Moderation)
+case object PostAsOrganization  extends Permission(Moderation)
+case object ViewActivity        extends Permission(Moderation)
+case object ViewStats           extends Permission(Moderation)
+case object EditPages           extends Permission(Limited)
+case object EditVersions        extends Permission(Limited)

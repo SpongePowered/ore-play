@@ -19,7 +19,7 @@ import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import play.api.data.Forms._
 import play.api.data.format.Formatter
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
-import play.api.data.{Form, FormError}
+import play.api.data.{FieldMapping, Form, FormError, Mapping}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
@@ -30,7 +30,7 @@ import scala.util.Try
 //noinspection ConvertibleToMethodValue
 class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, service: ModelService) {
 
-  val url = text verifying("error.url.invalid", text => {
+  val url: Mapping[String] = text verifying("error.url.invalid", text => {
     if (text.isEmpty)
       true
     else {
@@ -215,8 +215,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     */
   lazy val VersionDescription = Form(single("content" -> text))
 
-  val projectApiKeyType = of[ProjectApiKeyType](new Formatter[ProjectApiKeyType] {
-    def bind(key: String, data: Map[String, String]) =
+  val projectApiKeyType: FieldMapping[ProjectApiKeyType] = of[ProjectApiKeyType](new Formatter[ProjectApiKeyType] {
+    def bind(key: String, data: Map[String, String]): Either[Seq[FormError], ProjectApiKeyType] =
       data.get(key)
         .flatMap(id => Try(id.toInt).toOption.map(ProjectApiKeyTypes(_).asInstanceOf[ProjectApiKeyType]))
         .toRight(Seq(FormError(key, "error.required", Nil)))
@@ -227,8 +227,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
 
   def required(key: String) = Seq(FormError(key, "error.required", Nil))
 
-  def projectApiKey(implicit ec: ExecutionContext) = of[ProjectApiKey](new Formatter[ProjectApiKey] {
-    def bind(key: String, data: Map[String, String]) = {
+  def projectApiKey(implicit ec: ExecutionContext): FieldMapping[ProjectApiKey] = of[ProjectApiKey](new Formatter[ProjectApiKey] {
+    def bind(key: String, data: Map[String, String]): Either[Seq[FormError], ProjectApiKey] = {
       data.get(key).
         flatMap(id => Try(id.toInt).toOption.flatMap(evilAwaitpProjectApiKey(_)))
         .toRight(required(key))
@@ -245,8 +245,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
 
   def ProjectApiKeyRevoke(implicit ec: ExecutionContext) = Form(single("id" -> projectApiKey))
 
-  def channel(implicit request: ProjectRequest[_], ec: ExecutionContext) = of[Channel](new Formatter[Channel] {
-    def bind(key: String, data: Map[String, String]) = {
+  def channel(implicit request: ProjectRequest[_], ec: ExecutionContext): FieldMapping[Channel] = of[Channel](new Formatter[Channel] {
+    def bind(key: String, data: Map[String, String]): Either[Seq[FormError], Channel] = {
       data.get(key)
         .flatMap(evilAwaitChannel(_))
         .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))

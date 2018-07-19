@@ -10,6 +10,7 @@ import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.impl.access.UserBase
 import util.functional.OptionT
 import util.instances.future._
 
@@ -26,11 +27,11 @@ case class OrganizationData(joinable: Organization,
 object OrganizationData {
   val noPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
-  def cacheKey(orga: Organization) = "organization" + orga.id.get
+  def cacheKey(orga: Organization): String = "organization" + orga.id.get
 
   def of[A](orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
                                 service: ModelService): Future[OrganizationData] = {
-    implicit val users = orga.userBase
+    implicit val users: UserBase = orga.userBase
     for {
       role <- orga.owner.headRole
       members <- orga.memberships.members

@@ -42,6 +42,6 @@ case class ProjectRole(override val id: Option[Int] = None,
   )
 
   override def subject(implicit ec: ExecutionContext): Future[Visitable] = this.project
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectRole = this.copy(id = id, createdAt = theTime)
 
 }

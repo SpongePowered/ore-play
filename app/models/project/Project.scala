@@ -9,7 +9,7 @@ import _root_.util.instances.future._
 import _root_.util.functional.OptionT
 import com.google.common.base.Preconditions._
 
-import db.access.ModelAccess
+import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.model.OreModel
@@ -102,7 +102,17 @@ case class Project(override val id: Option[Int] = None,
   /**
     * Contains all information for [[User]] memberships.
     */
-  override val memberships = new MembershipDossier {
+  override val memberships: MembershipDossier {
+  type MembersTable = ProjectMembersTable
+
+  type MemberType = ProjectMember
+
+  type RoleTable = ProjectRoleTable
+
+  type ModelType = Project
+
+  type RoleType = ProjectRole
+} = new MembershipDossier {
 
     type ModelType = Project
     type RoleType = ProjectRole
@@ -202,7 +212,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Users watching project
     */
-  def watchers = this.schema.getAssociation[ProjectWatchersTable, User](classOf[ProjectWatchersTable], this)
+  def watchers: ModelAssociationAccess[ProjectWatchersTable, User] = this.schema.getAssociation[ProjectWatchersTable, User](classOf[ProjectWatchersTable], this)
 
   /**
     * Returns the name of this Project.
@@ -323,7 +333,7 @@ case class Project(override val id: Option[Int] = None,
     */
   override def visibility: Visibility = this._visibility
 
-  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext) = {
+  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext): Future[ProjectVisibilityChange] = {
     this._visibility = visibility
     if (isDefined) update(ModelKeys.Visibility)
 
@@ -362,7 +372,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Users who have starred this project
     */
-  def stars = Defined(this.schema.getAssociation[ProjectStarsTable, User](classOf[ProjectStarsTable], this))
+  def stars: ModelAssociationAccess[ProjectStarsTable, User] = Defined(this.schema.getAssociation[ProjectStarsTable, User](classOf[ProjectStarsTable], this))
 
   /**
     * Returns the amount of stars this [[Project]] has.
@@ -377,7 +387,7 @@ case class Project(override val id: Option[Int] = None,
     * @param user User to set starred state of
     * @param starred True if should star
     */
-  def setStarredBy(user: User, starred: Boolean)(implicit ec: ExecutionContext) = Defined {
+  def setStarredBy(user: User, starred: Boolean)(implicit ec: ExecutionContext): Future[Future[Int]] = Defined {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     for {
@@ -401,7 +411,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Unique project views
     */
-  def views = this.schema.getChildren[ProjectView](classOf[ProjectView], this)
+  def views: ModelAccess[ProjectView] = this.schema.getChildren[ProjectView](classOf[ProjectView], this)
 
   /**
     * Returns the amount of views this project has.
@@ -440,7 +450,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Flags on project
     */
-  def flags = this.schema.getChildren[Flag](classOf[Flag], this)
+  def flags: ModelAccess[Flag] = this.schema.getChildren[Flag](classOf[Flag], this)
 
   /**
     * Submits a flag on this project for the specified user.
@@ -462,14 +472,14 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Channels in project
     */
-  def channels = this.schema.getChildren[Channel](classOf[Channel], this)
+  def channels: ModelAccess[Channel] = this.schema.getChildren[Channel](classOf[Channel], this)
 
   /**
     * Returns all versions in this project.
     *
     * @return Versions in project
     */
-  def versions = this.schema.getChildren[Version](classOf[Version], this)
+  def versions: ModelAccess[Version] = this.schema.getChildren[Version](classOf[Version], this)
 
   /**
     * Returns this Project's recommended version.
@@ -497,7 +507,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @return Pages in project
     */
-  def pages = this.schema.getChildren[Page](classOf[Page], this)
+  def pages: ModelAccess[Page] = this.schema.getChildren[Page](classOf[Page], this)
 
   /**
     * Returns this Project's home page.
@@ -562,7 +572,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param _topicId ID to set
     */
-  def setTopicId(_topicId: Int) = Defined {
+  def setTopicId(_topicId: Int): Future[Int] = Defined {
     this._topicId = _topicId
     update(TopicId)
   }
@@ -579,7 +589,7 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param _postId Forum post ID
     */
-  def setPostId(_postId: Int) = Defined {
+  def setPostId(_postId: Int): Future[Int] = Defined {
     this._postId = _postId
     update(PostId)
   }
@@ -597,18 +607,18 @@ case class Project(override val id: Option[Int] = None,
     *
     * @param topicDirty True if topic is dirty
     */
-  def setTopicDirty(topicDirty: Boolean) = Defined {
+  def setTopicDirty(topicDirty: Boolean): Future[Int] = Defined {
     this._isTopicDirty = topicDirty
     update(IsTopicDirty)
   }
 
   def apiKeys: ModelAccess[ProjectApiKey] = this.schema.getChildren[ProjectApiKey](classOf[ProjectApiKey], this)
 
-  override def projectId = Defined(this.id.get)
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp])
+  override def projectId: Int = Defined(this.id.get)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Project
   = this.copy(id = id, createdAt = theTime, _lastUpdated = theTime.orNull)
-  override def hashCode() = this.id.get.hashCode
-  override def equals(o: Any) = o.isInstanceOf[Project] && o.asInstanceOf[Project].id.get == this.id.get
+  override def hashCode(): Int = this.id.get.hashCode
+  override def equals(o: Any): Boolean = o.isInstanceOf[Project] && o.asInstanceOf[Project].id.get == this.id.get
 
   /**
     * Set a message and update the database
@@ -634,13 +644,13 @@ case class Project(override val id: Option[Int] = None,
     * @param message
     * @return
     */
-  def addNote(message: Note) = {
+  def addNote(message: Note): Future[Int] = {
 
     /**
       * Helper function to encode to json
       */
-    implicit val noteWrites = new Writes[Note] {
-      def writes(note: Note) = Json.obj(
+    implicit val noteWrites: Writes[Note] = new Writes[Note] {
+      def writes(note: Note): JsObject = Json.obj(
         "message" -> note.message,
         "user" -> note.user,
         "time" -> note.time
@@ -680,7 +690,7 @@ case class Project(override val id: Option[Int] = None,
   * @param message
   */
 case class Note(message: String, user: Int, time: Long = System.currentTimeMillis()) {
-  def getTime(implicit oreConfig: OreConfig) = StringUtils.prettifyDateAndTime(new Timestamp(time))
+  def getTime(implicit oreConfig: OreConfig): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
   def render(implicit oreConfig: OreConfig): Html = Page.Render(message)
 }
 
@@ -713,27 +723,27 @@ object Project {
     private var _name: String = _
     private var _visibility: Visibility = _
 
-    def pluginId(pluginId: String) = {
+    def pluginId(pluginId: String): Builder = {
       this._pluginId = pluginId
       this
     }
 
-    def ownerName(ownerName: String) = {
+    def ownerName(ownerName: String): Builder = {
       this._ownerName = ownerName
       this
     }
 
-    def ownerId(ownerId: Int) = {
+    def ownerId(ownerId: Int): Builder = {
       this._ownerId = ownerId
       this
     }
 
-    def name(name: String) = {
+    def name(name: String): Builder = {
       this._name = name
       this
     }
 
-    def visibility(visibility: Visibility) = {
+    def visibility(visibility: Visibility): Builder = {
       this._visibility = visibility
       this
     }

@@ -10,6 +10,10 @@ import play.api.i18n.{Lang, MessagesApi}
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.impl.{OrganizationMembersTable, OrganizationRoleTable}
+import ore.organization.OrganizationMember
+import ore.user.MembershipDossier
+
 /**
   * Saves new and old [[OrganizationRole]]s.
   *
@@ -23,15 +27,25 @@ case class OrganizationMembersUpdate(override val users: List[Int],
                                      userUps: List[String],
                                      roleUps: List[String]) extends TOrganizationRoleSetBuilder {
 
-  implicit val lang = Lang.defaultLang
+  implicit val lang: Lang = Lang.defaultLang
 
   //noinspection ComparingUnrelatedTypes
-  def saveTo(organization: Organization)(implicit cache: AsyncCacheApi, ex: ExecutionContext, messages: MessagesApi, users: UserBase) = {
+  def saveTo(organization: Organization)(implicit cache: AsyncCacheApi, ex: ExecutionContext, messages: MessagesApi, users: UserBase): Unit = {
     if (!organization.isDefined)
       throw new RuntimeException("tried to update members on undefined organization")
 
     // Add new roles
-    val dossier = organization.memberships
+    val dossier: MembershipDossier {
+      type MembersTable = OrganizationMembersTable
+
+      type MemberType = OrganizationMember
+
+      type RoleTable = OrganizationRoleTable
+
+      type ModelType = Organization
+
+      type RoleType = OrganizationRole
+    } = organization.memberships
     val orgId = organization.id.get
     for (role <- this.build()) {
       val user = role.user

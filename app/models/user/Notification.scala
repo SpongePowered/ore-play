@@ -57,7 +57,7 @@ case class Notification(override val id: Option[Int] = None,
     *
     * @param read True if has been read
     */
-  def setRead(read: Boolean) = Defined {
+  def setRead(read: Boolean): Future[Int] = Defined {
     this.read = read
     update(Read)
   }

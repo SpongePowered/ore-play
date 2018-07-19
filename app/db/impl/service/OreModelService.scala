@@ -30,16 +30,16 @@ class OreModelService @Inject()(override val env: OreEnv,
   val Logger = play.api.Logger("Database")
 
   // Implement ModelService
-  override lazy val registry = new ModelRegistry {}
+  override lazy val registry: ModelRegistry = new ModelRegistry {}
   override lazy val processor = new OreModelProcessor(
     this, Users, Projects, Organizations, this.config, this.forums, this.auth)
-  override lazy val driver = OrePostgresDriver
+  override lazy val driver: OrePostgresDriver.type = OrePostgresDriver
   override lazy val DB = db.get[JdbcProfile]
   override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
 
   import registry.{registerModelBase, registerSchema}
 
-  override def start() = {
+  override def start(): Unit = {
     val time = System.currentTimeMillis()
 
     // Initialize database access objects

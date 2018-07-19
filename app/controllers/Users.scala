@@ -67,7 +67,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param sig  Incoming signature from auth
     * @return     Logged in home
     */
-  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]) = Action.async { implicit request =>
+  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]): Action[AnyContent] = Action.async { implicit request =>
     if (this.fakeUser.isEnabled) {
       // Log in as fake user (debug only)
       this.config.checkDebug()
@@ -131,7 +131,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]) = OreAction async { implicit request =>
+  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction async { implicit request =>
     val pageSize = this.config.users.get[Int]("project-page-size")
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
@@ -184,7 +184,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username   User to update
     * @return           View of user page
     */
-  def saveTagline(username: String) = UserAction(username).async { implicit request =>
+  def saveTagline(username: String): Action[AnyContent] = UserAction(username).async { implicit request =>
     val maxLen = this.config.users.get[Int]("max-tagline-len")
 
     val res = for {
@@ -209,7 +209,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username User to save key to
     * @return JSON response
     */
-  def savePgpPublicKey(username: String) = UserAction(username) { implicit request =>
+  def savePgpPublicKey(username: String): Action[AnyContent] = UserAction(username) { implicit request =>
     this.forms.UserPgpPubKey.bindFromRequest.fold(
       hasErrors =>
         Redirect(ShowUser(username)).withFormErrors(hasErrors.errors),
@@ -234,7 +234,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username Username to delete key for
     * @return Ok if deleted, bad request if didn't exist
     */
-  def deletePgpPublicKey(username: String, sso: Option[String], sig: Option[String]) = {
+  def deletePgpPublicKey(username: String, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
     VerifiedAction(username, sso, sig) { implicit request =>
       Logger.info("Deleting public key for " + username)
       val user = request.user
@@ -255,7 +255,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param locked   True if user is locked
     * @return         Redirection to user page
     */
-  def setLocked(username: String, locked: Boolean, sso: Option[String], sig: Option[String]) = {
+  def setLocked(username: String, locked: Boolean, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
     VerifiedAction(username, sso, sig) { implicit request =>
       val user = request.user
       user.setLocked(locked)
@@ -269,7 +269,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * Shows a list of [[models.user.User]]s that have created a
     * [[models.project.Project]].
     */
-  def showAuthors(sort: Option[String], page: Option[Int]) = OreAction async { implicit request =>
+  def showAuthors(sort: Option[String], page: Option[Int]): Action[AnyContent] = OreAction async { implicit request =>
     val ordering = sort.getOrElse(ORDERING_PROJECTS)
     val p = page.getOrElse(1)
     this.users.getAuthors(ordering, p).map { u =>
@@ -281,7 +281,7 @@ class Users @Inject()(fakeUser: FakeUser,
   /**
     * Shows a list of [[models.user.User]]s that have Ore staff roles.
     */
-  def showStaff(sort: Option[String], page: Option[Int]) = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+  def showStaff(sort: Option[String], page: Option[Int]): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
     val ordering = sort.getOrElse(ORDERING_ROLE)
     val p = page.getOrElse(1)
     this.users.getStaff(ordering, p).map { u =>
@@ -294,7 +294,7 @@ class Users @Inject()(fakeUser: FakeUser,
     *
     * @return Unread notifications
     */
-  def showNotifications(notificationFilter: Option[String], inviteFilter: Option[String]) = {
+  def showNotifications(notificationFilter: Option[String], inviteFilter: Option[String]): Action[AnyContent] = {
     Authenticated.async { implicit request =>
       val user = request.user
 
@@ -325,7 +325,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param id Notification ID
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
-  def markNotificationRead(id: Int) = Authenticated.async { implicit request =>
+  def markNotificationRead(id: Int): Action[AnyContent] = Authenticated.async { implicit request =>
     request.user.notifications.get(id).map { notification =>
       notification.setRead(read = true)
       Ok

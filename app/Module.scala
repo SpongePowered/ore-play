@@ -12,7 +12,7 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuth, SpongeAuthApi, SpongeS
 /** The Ore Module */
 class Module(environment: Environment, configuration: Configuration) extends AbstractModule {
 
-  def configure() = {
+  def configure(): Unit = {
     bind(classOf[OreRestfulApi]).to(classOf[OreRestfulServer])
     bind(classOf[StatTracker]).to(classOf[OreStatTracker])
     bind(classOf[ProjectFactory]).to(classOf[OreProjectFactory])

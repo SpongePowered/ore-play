@@ -25,7 +25,7 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](service: Mod
     this.assoc.assoc(this.parent, model).map(_ => model)
   }
 
-  override def remove(model: M) = this.assoc.disassoc(this.parent, model)
+  override def remove(model: M): Future[Int] = this.assoc.disassoc(this.parent, model)
 
   override def removeAll(filter: M#T => Rep[Boolean] = _ => true) = throw new UnsupportedOperationException
 

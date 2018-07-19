@@ -1,6 +1,9 @@
 package ore.project
 
+import java.sql.Timestamp
+
 import db.impl.OrePostgresDriver.api._
+import db.impl.ProjectTable
 import models.project.Project
 import slick.lifted.ColumnOrdered
 
@@ -15,7 +18,7 @@ object ProjectSortingStrategies {
   )
 
   /** The default strategy. */
-  val Default = RecentlyUpdated
+  val Default: RecentlyUpdated.type = RecentlyUpdated
 
   /**
     * Returns the strategy with the specified ID.
@@ -40,31 +43,31 @@ object ProjectSortingStrategies {
   }
 
   case object MostStars extends ProjectSortingStrategy {
-    def fn = _.stars.desc
+    def fn: ProjectTable => ColumnOrdered[Int] = _.stars.desc
     def title = "Most stars"
     def id = 0
   }
 
   case object MostDownloads extends ProjectSortingStrategy {
-    def fn = _.downloads.desc
+    def fn: ProjectTable => ColumnOrdered[Int] = _.downloads.desc
     def title = "Most downloads"
     def id = 1
   }
 
   case object MostViews extends ProjectSortingStrategy {
-    def fn = _.views.desc
+    def fn: ProjectTable => ColumnOrdered[Int] = _.views.desc
     def title = "Most views"
     def id = 2
   }
 
   case object Newest extends ProjectSortingStrategy {
-    def fn = _.createdAt.desc
+    def fn: ProjectTable => ColumnOrdered[Timestamp] = _.createdAt.desc
     def title = "Newest"
     def id = 3
   }
 
   case object RecentlyUpdated extends ProjectSortingStrategy {
-    def fn = _.lastUpdated.desc
+    def fn: ProjectTable => ColumnOrdered[Timestamp] = _.lastUpdated.desc
     def title = "Recently updated"
     def id = 4
   }

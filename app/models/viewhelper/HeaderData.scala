@@ -32,11 +32,11 @@ case class HeaderData(currentUser: Option[User] = None,
                      ) {
 
   // Just some helpers in templates:
-  def isAuthenticated = currentUser.isDefined
+  def isAuthenticated: Boolean = currentUser.isDefined
 
-  def hasUser = currentUser.isDefined
+  def hasUser: Boolean = currentUser.isDefined
 
-  def isCurrentUser(userId: Int) = currentUser.flatMap(_.id).contains(userId)
+  def isCurrentUser(userId: Int): Boolean = currentUser.flatMap(_.id).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
 

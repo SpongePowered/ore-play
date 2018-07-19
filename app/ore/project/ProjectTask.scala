@@ -20,13 +20,13 @@ import ore.OreConfig
 class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig)(implicit ec: ExecutionContext) extends Runnable {
 
   val Logger = play.api.Logger("ProjectTask")
-  val interval = this.config.projects.get[FiniteDuration]("check-interval")
+  val interval: FiniteDuration = this.config.projects.get[FiniteDuration]("check-interval")
   val draftExpire: Long = this.config.projects.getOptional[Long]("draft-expire").getOrElse(86400000)
 
   /**
     * Starts the task.
     */
-  def start() = {
+  def start(): Unit = {
     this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
     Logger.info(s"Initialized. First run in ${this.interval.toString}.")
   }
@@ -34,7 +34,7 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
   /**
     * Task runner
     */
-  def run() = {
+  def run(): Unit = {
     val actions = this.models.getSchema(classOf[ProjectSchema])
 
     val newFilter: ModelFilter[Project] = ModelFilter[Project](_.visibility === VisibilityTypes.New)

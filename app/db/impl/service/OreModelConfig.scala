@@ -32,7 +32,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   // Begin schemas
 
-  val UserSchema = new UserSchema(this)
+  val UserSchema: ModelSchema[User] = new UserSchema(this)
     .withChildren[Project](classOf[Project], _.userId)
     .withChildren[ProjectRole](classOf[ProjectRole], _.userId)
     .withChildren[OrganizationRole](classOf[OrganizationRole], _.userId)
@@ -69,7 +69,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
   val ProjectVisibilityChangeSchema = new ModelSchema[ProjectVisibilityChange](this, classOf[ProjectVisibilityChange], TableQuery[ProjectVisibilityChangeTable])
   val VersionVisibilityChangeSchema = new ModelSchema[VersionVisibilityChange](this, classOf[VersionVisibilityChange], TableQuery[VersionVisibilityChangeTable])
 
-  val ProjectSchema = new ProjectSchema(this, Users)
+  val ProjectSchema: ModelSchema[Project] = new ProjectSchema(this, Users)
     .withChildren[Channel](classOf[Channel], _.projectId)
     .withChildren[Version](classOf[Version], _.projectId)
     .withChildren[Page](classOf[Page], _.projectId)
@@ -97,7 +97,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
   val ProjectSettingsSchema = new ModelSchema[ProjectSettings](this, classOf[ProjectSettings],
     TableQuery[ProjectSettingsTable])
 
-  val ProjectLogSchema = new ModelSchema[ProjectLog](this, classOf[ProjectLog], TableQuery[ProjectLogTable])
+  val ProjectLogSchema: ModelSchema[ProjectLog] = new ModelSchema[ProjectLog](this, classOf[ProjectLog], TableQuery[ProjectLogTable])
     .withChildren[ProjectLogEntry](classOf[ProjectLogEntry], _.logId)
 
   val ProjectLogEntrySchema = new ModelSchema[ProjectLogEntry](
@@ -110,7 +110,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   val ReviewSchema = new ModelSchema[Review](this, classOf[Review], TableQuery[ReviewTable])
 
-  val VersionSchema = new VersionSchema(this)
+  val VersionSchema: ModelSchema[Version] = new VersionSchema(this)
     .withChildren[VersionDownload](classOf[VersionDownload], _.modelId)
     .withChildren[Review](classOf[Review], _.versionId)
     .withChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], _.versionId)
@@ -124,7 +124,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
   case object DownloadSchema extends ModelSchema[VersionDownload](
     this, classOf[VersionDownload], TableQuery[VersionDownloadsTable]) with StatSchema[VersionDownload]
 
-  val ChannelSchema = new ModelSchema[Channel](this, classOf[Channel], TableQuery[ChannelTable])
+  val ChannelSchema: ModelSchema[Channel] = new ModelSchema[Channel](this, classOf[Channel], TableQuery[ChannelTable])
     .withChildren[Version](classOf[Version], _.channelId)
 
   val TagSchema = new ModelSchema[ProjectTag](this, classOf[ProjectTag], TableQuery[TagTable])
@@ -133,7 +133,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   val NotificationSchema = new ModelSchema[Notification](this, classOf[Notification], TableQuery[NotificationTable])
 
-  val OrganizationSchema = new ModelSchema[Organization](this, classOf[Organization], TableQuery[OrganizationTable])
+  val OrganizationSchema: ModelSchema[Organization] = new ModelSchema[Organization](this, classOf[Organization], TableQuery[OrganizationTable])
     .withChildren[Project](classOf[Project], _.userId)
     .withChildren[OrganizationRole](classOf[OrganizationRole], _.organizationId)
     .withAssociation[OrganizationMembersTable, User](

@@ -23,7 +23,7 @@ trait Bootstrap {
   val Logger = play.api.Logger("Bootstrap")
 
   Logger.info("Initializing Ore...")
-  val time = System.currentTimeMillis()
+  val time: Long = System.currentTimeMillis()
 
   this.modelService.start()
 

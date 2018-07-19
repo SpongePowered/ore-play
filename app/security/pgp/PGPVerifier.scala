@@ -12,12 +12,14 @@ import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProv
 
 import scala.util.Try
 
+import play.api.Logger
+
 /**
   * Verifies data within the PGP ecosystem.
   */
 class PGPVerifier {
 
-  val Logger = PGPPublicKeyInfo.Logger
+  val Logger: Logger = PGPPublicKeyInfo.Logger
 
   /**
     * Verifies the specified document [[InputStream]] against the specified

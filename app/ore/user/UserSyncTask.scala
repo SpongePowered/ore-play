@@ -18,13 +18,13 @@ import scala.concurrent.duration._
 @Singleton
 final class UserSyncTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig)(implicit ec: ExecutionContext) extends Runnable {
 
-  val Logger = play.api.Logger("UserSync")
-  val interval = this.config.users.get[Long]("syncRate").millis
+  val Logger                   = play.api.Logger("UserSync")
+  val interval: FiniteDuration = this.config.users.get[Long]("syncRate").millis
 
   /**
     * Starts the task.
     */
-  def start() = {
+  def start(): Unit = {
     this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
     Logger.info(s"Initialized. First run in ${this.interval.toString}.")
   }
@@ -32,7 +32,7 @@ final class UserSyncTask @Inject()(models: ModelService, actorSystem: ActorSyste
   /**
     * Synchronizes all users with external site data.
     */
-  def run() = {
+  def run(): Unit = {
     this.models.getModelBase(classOf[UserBase]).all.map { users =>
       Logger.info(s"Synchronizing ${users.size} users with external site data...")
       Future.sequence(users.map { user =>

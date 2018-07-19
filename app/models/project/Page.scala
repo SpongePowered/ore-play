@@ -147,7 +147,7 @@ case class Page(override val id: Option[Int] = None,
   = this.service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.get))
 
   def url(implicit project: Project, parentPage: Option[Page]) : String = project.url + "/pages/" + this.fullSlug(parentPage)
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Page = this.copy(id = id, createdAt = theTime)
 
 }
 

@@ -36,6 +36,8 @@ import views.{html => views}
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import play.api.mvc.{Action, ActionBuilder, AnyContent}
+
 /**
   * Main entry point for application.
   */
@@ -58,7 +60,7 @@ final class Application @Inject()(data: DataHelper,
     * @return External link page
     */
   def linkOut(remoteUrl: String) = OreAction { implicit request =>
-    implicit val headerData = request.data
+    implicit val headerData: HeaderData = request.data
     Ok(views.linkout(remoteUrl))
   }
 
@@ -85,7 +87,7 @@ final class Application @Inject()(data: DataHelper,
                query: Option[String],
                sort: Option[Int],
                page: Option[Int],
-               platform: Option[String]) = OreAction async { implicit request =>
+               platform: Option[String]): Action[AnyContent] = OreAction async { implicit request =>
     // Get categories and sorting strategy
 
 
@@ -137,14 +139,14 @@ final class Application @Inject()(data: DataHelper,
     }
    }
 
-  def showQueue() = showQueueWithPage(0)
+  def showQueue(): Action[AnyContent] = showQueueWithPage(0)
 
   /**
     * Shows the moderation queue for unreviewed versions.
     *
     * @return View of unreviewed versions.
     */
-  def showQueueWithPage(page: Int) = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+  def showQueueWithPage(page: Int): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
     // TODO: Pages
     val limit = 50
     val offset = page * limit
@@ -220,7 +222,7 @@ final class Application @Inject()(data: DataHelper,
     *
     * @return Flag overview
     */
-  def showFlags() = FlagAction.async { implicit request =>
+  def showFlags(): Action[AnyContent] = FlagAction.async { implicit request =>
     for {
       flags <- this.service.access[Flag](classOf[Flag]).filterNot(_.isResolved)
       (users, projects) <- (Future.sequence(flags.map(_.user)), Future.sequence(flags.map(_.project))).parTupled
@@ -245,7 +247,7 @@ final class Application @Inject()(data: DataHelper,
     * @param resolved Resolved state
     * @return         Ok
     */
-  def setFlagResolved(flagId: Int, resolved: Boolean) = FlagAction.async { implicit request =>
+  def setFlagResolved(flagId: Int, resolved: Boolean): Action[AnyContent] = FlagAction.async { implicit request =>
     this.service.access[Flag](classOf[Flag]).get(flagId).semiFlatMap { flag =>
       users.current.value.map { user =>
         flag.setResolved(resolved, user)
@@ -254,7 +256,7 @@ final class Application @Inject()(data: DataHelper,
     }.getOrElse(NotFound)
   }
 
-  def showHealth() = (Authenticated andThen PermissionAction[AuthRequest](ViewHealth)) async { implicit request =>
+  def showHealth(): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ViewHealth)) async { implicit request =>
     (
       projects.filter(p => p.topicId === -1 || p.postId === -1),
       projects.filter(_.isTopicDirty),
@@ -279,7 +281,7 @@ final class Application @Inject()(data: DataHelper,
   /**
     * Helper route to reset Ore.
     */
-  def reset() = (Authenticated andThen PermissionAction[AuthRequest](ResetOre)) { implicit request =>
+  def reset(): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ResetOre)) { implicit request =>
     this.config.checkDebug()
     this.data.reset()
     cache.removeAll()
@@ -291,7 +293,7 @@ final class Application @Inject()(data: DataHelper,
     *
     * @return Redirect home
     */
-  def seed(users: Int, projects: Int, versions: Int, channels: Int) = {
+  def seed(users: Int, projects: Int, versions: Int, channels: Int): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](SeedOre)) { implicit request =>
       this.config.checkDebug()
       this.data.seed(users, projects, versions, channels)
@@ -305,7 +307,7 @@ final class Application @Inject()(data: DataHelper,
     *
     * @return Redirect home
     */
-  def migrate() = (Authenticated andThen PermissionAction[AuthRequest](MigrateOre)) { implicit request =>
+  def migrate(): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](MigrateOre)) { implicit request =>
     this.data.migrate()
     Redirect(ShowHome)
   }
@@ -313,7 +315,7 @@ final class Application @Inject()(data: DataHelper,
   /**
     * Show the activities page for a user
     */
-  def showActivities(user: String) = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
+  def showActivities(user: String): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
     this.users.withName(user).semiFlatMap { u =>
       val activities: Future[Seq[(Object, Option[Project])]] = u.id match {
         case None => Future.successful(Seq.empty)
@@ -360,7 +362,7 @@ final class Application @Inject()(data: DataHelper,
     * Show stats
     * @return
     */
-  def showStats() = (Authenticated andThen PermissionAction[AuthRequest](ViewStats)).async { implicit request =>
+  def showStats(): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ViewStats)).async { implicit request =>
 
     /**
       * Query to get a count where columnDate is equal to the date
@@ -398,7 +400,7 @@ final class Application @Inject()(data: DataHelper,
     }
   }
 
-  def showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], contextFilter: Option[Int]) = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
+  def showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], contextFilter: Option[Int]): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
     val pageSize = 50
     val offset = page.getOrElse(0) * pageSize
 
@@ -437,9 +439,9 @@ final class Application @Inject()(data: DataHelper,
     }
   }
 
-  def UserAdminAction = Authenticated andThen PermissionAction[AuthRequest](UserAdmin)
+  def UserAdminAction: ActionBuilder[AuthRequest, AnyContent] = Authenticated andThen PermissionAction[AuthRequest](UserAdmin)
 
-  def userAdmin(user: String) = UserAdminAction.async { implicit request =>
+  def userAdmin(user: String): Action[AnyContent] = UserAdminAction.async { implicit request =>
     this.users.withName(user).semiFlatMap { u =>
       for {
         isOrga <- u.isOrganization
@@ -462,7 +464,7 @@ final class Application @Inject()(data: DataHelper,
     }.getOrElse(notFound)
   }
 
-  def updateUser(userName: String) = UserAdminAction.async { implicit request =>
+  def updateUser(userName: String): Action[AnyContent] = UserAdminAction.async { implicit request =>
     this.users.withName(userName).map { user =>
       bindFormOptionT[Future](this.forms.UserAdminUpdate).flatMap { case (thing, action, data) =>
         import play.api.libs.json._
@@ -524,7 +526,7 @@ final class Application @Inject()(data: DataHelper,
     *
     * @return Show page
     */
-  def showProjectVisibility() = (Authenticated andThen PermissionAction[AuthRequest](ReviewVisibility)) async { implicit request =>
+  def showProjectVisibility(): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ReviewVisibility)) async { implicit request =>
     val projectSchema = this.service.getSchema(classOf[ProjectSchema])
 
     for {

@@ -11,6 +11,6 @@ case class OrganizationAvatarUpdate(method: String, url: Option[String]) {
   /**
     * Returns true if this update was a file upload.
     */
-  val isFileUpload = this.method.equals("by-file")
+  val isFileUpload: Boolean = this.method.equals("by-file")
 
 }

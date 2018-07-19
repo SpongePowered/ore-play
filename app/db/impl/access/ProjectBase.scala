@@ -11,7 +11,11 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.{PageTable, ProjectTableMain, VersionTable}
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
+<<<<<<< master
 import models.project.{Channel, Project, Version, VisibilityTypes}
+=======
+import models.project.{Channel, Page, Project, Version}
+>>>>>>> Specify the return type in most places where they should be specified
 import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import slick.lifted.TableQuery
@@ -28,11 +32,11 @@ class ProjectBase(override val service: ModelService,
                   forums: OreDiscourseApi)
                   extends ModelBase[Project] {
 
-  override val modelClass = classOf[Project]
+  override val modelClass: Class[Project] = classOf[Project]
 
   val fileManager = new ProjectFiles(this.env)
 
-  implicit val self = this
+  implicit val self: ProjectBase = this
 
   def missingFile(implicit ec: ExecutionContext): Future[Seq[Version]] = {
     val tableVersion = TableQuery[VersionTable]
@@ -111,7 +115,7 @@ class ProjectBase(override val service: ModelService,
     *
     * @param project Project to save icon for
     */
-  def savePendingIcon(project: Project) = {
+  def savePendingIcon(project: Project): Unit = {
     this.fileManager.getPendingIconPath(project).foreach { iconPath =>
       val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
       if (notExists(iconDir))
@@ -127,7 +131,7 @@ class ProjectBase(override val service: ModelService,
     * @param project  Project to rename
     * @param name     New name to assign Project
     */
-  def rename(project: Project, name: String)(implicit ec: ExecutionContext)  = {
+  def rename(project: Project, name: String)(implicit ec: ExecutionContext): Future[Boolean]  = {
     val newName = compact(name)
     val newSlug = slugify(newName)
     checkArgument(this.config.isValidProjectName(name), "invalid name", "")
@@ -193,7 +197,7 @@ class ProjectBase(override val service: ModelService,
   /**
     * Irreversibly deletes this version.
     */
-  def deleteVersion(version: Version)(implicit ec: ExecutionContext) = {
+  def deleteVersion(version: Version)(implicit ec: ExecutionContext): Future[Project] = {
     for {
       proj <- prepareDeleteVersion(version)
       channel <- version.channel
@@ -215,7 +219,7 @@ class ProjectBase(override val service: ModelService,
     *
     * @param project Project to delete
     */
-  def delete(project: Project)(implicit ec: ExecutionContext) = {
+  def delete(project: Project)(implicit ec: ExecutionContext): Future[Int] = {
     FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
     if (project.topicId != -1)
       this.forums.deleteProjectTopic(project)
@@ -224,7 +228,7 @@ class ProjectBase(override val service: ModelService,
   }
 
 
-  def queryProjectPages(project: Project)(implicit ec: ExecutionContext) = {
+  def queryProjectPages(project: Project)(implicit ec: ExecutionContext): Future[Seq[(Page, Seq[Page])]] = {
     val tablePage = TableQuery[PageTable]
     val pagesQuery = for {
       (pp, p) <- tablePage joinLeft tablePage on (_.id === _.parentId)

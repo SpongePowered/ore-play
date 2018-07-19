@@ -1,5 +1,7 @@
 package db.table
 
+import scala.concurrent.Future
+
 import com.google.common.base.Preconditions._
 import db.impl.OrePostgresDriver.api._
 import db.{Model, ModelService}
@@ -32,7 +34,7 @@ class ModelAssociation[AssocTable <: AssociativeTable]
     * @param model2 Second model
     * @return Future results
     */
-  def assoc(model1: Model, model2: Model) = {
+  def assoc(model1: Model, model2: Model): Future[Int] = {
     val modelPair = orderModels(model1, model2)
     this.service.DB.db.run(this.assocTable += (modelPair._1.id.get, modelPair._2.id.get))
   }
@@ -43,7 +45,7 @@ class ModelAssociation[AssocTable <: AssociativeTable]
     * @param model1 First model
     * @param model2 Second model
     */
-  def disassoc(model1: Model, model2: Model) = {
+  def disassoc(model1: Model, model2: Model): Future[Int] = {
     val modelPair = orderModels(model1, model2)
     this.service.DB.db.run {
       this.assocTable.filter(t => ref1(t) === modelPair._1.id.get && ref2(t) === modelPair._2.id.get).delete

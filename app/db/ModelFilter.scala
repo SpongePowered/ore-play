@@ -91,7 +91,7 @@ object ModelFilter {
 
   def Empty[M <: Model]: ModelFilter[M] = ModelFilter[M](_ => true)
 
-  def All[M <: Model] = ModelFilter[M](_ => false)
+  def All[M <: Model]: ModelFilter[M] = ModelFilter[M](_ => false)
 
   /** Filters models by ID */
   def IdFilter[M <: Model](id: Int): ModelFilter[M] = ModelFilter[M](_.id === id)

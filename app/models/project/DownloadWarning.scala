@@ -42,7 +42,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
 
   def isConfirmed: Boolean = this._isConfirmed
 
-  def setConfirmed(confirmed: Boolean = true) = Defined {
+  def setConfirmed(confirmed: Boolean = true): Future[Int] = Defined {
     this._isConfirmed = confirmed
     update(IsConfirmed)
   }
@@ -71,7 +71,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
     *
     * @param download Download warning was for
     */
-  def setDownload(download: UnsafeDownload) = Defined {
+  def setDownload(download: UnsafeDownload): Future[Int] = Defined {
     checkNotNull(download, "null download", "")
     checkArgument(download.isDefined, "undefined download", "")
     this._downloadId = download.id.get
@@ -88,7 +88,7 @@ case class DownloadWarning(override val id: Option[Int] = None,
     bakery.bake(COOKIE, this.token)
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): DownloadWarning = this.copy(id = id, createdAt = theTime)
 
 }
 

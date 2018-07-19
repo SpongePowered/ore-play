@@ -2,6 +2,8 @@ package models.admin
 
 import java.sql.Timestamp
 
+import scala.concurrent.Future
+
 import db.impl.ProjectLogEntryTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -41,7 +43,7 @@ case class ProjectLogEntry(override val id: Option[Int] = None,
     *
     * @param occurrences Amount of occurrences
     */
-  def setOoccurrences(occurrences: Int) = Defined {
+  def setOoccurrences(occurrences: Int): Future[Int] = Defined {
     this._occurrences = occurrences
     update(Occurrences)
   }
@@ -58,11 +60,11 @@ case class ProjectLogEntry(override val id: Option[Int] = None,
     *
     * @param lastOccurrence Last occurrence timestamp
     */
-  def setLastOccurrence(lastOccurrence: Timestamp) = Defined {
+  def setLastOccurrence(lastOccurrence: Timestamp): Future[Int] = Defined {
     this._lastOccurrence = lastOccurrence
     update(LastOccurrence)
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectLogEntry = this.copy(id = id, createdAt = theTime)
 
 }

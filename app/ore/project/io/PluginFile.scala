@@ -22,7 +22,7 @@ import scala.util.control.Breaks._
   */
 class PluginFile(private var _path: Path, val signaturePath: Path, val user: User) extends UserOwned {
 
-  implicit val lang = Lang.defaultLang
+  implicit val lang: Lang = Lang.defaultLang
 
   private val MetaFileName = "mcmod.info"
 
@@ -44,7 +44,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     *
     * @param path Path to move file to
     */
-  def move(path: Path) = {
+  def move(path: Path): Unit = {
     Files.move(this.path, path)
     this._path = path
   }
@@ -52,7 +52,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
   /**
     * Deletes the File at this PluginFile's Path
     */
-  def delete() = {
+  def delete(): Unit = {
     Files.delete(this._path)
     this._path = null
   }
@@ -113,7 +113,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
       val meta = metaList.head
 
       // check meta
-      def checkMeta(value: Any, field: String) = {
+      def checkMeta(value: Any, field: String): Unit = {
         if (value == null)
           throw InvalidPluginFileException(messages("error.plugin.incomplete", field))
       }

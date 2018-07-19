@@ -145,7 +145,7 @@ trait OreDiscourseApi extends DiscourseApi {
     // A promise for our final result
     val resultPromise: Promise[Boolean] = Promise()
 
-    def logErrors(errors: List[String]) = {
+    def logErrors(errors: List[String]): Unit = {
       val message = "Request to update project topic was successful but Discourse responded with errors:\n" +
         s"Project: ${project.url}\n" +
         s"Topic ID: $topicId\n" +
@@ -263,7 +263,7 @@ trait OreDiscourseApi extends DiscourseApi {
     checkArgument(project.id.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
 
-    def logFailure() = Logger.info(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")
+    def logFailure(): Unit = Logger.info(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")
 
     val resultPromise: Promise[Boolean] = Promise()
     deleteTopic(project.ownerName, project.topicId).andThen {
@@ -310,10 +310,10 @@ trait OreDiscourseApi extends DiscourseApi {
   class Templates {
 
     /** Creates a new title for a project topic. */
-    def projectTitle(project: Project) = project.name + project.description.map(d => s" - $d").getOrElse("")
+    def projectTitle(project: Project): String = project.name + project.description.map(d => s" - $d").getOrElse("")
 
     /** Generates the content for a project topic. */
-    def projectTopic(project: Project)(implicit ec: ExecutionContext) = readAndFormatFile(
+    def projectTopic(project: Project)(implicit ec: ExecutionContext): String = readAndFormatFile(
       OreDiscourseApi.this.topicTemplatePath,
       project.name,
       OreDiscourseApi.this.baseUrl + '/' + project.url,
@@ -321,8 +321,8 @@ trait OreDiscourseApi extends DiscourseApi {
     )
 
     /** Generates the content for a version release post. */
-    def versionRelease(project: Project, version: Version, content: Option[String]) = {
-      implicit val p = project
+    def versionRelease(project: Project, version: Version, content: Option[String]): String = {
+      implicit val p: Project = project
       readAndFormatFile(
         OreDiscourseApi.this.versionReleasePostTemplatePath,
         project.name,

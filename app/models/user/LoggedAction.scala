@@ -2,6 +2,8 @@ package models.user
 
 import java.sql.Timestamp
 
+import scala.collection.immutable
+
 import com.github.tminglei.slickpg.InetString
 import controllers.sugar.Requests.AuthRequest
 import db.ModelService
@@ -31,11 +33,10 @@ case class LoggedActionModel(override val id: Option[Int] = None,
 
   def address: InetString = _address
   def action: LoggedAction = _action
-  def oldState = _oldState
-  def newState = _newState
+  def oldState: String = _oldState
+  def newState: String = _newState
   def contextId: Int = _actionContextId
   def actionType: LoggedActionContext = _action.context
-
 }
 
 sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry
@@ -46,7 +47,7 @@ object LoggedActionContext extends IntEnum[LoggedActionContext] {
   case object Version     extends LoggedActionContext(1)
   case object ProjectPage extends LoggedActionContext(2)
 
-  val values = findValues
+  val values: immutable.IndexedSeq[LoggedActionContext] = findValues
 
 }
 
@@ -69,7 +70,7 @@ case object LoggedAction extends IntEnum[LoggedAction] {
   case object VersionAsRecommended      extends LoggedAction(11, "VersionAsRecommended", LoggedActionContext.Version, "The version was set as recommended version")
   case object VersionDescriptionEdited  extends LoggedAction(12, "VersionDescriptionEdited", LoggedActionContext.Version, "The version description was edited")
 
-  val values = findValues
+  val values: immutable.IndexedSeq[LoggedAction] = findValues
 
 }
 

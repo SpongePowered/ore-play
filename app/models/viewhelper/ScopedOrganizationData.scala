@@ -8,6 +8,7 @@ import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.impl.access.UserBase
 import util.functional.OptionT
 import util.instances.future._
 
@@ -21,7 +22,7 @@ object ScopedOrganizationData {
 
   def of[A](currentUser: Option[User], orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
                                                            service: ModelService): Future[ScopedOrganizationData] = {
-    implicit val users = orga.userBase
+    implicit val users: UserBase = orga.userBase
     if (currentUser.isEmpty) Future.successful(noScope)
     else {
       for {

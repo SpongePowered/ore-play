@@ -50,7 +50,7 @@ class ModelSchema[M <: Model](val service: ModelService,
   def withAssociation[Assoc <: AssociativeTable, A <: Model](association: ModelAssociation[Assoc],
                                                              selfReference: Assoc => Rep[Int],
                                                              targetClass: Class[A],
-                                                             targetReference: Assoc => Rep[Int]) = {
+                                                             targetReference: Assoc => Rep[Int]): ModelSchema[M] = {
     val tableClass = association.tableClass
     this.associations += tableClass -> association
     this.associatedModels += tableClass -> targetClass
@@ -89,7 +89,7 @@ class ModelSchema[M <: Model](val service: ModelService,
     * @tparam C         Child model type
     * @return           This schema instance
     */
-  def withChildren[C <: Model](childClass: Class[C], ref: C#T => Rep[Int]) = {
+  def withChildren[C <: Model](childClass: Class[C], ref: C#T => Rep[Int]): ModelSchema[M] = {
     this.children += childClass -> ref.asInstanceOf[ModelTable[_] => Rep[Int]]
     this
   }
@@ -119,7 +119,7 @@ class ModelSchema[M <: Model](val service: ModelService,
     * @tparam S           Sibling model type
     * @return             This schema instance
     */
-  def withSibling[S <: Model](siblingClass: Class[S], ref: M => Int) = {
+  def withSibling[S <: Model](siblingClass: Class[S], ref: M => Int): ModelSchema[M] = {
     this.siblings += siblingClass -> ref
     this
   }

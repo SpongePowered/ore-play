@@ -15,6 +15,8 @@ import slick.lifted.TableQuery
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.impl.access.UserBase
+import play.twirl.api.Html
 import util.syntax._
 import util.instances.future._
 
@@ -35,20 +37,20 @@ case class ProjectData(joinable: Project,
                        recommendedVersion: Option[Version]
                       ) extends JoinableData[ProjectRole, ProjectMember, Project] {
 
-  def flagCount = flags.size
+  def flagCount: Int = flags.size
 
   def project: Project = joinable
 
-  def visibility = project.visibility
+  def visibility: VisibilityTypes.Visibility = project.visibility
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
-  def renderVisibilityChange = lastVisibilityChange.map(_.renderComment())
+  def renderVisibilityChange: Option[Html] = lastVisibilityChange.map(_.renderComment())
 }
 
 object ProjectData {
 
-  def cacheKey(project: Project) = "project" + project.id.get
+  def cacheKey(project: Project): String = "project" + project.id.get
 
   def of[A](request: OreRequest[A], project: PendingProject)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): ProjectData = {
 
@@ -84,7 +86,7 @@ object ProjectData {
 
   def of[A](project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
 
-    implicit val userBase = project.userBase
+    implicit val userBase: UserBase = project.userBase
 
     val flagsFut = project.flags.all
     val flagUsersFut = flagsFut.flatMap(flags => Future.sequence(flags.map(_.user)))

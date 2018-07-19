@@ -7,6 +7,8 @@ import db.impl.access.ProjectBase
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
+import play.api.Logger
+
 /**
   * Task to periodically retry failed Discourse requests.
   */
@@ -15,17 +17,17 @@ class RecoveryTask(scheduler: Scheduler,
                    api: OreDiscourseApi,
                    projects: ProjectBase)(implicit ec: ExecutionContext) extends Runnable {
 
-  val Logger = this.api.Logger
+  val Logger: Logger = this.api.Logger
 
   /**
     * Starts the recovery task to be run at the specified interval.
     */
-  def start() = {
+  def start(): Unit = {
     this.scheduler.schedule(this.retryRate, this.retryRate, this)
     Logger.info(s"Discourse recovery task started. First run in ${this.retryRate.toString}.")
   }
 
-  override def run() = {
+  override def run(): Unit = {
     Logger.info("Running Discourse recovery task...")
 
     this.projects.filter(_.topicId === -1).foreach { toCreate =>

@@ -1,13 +1,13 @@
 package controllers.project
 
 import controllers.OreBaseController
-import controllers.sugar.Bakery
+import controllers.sugar.{Bakery, Requests}
 import db.impl.OrePostgresDriver.api._
 import db.{ModelFilter, ModelService}
 import form.OreForms
 import javax.inject.Inject
 import models.project.{Page, Project}
-import models.user.{LoggedActionContext, UserActionLogger, LoggedAction}
+import models.user.{LoggedAction, LoggedActionContext, UserActionLogger}
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.cache.AsyncCacheApi
@@ -18,6 +18,8 @@ import views.html.projects.{pages => views}
 import util.instances.future._
 import util.syntax._
 import scala.concurrent.{ExecutionContext, Future}
+
+import play.api.mvc.{Action, AnyContent}
 
 /**
   * Controller for handling Page related actions.
@@ -72,9 +74,9 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return View of page
     */
-  def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { request =>
+  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).async { request =>
     val data = request.data
-    implicit val r = request.request
+    implicit val r: Requests.OreRequest[AnyContent] = request.request
 
     withPage(data.project, page).flatMap {
       case (None, _) => Future.successful(notFound)
@@ -98,8 +100,9 @@ class Pages @Inject()(forms: OreForms,
     * @param pageName   Page name
     * @return Page editor
     */
-  def showEditor(author: String, slug: String, pageName: String) = PageEditAction(author, slug).async { request =>
-    implicit val r = request.request
+  def showEditor(author: String, slug: String, pageName: String): Action[AnyContent] = PageEditAction(author, slug)
+    .async { request =>
+    implicit val r: Requests.AuthRequest[AnyContent] = request.request
     val data = request.data
     val parts = pageName.split("/")
 
@@ -135,7 +138,7 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return Project home
     */
-  def save(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
+  def save(author: String, slug: String, page: String): Action[AnyContent] = PageEditAction(author, slug).async { implicit request =>
     this.forms.PageEdit.bindFromRequest().fold(
       hasErrors =>
         Future.successful(Redirect(self.show(author, slug, page)).withFormErrors(hasErrors.errors)),
@@ -187,7 +190,7 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return Redirect to Project homepage
     */
-  def delete(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
+  def delete(author: String, slug: String, page: String): Action[AnyContent] = PageEditAction(author, slug).async { implicit request =>
     val data = request.data
     withPage(data.project, page).map { optionPage =>
       if (optionPage._1.isDefined)

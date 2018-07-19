@@ -47,7 +47,7 @@ abstract class RoleModel(override val id: Option[Int],
     *
     * @param accepted True if role accepted
     */
-  def setAccepted(accepted: Boolean) = Defined {
+  def setAccepted(accepted: Boolean): Future[Int] = Defined {
     this._isAccepted = accepted
     update(IsAccepted)
   }
@@ -59,7 +59,7 @@ abstract class RoleModel(override val id: Option[Int],
     */
   def isAccepted: Boolean = this._isAccepted
 
-  override def roleType = this._roleType
+  override def roleType: RoleType = this._roleType
 
   /**
     * Sets this role's [[RoleType]].

@@ -98,7 +98,7 @@ trait OreRestfulApi {
     }
   }
 
-  def writeMembers(members: Seq[(ProjectRole, User)]) = {
+  def writeMembers(members: Seq[(ProjectRole, User)]): Seq[JsObject] = {
     val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.roleType))
     members.map { case (_, user) =>
       val roles = allRoles(user.id.get)

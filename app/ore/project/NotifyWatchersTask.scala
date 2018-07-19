@@ -20,9 +20,9 @@ import scala.concurrent.ExecutionContext
 case class NotifyWatchersTask(version: Version, project: Project, messages: MessagesApi)(implicit projects: ProjectBase, ec: ExecutionContext)
   extends Runnable {
 
-  implicit val lang = Lang.defaultLang
+  implicit val lang: Lang = Lang.defaultLang
 
-  def run() = {
+  def run(): Unit = {
     val notification = Notification(
       originId = project.ownerId,
       notificationType = NotificationTypes.NewProjectVersion,

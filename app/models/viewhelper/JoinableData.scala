@@ -14,9 +14,9 @@ trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M]] {
   val ownerRole: R
   val members: Seq[(R, User)]
 
-  def roleClass = ownerRole.getClass.asInstanceOf[Class[_ <: Role]]
+  def roleClass: Class[_ <: Role] = ownerRole.getClass.asInstanceOf[Class[_ <: Role]]
 
-  def filteredMembers(implicit request: OreRequest[_]) = {
+  def filteredMembers(implicit request: OreRequest[_]): Seq[(R, User)] = {
     if (request.data.globalPerm(EditSettings) || // has EditSettings show all
       request.currentUser.map(_.id.get).contains(joinable.ownerId) // Current User is owner
     ) members

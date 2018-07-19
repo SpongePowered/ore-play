@@ -1,7 +1,7 @@
 package controllers
 
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
-import controllers.sugar.{Actions, Bakery}
+import controllers.sugar.{Actions, Bakery, Requests}
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.VersionTable
@@ -21,6 +21,7 @@ import scala.language.higherKinds
 
 import controllers.OreBaseController.{BindFormEitherTPartiallyApplied, BindFormOptionTPartiallyApplied}
 import play.api.data.Form
+import slick.jdbc.JdbcBackend
 import util.functional.{EitherT, Monad, OptionT}
 
 import ore.permission.ReviewProjects
@@ -39,12 +40,12 @@ abstract class OreBaseController(implicit val env: OreEnv,
                                 with Actions
                                 with I18nSupport {
 
-  implicit val db = service.DB.db
+  implicit val db: JdbcBackend#DatabaseDef = service.DB.db
 
   implicit override val users: UserBase = this.service.getModelBase(classOf[UserBase])
   implicit override val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
   implicit override val organizations: OrganizationBase = this.service.getModelBase(classOf[OrganizationBase])
-  implicit val lang = Lang.defaultLang
+  implicit val lang: Lang = Lang.defaultLang
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn](classOf[SignOn])
 
   override def notFound(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())
@@ -100,13 +101,13 @@ abstract class OreBaseController(implicit val env: OreEnv,
 
   def bindFormOptionT[F[_]] = new BindFormOptionTPartiallyApplied[F]
 
-  def OreAction = Action andThen oreAction
+  def OreAction: ActionBuilder[OreRequest, AnyContent] = Action andThen oreAction
 
   /** Ensures a request is authenticated */
-  def Authenticated = Action andThen authAction
+  def Authenticated: ActionBuilder[AuthRequest, AnyContent] = Action andThen authAction
 
   /** Ensures a user's account is unlocked */
-  def UserLock(redirect: Call = ShowHome) = Authenticated andThen userLock(redirect)
+  def UserLock(redirect: Call = ShowHome): ActionBuilder[AuthRequest, AnyContent] = Authenticated andThen userLock(redirect)
 
   /**
     * Retrieves, processes, and adds a [[Project]] to a request.
@@ -115,7 +116,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param slug   Project slug
     * @return       Request with a project if found, NotFound otherwise.
     */
-  def ProjectAction(author: String, slug: String) = OreAction andThen projectAction(author, slug)
+  def ProjectAction(author: String, slug: String): ActionBuilder[Requests.ProjectRequest, AnyContent] = OreAction andThen projectAction(author, slug)
 
 
   /**
@@ -124,7 +125,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param pluginId The project's unique plugin ID
     * @return         Request with a project if found, NotFound otherwise
     */
-  def ProjectAction(pluginId: String) = OreAction andThen projectAction(pluginId)
+  def ProjectAction(pluginId: String): ActionBuilder[Requests.ProjectRequest, AnyContent] = OreAction andThen projectAction(pluginId)
 
   /**
     * Ensures a request is authenticated and retrieves, processes, and adds a
@@ -134,12 +135,12 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param slug Project slug
     * @return Authenticated request with a project if found, NotFound otherwise.
     */
-  def AuthedProjectAction(author: String, slug: String, requireUnlock: Boolean = false) = {
+  def AuthedProjectAction(author: String, slug: String, requireUnlock: Boolean = false): ActionBuilder[AuthedProjectRequest, AnyContent] = {
     val first = if (requireUnlock) UserLock(ShowProject(author, slug)) else Authenticated
     first andThen authedProjectAction(author, slug)
   }
 
-  def AuthedProjectActionById(pluginId: String, requireUnlock: Boolean = true) = {
+  def AuthedProjectActionById(pluginId: String, requireUnlock: Boolean = true): ActionBuilder[AuthedProjectRequest, AnyContent] = {
     val first = if (requireUnlock) UserLock(ShowProject(pluginId)) else Authenticated
     first andThen authedProjectActionById(pluginId)
   }
@@ -150,7 +151,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param organization Organization to retrieve
     * @return             Request with organization if found, NotFound otherwise
     */
-  def OrganizationAction(organization: String) = OreAction andThen organizationAction(organization)
+  def OrganizationAction(organization: String): ActionBuilder[Requests.OrganizationRequest, AnyContent] = OreAction andThen organizationAction(organization)
 
   /**
     * Ensures a request is authenticated and retrieves and adds a
@@ -159,7 +160,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param organization Organization to retrieve
     * @return             Authenticated request with Organization if found, NotFound otherwise
     */
-  def AuthedOrganizationAction(organization: String, requireUnlock: Boolean = false) = {
+  def AuthedOrganizationAction(organization: String, requireUnlock: Boolean = false): ActionBuilder[Requests.AuthedOrganizationRequest, AnyContent] = {
     val first = if (requireUnlock) UserLock(ShowUser(organization)) else Authenticated
     first andThen authedOrganizationAction(organization)
   }
@@ -171,7 +172,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param username User to check
     * @return [[OreAction]] if has permission
     */
-  def UserAction(username: String) = Authenticated andThen userAction(username)
+  def UserAction(username: String): ActionBuilder[AuthRequest, AnyContent] = Authenticated andThen userAction(username)
 
   /**
     * Represents an action that requires a user to reenter their password.
@@ -181,7 +182,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @param sig      Incoming SSO signature
     * @return         None if verified, Unauthorized otherwise
     */
-  def VerifiedAction(username: String, sso: Option[String], sig: Option[String])
+  def VerifiedAction(username: String, sso: Option[String], sig: Option[String]): ActionBuilder[AuthRequest, AnyContent]
   = UserAction(username) andThen verifiedAction(sso, sig)
 
 }

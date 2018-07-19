@@ -19,6 +19,8 @@ import slick.lifted.{Compiled, Rep, TableQuery}
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import util.functional.OptionT
+
 /**
   * Represents an Ore Organization. An organization is like a [[User]] in the
   * sense that it shares many qualities with Users and also has a companion
@@ -46,7 +48,17 @@ case class Organization(override val id: Option[Int] = None,
   /**
     * Contains all information for [[User]] memberships.
     */
-  override val memberships = new MembershipDossier {
+  override val memberships: MembershipDossier {
+  type MembersTable = OrganizationMembersTable
+
+  type MemberType = OrganizationMember
+
+  type RoleTable = OrganizationRoleTable
+
+  type ModelType = Organization
+
+  type RoleType = OrganizationRole
+} = new MembershipDossier {
 
     type ModelType = Organization
     type RoleType = OrganizationRole
@@ -123,7 +135,7 @@ case class Organization(override val id: Option[Int] = None,
     *
     * @return This Organization as a User
     */
-  def toUser(implicit ec: ExecutionContext) = this.service.getModelBase(classOf[UserBase]).withName(this.username)
+  def toUser(implicit ec: ExecutionContext): OptionT[Future, User] = this.service.getModelBase(classOf[UserBase]).withName(this.username)
 
   override val name: String = this.username
   override def url: String = this.username

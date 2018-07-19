@@ -14,6 +14,8 @@ import util.instances.future._
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import controllers.sugar.Requests
+
 /**
   * Represents a unique view on a Project.
   *
@@ -37,7 +39,7 @@ case class ProjectView(override val id: Option[Int] = None,
   override type T = ProjectViewsTable
 
   override def projectId: Int = this.modelId
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectView = this.copy(id = id, createdAt = theTime)
 
 }
 
@@ -51,7 +53,7 @@ object ProjectView {
     * @return         New ProjectView
     */
   def bindFromRequest(request: ProjectRequest[_])(implicit ec: ExecutionContext, users: UserBase): Future[ProjectView] = {
-    implicit val r = request.request
+    implicit val r: Requests.OreRequest[_] = request.request
     checkNotNull(request, "null request", "")
     checkNotNull(users, "null user base", "")
     users.current.subflatMap(_.id).value.map { userId =>

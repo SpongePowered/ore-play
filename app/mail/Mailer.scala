@@ -47,12 +47,12 @@ trait Mailer extends Runnable {
 
   private var session: Session = _
 
-  private def log(msg: String) = if (!this.suppressLogger) Logger.info(msg)
+  private def log(msg: String): Unit = if (!this.suppressLogger) Logger.info(msg)
 
   /**
     * Configures, initializes, and starts this Mailer.
     */
-  def start()(implicit ec: ExecutionContext) = {
+  def start()(implicit ec: ExecutionContext): Unit = {
     Security.addProvider(new Provider)
     val props = System.getProperties
     for (prop <- this.properties.keys)
@@ -67,7 +67,7 @@ trait Mailer extends Runnable {
     *
     * @param email Email to send
     */
-  def send(email: Email) = {
+  def send(email: Email): Unit = {
     log("Sending email to " + email.recipient + "...")
     val message = new MimeMessage(this.session)
     message.setFrom(this.email)
@@ -87,12 +87,12 @@ trait Mailer extends Runnable {
     *
     * @param email Email to push
     */
-  def push(email: Email) = this.queue :+= email
+  def push(email: Email): Unit = this.queue :+= email
 
   /**
     * Sends all queued [[Email]]s.
     */
-  def run() = {
+  def run(): Unit = {
     if (queue.nonEmpty) {
       log(s"Sending ${this.queue.size} queued emails...")
       this.queue.foreach(send)
@@ -108,15 +108,15 @@ final class SpongeMailer @Inject()(config: Configuration, actorSystem: ActorSyst
 
   private val conf = config.get[Configuration]("mail")
 
-  override val username = this.conf.get[String]("username")
-  override val email = InternetAddress.parse(this.conf.get[String]("email"))(0)
-  override val password = this.conf.get[String]("password")
-  override val smtpHost = this.conf.get[String]("smtp.host")
-  override val smtpPort = this.conf.get[Int]("smtp.port")
-  override val transportProtocol = this.conf.get[String]("transport.protocol")
-  override val interval = this.conf.get[FiniteDuration]("interval")
-  override val scheduler = this.actorSystem.scheduler
-  override val properties = this.conf.get[Map[String, String]]("properties")
+  override val username: String = this.conf.get[String]("username")
+  override val email: InternetAddress = InternetAddress.parse(this.conf.get[String]("email"))(0)
+  override val password: String = this.conf.get[String]("password")
+  override val smtpHost: String = this.conf.get[String]("smtp.host")
+  override val smtpPort: Int = this.conf.get[Int]("smtp.port")
+  override val transportProtocol: String = this.conf.get[String]("transport.protocol")
+  override val interval: FiniteDuration = this.conf.get[FiniteDuration]("interval")
+  override val scheduler: Scheduler = this.actorSystem.scheduler
+  override val properties: Map[String, String] = this.conf.get[Map[String, String]]("properties")
 
   start()
 

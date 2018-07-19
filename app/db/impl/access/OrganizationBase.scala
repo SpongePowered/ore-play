@@ -24,8 +24,8 @@ class OrganizationBase(override val service: ModelService,
                        implicit val users: UserBase)
                        extends ModelBase[Organization] {
 
-  override val modelClass = classOf[Organization]
-  implicit val lang = Lang.defaultLang
+  override val modelClass: Class[Organization] = classOf[Organization]
+  implicit val lang: Lang = Lang.defaultLang
 
   val Logger = play.api.Logger("Organizations")
 

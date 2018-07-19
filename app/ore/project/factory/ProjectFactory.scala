@@ -15,10 +15,10 @@ import models.project._
 import models.user.role.ProjectRole
 import models.user.{Notification, User}
 import ore.Colors.Color
-import ore.OreConfig
+import ore.{OreConfig, OreEnv}
 import ore.permission.role.RoleTypes
 import ore.project.Dependency.{ForgeId, SpongeApiId}
-import ore.project.NotifyWatchersTask
+import ore.project.{NotifyWatchersTask, ProjectMember}
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io.{InvalidPluginFileException, PluginFile, PluginUpload, ProjectFiles}
 import ore.user.notification.NotificationTypes
@@ -35,6 +35,10 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import scala.util.Try
+import scala.util.matching.Regex
+
+import db.impl.{ProjectMembersTable, ProjectRoleTable}
+import ore.user.MembershipDossier
 
 /**
   * Manages the project and version creation pipeline.
@@ -49,15 +53,15 @@ trait ProjectFactory {
   val cacheApi: SyncCacheApi
   val actorSystem: ActorSystem
   val pgp: PGPVerifier = new PGPVerifier
-  val dependencyVersionRegex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
+  val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
   implicit val messages: MessagesApi
   implicit val config: OreConfig
   implicit val forums: OreDiscourseApi
-  implicit val env = this.fileManager.env
-  implicit val lang = Lang.defaultLang
+  implicit val env: OreEnv = this.fileManager.env
+  implicit val lang: Lang = Lang.defaultLang
 
-  var isPgpEnabled = this.config.security.get[Boolean]("requirePgp")
+  var isPgpEnabled: Boolean = this.config.security.get[Boolean]("requirePgp")
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -270,7 +274,17 @@ trait ProjectFactory {
       newProject.updateSettings(pending.settings)
 
       // Invite members
-      val dossier = newProject.memberships
+      val dossier: MembershipDossier {
+  type MembersTable = ProjectMembersTable
+
+  type MemberType = ProjectMember
+
+  type RoleTable = ProjectRoleTable
+
+  type ModelType = Project
+
+  type RoleType = ProjectRole
+} = newProject.memberships
       val owner = newProject.owner
       val ownerId = owner.userId
       val projectId = newProject.id.get

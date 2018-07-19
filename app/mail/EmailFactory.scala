@@ -15,8 +15,8 @@ final class EmailFactory @Inject()(override val messagesApi: MessagesApi,
   val PgpUpdated = "email.pgpUpdate"
   val AccountUnlocked = "email.accountUnlock"
 
-  implicit val users = this.service.getModelBase(classOf[UserBase])
-  implicit val lang = Lang.defaultLang
+  implicit val users: UserBase = this.service.getModelBase(classOf[UserBase])
+  implicit val lang : Lang     = Lang.defaultLang
 
   def create(user: User, id: String)(implicit request: OreRequest[_]): Email = {
 

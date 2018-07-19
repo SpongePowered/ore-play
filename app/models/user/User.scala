@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
 import db.{ModelFilter, Named}
-import db.access.ModelAccess
+import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.access.{OrganizationBase, UserBase}
@@ -145,7 +145,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @param _lastPgpPubKeyUpdate Last time this User updated their public key
     */
-  def setLastPgpPubKeyUpdate(_lastPgpPubKeyUpdate: Timestamp) = Defined {
+  def setLastPgpPubKeyUpdate(_lastPgpPubKeyUpdate: Timestamp): Future[Int] = Defined {
     this._lastPgpPubKeyUpdate = Option(_lastPgpPubKeyUpdate)
     update(LastPGPPubKeyUpdate)
   }
@@ -419,7 +419,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return Projects owned by user
     */
-  def projects = this.schema.getChildren[Project](classOf[Project], this)
+  def projects: ModelAccess[Project] = this.schema.getChildren[Project](classOf[Project], this)
 
   /**
     * Returns the Project with the specified name that this User owns.
@@ -434,21 +434,21 @@ case class User(override val id: Option[Int] = None,
     *
     * @return ProjectRoles
     */
-  def projectRoles = this.schema.getChildren[ProjectRole](classOf[ProjectRole], this)
+  def projectRoles: ModelAccess[ProjectRole] = this.schema.getChildren[ProjectRole](classOf[ProjectRole], this)
 
   /**
     * Returns the [[Organization]]s that this User owns.
     *
     * @return Organizations user owns
     */
-  def ownedOrganizations = this.schema.getChildren[Organization](classOf[Organization], this)
+  def ownedOrganizations: ModelAccess[Organization] = this.schema.getChildren[Organization](classOf[Organization], this)
 
   /**
     * Returns the [[Organization]]s that this User belongs to.
     *
     * @return Organizations user belongs to
     */
-  def organizations
+  def organizations: ModelAssociationAccess[OrganizationMembersTable, Organization]
   = this.schema.getAssociation[OrganizationMembersTable, Organization](classOf[OrganizationMembersTable], this)
 
   /**
@@ -456,7 +456,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return OrganizationRoles
     */
-  def organizationRoles = this.schema.getChildren[OrganizationRole](classOf[OrganizationRole], this)
+  def organizationRoles: ModelAccess[OrganizationRole] = this.schema.getChildren[OrganizationRole](classOf[OrganizationRole], this)
 
   /**
     * Returns true if this User is also an organization.
@@ -486,7 +486,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return Projects user is watching
     */
-  def watching = this.schema.getAssociation[ProjectWatchersTable, Project](classOf[ProjectWatchersTable], this)
+  def watching: ModelAssociationAccess[ProjectWatchersTable, Project] = this.schema.getAssociation[ProjectWatchersTable, Project](classOf[ProjectWatchersTable], this)
 
   /**
     * Sets the "watching" status on the specified project.
@@ -494,7 +494,7 @@ case class User(override val id: Option[Int] = None,
     * @param project Project to update status on
     * @param watching True if watching
     */
-  def setWatching(project: Project, watching: Boolean)(implicit ec: ExecutionContext) = {
+  def setWatching(project: Project, watching: Boolean)(implicit ec: ExecutionContext): Future[Any] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     val contains = this.watching.contains(project)
@@ -509,7 +509,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return Flags submitted by user
     */
-  def flags = this.schema.getChildren[Flag](classOf[Flag], this)
+  def flags: ModelAccess[Flag] = this.schema.getChildren[Flag](classOf[Flag], this)
 
   /**
     * Returns true if the User has an unresolved [[Flag]] on the specified
@@ -529,7 +529,7 @@ case class User(override val id: Option[Int] = None,
     *
     * @return User notifications
     */
-  def notifications = this.schema.getChildren[Notification](classOf[Notification], this)
+  def notifications: ModelAccess[Notification] = this.schema.getChildren[Notification](classOf[Notification], this)
 
   /**
     * Sends a [[Notification]] to this user.
@@ -537,7 +537,7 @@ case class User(override val id: Option[Int] = None,
     * @param notification Notification to send
     * @return Future result
     */
-  def sendNotification(notification: Notification)(implicit ec: ExecutionContext) = {
+  def sendNotification(notification: Notification)(implicit ec: ExecutionContext): Future[Notification] = {
     checkNotNull(notification, "null notification", "")
     this.config.debug("Sending notification: " + notification, -1)
     this.service.access[Notification](classOf[Notification]).add(notification.copy(userId = this.id.get))
@@ -584,11 +584,11 @@ case class User(override val id: Option[Int] = None,
     if (isDefined) update(ReadPrompts)
   }
 
-  def name = this.username
-  def url = this.username
-  override val scope = GlobalScope
-  override def userId = this.id.get
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(createdAt = theTime)
+  def name: String = this.username
+  def url: String = this.username
+  override val scope: GlobalScope.type = GlobalScope
+  override def userId: Int = this.id.get
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): User = this.copy(createdAt = theTime)
 
 }
 

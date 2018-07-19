@@ -47,7 +47,7 @@ abstract class StatEntry[Subject <: Model](override val id: Option[Int] = None,
     OptionT.fromOption[Future](this._userId).flatMap(this.userBase.get(_))
   }
 
-  def userId = _userId
+  def userId: Option[Int] = _userId
 
   /**
     * Sets the User associated with this entry, if any.

@@ -82,7 +82,7 @@ trait SingleSignOnConsumer {
     * @param baseUrl    Base URL
     * @return           New payload
     */
-  def generatePayload(returnUrl: String, baseUrl: String, nonce: String) = {
+  def generatePayload(returnUrl: String, baseUrl: String, nonce: String): String = {
     val payload = "return_sso_url=" + returnUrl + "&nonce=" + nonce
     new String(Base64.getEncoder.encode(payload.getBytes(this.CharEncoding)))
   }
@@ -93,7 +93,7 @@ trait SingleSignOnConsumer {
     * @param payload  Payload to sign
     * @return         Signature of payload
     */
-  def generateSignature(payload: String) = hmac_sha256(payload.getBytes(this.CharEncoding))
+  def generateSignature(payload: String): String = hmac_sha256(payload.getBytes(this.CharEncoding))
 
   /**
     * Validates an incoming payload and extracts user information. The
@@ -178,10 +178,10 @@ class SpongeSingleSignOnConsumer @Inject()(override val ws: WSClient, config: Co
 
   private val conf = this.config.get[Configuration]("security")
 
-  override val loginUrl = this.conf.get[String]("sso.loginUrl")
-  override val signupUrl = this.conf.get[String]("sso.signupUrl")
-  override val verifyUrl = this.conf.get[String]("sso.verifyUrl")
-  override val secret = this.conf.get[String]("sso.secret")
-  override val timeout = this.conf.get[FiniteDuration]("sso.timeout")
+  override val loginUrl: String = this.conf.get[String]("sso.loginUrl")
+  override val signupUrl: String = this.conf.get[String]("sso.signupUrl")
+  override val verifyUrl: String = this.conf.get[String]("sso.verifyUrl")
+  override val secret: String = this.conf.get[String]("sso.secret")
+  override val timeout: FiniteDuration = this.conf.get[FiniteDuration]("sso.timeout")
 
 }
