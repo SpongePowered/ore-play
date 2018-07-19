@@ -7,17 +7,32 @@
     )
 }
 
+@normalAlert = {
 @flash.get(alertType).map { message =>
+    @(messages(message))
+}
+}
+
+@numAlert = {
+@flash.get(s"$alertType-num").map { num =>
+    <ul>
+        @for(i <- 0 until num.toInt; msg <- flash.get(s"$alertType-$i").toSeq) {
+            <li>
+            • @messages(msg)
+            </li>
+        }
+    </ul>
+}
+}
+
+@if(flash.get(alertType).isDefined || flash.get(s"$alertType-num").isDefined) {
     <div class="alert alert-fade @bootstrapNames(alertType) alert-dismissable"
     role="alert" style="display: none;">
         <button type="button" class="close" data-dismiss="alert" aria-label="@messages("general.close")">
             <span aria-hidden="true">&times;</span>
         </button>
 
-        @if(flash.get(s"$alertType-israw").contains("true")) {
-            @Html(message)
-        } else {
-            @(messages(message))
-        }
+        @normalAlert
+        @numAlert
     </div>
 }

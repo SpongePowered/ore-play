@@ -14,7 +14,7 @@ import models.project.TagColors.TagColor
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
-import models.user.{Notification, Organization, SignOn, User, Session => DbSession}
+import models.user.{LoggedActionContext, Notification, Organization, SignOn, User, LoggedAction, LoggedActionModel, Session => DbSession}
 import ore.Colors.Color
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
@@ -374,4 +374,17 @@ class VisibilityChangeTable(tag: RowTag) extends ModelTable[VisibilityChange](ta
   def visibility        =   column[Int]("visibility")
 
   override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VisibilityChange.tupled, VisibilityChange.unapply)
+}
+
+class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
+
+  def userId             =  column[Int]("user_id")
+  def address            =  column[InetString]("address")
+  def action             =  column[LoggedAction]("action")
+  def actionContext      =  column[LoggedActionContext]("action_context")
+  def actionContextId      =  column[Int]("action_context_id")
+  def newState           =  column[String]("new_state")
+  def oldState           =  column[String]("old_state")
+
+  override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState) <> (LoggedActionModel.tupled, LoggedActionModel.unapply)
 }

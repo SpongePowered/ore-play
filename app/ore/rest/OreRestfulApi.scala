@@ -361,7 +361,7 @@ trait OreRestfulApi {
       jsonProjects <- writeProjects(allProjects)
     } yield {
       val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
-      userList.map { case user =>
+      userList.map { user =>
         obj(
           "id"              ->  user.id,
           "createdAt"       ->  user.createdAt.get.toString,
@@ -369,7 +369,7 @@ trait OreRestfulApi {
           "roles"           ->  user.globalRoles.map(_.title),
           "starred"         ->  toJson(stars.getOrElse(user.id.get, Seq.empty)),
           "avatarUrl"       ->  user.avatarUrl,
-          "projects"        ->  toJson(projectsByUser.get(user.id.get))
+          "projects"        ->  toJson(projectsByUser.getOrElse(user.id.get, Nil))
         )
       }
     }

@@ -7,6 +7,7 @@
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
+@import ore.permission.UploadVersions
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -85,7 +86,7 @@
                                 }
                             }
 
-                            @if(sp.perms(EditVersions)) {
+                            @if(sp.perms(UploadVersions)) {
                                 @if(v.p.versions == 1) {
                                     <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                        title="@messages("version.delete.cannotLast")">
@@ -98,11 +99,21 @@
                                 }
                             }
 
-                            <a href="@versionRoutes.download(
-                                v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)"
-                               class="btn btn-primary">
-                                <i class="fa fa-download"></i> @messages("general.download")
-                            </a>
+                            <div class="btn-group btn-download">
+                                <a href="@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)"
+                                title="@messages("project.download.recommend")" data-toggle="tooltip"
+                                data-placement="bottom" class="btn btn-primary">
+                                    <i class="fa fa-download"></i> @messages("general.download")
+                                </a>
+                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="caret"></span>
+                                    <span class="sr-only">Toggle Dropdown</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right">
+                                    <li><a href="@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)">@messages("general.download")</a></li>
+                                    <li><a href="#" class="copy-url" data-clipboard-text="@config.app.get[String]("baseUrl")@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)">Copy URL</a></li>
+                                </ul>
+                            </div>
 
                         </div>
                     </div>
@@ -201,7 +212,7 @@
         </div>
     </div>
 
-    @if(sp.perms(EditVersions) && v.p.versions != 1) {
+    @if(sp.perms(UploadVersions) && v.p.versions != 1) {
         <div class="modal fade" id="modal-delete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">

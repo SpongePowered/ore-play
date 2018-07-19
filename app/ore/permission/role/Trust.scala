@@ -23,14 +23,19 @@ case object Limited extends Trust { override val level = 1 }
   * User has a standard amount of trust and may perform moderator-like actions
   * within the site.
   */
-case object Standard extends Trust { override val level = 2 }
+case object Moderation extends Trust { override val level = 2 }
 
 /**
-  * User that can perform any action but they are not on top.
+  * Users who can publish versions
   */
-case object Lifted extends Trust { override val level = 3 }
+case object Publish extends Trust { override val level = 3 }
+
+/**
+  * User that can perform almost any action but they are not on top.
+  */
+case object Lifted extends Trust { override val level = 4 }
 
 /**
   * User is absolutely trusted and may perform any action.
   */
-case object Absolute extends Trust { override val level = 4 }
+case object Absolute extends Trust { override val level = 5 }

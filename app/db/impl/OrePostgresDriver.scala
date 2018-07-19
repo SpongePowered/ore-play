@@ -6,6 +6,7 @@ import db.table.key.Aliases
 import models.project.TagColors.TagColor
 import models.project.VisibilityTypes.Visibility
 import models.project.{TagColors, VisibilityTypes}
+import models.user.{LoggedActionContext, LoggedAction}
 import ore.Colors
 import ore.Colors.Color
 import ore.permission.role.RoleTypes
@@ -50,6 +51,8 @@ trait OrePostgresDriver extends ExPostgresProfile with PgArraySupport with PgAgg
     implicit val downloadTypeTypeMapper = MappedJdbcType.base[DownloadType, Int](_.id, DownloadTypes.apply)
     implicit val projectApiKeyTypeTypeMapper = MappedJdbcType.base[ProjectApiKeyType, Int](_.id, ProjectApiKeyTypes.apply)
     implicit val visibiltyTypeMapper = MappedJdbcType.base[Visibility, Int](_.id, VisibilityTypes.withId)
+    implicit val loggedActionMapper = MappedJdbcType.base[LoggedAction, Int](_.value, LoggedAction.withValue)
+    implicit val loggedActionContextMapper = MappedJdbcType.base[LoggedActionContext, Int](_.value, LoggedActionContext.withValue)
   }
 
 }

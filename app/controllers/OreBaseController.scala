@@ -1,6 +1,6 @@
 package controllers
 
-import controllers.sugar.Requests.OreRequest
+import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
 import controllers.sugar.{Actions, Bakery}
 import db.ModelService
 import db.access.ModelAccess
@@ -42,7 +42,6 @@ abstract class OreBaseController(implicit val env: OreEnv,
   implicit override val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
   implicit override val organizations: OrganizationBase = this.service.getModelBase(classOf[OrganizationBase])
   implicit val lang = Lang.defaultLang
-
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn](classOf[SignOn])
 
   override def notFound(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())

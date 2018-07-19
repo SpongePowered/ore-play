@@ -182,6 +182,16 @@ The main header displayed on each layout.
                             </li>
                         }
 
+                        @if(request.data.globalPerm(ViewLogs)) {
+                            <li>
+                                <a href="@routes.Application.showLog()">
+                                    <span class="pull-left">
+                                    @messages("admin.log.title")
+                                    </span>
+                                    <i class="pull-right fa fa-list"></i>
+                                </a>
+                            </li>
+                        }
 
                         <li role="separator" class="divider"></li>
                         <li>

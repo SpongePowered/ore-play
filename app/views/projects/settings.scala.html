@@ -262,7 +262,12 @@
                 @form(action = projectRoutes.softDelete(p.project.ownerName, p.project.slug)) {
                 <div class="modal-body">
                     @messages("project.delete.info")
+                    <br>
                     <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                    <br>
+                    <div class="alert alert-warning">
+                        @messages("project.delete.info.uniqueid", p.project.name)
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <div class="form-inline">

@@ -14,6 +14,7 @@ import db.{ModelFilter, ModelSchema, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.project._
+import models.user.LoggedActionModel
 import models.user.role._
 import models.viewhelper.{HeaderData, OrganizationData, ProjectData, ScopedOrganizationData}
 import ore.Platforms.Platform
@@ -136,12 +137,17 @@ final class Application @Inject()(data: DataHelper,
     }
    }
 
+  def showQueue() = showQueueWithPage(0)
+
   /**
     * Shows the moderation queue for unreviewed versions.
     *
     * @return View of unreviewed versions.
     */
-  def showQueue() = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+  def showQueueWithPage(page: Int) = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+    // TODO: Pages
+    val limit = 50
+    val offset = page * limit
 
     val data = this.service.DB.db.run(queryQueue.result).flatMap { list =>
       service.DB.db.run(queryReviews(list.map(_._1.id.get)).result).map { reviewList =>
@@ -201,7 +207,7 @@ final class Application @Inject()(data: DataHelper,
     for {
       (v, u) <- versionTable joinLeft userTable on (_.authorId === _.id)
       c <- channelTable if v.channelId === c.id && v.isReviewed =!= true
-      p <- projectTable if v.projectId === p.id
+      p <- projectTable if v.projectId === p.id && p.visibility =!= VisibilityTypes.SoftDelete
       ou <- userTable if p.userId === ou.id
     } yield {
       (v, p, c, u.map(_.name), ou)
@@ -389,6 +395,19 @@ final class Application @Inject()(data: DataHelper,
       last10DaysCountQuery("project_flags", "resolved_at")
     ).parMapN { (reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed) =>
       Ok(views.users.admin.stats(reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed))
+    }
+  }
+
+  def showLog() = showLogWithPage(0)
+
+  def showLogWithPage(page: Int) = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
+    val limit = 50
+    val offset = page * limit
+    for {
+      actions <- service.access[LoggedActionModel](classOf[LoggedActionModel]).filter(u => true, limit, offset)
+      size <- service.access[LoggedActionModel](classOf[LoggedActionModel]).size
+    } yield {
+      Ok(views.users.admin.log(actions, limit, offset, page, size))
     }
   }
 

@@ -1,4 +1,4 @@
-Ore
+Ore [![Build Status](https://travis-ci.org/SpongePowered/Ore.svg?branch=master)](https://travis-ci.org/SpongePowered/Ore)
 ===
 
 Repository software for Sponge plugins and Forge mods https://ore.spongepowered.org/

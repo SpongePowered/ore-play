@@ -48,7 +48,7 @@
 							<a href="@routes.Application.showActivities(user.username)">@user.username</a>
 						</td>
 						<td>
-							@defining(user.globalRoles.toSeq.sortBy(_.trust).reverse.lastOption) { roleType =>
+							@defining(user.globalRoles.toSeq.sortBy(_.trust).lastOption) { roleType =>
 								@roleType.map { role =>
 									<span class="user-role channel" style="background-color: @role.color.hex">
 									@role.title

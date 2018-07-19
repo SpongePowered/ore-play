@@ -58,10 +58,10 @@
                                 </div>
                                 <div class="col-xs-12">
                                     <span class="pull-right btn-group-sm">
-                                        <a target="_blank" href="https://forums.spongepowered.org/users/@user.username" class="btn btn-default">
+                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@user.username" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageUser")
                                         </a>
-                                        <a target="_blank" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
+                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageOwner")
                                         </a>
                                         @projects.helper.btnHide(project, projectPerm, request.data.currentUser.get)

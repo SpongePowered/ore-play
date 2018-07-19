@@ -1,4 +1,5 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.routes.{Users => userRoutes}
 @import controllers.sugar.Requests.OreRequest
 @import db.ModelService
 @import models.project.{Project, Tag, Version}
@@ -6,6 +7,7 @@
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
 @import views.html.projects.{list => projectList}
+@import views.html.utils.userAvatar
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
@@ -23,6 +25,37 @@
 
         <div class="col-md-4">
             @if(!u.isOrga) {
+                <div class="panel-stars panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"> @messages("org.plural")</h3>
+                    </div>
+                    <table class="table panel-body">
+                        <tbody>
+                        @if(u.orgas.isEmpty) {
+                            <tr><td><i class="minor"><i class="fa fa-star"></i> @messages("user.noOrganizations", u.user.name)</i></td></tr>
+                        } else {
+                            @u.orgas.map { case (organization, user, role, owner) =>
+                            <tr>
+                                <td>
+                                    @userAvatar(Some(organization.name), user.avatarUrl, clazz = "user-avatar-xxs")
+                                <a href="@userRoutes.showProjects(organization.name, None)">
+                                @organization.name
+                                </a>
+                                <div class="pull-right">
+                                @role.roleType.title
+                            </div>
+                            </td>
+                            </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+
+                    <div class="panel-footer">
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+
                 <div class="panel-stars panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title"><i class="fa fa-star"></i> @messages("project.starred")</h3>

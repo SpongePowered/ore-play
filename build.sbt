@@ -1,5 +1,5 @@
 name := "ore"
-version := "1.5.23"
+version := "1.6.2"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
@@ -24,6 +24,7 @@ libraryDependencies ++= Seq(
   "org.bouncycastle"      %   "bcpkix-jdk15on"          %   "1.59",
   "org.bouncycastle"      %   "bcpg-jdk15on"            %   "1.59",
   "javax.mail"            %   "mail"                    %   "1.4.7",
+  "com.beachape"          %%  "enumeratum"              %   "1.5.13",
 
   "com.vladsch.flexmark"  % "flexmark"                       %  "0.34.0",
   "com.vladsch.flexmark"  % "flexmark-ext-autolink"          %  "0.34.0",
@@ -36,8 +37,9 @@ libraryDependencies ++= Seq(
 
   "org.webjars"       % "jquery"       % "2.2.4",
   "org.webjars"       % "font-awesome" % "4.7.0",
-  "org.webjars.bower" % "filesize"     % "3.5.6",
-  "org.webjars.bower" % "momentjs"     % "2.22.2"
+  "org.webjars.npm"   % "filesize"     % "3.6.1",
+  "org.webjars.npm"   % "moment"       % "2.22.2",
+  "org.webjars.bowergithub.zenorocha" % "clipboard.js" % "2.0.1"
 )
 
 unmanagedResourceDirectories in Test +=  (baseDirectory.value / "target/web/public/test")

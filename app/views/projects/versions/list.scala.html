@@ -7,7 +7,7 @@ Versions page within Project overview.
 @import models.project.{Channel, Version}
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.{EditChannels, EditVersions}
+@import ore.permission.{EditChannels, UploadVersions}
 @import security.NonceFilter._
 @(p: ProjectData,
         sp: ScopedProjectData,
@@ -52,7 +52,7 @@ Versions page within Project overview.
 
                     <div class="panel-heading">
                         <h4 class="panel-title pull-left">@messages("project.versions")</h4>
-                        @if(sp.perms(EditVersions)) {
+                        @if(sp.perms(UploadVersions)) {
                             <a href="@versionRoutes.showCreator(p.project.ownerName, p.project.slug)" class="btn yellow">
                             @messages("project.version.new")
                             </a>

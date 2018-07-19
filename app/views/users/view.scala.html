@@ -129,13 +129,6 @@
 
                 <!-- Roles -->
                 <ul class="user-roles">
-                    @u.orgas.map { case (organization, user, role, owner) =>
-                        <li class="organization-role" data-toggle="tooltip" data-placement="top"
-                            data-title="@organization.name">
-                            @userAvatar(Some(organization.name), user.avatarUrl, clazz = "user-avatar-xxs")
-                        </li>
-                    }
-
                     @defining(u.user.globalRoles.toList.sortBy(_.trust).lastOption) { roleOpt =>
                         @roleOpt.map { role =>
                             <li class="user-role channel" style="background-color: @role.color.hex">@role.title</li>

@@ -106,7 +106,7 @@ Base template for Project overview.
 
                                 @p.settings.issues.map { issues =>
                                     <li id="issues">
-                                        <a title="@issues" target="_blank"
+                                        <a title="@issues" target="_blank" rel="noopener"
                                             href="@Projects.showIssues(
                                                 p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-bug"></i> Issues <i class="fa fa-external-link"></i></a>
@@ -115,7 +115,7 @@ Base template for Project overview.
 
                                 @p.settings.source.map { source =>
                                     <li id="source">
-                                        <a title="@source" target="_blank"
+                                        <a title="@source" target="_blank" rel="noopener"
                                         href="@Projects.showSource(p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-code"></i> Source <i class="fa fa-external-link"></i>
                                         </a>
@@ -214,11 +214,21 @@ Base template for Project overview.
 
                             <!-- Download button -->
                             @if(!p.project.isDeleted) {
-                                <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
-                                title="@messages("project.download.recommend")" data-toggle="tooltip"
-                                data-placement="bottom" class="btn btn-primary">
-                                    <i class="fa fa-download"></i> @messages("general.download")
-                                </a>
+                                <div class="btn-group btn-download">
+                                    <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
+                                    title="@messages("project.download.recommend")" data-toggle="tooltip"
+                                    data-placement="bottom" class="btn btn-primary">
+                                        <i class="fa fa-download"></i> @messages("general.download")
+                                    </a>
+                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <span class="caret"></span>
+                                        <span class="sr-only">Toggle Dropdown</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-right">
+                                        <li><a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)">@messages("general.download")</a></li>
+                                        <li><a href="#" class="copy-url" data-clipboard-text="@config.app.get[String]("baseUrl")@Versions.download(p.project.ownerName, p.project.slug, p.recommendedVersion.map(v => v.versionString).getOrElse(""), None)">Copy URL</a></li>
+                                    </ul>
+                                </div>
                             }
 
                             @if(request.hasUser && (request.data.globalPerm(ReviewFlags) || request.data.globalPerm(ViewLogs))) {

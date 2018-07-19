@@ -2,18 +2,16 @@ package controllers.project
 
 import java.nio.file.{Files, Path}
 
-import _root_.util.StringUtils._
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.AuthRequest
+import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest}
 import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
 import models.project.{Note, VisibilityTypes}
-import models.user.User
+import models.user._
 import ore.permission._
-import ore.permission.scope.GlobalScope
 import ore.project.factory.ProjectFactory
 import ore.project.io.{InvalidPluginFileException, PluginUpload}
 import ore.rest.ProjectApiKeyTypes
@@ -22,6 +20,9 @@ import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.cache.{AsyncCacheApi, SyncCacheApi}
 import play.api.i18n.MessagesApi
 import security.spauth.SingleSignOnConsumer
+import _root_.util.StringUtils._
+import com.github.tminglei.slickpg.InetString
+import ore.permission.scope.GlobalScope
 import views.html.{projects => views}
 import db.impl.OrePostgresDriver.api._
 import scala.collection.JavaConverters._
@@ -92,13 +93,13 @@ class Projects @Inject()(stats: StatTracker,
           case Some(uploadData) =>
             try {
               val plugin = this.factory.processPluginUpload(uploadData, user)
-              val pendingProject = this.factory.startProject(plugin)
-              pendingProject.cache()
-              val model = pendingProject.underlying
+              val project = this.factory.startProject(plugin)
+              project.cache()
+              val model = project.underlying
               Redirect(self.showCreatorWithMeta(model.ownerName, model.slug))
             } catch {
               case e: InvalidPluginFileException =>
-                Redirect(self.showCreator()).withError(Option(e.getMessage).getOrElse(""))
+                Redirect(self.showCreator()).withErrors(Option(e.getMessage).toList)
             }
         }
     }
@@ -114,7 +115,7 @@ class Projects @Inject()(stats: StatTracker,
   def showCreatorWithMeta(author: String, slug: String) = UserLock().async { implicit request =>
     this.factory.getPendingProject(author, slug) match {
       case None =>
-        Future.successful(Redirect(self.showCreator()))
+        Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
       case Some(pending) =>
         for {
           (orgas, owner) <- (request.user.organizations.all, pending.underlying.owner.user).parTupled
@@ -136,7 +137,7 @@ class Projects @Inject()(stats: StatTracker,
   def showInvitationForm(author: String, slug: String) = UserLock().async { implicit request =>
     orgasUserCanUploadTo(request.user) flatMap { organisationUserCanUploadTo =>
         this.factory.getPendingProject(author, slug) match {
-          case None => Future.successful(Redirect(self.showCreator()))
+          case None => Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
           case Some(pendingProject) =>
             this.forms.ProjectSave(organisationUserCanUploadTo.toSeq).bindFromRequest().fold(
               hasErrors =>
@@ -189,7 +190,10 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showFirstVersionCreator(author: String, slug: String) = UserLock() { implicit request =>
     val res = for {
-      pendingProject <- EitherT.fromOption[Id](this.factory.getPendingProject(author, slug), Redirect(self.showCreator()))
+      pendingProject <- EitherT.fromOption[Id](this.factory.getPendingProject(author, slug), Redirect(self.showCreator()).withError(
+
+
+        "error.project.timeout"))
       roles <- bindFormEitherT[Id](this.forms.ProjectMemberRoles)(_ => BadRequest: Result)
     } yield {
       pendingProject.roles = roles.build()
@@ -251,7 +255,7 @@ class Projects @Inject()(stats: StatTracker,
   def postDiscussionReply(author: String, slug: String) = AuthedProjectAction(author, slug) async { implicit request =>
     this.forms.ProjectReply.bindFromRequest.fold(
       hasErrors =>
-        Future.successful(Redirect(self.showDiscussion(author, slug)).withError(hasErrors.errors.head.message)),
+        Future.successful(Redirect(self.showDiscussion(author, slug)).withFormErrors(hasErrors.errors)),
       formData => {
         val data = request.data
         if (data.project.topicId == -1)
@@ -267,7 +271,7 @@ class Projects @Inject()(stats: StatTracker,
             errors <- this.forums.postDiscussionReply(data.project, poster, formData.content)
           } yield {
             val result = Redirect(self.showDiscussion(author, slug))
-            if (errors.nonEmpty) result.withError(errors.head) else result
+            if (errors.nonEmpty) result.withErrors(errors) else result
           }
         }
       }
@@ -344,6 +348,7 @@ class Projects @Inject()(stats: StatTracker,
           FormError(ShowProject(data.project), hasErrors),
         formData => {
           data.project.flagFor(user, formData.reason, formData.comment)
+          UserActionLogger.log(request.request, LoggedAction.ProjectFlagged, data.project.id.getOrElse(-1), s"Flagged by ${user.name}", s"Not flagged by ${user.name}")
           Redirect(self.show(author, slug)).flashing("reported" -> "true")
         }
       )
@@ -445,6 +450,7 @@ class Projects @Inject()(stats: StatTracker,
           Files.createDirectories(pendingDir)
         Files.list(pendingDir).iterator().asScala.foreach(Files.delete)
         tmpFile.ref.moveTo(pendingDir.resolve(tmpFile.filename).toFile, replace = true)
+        UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.getOrElse(-1), "", "") //todo data
         Ok
     }
   }
@@ -461,6 +467,7 @@ class Projects @Inject()(stats: StatTracker,
     val fileManager = this.projects.fileManager
     fileManager.getIconPath(data.project).foreach(Files.delete)
     fileManager.getPendingIconPath(data.project).foreach(Files.delete)
+    UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.getOrElse(-1), "", "") //todo data
     Files.delete(fileManager.getPendingIconDir(data.project.ownerName, data.project.name))
     Ok
   }
@@ -493,7 +500,10 @@ class Projects @Inject()(stats: StatTracker,
       name <- bindFormOptionT[Future](this.forms.ProjectMemberRemove)
       user <- this.users.withName(name)
     } yield {
-      request.data.project.memberships.removeMember(user)
+      val project = request.data.project
+      project.memberships.removeMember(user)
+      UserActionLogger.log(request.request, LoggedAction.ProjectMemberRemoved, project.id.getOrElse(-1),
+        s"'$user.name' is not a member of ${project.ownerName}/${project.name}", s"'$user.name' is a member of ${project.ownerName}/${project.name}")
       Redirect(self.showSettings(author, slug))
     }
 
@@ -515,6 +525,7 @@ class Projects @Inject()(stats: StatTracker,
           Future.successful(FormError(self.showSettings(author, slug), hasErrors)),
         formData => {
           data.settings.save(data.project, formData).map { _ =>
+            UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.getOrElse(-1), "", "") //todo add old new data
             Redirect(self.show(author, slug))
           }
         }
@@ -537,7 +548,12 @@ class Projects @Inject()(stats: StatTracker,
       available <- EitherT.right[Result](projects.isNamespaceAvailable(author, slugify(newName)))
       _ <- EitherT.cond[Future](available, (), Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
       _ <- EitherT.right[Result](this.projects.rename(project, newName))
-    } yield Redirect(self.show(author, project.slug))
+    } yield {
+      val data = request.data
+      val oldName = data.project.name
+      UserActionLogger.log(request.request, LoggedAction.ProjectRenamed, data.project.id.getOrElse(-1), s"$author/$newName", s"$author/$oldName")
+      Redirect(self.show(author, project.slug))
+    }
 
     res.merge
   }
@@ -556,12 +572,15 @@ class Projects @Inject()(stats: StatTracker,
       val newVisibility = VisibilityTypes.withId(visibility)
       request.user can newVisibility.permission in GlobalScope flatMap { perm =>
         if (perm) {
+          val oldVisibility = request.data.project.visibility;
+
           val change = if (newVisibility.showModal) {
             val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
             request.data.project.setVisibility(newVisibility, comment, request.user.id.get)
           } else {
             request.data.project.setVisibility(newVisibility, "", request.user.id.get)
           }
+          UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, request.data.project.id.getOrElse(-1), newVisibility.nameKey, VisibilityTypes.NeedsChanges.nameKey)
           change.map(_ => Ok)
         } else {
           Future.successful(Unauthorized)
@@ -580,6 +599,7 @@ class Projects @Inject()(stats: StatTracker,
     val data = request.data
     if (data.visibility == VisibilityTypes.New) {
       data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.get)
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.Public.nameKey, VisibilityTypes.New.nameKey)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
@@ -594,6 +614,7 @@ class Projects @Inject()(stats: StatTracker,
     val data = request.data
     if (data.visibility == VisibilityTypes.NeedsChanges) {
       data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.get)
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.NeedsApproval.nameKey, VisibilityTypes.NeedsChanges.nameKey)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
@@ -623,6 +644,7 @@ class Projects @Inject()(stats: StatTracker,
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
       getProject(author, slug).map { project =>
         this.projects.delete(project)
+        UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.getOrElse(-1), "null", project.visibility.nameKey)
         Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name))
       }.merge
     }
@@ -639,6 +661,7 @@ class Projects @Inject()(stats: StatTracker,
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
     data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.SoftDelete.nameKey, data.project.visibility.nameKey)
       Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", data.project.name))
     }
   }

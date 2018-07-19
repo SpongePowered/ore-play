@@ -16,7 +16,7 @@ import form.OreForms
 import javax.inject.Inject
 import models.project._
 import models.viewhelper.{ProjectData, VersionData}
-import ore.permission.{EditVersions, ReviewProjects}
+import ore.permission.{EditVersions, ReviewProjects, UploadVersions}
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.factory.{PendingProject, PendingVersion, ProjectFactory}
 import ore.project.io.DownloadTypes._
@@ -29,10 +29,13 @@ import play.api.libs.json.Json
 import play.api.mvc.{Request, Result}
 import play.filters.csrf.CSRF
 import security.spauth.SingleSignOnConsumer
-import util.JavaUtils.autoClose
 import util.StringUtils._
 import util.syntax._
 import views.html.projects.{versions => views}
+import _root_.views.html.helper
+import models.user.{UserActionLogger, LoggedAction}
+import ore.project.factory.TagAlias.ProjectTag
+import util.JavaUtils.autoClose
 import scala.concurrent.{ExecutionContext, Future}
 
 import util.functional.{EitherT, OptionT}
@@ -60,6 +63,9 @@ class Versions @Inject()(stats: StatTracker,
 
   private def VersionEditAction(author: String, slug: String)
   = AuthedProjectAction(author, slug, requireUnlock = true) andThen ProjectPermissionAction(EditVersions)
+
+  private def VersionUploadAction(author: String, slug: String)
+  = AuthedProjectAction(author, slug, requireUnlock = true) andThen ProjectPermissionAction(UploadVersions)
 
   /**
     * Shows the specified version view page.
@@ -95,7 +101,10 @@ class Versions @Inject()(stats: StatTracker,
         version <- getVersion(request.data.project, versionString)
         description <- bindFormEitherT[Future](this.forms.VersionDescription)(_ => BadRequest: Result)
       } yield {
-        version.setDescription(description.trim)
+        val oldDescription = version.description.getOrElse("")
+        val newDescription = description.trim
+        version.setDescription(newDescription)
+        UserActionLogger.log(request.request, LoggedAction.VersionDescriptionEdited, version.id.getOrElse(-1), newDescription, oldDescription)
         Redirect(self.show(author, slug, versionString))
       }
 
@@ -116,6 +125,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val r = request.request
       getVersion(request.data.project, versionString).map { version =>
         request.data.project.setRecommendedVersion(version)
+        UserActionLogger.log(request.request, LoggedAction.VersionAsRecommended, version.id.getOrElse(-1), "recommended version", "listed version")
         Redirect(self.show(author, slug, versionString))
       }.merge
     }
@@ -137,6 +147,7 @@ class Versions @Inject()(stats: StatTracker,
         version.setReviewed(reviewed = true)
         version.setReviewer(request.user)
         version.setApprovedAt(this.service.theTime)
+        UserActionLogger.log(request.request, LoggedAction.VersionApproved, version.id.getOrElse(-1), "approved", "unapproved")
         Redirect(self.show(author, slug, versionString))
       }.merge
     }
@@ -193,7 +204,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Version creation view
     */
-  def showCreator(author: String, slug: String) = VersionEditAction(author, slug).async { request =>
+  def showCreator(author: String, slug: String) = VersionUploadAction(author, slug).async { request =>
     val data = request.data
     implicit val r = request.request
     data.project.channels.all.map { channels =>
@@ -208,7 +219,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Version create page (with meta)
     */
-  def upload(author: String, slug: String) = VersionEditAction(author, slug).async { implicit request =>
+  def upload(author: String, slug: String) = VersionUploadAction(author, slug).async { implicit request =>
     val call = self.showCreator(author, slug)
     val user = request.user
 
@@ -226,7 +237,7 @@ class Versions @Inject()(stats: StatTracker,
       }
       catch {
         case e: InvalidPluginFileException =>
-          EitherT.leftT[Future, PendingVersion](Redirect(call).withError(Option(e.getMessage).getOrElse("")))
+          EitherT.leftT[Future, PendingVersion](Redirect(call).withErrors(Option(e.getMessage).toList))
       }
     }.map { pendingVersion =>
       pendingVersion.underlying.setAuthorId(user.id.getOrElse(-1))
@@ -258,7 +269,7 @@ class Versions @Inject()(stats: StatTracker,
           Ok(views.create(data, data.settings.forumSync, Some(pendingVersion), channels, showFileControls = channels.isDefined))
         }
 
-      success.getOrElse(Redirect(self.showCreator(author, slug)))
+      success.getOrElse(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }
 
   private def pendingOrReal(author: String, slug: String): OptionT[Future, Either[PendingProject, Project]] = {
@@ -283,14 +294,14 @@ class Versions @Inject()(stats: StatTracker,
       this.factory.getPendingVersion(author, slug, versionString) match {
         case None =>
           // Not found
-          Future.successful(Redirect(self.showCreator(author, slug)))
+          Future.successful(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
         case Some(pendingVersion) =>
           // Get submitted channel
           this.forms.VersionCreate.bindFromRequest.fold(
             hasErrors => {
               // Invalid channel
               val call = self.showCreatorWithMeta(author, slug, versionString)
-              Future.successful(Redirect(call).withError(hasErrors.errors.head.message))
+              Future.successful(Redirect(call).withErrors(hasErrors.errors.flatMap(_.messages)))
             },
 
             versionData => {
@@ -319,6 +330,7 @@ class Versions @Inject()(stats: StatTracker,
                           if (versionData.recommended)
                             project.setRecommendedVersion(newVersion._1)
                           addUnstableTag(newVersion._1, versionData.unstable)
+                          UserActionLogger.log(request, LoggedAction.VersionUploaded, newVersion._1.id.getOrElse(-1), "published", "null")
                           Redirect(self.show(author, slug, versionString))
                         }
                       }
@@ -327,6 +339,7 @@ class Versions @Inject()(stats: StatTracker,
                 case Some(pendingProject) =>
                   // Found a pending project, create it with first version
                   pendingProject.complete.map { created =>
+                    UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id.getOrElse(-1), "created", "null")
                     addUnstableTag(created._2, versionData.unstable)
                     Redirect(ShowProject(author, slug))
                   }
@@ -377,6 +390,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val p = request.data.project
       getVersion(p, versionString).map { version =>
         this.projects.deleteVersion(version)
+        UserActionLogger.log(request.request, LoggedAction.VersionDeleted, version.id.getOrElse(-1), "null", "")
         Redirect(self.showList(author, slug, None, None))
       }.merge
     }
@@ -470,7 +484,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val r = request.request
       val project = request.data.project
       getVersion(project, target)
-        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)))
+        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
         .semiFlatMap { version =>
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
@@ -528,8 +542,8 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug) async { request =>
       implicit val r: OreRequest[_] = request.request
       getVersion(request.data.project, target)
-        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)))
-        .flatMap(version => confirmDownload0(version.id.get, downloadType, token).toRight(Redirect(ShowProject(author, slug))))
+        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
+        .flatMap(version => confirmDownload0(version.id.get, downloadType, token).toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload")))
         .map { dl =>
           dl.downloadType match {
             case UploadedFile =>

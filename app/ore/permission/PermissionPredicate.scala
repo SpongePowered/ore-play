@@ -32,7 +32,6 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
           return Future.successful(!not)
         }
       }
-      // Test org perms on projects
 
       val projectTested = subject match {
         case project: Project =>
@@ -42,7 +41,7 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
       }
 
       projectTested.flatMap {
-        case true => Future.successful(true)
+        case true => Future.successful(!not)
         case false =>
           for {
             result <- subject.scope.test(user, p)

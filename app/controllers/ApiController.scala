@@ -174,9 +174,9 @@ final class ApiController @Inject()(api: OreRestfulApi,
           val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.get).result)
 
           EitherT.liftF(apiKeyExists)
-            .filterOrElse(apiKey => !apiKey, Unauthorized(error("apiKey", "api.deploy.invalidKey")))
+            .filterOrElse(apiKey => apiKey, Unauthorized(error("apiKey", "api.deploy.invalidKey")))
             .semiFlatMap(_ => projectData.project.versions.exists(_.versionString === name))
-            .filterOrElse(identity, BadRequest(error("versionName", "api.deploy.versionExists")))
+            .filterOrElse(nameExists => !nameExists, BadRequest(error("versionName", "api.deploy.versionExists")))
             .semiFlatMap(_ => projectData.project.owner.user)
             .semiFlatMap(user => user.toMaybeOrganization.semiFlatMap(_.owner.user).getOrElse(user))
             .flatMap { owner =>
@@ -309,7 +309,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
               if (groups.trim == "")
                 Set.empty
               else
-                groups.split(",").map(group => RoleTypes.withInternalName(group)).toSet[RoleType]
+                groups.split(",").flatMap(group => RoleTypes.withInternalName(group)).toSet[RoleType]
             )
           }
 

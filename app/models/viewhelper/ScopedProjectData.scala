@@ -29,10 +29,11 @@ object ScopedProjectData {
         user can EditSettings in project map ((EditSettings, _)),
         user can EditChannels in project map ((EditChannels, _)),
         user can EditVersions in project map ((EditVersions, _)),
+        user can UploadVersions in project map ((UploadVersions, _)),
         Future.sequence(VisibilityTypes.values.map(_.permission).map(p => user can p in project map ((p, _))))
       ).parMapN {
-        case (canPostAsOwnerOrga, uProjectFlags, starred, watching, editPages, editSettings, editChannels, editVersions, visibilities) =>
-          val perms = visibilities + editPages + editSettings + editChannels + editVersions
+        case (canPostAsOwnerOrga, uProjectFlags, starred, watching, editPages, editSettings, editChannels, editVersions, uploadVersions, visibilities) =>
+          val perms = visibilities + editPages + editSettings + editChannels + editVersions + uploadVersions
           ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, perms.toMap)
       }
     } getOrElse Future.successful(noScope)

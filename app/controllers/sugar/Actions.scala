@@ -163,7 +163,7 @@ trait Actions extends Calls with ActionHelpers {
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = Future.successful {
       if (!request.user.isLocked) None
-      else Some(Redirect(redirect).flashing("error" -> "error.user.locked"))
+      else Some(Redirect(redirect).withError("error.user.locked"))
     }
   }
 

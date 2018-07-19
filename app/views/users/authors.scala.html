@@ -61,7 +61,7 @@
                                       </span>
                                   }
                               }
-                              @defining(user.globalRoles.toList.filterNot(user.donorType.contains(_)).sortBy(_.trust).reverse.lastOption) { roleType =>
+                              @defining(user.globalRoles.toList.filterNot(user.donorType.contains(_)).sortBy(_.trust).lastOption) { roleType =>
                                   @roleType.map { role =>
                                       <span class="user-role channel" style="background-color: @role.color.hex">
                                       @role.title
