@@ -8,9 +8,9 @@ import db.table.ModelTable
 
 trait VisibilityChangeColumns[M <: VisibilityChange] extends ModelTable[M] {
 
-  def createdBy= column[Int]("created_by")
-  def comment= column[String]("comment")
-  def resolvedAt= column[Timestamp]("resolved_at")
-  def resolvedBy= column[Int]("resolved_by")
-  def visibility= column[Int]("visibility")
+  def createdBy = column[Int]("created_by")
+  def comment = column[String]("comment")
+  def resolvedAt = column[Timestamp]("resolved_at")
+  def resolvedBy = column[Int]("resolved_by")
+  def visibility = column[Int]("visibility")
 }

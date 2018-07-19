@@ -179,7 +179,7 @@ class ProjectBase(override val service: ModelService,
   def prepareDeleteVersion(version: Version)(implicit ec: ExecutionContext): Future[Project] =
     for {
       proj <- version.project
-      size <- proj.versions.filter(_.visibility === VisibilityTypes.Public).map(_.size) //TODO: Would be neat with a count method
+      size <- proj.versions.count(_.visibility === VisibilityTypes.Public)
       _ = checkArgument(size > 1, "only one public version", "")
       _ = checkArgument(proj.id.get == version.projectId, "invalid context id", "")
       rv <- proj.recommendedVersion
