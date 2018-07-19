@@ -42,6 +42,20 @@ var KEY_ESC = 27;                           // De-focus
 
 /*
  * ==================================================
+ * =                  Clipboard                     =
+ * ==================================================
+ */
+
+var clipboardManager = new ClipboardJS('.copy-url');
+clipboardManager.on('success', function(e) {
+    var element = $('.btn-download').tooltip({title: 'Copied!', placement: 'bottom', trigger: 'manual'}).tooltip('show');
+    setTimeout(function () {
+        element.tooltip('destroy');
+    }, 2200);
+});
+
+/*
+ * ==================================================
  * =                Helper functions                =
  * ==================================================
  */

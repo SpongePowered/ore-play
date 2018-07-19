@@ -31,7 +31,8 @@ case class ProjectData(joinable: Project,
                        flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
                        noteCount: Int, // getNotes.size
                        lastVisibilityChange: Option[VisibilityChange],
-                       lastVisibilityChangeUser: String // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
+                       lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
+                       recommendedVersion: Option[Version]
                       ) extends JoinableData[ProjectRole, ProjectMember, Project] {
 
   def flagCount = flags.size
@@ -63,6 +64,7 @@ object ProjectData {
     val logSize = 0
     val lastVisibilityChange = None
     val lastVisibilityChangeUser = "-"
+    val recommendedVersion = None
 
     val data = new ProjectData(project.underlying,
       projectOwner,
@@ -74,7 +76,8 @@ object ProjectData {
       Seq.empty,
       0,
       lastVisibilityChange,
-      lastVisibilityChangeUser)
+      lastVisibilityChangeUser,
+      recommendedVersion)
 
     data
   }
@@ -103,9 +106,10 @@ object ProjectData {
       flagUsersFut,
       flagResolvedFut,
       lastVisibilityChangeFut,
-      lastVisibilityChangeUserFut
+      lastVisibilityChangeUserFut,
+      project.recommendedVersion
     ).parMapN {
-      case (settings, projectOwner, ownerRole, versions, members, logSize, flags, flagUsers, flagResolved, lastVisibilityChange, lastVisibilityChangeUser) =>
+      case (settings, projectOwner, ownerRole, versions, members, logSize, flags, flagUsers, flagResolved, lastVisibilityChange, lastVisibilityChangeUser, recommendedVersion) =>
         val noteCount = project.getNotes().size
         val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
           (fl, user.name, resolved.map(_.username))
@@ -122,7 +126,8 @@ object ProjectData {
           flagData.toSeq,
           noteCount,
           lastVisibilityChange,
-          lastVisibilityChangeUser)
+          lastVisibilityChangeUser,
+          Some(recommendedVersion))
     }
   }
 
