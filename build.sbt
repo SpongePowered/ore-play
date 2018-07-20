@@ -35,11 +35,12 @@ libraryDependencies ++= Seq(
   "com.vladsch.flexmark"  % "flexmark-ext-typographic"       %  "0.34.0",
   "com.vladsch.flexmark"  % "flexmark-ext-wikilink"          %  "0.34.0",
 
-  "org.webjars"       % "jquery"       % "2.2.4",
-  "org.webjars"       % "font-awesome" % "4.7.0",
+  "org.webjars.npm"   % "jquery"       % "2.2.4",
+  "org.webjars.npm"   % "font-awesome" % "4.7.0",
   "org.webjars.npm"   % "filesize"     % "3.6.1",
   "org.webjars.npm"   % "moment"       % "2.22.2",
-  "org.webjars.bowergithub.zenorocha" % "clipboard.js" % "2.0.1"
+  "org.webjars.npm"   % "clipboard"    % "2.0.1",
+  "org.webjars.npm"   % "chart.js"     % "2.7.2"
 )
 
 unmanagedResourceDirectories in Test +=  (baseDirectory.value / "target/web/public/test")
