@@ -51,10 +51,8 @@ case class PendingProject(projects: ProjectBase,
         this.pendingVersion.project = newProject
         this.factory.createVersion(this.pendingVersion)
       }
-    } yield {
-      newProject.setRecommendedVersion(newVersion._1)
-      (newProject, newVersion._1)
-    }
+      _ <- newProject.setRecommendedVersion(newVersion._1)
+    } yield (newProject, newVersion._1)
   }
 
   def cancel()(implicit ec: ExecutionContext) = {

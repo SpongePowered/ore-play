@@ -503,7 +503,7 @@ case class Project(override val id: Option[Int] = None,
     checkNotNull(_version, "null version", "")
     checkArgument(_version.isDefined, "undefined version", "")
     this.recommendedVersionId = _version.id
-    if (isDefined) update(RecommendedVersionId)
+    if (isDefined) update(RecommendedVersionId) else Future.unit
   }
 
   /**
