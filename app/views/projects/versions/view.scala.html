@@ -126,13 +126,15 @@
                             </div>
 
                             @if(request.hasUser && request.data.globalPerm(ViewLogs)) {
-                                <button class="btn btn-alert dropdown-toggle" type="button" id="admin-version-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                                    Admin actions
-                                    <span class="caret"></span>
-                                </button>
-                                <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
-                                    <li><a href="@versionRoutes.showLog(v.p.project.ownerName, v.p.project.slug, v.v.versionString)">Log</a></li>
-                                </ul>
+                                <div class="dropdown dropdown-menu-right" style="display: inline-block">
+                                    <button class="btn btn-alert dropdown-toggle" type="button" id="admin-version-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                        Admin actions
+                                        <span class="caret"></span>
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
+                                        <li><a href="@versionRoutes.showLog(v.p.project.ownerName, v.p.project.slug, v.v.versionString)">Log</a></li>
+                                    </ul>
+                                </div>
                             }
 
                         </div>
