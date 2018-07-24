@@ -168,7 +168,7 @@ class Versions @Inject()(stats: StatTracker,
   def showList(author: String, slug: String, channels: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { request =>
       val data = request.data
-      implicit val r = request.request
+      implicit val r: OreRequest[AnyContent] = request.request
 
       data.project.channels.toSeq.flatMap { allChannels =>
         val visibleNames = channels.fold(allChannels.map(_.name.toLowerCase))(_.toLowerCase.split(',').toSeq)
@@ -386,7 +386,7 @@ class Versions @Inject()(stats: StatTracker,
     */
   def delete(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveVersion)).async { implicit request =>
-      implicit val r = request.request
+      implicit val r: Request[AnyContent] = request.request
       getProjectVersion(author, slug, versionString).map { version =>
         this.projects.deleteVersion(version)
         UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.getOrElse(-1), "null", "")
@@ -402,7 +402,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Home page
     */
-  def softDelete(author: String, slug: String, versionString: String) = VersionEditAction(author, slug).async { request =>
+  def softDelete(author: String, slug: String, versionString: String): Action[AnyContent] = VersionEditAction(author, slug).async { request =>
     implicit val oreRequest: AuthRequest[AnyContent] = request.request
     val project: Project = request.data.project
     val res = for {
@@ -415,7 +415,7 @@ class Versions @Inject()(stats: StatTracker,
     res.merge
   }
 
-  def showLog(author: String, slug: String, versionString: String) = {
+  def showLog(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)) andThen ProjectAction(author, slug) async { request =>
       implicit val r: OreRequest[AnyContent] = request.request
       implicit val project: Project = request.data.project

@@ -38,7 +38,7 @@ case class ProjectVisibilityChange(override val id: Option[Int] = None,
   /**
     * Set the resolvedAt time
     */
-  def setResolvedAt(time: Timestamp) = {
+  def setResolvedAt(time: Timestamp): Future[Int] = {
     this.resolvedAt = Some(time)
     update(ResolvedAtVC)
   }
@@ -46,11 +46,11 @@ case class ProjectVisibilityChange(override val id: Option[Int] = None,
   /**
     * Set the resolvedBy user
     */
-  def setResolvedBy(user: User) = {
+  def setResolvedBy(user: User): Future[Int] = {
     this.resolvedBy = user.id
     update(ResolvedByVC)
   }
-  def setResolvedById(userId: Int) = {
+  def setResolvedById(userId: Int): Future[Int] = {
     this.resolvedBy = Some(userId)
     update(ResolvedByVC)
   }

@@ -495,7 +495,7 @@ case class Project(override val id: Option[Int] = None,
     * @param _version  Version to set
     * @return         Result
     */
-  def setRecommendedVersion(_version: Version) = {
+  def setRecommendedVersion(_version: Version): Future[AnyVal] = {
     checkNotNull(_version, "null version", "")
     checkArgument(_version.isDefined, "undefined version", "")
     this.recommendedVersionId = _version.id

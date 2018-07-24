@@ -150,7 +150,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @return         List of versions
     */
   def listAllVersions(version: String, pluginId: String, channels: Option[String],
-      limit: Option[Int], offset: Option[Int]) =
+      limit: Option[Int], offset: Option[Int]): Action[AnyContent] =
     (AuthedProjectActionById(pluginId) andThen PermissionAction(ReviewProjects)).async {
       version match {
         case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)
