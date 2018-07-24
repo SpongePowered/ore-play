@@ -110,7 +110,7 @@ trait ProjectFactory {
 
   def processSubsequentPluginUpload(uploadData: PluginUpload,
                                     owner: User,
-                                    project: Project)(implicit ec: ExecutionContext): EitherT[Future, String, PendingVersion] = {
+                                    project: Project)(implicit ec: ExecutionContext, messages: Messages): EitherT[Future, String, PendingVersion] = {
     val plugin = this.processPluginUpload(uploadData, owner)
     if (!plugin.meta.get.getId.equals(project.pluginId))
       EitherT.leftT("error.version.invalidPluginId")
