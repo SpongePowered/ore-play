@@ -11,6 +11,7 @@ case object SeedOre             extends Permission { val trust = Absolute   }
 case object MigrateOre          extends Permission { val trust = Absolute   }
 case object HardRemoveProject   extends Permission { val trust = Absolute   }
 case object CreateProject       extends Permission { val trust = Absolute   }
+case object ViewIp              extends Permission { val trust = Absolute   }
 case object EditSettings        extends Permission { val trust = Lifted     }
 case object ViewLogs            extends Permission { val trust = Lifted     }
 case object UserAdmin           extends Permission { val trust = Lifted     }

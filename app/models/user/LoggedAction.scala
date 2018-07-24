@@ -33,6 +33,8 @@ case class LoggedActionModel(override val id: Option[Int] = None,
   def action: LoggedAction = _action
   def oldState = _oldState
   def newState = _newState
+  def contextId: Int = _actionContextId
+  def actionType: LoggedActionContext = _action.context
 
 }
 

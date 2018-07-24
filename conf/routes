@@ -19,8 +19,7 @@ GET     /admin/flags/:id/resolve/:resolved                          @controllers
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats()
-GET     /admin/log                                                  @controllers.Application.showLog()
-GET     /admin/log/:page                                            @controllers.Application.showLogWithPage(page: Int)
+GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], contextFilter: Option[Int])
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
 

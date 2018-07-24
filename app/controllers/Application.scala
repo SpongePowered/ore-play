@@ -398,16 +398,42 @@ final class Application @Inject()(data: DataHelper,
     }
   }
 
-  def showLog() = showLogWithPage(0)
+  def showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], contextFilter: Option[Int]) = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
+    val pageSize = 50
+    val offset = page.getOrElse(0) * pageSize
 
-  def showLogWithPage(page: Int) = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
-    val limit = 50
-    val offset = page * limit
+    val default = LiteralColumn(1) === LiteralColumn(1)
+
+    val logQuery = queryLog.filter { case (action, user, project, version, page) =>
+      (action.userId === userFilter).getOrElse(default) &&
+      (project.map(_.id) === projectFilter).getOrElse(default) &&
+      (version.map(_.projectId) === projectFilter).getOrElse(default) &&
+      (page.map(_.projectId) === projectFilter).getOrElse(default) &&
+      (action.actionContextId === contextFilter).getOrElse(default)
+    }.sortBy { case (action, user, project, version, page) =>
+      action.id.desc
+    }.drop(offset).take(pageSize)
+
+    (
+      service.DB.db.run(logQuery.result),
+      service.access[LoggedActionModel](classOf[LoggedActionModel]).size,
+      request.currentUser.get can ViewIp in GlobalScope
+    ).parMapN { (actions, size, canViewIP) =>
+      Ok(views.users.admin.log(actions, pageSize, offset, page.getOrElse(0), size, userFilter, projectFilter, contextFilter, canViewIP))
+    }
+  }
+
+  private def queryLog = {
+    val tableLoggedAction = TableQuery[LoggedActionTable]
+    val userTable = TableQuery[UserTable]
+    val projectTable = TableQuery[ProjectTableMain]
+    val versionTable = TableQuery[VersionTable]
+    val pageTable = TableQuery[PageTable]
+
     for {
-      actions <- service.access[LoggedActionModel](classOf[LoggedActionModel]).filter(u => true, limit, offset)
-      size <- service.access[LoggedActionModel](classOf[LoggedActionModel]).size
+      ((((action, user), project), version), page) <- tableLoggedAction.joinLeft(userTable).on(_.userId === _.id).joinLeft(projectTable).on(_._1.actionContextId === _.id).joinLeft(versionTable).on(_._1._1.actionContextId === _.id).joinLeft(pageTable).on(_._1._1._1.actionContextId === _.id)
     } yield {
-      Ok(views.users.admin.log(actions, limit, offset, page, size))
+      (action, user, project, version, page)
     }
   }
 

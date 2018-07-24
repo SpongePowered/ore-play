@@ -184,7 +184,7 @@ The main header displayed on each layout.
 
                         @if(request.data.globalPerm(ViewLogs)) {
                             <li>
-                                <a href="@routes.Application.showLog()">
+                                <a href="@routes.Application.showLog(None, None, None, None)">
                                     <span class="pull-left">
                                     @messages("admin.log.title")
                                     </span>
