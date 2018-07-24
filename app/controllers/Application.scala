@@ -174,7 +174,7 @@ final class Application @Inject()(data: DataHelper,
       val reviewData = reviewsByVersion.mapValues { reviews =>
 
         reviews.filter { case (review, _) =>
-          review.createdAt.unsafeToOption.isDefined && review.endedAt.isEmpty
+          review.endedAt.isEmpty
         }.sorted(Review.ordering).headOption.map { case (r, a) =>
           (r, true, a) // Unfinished Review
         } orElse reviews.sorted(Review.ordering).headOption.map { case (r, a) =>

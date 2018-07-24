@@ -114,7 +114,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
         key.remove()
         Ok
       }
-      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.get, s"${request.user.name} removed an ApiKey", "")
+      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.value, s"${request.user.name} removed an ApiKey", "")
       res.getOrElse(BadRequest)
     }
 

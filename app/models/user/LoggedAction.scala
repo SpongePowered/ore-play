@@ -1,22 +1,20 @@
 package models.user
 
-import java.sql.Timestamp
-
 import scala.collection.immutable
 
 import com.github.tminglei.slickpg.InetString
+
 import controllers.sugar.Requests.AuthRequest
-import db.ModelService
+import db.{ModelService, ObjectId, ObjectTimestamp}
 import db.impl.LoggedActionTable
 import db.impl.model.OreModel
 import enumeratum.values.{IntEnum, IntEnumEntry}
 import ore.StatTracker
 import ore.user.UserOwned
-
 import scala.concurrent.ExecutionContext
 
-case class LoggedActionModel(override val id: Option[Int] = None,
-                             override val createdAt: Option[Timestamp] = None,
+case class LoggedActionModel(override val id: ObjectId = ObjectId.Uninitialized,
+                             override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                              private val _userId: Int,
                              private val _address: InetString,
                              private val _action: LoggedAction,
@@ -28,7 +26,7 @@ case class LoggedActionModel(override val id: Option[Int] = None,
   override type T = LoggedActionTable
   override type M = LoggedActionModel
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): LoggedActionModel = this.copy(createdAt = theTime)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionModel = this.copy(createdAt = theTime)
   override def userId: Int = _userId
 
   def address: InetString = _address
@@ -86,7 +84,7 @@ object UserActionLogger {
   def log(request: AuthRequest[_], action: LoggedAction, actionContextId: Int, newState: String, oldState: String)
          (implicit service: ModelService, ex: ExecutionContext){
 
-    service.insert(LoggedActionModel(None, None, request.user.userId, InetString(StatTracker.remoteAddress(request.request)), action, action.context, actionContextId, newState, oldState))
+    service.insert(LoggedActionModel(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, request.user.userId, InetString(StatTracker.remoteAddress(request.request)), action, action.context, actionContextId, newState, oldState))
   }
 
 }

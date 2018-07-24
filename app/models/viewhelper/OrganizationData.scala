@@ -41,7 +41,7 @@ object OrganizationData {
       members <- orga.memberships.members
       memberRoles <- Future.sequence(members.map(_.headRole))
       memberUser <- Future.sequence(memberRoles.map(_.user))
-      projectRoles <- db.run(queryProjectRoles(orga.id.get).result)
+      projectRoles <- db.run(queryProjectRoles(orga.id.value).result)
     } yield {
       val members = memberRoles zip memberUser
       OrganizationData(orga, role, members.toSeq, projectRoles)

@@ -256,7 +256,7 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
         0
     }
     cnt.value.flatMap { _ =>
-      val change = VersionVisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
+      val change = VersionVisibilityChange(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), Some(creator), this.id.value, comment, None, None, visibility.id)
       this.service.access[VersionVisibilityChange](classOf[VersionVisibilityChange]).add(change)
     }
   }
@@ -301,7 +301,7 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
 
   def byCreationDate(first: Review, second: Review): Boolean = first.createdAt.value.getTime < second.createdAt.value.getTime
   def reviewEntries: ModelAccess[Review] = this.schema.getChildren[Review](classOf[Review], this)
-  def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(rev => rev.createdAt.unsafeToOption.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate))
+  def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
   def mostRecentReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
   def reviewById(id: ObjectReference)(implicit ec: ExecutionContext): OptionT[Future, Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))

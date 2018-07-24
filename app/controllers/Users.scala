@@ -192,7 +192,7 @@ class Users @Inject()(fakeUser: FakeUser,
       if (tagline.length > maxLen) {
         Redirect(ShowUser(user)).flashing("error" -> request.messages.apply("error.tagline.tooLong", maxLen))
       } else {
-        UserActionLogger.log(request, LoggedAction.UserTaglineChanged, user.id.get, tagline, user.tagline.getOrElse("null"))
+        UserActionLogger.log(request, LoggedAction.UserTaglineChanged, user.id.value, tagline, user.tagline.getOrElse("null"))
         user.setTagline(tagline)
         Redirect(ShowUser(user))
       }
@@ -221,7 +221,7 @@ class Users @Inject()(fakeUser: FakeUser,
 
         // Send email notification
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
-        UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id.get, "", "")
+        UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id.value, "", "")
 
         Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
       }
@@ -243,7 +243,7 @@ class Users @Inject()(fakeUser: FakeUser,
       else {
         user.setPgpPubKey(null)
         user.setLastPgpPubKeyUpdate(this.service.theTime)
-        UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id.get, "", "")
+        UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id.value, "", "")
         Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
       }
     }

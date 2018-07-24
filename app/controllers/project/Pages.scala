@@ -172,7 +172,7 @@ class Pages @Inject()(forms: OreForms,
                 if (pageData.content.isDefined) {
                   val oldPage = createdPage.contents
                   val newPage = pageData.content.get
-                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, createdPage.id.getOrElse(-1), newPage, oldPage)
+                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, createdPage.id.value, newPage, oldPage)
                   createdPage.setContents(newPage)
                 } else Future.successful(createdPage)
               } map { _ =>

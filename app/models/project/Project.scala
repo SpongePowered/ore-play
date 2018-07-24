@@ -37,6 +37,7 @@ import slick.lifted
 import slick.lifted.{Rep, TableQuery}
 import scala.concurrent.{ExecutionContext, Future}
 
+import models.admin.{ProjectLog, ProjectVisibilityChange}
 import play.api.i18n.Messages
 
 /**

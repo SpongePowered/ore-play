@@ -144,11 +144,11 @@ case class Message(message: String, time: Long = System.currentTimeMillis(), act
 object Review {
   def ordering: Ordering[(Review, _)] = {
     // TODO make simple + check order
-    Ordering.by(_._1.createdAt.unsafeToOption.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+    Ordering.by(_._1.createdAt.value.getTime)
   }
 
   def ordering2: Ordering[Review] = {
     // TODO make simple + check order
-    Ordering.by(_.createdAt.unsafeToOption.getOrElse(Timestamp.from(Instant.MIN)).getTime)
+    Ordering.by(_.createdAt.value.getTime)
   }
 }

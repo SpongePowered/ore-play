@@ -57,7 +57,7 @@ final class Reviews @Inject()(data: DataHelper,
           Future.traverse(reviews)(r => r.userBase.get(r.userId).map(_.name).value.tupleLeft(r))
         )
       } yield {
-        val unfinished = reviews.filter(r => r.createdAt.unsafeToOption.isDefined && r.endedAt.isEmpty).sorted(Review.ordering2).headOption
+        val unfinished = reviews.filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
         implicit val v: Version = version
         Ok(views.users.admin.reviews(unfinished, rv))
       }
@@ -248,7 +248,7 @@ final class Reviews @Inject()(data: DataHelper,
         version <- getProjectVersion(author, slug, versionString)
       } yield {
 
-        UserActionLogger.log(request, LoggedAction.VersionNonReviewChanged, version.id.getOrElse(-1), s"In review queue: ${version.isNonReviewed}", s"In review queue: ${!version.isNonReviewed}")
+        UserActionLogger.log(request, LoggedAction.VersionNonReviewChanged, version.id.value, s"In review queue: ${version.isNonReviewed}", s"In review queue: ${!version.isNonReviewed}")
         version.setIsNonReviewed(!version.isNonReviewed)
 
         Redirect(routes.Reviews.showReviews(author, slug, versionString))

@@ -260,7 +260,7 @@ trait OreDiscourseApi extends DiscourseApi {
     if (!this.isEnabled)
       return Future.successful(true)
 
-    checkArgument(project.id.isDefined, "undefined project", "")
+    checkArgument(project.isDefined, "undefined project", "")
     checkArgument(project.topicId != -1, "undefined topic id", "")
 
     val resultPromise: Promise[Boolean] = Promise()

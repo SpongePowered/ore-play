@@ -501,7 +501,10 @@ class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, 
   def newState           =  column[String]("new_state")
   def oldState           =  column[String]("old_state")
 
-  override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState) <> (LoggedActionModel.tupled, LoggedActionModel.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(LoggedActionModel.unapply)
+    (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState) <> (convertApply(LoggedActionModel.apply _).tupled, convertedUnapply)
+  }
 }
 class VersionVisibilityChangeTable(tag: RowTag)
   extends ModelTable[VersionVisibilityChange](tag, "project_version_visibility_changes")
@@ -509,7 +512,10 @@ class VersionVisibilityChangeTable(tag: RowTag)
 
   def versionId = column[Int]("version_id")
 
-  override def * = (id.?, createdAt.?, createdBy.?, versionId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VersionVisibilityChange.tupled, VersionVisibilityChange.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(VersionVisibilityChange.unapply)
+    (id.?, createdAt.?, createdBy.?, versionId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (convertApply(VersionVisibilityChange.apply _).tupled, convertedUnapply)
+  }
 }
 
 class LoggedActionViewTable(tag: RowTag) extends ModelTable[LoggedActionViewModel](tag, "v_logged_actions") {
@@ -539,9 +545,12 @@ class LoggedActionViewTable(tag: RowTag) extends ModelTable[LoggedActionViewMode
   def filterSubject      =   column[Int]("filter_subject")
   def filterAction       =   column[Int]("filter_action")
 
-  override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState, uId,
-    uName, loggedProjectProjection, loggedProjectVersionProjection, loggedProjectPageProjection, loggedSubjectProjection,
-    filterProject.?, filterVersion.?, filterPage.?, filterSubject.?, filterAction.?) <> (LoggedActionViewModel.tupled, LoggedActionViewModel.unapply)
+  override def * = {
+    val convertedUnapply = convertUnapply(LoggedActionViewModel.unapply)
+    (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState, uId,
+      uName, loggedProjectProjection, loggedProjectVersionProjection, loggedProjectPageProjection, loggedSubjectProjection,
+      filterProject.?, filterVersion.?, filterPage.?, filterSubject.?, filterAction.?) <> (convertApply(LoggedActionViewModel.apply _).tupled, convertedUnapply)
+  }
 
   def loggedProjectProjection = (pId.?, pPluginId.?, pSlug.?, pOwnerName.?) <> ((LoggedProject.apply _).tupled, LoggedProject.unapply)
   def loggedProjectVersionProjection = (pvId.?, pvVersionString.?) <> ((LoggedProjectVersion.apply _).tupled, LoggedProjectVersion.unapply)

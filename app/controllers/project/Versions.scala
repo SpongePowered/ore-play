@@ -108,7 +108,7 @@ class Versions @Inject()(stats: StatTracker,
         val oldDescription = version.description.getOrElse("")
         val newDescription = description.trim
         version.setDescription(newDescription)
-        UserActionLogger.log(request.request, LoggedAction.VersionDescriptionEdited, version.id.getOrElse(-1), newDescription, oldDescription)
+        UserActionLogger.log(request.request, LoggedAction.VersionDescriptionEdited, version.id.value, newDescription, oldDescription)
         Redirect(self.show(author, slug, versionString))
       }
 
@@ -129,7 +129,7 @@ class Versions @Inject()(stats: StatTracker,
       implicit val r: Requests.AuthRequest[AnyContent] = request.request
       getVersion(request.data.project, versionString).map { version =>
         request.data.project.setRecommendedVersion(version)
-        UserActionLogger.log(request.request, LoggedAction.VersionAsRecommended, version.id.getOrElse(-1), "recommended version", "listed version")
+        UserActionLogger.log(request.request, LoggedAction.VersionAsRecommended, version.id.value, "recommended version", "listed version")
         Redirect(self.show(author, slug, versionString))
       }.merge
     }
@@ -151,7 +151,7 @@ class Versions @Inject()(stats: StatTracker,
         version.setReviewed(reviewed = true)
         version.setReviewer(request.user)
         version.setApprovedAt(this.service.theTime)
-        UserActionLogger.log(request.request, LoggedAction.VersionApproved, version.id.getOrElse(-1), "approved", "unapproved")
+        UserActionLogger.log(request.request, LoggedAction.VersionApproved, version.id.value, "approved", "unapproved")
         Redirect(self.show(author, slug, versionString))
       }.merge
     }
@@ -329,7 +329,7 @@ class Versions @Inject()(stats: StatTracker,
                           if (versionData.recommended)
                             project.setRecommendedVersion(newVersion._1)
                           addUnstableTag(newVersion._1, versionData.unstable)
-                          UserActionLogger.log(request, LoggedAction.VersionUploaded, newVersion._1.id.getOrElse(-1), "published", "null")
+                          UserActionLogger.log(request, LoggedAction.VersionUploaded, newVersion._1.id.value, "published", "null")
                           Redirect(self.show(author, slug, versionString))
                         }
                       }
@@ -338,7 +338,7 @@ class Versions @Inject()(stats: StatTracker,
                 case Some(pendingProject) =>
                   // Found a pending project, create it with first version
                   pendingProject.complete.map { created =>
-                    UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id.getOrElse(-1), "created", "null")
+                    UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id.value, "created", "null")
                     addUnstableTag(created._2, versionData.unstable)
                     Redirect(ShowProject(author, slug))
                   }
@@ -391,7 +391,7 @@ class Versions @Inject()(stats: StatTracker,
         version <- getProjectVersion(author, slug, versionString)
       } yield {
         this.projects.deleteVersion(version)
-        UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.getOrElse(-1), s"Deleted: ${comment}", s"${version.visibility}")
+        UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.value, s"Deleted: ${comment}", s"${version.visibility}")
         Redirect(self.showList(author, slug, None))
       }
       res.merge
@@ -412,9 +412,9 @@ class Versions @Inject()(stats: StatTracker,
       comment <- bindFormEitherT[Future](this.forms.NeedsChanges)(_ => BadRequest)
       version <- getVersion(project, versionString)
       _ <- EitherT.right[Result](this.projects.prepareDeleteVersion(version))
-      _ <- EitherT.right[Result](version.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get))
+      _ <- EitherT.right[Result](version.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.value))
     } yield {
-      UserActionLogger.log(oreRequest, LoggedAction.VersionDeleted, version.id.getOrElse(-1), s"SoftDelete: ${comment}", "")
+      UserActionLogger.log(oreRequest, LoggedAction.VersionDeleted, version.id.value, s"SoftDelete: ${comment}", "")
       Redirect(self.showList(author, slug, None))
     }
 
