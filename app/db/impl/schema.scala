@@ -325,7 +325,7 @@ class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "noti
   def userId            =   column[Int]("user_id")
   def originId          =   column[Int]("origin_id")
   def notificationType  =   column[NotificationType]("notification_type")
-  def messageArgs       =   column[List[String]]("messageArgs")
+  def messageArgs       =   column[List[String]]("message_args")
   def action            =   column[String]("action")
   def read              =   column[Boolean]("read")
 
