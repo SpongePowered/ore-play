@@ -38,6 +38,8 @@ import slick.lifted
 import slick.lifted.{Rep, TableQuery}
 import scala.concurrent.{ExecutionContext, Future}
 
+import play.api.i18n.Messages
+
 /**
   * Represents an Ore package.
   *
@@ -690,7 +692,7 @@ case class Project(override val id: Option[Int] = None,
   * @param message
   */
 case class Note(message: String, user: Int, time: Long = System.currentTimeMillis()) {
-  def getTime(implicit oreConfig: OreConfig): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
+  def getTime(implicit messages: Messages): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
   def render(implicit oreConfig: OreConfig): Html = Page.Render(message)
 }
 

@@ -14,8 +14,9 @@ import play.api.libs.functional.syntax._
 import play.twirl.api.Html
 import util.StringUtils
 import play.api.libs.json._
-
 import scala.concurrent.Future
+
+import play.api.i18n.Messages
 
 
 /**
@@ -133,7 +134,7 @@ case class Review(override val id: Option[Int] = None,
   * @param message
   */
 case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
-  def getTime(implicit oreConfig: OreConfig): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
+  def getTime(implicit messages: Messages): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
   def isTakeover(): Boolean = action.equalsIgnoreCase("takeover")
   def isStop(): Boolean = action.equalsIgnoreCase("stop")
   def render(implicit oreConfig: OreConfig): Html = Page.Render(message)
