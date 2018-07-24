@@ -74,8 +74,6 @@ security {
 
 # Ore configuration
 ore {
-    date-format =  "MMM dd, yyyy"
-    date-and-time-format = "MMM dd, yyyy HH:mm"
     debug       =  false
     debug-level =  3
     # Used in /admin/seed route. Run "gradle build" in OreTestPlugin before using that route

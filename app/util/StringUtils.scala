@@ -1,11 +1,11 @@
 package util
 
 import java.nio.file.{Files, Path}
-import java.text.{MessageFormat, SimpleDateFormat}
+import java.text.{DateFormat, MessageFormat}
 import java.util.Date
 
 import db.impl.OrePostgresDriver.api._
-import ore.OreConfig
+import play.api.i18n.Messages
 
 /**
   * Helper class for handling User input.
@@ -18,8 +18,8 @@ object StringUtils {
     * @param date Date to format
     * @return     Standard formatted date
     */
-  def prettifyDate(date: Date)(implicit config: OreConfig): String
-  = new SimpleDateFormat(config.ore.get[String]("date-format")).format(date)
+  def prettifyDate(date: Date)(implicit messages: Messages): String =
+    DateFormat.getDateInstance(DateFormat.DEFAULT, messages.lang.locale).format(date)
 
   /**
     * Returns a URL readable string from the specified string.
@@ -76,6 +76,6 @@ object StringUtils {
     * @param date Date to format
     * @return     Standard formatted date
     */
-  def prettifyDateAndTime(date: Date)(implicit config: OreConfig): String
-  = new SimpleDateFormat(config.ore.get[String]("date-and-time-format")).format(date)
+  def prettifyDateAndTime(date: Date)(implicit messages: Messages): String =
+    DateFormat.getDateTimeInstance(DateFormat.DEFAULT, DateFormat.DEFAULT, messages.lang.locale).format(date)
 }
