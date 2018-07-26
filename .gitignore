@@ -97,7 +97,6 @@ test-result
 server.pid
 *.eml
 /dist/
-.cache
 
 
 ### Intellij ###
@@ -131,8 +130,6 @@ fabric.properties
 ### Eclipse ###
 
 .metadata
-bin/
-tmp/
 *.tmp
 *.bak
 *.swp
@@ -189,3 +186,7 @@ RUNNING_PID
 gradle
 .gradle
 build
+
+# Hydra
+project/hydra.sbt
+.hydra/

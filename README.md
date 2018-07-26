@@ -9,10 +9,6 @@ Ore is written in Scala using the [Play](https://www.playframework.com/) framewo
 
 Running Ore is relatively simple.
 
-**With Activator**
-* Download and install the latest [Activator](https://www.lightbend.com/activator/download) distribution.
-* Execute `activator run` in the project root.
-
 **With SBT**
 * Download and install the latest [SBT](http://www.scala-sbt.org/download.html) version.
 * Execute `sbt run` in the project root.
@@ -48,3 +44,32 @@ development environment, most of the defaults will do except you must set `appli
 authentication to the Sponge forums. In addition, the SSL certification authority of https://forums.spongepowered.org is
 not typically recognized by the JVM so you will either have to manually add the cert to your JVM or set 
 `discourse.api.enabled` to `false` in the configuration file.
+
+### Using Hydra
+
+Hydra is a drop-in replacement of the regular Scala compiler.
+Its design goal is to take advantage of the many cores available in modern hardware to parallelize compilation of Scala sources. This gives us the possibility to achieve a much faster compile time.
+Kindly [triplequote](https://triplequote.com/) provides us with some licenses.
+If you have a license and want to use Hydra follow these steps:
+
+1. Create the file `project/hydra.sbt`
+2. Put in this content into the newly created file:
+   ```
+   credentials += Credentials("Artifactory Realm",
+       "repo.triplequote.com",
+       "<username>",
+       "<password>")
+   resolvers += Resolver.url("Triplequote Plugins Releases", url("https://repo.triplequote.com/artifactory/sbt-plugins-release/"))(Resolver.ivyStylePatterns)
+   addSbtPlugin("com.triplequote" % "sbt-hydra" % "1.0.2")
+   ```
+   The `<username>` and `<password>` placeholders have to be replaced with your obtained credentials.
+
+3. Open the sbt console and make use of the following command where `<license key>` is your personal hydra license key:
+
+   ```
+   hydraActivateLicense <license key>
+   ```
+
+4. Go and start compiling!
+
+Further instructions can be found at the [official hydra documentation](https://docs.triplequote.com/).
