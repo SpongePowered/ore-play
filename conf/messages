@@ -95,7 +95,7 @@ error.version.noDependency.forge = This project is marked as a Forge mod but you
 error.invalidKey                =   Invalid key.
 error.pgp.noEmail               =   You must have an email associated with your account to upload a PGP public key.
 error.pgp.invalidEmail          =   The email associated with the uploaded key does not match the email associated with your Sponge account.
-error.pgp.noPubKey              =   You must upload a PGP Public Key to upload files to Ore. <a href="https://docs.spongepowered.org/ore/publish">Learn more</a>
+error.pgp.noPubKey              =   You must upload a PGP Public Key to upload files to Ore. <a href="https://docs.spongepowered.org/stable/en/ore/publish.html">Learn more</a>
 error.pgp.keyChangeCooldown     =   You must wait a minimum of 3 days after changing your public key to upload files.
 error.user.locked               =   Your account is locked.
 error.ore.timeout               =   Timeout
