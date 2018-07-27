@@ -152,7 +152,7 @@ class ModelAccess[M <: Model](val service: ModelService,
     * @param predicate The predicate to use
     * @return The amount of elements that fulfill the predicate.
     */
-  def count(predicate: M#T => Rep[Boolean]): Future[Int] = this.service.count(modelClass, predicate)
+  def count(predicate: M#T => Rep[Boolean]): Future[Int] = this.service.count(modelClass, (this.baseFilter && predicate).fn)
 
   /**
     * Returns a Seq of this set.
