@@ -153,7 +153,7 @@ class Users @Inject()(fakeUser: FakeUser,
           (p, user, v, tags)
         }
         val starredData = starred zip starredRv
-        Ok(views.users.projects(userData.get, orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))), data, starredData, p))
+        Ok(views.users.projects(userData.get, orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))), data, starredData.take(5), p))
       }
     }.getOrElse(notFound)
   }
