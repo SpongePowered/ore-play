@@ -517,7 +517,7 @@ class Projects @Inject()(stats: StatTracker,
       val project = request.data.project
       project.memberships.removeMember(user)
       UserActionLogger.log(request.request, LoggedAction.ProjectMemberRemoved, project.id.getOrElse(-1),
-        s"'$user.name' is not a member of ${project.ownerName}/${project.name}", s"'$user.name' is a member of ${project.ownerName}/${project.name}")
+        s"'${user.name}' is not a member of ${project.ownerName}/${project.name}", s"'${user.name}' is a member of ${project.ownerName}/${project.name}")
       Redirect(self.showSettings(author, slug))
     }
 
