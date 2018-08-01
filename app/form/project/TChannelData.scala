@@ -8,8 +8,9 @@ import util.functional.{EitherT, OptionT}
 import util.instances.future._
 import util.syntax._
 import util.StringUtils._
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import db.ModelService
 
 /**
   * Represents submitted [[Channel]] data.
@@ -37,7 +38,7 @@ trait TChannelData {
     * @param project  Project to add Channel to
     * @return         Either the new channel or an error message
     */
-  def addTo(project: Project)(implicit ec: ExecutionContext): EitherT[Future, String, Channel] = {
+  def addTo(project: Project)(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, String, Channel] = {
     EitherT.liftF(project.channels.all)
       .filterOrElse(_.size <= config.projects.get[Int]("max-channels"), "A project may only have up to five channels.")
       .filterOrElse(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)), "A channel with that name already exists.")
@@ -54,7 +55,7 @@ trait TChannelData {
     * @return         Error, if any
     */
   //TODO: Return NEL[String] if we get the type
-  def saveTo(oldName: String)(implicit project: Project, ec: ExecutionContext): EitherT[Future, List[String], Unit] = {
+  def saveTo(oldName: String)(implicit project: Project, ec: ExecutionContext, service: ModelService): EitherT[Future, List[String], Unit] = {
     EitherT.liftF(project.channels.all).flatMap { allChannels =>
       val (channelChangeSet, channels) = allChannels.partition(_.name.equalsIgnoreCase(oldName))
       val channel = channelChangeSet.toSeq.head
@@ -68,10 +69,15 @@ trait TChannelData {
         EitherT.leftT[Future, Unit](errors)
       }
       else {
-        val effects = channel.setName(this.channelName) *>
-          channel.setColor(this.color) *>
-          channel.setNonReviewed(this.nonReviewed)
-        EitherT.right[List[String]](effects).map(_ => ())
+        val effect = service.update(
+          channel.copy(
+            name = channelName,
+            color = color,
+            isNonReviewed = nonReviewed
+          )
+        )
+
+        EitherT.right[List[String]](effect).map(_ => ())
       }
     }
   }

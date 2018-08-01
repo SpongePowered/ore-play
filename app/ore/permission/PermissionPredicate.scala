@@ -5,9 +5,9 @@ import models.project.Project
 import models.user.User
 import ore.permission.role.RoleType
 import ore.permission.scope.ScopeSubject
-
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.ModelService
 import util.FutureUtils
 import util.instances.future._
 
@@ -21,7 +21,7 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
   def apply(p: Permission)(implicit ec: ExecutionContext): AndThen = AndThen(user, p, not)
 
   protected case class AndThen(user: User, p: Permission, not: Boolean)(implicit ec: ExecutionContext) {
-    def in(subject: ScopeSubject): Future[Boolean] = {
+    def in(subject: ScopeSubject)(implicit service: ModelService): Future[Boolean] = {
       // Special Ore Developer Case
       if (user.globalRoles.contains(RoleType.OreDev)) {
         if (p == ViewHealth
@@ -51,9 +51,8 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
       }
     }
 
-    private def checkProjectPerm(project: Project): Future[Boolean] = {
-      val orgTest = project.service
-        .getModelBase(classOf[OrganizationBase])
+    private def checkProjectPerm(project: Project)(implicit service: ModelService): Future[Boolean] = {
+      val orgTest = OrganizationBase()
         .get(project.ownerId)
         .fold(Future.successful(false))(_.scope.test(user, p))
         .flatten
@@ -63,7 +62,7 @@ case class PermissionPredicate(user: User, not: Boolean = false) {
       FutureUtils.raceBoolean(orgTest, projectTest)
     }
 
-    def in(subject: Option[ScopeSubject]): Future[Boolean] = {
+    def in(subject: Option[ScopeSubject])(implicit service: ModelService): Future[Boolean] = {
       subject match {
         case None => Future.successful(false)
         case Some(s) => this.in(s)

@@ -115,7 +115,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * Submits a post reply for a project discussion.
     */
   lazy val ProjectReply = Form(mapping(
-    "content" -> text(minLength = MinLength, maxLength = MaxLength),
+    "content" -> text(minLength = minLength, maxLength = maxLength),
     "poster" -> optional(nonEmptyText)
   )(DiscussionReplyForm.apply)(DiscussionReplyForm.unapply))
 
@@ -172,14 +172,14 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "parent-id" -> optional(number),
     "name" -> optional(text),
     "content" -> optional(text(
-      maxLength = MaxLengthPage
+      maxLength = maxLengthPage
     )))(PageSaveForm.apply)(PageSaveForm.unapply) verifying("error.maxLength", pageSaveForm => {
-      val isHome = pageSaveForm.parentId.isEmpty && pageSaveForm.name.contains(HomeName)
+      val isHome = pageSaveForm.parentId.isEmpty && pageSaveForm.name.contains(homeName)
       val pageSize = pageSaveForm.content.getOrElse("").length
       if (isHome)
-        pageSize <= MaxLength
+        pageSize <= maxLength
       else
-        pageSize <= MaxLengthPage
+        pageSize <= maxLengthPage
     })
   )
 
@@ -266,7 +266,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "channel" -> channel,
     "recommended" -> default(boolean, true),
     "forumPost" -> default(boolean, request.data.settings.forumSync),
-    "changelog" -> optional(text(minLength = Page.MinLength, maxLength = Page.MaxLength)))
+    "changelog" -> optional(text(minLength = Page.minLength, maxLength = Page.maxLength)))
   (VersionDeployForm.apply)(VersionDeployForm.unapply))
 
   lazy val ReviewDescription = Form(single("content" -> text))

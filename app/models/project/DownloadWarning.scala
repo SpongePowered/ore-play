@@ -4,16 +4,14 @@ import java.sql.Timestamp
 
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
+
 import controllers.sugar.Bakery
-import db.{Expirable, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Expirable, ObjectId, ObjectReference, ObjectTimestamp, Model, ModelService}
 import db.impl.DownloadWarningsTable
-import db.impl.model.OreModel
-import db.impl.table.ModelKeys._
 import models.project.DownloadWarning.COOKIE
 import util.functional.OptionT
 import util.instances.future._
 import play.api.mvc.Cookie
-
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -26,56 +24,30 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param token        Unique token for the client to identify by
   * @param versionId    Version ID the warning is for
   * @param address      Address of client who landed on the warning
-  * @param _downloadId  Download ID
+  * @param downloadId  Download ID
   */
-case class DownloadWarning(override val id: ObjectId = ObjectId.Uninitialized,
-                           override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                           override val expiration: Timestamp,
+case class DownloadWarning(id: ObjectId = ObjectId.Uninitialized,
+                           createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                           expiration: Timestamp,
                            token: String,
                            versionId: ObjectReference,
                            address: InetString,
-                           private var _isConfirmed: Boolean = false,
-                           private var _downloadId: ObjectReference = -1) extends OreModel(id, createdAt) with Expirable {
+                           isConfirmed: Boolean = false,
+                           downloadId: ObjectReference = -1) extends Model with Expirable {
 
   override type M = DownloadWarning
   override type T = DownloadWarningsTable
-
-  def isConfirmed: Boolean = this._isConfirmed
-
-  def setConfirmed(confirmed: Boolean = true): Future[Int] = Defined {
-    this._isConfirmed = confirmed
-    update(IsConfirmed)
-  }
-
-  /**
-    * Returns the ID of the download this warning was for.
-    *
-    * @return Download ID
-    */
-  def downloadId: ObjectReference = this._downloadId
 
   /**
     * Returns the download this warning was for.
     *
     * @return Download
     */
-  def download(implicit ec: ExecutionContext): OptionT[Future, UnsafeDownload] = {
-    if (this._downloadId == -1)
+  def download(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, UnsafeDownload] = {
+    if (downloadId == -1)
       OptionT.none[Future, UnsafeDownload]
     else
-      this.service.access[UnsafeDownload](classOf[UnsafeDownload]).get(this._downloadId)
-  }
-
-  /**
-    * Sets the download this warning was for.
-    *
-    * @param download Download warning was for
-    */
-  def setDownload(download: UnsafeDownload): Future[Int] = Defined {
-    checkNotNull(download, "null download", "")
-    checkArgument(download.isDefined, "undefined download", "")
-    this._downloadId = download.id.value
-    update(DownloadId)
+      service.access[UnsafeDownload](classOf[UnsafeDownload]).get(downloadId)
   }
 
   /**

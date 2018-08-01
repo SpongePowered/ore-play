@@ -6,8 +6,6 @@ import java.time.Instant
 
 import db.impl.OrePostgresDriver.api._
 import db.impl._
-import db.impl.model.OreModel
-import db.impl.table.ModelKeys._
 import util.instances.future._
 import form.project.ProjectSettingsForm
 import models.user.Notification
@@ -24,6 +22,7 @@ import util.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.{Model, ModelService}
 import ore.user.MembershipDossier
 import db.{ObjectId, ObjectReference, ObjectTimestamp}
 
@@ -34,109 +33,24 @@ import db.{ObjectId, ObjectReference, ObjectTimestamp}
   * @param createdAt    Instant of creation
   * @param projectId    ID of project settings belong to
   * @param homepage     Project homepage
-  * @param _issues      Project issues URL
-  * @param _source      Project source URL
-  * @param _licenseName Project license name
-  * @param _licenseUrl  Project license URL
+  * @param issues      Project issues URL
+  * @param source      Project source URL
+  * @param licenseName Project license name
+  * @param licenseUrl  Project license URL
   */
-case class ProjectSettings(override val id: ObjectId = ObjectId.Uninitialized,
-                           override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                           override val projectId: ObjectReference = -1,
+case class ProjectSettings(id: ObjectId = ObjectId.Uninitialized,
+                           createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                           projectId: ObjectReference = -1,
                            homepage: Option[String] = None,
-                           private var _issues: Option[String] = None,
-                           private var _source: Option[String] = None,
-                           private var _licenseName: Option[String] = None,
-                           private var _licenseUrl: Option[String] = None,
-                           private var _forumSync: Boolean = true)
-                           extends OreModel(id, createdAt) with ProjectOwned {
+                           issues: Option[String] = None,
+                           source: Option[String] = None,
+                           licenseName: Option[String] = None,
+                           licenseUrl: Option[String] = None,
+                           forumSync: Boolean = true)
+                           extends Model with ProjectOwned {
 
   override type M = ProjectSettings
   override type T = ProjectSettingsTable
-
-  /**
-    * Returns the [[Project]]'s issues URL.
-    *
-    * @return Issues URL
-    */
-  def issues: Option[String] = this._issues
-
-  /**
-    * Sets the [[Project]]'s issues URL.
-    *
-    * @param issues Issues URL
-    */
-  def setIssues(issues: String) = {
-    this._issues = Option(issues)
-    if (isDefined) update(Issues)
-  }
-
-  /**
-    * Returns the [[Project]]'s source code URL.
-    *
-    * @return Source code URL
-    */
-  def source: Option[String] = this._source
-
-  /**
-    * Sets the [[Project]]'s source code URL.
-    *
-    * @param source Source code URL
-    */
-  def setSource(source: String) = {
-    this._source = Option(source)
-    if (isDefined) update(Source)
-  }
-
-  /**
-    * Returns the name of the [[Project]]'s license.
-    *
-    * @return Name of license
-    */
-  def licenseName: Option[String] = this._licenseName
-
-  /**
-    * Sets the name of the [[Project]]'s license.
-    *
-    * @param licenseName Name of license
-    */
-  def setLicenseName(licenseName: String) = {
-    this._licenseName = Option(licenseName)
-    if (isDefined) update(LicenseName)
-  }
-
-  /**
-    * Returns the URL to the [[Project]]'s license.
-    *
-    * @return URL to project license
-    */
-  def licenseUrl: Option[String] = this._licenseUrl
-
-  /**
-    * Sets the URL to the [[Project]]'s license.
-    *
-    * @param licenseUrl URL to project license
-    */
-  def setLicenseUrl(licenseUrl: String) = {
-    this._licenseUrl = Option(licenseUrl)
-    if (isDefined) update(LicenseUrl)
-  }
-
-  /**
-    * Returns if this [[Project]] should create new posts on the forums for noteworthy events.
-    *
-    * @return If posts should be created on the forum
-    */
-  def forumSync: Boolean = this._forumSync
-
-  /**
-    * Sets if this project should create post on the forums.
-    *
-    * @param shouldPost If posts should be created on the forum
-    */
-  def setForumSync(shouldPost: Boolean): Unit = {
-    this._forumSync = shouldPost
-    if (isDefined) update(ForumSync)
-  }
 
   /**
     * Saves a submitted [[ProjectSettingsForm]] to the [[Project]].
@@ -145,25 +59,33 @@ case class ProjectSettings(override val id: ObjectId = ObjectId.Uninitialized,
     * @param messages MessagesApi instance
     */
   //noinspection ComparingUnrelatedTypes
-  def save(project: Project, formData: ProjectSettingsForm)(implicit cache: AsyncCacheApi, messages: MessagesApi, fileManager: ProjectFiles, ec: ExecutionContext): Future[_] = {
+  def save(project: Project, formData: ProjectSettingsForm)(implicit cache: AsyncCacheApi, messages: MessagesApi, fileManager: ProjectFiles, ec: ExecutionContext, service: ModelService): Future[(Project, ProjectSettings)] = {
     Logger.debug("Saving project settings")
     Logger.debug(formData.toString)
 
-    project.setCategory(Categories.withName(formData.categoryName))
-    project.setDescription(nullIfEmpty(formData.description))
+    def updateIfDefined[A <: Model](a: A) = if(a.isDefined) service.update(a) else Future.successful(a)
 
-    this.setIssues(nullIfEmpty(formData.issues))
-    this.setSource(nullIfEmpty(formData.source))
-    this.setLicenseUrl(nullIfEmpty(formData.licenseUrl))
-    this.licenseUrl.foreach(url => this.setLicenseName(formData.licenseName))
-    this.setForumSync(formData.forumSync)
+    val updateProject = updateIfDefined(
+      project.copy(
+        category = Categories.withName(formData.categoryName),
+        description = Option(nullIfEmpty(formData.description)),
+        ownerId = formData.ownerId.getOrElse(project.ownerId)
+      )
+    )
 
-    // Update the owner if needed
-    val ownerSet = formData.ownerId.find(_ != project.ownerId) match {
-      case None => Future.successful(true)
-      case Some(ownerId) => this.userBase.get(ownerId).semiFlatMap(project.setOwner).value
-    }
-    ownerSet.flatMap { _ =>
+    val updateSettings = updateIfDefined(
+      copy(
+        issues = Option(nullIfEmpty(formData.issues)),
+        source = Option(nullIfEmpty(formData.source)),
+        licenseUrl = Option(nullIfEmpty(formData.licenseUrl)),
+        licenseName = if(formData.licenseUrl.nonEmpty) Some(formData.licenseName) else licenseName,
+        forumSync = formData.forumSync
+      )
+    )
+
+    val modelUpdates = updateProject.zip(updateSettings)
+
+    modelUpdates.flatMap { t =>
       // Update icon
       if (formData.updateIcon) {
         fileManager.getPendingIconPath(project).foreach { pendingPath =>
@@ -215,10 +137,10 @@ case class ProjectSettings(override val id: ObjectId = ObjectId.Uninitialized,
               case (userId, role) => updateMemberShip(userId).update(role)
             }
           } flatMap { updates =>
-            service.DB.db.run(DBIO.sequence(updates))
+            service.DB.db.run(DBIO.sequence(updates)).map(_ => t)
           }
         }
-      } else Future.successful(true)
+      } else Future.successful(t)
     }
   }
 

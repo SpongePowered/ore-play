@@ -68,11 +68,7 @@ object HeaderData {
   def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[HeaderData] = {
     OptionT.fromOption[Future](request.cookies.get("_oretoken"))
       .flatMap(cookie => getSessionUser(cookie.value))
-      .semiFlatMap { user =>
-        user.service = service
-        user.organizationBase = service.getModelBase(classOf[OrganizationBase])
-        getHeaderData(user)
-      }
+      .semiFlatMap(user => getHeaderData(user))
       .getOrElse(unAuthenticated)
   }
 
@@ -128,7 +124,7 @@ object HeaderData {
     db.run(query.exists.result)
   }
 
-  private def getHeaderData(user: User)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) = {
+  private def getHeaderData(user: User)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef, service: ModelService) = {
 
     perms(Some(user)).flatMap { perms =>
       (
@@ -150,7 +146,7 @@ object HeaderData {
   }
 
 
-  def perms(currentUser: Option[User])(implicit ec: ExecutionContext): Future[Map[Permission, Boolean]] = {
+  def perms(currentUser: Option[User])(implicit ec: ExecutionContext, service: ModelService): Future[Map[Permission, Boolean]] = {
     if (currentUser.isEmpty) Future.successful(noPerms)
     else {
       val user = currentUser.get

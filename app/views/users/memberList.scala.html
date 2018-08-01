@@ -10,7 +10,7 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.JoinableData
 @import ore.permission.Permission
-@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_]]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
+@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_], _]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 
 <!-- TODO: Pagination -->
@@ -96,9 +96,9 @@
             <!-- Member list -->
             @j.filteredMembers.map { case (role, user) =>
                 <li class="list-group-item">
-                    @userAvatar(Some(user.username), user.avatarUrl, clazz = "user-avatar-xs")
-                <a class="username" href="@routes.Users.showProjects(user.username, None)">
-                @user.username
+                    @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
+                <a class="username" href="@routes.Users.showProjects(user.name, None)">
+                @user.name
                 </a>
                     <p style="display: none;" class="role-id">@role.id.value</p>
                     @if(editable && perms.getOrElse(EditSettings, false) && !role.roleType.trust.equals(Absolute)) {

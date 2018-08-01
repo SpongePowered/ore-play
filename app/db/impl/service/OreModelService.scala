@@ -1,13 +1,11 @@
 package db.impl.service
 
-import db.impl.{OreModelProcessor, OrePostgresDriver}
+import db.impl.OrePostgresDriver
 import db.{ModelRegistry, ModelService}
-import discourse.OreDiscourseApi
 import javax.inject.{Inject, Singleton}
 import ore.{OreConfig, OreEnv}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.i18n.MessagesApi
-import security.spauth.SpongeAuthApi
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.duration._
@@ -21,8 +19,6 @@ import scala.concurrent.duration._
 @Singleton
 class OreModelService @Inject()(override val env: OreEnv,
                                 override val config: OreConfig,
-                                override val forums: OreDiscourseApi,
-                                override val auth: SpongeAuthApi,
                                 override val messages: MessagesApi,
                                 db: DatabaseConfigProvider)
                                 extends ModelService with OreModelConfig {
@@ -31,8 +27,6 @@ class OreModelService @Inject()(override val env: OreEnv,
 
   // Implement ModelService
   override lazy val registry: ModelRegistry = new ModelRegistry {}
-  override lazy val processor = new OreModelProcessor(
-    this, Users, Projects, Organizations, this.config, this.forums, this.auth)
   override lazy val driver: OrePostgresDriver.type = OrePostgresDriver
   override lazy val DB = db.get[JdbcProfile]
   override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds

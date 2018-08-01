@@ -2,7 +2,6 @@ package db.impl
 
 import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
-import db.table.key.Aliases
 import enumeratum.values.SlickValueEnumSupport
 import models.project.TagColors.TagColor
 import models.project.VisibilityTypes.Visibility
@@ -35,7 +34,7 @@ trait OrePostgresDriver extends ExPostgresProfile with PgArraySupport with PgAgg
 
   def pgjson = "jsonb"
 
-  object OreDriver extends API with ArrayImplicits with NetImplicits with Aliases {
+  object OreDriver extends API with ArrayImplicits with NetImplicits {
     implicit val colorTypeMapper            : JdbcType[Color] with BaseTypedType[Color]                             = MappedJdbcType.base[Color, Int](_.id, Colors.apply)
     implicit val tagColorTypeMapper         : JdbcType[TagColor] with BaseTypedType[TagColor]                       = MappedJdbcType.base[TagColor, Int](_.id, TagColors.apply)
     implicit val roleTypeTypeMapper         : JdbcType[RoleType] with BaseTypedType[RoleType]                       = mappedColumnTypeForValueEnum(RoleType)

@@ -25,7 +25,7 @@ trait Bootstrap {
 
   this.modelService.start()
 
-  this.forums.projects = this.modelService.getModelBase(classOf[ProjectBase])
+  this.forums.projects = ProjectBase.fromService(modelService)
   this.forums.start()
 
   this.projectTask.start()

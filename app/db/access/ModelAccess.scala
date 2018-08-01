@@ -85,6 +85,14 @@ class ModelAccess[M <: Model](val service: ModelService,
   def add(model: M)(implicit ec: ExecutionContext): Future[M] = this.service insert model
 
   /**
+    * Updates an existing model.
+    *
+    * @param model The model to update
+    * @return The updated model
+    */
+  def update(model: M)(implicit ec: ExecutionContext): Future[M] = this.service.update(model)
+
+  /**
     * Removes the specified model from this set if it is contained.
     *
     * @param model Model to remove

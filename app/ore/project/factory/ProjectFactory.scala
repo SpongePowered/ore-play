@@ -5,12 +5,14 @@ import java.nio.file.StandardCopyOption
 
 import akka.actor.ActorSystem
 import com.google.common.base.Preconditions._
+
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.{ProjectBase, UserBase}
 import db.impl.{ProjectMembersTable, ProjectRoleTable}
+import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
 import javax.inject.Inject
+
 import models.project._
 import models.user.role.ProjectRole
 import models.user.{Notification, User}
@@ -22,6 +24,7 @@ import ore.project.{NotifyWatchersTask, ProjectMember}
 import ore.user.MembershipDossier
 import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv, Platforms}
+
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 import security.pgp.PGPVerifier
@@ -40,19 +43,18 @@ import scala.util.matching.Regex
   */
 trait ProjectFactory {
 
-  implicit val service: ModelService
-  implicit val users: UserBase = this.service.getModelBase(classOf[UserBase])
-  implicit val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
+  implicit def service: ModelService
+  implicit def projects: ProjectBase = ProjectBase.fromService
 
-  val fileManager: ProjectFiles = this.projects.fileManager
-  val cacheApi: SyncCacheApi
-  val actorSystem: ActorSystem
+  def fileManager: ProjectFiles = this.projects.fileManager
+  def cacheApi: SyncCacheApi
+  def actorSystem: ActorSystem
   val pgp: PGPVerifier = new PGPVerifier
   val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
-  implicit val config: OreConfig
-  implicit val forums: OreDiscourseApi
-  implicit val env: OreEnv = this.fileManager.env
+  implicit def config: OreConfig
+  implicit def forums: OreDiscourseApi
+  implicit def env: OreEnv = this.fileManager.env
 
   var isPgpEnabled: Boolean = this.config.security.get[Boolean]("requirePgp")
 
@@ -89,7 +91,7 @@ trait ProjectFactory {
 
     // move uploaded files to temporary directory while the project creation
     // process continues
-    val tmpDir = this.env.tmp.resolve(owner.username)
+    val tmpDir = this.env.tmp.resolve(owner.name)
     if (notExists(tmpDir))
       createDirectories(tmpDir)
     val signatureFileExtension = signatureFileName.substring(signatureFileName.lastIndexOf("."))
@@ -183,9 +185,12 @@ trait ProjectFactory {
       factory = this,
       underlying = project,
       file = plugin,
-      config = this.config,
       channelName = this.config.getSuggestedNameForVersion(metaData.version.get),
-      cacheApi = this.cacheApi)
+      pendingVersion = null,
+      cacheApi = this.cacheApi
+    )
+    //TODO: Remove cyclic dependency between PendingProject and PendingVersion
+    pendingProject.pendingVersion = PendingProject.createPendingVersion(pendingProject)
     pendingProject
   }
 
@@ -351,13 +356,13 @@ trait ProjectFactory {
         val newVersion = Version(
           versionString = pendingVersion.versionString,
           dependencyIds = pendingVersion.dependencyIds,
-          _description = pendingVersion.description,
+          description = pendingVersion.description,
           assets = pendingVersion.assets,
           projectId = project.id.value,
-          _channelId = channel.id.value,
+          channelId = channel.id.value,
           fileSize = pendingVersion.fileSize,
           hash = pendingVersion.hash,
-          _authorId = pendingVersion.authorId,
+          authorId = pendingVersion.authorId,
           fileName = pendingVersion.fileName,
           signatureFileName = pendingVersion.signatureFileName
         )
@@ -367,8 +372,6 @@ trait ProjectFactory {
     } yield {
       // Notify watchers
       this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
-
-      project.setLastUpdated(this.service.theTime)
 
       uploadPlugin(project, channel, pending.plugin, newVersion)
 
@@ -392,25 +395,25 @@ trait ProjectFactory {
   }
 
   private def addMetadataTags(pluginFileData: Option[PluginFileData], version: Version)(implicit ec: ExecutionContext): Future[Seq[ProjectTag]] = {
-    Future.sequence(pluginFileData.map(_.ghostTags.map(_.getFilledTag(service))).toList.flatten).map(
-      _.map { tag =>
-        tag.addVersionId(version.id.value)
-        version.addTag(tag)
-        tag
-      })
+    val futureTags = pluginFileData.map(_.ghostTags.map(_.getFilledTag(service))).toList.flatten
+    Future.traverse(futureTags) { futureTag =>
+      futureTag
+        .flatTap(tag => service.update(tag.copy(versionIds = (tag.versionIds :+ version.id.value).distinct)))
+        .flatTap(tag => service.update(version.copy(tagIds = (version.tagIds :+ tag.id.value).distinct)))
+    }
   }
 
   private def addDependencyTags(version: Version)(implicit ec: ExecutionContext): Future[Seq[ProjectTag]] = {
-    Future.sequence(
-      Platforms.getPlatformGhostTags(
-        // filter valid dependency versions
-        version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
-      ).map(_.getFilledTag(service))).map(
-      _.map { tag =>
-        tag.addVersionId(version.id.value)
-        version.addTag(tag)
-        tag
-      })
+    val futureTags = Platforms.getPlatformGhostTags(
+      // filter valid dependency versions
+      version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
+    ).map(_.getFilledTag(service))
+
+    Future.traverse(futureTags) { futureTag =>
+      futureTag
+        .flatTap(tag => service.update(tag.copy(versionIds = (tag.versionIds :+ version.id.value).distinct)))
+        .flatTap(tag => service.update(version.copy(tagIds = (version.tagIds :+ tag.id.value).distinct)))
+    }
   }
 
   private def getOrCreateChannel(pending: PendingVersion, project: Project)(implicit ec: ExecutionContext) = {

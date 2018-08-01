@@ -6,6 +6,7 @@ import ore.permission.role.RoleType
 import ore.permission.scope.ProjectScope
 
 import scala.concurrent.{ExecutionContext, Future}
+import db.ModelService
 
 import db.{ObjectId, ObjectTimestamp}
 
@@ -17,16 +18,16 @@ import db.{ObjectId, ObjectTimestamp}
   * @param id         Model ID
   * @param createdAt  Timestamp instant of creation
   * @param userId     ID of User this role belongs to
-  * @param _roleType  Type of role
+  * @param roleType   Type of role
   * @param projectId  ID of project this role belongs to
   */
-case class ProjectRole(override val id: ObjectId = ObjectId.Uninitialized,
-                       override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                       override val userId: Int,
-                       override val projectId: Int,
-                       private val _roleType: RoleType,
-                       private val _isAccepted: Boolean = false)
-                       extends RoleModel(id, createdAt, userId, _roleType, _isAccepted)
+case class ProjectRole(id: ObjectId = ObjectId.Uninitialized,
+                       createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                       userId: Int,
+                       projectId: Int,
+                       roleType: RoleType,
+                       isAccepted: Boolean = false)
+                       extends RoleModel
                          with ProjectScope {
 
   override type M = ProjectRole
@@ -36,11 +37,11 @@ case class ProjectRole(override val id: ObjectId = ObjectId.Uninitialized,
     id = ObjectId.Uninitialized,
     createdAt = ObjectTimestamp.Uninitialized,
     userId = userId,
-    _roleType = roleType,
+    roleType = roleType,
     projectId = projectId,
-    _isAccepted = accepted
+    isAccepted = accepted
   )
 
-  override def subject(implicit ec: ExecutionContext): Future[Visitable] = this.project
+  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.project
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectRole = this.copy(id = id, createdAt = theTime)
 }

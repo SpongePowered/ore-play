@@ -5,7 +5,6 @@ import controllers.sugar.{Actions, Bakery, Requests}
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.VersionTable
-import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.OrePostgresDriver.api._
 import models.project.{Project, Version, VisibilityTypes}
 import models.user.SignOn
@@ -13,7 +12,7 @@ import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.{I18nSupport, Lang}
 import play.api.mvc._
-import security.spauth.SingleSignOnConsumer
+import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.StringUtils._
 import util.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
@@ -23,7 +22,6 @@ import controllers.OreBaseController.{BindFormEitherTPartiallyApplied, BindFormO
 import play.api.data.Form
 import slick.jdbc.JdbcBackend
 import util.functional.{EitherT, Monad, OptionT}
-
 import ore.permission.ReviewProjects
 
 /**
@@ -32,19 +30,15 @@ import ore.permission.ReviewProjects
 abstract class OreBaseController(implicit val env: OreEnv,
                                  val config: OreConfig,
                                  val service: ModelService,
-                                 override val bakery: Bakery,
-                                 override val sso: SingleSignOnConsumer,
-                                 implicit val cache: AsyncCacheApi
-                                )
+                                 val bakery: Bakery,
+                                 val auth: SpongeAuthApi,
+                                 val sso: SingleSignOnConsumer,
+                                 val cache: AsyncCacheApi)
                               extends InjectedController
                                 with Actions
                                 with I18nSupport {
 
   implicit val db: JdbcBackend#DatabaseDef = service.DB.db
-
-  implicit override val users: UserBase = this.service.getModelBase(classOf[UserBase])
-  implicit override val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
-  implicit override val organizations: OrganizationBase = this.service.getModelBase(classOf[OrganizationBase])
 
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn](classOf[SignOn])
 
@@ -61,7 +55,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
     * @return         NotFound or project
     */
   def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[Future, Result, Project]
-  = this.projects.withSlug(author, slug).toRight(notFound)
+  = projects.withSlug(author, slug).toRight(notFound)
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
     val versionMatches = v.versionString.toLowerCase === versionString.toLowerCase

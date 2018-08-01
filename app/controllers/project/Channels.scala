@@ -5,12 +5,13 @@ import controllers.sugar.{Bakery, Requests}
 import db.ModelService
 import form.OreForms
 import javax.inject.Inject
+
 import ore.permission.EditChannels
 import ore.project.factory.ProjectFactory
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
-import security.spauth.SingleSignOnConsumer
+import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
 import util.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
@@ -25,15 +26,17 @@ import util.syntax._
   * Controller for handling Channel related actions.
   */
 class Channels @Inject()(forms: OreForms,
-                         factory: ProjectFactory,
-                         implicit override val bakery: Bakery,
-                         implicit override val cache: AsyncCacheApi,
-                         implicit override val sso: SingleSignOnConsumer,
-                         implicit override val messagesApi: MessagesApi,
-                         implicit override val env: OreEnv,
-                         implicit override val config: OreConfig,
-                         implicit override val service: ModelService)(implicit val ec: ExecutionContext)
-                         extends OreBaseController {
+                         factory: ProjectFactory)(
+    implicit val ec: ExecutionContext,
+    bakery: Bakery,
+    cache: AsyncCacheApi,
+    auth: SpongeAuthApi,
+    sso: SingleSignOnConsumer,
+    messagesApi: MessagesApi,
+    env: OreEnv,
+    config: OreConfig,
+    service: ModelService
+) extends OreBaseController {
 
   private val self = controllers.project.routes.Channels
 
@@ -123,7 +126,7 @@ class Channels @Inject()(forms: OreForms,
             channel => channel.isNonReviewed || channels.count(_.isReviewed) > 1,
             Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed")
           )
-          .semiFlatMap(channel => this.projects.deleteChannel(channel))
+          .semiFlatMap(channel => projects.deleteChannel(channel))
           .map(_ => Redirect(self.showList(author, slug)))
       }.merge
   }

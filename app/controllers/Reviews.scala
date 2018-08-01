@@ -10,6 +10,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl._
 import form.OreForms
 import javax.inject.Inject
+
 import models.admin.{Message, Review}
 import models.project.{Project, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
@@ -21,29 +22,30 @@ import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.mvc.{Action, AnyContent, Result}
-import security.spauth.SingleSignOnConsumer
+import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import slick.lifted.{Rep, TableQuery}
 import util.DataHelper
 import views.{html => views}
 import util.instances.future._
 import util.syntax._
 import util.functional.EitherT
-
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Controller for handling Review related actions.
   */
 final class Reviews @Inject()(data: DataHelper,
-                              forms: OreForms,
-                              implicit override val bakery: Bakery,
-                              implicit override val sso: SingleSignOnConsumer,
-                              implicit override val messagesApi: MessagesApi,
-                              implicit override val env: OreEnv,
-                              implicit override val cache: AsyncCacheApi,
-                              implicit override val config: OreConfig,
-                              implicit override val service: ModelService)(implicit val ec: ExecutionContext)
-                              extends OreBaseController {
+                              forms: OreForms)(
+    implicit val ec: ExecutionContext,
+    bakery: Bakery,
+    auth: SpongeAuthApi,
+    sso: SingleSignOnConsumer,
+    messagesApi: MessagesApi,
+    env: OreEnv,
+    cache: AsyncCacheApi,
+    config: OreConfig,
+    service: ModelService
+) extends OreBaseController {
 
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) andThen ProjectAction(author, slug)).async { request =>
@@ -54,7 +56,7 @@ final class Reviews @Inject()(data: DataHelper,
         version <- getVersion(p, versionString)
         reviews <- EitherT.right[Result](version.mostRecentReviews)
         rv <- EitherT.right[Result](
-          Future.traverse(reviews)(r => r.userBase.get(r.userId).map(_.name).value.tupleLeft(r))
+          Future.traverse(reviews)(r => users.get(r.userId).map(_.name).value.tupleLeft(r))
         )
       } yield {
         val unfinished = reviews.filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
@@ -80,14 +82,21 @@ final class Reviews @Inject()(data: DataHelper,
       val res = for {
         version <- getProjectVersion(author, slug, versionString)
         review <- EitherT.fromOptionF(version.mostRecentReviews.map(_.headOption), notFound)
-      } yield {
-        version.setReviewed(false)
-        version.setApprovedAt(null)
-        version.setReviewerId(-1)
-        review.setEnded(None)
-        review.addMessage(Message("Reopened the review", System.currentTimeMillis(), "start"))
-        Redirect(routes.Reviews.showReviews(author, slug, versionString))
-      }
+        _ <- EitherT.right[Result](
+          service.update(
+            version.copy(
+              isReviewed = false,
+              approvedAt = None,
+              reviewerId = -1
+            )
+          )
+        )
+        _ <- EitherT.right[Result](
+          service
+            .update(review.copy(endedAt = None))
+            .flatMap(_.addMessage(Message("Reopened the review", System.currentTimeMillis(), "start")))
+        )
+      } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
 
       res.merge
     }
@@ -99,11 +108,12 @@ final class Reviews @Inject()(data: DataHelper,
         version <- getProjectVersion(author, slug, versionString)
         review <- version.mostRecentUnfinishedReview.toRight(notFound)
         message <- bindFormEitherT[Future](this.forms.ReviewDescription)(_ => BadRequest: Result)
-      } yield {
-        review.addMessage(Message(message.trim, System.currentTimeMillis(), "stop"))
-        review.setEnded(Some(Timestamp.from(Instant.now())))
-        Redirect(routes.Reviews.showReviews(author, slug, versionString))
-      }
+        _ <- EitherT.right[Result](
+          service
+            .update(review.copy(endedAt = Some(Timestamp.from(Instant.now()))))
+            .flatMap(_.addMessage(Message(message.trim, System.currentTimeMillis(), "stop")))
+        )
+      } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
 
       res.merge
     }
@@ -117,7 +127,7 @@ final class Reviews @Inject()(data: DataHelper,
         review <- version.mostRecentUnfinishedReview.toRight(notFound)
         _ <- EitherT.right[Result](
           (
-            review.setEnded(Some(Timestamp.from(Instant.now()))),
+            service.update(review.copy(endedAt = Some(Timestamp.from(Instant.now())))),
             // send notification that review happened
             sendReviewNotification(project, version, request.user)
           ).parTupled
@@ -192,9 +202,8 @@ final class Reviews @Inject()(data: DataHelper,
           val closeOldReview = version.mostRecentUnfinishedReview.semiFlatMap { oldreview =>
             (
               oldreview.addMessage(Message(message.trim, System.currentTimeMillis(), "takeover")),
-              oldreview.setEnded(Some(Timestamp.from(Instant.now()))),
-              this.service.insert(Review(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), version.id.value, request.user.id.value, None, ""))
-            ).parMapN { (_, _, _) => () }
+              service.update(oldreview.copy(endedAt = Some(Timestamp.from(Instant.now())))),
+            ).parMapN { (_, _) => () }
           }.getOrElse(())
 
           // Then make new one
@@ -250,7 +259,7 @@ final class Reviews @Inject()(data: DataHelper,
       } yield {
 
         UserActionLogger.log(request, LoggedAction.VersionNonReviewChanged, version.id.value, s"In review queue: ${version.isNonReviewed}", s"In review queue: ${!version.isNonReviewed}")
-        version.setIsNonReviewed(!version.isNonReviewed)
+        service.update(version.copy(isNonReviewed = !version.isNonReviewed))
 
         Redirect(routes.Reviews.showReviews(author, slug, versionString))
       }

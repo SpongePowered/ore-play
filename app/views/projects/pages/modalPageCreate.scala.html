@@ -42,7 +42,7 @@
                     <div class="setting-content">
                         <select class="form-control select-parent">
                             <option selected value="-1">&lt;none&gt;</option>
-                            @rootPages.filterNot(_.name.equals(Page.HomeName)).map { page =>
+                            @rootPages.filterNot(_.name.equals(Page.homeName)).map { page =>
                               <option value="@page.id.value" data-slug="@page.slug">@page.name</option>
                             }
                         </select>

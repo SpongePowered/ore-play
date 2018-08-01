@@ -15,6 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.mvc.Call
 import util.syntax._
+import util.instances.future._
 
 // TODO separate Scoped UserData
 
@@ -69,7 +70,7 @@ object UserData {
 
   def of[A](request: OreRequest[A], user: User)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[UserData] = {
     for {
-      isOrga <- user.isOrganization
+      isOrga <- user.toMaybeOrganization.isDefined
       projectCount <- user.projects.size
       (userPerms, orgaPerms) <- perms(request.currentUser)
       orgas <- db.run(queryRoles(user).result)
@@ -85,7 +86,7 @@ object UserData {
     }
   }
 
-  def perms(currentUser: Option[User])(implicit ec: ExecutionContext): Future[(Map[Permission, Boolean], Map[Permission, Boolean])] = {
+  def perms(currentUser: Option[User])(implicit ec: ExecutionContext, service: ModelService): Future[(Map[Permission, Boolean], Map[Permission, Boolean])] = {
     if (currentUser.isEmpty) Future.successful((Map.empty, Map.empty))
     else {
       val user = currentUser.get

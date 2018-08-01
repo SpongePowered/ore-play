@@ -10,13 +10,11 @@ import security.spauth.SpongeAuthApi
 trait OreDBOs extends ModelService {
 
   val env: OreEnv
-  val forums: OreDiscourseApi
-  val auth: SpongeAuthApi
   val config: OreConfig
   val messages: MessagesApi
 
-  val Users = new UserBase(this, this.auth, this.config)
-  val Projects = new ProjectBase(this, this.env, this.config, this.forums)
-  val Organizations = new OrganizationBase(this, this.forums, this.auth, this.config, this.messages, Users)
+  val Users = new UserBase()(this, this.config)
+  val Projects = new ProjectBase()(this, this.env, this.config)
+  val Organizations = new OrganizationBase()(this, this.config, this.messages)
 
 }

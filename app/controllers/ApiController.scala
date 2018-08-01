@@ -28,7 +28,7 @@ import util.syntax._
 import play.api.libs.json._
 import play.api.mvc._
 import security.CryptoUtils
-import security.spauth.SingleSignOnConsumer
+import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import slick.lifted.Compiled
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,15 +40,17 @@ final class ApiController @Inject()(api: OreRestfulApi,
                                     status: StatusZ,
                                     forms: OreForms,
                                     writes: OreWrites,
-                                    factory: ProjectFactory,
-                                    implicit override val config: OreConfig,
-                                    implicit override val env: OreEnv,
-                                    implicit override val service: ModelService,
-                                    implicit override val bakery: Bakery,
-                                    implicit override val cache: AsyncCacheApi,
-                                    implicit override val sso: SingleSignOnConsumer,
-                                    implicit override val messagesApi: MessagesApi)(implicit val ec: ExecutionContext)
-                                    extends OreBaseController {
+                                    factory: ProjectFactory)(
+    implicit val ec: ExecutionContext,
+    config: OreConfig,
+    env: OreEnv,
+    service: ModelService,
+    bakery: Bakery,
+    cache: AsyncCacheApi,
+    auth: SpongeAuthApi,
+    sso: SingleSignOnConsumer,
+    messagesApi: MessagesApi
+) extends OreBaseController {
 
   import writes._
 
@@ -222,13 +224,19 @@ final class ApiController @Inject()(api: OreRestfulApi,
             .semiFlatMap { pendingVersion =>
               pendingVersion.createForumPost = formData.createForumPost
               pendingVersion.channelName = formData.channel.name
-              formData.changelog.foreach(pendingVersion.underlying.setDescription)
-              pendingVersion.complete()
+              formData.changelog.fold(Future.successful(pendingVersion)) { changelog =>
+                service
+                  .update(pendingVersion.underlying.copy(description = Some(changelog)))
+                  .map(newVersion => pendingVersion.copy(underlying = newVersion))
+              }
             }
-            .map { case (newVersion, channel, tags) =>
-              if (formData.recommended)
-                projectData.project.setRecommendedVersion(newVersion)
-              Created(api.writeVersion(newVersion, projectData.project, channel, None, tags))
+            .semiFlatMap(_.complete())
+            .semiFlatMap { case (newVersion, channel, tags) =>
+              val update = if (formData.recommended)
+                service.update(projectData.project.copy(recommendedVersionId = Some(newVersion.id.value)))
+              else Future.unit
+
+              update.as(Created(api.writeVersion(newVersion, projectData.project, channel, None, tags)))
             }
         }.merge
       case _ => Future.successful(NotFound)
@@ -315,33 +323,30 @@ final class ApiController @Inject()(api: OreRestfulApi,
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
       .semiFlatMap{q =>
         Logger.debug("Sync Payload: " + q)
-        this.users.get(q.get("external_id").get.toInt).value.tupleLeft(q)
+        users.get(q.get("external_id").get.toInt).value.tupleLeft(q)
       }
-      .map { case (query, optUser) =>
+      .semiFlatMap { case (query, optUser) =>
         Logger.debug("Sync user found: " + optUser.isDefined)
-        optUser.foreach { user =>
+        optUser.map { user =>
           val email = query.get("email")
           val username = query.get("username")
-          val name = query.get("name")
+          val fullName = query.get("name")
           val avatar_url = query.get("avatar_url")
           val add_groups = query.get("add_groups")
 
-          email.foreach(user.setEmail)
-          username.foreach(user.setUsername)
-          name.foreach(user.setFullName)
-          avatar_url.foreach(user.setAvatarUrl)
-          add_groups.foreach { groups =>
-            user.setGlobalRoles(
-              if (groups.trim == "")
-                Set.empty
-              else
-                groups.split(",").flatMap(group => RoleType.withValueOpt(group)).toSet[RoleType]
+          service.update(
+            user.copy(
+              email = email.orElse(user.email),
+              name = username.getOrElse(user.name),
+              fullName = fullName.orElse(user.fullName),
+              avatarUrl = avatar_url.orElse(user.avatarUrl),
+              globalRoles = add_groups.fold(user.globalRoles) { groups =>
+                if (groups.trim.isEmpty) Nil
+                else groups.split(",").flatMap(RoleType.withValueOpt).toList
+              }
             )
-          }
-
-        }
-
-        Ok(Json.obj("status" -> "success"))
+          )
+        }.getOrElse(Future.unit).as(Ok(Json.obj("status" -> "success")))
       }.merge
   }
 }

@@ -1,6 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import db.impl.access.UserBase._
+@import db.impl.access.UserBase.UserOrdering
 @import models.user.User
 @import ore.OreConfig
 @import security.NonceFilter._
@@ -28,21 +28,21 @@
                 <thead>
                     <tr>
                         <td></td>
-                        <td @if(isActiveSort(ORDERING_USERNAME)) { class="user-sort" } data-list="authors" >
+                        <td @if(isActiveSort(UserOrdering.UserName)) { class="user-sort" } data-list="authors" >
                             Username
-                            @if(isActiveSort(ORDERING_USERNAME)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.UserName)) { <i class="o @direction"></i> }
                         </td>
-                        <td @if(isActiveSort(ORDERING_ROLE)) { class="user-sort" } data-list="authors" >
+                        <td @if(isActiveSort(UserOrdering.Role)) { class="user-sort" } data-list="authors" >
                             Roles
-                            @if(isActiveSort(ORDERING_ROLE)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.Role)) { <i class="o @direction"></i> }
                         </td>
-                        <td @if(isActiveSort(ORDERING_JOIN_DATE)) { class="user-sort" } data-list="authors" >
+                        <td @if(isActiveSort(UserOrdering.JoinDate)) { class="user-sort" } data-list="authors" >
                             Joined
-                            @if(isActiveSort(ORDERING_JOIN_DATE)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.JoinDate)) { <i class="o @direction"></i> }
                         </td>
-                        <td @if(isActiveSort(ORDERING_PROJECTS)) { class="user-sort" } data-list="authors" >
+                        <td @if(isActiveSort(UserOrdering.Projects)) { class="user-sort" } data-list="authors" >
                             Projects
-                            @if(isActiveSort(ORDERING_PROJECTS)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.Projects)) { <i class="o @direction"></i> }
                         </td>
                     </tr>
                 </thead>
@@ -51,7 +51,7 @@
                       <tr>
                           <td>@userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")</td>
                           <td>
-                              <a href="@routes.Users.showProjects(user.username, None)">@user.username</a>
+                              <a href="@routes.Users.showProjects(user.name, None)">@user.name</a>
                           </td>
                           <td>
                               @defining(user.donorType) { donorType =>

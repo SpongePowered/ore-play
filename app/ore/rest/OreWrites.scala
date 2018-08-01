@@ -1,7 +1,6 @@
 package ore.rest
 
 import db.ModelService
-import db.impl.access.ProjectBase
 import javax.inject.Inject
 import models.api.ProjectApiKey
 import models.project._
@@ -14,8 +13,6 @@ import security.pgp.PGPPublicKeyInfo
   * Contains implicit JSON [[Writes]] for the Ore API.
   */
 final class OreWrites @Inject()(implicit config: OreConfig, service: ModelService) {
-
-  implicit val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
 
   implicit val projectApiKeyWrites: Writes[ProjectApiKey] = new Writes[ProjectApiKey] {
     def writes(key: ProjectApiKey): JsObject = obj(

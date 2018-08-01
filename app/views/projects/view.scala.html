@@ -166,7 +166,7 @@ Base template for Project overview.
                             }
 
                             <!-- Flag button -->
-                            @if(request.hasUser && !request.currentUser.get.username.equals(p.project.ownerName)
+                            @if(request.hasUser && !request.currentUser.get.name.equals(p.project.ownerName)
                                     && !sp.uProjectFlags
                                     && !p.project.isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">

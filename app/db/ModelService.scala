@@ -3,7 +3,6 @@ package db
 import java.sql.Timestamp
 import java.util.Date
 
-import db.ModelAction._
 import db.ModelFilter.IdFilter
 import db.access.ModelAccess
 import db.table.{MappedType, ModelTable}
@@ -18,14 +17,13 @@ import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 import util.functional.OptionT
+import util.instances.future._
+import util.syntax._
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.
   */
 trait ModelService {
-
-  /** Used for processing models and determining field bindings */
-  val processor: ModelProcessor
 
   /** All registered models. */
   val registry: ModelRegistry
@@ -113,8 +111,7 @@ trait ModelService {
     * @param action   Action to run
     * @return         Processed result
     */
-  def doAction[R](action: AbstractModelAction[R])(implicit ec: ExecutionContext): Future[R]
-  = DB.db.run(action).map(r => action.processResult(this, r))
+  def doAction[R](action: DBIO[R])(implicit ec: ExecutionContext): Future[R] = DB.db.run(action)
 
   /**
     * Returns a new ModelAccess to access a ModelTable synchronously.
@@ -142,6 +139,11 @@ trait ModelService {
           model.copyWith(ObjectId(id), m.createdAt).asInstanceOf[M]
       } += toInsert
     }
+  }
+
+  def update[M <: Model](model: M)(implicit ec: ExecutionContext): Future[M] = {
+    val models = newAction[M](model.getClass)
+    DB.db.run(models.filter(_.id === model.id.value).update(model)).as(model)
   }
 
   /**

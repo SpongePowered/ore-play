@@ -1,10 +1,12 @@
 package ore.project
 
-import db.impl.access.ProjectBase
 import models.project.{Project, Version}
 import models.user.Notification
 import ore.user.notification.NotificationTypes
 import scala.concurrent.ExecutionContext
+
+import db.ModelService
+import ore.OreConfig
 
 /**
   * Notifies all [[models.user.User]]s that are watching the specified
@@ -14,7 +16,7 @@ import scala.concurrent.ExecutionContext
   * @param version  New version
   * @param projects ProjectBase instance
   */
-case class NotifyWatchersTask(version: Version, project: Project)(implicit projects: ProjectBase, ec: ExecutionContext)
+case class NotifyWatchersTask(version: Version, project: Project)(implicit ec: ExecutionContext, service: ModelService, config: OreConfig)
   extends Runnable {
 
   def run(): Unit = {

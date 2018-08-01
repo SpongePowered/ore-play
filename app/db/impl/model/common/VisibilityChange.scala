@@ -5,9 +5,11 @@ import java.sql.Timestamp
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.Model
+import db.impl.access.UserBase
 import db.impl.table.common.VisibilityChangeColumns
 import models.user.User
 import util.functional.OptionT
+import util.instances.future._
 
 trait VisibilityChange extends Model { self =>
 
@@ -20,7 +22,8 @@ trait VisibilityChange extends Model { self =>
   def resolvedBy: Option[Int]
   def visibility: Int
 
-  def created(implicit ec: ExecutionContext): OptionT[Future, User]
+  def created(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =
+    OptionT.fromOption[Future](createdBy).flatMap(userBase.get(_))
 
   /** Check if the change has been dealt with */
   def isResolved: Boolean = resolvedAt.isDefined

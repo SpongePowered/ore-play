@@ -12,9 +12,9 @@ import scala.language.implicitConversions
 trait ModelBase[M <: Model] {
 
   /** The [[Model]] that this provides access to */
-  val modelClass: Class[M]
+  def modelClass: Class[M]
   /** The [[ModelService]] to retrieve the model */
-  val service: ModelService
+  def service: ModelService
 
   /**
     * Provides access to the ModelTable.

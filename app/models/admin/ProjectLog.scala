@@ -1,10 +1,9 @@
 package models.admin
 
-import db.{ModelFilter, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelFilter, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectLogTable
-import db.impl.model.OreModel
 import ore.project.ProjectOwned
 import util.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,10 +15,9 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param createdAt  Instant of creation
   * @param projectId  ID of project log is for
   */
-case class ProjectLog(override val id: ObjectId = ObjectId.Uninitialized,
-                      override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                      override val projectId: ObjectReference)
-                      extends OreModel(id, createdAt) with ProjectOwned {
+case class ProjectLog(id: ObjectId = ObjectId.Uninitialized,
+                      createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                      projectId: ObjectReference) extends Model with ProjectOwned {
 
   override type T = ProjectLogTable
   override type M = ProjectLog
@@ -29,7 +27,7 @@ case class ProjectLog(override val id: ObjectId = ObjectId.Uninitialized,
     *
     * @return Entries in log
     */
-  def entries: ModelAccess[ProjectLogEntry] = this.schema.getChildren[ProjectLogEntry](classOf[ProjectLogEntry], this)
+  def entries(implicit service: ModelService): ModelAccess[ProjectLogEntry] = this.schema.getChildren[ProjectLogEntry](classOf[ProjectLogEntry], this)
 
   /**
     * Adds a new entry with an "error" tag to the log.
@@ -37,20 +35,21 @@ case class ProjectLog(override val id: ObjectId = ObjectId.Uninitialized,
     * @param message  Message to log
     * @return         New entry
     */
-  def err(message: String)(implicit ec: ExecutionContext): Future[ProjectLogEntry] = Defined {
-    val entries = this.service.access[ProjectLogEntry](
+  def err(message: String)(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLogEntry] = Defined {
+    val entries = service.access[ProjectLogEntry](
       classOf[ProjectLogEntry], ModelFilter[ProjectLogEntry](_.logId === this.id.value))
     val tag = "error"
-    entries.find(e => e.message === message && e.tag === tag).map { entry =>
-      entry.setOoccurrences(entry.occurrences + 1)
-      entry.setLastOccurrence(this.service.theTime)
-      entry
+    entries.find(e => e.message === message && e.tag === tag).semiFlatMap { entry =>
+      entries.update(entry.copy(
+        occurrences = entry.occurrences + 1,
+        lastOccurrence = service.theTime
+      ))
     }.getOrElseF {
       entries.add(ProjectLogEntry(
         logId = this.id.value,
         tag = tag,
         message = message,
-        _lastOccurrence = this.service.theTime))
+        lastOccurrence = service.theTime))
     }
   }
 

@@ -4,11 +4,12 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.UserBase.{ORDERING_PROJECTS, ORDERING_ROLE}
+import db.impl.access.UserBase.UserOrdering
 import db.impl.{ProjectTableMain, VersionTable}
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
+
 import mail.{EmailFactory, Mailer}
 import models.user.{LoggedAction, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
@@ -23,12 +24,13 @@ import play.Logger
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.mvc._
-import security.spauth.SingleSignOnConsumer
+import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
 import util.instances.future._
 import util.syntax._
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import util.functional.EitherT
 
 /**
   * Controller for general user actions.
@@ -38,14 +40,17 @@ class Users @Inject()(fakeUser: FakeUser,
                       forums: OreDiscourseApi,
                       writes: OreWrites,
                       mailer: Mailer,
-                      emails: EmailFactory,
-                      implicit override val bakery: Bakery,
-                      implicit override val sso: SingleSignOnConsumer,
-                      implicit override val messagesApi: MessagesApi,
-                      implicit override val env: OreEnv,
-                      implicit override val config: OreConfig,
-                      implicit override val cache: AsyncCacheApi,
-                      implicit override val service: ModelService)(implicit val ec: ExecutionContext) extends OreBaseController {
+                      emails: EmailFactory)(
+    implicit val ec: ExecutionContext,
+    bakery: Bakery,
+    auth: SpongeAuthApi,
+    sso: SingleSignOnConsumer,
+    messagesApi: MessagesApi,
+    env: OreEnv,
+    config: OreConfig,
+    cache: AsyncCacheApi,
+    service: ModelService
+) extends OreBaseController {
 
   private val baseUrl = this.config.app.get[String]("baseUrl")
 
@@ -71,7 +76,7 @@ class Users @Inject()(fakeUser: FakeUser,
     if (this.fakeUser.isEnabled) {
       // Log in as fake user (debug only)
       this.config.checkDebug()
-      this.users.getOrCreate(this.fakeUser)
+      users.getOrCreate(this.fakeUser)
       this.redirectBack(returnPath.getOrElse(request.path), this.fakeUser)
     } else if (sso.isEmpty || sig.isEmpty) {
       val nonce = SingleSignOnConsumer.nonce
@@ -79,11 +84,10 @@ class Users @Inject()(fakeUser: FakeUser,
       Future.successful(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
     } else {
       // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
-      this.sso.authenticate(sso.get, sig.get)(isNonceValid).semiFlatMap { spongeUser =>
+      this.sso.authenticate(sso.get, sig.get)(isNonceValid).semiFlatMap(User.fromSponge).semiFlatMap { fromSponge =>
         // Complete authentication
-        val fromSponge = User.fromSponge(spongeUser)
         for {
-          user <- this.users.getOrCreate(fromSponge)
+          user <- users.getOrCreate(fromSponge)
           result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
         } yield result
       }.getOrElse(Redirect(ShowHome).withError("error.loginFailed"))
@@ -133,7 +137,7 @@ class Users @Inject()(fakeUser: FakeUser,
     val pageSize = this.config.users.get[Int]("project-page-size")
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
-    this.users.withName(username).semiFlatMap { user =>
+    users.withName(username).semiFlatMap { user =>
       for {
         // TODO include orga projects?
         projectSeq <- service.DB.db.run(queryUserProjects(user).drop(offset).take(pageSize).result)
@@ -186,17 +190,18 @@ class Users @Inject()(fakeUser: FakeUser,
     val maxLen = this.config.users.get[Int]("max-tagline-len")
 
     val res = for {
-      user <- this.users.withName(username).toRight(NotFound)
+      user <- users.withName(username).toRight(NotFound)
       tagline <- bindFormEitherT[Future](this.forms.UserTagline)(_ => BadRequest)
-    } yield {
-      if (tagline.length > maxLen) {
-        Redirect(ShowUser(user)).flashing("error" -> request.messages.apply("error.tagline.tooLong", maxLen))
-      } else {
-        UserActionLogger.log(request, LoggedAction.UserTaglineChanged, user.id.value, tagline, user.tagline.getOrElse("null"))
-        user.setTagline(tagline)
-        Redirect(ShowUser(user))
+      res <- {
+        if (tagline.length > maxLen)
+          EitherT.rightT[Future, Result](Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen)))
+        else {
+          val log = UserActionLogger.log(request, LoggedAction.UserTaglineChanged, user.id.value, tagline, user.tagline.getOrElse("null"))
+          val insert = service.update(user.copy(tagline = Some(tagline)))
+          EitherT.right[Result](log *> insert).map(_ => Redirect(ShowUser(user)))
+        }
       }
-    }
+    } yield res
 
     res.merge
   }
@@ -208,22 +213,26 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param username User to save key to
     * @return JSON response
     */
-  def savePgpPublicKey(username: String): Action[AnyContent] = UserAction(username) { implicit request =>
+  def savePgpPublicKey(username: String): Action[AnyContent] = UserAction(username).async { implicit request =>
     this.forms.UserPgpPubKey.bindFromRequest.fold(
       hasErrors =>
-        Redirect(ShowUser(username)).withFormErrors(hasErrors.errors),
+        Future.successful(Redirect(ShowUser(username)).withFormErrors(hasErrors.errors)),
       keySubmission => {
         val keyInfo = keySubmission.info
         val user = request.user
-        user.setPgpPubKey(keyInfo.raw)
-        if (user.lastPgpPubKeyUpdate.isDefined)
-          user.setLastPgpPubKeyUpdate(this.service.theTime) // Not set the first time
 
         // Send email notification
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
         UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id.value, "", "")
 
-        Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
+        service.update(
+          user.copy(
+            pgpPubKey = Some(keyInfo.raw),
+            lastPgpPubKeyUpdate =
+              if(user.lastPgpPubKeyUpdate.isDefined) Some(service.theTime)
+              else user.lastPgpPubKeyUpdate
+          )
+        ).as(Redirect(ShowUser(username)).flashing("pgp-updated" -> "true"))
       }
     )
   }
@@ -235,16 +244,21 @@ class Users @Inject()(fakeUser: FakeUser,
     * @return Ok if deleted, bad request if didn't exist
     */
   def deletePgpPublicKey(username: String, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
-    VerifiedAction(username, sso, sig) { implicit request =>
+    VerifiedAction(username, sso, sig).async { implicit request =>
       Logger.debug("Deleting public key for " + username)
       val user = request.user
       if (user.pgpPubKey.isEmpty)
-        BadRequest
+        Future.successful(BadRequest)
       else {
-        user.setPgpPubKey(null)
-        user.setLastPgpPubKeyUpdate(this.service.theTime)
-        UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id.value, "", "")
-        Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
+        val log = UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id.value, "", "")
+        val insert = service.update(
+          user.copy(
+            pgpPubKey = None,
+            lastPgpPubKeyUpdate = Some(service.theTime)
+          )
+        )
+
+        (log *> insert).as(Redirect(ShowUser(username)).flashing("pgp-updated" -> "true"))
       }
     }
   }
@@ -257,12 +271,13 @@ class Users @Inject()(fakeUser: FakeUser,
     * @return         Redirection to user page
     */
   def setLocked(username: String, locked: Boolean, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
-    VerifiedAction(username, sso, sig) { implicit request =>
+    VerifiedAction(username, sso, sig).async { implicit request =>
       val user = request.user
-      user.setLocked(locked)
       if (!locked)
         this.mailer.push(this.emails.create(user, this.emails.AccountUnlocked))
-      Redirect(ShowUser(username))
+      service.update(
+        user.copy(isLocked = locked)
+      ).as(Redirect(ShowUser(username)))
     }
   }
 
@@ -271,9 +286,9 @@ class Users @Inject()(fakeUser: FakeUser,
     * [[models.project.Project]].
     */
   def showAuthors(sort: Option[String], page: Option[Int]): Action[AnyContent] = OreAction async { implicit request =>
-    val ordering = sort.getOrElse(ORDERING_PROJECTS)
+    val ordering = sort.getOrElse(UserOrdering.Projects)
     val p = page.getOrElse(1)
-    this.users.getAuthors(ordering, p).map { u =>
+    users.getAuthors(ordering, p).map { u =>
       Ok(views.users.authors(u, ordering, p))
     }
   }
@@ -283,9 +298,9 @@ class Users @Inject()(fakeUser: FakeUser,
     * Shows a list of [[models.user.User]]s that have Ore staff roles.
     */
   def showStaff(sort: Option[String], page: Option[Int]): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
-    val ordering = sort.getOrElse(ORDERING_ROLE)
+    val ordering = sort.getOrElse(UserOrdering.Role)
     val p = page.getOrElse(1)
-    this.users.getStaff(ordering, p).map { u =>
+    users.getStaff(ordering, p).map { u =>
       Ok(views.users.staff(u, ordering, p))
     }
   }
@@ -327,9 +342,8 @@ class Users @Inject()(fakeUser: FakeUser,
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
   def markNotificationRead(id: Int): Action[AnyContent] = Authenticated.async { implicit request =>
-    request.user.notifications.get(id).map { notification =>
-      notification.setRead(read = true)
-      Ok
+    request.user.notifications.get(id).semiFlatMap { notification =>
+      service.update(notification.copy(isRead = true)).as(Ok)
     }.getOrElse(notFound)
   }
 
@@ -340,13 +354,10 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param id Prompt ID
     * @return   Ok if successful
     */
-  def markPromptRead(id: Int) = Authenticated { implicit request =>
+  def markPromptRead(id: Int): Action[AnyContent] = Authenticated.async { implicit request =>
     Prompts.values.find(_.id == id) match {
-      case None =>
-        BadRequest
-      case Some(prompt) =>
-        request.user.markPromptRead(prompt)
-        Ok
+      case None         => Future.successful(BadRequest)
+      case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)
     }
   }
 

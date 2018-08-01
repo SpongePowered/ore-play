@@ -96,10 +96,10 @@
                                                 <strong>@name.getOrElse("Unknown")</strong>
                                                 took over from
                                                 <strong>@name.getOrElse("Unknown")</strong>
-                                                @if(!item.getMessages.exists(_.isTakeover())) {
+                                                @if(!item.decodeMessages.exists(_.isTakeover)) {
                                                     <i>- no message provided -</i>
                                                 } else {
-                                                    <i>@item.getMessages.filter(_.isTakeover()).head.render</i>
+                                                    <i>@item.decodeMessages.filter(_.isTakeover).head.render</i>
                                                 }
                                             </td>
                                         </tr>
@@ -122,17 +122,17 @@
                                                 <strong>@name.getOrElse("Unknown")</strong>
                                                 stopped
                                                 <br>
-                                                @if(item.getMessages.filter(_.isStop()).isEmpty) {
+                                                @if(item.decodeMessages.filter(_.isStop).isEmpty) {
                                                     <i>- no message provided -</i>
                                                 } else {
-                                                    <i>@item.getMessages.filter(_.isStop())(0).render</i>
+                                                    <i>@item.decodeMessages.filter(_.isStop)(0).render</i>
                                                 }
                                             </td>
                                         </tr>
                                     }
                                 }
                             }
-                            @item.getMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
+                            @item.decodeMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
                                 <tr>
                                     <td>@message.getTime</td>
                                     <td>

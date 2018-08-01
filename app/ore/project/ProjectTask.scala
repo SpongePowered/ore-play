@@ -48,7 +48,7 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
       val createdAt = project.createdAt.value.getTime
       if (createdAt < dayAgo) {
         Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-        project.setVisibility(VisibilityTypes.Public, "Changed by task", project.ownerId)
+        project.setVisibility(VisibilityTypes.Public, "Changed by task", project.ownerId)(ec, models)
       }
     })
 

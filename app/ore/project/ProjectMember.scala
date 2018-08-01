@@ -5,8 +5,9 @@ import models.project.Project
 import models.user.role.ProjectRole
 import ore.permission.scope.Scope
 import ore.user.Member
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import db.ModelService
 
 /**
   * Represents a member of a [[Project]].
@@ -17,7 +18,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class ProjectMember(val project: Project, override val userId: Int)(implicit users: UserBase)
                     extends Member[ProjectRole](userId) {
 
-  override def roles(implicit ec: ExecutionContext): Future[Set[ProjectRole]] = this.user.flatMap(user => this.project.memberships.getRoles(user))
+  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectRole]] =
+    this.user.flatMap(user => this.project.memberships.getRoles(user))
   override val scope: Scope = this.project.scope
 
   /*
@@ -36,6 +38,6 @@ class ProjectMember(val project: Project, override val userId: Int)(implicit use
     *
     * @return Top role
     */
-  override def headRole(implicit ec: ExecutionContext): Future[ProjectRole] = this.roles.map(_.maxBy(_.roleType.trust))
+  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[ProjectRole] = this.roles.map(_.maxBy(_.roleType.trust))
 }
 

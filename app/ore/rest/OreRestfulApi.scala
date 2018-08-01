@@ -5,7 +5,7 @@ import java.lang.Math._
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl._
-import db.impl.access.{ProjectBase, UserBase}
+import db.impl.access.ProjectBase
 import db.impl.schema.{ProjectSchema, ProjectTag}
 import javax.inject.Inject
 import models.project._
@@ -33,9 +33,6 @@ trait OreRestfulApi {
 
   val service: ModelService
   val config: OreConfig
-  val users: UserBase = this.service.getModelBase(classOf[UserBase])
-
-  implicit val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
 
   /**
     * Returns a Json value of the Projects meeting the specified criteria.
@@ -307,8 +304,8 @@ trait OreRestfulApi {
     * @param parentId Optional parent ID filter
     * @return         List of project pages
     */
-  def getPages(pluginId: String, parentId: Option[Int])(implicit ec: ExecutionContext): OptionT[Future, JsValue] = {
-    this.projects.withPluginId(pluginId).semiFlatMap { project =>
+  def getPages(pluginId: String, parentId: Option[Int])(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, JsValue] = {
+    ProjectBase().withPluginId(pluginId).semiFlatMap { project =>
         for {
           pages <- project.pages.sorted(_.name)
         } yield {
@@ -371,7 +368,7 @@ trait OreRestfulApi {
         obj(
           "id"              ->  user.id.value,
           "createdAt"       ->  user.createdAt.value.toString,
-          "username"        ->  user.username,
+          "username"        ->  user.name,
           "roles"           ->  user.globalRoles.map(_.title),
           "starred"         ->  toJson(stars.getOrElse(user.id.value, Seq.empty)),
           "avatarUrl"       ->  user.avatarUrl,
@@ -405,8 +402,8 @@ trait OreRestfulApi {
     * @param version  Version name
     * @return         Tags on the Version
     */
-  def getTags(pluginId: String, version: String)(implicit ec: ExecutionContext): OptionT[Future, JsValue] = {
-    this.projects.withPluginId(pluginId).flatMap { project =>
+  def getTags(pluginId: String, version: String)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, JsValue] = {
+    ProjectBase().withPluginId(pluginId).flatMap { project =>
       project.versions.find(v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === VisibilityTypes.Public).semiFlatMap { v =>
         v.tags.map { tags =>
           obj(

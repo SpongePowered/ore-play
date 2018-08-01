@@ -5,24 +5,26 @@ import java.util.UUID
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{OreRequest, ProjectRequest}
 import db.ModelService
-import db.impl.access.{ProjectBase, UserBase}
 import db.impl.schema.StatSchema
 import javax.inject.Inject
+
 import models.project.Version
 import models.statistic.{ProjectView, VersionDownload}
 import ore.StatTracker.COOKIE_NAME
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{RequestHeader, Result}
-
+import util.instances.future._
+import util.syntax._
 import scala.concurrent.{ExecutionContext, Future}
+
+import security.spauth.SpongeAuthApi
 
 /**
   * Helper class for handling tracking of statistics.
   */
 trait StatTracker {
 
-  implicit val users: UserBase
-  implicit val projects: ProjectBase
+  implicit def service: ModelService
 
   val bakery: Bakery
   val viewSchema: StatSchema[ProjectView]
@@ -36,14 +38,12 @@ trait StatTracker {
     * @param request Request to view the project
     */
   def projectViewed(projectRequest: ProjectRequest[_])(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi, request: OreRequest[_],
-      ec: ExecutionContext): Future[Result] = {
-    ProjectView.bindFromRequest(projectRequest).map { statEntry =>
-      this.viewSchema.record(statEntry).andThen {
-        case recorded => if (recorded.get) {
-          projectRequest.data.project.addView()
-        }
-      }
-      f(projectRequest).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
+      ec: ExecutionContext, auth: SpongeAuthApi): Future[Result] = {
+    ProjectView.bindFromRequest(projectRequest).flatMap { statEntry =>
+      this.viewSchema.record(statEntry).flatMap {
+        case true  => projectRequest.data.project.addView
+        case false => Future.unit
+      }.as(f(projectRequest).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
   }
 
@@ -56,15 +56,12 @@ trait StatTracker {
     * @param request Request to download the version
     */
   def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(implicit cache: AsyncCacheApi,request: ProjectRequest[_],
-      ec: ExecutionContext): Future[Result] = {
-    VersionDownload.bindFromRequest(version).map { statEntry =>
-      this.downloadSchema.record(statEntry).andThen {
-        case recorded => if (recorded.get) {
-          version.addDownload()
-          request.data.project.addDownload()
-        }
-      }
-      f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true))
+      ec: ExecutionContext, auth: SpongeAuthApi): Future[Result] = {
+    VersionDownload.bindFromRequest(version).flatMap { statEntry =>
+      this.downloadSchema.record(statEntry).flatMap {
+        case true  => version.addDownload *> request.data.project.addDownload
+        case false => Future.unit
+      }.as(f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
   }
 
@@ -99,9 +96,7 @@ object StatTracker {
 
 }
 
-class OreStatTracker @Inject()(service: ModelService, override val bakery: Bakery) extends StatTracker {
-  override val users         : UserBase                    = this.service.getModelBase(classOf[UserBase])
-  override val projects      : ProjectBase                 = this.service.getModelBase(classOf[ProjectBase])
+class OreStatTracker @Inject()(val service: ModelService, override val bakery: Bakery) extends StatTracker {
   override val viewSchema    : StatSchema[ProjectView]     = this.service.getSchemaByModel(classOf[ProjectView]).asInstanceOf[StatSchema[ProjectView]]
 
   override val downloadSchema: StatSchema[VersionDownload] = this.service.getSchemaByModel(classOf[VersionDownload])

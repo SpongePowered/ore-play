@@ -10,13 +10,13 @@
 @import util.StringUtils._
 @(user: User, activities: Seq[(Object, Option[Project])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
-@bootstrap.layout(messages("activity.title") + user.username) {
+@bootstrap.layout(messages("activity.title") + user.name) {
 
     <div class="container" style="margin-top: 90px">
         <div class="row">
             <div class="col-md-12  header-flags">
                 <div class="clearfix">
-                    <h1 class="pull-left">@messages("activity.title") <i>@user.username</i></h1>
+                    <h1 class="pull-left">@messages("activity.title") <i>@user.name</i></h1>
                 </div>
             </div>
         </div>

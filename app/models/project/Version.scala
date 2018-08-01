@@ -5,13 +5,11 @@ import java.time.Instant
 
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 
-import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.OreModel
 import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionSchema
-import db.impl.table.ModelKeys._
 import db.impl.{ReviewTable, VersionTable}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
@@ -22,11 +20,12 @@ import play.twirl.api.Html
 import util.FileUtils
 import util.instances.future._
 import util.functional.OptionT
-
+import util.syntax._
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.impl.table.ModelKeys
-import models.project.VisibilityTypes.{Public, Visibility}
+import db.impl.access.UserBase
+import models.project.VisibilityTypes.Visibility
+import ore.OreConfig
 
 /**
   * Represents a single version of a Project.
@@ -36,36 +35,39 @@ import models.project.VisibilityTypes.{Public, Visibility}
   * @param versionString    Version string
   * @param dependencyIds    List of plugin dependencies with the plugin ID and
   *                         version separated by a ':'
-  * @param _description     User description of version
+  * @param description     User description of version
   * @param assets           Path to assets directory within plugin
   * @param projectId        ID of project this version belongs to
   * @param _channelId        ID of channel this version belongs to
   */
-case class Version(override val id: ObjectId = ObjectId.Uninitialized,
-                   override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                   override val projectId: Int,
+case class Version(id: ObjectId = ObjectId.Uninitialized,
+                   createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                   projectId: ObjectReference,
                    versionString: String,
                    dependencyIds: List[String] = List(),
                    assets: Option[String] = None,
-                   private var _channelId: Int = -1,
+                   channelId: ObjectReference = -1,
                    fileSize: Long,
                    hash: String,
-                   private var _authorId: ObjectReference = -1,
-                   private var _description: Option[String] = None,
-                   private var _downloads: Int = 0,
-                   private var _isReviewed: Boolean = false,
-                   private var _reviewerId: ObjectReference = -1,
-                   private var _approvedAt: Option[Timestamp] = None,
-                   private var _tagIds: List[ObjectReference] = List(),
-                   private var _visibility: Visibility = Public,
+                   authorId: ObjectReference = -1,
+                   description: Option[String] = None,
+                   downloadCount: Int = 0,
+                   isReviewed: Boolean = false,
+                   reviewerId: ObjectReference = -1,
+                   approvedAt: Option[Timestamp] = None,
+                   tagIds: List[ObjectReference] = List(),
+                   visibility: Visibility = VisibilityTypes.Public,
                    fileName: String,
                    signatureFileName: String,
-                   private var _isNonReviewed: Boolean = false)
-                   extends OreModel(id, createdAt)
+                   isNonReviewed: Boolean = false)
+                   extends Model
                      with ProjectScope
                      with Describable
                      with Downloadable
                      with Hideable {
+
+  //TODO: Check this in some way
+  //checkArgument(description.exists(_.length <= Page.maxLength), "content too long", "")
 
   override type M = Version
   override type T = VersionTable
@@ -84,15 +86,8 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
     *
     * @return Channel
     */
-  def channel(implicit ec: ExecutionContext): Future[Channel] =
-    this.service.access[Channel](classOf[Channel]).get(this.channelId).getOrElse(throw new NoSuchElementException("None of Option"))
-
-  def channelId: ObjectReference = _channelId
-
-  def setChannel(channelId: Int): Future[AnyVal] = {
-    this._channelId = channelId
-    if(isDefined) update(ChannelId) else Future.unit
-  }
+  def channel(implicit ec: ExecutionContext, service: ModelService): Future[Channel] =
+    service.access[Channel](classOf[Channel]).get(this.channelId).getOrElse(throw new NoSuchElementException("None of Option"))
 
   /**
     * Returns the channel this version belongs to from the specified collection
@@ -107,30 +102,12 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
   }
 
   /**
-    * Returns this Version's description.
-    *
-    * @return Version description
-    */
-  override def description: Option[String] = this._description
-
-  /**
-    * Sets this Version's description.
-    *
-    * @param _description Version description
-    */
-  def setDescription(_description: String) = {
-    checkArgument(_description == null || _description.length <= Page.MaxLength, "content too long", "")
-    this._description = Option(_description)
-    if (isDefined) update(Description)
-  }
-
-  /**
     * Returns this Version's markdown description in HTML.
     *
     * @return Description in html
     */
-  def descriptionHtml: Html
-  = this.description.map(str => Page.Render(str)).getOrElse(Html(""))
+  def descriptionHtml(implicit config: OreConfig): Html
+  = this.description.map(str => Page.render(str)).getOrElse(Html(""))
 
   /**
     * Returns the base URL for this Version.
@@ -139,78 +116,20 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
     */
   def url(implicit project: Project): String = project.url + "/versions/" + this.versionString
 
-  /**
-    * Returns true if this version has been reviewed by the moderation staff.
-    *
-    * @return True if reviewed
-    */
-  def isReviewed: Boolean = this._isReviewed
+  def author(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] = userBase.get(this.authorId)
 
-  /**
-    * Sets whether this version has been reviewed by the moderation staff.
-    *
-    * @param reviewed True if reviewed
-    */
-  def setReviewed(reviewed: Boolean) = {
-    this._isReviewed = reviewed
-    if (isDefined) update(IsReviewed)
-  }
+  def reviewer(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] = userBase.get(this.reviewerId)
 
-  def authorId: ObjectReference = this._authorId
-
-  def author(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._authorId)
-
-  def setAuthorId(authorId: ObjectReference) = {
-    this._authorId = authorId
-    // If the project is in the Database
-    if (isDefined) {
-      update(AuthorId)
+  def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[Tag]] = {
+    service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map { list =>
+      list.distinct.toList
     }
   }
 
-  def reviewerId: ObjectReference = this._reviewerId
 
-  def reviewer(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._reviewerId)
+  def isSpongePlugin(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = tags.map(_.map(_.name).contains("Sponge"))
 
-  def setReviewer(reviewer: User): Future[Int] = setReviewerId(reviewer.id.value)
-
-  def setReviewerId(reviewer: ObjectReference): Future[Int] = Defined {
-    this._reviewerId = reviewer
-    update(ReviewerId)
-  }
-
-  def approvedAt: Option[Timestamp] = this._approvedAt
-
-  def setApprovedAt(approvedAt: Timestamp): Future[Int] = Defined {
-    this._approvedAt = Option(approvedAt)
-    update(ApprovedAt)
-  }
-
-  def isNonReviewed: Boolean = this._isNonReviewed
-
-  def setIsNonReviewed(ignoreReview: Boolean): Unit = {
-    this._isNonReviewed = ignoreReview
-    update(IsNonReviewedVersion)
-  }
-
-  def tagIds: List[ObjectReference] = this._tagIds
-
-  def setTagIds(tags: List[ObjectReference]) = {
-    this._tagIds = tags
-    if(isDefined) update(TagIds)
-  }
-
-  def addTag(tag: Tag): Unit = {
-    this._tagIds = this._tagIds :+ tag.id.value
-    if (isDefined) {
-      update(TagIds)
-    }
-  }
-
-  def tags(implicit ec: ExecutionContext, service: ModelService = null): Future[List[Tag]] = {
-    schema(service)
-    this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map (_.distinct.toList)
-  }
+  def isForgeMod(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = tags.map(_.map(_.name).contains("Forge"))
 
   /**
     * Returns this Versions plugin dependencies.
@@ -230,42 +149,39 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
     * @param pluginId Id to check for
     * @return         True if has dependency on ID
     */
-  //noinspection ComparingUnrelatedTypes
-  def hasDependency(pluginId: String): Boolean = this.dependencies.exists(_.pluginId.equals(pluginId))
-
-  /**
-    * Returns the amount of unique downloads this Version has.
-    *
-    * @return Amount of unique downloads
-    */
-  override def downloadCount: Int = this._downloads
+  def hasDependency(pluginId: String): Boolean = this.dependencies.exists(_.pluginId == pluginId)
 
   /**
     * Adds a download to the amount of unique downloads this Version has.
     */
-  def addDownload(): Future[Int] = Defined {
-    this._downloads += 1
-    update(Downloads)
+  def addDownload(implicit ec: ExecutionContext, service: ModelService): Future[Version] = Defined {
+    service.update(copy(downloadCount = downloadCount + 1))
   }
 
-  override def visibilityChanges: ModelAccess[VersionVisibilityChange] =
+  override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
     this.schema.getChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], this)
 
-  override def visibility: Visibility = this._visibility
+  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext, service: ModelService): Future[(Version, VersionVisibilityChange)] = {
+    val updateOldChange = lastVisibilityChange.semiFlatMap { vc =>
+      service.update(
+        vc.copy(
+          resolvedAt = Some(Timestamp.from(Instant.now())),
+          resolvedBy = Some(creator)
+        )
+      )
+    }.cata((), _ => ())
 
-  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext): Future[VersionVisibilityChange] = {
-    this._visibility = visibility
-    if (isDefined) update(ModelKeys.Visibility)
+    val createNewChange = service.access(classOf[VersionVisibilityChange]).add(
+      VersionVisibilityChange(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), Some(creator), this.id.value, comment, None, None, visibility.id)
+    )
 
-    val cnt = lastVisibilityChange.map { vc =>
-        vc.setResolvedAt(Timestamp.from(Instant.now()))
-        vc.setResolvedById(creator)
-        0
-    }
-    cnt.value.flatMap { _ =>
-      val change = VersionVisibilityChange(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), Some(creator), this.id.value, comment, None, None, visibility.id)
-      this.service.access[VersionVisibilityChange](classOf[VersionVisibilityChange]).add(change)
-    }
+    val updateVersion = service.update(
+      copy(
+        visibility = visibility
+      )
+    )
+
+    updateOldChange *> (updateVersion, createNewChange).parTupled
   }
 
   /**
@@ -273,7 +189,7 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
     *
     * @return Recorded downloads
     */
-  def downloadEntries: ModelAccess[VersionDownload] = this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
+  def downloadEntries(implicit service: ModelService): ModelAccess[VersionDownload] = this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
 
   /**
     * Returns a human readable file size for this Version.
@@ -289,7 +205,7 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
     *
     * @return True if exists
     */
-  def exists(implicit ec: ExecutionContext): Future[Boolean] = {
+  def exists(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = {
     if (this.projectId == -1) Future.successful(false)
     else {
       for {
@@ -303,15 +219,13 @@ case class Version(override val id: ObjectId = ObjectId.Uninitialized,
   }
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Version = this.copy(id = id, createdAt = theTime)
-  override def hashCode(): Int = this.id.hashCode
-  override def equals(o: Any): Boolean = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.value == this.id.value
 
   def byCreationDate(first: Review, second: Review): Boolean = first.createdAt.value.getTime < second.createdAt.value.getTime
-  def reviewEntries: ModelAccess[Review] = this.schema.getChildren[Review](classOf[Review], this)
-  def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
-  def mostRecentUnfinishedReview(implicit ec: ExecutionContext): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
-  def mostRecentReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
-  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext): OptionT[Future, Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
+  def reviewEntries(implicit service: ModelService): ModelAccess[Review] = this.schema.getChildren[Review](classOf[Review], this)
+  def unfinishedReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
+  def mostRecentUnfinishedReview(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
+  def mostRecentReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
+  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
   def equalsInt[T <: Table[_]](int1: T => Rep[Int], int2: Int): T => Rep[Boolean] = int1(_) === int2
 
 }
@@ -325,80 +239,87 @@ object Version {
     */
   case class Builder(service: ModelService) {
 
-    private var _versionString: String = _
-    private var _dependencyIds: List[String] = List()
-    private var _description: String = _
-    private var _projectId: Int = -1
-    private var _authorId: Int = -1
-    private var _fileSize: Long = -1
-    private var _hash: String = _
-    private var _fileName: String = _
-    private var _signatureFileName: String = _
-    private var _tagIds: List[Int] = List()
+    private var versionString: String = _
+    private var dependencyIds: List[String] = List()
+    private var description: String = _
+    private var projectId: Int = -1
+    private var authorId: Int = -1
+    private var fileSize: Long = -1
+    private var hash: String = _
+    private var fileName: String = _
+    private var signatureFileName: String = _
+    private var tagIds: List[Int] = List()
+    private var visibility: Visibility = VisibilityTypes.Public
 
     def versionString(versionString: String): Builder = {
-      this._versionString = versionString
+      this.versionString = versionString
       this
     }
 
     def dependencyIds(dependencyIds: List[String]): Builder = {
-      this._dependencyIds = dependencyIds
+      this.dependencyIds = dependencyIds
       this
     }
 
     def description(description: String): Builder = {
-      this._description = description
+      this.description = description
       this
     }
 
     def projectId(projectId: Int): Builder = {
-      this._projectId = projectId
+      this.projectId = projectId
       this
     }
 
     def fileSize(fileSize: Long): Builder = {
-      this._fileSize = fileSize
+      this.fileSize = fileSize
       this
     }
 
     def hash(hash: String): Builder = {
-      this._hash = hash
+      this.hash = hash
       this
     }
 
     def authorId(authorId: Int): Builder = {
-      this._authorId = authorId
+      this.authorId = authorId
       this
     }
 
     def fileName(fileName: String): Builder = {
-      this._fileName = fileName
+      this.fileName = fileName
       this
     }
 
     def signatureFileName(signatureFileName: String): Builder = {
-      this._signatureFileName = signatureFileName
+      this.signatureFileName = signatureFileName
       this
     }
 
     def tagIds(tagIds: List[Int]): Builder = {
-      this._tagIds = tagIds
+      this.tagIds = tagIds
+      this
+    }
+
+    def visibility(visibility: Visibility): Builder = {
+      this.visibility = visibility
       this
     }
 
     def build(): Version = {
-      checkArgument(this._fileSize != -1, "invalid file size", "")
-      this.service.processor.process(Version(
-        versionString = checkNotNull(this._versionString, "name null", ""),
-        dependencyIds = this._dependencyIds,
-        _description = Option(this._description),
-        projectId = this._projectId,
-        fileSize = this._fileSize,
-        hash = checkNotNull(this._hash, "hash null", ""),
-        _authorId = checkNotNull(this._authorId, "author id null", ""),
-        fileName = checkNotNull(this._fileName, "file name null", ""),
-        _tagIds = this._tagIds,
-        signatureFileName = checkNotNull(this._signatureFileName, "signature file name null", "")))
+      checkArgument(this.fileSize != -1, "invalid file size", "")
+      Version(
+        versionString = checkNotNull(this.versionString, "name null", ""),
+        dependencyIds = this.dependencyIds,
+        description = Option(this.description),
+        projectId = this.projectId,
+        fileSize = this.fileSize,
+        hash = checkNotNull(this.hash, "hash null", ""),
+        authorId = checkNotNull(this.authorId, "author id null", ""),
+        fileName = checkNotNull(this.fileName, "file name null", ""),
+        tagIds = this.tagIds,
+        visibility = visibility,
+        signatureFileName = checkNotNull(this.signatureFileName, "signature file name null", ""))
     }
 
   }

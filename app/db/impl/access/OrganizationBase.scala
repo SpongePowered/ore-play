@@ -1,7 +1,6 @@
 package db.impl.access
 
 import db.{ModelBase, ModelService, ObjectId}
-import discourse.OreDiscourseApi
 import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
 import ore.OreConfig
@@ -16,12 +15,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import util.functional.{EitherT, OptionT}
 
-class OrganizationBase(override val service: ModelService,
-                       forums: OreDiscourseApi,
-                       auth: SpongeAuthApi,
+class OrganizationBase(implicit val service: ModelService,
                        config: OreConfig,
-                       messages: MessagesApi,
-                       implicit val users: UserBase)
+                       messages: MessagesApi)
                        extends ModelBase[Organization] {
 
   override val modelClass: Class[Organization] = classOf[Organization]
@@ -36,7 +32,7 @@ class OrganizationBase(override val service: ModelService,
     * @param ownerId  User ID of the organization owner
     * @return         New organization if successful, None otherwise
     */
-  def create(name: String, ownerId: Int, members: Set[OrganizationRole])(implicit cache: AsyncCacheApi, ec: ExecutionContext): EitherT[Future, String, Organization] = {
+  def create(name: String, ownerId: Int, members: Set[OrganizationRole])(implicit cache: AsyncCacheApi, ec: ExecutionContext, auth: SpongeAuthApi): EitherT[Future, String, Organization] = {
     Logger.debug("Creating Organization...")
     Logger.debug("Name     : " + name)
     Logger.debug("Owner ID : " + ownerId)
@@ -48,7 +44,7 @@ class OrganizationBase(override val service: ModelService,
     // By default we use "<org>@ore.spongepowered.org".
     Logger.debug("Creating on SpongeAuth...")
     val dummyEmail = name + '@' + this.config.orgs.get[String]("dummyEmailDomain")
-    val spongeResult = this.auth.createDummyUser(name, dummyEmail, verified = true)
+    val spongeResult = auth.createDummyUser(name, dummyEmail, verified = true)
 
     // Check for error
     spongeResult.leftMap { err =>
@@ -60,7 +56,7 @@ class OrganizationBase(override val service: ModelService,
       // reference to the Sponge user ID, the organization's username and a
       // reference to the User owner of the organization.
       Logger.info("Creating on Ore...")
-      this.add(Organization(id = ObjectId(spongeUser.id), username = name, _ownerId = ownerId))
+      this.add(Organization(id = ObjectId(spongeUser.id), username = name, ownerId = ownerId))
     }.semiFlatMap { org =>
       // Every organization model has a regular User companion. Organizations
       // are just normal users with additional information. Adding the
@@ -68,13 +64,13 @@ class OrganizationBase(override val service: ModelService,
       // and should be treated as such.
       for {
         userOrg <- org.toUser.getOrElse(throw new IllegalStateException("User not created"))
-        _ = userOrg.setGlobalRoles(userOrg.globalRoles + RoleType.Organization)
+        _ <- service.update(userOrg.copy(globalRoles = RoleType.Organization :: userOrg.globalRoles))
         _ <- // Add the owner
           org.memberships.addRole(OrganizationRole(
             userId = ownerId,
             organizationId = org.id.value,
-            _roleType = RoleType.OrganizationOwner,
-            _isAccepted = true))
+            roleType = RoleType.OrganizationOwner,
+            isAccepted = true))
         _ <- {
           // Invite the User members that the owner selected during creation.
           Logger.debug("Inviting members...")
@@ -105,4 +101,9 @@ class OrganizationBase(override val service: ModelService,
     */
   def withName(name: String)(implicit ec: ExecutionContext): OptionT[Future, Organization] = this.find(StringUtils.equalsIgnoreCase(_.name, name))
 
+}
+object OrganizationBase {
+  def apply()(implicit organizationBase: OrganizationBase): OrganizationBase = organizationBase
+
+  implicit def fromService(implicit service: ModelService): OrganizationBase = service.getModelBase(classOf[OrganizationBase])
 }

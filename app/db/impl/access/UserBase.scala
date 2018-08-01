@@ -23,12 +23,10 @@ import util.instances.future._
 /**
   * Represents a central location for all Users.
   */
-class UserBase(override val service: ModelService,
-               auth: SpongeAuthApi,
-               implicit val config: OreConfig)
+class UserBase(implicit val service: ModelService, config: OreConfig)
   extends ModelBase[User] {
 
-  import UserBase._
+  import UserBase.UserOrdering
 
   override val modelClass: Class[User] = classOf[User]
 
@@ -42,9 +40,9 @@ class UserBase(override val service: ModelService,
     * @param username Username of user
     * @return User if found, None otherwise
     */
-  def withName(username: String)(implicit ec: ExecutionContext): OptionT[Future, User] = {
+  def withName(username: String)(implicit ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] = {
     this.find(equalsIgnoreCase(_.name, username)).orElse {
-      this.auth.getUser(username).map(User.fromSponge).semiFlatMap(getOrCreate)
+      auth.getUser(username).semiFlatMap(User.fromSponge).semiFlatMap(getOrCreate)
     }
   }
 
@@ -57,7 +55,7 @@ class UserBase(override val service: ModelService,
     *
     * @return the requested user
     */
-  def requestPermission(user: User, name: String, perm: Permission)(implicit ec: ExecutionContext): OptionT[Future, User] = {
+  def requestPermission(user: User, name: String, perm: Permission)(implicit ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] = {
     this.withName(name).flatMap { toCheck =>
       if(user == toCheck) OptionT.pure[Future](user) // Same user
       else toCheck.toMaybeOrganization.flatMap { orga =>
@@ -75,7 +73,7 @@ class UserBase(override val service: ModelService,
     *
     * @return Users with at least one project
     */
-  def getAuthors(ordering: String = ORDERING_PROJECTS, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[(User, Int)]] = {
+  def getAuthors(ordering: String = UserOrdering.Projects, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[(User, Int)]] = {
     // determine ordering
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
 
@@ -83,11 +81,11 @@ class UserBase(override val service: ModelService,
     // get authors
     this.service.getSchema(classOf[ProjectSchema]).distinctAuthors.map { users =>
       sort match { // Sort
-        case ORDERING_PROJECTS => users.sortBy(u => (service.await(u.projects.size).get, u.username))
-        case ORDERING_JOIN_DATE => users.sortBy(u => (u.joinDate.getOrElse(u.createdAt.value), u.username))
-        case ORDERING_USERNAME => users.sortBy(_.username)
-        case ORDERING_ROLE => users.sortBy(_.globalRoles.toList.sortBy(_.trust).headOption.map(_.trust.level).getOrElse(-1))
-        case _ => users.sortBy(u => (service.await(u.projects.size).get, u.username))
+        case UserOrdering.Projects => users.sortBy(u => (service.await(u.projects.size).get, u.name))
+        case UserOrdering.JoinDate => users.sortBy(u => (u.joinDate.getOrElse(u.createdAt.value), u.name))
+        case UserOrdering.UserName => users.sortBy(_.name)
+        case UserOrdering.Role => users.sortBy(_.globalRoles.toList.sortBy(_.trust).headOption.map(_.trust.level).getOrElse(-1))
+        case _ => users.sortBy(u => (service.await(u.projects.size).get, u.name))
       }
     } map { users => // Reverse?
       if (reverse) users.reverse else users
@@ -104,7 +102,7 @@ class UserBase(override val service: ModelService,
   /**
     * Returns a page of [[User]]s that have Ore staff roles.
     */
-  def getStaff(ordering: String = ORDERING_ROLE, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[User]] = {
+  def getStaff(ordering: String = UserOrdering.Role, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[User]] = {
     // determine ordering
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
     val staffRoles: List[RoleType] = List(RoleType.OreAdmin, RoleType.OreMod)
@@ -116,9 +114,9 @@ class UserBase(override val service: ModelService,
       .filter(u => u.globalRoles.asColumnOf[List[RoleType]] @& staffRoles.bind.asColumnOf[List[RoleType]])
       .sortBy { users =>
         sort match { // Sort
-          case ORDERING_JOIN_DATE => if(reverse) users.joinDate.asc else users.joinDate.desc
-          case ORDERING_ROLE => if(reverse) users.globalRoles.asc else users.globalRoles.desc
-          case ORDERING_USERNAME | _ => if(reverse) users.name.asc else users.name.desc
+          case UserOrdering.JoinDate => if(reverse) users.joinDate.asc else users.joinDate.desc
+          case UserOrdering.Role => if(reverse) users.globalRoles.asc else users.globalRoles.desc
+          case _ => if(reverse) users.name.asc else users.joinDate.desc
         }
       }
       .drop(offset)
@@ -155,7 +153,7 @@ class UserBase(override val service: ModelService,
     val maxAge = this.config.play.get[Int]("http.session.maxAge")
     val expiration = new Timestamp(new Date().getTime + maxAge * 1000L)
     val token = UUID.randomUUID().toString
-    val session = Session(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, expiration, user.username, token)
+    val session = Session(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, expiration, user.name, token)
     this.service.access[Session](classOf[Session]).add(session)
   }
 
@@ -181,7 +179,7 @@ class UserBase(override val service: ModelService,
     * @param session  Current session
     * @return         Authenticated user, if any, None otherwise
     */
-  def current(implicit session: Request[_], ec: ExecutionContext): OptionT[Future, User] = {
+  def current(implicit session: Request[_], ec: ExecutionContext, authApi: SpongeAuthApi): OptionT[Future, User] = {
     OptionT.fromOption[Future](session.cookies.get("_oretoken"))
       .flatMap(cookie => getSession(cookie.value))
       .flatMap(_.user)
@@ -190,10 +188,15 @@ class UserBase(override val service: ModelService,
 }
 
 object UserBase {
+  def apply()(implicit userBase: UserBase): UserBase = userBase
 
-  val ORDERING_PROJECTS = "projects"
-  val ORDERING_USERNAME = "username"
-  val ORDERING_JOIN_DATE = "joined"
-  val ORDERING_ROLE = "roles"
+  implicit def fromService(implicit service: ModelService): UserBase = service.getModelBase(classOf[UserBase])
 
+  trait UserOrdering
+  object UserOrdering {
+    val Projects = "projects"
+    val UserName = "username"
+    val JoinDate = "joined"
+    val Role     = "roles"
+  }
 }

@@ -4,37 +4,25 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.OreModel
-import db.impl.table.ModelKeys._
 import db.impl.{OrePostgresDriver, TagTable}
 import db.table.MappedType
-import db.{ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelService, Named, ObjectId, ObjectTimestamp}
 import models.project.TagColors.TagColor
 import slick.jdbc.JdbcType
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class Tag(override val id: ObjectId = ObjectId.Uninitialized,
-               private var _versionIds: List[Int],
+case class Tag(id: ObjectId = ObjectId.Uninitialized,
+               versionIds: List[Int],
                name: String,
                data: String,
                color: TagColor)
-  extends OreModel(id, ObjectTimestamp.Uninitialized)
-    with Named {
+  extends Model with Named {
 
   override val createdAt: ObjectTimestamp = ObjectTimestamp(Timestamp.from(Instant.EPOCH))
 
   override type M = Tag
   override type T = TagTable
-
-  def versionIds: List[ObjectReference] = this._versionIds
-
-  def addVersionId(versionId: ObjectReference): Unit = {
-    this._versionIds = this._versionIds :+ versionId
-    if (isDefined) {
-      update(TagVersionIds)
-    }
-  }
 
   /**
     * Used to convert a ghost tag to a normal tag

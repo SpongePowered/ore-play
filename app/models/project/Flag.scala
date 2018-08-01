@@ -3,10 +3,10 @@ package models.project
 import java.sql.Timestamp
 import java.time.Instant
 
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
+import scala.concurrent.{ExecutionContext, Future}
+
+import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.FlagTable
-import db.impl.model.OreModel
-import db.impl.table.ModelKeys._
 import models.user.User
 import ore.permission.scope.ProjectScope
 import ore.project.FlagReasons.FlagReason
@@ -20,18 +20,18 @@ import ore.user.UserOwned
   * @param projectId    Project ID
   * @param userId       Reporter ID
   * @param reason       Reason for flag
-  * @param _isResolved  True if has been reviewed and resolved by staff member
+  * @param isResolved   True if has been reviewed and resolved by staff member
   */
-case class Flag(override val id: ObjectId = ObjectId.Uninitialized,
-                override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                override val projectId: ObjectReference,
-                override val userId: ObjectReference,
+case class Flag(id: ObjectId = ObjectId.Uninitialized,
+                createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                projectId: ObjectReference,
+                userId: ObjectReference,
                 reason: FlagReason,
                 comment: String,
-                private var _isResolved: Boolean = false,
-                var resolvedAt: Option[Timestamp] = None,
-                var resolvedBy: Option[ObjectReference] = None)
-                extends OreModel(id, createdAt)
+                isResolved: Boolean = false,
+                resolvedAt: Option[Timestamp] = None,
+                resolvedBy: Option[ObjectReference] = None)
+                extends Model
                   with UserOwned
                   with ProjectScope {
 
@@ -43,27 +43,23 @@ case class Flag(override val id: ObjectId = ObjectId.Uninitialized,
   }
 
   /**
-    * Returns true if this Flag has been reviewed and marked as resolved by a
-    * staff member.
-    *
-    * @return True if resolved
-    */
-  def isResolved: Boolean = this._isResolved
-
-  /**
     * Sets whether this Flag has been marked as resolved.
     *
     * @param resolved True if resolved
     */
-  def setResolved(resolved: Boolean, user: Option[User]) = Defined {
-    this._isResolved = resolved
-    update(IsResolved)
-    if (resolved) {
-      this.resolvedAt = Some(Timestamp.from(Instant.now))
-      update(ResolvedAt)
-      this.resolvedBy = Some(user.fold(-1)(_.id.value))
-      update(ResolvedBy)
-    }
+  def markResolved(resolved: Boolean, user: Option[User])(implicit ec: ExecutionContext, service: ModelService): Future[Flag] = Defined {
+    val (at, by) = if(resolved)
+      (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1)))
+    else
+      (None, None)
+
+    service.update(
+      copy(
+        isResolved = resolved,
+        resolvedAt = at,
+        resolvedBy = by
+      )
+    )
   }
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Flag = this.copy(id = id, createdAt = theTime)

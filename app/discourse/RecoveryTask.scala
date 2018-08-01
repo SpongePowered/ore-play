@@ -3,10 +3,11 @@ package discourse
 import akka.actor.Scheduler
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
+import db.ModelService
+import ore.OreConfig
 import play.api.Logger
 
 /**
@@ -14,10 +15,11 @@ import play.api.Logger
   */
 class RecoveryTask(scheduler: Scheduler,
                    retryRate: FiniteDuration,
-                   api: OreDiscourseApi,
-                   projects: ProjectBase)(implicit ec: ExecutionContext) extends Runnable {
+                   api: OreDiscourseApi)(implicit ec: ExecutionContext, service: ModelService, config: OreConfig) extends Runnable {
 
   val Logger: Logger = this.api.Logger
+
+  val projects = ProjectBase()
 
   /**
     * Starts the recovery task to be run at the specified interval.

@@ -2,7 +2,6 @@ package mail
 
 import controllers.sugar.Requests.OreRequest
 import db.ModelService
-import db.impl.access.UserBase
 import javax.inject.Inject
 import models.user.User
 import ore.OreConfig
@@ -15,7 +14,6 @@ final class EmailFactory @Inject()(override val messagesApi: MessagesApi,
   val PgpUpdated = "email.pgpUpdate"
   val AccountUnlocked = "email.accountUnlock"
 
-  implicit val users: UserBase = this.service.getModelBase(classOf[UserBase])
   def create(user: User, id: String)(implicit request: OreRequest[_]): Email = {
     import user.langOrDefault
     Email(

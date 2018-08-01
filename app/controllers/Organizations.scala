@@ -5,17 +5,18 @@ import db.ModelService
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
+
 import ore.permission.EditSettings
 import ore.rest.OreWrites
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
-import security.spauth.SingleSignOnConsumer
+import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
 import util.instances.future._
 import util.functional.Id
-
+import util.syntax._
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.mvc.{Action, AnyContent}
@@ -25,14 +26,17 @@ import play.api.mvc.{Action, AnyContent}
   */
 class Organizations @Inject()(forms: OreForms,
                               writes: OreWrites,
-                              forums: OreDiscourseApi,
-                              implicit override val bakery: Bakery,
-                              implicit override val sso: SingleSignOnConsumer,
-                              implicit override val env: OreEnv,
-                              implicit override val config: OreConfig,
-                              implicit override val service: ModelService,
-                              implicit override val cache: AsyncCacheApi,
-                              implicit override val messagesApi: MessagesApi)(implicit val ec: ExecutionContext) extends OreBaseController {
+                              forums: OreDiscourseApi)(
+    implicit val ec: ExecutionContext,
+    bakery: Bakery,
+    auth: SpongeAuthApi,
+    sso: SingleSignOnConsumer,
+    env: OreEnv,
+    config: OreConfig,
+    service: ModelService,
+    cache: AsyncCacheApi,
+    messagesApi: MessagesApi
+) extends OreBaseController {
 
   private def EditOrganizationAction(organization: String)
   = AuthedOrganizationAction(organization, requireUnlock = true) andThen OrganizationPermissionAction(EditSettings)
@@ -71,7 +75,7 @@ class Organizations @Inject()(forms: OreForms,
         Future.successful(Redirect(failCall).withError("error.org.disabled"))
       else {
         bindFormEitherT[Future](this.forms.OrganizationCreate)(hasErrors => FormError(failCall, hasErrors)).flatMap { formData =>
-          this.organizations.create(formData.name, user.id.value, formData.build()).bimap(
+          organizations.create(formData.name, user.id.value, formData.build()).bimap(
             error => Redirect(failCall).withError(error),
             organization => Redirect(routes.Users.showProjects(organization.name, None))
           )
@@ -89,19 +93,12 @@ class Organizations @Inject()(forms: OreForms,
     */
   def setInviteStatus(id: Int, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
     val user = request.user
-    user.organizationRoles.get(id).map { role =>
+    user.organizationRoles.get(id).semiFlatMap { role =>
       status match {
-        case STATUS_DECLINE =>
-          role.organization.foreach(_.memberships.removeRole(role))
-          Ok
-        case STATUS_ACCEPT =>
-          role.setAccepted(true)
-          Ok
-        case STATUS_UNACCEPT =>
-          role.setAccepted(false)
-          Ok
-        case _ =>
-          BadRequest
+        case STATUS_DECLINE  => role.organization.flatMap(_.memberships.removeRole(role)).as(Ok)
+        case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
+        case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
+        case _               => Future.successful(BadRequest)
       }
     }.getOrElse(notFound)
   }
@@ -126,7 +123,7 @@ class Organizations @Inject()(forms: OreForms,
   def removeMember(organization: String): Action[AnyContent] = EditOrganizationAction(organization).async { implicit request =>
     val res = for {
       name <- bindFormOptionT[Future](this.forms.OrganizationMemberRemove)
-      user <- this.users.withName(name)
+      user <- users.withName(name)
     } yield {
       request.data.orga.memberships.removeMember(user)
       Redirect(ShowUser(organization))

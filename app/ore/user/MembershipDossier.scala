@@ -2,22 +2,21 @@ package ore.user
 
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.UserBase
-import db.impl.model.OreModel
 import db.table.AssociativeTable
 import models.user.User
 import models.user.role.RoleModel
 import ore.permission.role.Trust
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
+import db.{Model, ModelService}
+
 /**
-  * Handles and keeps track of [[User]] "memberships" for an [[OreModel]].
+  * Handles and keeps track of [[User]] "memberships" for an [[Model]].
   */
 trait MembershipDossier {
 
-  type ModelType <: OreModel
+  type ModelType <: Model
   type RoleType <: RoleModel
   type MemberType <: Member[RoleType]
   type MembersTable <: AssociativeTable
@@ -26,16 +25,14 @@ trait MembershipDossier {
   val roleClass: Class[RoleType]
   val membersTableClass: Class[MembersTable]
 
-  implicit def userBase: UserBase = this.model.userBase
-
   implicit def convertModel(model: ModelType): this.model.M = model.asInstanceOf[this.model.M]
 
-  def roles: ModelAccess[RoleType] = this.model.schema.getChildren[RoleType](this.roleClass, this.model)
+  def roles(implicit service: ModelService): ModelAccess[RoleType] = this.model.schema.getChildren[RoleType](this.roleClass, this.model)
 
-  private def association
+  private def association(implicit service: ModelService)
   = this.model.schema.getAssociation[MembersTable, User](this.membersTableClass, this.model)
-  def roleAccess: ModelAccess[RoleType] = this.model.service.access[RoleType](roleClass)
-  private def addMember(user: User)(implicit ec: ExecutionContext) = this.association.add(user)
+  def roleAccess(implicit service: ModelService): ModelAccess[RoleType] = service.access[RoleType](roleClass)
+  private def addMember(user: User)(implicit ec: ExecutionContext, service: ModelService) = this.association.add(user)
 
   /**
     * Clears the roles of a User
@@ -58,7 +55,7 @@ trait MembershipDossier {
     *
     * @return All members
     */
-  def members(implicit ec: ExecutionContext): Future[Set[MemberType]] = {
+  def members(implicit ec: ExecutionContext, service: ModelService): Future[Set[MemberType]] = {
     this.association.all.map(_.map { user =>
       newMember(user.id.value)
     })
@@ -69,7 +66,7 @@ trait MembershipDossier {
     *
     * @param role Role to add
     */
-  def addRole(role: RoleType)(implicit ec: ExecutionContext): Future[RoleType] = {
+  def addRole(role: RoleType)(implicit ec: ExecutionContext, service: ModelService): Future[RoleType] = {
     for {
       user <- role.user
       exists <- this.roles.exists(_.userId === user.id.value)
@@ -84,7 +81,7 @@ trait MembershipDossier {
     * @param user User to get roles for
     * @return     User roles
     */
-  def getRoles(user: User)(implicit ec: ExecutionContext): Future[Set[RoleType]] = this.roles.filter(_.userId === user.id.value).map(_.toSet)
+  def getRoles(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Set[RoleType]] = this.roles.filter(_.userId === user.id.value).map(_.toSet)
 
   /**
     * Returns the highest level of [[ore.permission.role.Trust]] this user has.
@@ -99,7 +96,7 @@ trait MembershipDossier {
     *
     * @param role Role to remove
     */
-  def removeRole(role: RoleType)(implicit ec: ExecutionContext): Future[Unit] = {
+  def removeRole(role: RoleType)(implicit ec: ExecutionContext, service: ModelService): Future[Unit] = {
     for {
       _ <- this.roleAccess.remove(role)
       user   <- role.user
@@ -114,7 +111,7 @@ trait MembershipDossier {
     * @param user User to remove
     * @return
     */
-  def removeMember(user: User)(implicit ec: ExecutionContext): Future[Int] = {
+  def removeMember(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Int] = {
     clearRoles(user) flatMap { _ =>
       this.association.remove(user)
     }

@@ -6,6 +6,8 @@ import java.util.Date
 import javax.inject.Inject
 
 import db.ObjectId
+import scala.language.implicitConversions
+
 import models.user.User
 import ore.OreConfig
 import ore.permission.role.RoleType
@@ -25,11 +27,11 @@ final class FakeUser @Inject()(config: OreConfig) {
 
   lazy private val user = if (isEnabled) User(
     id = ObjectId(conf.get[Int]("fakeUser.id")),
-    _name = conf.getOptional[String]("fakeUser.name"),
-    _username = conf.get[String]("fakeUser.username"),
-    _email = conf.getOptional[String]("fakeUser.email"),
-    _joinDate = Some(new Timestamp(new Date().getTime)),
-    _globalRoles = List(RoleType.OreAdmin)
+    fullName = conf.getOptional[String]("fakeUser.name"),
+    name = conf.get[String]("fakeUser.username"),
+    email = conf.getOptional[String]("fakeUser.email"),
+    joinDate = Some(new Timestamp(new Date().getTime)),
+    globalRoles = List(RoleType.OreAdmin)
   ) else null
 
 }

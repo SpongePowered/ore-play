@@ -4,15 +4,19 @@ import java.nio.file.Path
 
 import akka.actor.Scheduler
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+
 import db.impl.access.ProjectBase
 import models.project.{Project, Version, VisibilityTypes}
 import models.user.User
 import org.spongepowered.play.discourse.DiscourseApi
-import util.StringUtils._
 
+import util.StringUtils._
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
+
+import db.ModelService
+import ore.OreConfig
 
 /**
   * An implementation of [[DiscourseApi]] suited to Ore's needs.
@@ -48,8 +52,10 @@ trait OreDiscourseApi extends DiscourseApi {
 
   private var recovery: RecoveryTask = _
 
-  //This executionContext should only be used in start() which is called from Bootstrap
+  //This executionContext, and modelService should only be used in start() which is called from Bootstrap
   def bootstrapExecutionContext: ExecutionContext
+  def bootstrapService: ModelService
+  def bootstrapConfig: OreConfig
 
   /**
     * Initializes and starts this API instance.
@@ -60,7 +66,7 @@ trait OreDiscourseApi extends DiscourseApi {
       return
     }
     checkNotNull(this.projects, "projects are null", "")
-    this.recovery = new RecoveryTask(this.scheduler, this.retryRate, this, this.projects)(bootstrapExecutionContext)
+    this.recovery = new RecoveryTask(this.scheduler, this.retryRate, this)(bootstrapExecutionContext, bootstrapService, bootstrapConfig)
     this.recovery.start()
     Logger.info("Discourse API initialized.")
   }
@@ -71,7 +77,7 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project Project to create topic for.
     * @return        True if successful
     */
-  def createProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
+  def createProjectTopic(project: Project)(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Future[Boolean] = {
     if (!this.isEnabled)
       return Future.successful(true)
     checkArgument(project.isDefined, "undefined project", "")
@@ -104,14 +110,13 @@ trait OreDiscourseApi extends DiscourseApi {
             throw new RuntimeException("project post user isn't owner?")
 
           // Update the post and topic id in the project
-          project.setTopicId(topic.topicId)
-          project.setPostId(topic.postId)
+          service.update(project.copy(topicId = topic.topicId, postId = topic.postId))
 
           Logger.debug(
             s"New project topic:\n" +
               s"Project: ${project.url}\n" +
-              s"Topic ID: ${project.topicId}\n" +
-              s"Post ID: ${project.postId}")
+              s"Topic ID: ${topic.topicId}\n" +
+              s"Post ID: ${topic.postId}")
 
           resultPromise.success(true)
       }
@@ -130,7 +135,7 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project  Project to update topic for
     * @return         True if successful
     */
-  def updateProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
+  def updateProjectTopic(project: Project)(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Future[Boolean] = {
     if (!this.isEnabled)
       return Future.successful(true)
     checkArgument(project.isDefined, "undefined project", "")
@@ -144,7 +149,7 @@ trait OreDiscourseApi extends DiscourseApi {
     val ownerName = project.ownerName
 
     // Set flag so that if we are interrupted we will remember to do it later
-    project.setTopicDirty(true)
+    service.update(project.copy(isTopicDirty = true))
 
     // A promise for our final result
     val resultPromise: Promise[Boolean] = Promise()
@@ -190,7 +195,7 @@ trait OreDiscourseApi extends DiscourseApi {
               } else {
                 // Title and content updated!
                 Logger.debug(s"Project topic updated for ${project.url}.")
-                project.setTopicDirty(false)
+                service.update(project.copy(isTopicDirty = false))
                 resultPromise.success(true)
               }
             case Failure(e) =>
@@ -237,7 +242,7 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param version Version of project
     * @return
     */
-  def postVersionRelease(project: Project, version: Version, content: Option[String])(implicit ec: ExecutionContext): Future[List[String]] = {
+  def postVersionRelease(project: Project, version: Version, content: Option[String])(implicit ec: ExecutionContext, service: ModelService): Future[List[String]] = {
     if (!this.isEnabled)
       return Future.successful(List.empty)
     checkArgument(project.isDefined, "undefined project", "")
@@ -283,7 +288,7 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project  Project to delete topic for
     * @return         True if deleted
     */
-  def deleteProjectTopic(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
+  def deleteProjectTopic(project: Project)(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = {
     if (!this.isEnabled)
       return Future.successful(true)
     checkArgument(project.isDefined, "undefined project", "")
@@ -298,8 +303,7 @@ trait OreDiscourseApi extends DiscourseApi {
           logFailure()
           resultPromise.success(false)
         } else {
-          project.setTopicId(-1)
-          project.setPostId(-1)
+          service.update(project.copy(topicId = -1, postId = -1))
           Logger.debug(s"Successfully deleted project topic for: ${project.url}.")
           resultPromise.success(true)
         }
@@ -339,7 +343,7 @@ trait OreDiscourseApi extends DiscourseApi {
     def projectTitle(project: Project): String = project.name + project.description.map(d => s" - $d").getOrElse("")
 
     /** Generates the content for a project topic. */
-    def projectTopic(project: Project)(implicit ec: ExecutionContext): String = readAndFormatFile(
+    def projectTopic(project: Project)(implicit ec: ExecutionContext, config: OreConfig, service: ModelService): String = readAndFormatFile(
       OreDiscourseApi.this.topicTemplatePath,
       project.name,
       OreDiscourseApi.this.baseUrl + '/' + project.url,

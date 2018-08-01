@@ -12,10 +12,11 @@ import ore.project.factory.PendingProject
 import play.api.cache.AsyncCacheApi
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
-
 import scala.concurrent.{ExecutionContext, Future}
 
+import db.ModelService
 import db.impl.access.UserBase
+import ore.OreConfig
 import play.twirl.api.Html
 import util.syntax._
 import util.instances.future._
@@ -45,7 +46,7 @@ case class ProjectData(joinable: Project,
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
-  def renderVisibilityChange: Option[Html] = lastVisibilityChange.map(_.renderComment())
+  def renderVisibilityChange(implicit config: OreConfig): Option[Html] = lastVisibilityChange.map(_.renderComment)
 }
 
 object ProjectData {
@@ -84,13 +85,10 @@ object ProjectData {
     data
   }
 
-  def of[A](project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
-
-    implicit val userBase: UserBase = project.userBase
-
+  def of[A](project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[ProjectData] = {
     val flagsFut = project.flags.all
     val flagUsersFut = flagsFut.flatMap(flags => Future.sequence(flags.map(_.user)))
-    val flagResolvedFut = flagsFut.flatMap(flags => Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1)).value)))
+    val flagResolvedFut = flagsFut.flatMap(flags => Future.sequence(flags.map(flag => UserBase().get(flag.resolvedBy.getOrElse(-1)).value)))
 
     val lastVisibilityChangeFut = project.lastVisibilityChange.value
     val lastVisibilityChangeUserFut = lastVisibilityChangeFut.flatMap { lastVisibilityChange =>
@@ -112,9 +110,9 @@ object ProjectData {
       project.recommendedVersion
     ).parMapN {
       case (settings, projectOwner, ownerRole, versions, members, logSize, flags, flagUsers, flagResolved, lastVisibilityChange, lastVisibilityChangeUser, recommendedVersion) =>
-        val noteCount = project.getNotes().size
+        val noteCount = project.decodeNotes.size
         val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
-          (fl, user.name, resolved.map(_.username))
+          (fl, user.name, resolved.map(_.name))
         }
 
         new ProjectData(

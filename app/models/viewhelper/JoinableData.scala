@@ -8,7 +8,7 @@ import ore.permission.EditSettings
 import ore.permission.role.Role
 import ore.user.Member
 
-trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M]] {
+trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M, T]] {
 
   val joinable: T
   val ownerRole: R

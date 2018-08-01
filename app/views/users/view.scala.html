@@ -20,10 +20,10 @@
     }
 }
 
-@bootstrap.layout(u.user.username) {
+@bootstrap.layout(u.user.name) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/userPage.js")"></script>
-    <script nonce="@nonce">USERNAME = '@u.user.username';</script>
+    <script nonce="@nonce">USERNAME = '@u.user.name';</script>
 
     <div class="container" style="margin-top: 90px">
 
@@ -71,7 +71,7 @@
 
                     <span class="user-title">
                         <h1 class="username">
-                            @u.user.username
+                            @u.user.name
 
                             @if(u.isCurrent && !u.isOrga) {
                                 <a class="user-settings" href="@config.security.get[String]("api.url")/accounts/settings">
@@ -111,7 +111,7 @@
                             }
 
                             @if(request.data.globalPerm(UserAdmin)) {
-                                <a class="user-settings" href="@routes.Application.userAdmin(u.user.username)">
+                                <a class="user-settings" href="@routes.Application.userAdmin(u.user.name)">
                                     <i class="fa fa-wrench" data-toggle="tooltip"
                                         data-placement="top" title="User Admin"></i>
                                 </a>
@@ -152,7 +152,7 @@
                         "user.memberSince",
                         u.user.joinDate.map(prettifyDate).getOrElse(prettifyDate(u.user.createdAt.value)))
                     </i><br/>
-                    <a href="https://forums.spongepowered.org/users/@u.user.username">
+                    <a href="https://forums.spongepowered.org/users/@u.user.name">
                         @messages("user.viewOnForums") <i class="fa fa-external-link"></i>
                     </a>
                 </div>
@@ -270,7 +270,7 @@
         <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
             @form(action = routes.Users.verify(Some(routes.Users.setLocked(
-                user = u.user.username,
+                user = u.user.name,
                 locked = !u.user.isLocked,
                 sso = None,
                 sig = None
@@ -282,7 +282,7 @@
     }
 
     @modal("modal-tagline", "label-tagline", "user.tagline.edit") {
-        @form(action = routes.Users.saveTagline(u.user.username)) {
+        @form(action = routes.Users.saveTagline(u.user.name)) {
             @CSRF.formField
             <div class="modal-body">
                 <div class="setting setting-no-border">

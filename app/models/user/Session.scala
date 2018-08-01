@@ -4,10 +4,10 @@ import java.sql.Timestamp
 
 import db.impl.SessionTable
 import db.impl.access.UserBase
-import db.impl.model.OreModel
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import security.spauth.SpongeAuthApi
 import util.functional.OptionT
 import db.{Expirable, Model, ObjectId, ObjectTimestamp}
 
@@ -20,11 +20,11 @@ import db.{Expirable, Model, ObjectId, ObjectTimestamp}
   * @param username   Username session belongs to
   * @param token      Unique token
   */
-case class Session(override val id: ObjectId = ObjectId.Uninitialized,
-                   override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                   override val expiration: Timestamp,
+case class Session(id: ObjectId = ObjectId.Uninitialized,
+                   createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                   expiration: Timestamp,
                    username: String,
-                   token: String) extends OreModel(id, createdAt) with Expirable {
+                   token: String) extends Model with Expirable {
 
   override type M = Session
   override type T = SessionTable
@@ -35,7 +35,7 @@ case class Session(override val id: ObjectId = ObjectId.Uninitialized,
     * @param users UserBase instance
     * @return User session belongs to
     */
-  def user(implicit users: UserBase, ec: ExecutionContext): OptionT[Future, User] = users.withName(this.username)
+  def user(implicit users: UserBase, ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] = users.withName(this.username)
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
 

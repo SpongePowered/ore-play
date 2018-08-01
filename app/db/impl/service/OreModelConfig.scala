@@ -106,7 +106,9 @@ trait OreModelConfig extends ModelService with OreDBOs {
   val FlagSchema = new ModelSchema[Flag](this, classOf[Flag], TableQuery[FlagTable])
 
   case object ViewSchema extends ModelSchema[ProjectView](this, classOf[ProjectView], TableQuery[ProjectViewsTable])
-    with StatSchema[ProjectView]
+    with StatSchema[ProjectView] {
+    override def setUserId(m: ProjectView, id: Int): ProjectView = m.copy(userId = Some(id))
+  }
 
   val ReviewSchema = new ModelSchema[Review](this, classOf[Review], TableQuery[ReviewTable])
 
@@ -122,7 +124,9 @@ trait OreModelConfig extends ModelService with OreDBOs {
     this, classOf[UnsafeDownload], TableQuery[UnsafeDownloadsTable])
 
   case object DownloadSchema extends ModelSchema[VersionDownload](
-    this, classOf[VersionDownload], TableQuery[VersionDownloadsTable]) with StatSchema[VersionDownload]
+    this, classOf[VersionDownload], TableQuery[VersionDownloadsTable]) with StatSchema[VersionDownload] {
+    override def setUserId(m: VersionDownload, id: Int): VersionDownload = m.copy(userId = Some(id))
+  }
 
   val ChannelSchema: ModelSchema[Channel] = new ModelSchema[Channel](this, classOf[Channel], TableQuery[ChannelTable])
     .withChildren[Version](classOf[Version], _.channelId)
