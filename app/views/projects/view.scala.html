@@ -13,6 +13,8 @@ Base template for Project overview.
 @import views.html.helper.{CSRF, form}
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
+@appRoutes = @{controllers.routes.Application}
+
 @bootstrap.layout(p.project.ownerName + " / " + p.project.name) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDetail.js")"></script>
@@ -246,8 +248,12 @@ Base template for Project overview.
                                             Staff notes (@p.noteCount) </a></li>
                                     }
                                     @if(request.data.globalPerm(ViewLogs)) {
+                                        <li><a href="@appRoutes.showLog(None, None, p.project.id, None)">
+                                            User Action Logs</a></li>
+                                    }
+                                    @if(request.data.globalPerm(ViewLogs)) {
                                         <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
-                                            Log (@p.projectLogSize) </a></li>
+                                            System Logs (@p.projectLogSize) </a></li>
                                     }
                                     <li><a href="https://forums.spongepowered.org/users/@p.project.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
                                 </ul>
