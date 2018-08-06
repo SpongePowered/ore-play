@@ -15,6 +15,7 @@
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
+@appRoutes = @{controllers.routes.Application}
 
 @projects.view(v.p, sp, "#versions", noButtons = true) {
 
@@ -132,7 +133,7 @@
                                         <span class="caret"></span>
                                     </button>
                                     <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
-                                        <li><a href="@versionRoutes.showLog(v.p.project.ownerName, v.p.project.slug, v.v.versionString)">Log</a></li>
+                                        <li><a href="@appRoutes.showLog(None, None, None, v.v.id)">User Action Logs</a></li>
                                     </ul>
                                 </div>
                             }
