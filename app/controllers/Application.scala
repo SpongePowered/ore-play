@@ -400,19 +400,17 @@ final class Application @Inject()(data: DataHelper,
     }
   }
 
-  def showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], contextFilter: Option[Int]): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
+  def showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], versionFilter: Option[Int]): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
     val pageSize = 50
     val offset = page.getOrElse(0) * pageSize
 
     val default = LiteralColumn(1) === LiteralColumn(1)
 
-    val logQuery = queryLog.filter { case (action, user, project, version, page) =>
+    val logQuery = queryLog.filter { case (action) =>
       (action.userId === userFilter).getOrElse(default) &&
-      (project.map(_.id) === projectFilter).getOrElse(default) &&
-      (version.map(_.projectId) === projectFilter).getOrElse(default) &&
-      (page.map(_.projectId) === projectFilter).getOrElse(default) &&
-      (action.actionContextId === contextFilter).getOrElse(default)
-    }.sortBy { case (action, user, project, version, page) =>
+      (action.filterProject === projectFilter).getOrElse(default) &&
+      (action.filterVersion === versionFilter).getOrElse(default)
+    }.sortBy { case (action) =>
       action.id.desc
     }.drop(offset).take(pageSize)
 
@@ -421,21 +419,17 @@ final class Application @Inject()(data: DataHelper,
       service.access[LoggedActionModel](classOf[LoggedActionModel]).size,
       request.currentUser.get can ViewIp in GlobalScope
     ).parMapN { (actions, size, canViewIP) =>
-      Ok(views.users.admin.log(actions, pageSize, offset, page.getOrElse(0), size, userFilter, projectFilter, contextFilter, canViewIP))
+      Ok(views.users.admin.log(actions, pageSize, offset, page.getOrElse(0), size, userFilter, projectFilter, versionFilter, canViewIP))
     }
   }
 
   private def queryLog = {
-    val tableLoggedAction = TableQuery[LoggedActionTable]
-    val userTable = TableQuery[UserTable]
-    val projectTable = TableQuery[ProjectTableMain]
-    val versionTable = TableQuery[VersionTable]
-    val pageTable = TableQuery[PageTable]
+    val tableLoggedAction = TableQuery[LoggedActionViewTable]
 
     for {
-      ((((action, user), project), version), page) <- tableLoggedAction.joinLeft(userTable).on(_.userId === _.id).joinLeft(projectTable).on(_._1.actionContextId === _.id).joinLeft(versionTable).on(_._1._1.actionContextId === _.id).joinLeft(pageTable).on(_._1._1._1.actionContextId === _.id)
+      (action) <- tableLoggedAction
     } yield {
-      (action, user, project, version, page)
+      (action)
     }
   }
 

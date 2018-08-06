@@ -3,19 +3,18 @@ package db.impl
 import java.sql.Timestamp
 
 import com.github.tminglei.slickpg.InetString
-
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
 import db.impl.table.StatTable
 import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityChangeColumns, VisibilityColumn}
 import db.table.{AssociativeTable, ModelTable, NameColumn}
-import models.admin.{ProjectLog, ProjectLogEntry, ProjectVisibilityChange, Review, VersionVisibilityChange}
+import models.admin._
 import models.api.ProjectApiKey
 import models.project.TagColors.TagColor
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
-import models.user.{LoggedActionContext, Notification, Organization, SignOn, User, LoggedAction, LoggedActionModel, Session => DbSession}
+import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, Notification, Organization, SignOn, User, Session => DbSession}
 import ore.Colors.Color
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
@@ -396,4 +395,31 @@ class VersionVisibilityChangeTable(tag: RowTag)
   def versionId = column[Int]("version_id")
 
   override def * = (id.?, createdAt.?, createdBy.?, versionId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VersionVisibilityChange.tupled, VersionVisibilityChange.unapply)
+}
+
+class LoggedActionViewTable(tag: RowTag) extends ModelTable[LoggedActionViewModel](tag, "v_logged_actions") {
+
+  def userId             =   column[Int]("user_id")
+  def address            =   column[InetString]("address")
+  def action             =   column[LoggedAction]("action")
+  def actionContext      =   column[LoggedActionContext]("action_context")
+  def actionContextId    =   column[Int]("action_context_id")
+  def newState           =   column[String]("new_state")
+  def oldState           =   column[String]("old_state")
+  def uId                =   column[Int]("u_id")
+  def uName              =   column[String]("u_name")
+  def pId                =   column[Int]("p_id")
+  def pPluginId          =   column[String]("p_plugin_id")
+  def pName              =   column[String]("p_name")
+  def pSlug              =   column[String]("p_slug")
+  def pOwnerName         =   column[String]("p_owner_name")
+  def pvId               =   column[Int]("pv_id")
+  def pvVersionString    =   column[String]("pv_version_string")
+  def pvProjectId        =   column[Int]("pv_project_id")
+  def pvFileName         =   column[String]("pv_file_name")
+  def filterProject      =   column[Int]("filter_project")
+  def filterVersion      =   column[Int]("filter_version")
+
+  override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState, uId, uName,
+    pId.?, pPluginId.?, pName.?, pSlug.?, pOwnerName.?, pvId.?, pvVersionString.?, pvProjectId.?, pvFileName.?, filterProject.?, filterVersion.?) <> (LoggedActionViewModel.tupled, LoggedActionViewModel.unapply)
 }
