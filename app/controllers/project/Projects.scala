@@ -675,11 +675,12 @@ class Projects @Inject()(stats: StatTracker,
   def softDelete(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).async { implicit request =>
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+    val oldVisibility = data.project.visibility.nameKey
     data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
 
       this.forums.changeTopicVisibility(data.project, false)
 
-      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.SoftDelete.nameKey, data.project.visibility.nameKey)
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), oldVisibility, data.project.visibility.nameKey)
       Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", data.project.name))
     }
   }
