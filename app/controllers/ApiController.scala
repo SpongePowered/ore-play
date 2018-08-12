@@ -57,6 +57,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
   val files = new ProjectFiles(this.env)
   val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+  val Logger = play.api.Logger("SSO")
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)
 
@@ -306,6 +307,8 @@ final class ApiController @Inject()(api: OreRestfulApi,
     val confApiKey = this.config.security.get[String]("sso.apikey")
     val confSecret = this.config.security.get[String]("sso.secret")
 
+    Logger.info("Sync Request received")
+
     bindFormEitherT[Future](this.forms.SyncSso)(hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
       .filterOrElse(_._3 == confApiKey, BadRequest("API Key not valid")) //_3 is apiKey
       .filterOrElse(
@@ -313,8 +316,12 @@ final class ApiController @Inject()(api: OreRestfulApi,
         BadRequest("Signature not matched")
       )
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
-      .semiFlatMap(q => this.users.get(q.get("external_id").get.toInt).value.tupleLeft(q))
+      .semiFlatMap{q =>
+        Logger.info("Sync Payload: " + q)
+        this.users.get(q.get("external_id").get.toInt).value.tupleLeft(q)
+      }
       .map { case (query, optUser) =>
+        Logger.info("Sync user found: " + optUser.isDefined)
         optUser.foreach { user =>
           val email = query.get("email")
           val username = query.get("username")
