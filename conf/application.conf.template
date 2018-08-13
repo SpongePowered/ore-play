@@ -189,7 +189,7 @@ discourse {
         enabled       =   true
         key           =   "changeme"
         key           =   ${?DISCOURSE_API_KEY}
-        admin         =   windy
+        admin         =   system
         timeout       =   10000ms
     }
 }
