@@ -8,6 +8,11 @@ import db.impl.model.OreModel
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.user.UserOwned
 
+case class LoggedProject(pId: Option[Int], pPluginId: Option[String], pSlug: Option[String], pOwnerName: Option[String])
+case class LoggedProjectVersion(pvId: Option[Int], pvVersionString: Option[String])
+case class LoggedProjectPage(ppId: Option[Int], ppSlug: Option[String])
+case class LoggedSubject(sId: Option[Int], sName: Option[String])
+
 case class LoggedActionViewModel(override val id: Option[Int] = None,
                              override val createdAt: Option[Timestamp] = None,
                              private val _userId: Int,
@@ -19,17 +24,15 @@ case class LoggedActionViewModel(override val id: Option[Int] = None,
                              private val _oldState: String,
                              private val _uId: Int,
                              private val _uName: String,
-                             private val _pId: Option[Int],
-                             private val _pPluginId: Option[String],
-                             private val _pSlug: Option[String],
-                             private val _pOwnerName: Option[String],
-                             private val _pvId: Option[Int],
-                             private val _pvVersionString: Option[String],
-                             private val _ppId: Option[Int],
-                             private val _ppSlug: Option[String],
+                             private val _loggedProject: LoggedProject,
+                             private val _loggedProjectVerison: LoggedProjectVersion,
+                             private val _loggedProjectPage: LoggedProjectPage,
+                             private val _loggedSubject: LoggedSubject,
                              private val _filterProject: Option[Int],
                              private val _filterVersion: Option[Int],
-                             private val _filterPage: Option[Int]) extends OreModel(id, createdAt) with UserOwned {
+                             private val _filterPage: Option[Int],
+                             private val _filterSubject: Option[Int],
+                             private val _filterAction: Option[Int]) extends OreModel(id, createdAt) with UserOwned {
 
   override type T = LoggedActionViewTable
   override type M = LoggedActionViewModel
@@ -45,15 +48,19 @@ case class LoggedActionViewModel(override val id: Option[Int] = None,
   def actionType: LoggedActionContext = _action.context
   def uId: Int = _uId
   def uName: String = _uName
-  def pId: Option[Int] = _pId
-  def pPluginId: Option[String] = _pPluginId
-  def pSlug: Option[String] = _pSlug
-  def pOwnerName: Option[String] = _pOwnerName
-  def pvId: Option[Int] = _pvId
-  def pvVersionString: Option[String] = _pvVersionString
-  def ppId: Option[Int] = _ppId
-  def ppSlug: Option[String] = _ppSlug
+  def pId: Option[Int] = _loggedProject.pId
+  def pPluginId: Option[String] = _loggedProject.pPluginId
+  def pSlug: Option[String] = _loggedProject.pSlug
+  def pOwnerName: Option[String] = _loggedProject.pOwnerName
+  def pvId: Option[Int] = _loggedProjectVerison.pvId
+  def pvVersionString: Option[String] = _loggedProjectVerison.pvVersionString
+  def ppId: Option[Int] = _loggedProjectPage.ppId
+  def ppSlug: Option[String] = _loggedProjectPage.ppSlug
+  def sId: Option[Int] = _loggedSubject.sId
+  def sName: Option[String] = _loggedSubject.sName
   def filterProject: Option[Int] = _filterProject
   def filterVersion: Option[Int] = _filterVersion
   def filterPage: Option[Int] = _filterPage
+  def filterSubject: Option[Int] = _filterSubject
+  def filterAction: Option[Int] = _filterAction
 }

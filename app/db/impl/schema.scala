@@ -416,11 +416,20 @@ class LoggedActionViewTable(tag: RowTag) extends ModelTable[LoggedActionViewMode
   def pvVersionString    =   column[String]("pv_version_string")
   def ppId               =   column[Int]("pp_id")
   def ppSlug             =   column[String]("pp_slug")
+  def sId                =   column[Int]("s_id")
+  def sName              =   column[String]("s_name")
   def filterProject      =   column[Int]("filter_project")
   def filterVersion      =   column[Int]("filter_version")
   def filterPage         =   column[Int]("filter_page")
+  def filterSubject      =   column[Int]("filter_subject")
+  def filterAction       =   column[Int]("filter_action")
 
   override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState, uId,
-    uName, pId.?, pPluginId.?, pSlug.?, pOwnerName.?, pvId.?, pvVersionString.?, ppId.?, ppSlug.?,
-    filterProject.?, filterVersion.?, filterPage.?) <> (LoggedActionViewModel.tupled, LoggedActionViewModel.unapply)
+    uName, loggedProjectProjection, loggedProjectVersionProjection, loggedProjectPageProjection, loggedSubjectProjection,
+    filterProject.?, filterVersion.?, filterPage.?, filterSubject.?, filterAction.?) <> (LoggedActionViewModel.tupled, LoggedActionViewModel.unapply)
+
+  def loggedProjectProjection = (pId.?, pPluginId.?, pSlug.?, pOwnerName.?) <> ((LoggedProject.apply _).tupled, LoggedProject.unapply)
+  def loggedProjectVersionProjection = (pvId.?, pvVersionString.?) <> ((LoggedProjectVersion.apply _).tupled, LoggedProjectVersion.unapply)
+  def loggedProjectPageProjection = (ppId.?, ppSlug.?) <> ((LoggedProjectPage.apply _).tupled, LoggedProjectPage.unapply)
+  def loggedSubjectProjection = (sId.?, sName.?) <> ((LoggedSubject.apply _).tupled, LoggedSubject.unapply)
 }

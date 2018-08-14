@@ -43,10 +43,11 @@ sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry
 
 object LoggedActionContext extends IntEnum[LoggedActionContext] {
 
-  case object Project     extends LoggedActionContext(0)
-  case object Version     extends LoggedActionContext(1)
-  case object ProjectPage extends LoggedActionContext(2)
-  case object User        extends LoggedActionContext(3)
+  case object Project      extends LoggedActionContext(0)
+  case object Version      extends LoggedActionContext(1)
+  case object ProjectPage  extends LoggedActionContext(2)
+  case object User         extends LoggedActionContext(3)
+  case object Organization extends LoggedActionContext(4)
 
   val values: immutable.IndexedSeq[LoggedActionContext] = findValues
 
