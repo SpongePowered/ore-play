@@ -72,6 +72,7 @@ case object LoggedAction extends IntEnum[LoggedAction] {
   case object VersionApproved           extends LoggedAction(10, "VersionApproved", LoggedActionContext.Version, "The version was approved")
   case object VersionAsRecommended      extends LoggedAction(11, "VersionAsRecommended", LoggedActionContext.Version, "The version was set as recommended version")
   case object VersionDescriptionEdited  extends LoggedAction(12, "VersionDescriptionEdited", LoggedActionContext.Version, "The version description was edited")
+  case object VersionNonReviewChanged   extends LoggedAction(17, "VersionNonReviewChanged", LoggedActionContext.Version, "If the review queue skip was changed")
 
   case object UserTaglineChanged        extends LoggedAction(14, "UserTaglineChanged", LoggedActionContext.User, "The users tagline changed")
   case object UserPgpKeySaved           extends LoggedAction(15, "UserPgpKeySaved", LoggedActionContext.User, "The users saved a pgp public key")

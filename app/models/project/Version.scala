@@ -59,7 +59,8 @@ case class Version(override val id: Option[Int] = None,
                    private var _tagIds: List[Int] = List(),
                    private var _visibility: Visibility = Public,
                    fileName: String,
-                   signatureFileName: String)
+                   signatureFileName: String,
+                   private var _isNonReviewed: Boolean = false)
                    extends OreModel(id, createdAt)
                      with ProjectScope
                      with Describable
@@ -179,6 +180,13 @@ case class Version(override val id: Option[Int] = None,
   def setApprovedAt(approvedAt: Timestamp): Future[Int] = Defined {
     this._approvedAt = Option(approvedAt)
     update(ApprovedAt)
+  }
+
+  def isNonReviewed: Boolean = this._isNonReviewed
+
+  def setIsNonReviewed(ignoreReview: Boolean): Unit = {
+    this._isNonReviewed = ignoreReview
+    update(IsNonReviewedVersion)
   }
 
   def tagIds: List[Int] = this._tagIds

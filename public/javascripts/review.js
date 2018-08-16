@@ -36,6 +36,19 @@ $(function() {
         });
     });
 
+    $('.btn-skip-review').click(function() {
+        var btn = $(this);
+        $.ajax({
+            type: 'post',
+            url: '/' + versionPath + '/reviews/reviewtoggle',
+            data: { csrfToken: csrf },
+            complete: function() { btn.html('Add to queue'); },
+            success: function() {
+                location.reload();
+            }
+        })
+    });
+
     $('.btn-review-stop').click(function () {
         var modal = $('#modal-review-stop');
         modal.modal().show();

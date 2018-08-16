@@ -208,7 +208,7 @@ final class Application @Inject()(data: DataHelper,
 
     for {
       (v, u) <- versionTable joinLeft userTable on (_.authorId === _.id)
-      c <- channelTable if v.channelId === c.id && v.isReviewed =!= true
+      c <- channelTable if v.channelId === c.id && v.isReviewed =!= true && v.isNonReviewed =!= true
       p <- projectTable if v.projectId === p.id && p.visibility =!= VisibilityTypes.SoftDelete
       ou <- userTable if p.userId === ou.id
     } yield {

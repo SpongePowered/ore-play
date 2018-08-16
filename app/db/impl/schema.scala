@@ -180,10 +180,11 @@ class VersionTable(tag: RowTag) extends ModelTable[Version](tag, "project_versio
   def fileName          =   column[String]("file_name")
   def signatureFileName =   column[String]("signature_file_name")
   def tagIds            =   column[List[Int]]("tags")
+  def isNonReviewed     =   column[Boolean]("is_non_reviewed")
 
   override def * = (id.?, createdAt.?, projectId, versionString, dependencies, assets.?, channelId,
                     fileSize, hash, authorId, description.?, downloads, isReviewed, reviewerId, approvedAt.?,
-                    tagIds, visibility, fileName, signatureFileName) <> ((Version.apply _).tupled, Version.unapply)
+                    tagIds, visibility, fileName, signatureFileName, isNonReviewed) <> ((Version.apply _).tupled, Version.unapply)
 }
 
 class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {

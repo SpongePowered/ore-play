@@ -12,7 +12,7 @@ import form.OreForms
 import javax.inject.Inject
 import models.admin.{Message, Review}
 import models.project.{Project, Version}
-import models.user.{Notification, User}
+import models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.permission.ReviewProjects
 import ore.permission.role.Lifted
 import ore.permission.role.RoleTypes.RoleType
@@ -239,6 +239,21 @@ final class Reviews @Inject()(data: DataHelper,
       } yield Ok("Review")
 
       ret.merge
+    }
+  }
+
+  def shouldReviewToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
+    Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) async { implicit request =>
+      val res = for {
+        version <- getProjectVersion(author, slug, versionString)
+      } yield {
+
+        UserActionLogger.log(request, LoggedAction.VersionNonReviewChanged, version.id.getOrElse(-1), s"In review queue: ${version.isNonReviewed}", s"In review queue: ${!version.isNonReviewed}")
+        version.setIsNonReviewed(!version.isNonReviewed)
+
+        Redirect(routes.Reviews.showReviews(author, slug, versionString))
+      }
+      res.merge
     }
   }
 }

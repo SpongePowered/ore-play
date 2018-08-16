@@ -204,7 +204,7 @@ POST    /:author/:slug/versions/:version/reviews/takeover           @controllers
 POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers.Reviews.addMessage(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: Int)
 POST    /:author/:slug/versions/:version/reviews/reopen             @controllers.Reviews.reopenReview(author, slug, version)
-
+POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers.Reviews.shouldReviewToggle(author, slug, version)
 
 # ---------- Other ----------
 

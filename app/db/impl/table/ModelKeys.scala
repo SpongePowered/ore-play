@@ -79,6 +79,7 @@ object ModelKeys {
   val ApprovedAt            =   new TimestampKey[Version](_.approvedAt, _.approvedAt.orNull)
   val ChannelId             =   new IntKey[Version](_.channelId, _.channelId)
   val TagIds                =   new Key[Version, List[Int]](_.tagIds, _.tagIds)
+  val IsNonReviewedVersion  =   new BooleanKey[Version](_.isNonReviewed, _.isNonReviewed)
 
   // Tags
   val TagVersionIds           =   new Key[models.project.Tag, List[Int]](_.versionIds, _.versionIds)
