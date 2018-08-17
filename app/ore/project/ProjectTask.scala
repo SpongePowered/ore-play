@@ -44,7 +44,7 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
     val dayAgo = System.currentTimeMillis() - draftExpire
 
     projects.foreach(project => {
-      Logger.info(s"Found project: ${project.ownerName}/${project.slug}")
+      Logger.debug(s"Found project: ${project.ownerName}/${project.slug}")
       val createdAt = project.createdAt.value.getTime
       if (createdAt < dayAgo) {
         Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
