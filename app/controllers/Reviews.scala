@@ -160,7 +160,7 @@ final class Reviews @Inject()(data: DataHelper,
 
   private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
 
-    val users: Future[Seq[Int]] = this.service.DB.db.run(notificationUsersQuery(project.id.value, version.authorId, None).result).map { list =>
+    val futUsers: Future[Seq[Int]] = this.service.DB.db.run(notificationUsersQuery(project.id.value, version.authorId, None).result).map { list =>
       list.filter {
         case (_, Some(level)) => level.trust.level >= Lifted.level
         case (_, None) => true
@@ -169,10 +169,11 @@ final class Reviews @Inject()(data: DataHelper,
 
     val notificationTable = TableQuery[NotificationTable]
 
-    users.map { list =>
-      list.map { id =>
+    futUsers.map { users =>
+      users.map { userId =>
         Notification(
-          userId = id,
+          userId = userId,
+          createdAt = ObjectTimestamp(Timestamp.from(Instant.now())),
           originId = requestUser.id.value,
           notificationType = NotificationTypes.VersionReviewed,
           messageArgs = List("notification.project.reviewed", project.slug, version.versionString)
