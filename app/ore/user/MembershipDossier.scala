@@ -69,7 +69,7 @@ trait MembershipDossier {
     *
     * @param role Role to add
     */
-  def addRole(role: RoleType)(implicit ec: ExecutionContext) = {
+  def addRole(role: RoleType)(implicit ec: ExecutionContext): Future[RoleType] = {
     for {
       user <- role.user
       exists <- this.roles.exists(_.userId === user.id.get)
@@ -99,7 +99,7 @@ trait MembershipDossier {
     *
     * @param role Role to remove
     */
-  def removeRole(role: RoleType)(implicit ec: ExecutionContext) = {
+  def removeRole(role: RoleType)(implicit ec: ExecutionContext): Future[Unit] = {
     for {
       _ <- this.roleAccess.remove(role)
       user   <- role.user
@@ -114,7 +114,7 @@ trait MembershipDossier {
     * @param user User to remove
     * @return
     */
-  def removeMember(user: User)(implicit ec: ExecutionContext) = {
+  def removeMember(user: User)(implicit ec: ExecutionContext): Future[Int] = {
     clearRoles(user) flatMap { _ =>
       this.association.remove(user)
     }

@@ -6,17 +6,19 @@ import java.sql.Timestamp
 import java.util.{Date, UUID}
 
 import com.github.tminglei.slickpg.InetString
+
 import controllers.OreBaseController
-import controllers.sugar.Bakery
-import controllers.sugar.Requests.{OreRequest, ProjectRequest}
+import controllers.sugar.{Bakery, Requests}
+import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
+
 import models.project._
 import models.viewhelper.{ProjectData, VersionData}
-import ore.permission.{EditVersions, ReviewProjects}
+import ore.permission.{EditSettings, EditVersions, HardRemoveProject, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.factory.{PendingProject, PendingVersion, ProjectFactory}
 import ore.project.io.DownloadTypes._
@@ -24,22 +26,24 @@ import ore.project.io.{DownloadTypes, InvalidPluginFileException, PluginFile, Pl
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.Logger
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, MessagesApi}
 import play.api.libs.json.Json
-import play.api.mvc.{Request, Result}
+import play.api.mvc.{Action, AnyContent, Request, Result}
 import play.filters.csrf.CSRF
 import security.spauth.SingleSignOnConsumer
 import util.StringUtils._
 import util.syntax._
 import views.html.projects.{versions => views}
 import _root_.views.html.helper
-import models.user.{UserActionLogger, LoggedAction}
+import models.user.{LoggedAction, UserActionLogger}
 import ore.project.factory.TagAlias.ProjectTag
 import util.JavaUtils.autoClose
 import scala.concurrent.{ExecutionContext, Future}
 
 import util.functional.{EitherT, OptionT}
 import util.instances.future._
+
+import db.impl.VersionTable
 
 /**
   * Controller for handling Version related actions.
@@ -64,6 +68,9 @@ class Versions @Inject()(stats: StatTracker,
   private def VersionEditAction(author: String, slug: String)
   = AuthedProjectAction(author, slug, requireUnlock = true) andThen ProjectPermissionAction(EditVersions)
 
+  private def VersionUploadAction(author: String, slug: String)
+  = AuthedProjectAction(author, slug, requireUnlock = true) andThen ProjectPermissionAction(UploadVersions)
+
   /**
     * Shows the specified version view page.
     *
@@ -72,8 +79,8 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString Version name
     * @return Version view
     */
-  def show(author: String, slug: String, versionString: String) = ProjectAction(author, slug) async { request =>
-    implicit val r = request.request
+  def show(author: String, slug: String, versionString: String): Action[AnyContent] = ProjectAction(author, slug) async { request =>
+    implicit val r: OreRequest[AnyContent] = request.request
     val res = for {
       version <- getVersion(request.data.project, versionString)
       data <- EitherT.right[Result](VersionData.of(request, version))
@@ -91,9 +98,9 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString Version name
     * @return View of Version
     */
-  def saveDescription(author: String, slug: String, versionString: String) = {
+  def saveDescription(author: String, slug: String, versionString: String): Action[AnyContent] = {
     VersionEditAction(author, slug).async { request =>
-      implicit val r = request.request
+      implicit val r: Requests.AuthRequest[AnyContent] = request.request
       val res = for {
         version <- getVersion(request.data.project, versionString)
         description <- bindFormEitherT[Future](this.forms.VersionDescription)(_ => BadRequest: Result)
@@ -117,9 +124,9 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString  Version name
     * @return               View of version
     */
-  def setRecommended(author: String, slug: String, versionString: String) = {
+  def setRecommended(author: String, slug: String, versionString: String): Action[AnyContent] = {
     VersionEditAction(author, slug).async { implicit request =>
-      implicit val r = request.request
+      implicit val r: Requests.AuthRequest[AnyContent] = request.request
       getVersion(request.data.project, versionString).map { version =>
         request.data.project.setRecommendedVersion(version)
         UserActionLogger.log(request.request, LoggedAction.VersionAsRecommended, version.id.getOrElse(-1), "recommended version", "listed version")
@@ -136,10 +143,10 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString  Version name
     * @return               View of version
     */
-  def approve(author: String, slug: String, versionString: String) = {
+  def approve(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (AuthedProjectAction(author, slug, requireUnlock = true)
       andThen ProjectPermissionAction(ReviewProjects)).async { implicit request =>
-      implicit val r = request.request
+      implicit val r: Requests.AuthRequest[AnyContent] = request.request
       getVersion(request.data.project, versionString).map { version =>
         version.setReviewed(reviewed = true)
         version.setReviewer(request.user)
@@ -158,38 +165,34 @@ class Versions @Inject()(stats: StatTracker,
     * @param channels Visible channels
     * @return View of project
     */
-  def showList(author: String, slug: String, channels: Option[String], page: Option[Int]) = {
+  def showList(author: String, slug: String, channels: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { request =>
       val data = request.data
-      implicit val r = request.request
+      implicit val r: OreRequest[AnyContent] = request.request
+
       data.project.channels.toSeq.flatMap { allChannels =>
-        var visibleNames: Option[Array[String]] = channels.map(_.toLowerCase.split(','))
-        val visible: Option[Array[Channel]] = visibleNames.map(_.map { name =>
-          allChannels.find(_.name.equalsIgnoreCase(name))
-        }).map(_.flatten)
+        val visibleNames = channels.fold(allChannels.map(_.name.toLowerCase))(_.toLowerCase.split(',').toSeq)
+        val visible = allChannels.filter(ch => visibleNames.contains(ch.name.toLowerCase))
+        val visibleIds = visible.map(_.id.get)
 
-        val visibleIds: Array[Int] = visible.map(_.map(_.id.get)).getOrElse(allChannels.map(_.id.get).toArray)
-
-        val pageSize = this.config.projects.get[Int]("init-version-load")
-        val p = page.getOrElse(1)
-        val futureVersions = data.project.versions.sorted(
-          ordering = _.createdAt.desc,
-          filter = _.channelId inSetBind visibleIds,
-          offset = pageSize * (p - 1),
-          limit = pageSize)
-
-        if (visibleNames.isDefined && visibleNames.get.toSet.equals(allChannels.map(_.name.toLowerCase).toSet)) {
-          visibleNames = None
+        def versionFilter(v: VersionTable): Rep[Boolean] = {
+          val inChannel = v.channelId inSetBind visibleIds
+          val isVisible =
+            if(r.data.globalPerm(ReviewProjects)) true: Rep[Boolean]
+            else v.visibility === VisibilityTypes.Public
+          inChannel && isVisible
         }
+
+        val futureVersionCount = data.project.versions.count(versionFilter)
+
+        val visibleNamesForView = if(visibleNames == allChannels.map(_.name.toLowerCase)) Nil else visibleNames
 
         for {
-          versions <- futureVersions
+          versionCount <- futureVersionCount
           r <- this.stats.projectViewed(request) { request =>
-            Ok(views.list(data, request.scoped, allChannels, versions, visibleNames, p))
+            Ok(views.list(data, request.scoped, allChannels, versionCount, visibleNamesForView))
           }
-        } yield {
-          r
-        }
+        } yield r
       }
     }
   }
@@ -201,9 +204,9 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Version creation view
     */
-  def showCreator(author: String, slug: String) = VersionEditAction(author, slug).async { request =>
+  def showCreator(author: String, slug: String): Action[AnyContent] = VersionUploadAction(author, slug).async { request =>
     val data = request.data
-    implicit val r = request.request
+    implicit val r: Requests.AuthRequest[AnyContent] = request.request
     data.project.channels.all.map { channels =>
       Ok(views.create(data, data.settings.forumSync, None, Some(channels.toSeq), showFileControls = true))
     }
@@ -216,7 +219,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Version create page (with meta)
     */
-  def upload(author: String, slug: String) = VersionEditAction(author, slug).async { implicit request =>
+  def upload(author: String, slug: String): Action[AnyContent] = VersionUploadAction(author, slug).async { implicit request =>
     val call = self.showCreator(author, slug)
     val user = request.user
 
@@ -231,8 +234,7 @@ class Versions @Inject()(stats: StatTracker,
         this.factory
           .processSubsequentPluginUpload(data, user, request.data.project)
           .leftMap(err => Redirect(call).withError(err))
-      }
-      catch {
+      } catch {
         case e: InvalidPluginFileException =>
           EitherT.leftT[Future, PendingVersion](Redirect(call).withErrors(Option(e.getMessage).toList))
       }
@@ -250,7 +252,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString Version name
     * @return Version create view
     */
-  def showCreatorWithMeta(author: String, slug: String, versionString: String) =
+  def showCreatorWithMeta(author: String, slug: String, versionString: String): Action[AnyContent] =
     UserLock(ShowProject(author, slug)).async { implicit request =>
       val success = OptionT.fromOption[Future](this.factory.getPendingVersion(author, slug, versionString))
         // Get pending version
@@ -285,7 +287,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString Version name
     * @return New version view
     */
-  def publish(author: String, slug: String, versionString: String) = {
+  def publish(author: String, slug: String, versionString: String): Action[AnyContent] = {
     UserLock(ShowProject(author, slug)).async { implicit request =>
       // First get the pending Version
       this.factory.getPendingVersion(author, slug, versionString) match {
@@ -381,15 +383,51 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString Version name
     * @return Versions page
     */
-  def delete(author: String, slug: String, versionString: String) = {
-    VersionEditAction(author, slug).async { implicit request =>
-      implicit val r = request.request
-      implicit val p = request.data.project
-      getVersion(p, versionString).map { version =>
+  def delete(author: String, slug: String, versionString: String): Action[AnyContent] = {
+    (Authenticated andThen PermissionAction[AuthRequest](HardRemoveVersion)).async { implicit request =>
+      implicit val r: Request[AnyContent] = request.request
+      getProjectVersion(author, slug, versionString).map { version =>
         this.projects.deleteVersion(version)
-        UserActionLogger.log(request.request, LoggedAction.VersionDeleted, version.id.getOrElse(-1), "null", "")
-        Redirect(self.showList(author, slug, None, None))
+        UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.getOrElse(-1), "null", "")
+        Redirect(self.showList(author, slug, None))
       }.merge
+    }
+  }
+
+  /**
+    * Soft deletes the specified version.
+    *
+    * @param author Project owner
+    * @param slug   Project slug
+    * @return Home page
+    */
+  def softDelete(author: String, slug: String, versionString: String): Action[AnyContent] = VersionEditAction(author, slug).async { request =>
+    implicit val oreRequest: AuthRequest[AnyContent] = request.request
+    val project: Project = request.data.project
+    val res = for {
+      comment <- bindFormEitherT[Future](this.forms.NeedsChanges)(_ => BadRequest)
+      version <- getVersion(project, versionString)
+      _ <- EitherT.right[Result](this.projects.prepareDeleteVersion(version))
+      _ <- EitherT.right[Result](version.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get))
+    } yield Redirect(self.showList(author, slug, None))
+
+    res.merge
+  }
+
+  def showLog(author: String, slug: String, versionString: String): Action[AnyContent] = {
+    (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)) andThen ProjectAction(author, slug) async { request =>
+      implicit val r: OreRequest[AnyContent] = request.request
+      implicit val project: Project = request.data.project
+      val res = for {
+        version <- getVersion(project, versionString)
+        changes <- EitherT.right[Result](version.visibilityChangesByDate)
+        changedBy <- EitherT.right[Result](Future.sequence(changes.map(_.created.value)))
+      } yield {
+        val visChanges = changes zip changedBy
+        Ok(views.log(project, version, visChanges))
+      }
+
+      res.merge
     }
   }
 
@@ -401,10 +439,10 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString Version string
     * @return Sent file
     */
-  def download(author: String, slug: String, versionString: String, token: Option[String]) = {
+  def download(author: String, slug: String, versionString: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
       val project = request.data.project
-      implicit val r = request.request
+      implicit val r: OreRequest[AnyContent] = request.request
       getVersion(project, versionString).semiFlatMap { version =>
         sendVersion(project, version, token)
       }.merge
@@ -475,10 +513,11 @@ class Versions @Inject()(stats: StatTracker,
                           slug: String,
                           target: String,
                           downloadType: Option[Int],
-                          api: Option[Boolean]) = {
+                          api: Option[Boolean]): Action[AnyContent] = {
     ProjectAction(author, slug).async { request =>
       val dlType = downloadType.flatMap(i => DownloadTypes.values.find(_.id == i)).getOrElse(DownloadTypes.UploadedFile)
-      implicit val r = request.request
+      implicit val r: OreRequest[AnyContent] = request.request
+      implicit val lang: Lang = request.lang
       val project = request.data.project
       getVersion(project, target)
         .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
@@ -535,7 +574,7 @@ class Versions @Inject()(stats: StatTracker,
     }
   }
 
-  def confirmDownload(author: String, slug: String, target: String, downloadType: Option[Int], token: String) = {
+  def confirmDownload(author: String, slug: String, target: String, downloadType: Option[Int], token: String): Action[AnyContent] = {
     ProjectAction(author, slug) async { request =>
       implicit val r: OreRequest[_] = request.request
       getVersion(request.data.project, target)
@@ -603,7 +642,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return Sent file
     */
-  def downloadRecommended(author: String, slug: String, token: Option[String]) = {
+  def downloadRecommended(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
       val data = request.data
       data.project.recommendedVersion.flatMap { rv =>
@@ -621,10 +660,10 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString  Version name
     * @return               Sent file
     */
-  def downloadJar(author: String, slug: String, versionString: String, token: Option[String]) = {
+  def downloadJar(author: String, slug: String, versionString: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
       val project = request.data.project
-      implicit val r = request.request
+      implicit val r: OreRequest[AnyContent] = request.request
       getVersion(project, versionString).semiFlatMap(version => sendJar(project, version, token)).merge
     }
   }
@@ -677,7 +716,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return       Sent file
     */
-  def downloadRecommendedJar(author: String, slug: String, token: Option[String]) = {
+  def downloadRecommendedJar(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
       val data = request.data
       data.project.recommendedVersion.flatMap { rv =>
@@ -694,10 +733,10 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString  Version name
     * @return               Sent file
     */
-  def downloadJarById(pluginId: String, versionString: String, optToken: Option[String]) = {
+  def downloadJarById(pluginId: String, versionString: String, optToken: Option[String]): Action[AnyContent] = {
     ProjectAction(pluginId).async { implicit request =>
       val project = request.data.project
-      implicit val r = request.request
+      implicit val r: OreRequest[AnyContent] = request.request
       getVersion(project, versionString).semiFlatMap { version =>
         optToken.map { token =>
           confirmDownload0(version.id.get, Some(JarFile.id), token)(request.request).value.flatMap { _ =>
@@ -715,7 +754,7 @@ class Versions @Inject()(stats: StatTracker,
     * @param pluginId Project unique plugin ID
     * @return         Sent file
     */
-  def downloadRecommendedJarById(pluginId: String, token: Option[String]) = {
+  def downloadRecommendedJarById(pluginId: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(pluginId).async { implicit request =>
       val data = request.data
       data.project.recommendedVersion.flatMap { rv =>
@@ -732,10 +771,10 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString  Version string
     * @return               Sent file
     */
-  def downloadSignature(author: String, slug: String, versionString: String) = {
+  def downloadSignature(author: String, slug: String, versionString: String): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
       val project = request.data.project
-      implicit val r = request.request
+      implicit val r: OreRequest[AnyContent] = request.request
       getVersion(project, versionString).map(sendSignatureFile(_, project)).merge
     }
   }
@@ -747,9 +786,9 @@ class Versions @Inject()(stats: StatTracker,
     * @param versionString  Version name
     * @return               Sent file
     */
-  def downloadSignatureById(pluginId: String, versionString: String) = ProjectAction(pluginId).async { implicit request =>
+  def downloadSignatureById(pluginId: String, versionString: String): Action[AnyContent] = ProjectAction(pluginId).async { implicit request =>
     val project = request.data.project
-    implicit val r = request.request
+    implicit val r: OreRequest[AnyContent] = request.request
     getVersion(project, versionString).map(sendSignatureFile(_, project)).merge
   }
 
@@ -760,9 +799,9 @@ class Versions @Inject()(stats: StatTracker,
     * @param slug   Project slug
     * @return       Sent file
     */
-  def downloadRecommendedSignature(author: String, slug: String) = ProjectAction(author, slug) async { implicit request =>
-    implicit val data = request.data
-    implicit val r = request.request
+  def downloadRecommendedSignature(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug) async { implicit request =>
+    implicit val data: ProjectData = request.data
+    implicit val r: OreRequest[AnyContent] = request.request
     request.data.project.recommendedVersion.map(sendSignatureFile(_, request.data.project))
   }
 
@@ -772,8 +811,8 @@ class Versions @Inject()(stats: StatTracker,
     * @param pluginId Project unique plugin ID
     * @return         Sent file
     */
-  def downloadRecommendedSignatureById(pluginId: String) = ProjectAction(pluginId).async { implicit request =>
-    implicit val r = request.request
+  def downloadRecommendedSignatureById(pluginId: String): Action[AnyContent] = ProjectAction(pluginId).async { implicit request =>
+    implicit val r: OreRequest[AnyContent] = request.request
     request.data.project.recommendedVersion.map(sendSignatureFile(_, request.data.project))
   }
 

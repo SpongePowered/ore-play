@@ -98,7 +98,7 @@ trait OreRestfulApi {
     }
   }
 
-  def writeMembers(members: Seq[(ProjectRole, User)]) = {
+  def writeMembers(members: Seq[(ProjectRole, User)]): Seq[JsObject] = {
     val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.roleType))
     members.map { case (_, user) =>
       val roles = allRoles(user.id.get)
@@ -160,7 +160,14 @@ trait OreRestfulApi {
       "tags"          ->  tags.map(toJson(_)),
       "downloads"     ->  v.downloadCount
     )
-    author.fold(json)(a => json + (("author", JsString(a))))
+
+    lazy val jsonVisibility = obj(
+      "type" -> v.visibility.nameKey,
+      "css" -> v.visibility.cssClass
+    )
+
+    val withVisibility = if(v.visibility == VisibilityTypes.Public) json else json + ("visibility" -> jsonVisibility)
+    author.fold(withVisibility)(a => withVisibility + (("author", JsString(a))))
   }
 
   private def queryProjectChannels(projectIds: Seq[Int]) = {
@@ -176,7 +183,7 @@ trait OreRestfulApi {
     val tableTags = TableQuery[TagTable]
     val tableVersion = TableQuery[VersionTable]
     for {
-      v <- tableVersion if v.id inSetBind versions
+      v <- tableVersion if (v.id inSetBind versions) && v.visibility === VisibilityTypes.Public
       t <- tableTags if t.id === v.tagIds.any
     } yield {
       (v.id, t)
@@ -224,14 +231,13 @@ trait OreRestfulApi {
     * @return         JSON list of versions
     */
   def getVersionList(pluginId: String, channels: Option[String],
-                     limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] = {
-
+                     limit: Option[Int], offset: Option[Int], onlyPublic: Boolean)(implicit ec: ExecutionContext): Future[JsValue] = {
     val filtered = channels.map { chan =>
-      queryVersions.filter { case (p, v, vId, c, uName) =>
+      queryVersions(onlyPublic).filter { case (p, v, vId, c, uName) =>
           // Only allow versions in the specified channels or all if none specified
           c.name.toLowerCase inSetBind chan.toLowerCase.split(",")
       }
-    } getOrElse queryVersions filter {
+    } getOrElse queryVersions(onlyPublic) filter {
       case (p, v, vId, c, uName) =>
         p.pluginId.toLowerCase === pluginId.toLowerCase
     } sortBy { case (_, v, _, _, _) =>
@@ -263,7 +269,7 @@ trait OreRestfulApi {
     */
   def getVersion(pluginId: String, name: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
 
-    val filtered = queryVersions.filter { case (p, v, vId, c, uName) =>
+    val filtered = queryVersions().filter { case (p, v, vId, c, uName) =>
       p.pluginId.toLowerCase === pluginId.toLowerCase &&
       v.versionString.toLowerCase === name.toLowerCase
     }
@@ -279,7 +285,7 @@ trait OreRestfulApi {
   }
 
 
-  private def queryVersions: Query[(ProjectTableMain, VersionTable, Rep[Int], ChannelTable, Rep[Option[String]]), (Project, Version, Int, Channel, Option[String]), Seq] = {
+  private def queryVersions(onlyPublic: Boolean = true): Query[(ProjectTableMain, VersionTable, Rep[Int], ChannelTable, Rep[Option[String]]), (Project, Version, Int, Channel, Option[String]), Seq] = {
     val tableProject = TableQuery[ProjectTableMain]
     val tableVersion = TableQuery[VersionTable]
     val tableChannels = TableQuery[ChannelTable]
@@ -288,7 +294,7 @@ trait OreRestfulApi {
     for {
       p <- tableProject
       (v, u) <- tableVersion joinLeft tableUsers on (_.authorId === _.id)
-      c <- tableChannels if v.channelId === c.id && p.id === v.projectId
+      c <- tableChannels if v.channelId === c.id && p.id === v.projectId && (if(onlyPublic) v.visibility === VisibilityTypes.Public else true)
     } yield {
       (p, v, v.id, c, u.map(_.name))
     }
@@ -401,7 +407,7 @@ trait OreRestfulApi {
     */
   def getTags(pluginId: String, version: String)(implicit ec: ExecutionContext): OptionT[Future, JsValue] = {
     this.projects.withPluginId(pluginId).flatMap { project =>
-      project.versions.find(equalsIgnoreCase(_.versionString, version)).semiFlatMap { v =>
+      project.versions.find(v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === VisibilityTypes.Public).semiFlatMap { v =>
         v.tags.map { tags =>
           obj(
             "pluginId" -> pluginId,

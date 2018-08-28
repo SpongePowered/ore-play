@@ -19,7 +19,7 @@ trait ActionHelpers {
     * @param form Form with error
     * @return     Redirect to call
     */
-  def FormError(call: Call, form: Form[_]) = {
+  def FormError(call: Call, form: Form[_]): Result = {
     checkNotNull(call, "null call", "")
     checkNotNull(form, "null form", "")
     checkArgument(form.errors.nonEmpty, "no errors", "")

@@ -6,15 +6,15 @@ import com.github.tminglei.slickpg.InetString
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
 import db.impl.table.StatTable
-import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
+import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityChangeColumns, VisibilityColumn}
 import db.table.{AssociativeTable, ModelTable, NameColumn}
-import models.admin.{ProjectLog, ProjectLogEntry, Review, VisibilityChange}
+import models.admin._
 import models.api.ProjectApiKey
 import models.project.TagColors.TagColor
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
-import models.user.{LoggedActionContext, Notification, Organization, SignOn, User, LoggedAction, LoggedActionModel, Session => DbSession}
+import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, Notification, Organization, SignOn, User, Session => DbSession}
 import ore.Colors.Color
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
@@ -23,6 +23,7 @@ import ore.project.io.DownloadTypes.DownloadType
 import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
 import ore.user.Prompts.Prompt
 import ore.user.notification.NotificationTypes.NotificationType
+import play.api.i18n.Lang
 
 /*
  * Database schema definitions. Changes must be first applied as an evolutions
@@ -162,7 +163,8 @@ class TagTable(tag: RowTag) extends ModelTable[ProjectTag](tag, "project_tags") 
 
 class VersionTable(tag: RowTag) extends ModelTable[Version](tag, "project_versions")
   with DownloadsColumn[Version]
-  with DescriptionColumn[Version] {
+  with DescriptionColumn[Version]
+  with VisibilityColumn[Version] {
 
   def versionString     =   column[String]("version_string")
   def dependencies      =   column[List[String]]("dependencies")
@@ -178,10 +180,11 @@ class VersionTable(tag: RowTag) extends ModelTable[Version](tag, "project_versio
   def fileName          =   column[String]("file_name")
   def signatureFileName =   column[String]("signature_file_name")
   def tagIds            =   column[List[Int]]("tags")
+  def isNonReviewed     =   column[Boolean]("is_non_reviewed")
 
   override def * = (id.?, createdAt.?, projectId, versionString, dependencies, assets.?, channelId,
                     fileSize, hash, authorId, description.?, downloads, isReviewed, reviewerId, approvedAt.?,
-                    tagIds, fileName, signatureFileName) <> ((Version.apply _).tupled, Version.unapply)
+                    tagIds, visibility, fileName, signatureFileName, isNonReviewed) <> ((Version.apply _).tupled, Version.unapply)
 }
 
 class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {
@@ -232,9 +235,10 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
   def joinDate              =   column[Timestamp]("join_date")
   def avatarUrl             =   column[String]("avatar_url")
   def readPrompts           =   column[List[Prompt]]("read_prompts")
+  def lang                  =   column[Lang]("language")
 
   override def * = (id.?, createdAt.?, fullName.?, name, email.?, tagline.?, globalRoles, joinDate.?,
-                    avatarUrl.?, readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked) <> ((User.apply _).tupled,
+                    avatarUrl.?, readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked, lang.?) <> ((User.apply _).tupled,
                     User.unapply)
 
 }
@@ -321,11 +325,11 @@ class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "noti
   def userId            =   column[Int]("user_id")
   def originId          =   column[Int]("origin_id")
   def notificationType  =   column[NotificationType]("notification_type")
-  def message           =   column[String]("message")
+  def messageArgs       =   column[List[String]]("message_args")
   def action            =   column[String]("action")
   def read              =   column[Boolean]("read")
 
-  override def * = (id.?, createdAt.?, userId, originId, notificationType, message, action.?,
+  override def * = (id.?, createdAt.?, userId, originId, notificationType, messageArgs, action.?,
                     read) <> (Notification.tupled, Notification.unapply)
 
 }
@@ -364,16 +368,13 @@ class ReviewTable(tag: RowTag) extends ModelTable[Review](tag, "project_version_
   override def * =  (id.?, createdAt.?, versionId, userId, endedAt.?, comment) <> ((Review.apply _).tupled, Review.unapply)
 }
 
-class VisibilityChangeTable(tag: RowTag) extends ModelTable[VisibilityChange](tag, "project_visibility_changes") {
+class ProjectVisibilityChangeTable(tag: RowTag)
+  extends ModelTable[ProjectVisibilityChange](tag, "project_visibility_changes")
+  with VisibilityChangeColumns[ProjectVisibilityChange] {
 
-  def createdBy         =   column[Int]("created_by")
-  def projectId         =   column[Int]("project_id")
-  def comment           =   column[String]("comment")
-  def resolvedAt        =   column[Timestamp]("resolved_at")
-  def resolvedBy        =   column[Int]("resolved_by")
-  def visibility        =   column[Int]("visibility")
+  def projectId = column[Int]("project_id")
 
-  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VisibilityChange.tupled, VisibilityChange.unapply)
+  override def * = (id.?, createdAt.?, createdBy.?, projectId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (ProjectVisibilityChange.tupled, ProjectVisibilityChange.unapply)
 }
 
 class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
@@ -387,4 +388,49 @@ class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, 
   def oldState           =  column[String]("old_state")
 
   override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState) <> (LoggedActionModel.tupled, LoggedActionModel.unapply)
+}
+class VersionVisibilityChangeTable(tag: RowTag)
+  extends ModelTable[VersionVisibilityChange](tag, "project_version_visibility_changes")
+    with VisibilityChangeColumns[VersionVisibilityChange] {
+
+  def versionId = column[Int]("version_id")
+
+  override def * = (id.?, createdAt.?, createdBy.?, versionId, comment, resolvedAt.?, resolvedBy.?, visibility) <> (VersionVisibilityChange.tupled, VersionVisibilityChange.unapply)
+}
+
+class LoggedActionViewTable(tag: RowTag) extends ModelTable[LoggedActionViewModel](tag, "v_logged_actions") {
+
+  def userId             =   column[Int]("user_id")
+  def address            =   column[InetString]("address")
+  def action             =   column[LoggedAction]("action")
+  def actionContext      =   column[LoggedActionContext]("action_context")
+  def actionContextId    =   column[Int]("action_context_id")
+  def newState           =   column[String]("new_state")
+  def oldState           =   column[String]("old_state")
+  def uId                =   column[Int]("u_id")
+  def uName              =   column[String]("u_name")
+  def pId                =   column[Int]("p_id")
+  def pPluginId          =   column[String]("p_plugin_id")
+  def pSlug              =   column[String]("p_slug")
+  def pOwnerName         =   column[String]("p_owner_name")
+  def pvId               =   column[Int]("pv_id")
+  def pvVersionString    =   column[String]("pv_version_string")
+  def ppId               =   column[Int]("pp_id")
+  def ppSlug             =   column[String]("pp_slug")
+  def sId                =   column[Int]("s_id")
+  def sName              =   column[String]("s_name")
+  def filterProject      =   column[Int]("filter_project")
+  def filterVersion      =   column[Int]("filter_version")
+  def filterPage         =   column[Int]("filter_page")
+  def filterSubject      =   column[Int]("filter_subject")
+  def filterAction       =   column[Int]("filter_action")
+
+  override def * = (id.?, createdAt.?, userId, address, action, actionContext, actionContextId, newState, oldState, uId,
+    uName, loggedProjectProjection, loggedProjectVersionProjection, loggedProjectPageProjection, loggedSubjectProjection,
+    filterProject.?, filterVersion.?, filterPage.?, filterSubject.?, filterAction.?) <> (LoggedActionViewModel.tupled, LoggedActionViewModel.unapply)
+
+  def loggedProjectProjection = (pId.?, pPluginId.?, pSlug.?, pOwnerName.?) <> ((LoggedProject.apply _).tupled, LoggedProject.unapply)
+  def loggedProjectVersionProjection = (pvId.?, pvVersionString.?) <> ((LoggedProjectVersion.apply _).tupled, LoggedProjectVersion.unapply)
+  def loggedProjectPageProjection = (ppId.?, ppSlug.?) <> ((LoggedProjectPage.apply _).tupled, LoggedProjectPage.unapply)
+  def loggedSubjectProjection = (sId.?, sName.?) <> ((LoggedSubject.apply _).tupled, LoggedSubject.unapply)
 }

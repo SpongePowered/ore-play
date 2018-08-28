@@ -31,9 +31,9 @@ class UserBase(override val service: ModelService,
 
   import UserBase._
 
-  override val modelClass = classOf[User]
+  override val modelClass: Class[User] = classOf[User]
 
-  implicit val self = this
+  implicit val self: UserBase = this
 
   /**
     * Returns the user with the specified username. If the specified username
@@ -119,7 +119,7 @@ class UserBase(override val service: ModelService,
         sort match { // Sort
           case ORDERING_JOIN_DATE => if(reverse) users.joinDate.asc else users.joinDate.desc
           case ORDERING_ROLE => if(reverse) users.globalRoles.asc else users.globalRoles.desc
-          case ORDERING_USERNAME | _ => if(reverse) users.name.asc else users.joinDate.desc
+          case ORDERING_USERNAME | _ => if(reverse) users.name.asc else users.name.desc
         }
       }
       .drop(offset)

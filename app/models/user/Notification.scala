@@ -19,7 +19,8 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param createdAt        Instant of cretion
   * @param userId           ID of User this notification belongs to
   * @param notificationType Type of notification
-  * @param message          Message to display
+  * @param messageArgs      The unlocalized message to display, with the
+  *                         parameters to use when localizing
   * @param action           Action to perform on click
   * @param read             True if notification has been read
   */
@@ -28,11 +29,13 @@ case class Notification(override val id: Option[Int] = None,
                         override val userId: Int = -1,
                         originId: Int,
                         notificationType: NotificationType,
-                        message: String,
+                        messageArgs: List[String],
                         action: Option[String] = None,
                         private var read: Boolean = false)
                         extends OreModel(id, createdAt)
                           with UserOwned {
+  //TODO: Would be neat to have a NonEmptyList to get around guarding against this
+  require(messageArgs.nonEmpty, "Notification created with no message arguments")
 
   override type M = Notification
   override type T = NotificationTable
@@ -57,7 +60,7 @@ case class Notification(override val id: Option[Int] = None,
     *
     * @param read True if has been read
     */
-  def setRead(read: Boolean) = Defined {
+  def setRead(read: Boolean): Future[Int] = Defined {
     this.read = read
     update(Read)
   }

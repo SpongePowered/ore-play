@@ -12,12 +12,14 @@ import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProv
 
 import scala.util.Try
 
+import play.api.Logger
+
 /**
   * Verifies data within the PGP ecosystem.
   */
 class PGPVerifier {
 
-  val Logger = PGPPublicKeyInfo.Logger
+  val Logger: Logger = PGPPublicKeyInfo.Logger
 
   /**
     * Verifies the specified document [[InputStream]] against the specified
@@ -29,7 +31,7 @@ class PGPVerifier {
     * @return True if verified, false otherwise
     */
   def verifyDetachedSignature(doc: Array[Byte], sigIn: InputStream, keyIn: InputStream): Boolean = {
-    Logger.info("Processing signature...")
+    Logger.debug("Processing signature...")
     var result = false
     try {
       val in = PGPUtil.getDecoderStream(sigIn)
@@ -40,7 +42,7 @@ class PGPVerifier {
 
       var currentObject = getNextObject
       if (currentObject == null) {
-        Logger.info("<VERIFICATION FAILED> No PGP data found.")
+        Logger.debug("<VERIFICATION FAILED> No PGP data found.")
         return false
       }
 
@@ -48,19 +50,19 @@ class PGPVerifier {
         currentObject match {
           case signatureList: PGPSignatureList =>
             if (signatureList.isEmpty) {
-              Logger.info("<VERIFICATION FAILED> Empty signature list.")
+              Logger.debug("<VERIFICATION FAILED> Empty signature list.")
               return false
             }
             sigList = signatureList
           case e =>
-            Logger.info("Unknown packet : " + e.getClass)
+            Logger.debug("Unknown packet : " + e.getClass)
         }
-        Logger.info("Processed packet : " + currentObject.toString)
+        Logger.debug("Processed packet : " + currentObject.toString)
         currentObject = getNextObject
       }
 
       if (sigList == null) {
-        Logger.info("<VERIFICATION FAILED> No signature found.")
+        Logger.debug("<VERIFICATION FAILED> No signature found.")
         return false
       }
 
@@ -68,7 +70,7 @@ class PGPVerifier {
       val keyRings = new JcaPGPPublicKeyRingCollection(keyIn)
       val pubKey = keyRings.getPublicKey(sig.getKeyID)
       if (pubKey == null) {
-        Logger.info("<VERIFICATION FAILED> Invalid signature for public key.")
+        Logger.debug("<VERIFICATION FAILED> Invalid signature for public key.")
         return false
       }
 
@@ -84,7 +86,7 @@ class PGPVerifier {
       keyIn.close()
     }
 
-    Logger.info(if (result) "<VERIFICATION COMPLETE>" else "<VERIFICATION FAILED>")
+    Logger.debug(if (result) "<VERIFICATION COMPLETE>" else "<VERIFICATION FAILED>")
 
     result
   }
@@ -148,7 +150,7 @@ class PGPVerifier {
           factory = new JcaPGPObjectFactory(compressedData.getDataStream)
         case onePassSigList: PGPOnePassSignatureList =>
           if (onePassSigList.isEmpty) {
-            Logger.info("Empty one pass signature list.")
+            Logger.debug("Empty one pass signature list.")
             return false
           }
           sig = onePassSigList.get(0)
@@ -158,24 +160,24 @@ class PGPVerifier {
           dataIn.close()
         case signatureList: PGPSignatureList =>
           if (signatureList.isEmpty) {
-            Logger.info("Empty signature list.")
+            Logger.debug("Empty signature list.")
             return false
           }
           sigList = signatureList
         case _ =>
       }
-      Logger.info("Processed packet: " + currentObject.toString)
+      Logger.debug("Processed packet: " + currentObject.toString)
       currentObject = doNextObject()
     }
 
     in.close()
 
     if (sig == null || data == null || sigList == null) {
-      Logger.info("Incomplete packet data.")
+      Logger.debug("Incomplete packet data.")
       return false
     }
 
-    Logger.info("Signature Key ID: " + java.lang.Long.toHexString(sig.getKeyID))
+    Logger.debug("Signature Key ID: " + java.lang.Long.toHexString(sig.getKeyID))
 
     // Verify against public key
     val keyRings = new JcaPGPPublicKeyRingCollection(keyIn)
@@ -187,7 +189,7 @@ class PGPVerifier {
     sig.init(new JcaPGPContentVerifierBuilderProvider().setProvider("BC"), pubKey)
     sig.update(data)
     val result = sig.verify(sigList.get(0))
-    Logger.info("Verified: " + result)
+    Logger.debug("Verified: " + result)
     if (result) {
       out.write(data)
       out.close()

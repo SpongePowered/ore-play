@@ -1,14 +1,14 @@
 @import controllers.sugar.Requests.OreRequest
 @import db.ModelService
-@import models.admin.VisibilityChange
+@import models.admin.ProjectVisibilityChange
 @import models.project.Project
 @import ore.OreConfig
 @* visChange1 is lastChangeRequest users.get(lastChangeRequest.get.createdBy.getOrElse(1)).map(_.username) *@
 @* visChange2 is users.get(project.lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @* visChange4 is users.get(lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @import ore.permission.Permission
-@(needsApproval: Seq[(Project, Map[Permission, Boolean], Option[VisibilityChange], String, Option[VisibilityChange], String)],
- waitingProjects: Seq[(Project, Option[VisibilityChange], Option[VisibilityChange], String)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(needsApproval: Seq[(Project, Map[Permission, Boolean], Option[ProjectVisibilityChange], String, Option[ProjectVisibilityChange], String)],
+ waitingProjects: Seq[(Project, Option[ProjectVisibilityChange], Option[ProjectVisibilityChange], String)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

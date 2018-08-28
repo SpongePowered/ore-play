@@ -1,13 +1,15 @@
 package controllers.project
 
+import java.nio.charset.StandardCharsets
+
 import controllers.OreBaseController
-import controllers.sugar.Bakery
+import controllers.sugar.{Bakery, Requests}
 import db.impl.OrePostgresDriver.api._
 import db.{ModelFilter, ModelService}
 import form.OreForms
 import javax.inject.Inject
 import models.project.{Page, Project}
-import models.user.{LoggedActionContext, UserActionLogger, LoggedAction}
+import models.user.{LoggedAction, LoggedActionContext, UserActionLogger}
 import ore.permission.EditPages
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.cache.AsyncCacheApi
@@ -17,7 +19,10 @@ import util.StringUtils._
 import views.html.projects.{pages => views}
 import util.instances.future._
 import util.syntax._
+
 import scala.concurrent.{ExecutionContext, Future}
+import play.api.mvc.{Action, AnyContent}
+import play.utils.UriEncoding
 
 /**
   * Controller for handling Page related actions.
@@ -47,8 +52,9 @@ class Pages @Inject()(forms: OreForms,
     */
   def withPage(project: Project, page: String): Future[(Option[Page], Boolean)] = {
     //TODO: Can the return type here be changed to OptionT[Future (Page, Boolean)]?
-    val parts = page.split("/")
-    if (parts.size == 2) {
+    val parts = page.split("/").map(page => UriEncoding.decodePathSegment(page, StandardCharsets.UTF_8))
+
+    if (parts.length == 2) {
       project.pages
         .find(equalsIgnoreCase(_.slug, parts(0)))
         .subflatMap(_.id)
@@ -72,9 +78,9 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return View of page
     */
-  def show(author: String, slug: String, page: String) = ProjectAction(author, slug).async { request =>
+  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).async { request =>
     val data = request.data
-    implicit val r = request.request
+    implicit val r: Requests.OreRequest[AnyContent] = request.request
 
     withPage(data.project, page).flatMap {
       case (None, _) => Future.successful(notFound)
@@ -98,8 +104,9 @@ class Pages @Inject()(forms: OreForms,
     * @param pageName   Page name
     * @return Page editor
     */
-  def showEditor(author: String, slug: String, pageName: String) = PageEditAction(author, slug).async { request =>
-    implicit val r = request.request
+  def showEditor(author: String, slug: String, pageName: String): Action[AnyContent] = PageEditAction(author, slug)
+    .async { request =>
+    implicit val r: Requests.AuthRequest[AnyContent] = request.request
     val data = request.data
     val parts = pageName.split("/")
 
@@ -135,7 +142,7 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return Project home
     */
-  def save(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
+  def save(author: String, slug: String, page: String): Action[AnyContent] = PageEditAction(author, slug).async { implicit request =>
     this.forms.PageEdit.bindFromRequest().fold(
       hasErrors =>
         Future.successful(Redirect(self.show(author, slug, page)).withFormErrors(hasErrors.errors)),
@@ -166,7 +173,7 @@ class Pages @Inject()(forms: OreForms,
                 if (pageData.content.isDefined) {
                   val oldPage = createdPage.contents
                   val newPage = pageData.content.get
-                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, data.project.id.getOrElse(-1), oldPage, newPage)
+                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, createdPage.id.getOrElse(-1), newPage, oldPage)
                   createdPage.setContents(newPage)
                 } else Future.successful(createdPage)
               } map { _ =>
@@ -187,7 +194,7 @@ class Pages @Inject()(forms: OreForms,
     * @param page   Page name
     * @return Redirect to Project homepage
     */
-  def delete(author: String, slug: String, page: String) = PageEditAction(author, slug).async { implicit request =>
+  def delete(author: String, slug: String, page: String): Action[AnyContent] = PageEditAction(author, slug).async { implicit request =>
     val data = request.data
     withPage(data.project, page).map { optionPage =>
       if (optionPage._1.isDefined)

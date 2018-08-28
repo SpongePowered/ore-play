@@ -2,9 +2,9 @@ package db.impl.table
 
 import db.Named
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.{Describable, Downloadable}
+import db.impl.model.common.{Describable, Downloadable, Hideable, VisibilityChange}
 import db.table.key._
-import models.admin.{ProjectLogEntry, Review, VisibilityChange}
+import models.admin.{ProjectLogEntry, Review}
 import models.project.VisibilityTypes.Visibility
 import models.project._
 import models.statistic.StatEntry
@@ -14,6 +14,7 @@ import ore.Colors.Color
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.Categories.Category
 import ore.user.Prompts.Prompt
+import play.api.i18n.Lang
 
 /**
   * Collection of String keys used for table bindings within Models.
@@ -24,7 +25,7 @@ object ModelKeys {
   val Name                  =   new StringKey[Named](_.name, _.name)
   val Downloads             =   new IntKey[Downloadable](_.downloads, _.downloadCount)
   val Description           =   new StringKey[Describable](_.description, _.description.orNull)
-  val Visibility            =   new MappedTypeKey[Project, Visibility](_.visibility, _.visibility)
+  val Visibility            =   new MappedTypeKey[Hideable, Visibility](_.visibility, _.visibility)
 
   // Project
   val OwnerId               =   new IntKey[Project](_.userId, _.ownerId)
@@ -63,6 +64,7 @@ object ModelKeys {
   val JoinDate              =   new TimestampKey[User](_.joinDate, _.joinDate.orNull)
   val AvatarUrl             =   new StringKey[User](_.avatarUrl, _.avatarUrl.orNull)
   val ReadPrompts           =   new Key[User, List[Prompt]](_.readPrompts, _.readPrompts.toList)
+  val Language              =   new Key[User, Lang](_.lang, _.lang.orNull)
 
   // Organization
   val OrgOwnerId            =   new IntKey[Organization](_.userId, _.owner.userId)
@@ -77,6 +79,7 @@ object ModelKeys {
   val ApprovedAt            =   new TimestampKey[Version](_.approvedAt, _.approvedAt.orNull)
   val ChannelId             =   new IntKey[Version](_.channelId, _.channelId)
   val TagIds                =   new Key[Version, List[Int]](_.tagIds, _.tagIds)
+  val IsNonReviewedVersion  =   new BooleanKey[Version](_.isNonReviewed, _.isNonReviewed)
 
   // Tags
   val TagVersionIds           =   new Key[models.project.Tag, List[Int]](_.versionIds, _.versionIds)

@@ -4,7 +4,7 @@ import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.OrganizationBase
-import db.impl.{ProjectTableMain, SessionTable, UserTable, VersionTable}
+import db.impl._
 import models.project.VisibilityTypes
 import models.user.User
 import ore.permission._
@@ -32,11 +32,11 @@ case class HeaderData(currentUser: Option[User] = None,
                      ) {
 
   // Just some helpers in templates:
-  def isAuthenticated = currentUser.isDefined
+  def isAuthenticated: Boolean = currentUser.isDefined
 
-  def hasUser = currentUser.isDefined
+  def hasUser: Boolean = currentUser.isDefined
 
-  def isCurrentUser(userId: Int) = currentUser.flatMap(_.id).contains(userId)
+  def isCurrentUser(userId: Int): Boolean = currentUser.flatMap(_.id).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
 
@@ -57,6 +57,7 @@ object HeaderData {
                   ViewLogs -> false,
                   HideProjects -> false,
                   HardRemoveProject -> false,
+                  HardRemoveVersion -> false,
                   UserAdmin -> false,
                   HideProjects -> false)
 
@@ -115,13 +116,25 @@ object HeaderData {
 
   }
 
+  private def flagQueue()(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) : Future[Boolean] = {
+    val tableFlags = TableQuery[FlagTable]
+
+    val query = for {
+      v <- tableFlags if v.isResolved === false
+    } yield {
+      v
+    }
+
+    db.run(query.exists.result)
+  }
+
   private def getHeaderData(user: User)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) = {
 
     perms(Some(user)).flatMap { perms =>
       (
         user.hasNotice,
         user.notifications.filterNot(_.read).map(_.nonEmpty),
-        user.flags.filterNot(_.isResolved).map(_.nonEmpty),
+        flagQueue(),
         projectApproval(user),
         if (perms(ReviewProjects)) reviewQueue() else Future.successful(false)
       ).parMapN { (hasNotice, unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>
@@ -150,10 +163,11 @@ object HeaderData {
         user can ViewLogs in GlobalScope map ((ViewLogs, _)),
         user can HideProjects in GlobalScope map ((HideProjects, _)),
         user can HardRemoveProject in GlobalScope map ((HardRemoveProject, _)),
+        user can HardRemoveVersion in GlobalScope map ((HardRemoveProject, _)),
         user can UserAdmin in GlobalScope map ((UserAdmin, _)),
       ).parMapN {
-        case (reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, userAdmin) =>
-          val perms = Seq(reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, userAdmin)
+        case (reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, hardRemoveVersion, userAdmin) =>
+          val perms = Seq(reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, hardRemoveVersion, userAdmin)
           perms.toMap
       }
     }

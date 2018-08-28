@@ -13,6 +13,7 @@ import slick.lifted.TableQuery
 import db.impl.OrePostgresDriver.api._
 import scala.concurrent.{ExecutionContext, Future}
 
+import play.api.mvc.Call
 import util.syntax._
 
 // TODO separate Scoped UserData
@@ -25,14 +26,14 @@ case class UserData(headerData: HeaderData,
                     userPerm: Map[Permission, Boolean],
                     orgaPerm: Map[Permission, Boolean]) {
 
-  def global = headerData
+  def global: HeaderData = headerData
 
-  def hasUser = global.hasUser
-  def currentUser = global.currentUser
+  def hasUser: Boolean = global.hasUser
+  def currentUser: Option[User] = global.currentUser
 
-  def isCurrent = currentUser.contains(user)
+  def isCurrent: Boolean = currentUser.contains(user)
 
-  def pgpFormCall = {
+  def pgpFormCall: Call = {
     user.pgpPubKey.map { _ =>
       routes.Users.verify(Some(routes.Users.deletePgpPublicKey(user.name, None, None).path))
     } getOrElse {
@@ -40,7 +41,7 @@ case class UserData(headerData: HeaderData,
     }
   }
 
-  def pgpFormClass = user.pgpPubKey.map(_ => "pgp-delete").getOrElse("")
+  def pgpFormClass: String = user.pgpPubKey.map(_ => "pgp-delete").getOrElse("")
 
 }
 

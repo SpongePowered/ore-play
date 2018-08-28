@@ -20,13 +20,13 @@ import ore.OreConfig
 class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig)(implicit ec: ExecutionContext) extends Runnable {
 
   val Logger = play.api.Logger("ProjectTask")
-  val interval = this.config.projects.get[FiniteDuration]("check-interval")
+  val interval: FiniteDuration = this.config.projects.get[FiniteDuration]("check-interval")
   val draftExpire: Long = this.config.projects.getOptional[Long]("draft-expire").getOrElse(86400000)
 
   /**
     * Starts the task.
     */
-  def start() = {
+  def start(): Unit = {
     this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
     Logger.info(s"Initialized. First run in ${this.interval.toString}.")
   }
@@ -34,7 +34,7 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
   /**
     * Task runner
     */
-  def run() = {
+  def run(): Unit = {
     val actions = this.models.getSchema(classOf[ProjectSchema])
 
     val newFilter: ModelFilter[Project] = ModelFilter[Project](_.visibility === VisibilityTypes.New)
@@ -44,10 +44,10 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
     val dayAgo = System.currentTimeMillis() - draftExpire
 
     projects.foreach(project => {
-      Logger.info(s"Found project: ${project.ownerName}/${project.slug}")
+      Logger.debug(s"Found project: ${project.ownerName}/${project.slug}")
       val createdAt = project.createdAt.getOrElse(Timestamp.from(Instant.now())).getTime
       if (createdAt < dayAgo) {
-        Logger.info(s"Changed ${project.ownerName}/${project.slug} from New to Public")
+        Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
         project.setVisibility(VisibilityTypes.Public, "Changed by task", project.ownerId)
       }
     })

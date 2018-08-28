@@ -2,33 +2,22 @@
 Versions page within Project overview.
 *@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
-@import db.impl.access.UserBase
-@import models.project.{Channel, Version}
+@import models.project.Channel
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.{EditChannels, EditVersions}
+@import ore.permission.{EditChannels, UploadVersions}
 @import security.NonceFilter._
+@import ore.permission.ReviewProjects
 @(p: ProjectData,
         sp: ScopedProjectData,
         channels: Seq[Channel],
-        versions: Seq[Version],
-        visibleChannels: Option[Array[String]],
-        page: Int)(implicit messages: Messages, request: OreRequest[_], flash: Flash,
-        service: ModelService, config: OreConfig, userBase: UserBase)
+        versionCount: Int,
+        visibleChannels: Seq[String])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @pageSize = @{ config.projects.get[Int]("init-version-load") }
 @projectRoutes = @{ controllers.project.routes.Projects }
 @versionRoutes = @{ controllers.project.routes.Versions }
 @channelRoutes = @{ controllers.project.routes.Channels }
-
-@versionCount = @{
-    if (visibleChannels.isEmpty) p.versions
-    else {
-        val channelFilter = channels.filter(c => visibleChannels.get.contains(c.name)).map(_.id.get)
-        versions.count(v => channelFilter.contains(v.channelId))
-    }
-}
 
 @projects.view(p, sp, "#versions") {
 
@@ -37,12 +26,13 @@ Versions page within Project overview.
     PLUGIN_ID = '@p.project.pluginId';
     PROJECT_OWNER = '@p.project.ownerName';
     PROJECT_SLUG = '@p.project.slug';
-    @if(visibleChannels.isDefined) {
-        CHANNEL_STRING = '@visibleChannels.get.mkString(",")';
+    @if(visibleChannels.nonEmpty) {
+        CHANNEL_STRING = '@visibleChannels.mkString(",")';
     }
     TOTAL_VERSIONS = @versionCount;
     TEXT_NOT_APPROVED = '@messages("version.download.confirm.reviewedChannel")';
     TEXT_NOT_APPROVED_CHANNEL = '@messages("version.download.confirm.nonReviewedChannel")';
+    SHOW_HIDDEN = @request.data.globalPerm(ReviewProjects);
     </script>
 
     <div class="container version-container">
@@ -52,7 +42,7 @@ Versions page within Project overview.
 
                     <div class="panel-heading">
                         <h4 class="panel-title pull-left">@messages("project.versions")</h4>
-                        @if(sp.perms(EditVersions)) {
+                        @if(sp.perms(UploadVersions)) {
                             <a href="@versionRoutes.showCreator(p.project.ownerName, p.project.slug)" class="btn yellow">
                             @messages("project.version.new")
                             </a>
@@ -88,15 +78,8 @@ Versions page within Project overview.
                         @channels.sorted.map { channel =>
                             <li class="list-group-item">
                                 <span class="channel" style="background-color: @channel.color.hex">@channel.name</span>
-
-                                @visibleChannels.map(_.map(_.toLowerCase)).map { channels =>
-                                    @defining(channels.contains(channel.name.toLowerCase)) { visible =>
-                                        <input type="checkbox" class="pull-right"
-                                        @if(visible) { checked } />
-                                    }
-                                }.getOrElse {
-                                    <input type="checkbox" checked class="pull-right" />
-                                }
+                                <input type="checkbox" class="pull-right"
+                                @if(visibleChannels.exists(_.equalsIgnoreCase(channel.name))) { checked } />
                             </li>
                         }
 

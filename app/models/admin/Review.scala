@@ -14,8 +14,9 @@ import play.api.libs.functional.syntax._
 import play.twirl.api.Html
 import util.StringUtils
 import play.api.libs.json._
-
 import scala.concurrent.Future
+
+import play.api.i18n.Messages
 
 
 /**
@@ -62,8 +63,8 @@ case class Review(override val id: Option[Int] = None,
     /**
       * Helper function to encode to json
       */
-    implicit val messageWrites = new Writes[Message] {
-      def writes(message: Message) = Json.obj(
+    implicit val messageWrites: Writes[Message] = new Writes[Message] {
+      def writes(message: Message): JsObject = Json.obj(
         "message" -> message.message,
         "time" -> message.time,
         "action" -> message.action
@@ -133,9 +134,9 @@ case class Review(override val id: Option[Int] = None,
   * @param message
   */
 case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
-  def getTime(implicit oreConfig: OreConfig) = StringUtils.prettifyDateAndTime(new Timestamp(time))
-  def isTakeover() = action.equalsIgnoreCase("takeover")
-  def isStop() = action.equalsIgnoreCase("stop")
+  def getTime(implicit messages: Messages): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
+  def isTakeover(): Boolean = action.equalsIgnoreCase("takeover")
+  def isStop(): Boolean = action.equalsIgnoreCase("stop")
   def render(implicit oreConfig: OreConfig): Html = Page.Render(message)
 }
 

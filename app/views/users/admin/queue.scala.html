@@ -96,7 +96,7 @@
                                 }
                                 </td>
                                 <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
-                                    <a href="/@project.ownerName/@project.slug/versions/@version.name/reviews"><i class="fa fa-2x fa-fw fa-info"></i></a>
+                                    <a href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews"><i class="fa fa-2x fa-fw fa-info"></i></a>
                                 </td>
                             </tr>
                         }
@@ -137,7 +137,7 @@
                             </tr>
                         }
                         @versions.sortWith(_._2.createdAt.get.getTime < _._2.createdAt.get.getTime).map { case (project, version, channel, author, projectOwner) =>
-                            <tr data-version="@project.ownerName/@project.slug/versions/@version.name">
+                            <tr data-version="@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)">
                                 <td>
                                     @userAvatar(Some(projectOwner.name), projectOwner.avatarUrl, clazz = "user-avatar-xs")
                                 </td>
@@ -159,7 +159,7 @@
                                     }
                                 <br>
                                 <td style="vertical-align: middle; text-align: right">
-                                    <a class="btn btn-success" href="/@project.ownerName/@project.slug/versions/@version.name/reviews">Start review</a>
+                                    <a class="btn btn-success" href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews">Start review</a>
                                 </td>
                             </tr>
                         }

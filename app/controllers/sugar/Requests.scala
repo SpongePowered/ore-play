@@ -18,8 +18,8 @@ object Requests {
     * @param request the request to wrap
     */
   class OreRequest[A](val data: HeaderData, val request: Request[A]) extends WrappedRequest[A](request) {
-    def currentUser = data.currentUser
-    def hasUser = data.currentUser.isDefined
+    def currentUser: Option[User] = data.currentUser
+    def hasUser: Boolean = data.currentUser.isDefined
   }
 
   /** Represents a Request with a [[User]] and [[ScopeSubject]] */

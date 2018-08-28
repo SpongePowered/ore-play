@@ -22,7 +22,7 @@ class OreModelProcessor(service: ModelService,
                         auth: SpongeAuthApi)
                         extends ModelProcessor(service) {
 
-  override def process[M <: Model](model: M) = {
+  override def process[M <: Model](model: M): M = {
     super.process(model) match {
       case oreModel: OreModel =>
         oreModel.userBase = this.users

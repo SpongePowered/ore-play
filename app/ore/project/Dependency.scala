@@ -22,22 +22,3 @@ case class Dependency(pluginId: String, version: String) {
   def project(implicit projects: ProjectBase, ec: ExecutionContext): OptionT[Future, Project] = projects.withPluginId(this.pluginId)
 
 }
-
-object Dependency {
-
-  /**
-    * The Sponge API dependency ID
-    */
-  val SpongeApiId: String = "spongeapi"
-
-  /**
-    * The Minecraft dependency ID
-    */
-  val MinecraftId: String = "minecraft"
-
-  /**
-    * The Forge dependency ID
-    */
-  val ForgeId: String = "forge"
-
-}

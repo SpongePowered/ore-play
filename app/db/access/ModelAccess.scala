@@ -148,6 +148,13 @@ class ModelAccess[M <: Model](val service: ModelService,
   def filterNot(filter: M#T => Rep[Boolean], limit: Int = -1, offset: Int = -1)(implicit ec: ExecutionContext): Future[Seq[M]] = this.filter(!filter(_), limit, offset)
 
   /**
+    * Counts how many elements in this set fulfill some predicate.
+    * @param predicate The predicate to use
+    * @return The amount of elements that fulfill the predicate.
+    */
+  def count(predicate: M#T => Rep[Boolean]): Future[Int] = this.service.count(modelClass, (this.baseFilter && predicate).fn)
+
+  /**
     * Returns a Seq of this set.
     *
     * @return Seq of set

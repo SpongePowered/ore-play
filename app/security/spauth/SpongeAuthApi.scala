@@ -16,6 +16,9 @@ import play.api.libs.ws.{WSClient, WSResponse}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
+import play.api.Configuration
+import play.api.i18n.Lang
+
 /**
   * Interfaces with the SpongeAuth Web API
   */
@@ -34,7 +37,8 @@ trait SpongeAuthApi {
     (JsPath \ "id").read[Int] and
     (JsPath \ "username").read[String] and
     (JsPath \ "email").read[String] and
-    (JsPath \ "avatar_url").readNullable[String]
+    (JsPath \ "avatar_url").readNullable[String] and
+    (JsPath \ "language").readNullable[String].map(_.flatMap(Lang.get))
   )(SpongeUser.apply _)
 
   /**
@@ -129,10 +133,10 @@ trait SpongeAuthApi {
 
 final class SpongeAuth @Inject()(config: OreConfig, override val ws: WSClient) extends SpongeAuthApi {
 
-  val conf = this.config.security
+  val conf: Configuration = this.config.security
 
-  override val url = this.conf.get[String]("api.url")
-  override val apiKey = this.conf.get[String]("api.key")
-  override val timeout = this.conf.get[FiniteDuration]("api.timeout")
+  override val url: String = this.conf.get[String]("api.url")
+  override val apiKey: String = this.conf.get[String]("api.key")
+  override val timeout: FiniteDuration = this.conf.get[FiniteDuration]("api.timeout")
 
 }

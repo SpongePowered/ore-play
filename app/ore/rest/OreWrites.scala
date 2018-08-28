@@ -17,8 +17,8 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
 
   implicit val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
 
-  implicit val projectApiKeyWrites = new Writes[ProjectApiKey] {
-    def writes(key: ProjectApiKey) = obj(
+  implicit val projectApiKeyWrites: Writes[ProjectApiKey] = new Writes[ProjectApiKey] {
+    def writes(key: ProjectApiKey): JsObject = obj(
       "id" -> key.id.get,
       "createdAt" -> key.createdAt.get,
       "keyType" -> obj("id" -> key.keyType.id, "name" -> key.keyType.name),
@@ -27,8 +27,8 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
     )
   }
 
-  implicit val pageWrites = new Writes[Page] {
-    def writes(page: Page) = obj(
+  implicit val pageWrites: Writes[Page] = new Writes[Page] {
+    def writes(page: Page): JsObject = obj(
       "id" -> page.id.get,
       "createdAt" -> page.createdAt.get.toString,
       "parentId" -> page.parentId,
@@ -37,8 +37,8 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
     )
   }
 
-  implicit val channelWrites = new Writes[Channel] {
-    def writes(channel: Channel) = obj("name" -> channel.name, "color" -> channel.color.hex, "nonReviewed" -> channel.isNonReviewed)
+  implicit val channelWrites: Writes[Channel] = new Writes[Channel] {
+    def writes(channel: Channel): JsObject = obj("name" -> channel.name, "color" -> channel.color.hex, "nonReviewed" -> channel.isNonReviewed)
   }
 
   /*
@@ -54,7 +54,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
   }
   */
 
-  implicit val tagWrites = new Writes[Tag] {
+  implicit val tagWrites: Writes[Tag] = new Writes[Tag] {
     override def writes(tag: Tag): JsValue = {
       obj(
         "id" -> tag.id,
@@ -66,7 +66,7 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
     }
   }
 
-  implicit val tagColorWrites = new Writes[TagColors.TagColor] {
+  implicit val tagColorWrites: Writes[TagColors.TagColor] = new Writes[TagColors.TagColor] {
     override def writes(tagColor: TagColors.TagColor): JsValue = {
       obj(
         "id" -> tagColor.id,
@@ -146,8 +146,8 @@ final class OreWrites @Inject()(implicit config: OreConfig, service: ModelServic
   }
   */
 
-  implicit val pgpPublicKeyInfoWrites = new Writes[PGPPublicKeyInfo] {
-    def writes(key: PGPPublicKeyInfo) = {
+  implicit val pgpPublicKeyInfoWrites: Writes[PGPPublicKeyInfo] = new Writes[PGPPublicKeyInfo] {
+    def writes(key: PGPPublicKeyInfo): JsObject = {
       obj(
         "raw" -> key.raw,
         "userName" -> key.userName,

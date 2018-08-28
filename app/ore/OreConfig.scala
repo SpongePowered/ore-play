@@ -16,18 +16,18 @@ import util.StringUtils._
 final class OreConfig @Inject()(config: Configuration) {
 
   // Sub-configs
-  lazy val root = this.config
-  lazy val app = this.config.get[Configuration]("application")
-  lazy val play = this.config.get[Configuration]("play")
-  lazy val ore = this.config.get[Configuration]("ore")
-  lazy val channels = this.ore.get[Configuration]("channels")
-  lazy val pages = this.ore.get[Configuration]("pages")
-  lazy val projects = this.ore.get[Configuration]("projects")
-  lazy val users = this.ore.get[Configuration]("users")
-  lazy val orgs = this.ore.get[Configuration]("orgs")
-  lazy val forums = this.root.get[Configuration]("discourse")
-  lazy val sponge = this.root.get[Configuration]("sponge")
-  lazy val security = this.root.get[Configuration]("security")
+  lazy val root: Configuration = this.config
+  lazy val app: Configuration = this.config.get[Configuration]("application")
+  lazy val play: Configuration = this.config.get[Configuration]("play")
+  lazy val ore: Configuration = this.config.get[Configuration]("ore")
+  lazy val channels: Configuration = this.ore.get[Configuration]("channels")
+  lazy val pages: Configuration = this.ore.get[Configuration]("pages")
+  lazy val projects: Configuration = this.ore.get[Configuration]("projects")
+  lazy val users: Configuration = this.ore.get[Configuration]("users")
+  lazy val orgs: Configuration = this.ore.get[Configuration]("orgs")
+  lazy val forums: Configuration = this.root.get[Configuration]("discourse")
+  lazy val sponge: Configuration = this.root.get[Configuration]("sponge")
+  lazy val security: Configuration = this.root.get[Configuration]("security")
 
   /**
     * The default color used for Channels.
@@ -73,19 +73,19 @@ final class OreConfig @Inject()(config: Configuration) {
   def getSuggestedNameForVersion(version: String): String
   = Option(new ComparableVersion(version).getFirstString).getOrElse(this.defaultChannelName)
 
-  lazy val debugLevel = this.ore.get[Int]("debug-level")
+  lazy val debugLevel: Int = this.ore.get[Int]("debug-level")
 
   /** Returns true if the application is running in debug mode. */
   def isDebug: Boolean = this.ore.get[Boolean]("debug")
 
   /** Sends a debug message if in debug mode */
-  def debug(msg: Any, level: Int = 1) = {
+  def debug(msg: Any, level: Int = 1): Unit = {
     if (isDebug && (level == this.debugLevel || level == -1))
       Logger.debug(msg.toString)
   }
 
   /** Asserts that the application is in debug mode. */
-  def checkDebug() = {
+  def checkDebug(): Unit = {
     if(!isDebug)
       throw new UnsupportedOperationException("this function is supported in debug mode only")
   }

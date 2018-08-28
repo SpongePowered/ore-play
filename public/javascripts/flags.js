@@ -36,12 +36,6 @@ function removeSpinner(e) {
  */
 
 $(function() {
-    var resolveAll = $('.btn-resolve-all');
-    resolveAll.click(function() {
-        $('.btn-resolve').click();
-        $(this).fadeOut();
-    });
-
     $('.btn-resolve').click(function() {
         var listItem = $(this).closest('li');
         var flagId = listItem.data('flag-id');

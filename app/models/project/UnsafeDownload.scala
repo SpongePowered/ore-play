@@ -25,6 +25,6 @@ case class UnsafeDownload(override val id: Option[Int] = None,
   override type M = UnsafeDownload
   override type T = UnsafeDownloadsTable
 
-  def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  def copyWith(id: Option[Int], theTime: Option[Timestamp]): UnsafeDownload = this.copy(id = id, createdAt = theTime)
 
 }

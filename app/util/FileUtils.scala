@@ -33,7 +33,7 @@ object FileUtils {
     if (Files.exists(dir)) {
       Files.walkFileTree(dir, DeleteFileVisitor)
     } else {
-      Logger.info(s"Tried to remove directory that doesn't exist: $dir")
+      Logger.debug(s"Tried to remove directory that doesn't exist: $dir")
     }
   }
 
@@ -46,7 +46,7 @@ object FileUtils {
     if (Files.exists(dir)) {
       Files.walkFileTree(dir, new CleanFileVisitor(dir))
     } else {
-      Logger.info(s"Tried to remove directory that doesn't exist: $dir")
+      Logger.debug(s"Tried to remove directory that doesn't exist: $dir")
     }
   }
 
@@ -60,7 +60,7 @@ object FileUtils {
       if (Files.exists(file)) {
         Files.delete(file)
       } else {
-        Logger.info(s"Tried to remove file that doesn't exist: $file")
+        Logger.debug(s"Tried to remove file that doesn't exist: $file")
       }
       FileVisitResult.CONTINUE
     }
@@ -69,7 +69,7 @@ object FileUtils {
       if (Files.exists(dir)) {
         Files.delete(dir)
       } else {
-        Logger.info(s"Tried to remove directory that doesn't exist: $dir")
+        Logger.debug(s"Tried to remove directory that doesn't exist: $dir")
       }
       FileVisitResult.CONTINUE
     }

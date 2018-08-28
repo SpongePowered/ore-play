@@ -23,12 +23,6 @@
                 <h3 class="minor no-flags" @if(flags.nonEmpty) { style="display: none;" }>
                     <i class="fa fa-thumbs-o-up"></i> @messages("user.flags.none")
                 </h3>
-                
-                @if(flags.nonEmpty) {
-                    <button class="btn-resolve-all btn btn-primary pull-right">
-                        <i class="fa fa-check"></i> <strong>@messages("user.flags.markAllResolved")</strong>
-                    </button>
-                }
             </div>
         </div>
         <div class="row">
@@ -58,10 +52,10 @@
                                 </div>
                                 <div class="col-xs-12">
                                     <span class="pull-right btn-group-sm">
-                                        <a target="_blank" href="https://forums.spongepowered.org/users/@user.username" class="btn btn-default">
+                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@user.username" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageUser")
                                         </a>
-                                        <a target="_blank" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
+                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageOwner")
                                         </a>
                                         @projects.helper.btnHide(project, projectPerm, request.data.currentUser.get)

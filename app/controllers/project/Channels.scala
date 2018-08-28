@@ -1,7 +1,7 @@
 package controllers.project
 
 import controllers.OreBaseController
-import controllers.sugar.Bakery
+import controllers.sugar.{Bakery, Requests}
 import db.ModelService
 import form.OreForms
 import javax.inject.Inject
@@ -16,6 +16,8 @@ import util.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
 import models.project.Project
+import models.viewhelper.ProjectData
+import play.api.mvc.{Action, AnyContent}
 import util.functional.EitherT
 import util.syntax._
 
@@ -45,8 +47,8 @@ class Channels @Inject()(forms: OreForms,
     * @param slug   Project slug
     * @return View of channels
     */
-  def showList(author: String, slug: String) = ChannelEditAction(author, slug).async { request =>
-    implicit val r = request.request
+  def showList(author: String, slug: String): Action[AnyContent] = ChannelEditAction(author, slug).async { request =>
+    implicit val r: Requests.AuthRequest[AnyContent] = request.request
     for {
       channels <- request.data.project.channels.toSeq
       versionCount <- Future.sequence(channels.map(_.versions.size))
@@ -63,7 +65,7 @@ class Channels @Inject()(forms: OreForms,
     * @param slug   Project slug
     * @return Redirect to view of channels
     */
-  def create(author: String, slug: String) = ChannelEditAction(author, slug).async { implicit request =>
+  def create(author: String, slug: String): Action[AnyContent] = ChannelEditAction(author, slug).async { implicit request =>
     val res = for {
       channelData <- bindFormEitherT[Future](this.forms.ChannelEdit)(hasErrors => Redirect(self.showList(author, slug)).withFormErrors(hasErrors.errors))
       _ <- channelData.addTo(request.data.project).leftMap(error => Redirect(self.showList(author, slug)).withError(error))
@@ -80,7 +82,7 @@ class Channels @Inject()(forms: OreForms,
     * @param channelName Channel name
     * @return View of channels
     */
-  def save(author: String, slug: String, channelName: String) = ChannelEditAction(author, slug).async { implicit request =>
+  def save(author: String, slug: String, channelName: String): Action[AnyContent] = ChannelEditAction(author, slug).async { implicit request =>
     implicit val project: Project = request.data.project
 
     val res = for {
@@ -100,8 +102,8 @@ class Channels @Inject()(forms: OreForms,
     * @param channelName Channel name
     * @return View of channels
     */
-  def delete(author: String, slug: String, channelName: String) = ChannelEditAction(author, slug).async { implicit request =>
-    implicit val data = request.data
+  def delete(author: String, slug: String, channelName: String): Action[AnyContent] = ChannelEditAction(author, slug).async { implicit request =>
+    implicit val data: ProjectData = request.data
     EitherT.right[Status](data.project.channels.all)
       .filterOrElse(_.size != 1, Redirect(self.showList(author, slug)).withError("error.channel.last"))
       .flatMap { channels =>

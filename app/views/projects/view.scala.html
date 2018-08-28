@@ -13,6 +13,8 @@ Base template for Project overview.
 @import views.html.helper.{CSRF, form}
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
+@appRoutes = @{controllers.routes.Application}
+
 @bootstrap.layout(p.project.ownerName + " / " + p.project.name) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDetail.js")"></script>
@@ -81,7 +83,7 @@ Base template for Project overview.
 
                                 <li id="versions" class="">
                                     <a href="@Versions.showList(
-                                        p.project.ownerName, p.project.slug, None, None)">
+                                        p.project.ownerName, p.project.slug, None)">
                                         <i class="fa fa-download"></i> @messages("project.versions")
                                     </a>
                                 </li>
@@ -106,7 +108,7 @@ Base template for Project overview.
 
                                 @p.settings.issues.map { issues =>
                                     <li id="issues">
-                                        <a title="@issues" target="_blank"
+                                        <a title="@issues" target="_blank" rel="noopener"
                                             href="@Projects.showIssues(
                                                 p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-bug"></i> Issues <i class="fa fa-external-link"></i></a>
@@ -115,7 +117,7 @@ Base template for Project overview.
 
                                 @p.settings.source.map { source =>
                                     <li id="source">
-                                        <a title="@source" target="_blank"
+                                        <a title="@source" target="_blank" rel="noopener"
                                         href="@Projects.showSource(p.project.ownerName, p.project.slug)">
                                             <i class="fa fa-code"></i> Source <i class="fa fa-external-link"></i>
                                         </a>
@@ -214,11 +216,21 @@ Base template for Project overview.
 
                             <!-- Download button -->
                             @if(!p.project.isDeleted) {
-                                <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
-                                title="@messages("project.download.recommend")" data-toggle="tooltip"
-                                data-placement="bottom" class="btn btn-primary">
-                                    <i class="fa fa-download"></i> @messages("general.download")
-                                </a>
+                                <div class="btn-group btn-download">
+                                    <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
+                                    title="@messages("project.download.recommend")" data-toggle="tooltip"
+                                    data-placement="bottom" class="btn btn-primary">
+                                        <i class="fa fa-download"></i> @messages("general.download")
+                                    </a>
+                                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <span class="caret"></span>
+                                        <span class="sr-only">Toggle Dropdown</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-right">
+                                        <li><a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)">@messages("general.download")</a></li>
+                                        <li><a href="#" class="copy-url" data-clipboard-text="@config.app.get[String]("baseUrl")@Versions.download(p.project.ownerName, p.project.slug, p.recommendedVersion.map(v => v.versionString).getOrElse(""), None)">Copy URL</a></li>
+                                    </ul>
+                                </div>
                             }
 
                             @if(request.hasUser && (request.data.globalPerm(ReviewFlags) || request.data.globalPerm(ViewLogs))) {
@@ -236,8 +248,12 @@ Base template for Project overview.
                                             Staff notes (@p.noteCount) </a></li>
                                     }
                                     @if(request.data.globalPerm(ViewLogs)) {
+                                        <li><a href="@appRoutes.showLog(None, None, p.project.id, None, None, None, None)">
+                                            User Action Logs</a></li>
+                                    }
+                                    @if(request.data.globalPerm(ViewLogs)) {
                                         <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
-                                            Log (@p.projectLogSize) </a></li>
+                                            System Logs (@p.projectLogSize) </a></li>
                                     }
                                     <li><a href="https://forums.spongepowered.org/users/@p.project.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
                                 </ul>

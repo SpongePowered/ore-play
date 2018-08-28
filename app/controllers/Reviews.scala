@@ -3,7 +3,7 @@ package controllers
 import java.sql.Timestamp
 import java.time.Instant
 
-import controllers.sugar.Bakery
+import controllers.sugar.{Bakery, Requests}
 import controllers.sugar.Requests.AuthRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
@@ -12,7 +12,7 @@ import form.OreForms
 import javax.inject.Inject
 import models.admin.{Message, Review}
 import models.project.{Project, Version}
-import models.user.{Notification, User}
+import models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.permission.ReviewProjects
 import ore.permission.role.Lifted
 import ore.permission.role.RoleTypes.RoleType
@@ -20,7 +20,7 @@ import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
-import play.api.mvc.Result
+import play.api.mvc.{Action, AnyContent, Result}
 import security.spauth.SingleSignOnConsumer
 import slick.lifted.{Rep, TableQuery}
 import util.DataHelper
@@ -45,10 +45,10 @@ final class Reviews @Inject()(data: DataHelper,
                               implicit override val service: ModelService)(implicit val ec: ExecutionContext)
                               extends OreBaseController {
 
-  def showReviews(author: String, slug: String, versionString: String) =
+  def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) andThen ProjectAction(author, slug)).async { request =>
-      implicit val r = request.request
-      implicit val p = request.data.project
+      implicit val r: Requests.OreRequest[AnyContent] = request.request
+      implicit val p: Project = request.data.project
 
       val res = for {
         version <- getVersion(p, versionString)
@@ -65,7 +65,7 @@ final class Reviews @Inject()(data: DataHelper,
       res.merge
   }
 
-  def createReview(author: String, slug: String, versionString: String) = {
+  def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
       getProjectVersion(author, slug, versionString).map { version =>
         val review = new Review(Some(1), Some(Timestamp.from(Instant.now())), version.id.get, request.user.id.get, None, "")
@@ -75,7 +75,7 @@ final class Reviews @Inject()(data: DataHelper,
     }
   }
 
-  def reopenReview(author: String, slug: String, versionString: String) = {
+  def reopenReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
       val res = for {
         version <- getProjectVersion(author, slug, versionString)
@@ -93,7 +93,7 @@ final class Reviews @Inject()(data: DataHelper,
     }
   }
 
-  def stopReview(author: String, slug: String, versionString: String) = {
+  def stopReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) async { implicit request =>
       val res = for {
         version <- getProjectVersion(author, slug, versionString)
@@ -109,7 +109,7 @@ final class Reviews @Inject()(data: DataHelper,
     }
   }
 
-  def approveReview(author: String, slug: String, versionString: String) = {
+  def approveReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
       val ret = for {
         project <- getProject(author, slug)
@@ -175,13 +175,13 @@ final class Reviews @Inject()(data: DataHelper,
           userId = id,
           originId = requestUser.id.get,
           notificationType = NotificationTypes.VersionReviewed,
-          message = messagesApi("notification.project.reviewed", project.slug, version.versionString)
+          messageArgs = List("notification.project.reviewed", project.slug, version.versionString)
         )
       }
     } map (notificationTable ++= _) flatMap (service.DB.db.run(_)) // Batch insert all notifications
   }
 
-  def takeoverReview(author: String, slug: String, versionString: String) = {
+  def takeoverReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
       val ret = for {
         version <- getProjectVersion(author, slug, versionString)
@@ -209,7 +209,7 @@ final class Reviews @Inject()(data: DataHelper,
     }
   }
 
-  def editReview(author: String, slug: String, versionString: String, reviewId: Int) = {
+  def editReview(author: String, slug: String, versionString: String, reviewId: Int): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
       val res = for {
         version <- getProjectVersion(author, slug, versionString)
@@ -224,7 +224,7 @@ final class Reviews @Inject()(data: DataHelper,
     }
   }
 
-  def addMessage(author: String, slug: String, versionString: String) = {
+  def addMessage(author: String, slug: String, versionString: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
       val ret = for {
         version <- getProjectVersion(author, slug, versionString)
@@ -239,6 +239,21 @@ final class Reviews @Inject()(data: DataHelper,
       } yield Ok("Review")
 
       ret.merge
+    }
+  }
+
+  def shouldReviewToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
+    Authenticated andThen PermissionAction[AuthRequest](ReviewProjects) async { implicit request =>
+      val res = for {
+        version <- getProjectVersion(author, slug, versionString)
+      } yield {
+
+        UserActionLogger.log(request, LoggedAction.VersionNonReviewChanged, version.id.getOrElse(-1), s"In review queue: ${version.isNonReviewed}", s"In review queue: ${!version.isNonReviewed}")
+        version.setIsNonReviewed(!version.isNonReviewed)
+
+        Redirect(routes.Reviews.showReviews(author, slug, versionString))
+      }
+      res.merge
     }
   }
 }

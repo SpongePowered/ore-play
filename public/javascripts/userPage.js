@@ -63,6 +63,9 @@ function loadStars(increment) {
                 $.ajax({
                     url: 'api/projects/' + star,
                     dataType: 'json',
+                    error: function() {
+                        ++count;
+                    },
                     success: function(projectData) {
                         var href = projectData.href;
                         var slug = href.substr(href.lastIndexOf('/') + 1, href.length);
@@ -79,7 +82,10 @@ function loadStars(increment) {
                             +   '</div>'
                             + '</td>';
 
-                        if (++count == newStars.length) {
+                        ++count
+                    },
+                    complete: function()  {
+                        if (count == newStars.length) {
                             // Done loading, set the table to the result
                             tbody.html(content);
                             currentStarsPage += increment;

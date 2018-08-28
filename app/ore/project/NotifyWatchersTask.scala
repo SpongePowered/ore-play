@@ -4,8 +4,6 @@ import db.impl.access.ProjectBase
 import models.project.{Project, Version}
 import models.user.Notification
 import ore.user.notification.NotificationTypes
-import play.api.i18n.{Lang, MessagesApi}
-
 import scala.concurrent.ExecutionContext
 
 /**
@@ -14,21 +12,19 @@ import scala.concurrent.ExecutionContext
   * released.
   *
   * @param version  New version
-  * @param messages MessagesApi instance
   * @param projects ProjectBase instance
   */
-case class NotifyWatchersTask(version: Version, project: Project, messages: MessagesApi)(implicit projects: ProjectBase, ec: ExecutionContext)
+case class NotifyWatchersTask(version: Version, project: Project)(implicit projects: ProjectBase, ec: ExecutionContext)
   extends Runnable {
 
-  implicit val lang = Lang.defaultLang
-
-  def run() = {
+  def run(): Unit = {
     val notification = Notification(
       originId = project.ownerId,
       notificationType = NotificationTypes.NewProjectVersion,
-      message = messages("notification.project.newVersion", project.name, version.name),
+      messageArgs = List("notification.project.newVersion", project.name, version.name),
       action = Some(version.url(project))
     )
+
     for {
       watchers <- project.watchers.all
     } yield {

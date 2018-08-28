@@ -5,7 +5,9 @@ import java.sql.Timestamp
 import scala.concurrent.Future
 
 import com.google.common.base.Preconditions._
+
 import db.Named
+import db.access.ModelAccess
 import db.impl.ChannelTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys
@@ -53,7 +55,7 @@ case class Channel(override val id: Option[Int] = None,
     *
     * @param _name    New channel name
     */
-  def setName(_name: String) = Defined {
+  def setName(_name: String): Future[Int] = Defined {
     checkNotNull(_name, "null name", "")
     checkArgument(this.config.isValidChannelName(_name), "invalid name", "")
     this._name = _name
@@ -72,7 +74,7 @@ case class Channel(override val id: Option[Int] = None,
     *
     * @param _color Color of channel
     */
-  def setColor(_color: Color) = Defined {
+  def setColor(_color: Color): Future[Int] = Defined {
     checkNotNull(_color, "null color", "")
     this._color = _color
     update(ModelKeys.Color)
@@ -82,7 +84,7 @@ case class Channel(override val id: Option[Int] = None,
 
   def isNonReviewed: Boolean = this._isNonReviewed
 
-  def setNonReviewed(isNonReviewed: Boolean) = {
+  def setNonReviewed(isNonReviewed: Boolean): Future[AnyVal] = {
     this._isNonReviewed = isNonReviewed
     if (isDefined)
       update(IsNonReviewed)
@@ -94,12 +96,12 @@ case class Channel(override val id: Option[Int] = None,
     *
     * @return All versions
     */
-  def versions = this.schema.getChildren[Version](classOf[Version], this)
+  def versions: ModelAccess[Version] = this.schema.getChildren[Version](classOf[Version], this)
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
-  override def compare(that: Channel) = this._name compare that._name
-  override def hashCode() = this.id.get.hashCode
-  override def equals(o: Any) = o.isInstanceOf[Channel] && o.asInstanceOf[Channel].id.get == this.id.get
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Channel = this.copy(id = id, createdAt = theTime)
+  override def compare(that: Channel): Int = this._name compare that._name
+  override def hashCode(): Int = this.id.get.hashCode
+  override def equals(o: Any): Boolean = o.isInstanceOf[Channel] && o.asInstanceOf[Channel].id.get == this.id.get
 
 }
 

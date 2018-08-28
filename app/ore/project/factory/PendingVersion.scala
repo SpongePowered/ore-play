@@ -2,11 +2,10 @@ package ore.project.factory
 
 import db.impl.access.ProjectBase
 import models.project._
-import ore.Cacheable
 import ore.Colors.Color
-import ore.project.Dependency
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io.PluginFile
+import ore.{Cacheable, Platforms}
 import play.api.cache.SyncCacheApi
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -51,17 +50,7 @@ case class PendingVersion(projects: ProjectBase,
   override def key: String = this.project.url + '/' + this.underlying.versionString
 
   def dependenciesAsGhostTags: Seq[Tag] = {
-    var ghostFlags: Seq[Tag] = Seq()
-    for (dependency <-  this.underlying.dependencies) {
-      if (factory.dependencyVersionRegex.pattern.matcher(dependency.version).matches()) {
-        if (dependency.pluginId.equalsIgnoreCase(Dependency.SpongeApiId)) {
-          ghostFlags = ghostFlags :+ Tag(None, List(), "Sponge", dependency.version, TagColors.Sponge)
-        }
-        if (dependency.pluginId.equalsIgnoreCase(Dependency.ForgeId)) {
-          ghostFlags = ghostFlags :+ Tag(None, List(), "Forge", dependency.version, TagColors.Forge)
-        }
-      }
-    }
-    ghostFlags
+    Platforms.getPlatformGhostTags(this.underlying.dependencies)
   }
+
 }

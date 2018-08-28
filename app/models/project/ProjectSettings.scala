@@ -14,7 +14,7 @@ import models.user.Notification
 import models.user.role.ProjectRole
 import ore.permission.role.RoleTypes
 import ore.project.io.ProjectFiles
-import ore.project.{Categories, ProjectOwned}
+import ore.project.{Categories, ProjectMember, ProjectOwned}
 import ore.user.notification.NotificationTypes
 import play.api.Logger
 import play.api.cache.AsyncCacheApi
@@ -23,6 +23,8 @@ import slick.lifted.TableQuery
 import util.StringUtils._
 
 import scala.concurrent.{ExecutionContext, Future}
+
+import ore.user.MembershipDossier
 
 /**
   * Represents a [[Project]]'s settings.
@@ -47,7 +49,6 @@ case class ProjectSettings(override val id: Option[Int] = None,
                            private var _forumSync: Boolean = true)
                            extends OreModel(id, createdAt) with ProjectOwned {
 
-  implicit val lang = Lang.defaultLang
   override type M = ProjectSettings
   override type T = ProjectSettingsTable
 
@@ -144,8 +145,8 @@ case class ProjectSettings(override val id: Option[Int] = None,
     */
   //noinspection ComparingUnrelatedTypes
   def save(project: Project, formData: ProjectSettingsForm)(implicit cache: AsyncCacheApi, messages: MessagesApi, fileManager: ProjectFiles, ec: ExecutionContext): Future[_] = {
-    Logger.info("Saving project settings")
-    Logger.info(formData.toString)
+    Logger.debug("Saving project settings")
+    Logger.debug(formData.toString)
 
     project.setCategory(Categories.withName(formData.categoryName))
     project.setDescription(nullIfEmpty(formData.description))
@@ -176,7 +177,17 @@ case class ProjectSettings(override val id: Option[Int] = None,
       // Handle member changes
       if (project.isDefined) {
         // Add new roles
-        val dossier = project.memberships
+        val dossier: MembershipDossier {
+          type MembersTable = ProjectMembersTable
+
+          type MemberType = ProjectMember
+
+          type RoleTable = ProjectRoleTable
+
+          type ModelType = Project
+
+          type RoleType = ProjectRole
+        } = project.memberships
         Future.sequence(formData.build().map { role =>
           dossier.addRole(role.copy(projectId = project.id.get))
         }).flatMap { roles =>
@@ -186,7 +197,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
               userId = role.userId,
               originId = project.ownerId,
               notificationType = NotificationTypes.ProjectInvite,
-              message = messages("notification.project.invite", role.roleType.title, project.name))
+              messageArgs = List("notification.project.invite", role.roleType.title, project.name))
           }
 
           service.DB.db.run(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
@@ -221,6 +232,6 @@ case class ProjectSettings(override val id: Option[Int] = None,
   }
   private lazy val updateMemberShip = Compiled(memberShipUpdate _)
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectSettings = this.copy(id = id, createdAt = theTime)
 
 }

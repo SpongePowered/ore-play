@@ -3,7 +3,6 @@ package controllers
 import java.util.{Base64, UUID}
 
 import akka.http.scaladsl.model.Uri
-import javax.inject.Inject
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
@@ -11,8 +10,8 @@ import db.impl.ProjectApiKeyTable
 import form.OreForms
 import javax.inject.Inject
 import models.api.ProjectApiKey
-import models.user.User
-import ore.permission.EditApiKeys
+import models.user.{LoggedAction, User, UserActionLogger}
+import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.permission.role.RoleTypes
 import ore.permission.role.RoleTypes.RoleType
 import ore.project.factory.{PendingVersion, ProjectFactory}
@@ -21,7 +20,7 @@ import ore.rest.ProjectApiKeyTypes._
 import ore.rest.{OreRestfulApi, OreWrites}
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, Messages, MessagesApi}
 import util.StatusZ
 import util.functional.{EitherT, OptionT, Id}
 import util.instances.future._
@@ -33,6 +32,8 @@ import security.spauth.SingleSignOnConsumer
 import slick.lifted.Compiled
 
 import scala.concurrent.{ExecutionContext, Future}
+
+import db.access.ModelAccess
 
 /**
   * Ore API (v1)
@@ -54,7 +55,8 @@ final class ApiController @Inject()(api: OreRestfulApi,
   import writes._
 
   val files = new ProjectFiles(this.env)
-  val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+  val Logger = play.api.Logger("SSO")
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)
 
@@ -65,7 +67,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @return           JSON view of projects
     */
   def listProjects(version: String, categories: Option[String], sort: Option[Int], q: Option[String],
-                   limit: Option[Int], offset: Option[Int]) = Action.async {
+                   limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getProjectList(categories, sort, q, limit, offset).map(Ok(_))
       case _ => Future.successful(NotFound)
@@ -79,14 +81,14 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param pluginId   Plugin ID of project
     * @return           Project with Plugin ID
     */
-  def showProject(version: String, pluginId: String) = Action.async {
+  def showProject(version: String, pluginId: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getProject(pluginId).map(ApiResult)
       case _ => Future.successful(NotFound)
     }
   }
 
-  def createKey(version: String, pluginId: String) =
+  def createKey(version: String, pluginId: String): Action[AnyContent] =
     (Action andThen AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) async { implicit request =>
       val projectId = request.data.project.id.get
       val res = for {
@@ -101,11 +103,11 @@ final class ApiController @Inject()(api: OreRestfulApi,
             value = UUID.randomUUID().toString.replace("-", "")))
         )
       } yield Created(Json.toJson(pak))
-
+      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, projectId, s"${request.user.name} created a new ApiKey", "" )
       res.getOrElse(BadRequest)
     }
 
-  def revokeKey(version: String, pluginId: String) =
+  def revokeKey(version: String, pluginId: String): Action[AnyContent] =
     (AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
       val res = for {
         key <- bindFormOptionT[Id](this.forms.ProjectApiKeyRevoke)
@@ -114,7 +116,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
         key.remove()
         Ok
       }
-
+      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.get, s"${request.user.name} removed an ApiKey", "")
       res.getOrElse(BadRequest)
     }
 
@@ -129,11 +131,30 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @return         List of versions
     */
   def listVersions(version: String, pluginId: String, channels: Option[String],
-                   limit: Option[Int], offset: Option[Int]) = Action.async {
+                   limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
     version match {
-      case "v1" => this.api.getVersionList(pluginId, channels, limit, offset).map(Some.apply).map(ApiResult)
+      case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = true).map(Some.apply).map(ApiResult)
       case _ => Future.successful(NotFound)
     }
+  }
+
+  /**
+    * Almost like [[listVersions()]] but more intended for internal use. Shows all versions, but need authentification.
+    *
+    * @param version  API version string
+    * @param pluginId Project plugin ID
+    * @param channels Channels to get versions from
+    * @param limit    Amount to take
+    * @param offset   Amount to drop
+    * @return         List of versions
+    */
+  def listAllVersions(version: String, pluginId: String, channels: Option[String],
+      limit: Option[Int], offset: Option[Int]): Action[AnyContent] =
+    (AuthedProjectActionById(pluginId) andThen PermissionAction(ReviewProjects)).async {
+      version match {
+        case "v1" => this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)
+        case _ => Future.successful(NotFound)
+      }
   }
 
   /**
@@ -144,16 +165,17 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param name     Version name
     * @return         JSON view of Version
     */
-  def showVersion(version: String, pluginId: String, name: String) = Action.async {
+  def showVersion(version: String, pluginId: String, name: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getVersion(pluginId, name).map(ApiResult)
       case _ => Future.successful(NotFound)
     }
   }
 
-  private def error(key: String, error: String) = Json.obj("errors" -> Map(key -> List(this.messagesApi(error))))
+  private def error(key: String, error: String)(implicit messages: Messages) =
+    Json.obj("errors" -> Map(key -> List(messages(error))))
 
-  def deployVersion(version: String, pluginId: String, name: String) = ProjectAction(pluginId).async { implicit request =>
+  def deployVersion(version: String, pluginId: String, name: String): Action[AnyContent] = ProjectAction(pluginId).async { implicit request =>
     version match {
       case "v1" =>
         val projectData = request.data
@@ -215,7 +237,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     }
   }
 
-  def listPages(version: String, pluginId: String, parentId: Option[Int]) = Action.async {
+  def listPages(version: String, pluginId: String, parentId: Option[Int]): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getPages(pluginId, parentId).value.map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -230,7 +252,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param offset   Offset to drop
     * @return         List of users
     */
-  def listUsers(version: String, limit: Option[Int], offset: Option[Int]) = Action.async {
+  def listUsers(version: String, limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getUserList(limit, offset).map(Ok(_))
       case _ => Future.successful(NotFound)
@@ -244,7 +266,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param username   Username of user
     * @return           User with username
     */
-  def showUser(version: String, username: String) = Action.async {
+  def showUser(version: String, username: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getUser(username).map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -259,7 +281,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
     * @param versionName Version of the plugin
     * @return Tags for the version of the plugin
     */
-  def listTags(version: String, plugin: String, versionName: String) = Action.async {
+  def listTags(version: String, plugin: String, versionName: String): Action[AnyContent] = Action.async {
     version match {
       case "v1" => this.api.getTags(plugin, versionName).value.map(ApiResult)
       case _ => Future.successful(NotFound)
@@ -280,9 +302,11 @@ final class ApiController @Inject()(api: OreRestfulApi,
     */
   def showStatusZ = Action(Ok(this.status.json))
 
-  def syncSso() = Action.async { implicit request =>
+  def syncSso(): Action[AnyContent] = Action.async { implicit request =>
     val confApiKey = this.config.security.get[String]("sso.apikey")
     val confSecret = this.config.security.get[String]("sso.secret")
+
+    Logger.debug("Sync Request received")
 
     bindFormEitherT[Future](this.forms.SyncSso)(hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
       .filterOrElse(_._3 == confApiKey, BadRequest("API Key not valid")) //_3 is apiKey
@@ -291,8 +315,12 @@ final class ApiController @Inject()(api: OreRestfulApi,
         BadRequest("Signature not matched")
       )
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
-      .semiFlatMap(q => this.users.get(q.get("external_id").get.toInt).value.tupleLeft(q))
+      .semiFlatMap{q =>
+        Logger.debug("Sync Payload: " + q)
+        this.users.get(q.get("external_id").get.toInt).value.tupleLeft(q)
+      }
       .map { case (query, optUser) =>
+        Logger.debug("Sync user found: " + optUser.isDefined)
         optUser.foreach { user =>
           val email = query.get("email")
           val username = query.get("username")

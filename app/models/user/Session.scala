@@ -7,7 +7,9 @@ import db.impl.access.UserBase
 import db.impl.model.OreModel
 import db.{Expirable, Model}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
+
+import util.functional.OptionT
 
 /**
   * Represents a persistant [[User]] session.
@@ -33,7 +35,7 @@ case class Session(override val id: Option[Int] = None,
     * @param users UserBase instance
     * @return User session belongs to
     */
-  def user(implicit users: UserBase, ec: ExecutionContext) = users.withName(this.username)
+  def user(implicit users: UserBase, ec: ExecutionContext): OptionT[Future, User] = users.withName(this.username)
 
   override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(id = id, createdAt = theTime)
 

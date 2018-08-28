@@ -25,10 +25,10 @@ class ErrorHandler @Inject()(env: Environment,
                              extends DefaultHttpErrorHandler(env, conf, sourceMapper, router)
                                with I18nSupport {
 
-  override def onProdServerError(request: RequestHeader, exception: UsefulException) = {
-    implicit val session = request.session
-    implicit val requestImpl = request
-    implicit val headerData = HeaderData() // Empty HeaderData on error
+  override def onProdServerError(request: RequestHeader, exception: UsefulException): Future[Result] = {
+    implicit val session: Session = request.session
+    implicit val requestImpl: RequestHeader = request
+    implicit val headerData: HeaderData = HeaderData() // Empty HeaderData on error
 
     Future.successful {
       if (exception.cause.isInstanceOf[TimeoutException])
@@ -39,9 +39,9 @@ class ErrorHandler @Inject()(env: Environment,
   }
 
   override def onNotFound(request: RequestHeader, message: String): Future[Result] = {
-    implicit val session = request.session
-    implicit val requestImpl = request
-    implicit val headerData = HeaderData() // Empty HeaderData on error
+    implicit val session: Session = request.session
+    implicit val requestImpl: RequestHeader = request
+    implicit val headerData: HeaderData = HeaderData() // Empty HeaderData on error
 
     Future.successful(NotFound(views.html.errors.notFound()))
   }

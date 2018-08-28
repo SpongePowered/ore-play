@@ -19,11 +19,11 @@ trait Cacheable {
   /**
     * Caches this.
     */
-  def cache() = this.cacheApi.set(this.key, this)
+  def cache(): Unit = this.cacheApi.set(this.key, this)
 
   /**
     * Removes this from the Cache.
     */
-  def free() = this.cacheApi.remove(this.key)
+  def free(): Unit = this.cacheApi.remove(this.key)
 
 }

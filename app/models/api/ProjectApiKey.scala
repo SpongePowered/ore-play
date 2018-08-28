@@ -17,6 +17,6 @@ case class ProjectApiKey(override val id: Option[Int] = None,
   override type T = ProjectApiKeyTable
   override type M = ProjectApiKey
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectApiKey = this.copy(id = id, createdAt = theTime)
 
 }

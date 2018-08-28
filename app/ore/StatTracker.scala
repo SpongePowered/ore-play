@@ -80,7 +80,7 @@ object StatTracker {
     * @param request  Request with cookie
     * @return         New or existing cookie
     */
-  def currentCookie(implicit request: RequestHeader)
+  def currentCookie(implicit request: RequestHeader): String
   = request.cookies.get(COOKIE_NAME).map(_.value).getOrElse(UUID.randomUUID.toString)
 
   /**
@@ -90,7 +90,7 @@ object StatTracker {
     * @param request  Request to get address of
     * @return         Remote address
     */
-  def remoteAddress(implicit request: RequestHeader) = {
+  def remoteAddress(implicit request: RequestHeader): String = {
     request.headers.get("X-Forwarded-For") match {
       case None => request.remoteAddress
       case Some(header) => header.split(',').headOption.map(_.trim).getOrElse(request.remoteAddress)
@@ -100,9 +100,10 @@ object StatTracker {
 }
 
 class OreStatTracker @Inject()(service: ModelService, override val bakery: Bakery) extends StatTracker {
-  override val users = this.service.getModelBase(classOf[UserBase])
-  override val projects = this.service.getModelBase(classOf[ProjectBase])
-  override val viewSchema = this.service.getSchemaByModel(classOf[ProjectView]).asInstanceOf[StatSchema[ProjectView]]
-  override val downloadSchema = this.service.getSchemaByModel(classOf[VersionDownload])
+  override val users         : UserBase                    = this.service.getModelBase(classOf[UserBase])
+  override val projects      : ProjectBase                 = this.service.getModelBase(classOf[ProjectBase])
+  override val viewSchema    : StatSchema[ProjectView]     = this.service.getSchemaByModel(classOf[ProjectView]).asInstanceOf[StatSchema[ProjectView]]
+
+  override val downloadSchema: StatSchema[VersionDownload] = this.service.getSchemaByModel(classOf[VersionDownload])
     .asInstanceOf[StatSchema[VersionDownload]]
 }

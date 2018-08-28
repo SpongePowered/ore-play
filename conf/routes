@@ -19,8 +19,7 @@ GET     /admin/flags/:id/resolve/:resolved                          @controllers
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats()
-GET     /admin/log                                                  @controllers.Application.showLog()
-GET     /admin/log/:page                                            @controllers.Application.showLogWithPage(page: Int)
+GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], versionFilter: Option[Int], pageFilter: Option[Int], actionFilter: Option[Int], subjectFilter: Option[Int])
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
 
@@ -52,6 +51,7 @@ GET     /api/:version/projects                                      @controllers
 GET     /api/:version/projects/:pluginId                            @controllers.ApiController.showProject(version, pluginId)
 
 GET     /api/:version/projects/:pluginId/versions                   @controllers.ApiController.listVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/:version/projects/:pluginId/versionsAll                @controllers.ApiController.listAllVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.showVersion(version, pluginId, name)
 POST    /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.deployVersion(version, pluginId, name)
 
@@ -65,11 +65,11 @@ GET     /api/:version/tags/:tagId                                   @controllers
 
 # ---------- Application ----------
 
-GET     /                                                           @controllers.Application.showHome(categories: Option[String], q: Option[String], sort: Option[Int], page: Option[Int], platform: Option[String])
+GET     /                                                           @controllers.Application.showHome(categories: Option[String], q: Option[String], sort: Option[Int], page: Option[Int], platformCategory: Option[String], platform: Option[String])
 GET     /linkout                                                    @controllers.Application.linkOut(remoteUrl: String)
 GET     /signup                                                     @controllers.Users.signUp()
 GET     /login                                                      @controllers.Users.logIn(sso: Option[String], sig: Option[String], returnUrl: Option[String])
-GET     /logout                                                     @controllers.Users.logOut(returnUrl: Option[String])
+GET     /logout                                                     @controllers.Users.logOut()
 POST    /verify                                                     @controllers.Users.verify(returnPath: Option[String])
 
 # ---------- Projects ----------
@@ -83,6 +83,7 @@ GET     /new/:author/:slug                                          @controllers
 POST    /new/:author/:slug/members                                  @controllers.project.Projects.showInvitationForm(author, slug)
 
 POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: Int, status)
+POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: Int, status: String, behalf: String)
 
 POST    /pages/preview                                              @controllers.project.Pages.showPreview()
 
@@ -132,7 +133,8 @@ POST    /:author/:slug/manage/hardDelete                            @controllers
 POST    /:author/:slug/manage/delete                                @controllers.project.Projects.softDelete(author, slug)
 POST    /:author/:slug/manage/members/remove                        @controllers.project.Projects.removeMember(author, slug)
 
-GET     /:author/:slug/log                                          @controllers.project.Projects.showLog(author, slug)
+GET     /:author/:slug/projectLog                                   @controllers.project.Projects.showLog(author, slug)
+GET     /:author/:slug/versionLog                                   @controllers.project.Versions.showLog(author, slug, versionString)
 GET     /:author/:slug/flags                                        @controllers.project.Projects.showFlags(author, slug)
 GET     /:author/:slug/notes                                        @controllers.project.Projects.showNotes(author, slug)
 POST    /:author/:slug/notes/addmessage                             @controllers.project.Projects.addMessage(author, slug)
@@ -165,10 +167,11 @@ POST    /:author/:slug/channels/:channel/delete                     @controllers
 
 # ---------- Versions ----------
 
-GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug, channels: Option[String], page: Option[Int])
+GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug, channels: Option[String])
 
 POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version)
-POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.delete(author, slug, version)
+POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)
+POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
 
 GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean])
 +nocsrf
@@ -201,7 +204,7 @@ POST    /:author/:slug/versions/:version/reviews/takeover           @controllers
 POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers.Reviews.addMessage(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: Int)
 POST    /:author/:slug/versions/:version/reviews/reopen             @controllers.Reviews.reopenReview(author, slug, version)
-
+POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers.Reviews.shouldReviewToggle(author, slug, version)
 
 # ---------- Other ----------
 

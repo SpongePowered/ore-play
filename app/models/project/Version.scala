@@ -4,15 +4,16 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+
 import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.OreModel
-import db.impl.model.common.{Describable, Downloadable}
+import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionSchema
 import db.impl.table.ModelKeys._
 import db.impl.{ReviewTable, VersionTable}
-import models.admin.Review
+import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
 import ore.permission.scope.ProjectScope
@@ -23,6 +24,9 @@ import util.instances.future._
 import util.functional.OptionT
 
 import scala.concurrent.{ExecutionContext, Future}
+
+import db.impl.table.ModelKeys
+import models.project.VisibilityTypes.{Public, Visibility}
 
 /**
   * Represents a single version of a Project.
@@ -53,16 +57,20 @@ case class Version(override val id: Option[Int] = None,
                    private var _reviewerId: Int = -1,
                    private var _approvedAt: Option[Timestamp] = None,
                    private var _tagIds: List[Int] = List(),
+                   private var _visibility: Visibility = Public,
                    fileName: String,
-                   signatureFileName: String)
+                   signatureFileName: String,
+                   private var _isNonReviewed: Boolean = false)
                    extends OreModel(id, createdAt)
                      with ProjectScope
                      with Describable
-                     with Downloadable {
+                     with Downloadable
+                     with Hideable {
 
   override type M = Version
   override type T = VersionTable
   override type S = VersionSchema
+  override type ModelVisibilityChange = VersionVisibilityChange
 
   /**
     * Returns the name of this Channel.
@@ -157,21 +165,28 @@ case class Version(override val id: Option[Int] = None,
 
   def reviewer(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._reviewerId)
 
-  def setReviewer(reviewer: User) = Defined {
+  def setReviewer(reviewer: User): Future[Int] = Defined {
     this._reviewerId = reviewer.id.get
     update(ReviewerId)
   }
 
-  def setReviewerId(reviewer: Int) = Defined {
+  def setReviewerId(reviewer: Int): Future[Int] = Defined {
     this._reviewerId = reviewer
     update(ReviewerId)
   }
 
   def approvedAt: Option[Timestamp] = this._approvedAt
 
-  def setApprovedAt(approvedAt: Timestamp) = Defined {
+  def setApprovedAt(approvedAt: Timestamp): Future[Int] = Defined {
     this._approvedAt = Option(approvedAt)
     update(ApprovedAt)
+  }
+
+  def isNonReviewed: Boolean = this._isNonReviewed
+
+  def setIsNonReviewed(ignoreReview: Boolean): Unit = {
+    this._isNonReviewed = ignoreReview
+    update(IsNonReviewedVersion)
   }
 
   def tagIds: List[Int] = this._tagIds
@@ -181,7 +196,7 @@ case class Version(override val id: Option[Int] = None,
     if(isDefined) update(TagIds)
   }
 
-  def addTag(tag: Tag) = {
+  def addTag(tag: Tag): Unit = {
     this._tagIds = this._tagIds :+ tag.id.get
     if (isDefined) {
       update(TagIds)
@@ -190,15 +205,8 @@ case class Version(override val id: Option[Int] = None,
 
   def tags(implicit ec: ExecutionContext, service: ModelService = null): Future[List[Tag]] = {
     schema(service)
-    this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map { list =>
-      list.toSet.toList
-    }
+    this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map (_.distinct.toList)
   }
-
-
-  def isSpongePlugin(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Sponge"))
-
-  def isForgeMod(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Forge"))
 
   /**
     * Returns this Versions plugin dependencies.
@@ -208,7 +216,7 @@ case class Version(override val id: Option[Int] = None,
   def dependencies: List[Dependency] = {
     for (depend <- this.dependencyIds) yield {
       val data = depend.split(":")
-      Dependency(data(0), data(1))
+      Dependency(data(0), if (data.length > 1) data(1) else "")
     }
   }
 
@@ -219,7 +227,7 @@ case class Version(override val id: Option[Int] = None,
     * @return         True if has dependency on ID
     */
   //noinspection ComparingUnrelatedTypes
-  def hasDependency(pluginId: String) = this.dependencies.exists(_.pluginId.equals(pluginId))
+  def hasDependency(pluginId: String): Boolean = this.dependencies.exists(_.pluginId.equals(pluginId))
 
   /**
     * Returns the amount of unique downloads this Version has.
@@ -231,9 +239,29 @@ case class Version(override val id: Option[Int] = None,
   /**
     * Adds a download to the amount of unique downloads this Version has.
     */
-  def addDownload() = Defined {
+  def addDownload(): Future[Int] = Defined {
     this._downloads += 1
     update(Downloads)
+  }
+
+  override def visibilityChanges: ModelAccess[VersionVisibilityChange] =
+    this.schema.getChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], this)
+
+  override def visibility: Visibility = this._visibility
+
+  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext): Future[VersionVisibilityChange] = {
+    this._visibility = visibility
+    if (isDefined) update(ModelKeys.Visibility)
+
+    val cnt = lastVisibilityChange.map { vc =>
+        vc.setResolvedAt(Timestamp.from(Instant.now()))
+        vc.setResolvedById(creator)
+        0
+    }
+    cnt.value.flatMap { _ =>
+      val change = VersionVisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
+      this.service.access[VersionVisibilityChange](classOf[VersionVisibilityChange]).add(change)
+    }
   }
 
   /**
@@ -241,7 +269,7 @@ case class Version(override val id: Option[Int] = None,
     *
     * @return Recorded downloads
     */
-  def downloadEntries = this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
+  def downloadEntries: ModelAccess[VersionDownload] = this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
 
   /**
     * Returns a human readable file size for this Version.
@@ -270,12 +298,12 @@ case class Version(override val id: Option[Int] = None,
     }
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
-  override def hashCode() = this.id.hashCode
-  override def equals(o: Any) = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.get == this.id.get
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Version = this.copy(id = id, createdAt = theTime)
+  override def hashCode(): Int = this.id.hashCode
+  override def equals(o: Any): Boolean = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.get == this.id.get
 
-  def byCreationDate(first: Review, second: Review) = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
-  def reviewEntries = this.schema.getChildren[Review](classOf[Review], this)
+  def byCreationDate(first: Review, second: Review): Boolean = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+  def reviewEntries: ModelAccess[Review] = this.schema.getChildren[Review](classOf[Review], this)
   def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate))
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
   def mostRecentReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
@@ -304,57 +332,57 @@ object Version {
     private var _signatureFileName: String = _
     private var _tagIds: List[Int] = List()
 
-    def versionString(versionString: String) = {
+    def versionString(versionString: String): Builder = {
       this._versionString = versionString
       this
     }
 
-    def dependencyIds(dependencyIds: List[String]) = {
+    def dependencyIds(dependencyIds: List[String]): Builder = {
       this._dependencyIds = dependencyIds
       this
     }
 
-    def description(description: String) = {
+    def description(description: String): Builder = {
       this._description = description
       this
     }
 
-    def projectId(projectId: Int) = {
+    def projectId(projectId: Int): Builder = {
       this._projectId = projectId
       this
     }
 
-    def fileSize(fileSize: Long) = {
+    def fileSize(fileSize: Long): Builder = {
       this._fileSize = fileSize
       this
     }
 
-    def hash(hash: String) = {
+    def hash(hash: String): Builder = {
       this._hash = hash
       this
     }
 
-    def authorId(authorId: Int) = {
+    def authorId(authorId: Int): Builder = {
       this._authorId = authorId
       this
     }
 
-    def fileName(fileName: String) = {
+    def fileName(fileName: String): Builder = {
       this._fileName = fileName
       this
     }
 
-    def signatureFileName(signatureFileName: String) = {
+    def signatureFileName(signatureFileName: String): Builder = {
       this._signatureFileName = signatureFileName
       this
     }
 
-    def tagIds(tagIds: List[Int]) = {
+    def tagIds(tagIds: List[Int]): Builder = {
       this._tagIds = tagIds
       this
     }
 
-    def build() = {
+    def build(): Version = {
       checkArgument(this._fileSize != -1, "invalid file size", "")
       this.service.processor.process(Version(
         versionString = checkNotNull(this._versionString, "name null", ""),

@@ -2,6 +2,8 @@ package models.user
 
 import java.sql.Timestamp
 
+import scala.concurrent.Future
+
 import db.impl.SignOnTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -24,11 +26,11 @@ case class SignOn(override val id: Option[Int] = None,
 
   def isCompleted: Boolean = this._isCompleted
 
-  def setCompleted(completed: Boolean = true) = Defined {
+  def setCompleted(completed: Boolean = true): Future[Int] = Defined {
     this._isCompleted = completed
     update(IsCompleted)
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): SignOn = this.copy(id = id, createdAt = theTime)
 
 }

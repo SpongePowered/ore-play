@@ -2,7 +2,7 @@ package discourse
 
 import java.nio.file.Path
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Scheduler}
 import javax.inject.{Inject, Singleton}
 import ore.{OreConfig, OreEnv}
 import play.api.libs.ws.WSClient
@@ -30,11 +30,12 @@ class SpongeForums @Inject()(env: OreEnv,
   override val url: String = this.conf.get[String]("baseUrl")
   override val baseUrl: String = this.config.app.get[String]("baseUrl")
 
-  override val categorySlug: String = this.conf.get[String]("embed.categorySlug")
+  override val categoryDefault: Int = this.conf.get[Int]("categoryDefault")
+  override val categoryDeleted: Int = this.conf.get[Int]("categoryDeleted")
   override val topicTemplatePath: Path = this.env.conf.resolve("discourse/project_topic.md")
   override val versionReleasePostTemplatePath: Path = this.env.conf.resolve("discourse/version_post.md")
-  override val scheduler = this.actorSystem.scheduler
+  override val scheduler: Scheduler = this.actorSystem.scheduler
   override val bootstrapExecutionContext: ExecutionContext = this.actorSystem.dispatcher
-  override val retryRate = this.conf.get[FiniteDuration]("embed.retryRate")
+  override val retryRate: FiniteDuration = this.conf.get[FiniteDuration]("retryRate")
 
 }

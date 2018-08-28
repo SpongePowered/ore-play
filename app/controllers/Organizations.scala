@@ -18,6 +18,8 @@ import util.functional.Id
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import play.api.mvc.{Action, AnyContent}
+
 /**
   * Controller for handling Organization based actions.
   */
@@ -42,9 +44,9 @@ class Organizations @Inject()(forms: OreForms,
     *
     * @return Organization creation panel
     */
-  def showCreator() = UserLock().async { implicit request =>
+  def showCreator(): Action[AnyContent] = UserLock().async { implicit request =>
     request.user.ownedOrganizations.size.map { size =>
-      if (size >= this.createLimit) Redirect(ShowHome).withError(this.messagesApi("error.org.createLimit", this.createLimit))
+      if (size >= this.createLimit) Redirect(ShowHome).withError(request.messages.apply("error.org.createLimit", this.createLimit))
       else {
         Ok(views.createOrganization())
       }
@@ -57,7 +59,7 @@ class Organizations @Inject()(forms: OreForms,
     *
     * @return Redirect to organization page
     */
-  def create() = UserLock().async { implicit request =>
+  def create(): Action[AnyContent] = UserLock().async { implicit request =>
     val user = request.user
     val failCall = routes.Organizations.showCreator()
     user.ownedOrganizations.size.flatMap { size =>
@@ -85,7 +87,7 @@ class Organizations @Inject()(forms: OreForms,
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: Int, status: String) = Authenticated.async { implicit request =>
+  def setInviteStatus(id: Int, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
     val user = request.user
     user.organizationRoles.get(id).map { role =>
       status match {
@@ -110,7 +112,7 @@ class Organizations @Inject()(forms: OreForms,
     * @param organization Organization to update avatar of
     * @return             Json response with errors if any
     */
-  def updateAvatar(organization: String) = EditOrganizationAction(organization) { implicit request =>
+  def updateAvatar(organization: String): Action[AnyContent] = EditOrganizationAction(organization) { implicit request =>
     // TODO implement me
     Ok
   }
@@ -121,7 +123,7 @@ class Organizations @Inject()(forms: OreForms,
     * @param organization Organization to update
     * @return             Redirect to Organization page
     */
-  def removeMember(organization: String) = EditOrganizationAction(organization).async { implicit request =>
+  def removeMember(organization: String): Action[AnyContent] = EditOrganizationAction(organization).async { implicit request =>
     val res = for {
       name <- bindFormOptionT[Future](this.forms.OrganizationMemberRemove)
       user <- this.users.withName(name)
@@ -139,7 +141,7 @@ class Organizations @Inject()(forms: OreForms,
     * @param organization Organization to update
     * @return             Redirect to Organization page
     */
-  def updateMembers(organization: String) = EditOrganizationAction(organization) { implicit request =>
+  def updateMembers(organization: String): Action[AnyContent] = EditOrganizationAction(organization) { implicit request =>
     bindFormOptionT[Id](this.forms.OrganizationUpdateMembers).map { update =>
       update.saveTo(request.data.orga)
       Redirect(ShowUser(organization))

@@ -2,6 +2,8 @@ package models.user
 
 import java.sql.Timestamp
 
+import scala.collection.immutable
+
 import com.github.tminglei.slickpg.InetString
 import controllers.sugar.Requests.AuthRequest
 import db.ModelService
@@ -31,20 +33,23 @@ case class LoggedActionModel(override val id: Option[Int] = None,
 
   def address: InetString = _address
   def action: LoggedAction = _action
-  def oldState = _oldState
-  def newState = _newState
-
+  def oldState: String = _oldState
+  def newState: String = _newState
+  def contextId: Int = _actionContextId
+  def actionType: LoggedActionContext = _action.context
 }
 
 sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry
 
 object LoggedActionContext extends IntEnum[LoggedActionContext] {
 
-  case object Project     extends LoggedActionContext(0)
-  case object Version     extends LoggedActionContext(1)
-  case object ProjectPage extends LoggedActionContext(2)
+  case object Project      extends LoggedActionContext(0)
+  case object Version      extends LoggedActionContext(1)
+  case object ProjectPage  extends LoggedActionContext(2)
+  case object User         extends LoggedActionContext(3)
+  case object Organization extends LoggedActionContext(4)
 
-  val values = findValues
+  val values: immutable.IndexedSeq[LoggedActionContext] = findValues
 
 }
 
@@ -60,14 +65,19 @@ case object LoggedAction extends IntEnum[LoggedAction] {
   case object ProjectMemberRemoved      extends LoggedAction(5, "ProjectMemberRemoved", LoggedActionContext.Project, "A Member was removed from the project")
   case object ProjectIconChanged        extends LoggedAction(6, "ProjectIconChanged", LoggedActionContext.Project, "The project icon was changed")
   case object ProjectPageEdited         extends LoggedAction(7, "ProjectPageEdited", LoggedActionContext.ProjectPage, "A project page got edited")
+  case object ProjectFlagResolved       extends LoggedAction(13, "ProjectFlagResolved", LoggedActionContext.Project, "The flag was resolved")
 
   case object VersionDeleted            extends LoggedAction(8, "VersionDeleted", LoggedActionContext.Version, "The version was deleted")
   case object VersionUploaded           extends LoggedAction(9, "VersionUploaded", LoggedActionContext.Version, "A new version was uploaded")
   case object VersionApproved           extends LoggedAction(10, "VersionApproved", LoggedActionContext.Version, "The version was approved")
   case object VersionAsRecommended      extends LoggedAction(11, "VersionAsRecommended", LoggedActionContext.Version, "The version was set as recommended version")
   case object VersionDescriptionEdited  extends LoggedAction(12, "VersionDescriptionEdited", LoggedActionContext.Version, "The version description was edited")
+  case object VersionNonReviewChanged   extends LoggedAction(17, "VersionNonReviewChanged", LoggedActionContext.Version, "If the review queue skip was changed")
 
-  val values = findValues
+  case object UserTaglineChanged        extends LoggedAction(14, "UserTaglineChanged", LoggedActionContext.User, "The user tagline changed")
+  case object UserPgpKeySaved           extends LoggedAction(15, "UserPgpKeySaved", LoggedActionContext.User, "The user saved a PGP Public Key")
+  case object UserPgpKeyRemoved         extends LoggedAction(16, "UserPgpKeyRemoved", LoggedActionContext.User, "The user removed a PGP Public Key")
+  val values: immutable.IndexedSeq[LoggedAction] = findValues
 
 }
 

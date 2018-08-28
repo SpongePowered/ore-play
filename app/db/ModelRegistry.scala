@@ -65,7 +65,7 @@ trait ModelRegistry {
     *
     * @param base ModelBase
     */
-  def registerModelBase(base: ModelBase[_ <: Model]) = {
+  def registerModelBase(base: ModelBase[_ <: Model]): Unit = {
     checkNotNull(base, "model base is null", "")
     this.modelBases += base.getClass -> base
   }

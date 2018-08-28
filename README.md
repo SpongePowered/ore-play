@@ -1,4 +1,4 @@
-Ore
+Ore [![Build Status](https://travis-ci.org/SpongePowered/Ore.svg?branch=master)](https://travis-ci.org/SpongePowered/Ore)
 ===
 
 Repository software for Sponge plugins and Forge mods https://ore.spongepowered.org/
@@ -8,10 +8,6 @@ Ore is written in Scala using the [Play](https://www.playframework.com/) framewo
 ## Running
 
 Running Ore is relatively simple.
-
-**With Activator**
-* Download and install the latest [Activator](https://www.lightbend.com/activator/download) distribution.
-* Execute `activator run` in the project root.
 
 **With SBT**
 * Download and install the latest [SBT](http://www.scala-sbt.org/download.html) version.

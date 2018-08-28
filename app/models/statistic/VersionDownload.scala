@@ -34,7 +34,7 @@ case class VersionDownload(override val id: Option[Int] = None,
   override type M = VersionDownload
   override type T = VersionDownloadsTable
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]) = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): VersionDownload = this.copy(id = id, createdAt = theTime)
 
 }
 

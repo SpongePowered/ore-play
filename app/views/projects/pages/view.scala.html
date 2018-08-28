@@ -67,7 +67,7 @@ Documentation page within Project overview.
                         @p.settings.licenseName.map { licenseName =>
                             <p>
                                 @Html(messages("project.license.link"))
-                                <a target="_blank" href="@p.settings.licenseUrl">@licenseName</a>
+                                <a target="_blank" rel="noopener" href="@p.settings.licenseUrl">@licenseName</a>
                             </p>
                         }
                     </div>

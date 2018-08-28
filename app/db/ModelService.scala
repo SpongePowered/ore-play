@@ -49,7 +49,7 @@ trait ModelService {
   /**
     * Performs initialization code for the ModelService.
     */
-  def start() = {}
+  def start(): Unit = {}
 
   /**
     * Returns a current Timestamp.
@@ -154,7 +154,7 @@ trait ModelService {
     * @tparam A     Value type
     * @tparam M     Model type
     */
-  def set[A, M <: Model](model: M, column: M#T => Rep[A], value: A)(implicit mapper: JdbcType[A]) = {
+  def set[A, M <: Model](model: M, column: M#T => Rep[A], value: A)(implicit mapper: JdbcType[A]): Future[Int] = {
     DB.db.run {
       (for {
         row <- newAction[M](model.getClass)
@@ -172,7 +172,7 @@ trait ModelService {
     * @tparam A     MappedType type
     * @tparam M     Model type
     */
-  def setMappedType[A <: MappedType[A], M <: Model](model: M, column: M#T => Rep[A], value: A) = {
+  def setMappedType[A <: MappedType[A], M <: Model](model: M, column: M#T => Rep[A], value: A): Future[Int] = {
     import value.mapper
     set(model, column, value)
   }

@@ -32,7 +32,7 @@ this.
         <meta name="theme-color" content="#333">
 
         @if(scripts) {
-            <script type="text/javascript" src="@routes.Assets.at("lib/jquery/jquery.min.js")"></script>
+            <script type="text/javascript" src="@routes.Assets.at("lib/jquery/dist/jquery.min.js")"></script>
         }
     </head>
     <body class="site">
@@ -49,9 +49,10 @@ this.
         }
 
         @if(scripts) {
-            <script type="text/javascript" src="@routes.Assets.at("lib/momentjs/min/moment.min.js")"></script>
+            <script type="text/javascript" src="@routes.Assets.at("lib/moment/min/moment.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("bootstrap/js/bootstrap.min.js")"></script>
-            <script type="text/javascript" src="@routes.Assets.at("lib/filesize/lib/filesize.min.js")"></script>
+            <script type="text/javascript" src="@routes.Assets.at("lib/filesize/lib/filesize.js")"></script>
+            <script type="text/javascript" src="@routes.Assets.at("lib/clipboard/dist/clipboard.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("highlight/highlight.pack.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("javascripts/main.js")"></script>
             <script type="text/javascript" src="@routes.Assets.at("javascripts/svg.js")"></script>

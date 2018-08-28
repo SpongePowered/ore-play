@@ -2,6 +2,8 @@ package db
 
 import java.sql.Timestamp
 
+import scala.concurrent.Future
+
 import com.google.common.base.Preconditions.checkNotNull
 import db.table.ModelTable
 import db.table.key.Key
@@ -36,12 +38,12 @@ abstract class Model(val id: Option[Int], val createdAt: Option[Timestamp]) { se
     *
     * @param key Model key to update
     */
-  def update[A](key: Key[M, A]) = Defined(key.update(this.asInstanceOf[M]))
+  def update[A](key: Key[M, A]): Future[Int] = Defined(key.update(this.asInstanceOf[M]))
 
   /**
     * Removes this model from it's table.
     */
-  def remove() = Defined(this.service.delete(this.asInstanceOf[M]))
+  def remove(): Future[Int] = Defined(this.service.delete(this.asInstanceOf[M]))
 
   /**
     * Returns true if this Project is defined in the database.
@@ -81,7 +83,7 @@ abstract class Model(val id: Option[Int], val createdAt: Option[Timestamp]) { se
     */
   def isProcessed: Boolean = this._isProcessed
 
-  protected[db] def setProcessed(processed: Boolean) = this._isProcessed = processed
+  protected[db] def setProcessed(processed: Boolean): Unit = this._isProcessed = processed
 
   protected def Defined[R](f: => R): R = {
     if (isDefined)

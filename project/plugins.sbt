@@ -3,5 +3,5 @@ evictionWarningOptions in update := EvictionWarningOptions.default.withWarnTrans
 
 resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.6.15")
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.6.18")
 addSbtPlugin("org.irundaia.sbt" % "sbt-sassify" % "1.4.12")

@@ -29,6 +29,7 @@ var PROJECT_SLUG = null;
 var TOTAL_VERSIONS = 0;
 var TEXT_NOT_APPROVED = "";
 var TEXT_NOT_APPROVED_CHANNEL = "";
+var SHOW_HIDDEN = false;
 
 var page = 0;
 
@@ -52,7 +53,8 @@ function loadVersions(increment, scrollTop) {
     var versionList = $('.version-table');
 
     var offset = (page + increment - 1) * VERSIONS_PER_PAGE;
-    var url = '/api/projects/' + PLUGIN_ID + '/versions?offset=' + offset;
+    var versionPart = SHOW_HIDDEN ? '/versionsAll' : '/versions';
+    var url = '/api/v1/projects/' + PLUGIN_ID + versionPart + '?offset=' + offset;
     if (CHANNEL_STRING) url += '&channels=' + CHANNEL_STRING;
 
     $.ajax({
@@ -64,6 +66,11 @@ function loadVersions(increment, scrollTop) {
 
             versions.forEach(function (version) {
                 var row = $("<tr>");
+
+                var visibility = version.visibility;
+                if(visibility) {
+                    row.addClass(visibility.css)
+                }
 
                 // ==> Base Info (channel, name)
                 var baseInfo = $("<td>");

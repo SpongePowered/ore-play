@@ -34,7 +34,7 @@ object ModelAction {
     */
   case class ModelSeqAction[M <: Model](override val action: DBIOAction[Seq[M], NoStream, Nothing])
     extends AbstractModelAction(action) {
-    def processResult(service: ModelService, result: Seq[M]) = for (model <- result) yield {
+    def processResult(service: ModelService, result: Seq[M]): Seq[M] = for (model <- result) yield {
       process(service, model)
     }
   }
