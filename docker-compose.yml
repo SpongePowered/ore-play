@@ -1,7 +1,8 @@
-version: '2'
+version: '3'
 
 services:
   app:
+    image: ore:1.6.8
     build: .
     depends_on:
       - 'db'
@@ -12,6 +13,8 @@ services:
   db:
     build: '.docker/db/'
     restart: always
+    ports:
+      - '5432:5432'
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: ''
