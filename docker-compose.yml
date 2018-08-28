@@ -1,4 +1,4 @@
-version: "2"
+version: '2'
 
 services:
   app:
@@ -7,18 +7,18 @@ services:
       - 'db'
       - 'spongeauth'
     ports:
-      - "9000:9000"
+      - '9000:9000'
     stdin_open: true
   db:
     build: '.docker/db/'
     restart: always
     environment:
       POSTGRES_USER: root
-      POSTGRES_PASSWORD: ""
+      POSTGRES_PASSWORD: ''
       POSTGRES_DB: ore
   spongeauth:
     image: spongepowered/spongeauth
     depends_on:
       - 'db'
     ports:
-      - "8000:8000"
+      - '8000:8000'
