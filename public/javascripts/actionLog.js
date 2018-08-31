@@ -28,7 +28,7 @@ $('body').on('click', '.data-diff', function() {
     var textDiff = diff.diff_main($('textarea[data-oldstate="' + idToDiff + '"]').val(), $('textarea[data-newstate="' + idToDiff + '"]').val());
     diff.diff_cleanupSemantic(textDiff);
 
-    $('#modal-view-body').html(diff.diff_prettyHtml(textDiff));
+    $('#modal-view-body').html(diff.diff_prettyHtml(textDiff).replace(/&para;/g, ''));
     $('#modal-view').modal('show');
 
 }).on('click', '.data-view-old', function() {

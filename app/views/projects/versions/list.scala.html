@@ -78,8 +78,8 @@ Versions page within Project overview.
                         @channels.sorted.map { channel =>
                             <li class="list-group-item">
                                 <span class="channel" style="background-color: @channel.color.hex">@channel.name</span>
-								<input type="checkbox" class="pull-right"
-								@if(visibleChannels.exists(_.equalsIgnoreCase(channel.name))) { checked } />
+                                <input type="checkbox" class="pull-right"
+                                @if(visibleChannels.exists(_.equalsIgnoreCase(channel.name))) { checked } />
                             </li>
                         }
 

@@ -6,7 +6,6 @@ import discourse.OreDiscourseApi
 import javax.inject.{Inject, Singleton}
 import ore.OreConfig
 import ore.project.ProjectTask
-import ore.user.UserSyncTask
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 /**
@@ -17,7 +16,6 @@ trait Bootstrap {
   val modelService: ModelService
   val forums: OreDiscourseApi
   val config: OreConfig
-  val userSync: UserSyncTask
   val projectTask: ProjectTask
 
   val Logger = play.api.Logger("Bootstrap")
@@ -29,8 +27,6 @@ trait Bootstrap {
 
   this.forums.projects = this.modelService.getModelBase(classOf[ProjectBase])
   this.forums.start()
-
-  this.userSync.start()
 
   this.projectTask.start()
 
@@ -45,5 +41,4 @@ trait Bootstrap {
 class BootstrapImpl @Inject()(override val modelService: ModelService,
                               override val forums: OreDiscourseApi,
                               override val config: OreConfig,
-                              override val userSync: UserSyncTask,
                               override val projectTask: ProjectTask) extends Bootstrap

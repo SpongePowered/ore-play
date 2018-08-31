@@ -47,7 +47,7 @@ trait Mailer extends Runnable {
 
   private var session: Session = _
 
-  private def log(msg: String): Unit = if (!this.suppressLogger) Logger.info(msg)
+  private def log(msg: String): Unit = if (!this.suppressLogger) Logger.debug(msg)
 
   /**
     * Configures, initializes, and starts this Mailer.

@@ -1,7 +1,7 @@
 package security.spauth
 
 import java.math.BigInteger
-import java.net.{URLDecoder, URLEncoder}
+import java.net.URLEncoder
 import java.security.SecureRandom
 import java.util.Base64
 
@@ -14,9 +14,14 @@ import play.api.http.Status
 import play.api.libs.ws.WSClient
 import util.functional.OptionT
 import util.instances.future._
+import util.syntax._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Try
+
+import akka.http.scaladsl.model.Uri
+import play.api.i18n.Lang
 
 /**
   * Manages authentication to Sponge services.
@@ -107,54 +112,40 @@ trait SingleSignOnConsumer {
     * @return               [[SpongeUser]] if successful
     */
   def authenticate(payload: String, sig: String)(isNonceValid: String => Future[Boolean])(implicit ec: ExecutionContext): OptionT[Future, SpongeUser] = {
-    Logger.info("Authenticating SSO payload...")
-    Logger.info(payload)
-    Logger.info("Signed with : " + sig)
+    Logger.debug("Authenticating SSO payload...")
+    Logger.debug(payload)
+    Logger.debug("Signed with : " + sig)
     if (!hmac_sha256(payload.getBytes(this.CharEncoding)).equals(sig)) {
-      Logger.info("<FAILURE> Could not verify payload against signature.")
+      Logger.debug("<FAILURE> Could not verify payload against signature.")
       return OptionT.none[Future, SpongeUser]
     }
 
     // decode payload
-    val decoded = URLDecoder.decode(new String(Base64.getMimeDecoder.decode(payload)), this.CharEncoding)
-    Logger.info("Decoded payload:")
-    Logger.info(decoded)
+    val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
+    Logger.debug("Decoded payload:")
+    Logger.debug(query.toString())
 
     // extract info
-    val params = decoded.split('&')
-    var nonce: String = null
-    var externalId: Int = -1
-    var username: String = null
-    var email: String = null
-    var avatarUrl: String = null
+    val info = for {
+      nonce <- query.get("nonce")
+      externalId <- query.get("external_id").flatMap(s => Try(s.toInt).toOption)
+      username <- query.get("username")
+      email <- query.get("email")
+    } yield {
+      nonce -> SpongeUser(externalId, username, email, query.get("avatar_url"), query.get("language").flatMap(Lang.get))
+    }
 
-    for (param <- params) {
-      val data = param.split('=')
-      val value = if (data.length > 1) data(1) else null
-      data(0) match {
-        case "nonce" => nonce = value
-        case "external_id" => externalId = Integer.parseInt(value)
-        case "username" => username = value
-        case "email" => email = value
-        case "avatar_url" => avatarUrl = value
-        case _ =>
+    OptionT
+      .fromOption[Future](info)
+      .semiFlatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user)}
+      .subflatMap {
+        case (false, _) =>
+          Logger.debug("<FAILURE> Invalid nonce.")
+          None
+        case (true, user) =>
+          Logger.debug("<SUCCESS> " + user)
+          Some(user)
       }
-    }
-
-    if (externalId == -1 || username == null || email == null || nonce == null) {
-      Logger.info("<FAILURE> Incomplete payload.")
-      return OptionT.none[Future, SpongeUser]
-    }
-
-    OptionT.liftF(isNonceValid(nonce)).subflatMap {
-      case false =>
-        Logger.info("<FAILURE> Invalid nonce.")
-        None
-      case true =>
-        val user = SpongeUser(externalId, username, email, Option(avatarUrl))
-        Logger.info("<SUCCESS> " + user)
-        Some(user)
-    }
   }
 
   private def hmac_sha256(data: Array[Byte]): String = {

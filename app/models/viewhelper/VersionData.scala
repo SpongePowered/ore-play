@@ -2,17 +2,16 @@ package models.viewhelper
 
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
+import db.impl.access.ProjectBase
 import models.project.{Channel, Project, Version}
+import ore.Platforms
 import ore.project.Dependency
-import ore.project.Dependency._
 import play.api.cache.AsyncCacheApi
 import slick.jdbc.JdbcBackend
+import util.instances.future._
+import util.syntax._
 
 import scala.concurrent.{ExecutionContext, Future}
-
-import db.impl.access.ProjectBase
-import util.syntax._
-import util.instances.future._
 
 case class VersionData(p: ProjectData, v: Version, c: Channel,
                        approvedBy: Option[String], // Reviewer if present
@@ -22,11 +21,12 @@ case class VersionData(p: ProjectData, v: Version, c: Channel,
 
   def fullSlug = s"""${p.fullSlug}/versions/${v.versionString}"""
 
-
+  /**
+    * Filters out platforms from the dependencies
+    * @return filtered dependencies
+    */
   def filteredDependencies: Seq[(Dependency, Option[Project])] = {
-    dependencies.filterNot(_._1.pluginId == SpongeApiId)
-      .filterNot(_._1.pluginId == MinecraftId)
-      .filterNot(_._1.pluginId == ForgeId)
+    dependencies.filterNot(d => Platforms.values.map(_.dependencyId).contains(d._1.pluginId))
   }
 }
 

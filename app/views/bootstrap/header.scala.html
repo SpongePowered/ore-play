@@ -16,7 +16,7 @@ The main header displayed on each layout.
     <div class="container">
         <!-- Left navbar -->
         <div id="sp-logo-container">
-            <a class="logo" href="@routes.Application.showHome(None, None, None, None, None)">
+            <a class="logo" href="@routes.Application.showHome(None, None, None, None, None, None)">
                 <img src="@config.sponge.get[String]("logo")">
                 <span>@messages("general.projectName")</span>
                 <i class="fa fa-fw fa-chevron-down"></i>
@@ -42,7 +42,7 @@ The main header displayed on each layout.
                     <li><a href="https://forums.spongepowered.org/c/plugins/plugin-releases">
                         <i class="fa-fw fa fa-plug"></i>@messages("general.plugins")
                     </a></li>
-                    <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None)">
+                    <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None, None)">
                         <img src="https://spongepowered.org/assets/img/icons/ore.svg" alt="" class="fa-fw fa ore-nav">@messages("general.appName") <sup>Beta</sup>
                     </a></li>
                     <li><a href="https://www.spongepowered.org/downloads">
@@ -184,7 +184,7 @@ The main header displayed on each layout.
 
                         @if(request.data.globalPerm(ViewLogs)) {
                             <li>
-                                <a href="@routes.Application.showLog(None, None, None, None)">
+                                <a href="@routes.Application.showLog(None, None, None, None, None, None, None)">
                                     <span class="pull-left">
                                     @messages("admin.log.title")
                                     </span>
@@ -195,7 +195,7 @@ The main header displayed on each layout.
 
                         <li role="separator" class="divider"></li>
                         <li>
-                            <a href="@routes.Users.logOut(Some(request.path))">
+                            <a href="@routes.Users.logOut()">
                                 <span class="pull-left">@messages("general.signout")</span>
                                 <i class="pull-right fa fa-sign-out"></i>
                             </a>

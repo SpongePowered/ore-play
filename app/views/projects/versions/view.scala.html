@@ -3,7 +3,6 @@
 @import models.viewhelper.{ScopedProjectData, VersionData}
 @import ore.OreConfig
 @import ore.permission.{EditVersions, ReviewProjects}
-@import ore.project.Dependency.{SpongeApiId, _}
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
@@ -11,10 +10,13 @@
 @import models.project.VisibilityTypes
 @import ore.permission.ReviewFlags
 @import ore.permission.ViewLogs
+@import ore.Platforms
+@import ore.PlatformCategory
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
+@appRoutes = @{controllers.routes.Application}
 
 @projects.view(v.p, sp, "#versions", noButtons = true) {
 
@@ -90,24 +92,24 @@
                             }
 
                             @if(v.v.visibility == VisibilityTypes.SoftDelete) {
-								<a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
-								title="@messages("version.delete.alreadyDeleted")">
-									<i class="fa fa-trash"></i> @messages("general.delete")
-								</a>
+                                <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
+                                title="@messages("version.delete.alreadyDeleted")">
+                                    <i class="fa fa-trash"></i> @messages("general.delete")
+                                </a>
                             } else {
-								@if(sp.perms(UploadVersions)) {
-									@if(v.p.publicVersions == 1) {
-										<a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
-										title="@messages("version.delete.cannotLast")">
-											<i class="fa fa-trash"></i> @messages("general.delete")
-										</a>
-									} else {
-										<button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
-											<i class="fa fa-trash"></i> @messages("general.delete")
-										</button>
-									}
-								}
-							}
+                                @if(sp.perms(UploadVersions)) {
+                                    @if(v.p.publicVersions == 1) {
+                                        <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
+                                        title="@messages("version.delete.cannotLast")">
+                                            <i class="fa fa-trash"></i> @messages("general.delete")
+                                        </a>
+                                    } else {
+                                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
+                                            <i class="fa fa-trash"></i> @messages("general.delete")
+                                        </button>
+                                    }
+                                }
+                            }
 
                             <div class="btn-group btn-download">
                                 <a href="@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)"
@@ -132,7 +134,7 @@
                                         <span class="caret"></span>
                                     </button>
                                     <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
-                                        <li><a href="@versionRoutes.showLog(v.p.project.ownerName, v.p.project.slug, v.v.versionString)">Log</a></li>
+                                        <li><a href="@appRoutes.showLog(None, None, None, v.v.id, None, None, None)">User Action Logs</a></li>
                                     </ul>
                                 </div>
                             }
@@ -180,31 +182,15 @@
                         </div>
                         <ul class="list-group">
 
-                            @v.v.dependencies.find(_.pluginId.equals(SpongeApiId)).map { spongeApi =>
-                                <li class="list-group-item">
-                                    <a href="https://www.spongepowered.org/downloads">
-                                        <strong>@messages("general.spongeApi")</strong>
-                                    </a>
-                                    <p class="version-string">@spongeApi.version</p>
-                                </li>
-                            }
-
-                            @v.v.dependencies.find(_.pluginId.equals(MinecraftId)).map { minecraft =>
-                                <li class="list-group-item">
-                                    <a href="https://minecraft.net">
-                                        <strong>@messages("general.minecraft")</strong>
-                                    </a>
-                                    <p class="version-string">@minecraft.version</p>
-                                </li>
-                            }
-
-                            @v.v.dependencies.find(_.pluginId.equals(ForgeId)).map { forge =>
-                                <li class="list-group-item">
-                                    <a href="http://files.minecraftforge.net">
-                                        <strong>@messages("general.forge")</strong>
-                                    </a>
-                                    <p class="version-string">@forge.version</p>
-                                </li>
+                            @for(platform <- Platforms.getPlatforms(v.dependencies.map(_._1.pluginId).toList)) {
+                                @v.v.dependencies.find(_.pluginId == platform.dependencyId).map { dependency =>
+                                    <li class="list-group-item">
+                                        <a href="@{platform.url}">
+                                            <strong>@{platform.name}</strong>
+                                        </a>
+                                        <p class="version-string">@dependency.version</p>
+                                    </li>
+                                }
                             }
 
                             @v.filteredDependencies.map { case (depend, project)=>

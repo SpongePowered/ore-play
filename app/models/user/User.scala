@@ -19,7 +19,6 @@ import ore.permission.role._
 import ore.permission.scope._
 import ore.user.Prompts.Prompt
 import ore.user.UserOwned
-import org.spongepowered.play.discourse.model.DiscourseUser
 import play.api.mvc.Request
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.SpongeUser
@@ -30,6 +29,8 @@ import util.functional.OptionT
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Breaks._
+
+import play.api.i18n.Lang
 
 /**
   * Represents a Sponge user.
@@ -53,7 +54,8 @@ case class User(override val id: Option[Int] = None,
                 private var _readPrompts: List[Prompt] = List(),
                 private var _pgpPubKey: Option[String] = None,
                 private var _lastPgpPubKeyUpdate: Option[Timestamp] = None,
-                private var _isLocked: Boolean = false)
+                private var _isLocked: Boolean = false,
+                private var _lang: Option[Lang] = None)
                 extends OreModel(id, createdAt)
                   with UserOwned
                   with ScopeSubject
@@ -249,6 +251,26 @@ case class User(override val id: Option[Int] = None,
   }
 
   /**
+    * Returns this user's current language.
+    */
+  def lang: Option[Lang] = _lang
+
+  /**
+    * Returns this user's current language, or the default language if none
+    * was configured.
+    */
+  implicit def langOrDefault: Lang = _lang.getOrElse(Lang.defaultLang)
+
+  /**
+    * Sets this user's language.
+    * @param lang The new language.
+    */
+  def setLang(lang: Option[Lang]) = {
+    this._lang = lang
+    if(isDefined) update(Language)
+  }
+
+  /**
     * Returns this user's global [[RoleType]]s.
     *
     * @return Global RoleTypes
@@ -358,25 +380,6 @@ case class User(override val id: Option[Int] = None,
   }
 
   /**
-    * Fills the mutable field in this User with the specified User's
-    * non-missing mutable fields.
-    *
-    * @param user User to fill with
-    */
-  def fill(user: DiscourseUser): Unit = {
-    if (user != null) {
-      this.setUsername(user.username)
-      user.createdAt.foreach(this.setJoinDate)
-      user.email.foreach(this.setEmail)
-      user.fullName.foreach(this.setFullName)
-      user.avatarTemplate.foreach(this.setAvatarUrl)
-      this.setGlobalRoles(user.groups
-        .flatMap(group => RoleTypes.values.find(_.roleId == group.id).map(_.asInstanceOf[RoleType]))
-        .toSet[RoleType])
-    }
-  }
-
-  /**
     * Fills this User with the information SpongeUser provides.
     *
     * @param user Sponge User
@@ -385,6 +388,7 @@ case class User(override val id: Option[Int] = None,
     if (user != null) {
       this.setUsername(user.username)
       this.setEmail(user.email)
+      this.setLang(user.lang)
       user.avatarUrl.map { url =>
         if (!url.startsWith("http")) {
           val baseUrl = config.security.get[String]("api.url")
@@ -393,25 +397,6 @@ case class User(override val id: Option[Int] = None,
           url
       }.foreach(this.setAvatarUrl)
     }
-  }
-
-  /**
-    * Pulls information from the forums and updates this User.
-    *
-    * @return This user
-    */
-  def pullForumData()(implicit ec: ExecutionContext): Future[Unit] = {
-    // Exceptions are ignored
-    OptionT(this.forums.fetchUser(this.name).recover{case _: Exception => None}).cata((), fill)
-  }
-
-  /**
-    * Pulls information from the forums and updates this User.
-    *
-    * @return This user
-    */
-  def pullSpongeData()(implicit ec: ExecutionContext): Future[Unit] = {
-    this.auth.getUser(this.name).cata((), fill)
   }
 
   /**
@@ -593,19 +578,6 @@ case class User(override val id: Option[Int] = None,
 }
 
 object User {
-
-  /**
-    * Creates a new [[User]] from the specified [[DiscourseUser]].
-    *
-    * @param toConvert User to convert
-    * @return          Ore User
-    */
-  @deprecated("use fromSponge instead", "Oct 14, 2016, 1:45 PM PDT")
-  def fromDiscourse(toConvert: DiscourseUser)(implicit ec: ExecutionContext): User = {
-    val user = User()
-    user.fill(toConvert)
-    user.copy(id = Some(toConvert.id))
-  }
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].

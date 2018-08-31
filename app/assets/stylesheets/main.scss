@@ -548,3 +548,25 @@ select.form-control, input.form-control {
 .no-padding {
   padding: 0;
 }
+
+.filter-user {
+  background-color: rgba(250, 250, 10, 0.4);
+}
+.filter-project {
+  background-color: rgba(10, 10, 250, 0.4);
+}
+.filter-version {
+  background-color: rgba(10, 250, 10, 0.4);
+}
+.filter-page {
+  background-color: rgba(250, 10, 250, 0.4);
+}
+.filter-action {
+  background-color: rgba(10, 250, 250, 0.4);
+}
+.filter-subject {
+  background-color: rgba(175, 150, 250, 0.4);
+}
+.table-super-condensed td {
+  padding: 2px !important;
+}

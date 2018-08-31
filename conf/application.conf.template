@@ -74,8 +74,6 @@ security {
 
 # Ore configuration
 ore {
-    date-format =  "MMM dd, yyyy"
-    date-and-time-format = "MMM dd, yyyy HH:mm"
     debug       =  false
     debug-level =  3
     # Used in /admin/seed route. Run "gradle build" in OreTestPlugin before using that route
@@ -118,7 +116,6 @@ ore {
         max-tagline-len = 100
         author-page-size = 25
         project-page-size = 5
-        syncRate = 10800000
     }
 
     orgs {
@@ -181,15 +178,18 @@ slick.dbs.default {
 
 # Discourse SSO
 discourse {
-    baseUrl           =   "https://forums.spongepowered.org"
-    embed.retryRate   =   60000ms
-    embed.categorySlug = ore
+    baseUrl            =   "https://forums.spongepowered.org"
+    retryRate          =   60000ms
+    categoryDefault    =   -1
+    categoryDefault    =   ${?DISCOURSE_CATEGORY_OPEN}
+    categoryDeleted    =   -1
+    categoryDeleted    =   ${?DISCOURSE_CATEGORY_DELETED}
 
     api {
         enabled       =   true
         key           =   "changeme"
         key           =   ${?DISCOURSE_API_KEY}
-        admin         =   windy
+        admin         =   system
         timeout       =   10000ms
     }
 }
@@ -203,24 +203,19 @@ sponge {
     # Sponsors from high to low donation amounts
     sponsors = [
         {
-          "name": "MC Pro Hosting",
-          "image": "images/sponsors/mcprohosting.png",
-          "link": "https://mcprohosting.com/?promo=Sponge"
-        },
-        {
           "name": "Enjin",
           "image": "images/sponsors/enjin.png",
           "link": "https://www.enjin.com/"
         },
         {
-          "name": "Negafinity",
-          "image": "images/sponsors/negafinity.png",
-          "link": "https://www.negafinity.com/"
-        },
-        {
           "name": "Apex Hosting",
           "image": "images/sponsors/apexhosting.png",
           "link": "https://apexminecrafthosting.com/"
+        },
+        {
+          "name": "MC Server Hosting",
+          "image": "images/sponsors/mcserverhosting.png",
+          "link": "https://mcserverhosting.net/?ref=sponge"
         },
         {
           "name": "CreeperHost",

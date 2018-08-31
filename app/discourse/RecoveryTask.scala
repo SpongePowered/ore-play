@@ -28,19 +28,19 @@ class RecoveryTask(scheduler: Scheduler,
   }
 
   override def run(): Unit = {
-    Logger.info("Running Discourse recovery task...")
+    Logger.debug("Running Discourse recovery task...")
 
     this.projects.filter(_.topicId === -1).foreach { toCreate =>
-      Logger.info(s"Creating ${toCreate.size} topics...")
+      Logger.debug(s"Creating ${toCreate.size} topics...")
       toCreate.foreach(this.api.createProjectTopic)
     }
 
     this.projects.filter(_.isTopicDirty).foreach { toUpdate =>
-      Logger.info(s"Updating ${toUpdate.size} topics...")
+      Logger.debug(s"Updating ${toUpdate.size} topics...")
       toUpdate.foreach(this.api.updateProjectTopic)
     }
 
-    Logger.info("Done")
+    Logger.debug("Done")
     // TODO: We need to keep deleted projects in case the topic cannot be deleted
   }
 

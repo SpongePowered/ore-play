@@ -21,7 +21,7 @@ apply plugin: 'signing'
 //    id 'org.spongepowered.plugin' version '0.8.2-SNAPSHOT'
 //}
 
-group = 'se.walkercrou'
+group = 'org.spongepowered.ore'
 version = '1.0.1'
 description = 'Ore test plugin'
 
@@ -60,5 +60,5 @@ oreDeploy {
 }
 
 dependencies {
-    compile 'org.spongepowered:spongeapi:6.0.0-SNAPSHOT'
+    compile 'org.spongepowered:spongeapi:7.0.0'
 }

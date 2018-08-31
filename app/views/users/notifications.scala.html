@@ -22,6 +22,14 @@
     }
 }
 
+@formatNotification(notification: Notification) = @{
+    notification.messageArgs match {
+        case head :: Nil => Html(messages(head))
+        case head :: tail => Html(messages(head, tail: _*))
+        case Nil => throw new IllegalStateException("Got notification with no arguments")
+    }
+}
+
 @bootstrap.layout(messages("notification.plural")) {
 
     <script type="text/javascript" src="@routes.Assets.at("javascripts/notifications.js")"></script>
@@ -73,7 +81,7 @@
                             data-id="@notification.id.get">
 
                                 @userAvatar(Some(origin.name), origin.avatarUrl, clazz = "user-avatar-s")
-                                @notification.message
+                                @formatNotification(notification)
 
                                 @if(!notification.isRead) {
                                     <i class="btn-mark-read minor pull-right fa fa-lg fa-check"></i>

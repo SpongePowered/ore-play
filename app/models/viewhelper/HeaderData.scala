@@ -4,7 +4,7 @@ import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.OrganizationBase
-import db.impl.{ProjectTableMain, SessionTable, UserTable, VersionTable}
+import db.impl._
 import models.project.VisibilityTypes
 import models.user.User
 import ore.permission._
@@ -116,13 +116,25 @@ object HeaderData {
 
   }
 
+  private def flagQueue()(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) : Future[Boolean] = {
+    val tableFlags = TableQuery[FlagTable]
+
+    val query = for {
+      v <- tableFlags if v.isResolved === false
+    } yield {
+      v
+    }
+
+    db.run(query.exists.result)
+  }
+
   private def getHeaderData(user: User)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) = {
 
     perms(Some(user)).flatMap { perms =>
       (
         user.hasNotice,
         user.notifications.filterNot(_.read).map(_.nonEmpty),
-        user.flags.filterNot(_.isResolved).map(_.nonEmpty),
+        flagQueue(),
         projectApproval(user),
         if (perms(ReviewProjects)) reviewQueue() else Future.successful(false)
       ).parMapN { (hasNotice, unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>

@@ -10,7 +10,7 @@ import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
 import mail.{EmailFactory, Mailer}
-import models.user.{SignOn, User}
+import models.user.{LoggedAction, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.permission.ReviewProjects
 import ore.rest.OreWrites
@@ -84,8 +84,6 @@ class Users @Inject()(fakeUser: FakeUser,
         val fromSponge = User.fromSponge(spongeUser)
         for {
           user <- this.users.getOrCreate(fromSponge)
-          _ <- user.pullForumData()
-          _ <- user.pullSpongeData()
           result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
         } yield result
       }.getOrElse(Redirect(ShowHome).withError("error.loginFailed"))
@@ -120,8 +118,8 @@ class Users @Inject()(fakeUser: FakeUser,
     *
     * @return Home page
     */
-  def logOut(returnPath: Option[String]) = Action { implicit request =>
-    Redirect(this.baseUrl + returnPath.getOrElse(request.path)).clearingSession().flashing("noRedirect" -> "true")
+  def logOut() = Action { implicit request =>
+    Redirect(config.security.get[String]("api.url") + "/accounts/logout/").clearingSession().flashing("noRedirect" -> "true")
   }
 
   /**
@@ -153,7 +151,7 @@ class Users @Inject()(fakeUser: FakeUser,
           (p, user, v, tags)
         }
         val starredData = starred zip starredRv
-        Ok(views.users.projects(userData.get, orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))), data, starredData, p))
+        Ok(views.users.projects(userData.get, orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))), data, starredData.take(5), p))
       }
     }.getOrElse(notFound)
   }
@@ -192,8 +190,9 @@ class Users @Inject()(fakeUser: FakeUser,
       tagline <- bindFormEitherT[Future](this.forms.UserTagline)(_ => BadRequest)
     } yield {
       if (tagline.length > maxLen) {
-        Redirect(ShowUser(user)).flashing("error" -> this.messagesApi("error.tagline.tooLong", maxLen))
+        Redirect(ShowUser(user)).flashing("error" -> request.messages.apply("error.tagline.tooLong", maxLen))
       } else {
+        UserActionLogger.log(request, LoggedAction.UserTaglineChanged, user.id.get, tagline, user.tagline.getOrElse("null"))
         user.setTagline(tagline)
         Redirect(ShowUser(user))
       }
@@ -222,6 +221,7 @@ class Users @Inject()(fakeUser: FakeUser,
 
         // Send email notification
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
+        UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id.get, "", "")
 
         Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
       }
@@ -236,13 +236,14 @@ class Users @Inject()(fakeUser: FakeUser,
     */
   def deletePgpPublicKey(username: String, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
     VerifiedAction(username, sso, sig) { implicit request =>
-      Logger.info("Deleting public key for " + username)
+      Logger.debug("Deleting public key for " + username)
       val user = request.user
       if (user.pgpPubKey.isEmpty)
         BadRequest
       else {
         user.setPgpPubKey(null)
         user.setLastPgpPubKeyUpdate(this.service.theTime)
+        UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id.get, "", "")
         Redirect(ShowUser(username)).flashing("pgp-updated" -> "true")
       }
     }

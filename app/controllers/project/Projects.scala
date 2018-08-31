@@ -30,6 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.{ProjectMembersTable, ProjectRoleTable}
 import models.user.role.ProjectRole
+import models.viewhelper.ScopedOrganizationData
 import ore.project.ProjectMember
 import ore.user.MembershipDossier
 import play.api.mvc.{Action, AnyContent, Result}
@@ -97,10 +98,15 @@ class Projects @Inject()(stats: StatTracker,
           case Some(uploadData) =>
             try {
               val plugin = this.factory.processPluginUpload(uploadData, user)
-              val project = this.factory.startProject(plugin)
-              project.cache()
-              val model = project.underlying
-              Redirect(self.showCreatorWithMeta(model.ownerName, model.slug))
+              plugin match {
+                case Right(pluginFile) =>
+                  val project = this.factory.startProject(pluginFile)
+                  project.cache()
+                  val model = project.underlying
+                  Redirect(self.showCreatorWithMeta(model.ownerName, model.slug))
+                case Left(errorMessage) =>
+                  Redirect(self.showCreator()).withError(errorMessage)
+              }
             } catch {
               case e: InvalidPluginFileException =>
                 Redirect(self.showCreator()).withErrors(Option(e.getMessage).toList)
@@ -156,13 +162,13 @@ class Projects @Inject()(stats: StatTracker,
                 this.cache.set(namespace + '/' + version.underlying.versionString, version)
                 implicit val currentUser: User = request.user
 
-                val authors = pendingProject.file.meta.get.getAuthors.asScala
+                val authors = pendingProject.file.data.get.authors.toList
                 (
                   Future.sequence(authors.filterNot(_.equals(currentUser.username)).map(this.users.withName(_).value)),
-                  this.forums.countUsers(authors.toList),
+                  this.forums.countUsers(authors),
                   pendingProject.underlying.owner.user
                 ).parMapN { (users, registered, owner) =>
-                  Ok(views.invite(owner, pendingProject, users.flatten.toList, registered))
+                  Ok(views.invite(owner, pendingProject, users.flatten, registered))
                 }
               }
             )
@@ -432,6 +438,53 @@ class Projects @Inject()(stats: StatTracker,
   }
 
   /**
+    * Sets the status of a pending Project invite on behalf of the Organization
+    *
+    * @param id     Invite ID
+    * @param status Invite status
+    * @param behalf Behalf User
+    * @return       NotFound if invite doesn't exist, Ok otherwise
+    */
+  def setInviteStatusOnBehalf(id: Int, status: String, behalf: String): Action[AnyContent] = Authenticated.async { implicit request =>
+    val user = request.user
+    val res = for {
+      orga <- organizations.withName(behalf)
+      orgaUser <- users.withName(behalf)
+      role <- orgaUser.projectRoles.get(id)
+      scopedData <- OptionT.liftF(ScopedOrganizationData.of(Some(user), orga))
+      if scopedData.permissions.getOrElse(EditSettings, false)
+      project <- OptionT.liftF(role.project)
+    } yield {
+      val dossier: MembershipDossier {
+        type MembersTable = ProjectMembersTable
+
+        type MemberType = ProjectMember
+
+        type RoleTable = ProjectRoleTable
+
+        type ModelType = Project
+
+        type RoleType = ProjectRole
+      } = project.memberships
+      status match {
+        case STATUS_DECLINE =>
+          dossier.removeRole(role)
+          Ok
+        case STATUS_ACCEPT =>
+          role.setAccepted(true)
+          Ok
+        case STATUS_UNACCEPT =>
+          role.setAccepted(false)
+          Ok
+        case _ =>
+          BadRequest
+      }
+    }
+
+    res.getOrElse(NotFound)
+  }
+
+  /**
     * Shows the project manager or "settings" pane.
     *
     * @param author Project owner
@@ -517,7 +570,7 @@ class Projects @Inject()(stats: StatTracker,
       val project = request.data.project
       project.memberships.removeMember(user)
       UserActionLogger.log(request.request, LoggedAction.ProjectMemberRemoved, project.id.getOrElse(-1),
-        s"'$user.name' is not a member of ${project.ownerName}/${project.name}", s"'$user.name' is a member of ${project.ownerName}/${project.name}")
+        s"'${user.name}' is not a member of ${project.ownerName}/${project.name}", s"'${user.name}' is a member of ${project.ownerName}/${project.name}")
       Redirect(self.showSettings(author, slug))
     }
 
@@ -586,14 +639,15 @@ class Projects @Inject()(stats: StatTracker,
       val newVisibility = VisibilityTypes.withId(visibility)
       request.user can newVisibility.permission in GlobalScope flatMap { perm =>
         if (perm) {
-          val oldVisibility = request.data.project.visibility;
-
           val change = if (newVisibility.showModal) {
             val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
             request.data.project.setVisibility(newVisibility, comment, request.user.id.get)
           } else {
             request.data.project.setVisibility(newVisibility, "", request.user.id.get)
           }
+
+          this.forums.changeTopicVisibility(request.data.project, VisibilityTypes.isPublic(newVisibility))
+
           UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, request.data.project.id.getOrElse(-1), newVisibility.nameKey, VisibilityTypes.NeedsChanges.nameKey)
           change.map(_ => Ok)
         } else {
@@ -658,8 +712,8 @@ class Projects @Inject()(stats: StatTracker,
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
       getProject(author, slug).map { project =>
         this.projects.delete(project)
-        UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.getOrElse(-1), "null", project.visibility.nameKey)
-        Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", project.name))
+        UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.getOrElse(-1), "deleted", project.visibility.nameKey)
+        Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name))
       }.merge
     }
   }
@@ -674,9 +728,13 @@ class Projects @Inject()(stats: StatTracker,
   def softDelete(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).async { implicit request =>
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+    val oldVisibility = data.project.visibility.nameKey
     data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
-      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.SoftDelete.nameKey, data.project.visibility.nameKey)
-      Redirect(ShowHome).withSuccess(this.messagesApi("project.deleted", data.project.name))
+
+      this.forums.changeTopicVisibility(data.project, false)
+
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), data.project.visibility.nameKey, oldVisibility)
+      Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", data.project.name))
     }
   }
 

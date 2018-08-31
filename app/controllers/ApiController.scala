@@ -3,16 +3,14 @@ package controllers
 import java.util.{Base64, UUID}
 
 import akka.http.scaladsl.model.Uri
-import javax.inject.Inject
 import controllers.sugar.Bakery
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectApiKeyTable
 import form.OreForms
 import javax.inject.Inject
-
 import models.api.ProjectApiKey
-import models.user.User
+import models.user.{LoggedAction, User, UserActionLogger}
 import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.permission.role.RoleTypes
 import ore.permission.role.RoleTypes.RoleType
@@ -22,7 +20,7 @@ import ore.rest.ProjectApiKeyTypes._
 import ore.rest.{OreRestfulApi, OreWrites}
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, Messages, MessagesApi}
 import util.StatusZ
 import util.functional.{EitherT, OptionT, Id}
 import util.instances.future._
@@ -58,6 +56,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
   val files = new ProjectFiles(this.env)
   val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+  val Logger = play.api.Logger("SSO")
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)
 
@@ -104,7 +103,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
             value = UUID.randomUUID().toString.replace("-", "")))
         )
       } yield Created(Json.toJson(pak))
-
+      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, projectId, s"${request.user.name} created a new ApiKey", "" )
       res.getOrElse(BadRequest)
     }
 
@@ -117,7 +116,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
         key.remove()
         Ok
       }
-
+      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.get, s"${request.user.name} removed an ApiKey", "")
       res.getOrElse(BadRequest)
     }
 
@@ -173,7 +172,8 @@ final class ApiController @Inject()(api: OreRestfulApi,
     }
   }
 
-  private def error(key: String, error: String) = Json.obj("errors" -> Map(key -> List(this.messagesApi(error))))
+  private def error(key: String, error: String)(implicit messages: Messages) =
+    Json.obj("errors" -> Map(key -> List(messages(error))))
 
   def deployVersion(version: String, pluginId: String, name: String): Action[AnyContent] = ProjectAction(pluginId).async { implicit request =>
     version match {
@@ -306,6 +306,8 @@ final class ApiController @Inject()(api: OreRestfulApi,
     val confApiKey = this.config.security.get[String]("sso.apikey")
     val confSecret = this.config.security.get[String]("sso.secret")
 
+    Logger.debug("Sync Request received")
+
     bindFormEitherT[Future](this.forms.SyncSso)(hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
       .filterOrElse(_._3 == confApiKey, BadRequest("API Key not valid")) //_3 is apiKey
       .filterOrElse(
@@ -313,8 +315,12 @@ final class ApiController @Inject()(api: OreRestfulApi,
         BadRequest("Signature not matched")
       )
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
-      .semiFlatMap(q => this.users.get(q.get("external_id").get.toInt).value.tupleLeft(q))
+      .semiFlatMap{q =>
+        Logger.debug("Sync Payload: " + q)
+        this.users.get(q.get("external_id").get.toInt).value.tupleLeft(q)
+      }
       .map { case (query, optUser) =>
+        Logger.debug("Sync user found: " + optUser.isDefined)
         optUser.foreach { user =>
           val email = query.get("email")
           val username = query.get("username")

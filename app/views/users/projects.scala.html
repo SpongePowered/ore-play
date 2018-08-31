@@ -8,10 +8,19 @@
 @import ore.OreConfig
 @import views.html.projects.{list => projectList}
 @import views.html.utils.userAvatar
+@import ore.permission.role.RoleTypes
+@import ore.permission.EditSettings
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
-@users.view(u) {
+@canEditOrgSettings = @{
+    u.isOrga &&
+    o.exists { case (orgData, scopedData) =>
+        scopedData.permissions.getOrElse(EditSettings, false)
+    }
+}
+
+@users.view(u, o) {
 
     <div class="row">
         <div class="col-md-8">
@@ -24,8 +33,38 @@
         </div>
 
         <div class="col-md-4">
-            @if(!u.isOrga) {
+            @if(u.isOrga && o.isDefined && canEditOrgSettings) {
+                <script type="text/javascript" src="@routes.Assets.at("javascripts/orgInvites.js")"></script>
+
                 <div class="panel-stars panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">@messages("project.manager")</h3>
+                    </div>
+                    <table class="table panel-body">
+                        <tbody>
+                            @o.get._1.projectRoles.map { case (role, project) =>
+                            <tr>
+                                <td>
+                                    <a href="@projectRoutes.Projects.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a>
+                                    <span class="minor">@role.roleType.title</span>
+                                </td>
+                                <td>
+                                    @if(role.roleType != RoleTypes.ProjectOwner) {
+                                        @if(role.isAccepted) {
+                                            <button class="btn btn-sm btn-danger pull-right btn-invite" data-invite-id="@role.id" data-invite-behalf="@u.user.username" data-invite-accepted="decline">Leave</button>
+                                        } else {
+                                            <button class="btn btn-sm btn-info pull-right btn-invite" data-invite-id="@role.id" data-invite-behalf="@u.user.username" data-invite-accepted="accept">Join</button>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if(!u.isOrga) {
+                <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title"> @messages("org.plural")</h3>
                     </div>

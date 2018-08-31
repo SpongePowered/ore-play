@@ -95,19 +95,6 @@ function slugify(name) {
 
 /*
  * ==================================================
- * =               Google Analytics                 =
- * ==================================================
- */
-(function(S,p,o,n,g,i,e){S['GoogleAnalyticsObject']=g;S[g]=S[g]||function(){
-        (S[g].q=S[g].q||[]).push(arguments)},S[g].l=1*new Date();i=p.createElement(o),
-    e=p.getElementsByTagName(o)[0];i.async=1;i.src=n;e.parentNode.insertBefore(i,e)
-})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-ga('create', 'UA-59476017-3', 'auto');
-ga('send', 'pageview');
-
-/*
- * ==================================================
  * =                   Doc ready                    =
  * ==================================================
  */

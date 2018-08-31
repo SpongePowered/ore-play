@@ -26,7 +26,7 @@ import ore.project.io.{DownloadTypes, InvalidPluginFileException, PluginFile, Pl
 import ore.{OreConfig, OreEnv, StatTracker}
 import play.api.Logger
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, MessagesApi}
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, Request, Result}
 import play.filters.csrf.CSRF
@@ -234,8 +234,7 @@ class Versions @Inject()(stats: StatTracker,
         this.factory
           .processSubsequentPluginUpload(data, user, request.data.project)
           .leftMap(err => Redirect(call).withError(err))
-      }
-      catch {
+      } catch {
         case e: InvalidPluginFileException =>
           EitherT.leftT[Future, PendingVersion](Redirect(call).withErrors(Option(e.getMessage).toList))
       }
@@ -518,6 +517,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug).async { request =>
       val dlType = downloadType.flatMap(i => DownloadTypes.values.find(_.id == i)).getOrElse(DownloadTypes.UploadedFile)
       implicit val r: OreRequest[AnyContent] = request.request
+      implicit val lang: Lang = request.lang
       val project = request.data.project
       getVersion(project, target)
         .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))

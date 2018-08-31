@@ -45,7 +45,7 @@ abstract class OreBaseController(implicit val env: OreEnv,
   implicit override val users: UserBase = this.service.getModelBase(classOf[UserBase])
   implicit override val projects: ProjectBase = this.service.getModelBase(classOf[ProjectBase])
   implicit override val organizations: OrganizationBase = this.service.getModelBase(classOf[OrganizationBase])
-  implicit val lang: Lang = Lang.defaultLang
+
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn](classOf[SignOn])
 
   override def notFound(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())

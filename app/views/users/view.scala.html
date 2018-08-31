@@ -9,7 +9,16 @@
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.{alert, modal, prompt, userAvatar}
-@(u: UserData)(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import models.viewhelper.OrganizationData
+@import models.viewhelper.ScopedOrganizationData
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)])(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+
+@canEditOrgSettings = @{
+    u.isOrga &&
+    o.exists { case (orgData, scopedData) =>
+        scopedData.permissions.getOrElse(EditSettings, false)
+    }
+}
 
 @bootstrap.layout(u.user.username) {
 
@@ -23,7 +32,7 @@
         @flash.get("pgp-updated").map { updated =>
           <script nonce="@nonce">
               $(function() {
-                  $('#modal-pgp').modal('show');
+                  $('#modal-pgp-edit').modal('show');
               });
           </script>
         }
@@ -44,13 +53,13 @@
                     @userAvatar(
                         userName = Some(u.user.name),
                         avatarUrl = u.user.avatarUrl,
-                        clazz = "user-avatar-md" + (if (u.orgaPerm.getOrElse(EditSettings, false)) " organization-avatar" else ""),
+                        clazz = "user-avatar-md" + (if (canEditOrgSettings) " organization-avatar" else ""),
                         href = "#",
                         attr = if (u.orgaPerm.getOrElse(EditSettings, false)) Map(
                             "data-toggle" -> "modal",
                             "data-target" -> "#modal-avatar") else Map())
 
-                    @if(u.orgaPerm.getOrElse(EditSettings, false)) {
+                    @if(canEditOrgSettings) {
                         <div class="edit-avatar" style="display: none;">
                             <i class="fa fa-edit"></i> @messages("user.editAvatar")
                         </div>
@@ -113,12 +122,12 @@
                             <i class="minor">
                                 @if(u.user.tagline.isDefined) {
                                     @u.user.tagline.get
-                                } else { @if(u.isCurrent) {
+                                } else { @if(u.isCurrent || canEditOrgSettings) {
                                     Add a tagline
                                 }}
                             </i>
 
-                            @if(u.isCurrent) {
+                            @if(u.isCurrent || canEditOrgSettings) {
                                 <a href="#" data-toggle="modal" data-target="#modal-tagline">
                                     <i class="fa fa-edit"></i>
                                 </a>
@@ -164,7 +173,7 @@
 
                     <h4 class="modal-title">
                         @messages("user.pgp.pubKey")
-                        <a href="https://docs.spongepowered.org/ore/publish" data-toggle="tooltip"
+                        <a href="https://docs.spongepowered.org/stable/en/ore/publish.html" data-toggle="tooltip"
                            data-placement="right" title="@messages("general.learnMore")">
                             <i class="fa fa-question-circle"></i>
                         </a>

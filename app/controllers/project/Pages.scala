@@ -1,5 +1,7 @@
 package controllers.project
 
+import java.nio.charset.StandardCharsets
+
 import controllers.OreBaseController
 import controllers.sugar.{Bakery, Requests}
 import db.impl.OrePostgresDriver.api._
@@ -17,9 +19,10 @@ import util.StringUtils._
 import views.html.projects.{pages => views}
 import util.instances.future._
 import util.syntax._
-import scala.concurrent.{ExecutionContext, Future}
 
+import scala.concurrent.{ExecutionContext, Future}
 import play.api.mvc.{Action, AnyContent}
+import play.utils.UriEncoding
 
 /**
   * Controller for handling Page related actions.
@@ -49,8 +52,9 @@ class Pages @Inject()(forms: OreForms,
     */
   def withPage(project: Project, page: String): Future[(Option[Page], Boolean)] = {
     //TODO: Can the return type here be changed to OptionT[Future (Page, Boolean)]?
-    val parts = page.split("/")
-    if (parts.size == 2) {
+    val parts = page.split("/").map(page => UriEncoding.decodePathSegment(page, StandardCharsets.UTF_8))
+
+    if (parts.length == 2) {
       project.pages
         .find(equalsIgnoreCase(_.slug, parts(0)))
         .subflatMap(_.id)
@@ -169,7 +173,7 @@ class Pages @Inject()(forms: OreForms,
                 if (pageData.content.isDefined) {
                   val oldPage = createdPage.contents
                   val newPage = pageData.content.get
-                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, data.project.id.getOrElse(-1), newPage, oldPage)
+                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, createdPage.id.getOrElse(-1), newPage, oldPage)
                   createdPage.setContents(newPage)
                 } else Future.successful(createdPage)
               } map { _ =>

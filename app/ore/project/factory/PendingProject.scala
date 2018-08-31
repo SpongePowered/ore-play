@@ -37,10 +37,15 @@ case class PendingProject(projects: ProjectBase,
     * The first [[PendingVersion]] for this PendingProject.
     */
   val pendingVersion: PendingVersion = {
-    val version = this.factory.startVersion(this.file, this.underlying, this.settings, this.channelName)
-    val model = version.underlying
-    version.cache()
-    version
+    val result = this.factory.startVersion(this.file, this.underlying, this.settings, this.channelName)
+    result match {
+      case Right (version) =>
+        val model = version.underlying
+        version.cache()
+        version
+        // TODO: not this crap
+      case Left (errorMessage) => throw new IllegalArgumentException(errorMessage)
+    }
   }
 
   def complete()(implicit ec: ExecutionContext): Future[(Project, Version)] = {

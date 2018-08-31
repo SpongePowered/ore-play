@@ -11,9 +11,9 @@
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("review.title")) {
+@bootstrap.layout(messages("review.title", project.name, version.name)) {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.at("javascripts/review.js")"></script>
-    <script nonce="@nonce">versionPath = '@project.ownerName/@project.slug/versions/@version.name'</script>
+    <script nonce="@nonce">versionPath = '@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)'</script>
 
     <div class="container" style="margin-top: 90px">
         <div class="row">
@@ -30,6 +30,7 @@
                 @if(!version.isReviewed) {
                     <div class="pull-right">
                         <span class="btn-group-sm">
+                            <a href="#" class="btn btn-info btn-skip-review">@if(version.isNonReviewed == false) { Remove from queue } else { Add to queue }</a>
                             <a href="@projectRoutes.show(project.ownerName, project.slug)" class="btn btn-info">Project Page</a>
                             <a href="@versionRoutes.downloadJar(project.ownerName, project.slug, version.versionString, None)" class="btn btn-info">Download File</a>
                         </span>

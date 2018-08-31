@@ -65,6 +65,7 @@ $(function() {
                 $('#update-icon').val('true');
                 input.val('');
                 updateButton();
+                $('.setting-icon').prepend('<div class="alert alert-info">Don\'t forget to save changes!</div>');
             }
         });
     });
@@ -77,6 +78,8 @@ $(function() {
         $.ajax({
             url: url + '/reset',
             type: 'post',
+            cache: false,
+            contentType: 'application/json',
             complete: function() {
                 reset.empty().text('Reset');
             },
@@ -84,6 +87,7 @@ $(function() {
                 preview.css('background-image', 'url(' + url + ')');
                 input.val('');
                 updateButton();
+                $('.setting-icon .alert').detach();
             }
         });
     });

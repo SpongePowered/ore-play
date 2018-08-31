@@ -1,7 +1,11 @@
 package models.viewhelper
 
 import db.ModelService
-import models.user.role.OrganizationRole
+import db.impl.OrePostgresDriver.api._
+import db.impl._
+import db.impl.access.UserBase
+import models.project.Project
+import models.user.role.{OrganizationRole, ProjectRole}
 import models.user.{Organization, User}
 import ore.organization.OrganizationMember
 import ore.permission._
@@ -9,14 +13,14 @@ import play.api.cache.AsyncCacheApi
 import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ExecutionContext, Future}
-
-import db.impl.access.UserBase
+import slick.lifted.TableQuery
 import util.functional.OptionT
 import util.instances.future._
 
 case class OrganizationData(joinable: Organization,
                             ownerRole: OrganizationRole,
                             members: Seq[(OrganizationRole, User)], // TODO sorted/reverse
+                            projectRoles: Seq[(ProjectRole, Project)]
                             )
   extends JoinableData[OrganizationRole, OrganizationMember, Organization] {
 
@@ -37,9 +41,21 @@ object OrganizationData {
       members <- orga.memberships.members
       memberRoles <- Future.sequence(members.map(_.headRole))
       memberUser <- Future.sequence(memberRoles.map(_.user))
+      projectRoles <- db.run(queryProjectRoles(orga.id.get).result)
     } yield {
       val members = memberRoles zip memberUser
-      OrganizationData(orga, role, members.toSeq)
+      OrganizationData(orga, role, members.toSeq, projectRoles)
+    }
+  }
+
+  private def queryProjectRoles(userId: Int) = {
+    val tableProjectRole = TableQuery[ProjectRoleTable]
+    val tableProject = TableQuery[ProjectTableMain]
+
+    for {
+      (role, project) <- tableProjectRole.join(tableProject).on(_.projectId === _.id) if role.userId === userId
+    } yield {
+      (role, project)
     }
   }
 

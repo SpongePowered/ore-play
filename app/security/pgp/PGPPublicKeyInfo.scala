@@ -36,7 +36,7 @@ object PGPPublicKeyInfo {
     * @return [[PGPPublicKeyInfo]] instance
     */
   def decode(raw: String): Option[PGPPublicKeyInfo] = {
-    Logger.info(s"Decoding public key:\n$raw\n")
+    Logger.debug(s"Decoding public key:\n$raw\n")
     var in: InputStream = null
     try {
       in = PGPUtil.getDecoderStream(new ByteArrayInputStream(raw.getBytes))
@@ -46,7 +46,7 @@ object PGPPublicKeyInfo {
       var masterKey: PGPPublicKeyInfo  = null
       while (keyRingIter.hasNext) {
         keyRingNum += 1
-        Logger.info("Key ring: " + keyRingNum)
+        Logger.debug("Key ring: " + keyRingNum)
         val keyRing = keyRingIter.next()
         val keyIter = keyRing.iterator()
         var keyNum = 0
@@ -64,32 +64,32 @@ object PGPPublicKeyInfo {
           else
             None
 
-          Logger.info("Key: " + keyNum)
-          Logger.info("ID: " + hexId)
-          Logger.info("Created at: " + createdAt)
-          Logger.info("Revoked: " + isRevoked)
-          Logger.info("Encryption: " + isEncryption)
-          Logger.info("Master: " + isMaster)
-          Logger.info("Expiration: " + expirationDate.getOrElse("None"))
+          Logger.debug("Key: " + keyNum)
+          Logger.debug("ID: " + hexId)
+          Logger.debug("Created at: " + createdAt)
+          Logger.debug("Revoked: " + isRevoked)
+          Logger.debug("Encryption: " + isEncryption)
+          Logger.debug("Master: " + isMaster)
+          Logger.debug("Expiration: " + expirationDate.getOrElse("None"))
 
-          Logger.info("Users:")
+          Logger.debug("Users:")
           val userIter = key.getUserIDs
           var firstUser: String = null
           var userNum = 0
           while (userIter.hasNext) {
             val user = userIter.next()
-            Logger.info("\t" + user)
+            Logger.debug("\t" + user)
             if (userNum == 0)
               firstUser = user.toString
             userNum += 1
           }
 
-          Logger.info("Signatures:")
+          Logger.debug("Signatures:")
           val sigIter = key.getSignatures
           while (sigIter.hasNext) {
             val sig: PGPSignature = sigIter.next().asInstanceOf[PGPSignature]
-            Logger.info("\tCreated at: " + sig.getCreationTime)
-            Logger.info("\tCertification: " + sig.isCertification)
+            Logger.debug("\tCreated at: " + sig.getCreationTime)
+            Logger.debug("\tCertification: " + sig.isCertification)
           }
 
           if (isMaster) {
@@ -100,8 +100,8 @@ object PGPPublicKeyInfo {
             val userName = firstUser.substring(0, emailIndexStart).trim()
             val email = firstUser.substring(emailIndexStart + 1, emailIndexEnd)
 
-            Logger.info("User name: " + userName)
-            Logger.info("Email: " + email)
+            Logger.debug("User name: " + userName)
+            Logger.debug("Email: " + email)
 
             if (isRevoked)
               throw new IllegalStateException("Key is revoked?")

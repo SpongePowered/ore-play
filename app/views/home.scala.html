@@ -16,8 +16,9 @@ sorted according to different criteria.
 @import views.html.utils.alert
 
 @import scala.util.Random
+@import ore.PlatformCategory
 @(models: Seq[(Project, User, Version, Seq[Tag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
-        sort: ProjectSortingStrategy, platform: Option[Platform])(implicit messages: Messages, flash: Flash,
+        sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -39,19 +40,6 @@ sorted according to different criteria.
     sort match {
         case ProjectSortingStrategies.Default => None
         case _ => Some(sort.id)
-    }
-}
-
-@platformOption = @{
-    platform.map(_.name)
-}
-
-@maybeActive(pform: Platform) = @{
-    platform.map { p =>
-        if (p.equals(pform))
-            "active"
-        else
-            ""
     }
 }
 
@@ -133,7 +121,8 @@ sorted according to different criteria.
                     page = page,
                     pageSize = config.projects.get[Int]("init-load"),
                     call = page => routes.Application.showHome(
-                        categoryString, query, orderingOption, Some(page), platformOption)
+                        categoryString, query, orderingOption, Some(page),
+                        platformCategory.map(_.name) ,platform.map(_.name))
                 )
             </div>
 
@@ -152,7 +141,10 @@ sorted according to different criteria.
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("project.category.plural")</h3>
                         @if(visibleCategories.isDefined) {
-                            <a href="@routes.Application.showHome(None, None, None, None, None)">
+                            <a href="@routes.Application.showHome(
+                                None, None, None, None,
+                                platformCategory.map(_.name),
+                                platform.map(_.name))">
                                 <i class="category-reset fa fa-times"></i>
                             </a>
                         }
@@ -173,7 +165,7 @@ sorted according to different criteria.
                 </div>
 
                 <!-- Platform list -->
-                <!--<div class="panel panel-default">
+                <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("general.platform")</h3>
                     </div>
@@ -185,24 +177,43 @@ sorted according to different criteria.
                             query,
                             orderingOption,
                             Some(page),
-                            None)"
-                        class="list-group-item @if(platform.isEmpty) { active }">
+                            None, None)"
+                        class="list-group-item @if(platform.isEmpty && platformCategory.isEmpty) { active }">
                             <strong>@messages("general.any")</strong>
                         </a>
 
-                        @for(pform <- Platforms.values) {
+                        @for(pc <- PlatformCategory.getPlatformCategories) {
                             <a href="@routes.Application.showHome(
                                 categoryString,
                                 query,
                                 orderingOption,
                                 Some(page),
-                                Some(pform.name))"
-                            class="list-group-item @maybeActive(pform)">
-                                <strong>@pform.name</strong>
+                                Some(pc.name),
+                                None)"
+                            class="list-group-item @if(platformCategory.map(_.name).getOrElse("") == pc.name) { active }">
+                                <strong>@pc.name</strong>
                             </a>
+
+                            @defining(pc.getPlatforms) { platforms =>
+                                @if(platforms.size > 1) {
+                                    @for(p <- platforms) {
+                                        <a href="@routes.Application.showHome(
+                                            categoryString,
+                                            query,
+                                            orderingOption,
+                                            Some(page),
+                                            None,
+                                            Some(p.name))"
+                                        class="list-group-item @if(platform.map(_.name).getOrElse("") == p.name) { active }">
+                                            &nbsp;@p.name
+                                        </a>
+                                    }
+                                }
+                            }
                         }
                     </ul>
-                </div>-->
+                </div>
+
             </div>
         </div>
     </div>

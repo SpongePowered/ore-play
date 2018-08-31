@@ -59,7 +59,8 @@ case class Version(override val id: Option[Int] = None,
                    private var _tagIds: List[Int] = List(),
                    private var _visibility: Visibility = Public,
                    fileName: String,
-                   signatureFileName: String)
+                   signatureFileName: String,
+                   private var _isNonReviewed: Boolean = false)
                    extends OreModel(id, createdAt)
                      with ProjectScope
                      with Describable
@@ -181,6 +182,13 @@ case class Version(override val id: Option[Int] = None,
     update(ApprovedAt)
   }
 
+  def isNonReviewed: Boolean = this._isNonReviewed
+
+  def setIsNonReviewed(ignoreReview: Boolean): Unit = {
+    this._isNonReviewed = ignoreReview
+    update(IsNonReviewedVersion)
+  }
+
   def tagIds: List[Int] = this._tagIds
 
   def setTagIds(tags: List[Int]) = {
@@ -188,7 +196,7 @@ case class Version(override val id: Option[Int] = None,
     if(isDefined) update(TagIds)
   }
 
-  def addTag(tag: Tag) = {
+  def addTag(tag: Tag): Unit = {
     this._tagIds = this._tagIds :+ tag.id.get
     if (isDefined) {
       update(TagIds)
@@ -197,15 +205,8 @@ case class Version(override val id: Option[Int] = None,
 
   def tags(implicit ec: ExecutionContext, service: ModelService = null): Future[List[Tag]] = {
     schema(service)
-    this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map { list =>
-      list.toSet.toList
-    }
+    this.service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map (_.distinct.toList)
   }
-
-
-  def isSpongePlugin(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Sponge"))
-
-  def isForgeMod(implicit ec: ExecutionContext): Future[Boolean] = tags.map(_.map(_.name).contains("Forge"))
 
   /**
     * Returns this Versions plugin dependencies.
@@ -215,7 +216,7 @@ case class Version(override val id: Option[Int] = None,
   def dependencies: List[Dependency] = {
     for (depend <- this.dependencyIds) yield {
       val data = depend.split(":")
-      Dependency(data(0), data(1))
+      Dependency(data(0), if (data.length > 1) data(1) else "")
     }
   }
 
