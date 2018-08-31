@@ -1,5 +1,6 @@
-Ore [![Build Status](https://travis-ci.org/SpongePowered/Ore.svg?branch=master)](https://travis-ci.org/SpongePowered/Ore)
-===
+# Ore
+[![Build Status](https://travis-ci.org/SpongePowered/Ore.svg?branch=master)](https://travis-ci.org/SpongePowered/Ore)
+[![Hydra](https://img.shields.io/badge/%22%22%22%7CHydra-4%20cpus-brightgreen.svg)](https://www.triplequote.com/hydra)
 
 Repository software for Sponge plugins and Forge mods https://ore.spongepowered.org/
  
@@ -41,16 +42,17 @@ This is required in order for Ore to run. Learn more about PostgreSQL [here](htt
 After setting up a database, create a copy of `conf/application.conf.template` named `conf/application.conf` and 
 configure the application. This file is in the `.gitignore` so it will not appear in your commits. In a typical 
 development environment, most of the defaults will do except you must set `application.fakeUser` to `true` to disable
-authentication to the Sponge forums. In addition, the SSL certification authority of https://forums.spongepowered.org is
+authentication to the Sponge forums. In addition, the SSL certification authority of `https://forums.spongepowered.org` is
 not typically recognized by the JVM so you will either have to manually add the cert to your JVM or set 
 `discourse.api.enabled` to `false` in the configuration file.
 
 ### Using Hydra
 
-Hydra is a drop-in replacement of the regular Scala compiler.
-Its design goal is to take advantage of the many cores available in modern hardware to parallelize compilation of Scala sources. This gives us the possibility to achieve a much faster compile time.
-Kindly [triplequote](https://triplequote.com/) provides us with some licenses.
-If you have a license and want to use Hydra follow these steps:
+Hydra is the world’s only parallel compiler for the Scala language.
+Its design goal is to take advantage of the many cores available in modern hardware to parallelize compilation of Scala sources.
+This gives us the possibility to achieve a much faster compile time.
+[Triplequote](https://triplequote.com/) has kindly provided us with some licenses.
+If you have a license and want to use Hydra, follow these steps:
 
 1. Create the file `project/hydra.sbt`
 2. Put in this content into the newly created file:
@@ -72,4 +74,4 @@ If you have a license and want to use Hydra follow these steps:
 
 4. Go and start compiling!
 
-Further instructions can be found at the [official hydra documentation](https://docs.triplequote.com/).
+Further instructions can be found at the [official Hydra documentation](https://docs.triplequote.com/).
