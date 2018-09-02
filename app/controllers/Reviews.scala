@@ -15,7 +15,7 @@ import models.project.{Project, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.permission.ReviewProjects
 import ore.permission.role.Lifted
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi

@@ -1,6 +1,5 @@
 package ore.permission.role
 
-import ore.permission.role.RoleTypes.RoleType
 import ore.permission.scope.{GlobalScope, Scope}
 
 /**

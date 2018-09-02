@@ -16,7 +16,7 @@ import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
 import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, Notification, Organization, SignOn, User, Session => DbSession}
 import ore.Colors.Color
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 import ore.project.Categories.Category
 import ore.project.FlagReasons.FlagReason
 import ore.project.io.DownloadTypes.DownloadType

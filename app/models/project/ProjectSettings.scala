@@ -12,7 +12,7 @@ import util.instances.future._
 import form.project.ProjectSettingsForm
 import models.user.Notification
 import models.user.role.ProjectRole
-import ore.permission.role.RoleTypes
+import ore.permission.role.RoleType
 import ore.project.io.ProjectFiles
 import ore.project.{Categories, ProjectMember, ProjectOwned}
 import ore.user.notification.NotificationTypes
@@ -203,7 +203,7 @@ case class ProjectSettings(override val id: Option[Int] = None,
           service.DB.db.run(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
         } flatMap { _ =>
           // Update existing roles
-          val projectRoleTypes = RoleTypes.values.filter(_.roleClass.equals(classOf[ProjectRole]))
+          val projectRoleTypes = RoleType.values.filter(_.roleClass.equals(classOf[ProjectRole]))
 
           val usersTable = TableQuery[UserTable]
           // Select member userIds

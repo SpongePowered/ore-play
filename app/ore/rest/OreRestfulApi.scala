@@ -12,7 +12,7 @@ import models.project._
 import models.user.User
 import models.user.role.ProjectRole
 import ore.OreConfig
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
 import play.api.libs.json.Json.{obj, toJson}

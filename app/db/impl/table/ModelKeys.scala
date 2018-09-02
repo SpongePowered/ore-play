@@ -11,7 +11,7 @@ import models.statistic.StatEntry
 import models.user.role.RoleModel
 import models.user.{Notification, Organization, SignOn, User}
 import ore.Colors.Color
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 import ore.project.Categories.Category
 import ore.user.Prompts.Prompt
 import play.api.i18n.Lang

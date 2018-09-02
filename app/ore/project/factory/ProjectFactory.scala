@@ -15,7 +15,7 @@ import models.project._
 import models.user.role.ProjectRole
 import models.user.{Notification, User}
 import ore.Colors.Color
-import ore.permission.role.RoleTypes
+import ore.permission.role.RoleType
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io._
 import ore.project.{NotifyWatchersTask, ProjectMember}
@@ -292,7 +292,7 @@ trait ProjectFactory {
       val ownerId = owner.userId
       val projectId = newProject.id.get
 
-      dossier.addRole(new ProjectRole(ownerId, RoleTypes.ProjectOwner, projectId, accepted = true, visible = true))
+      dossier.addRole(new ProjectRole(ownerId, RoleType.ProjectOwner, projectId, accepted = true, visible = true))
       pending.roles.map { role =>
         role.user.map { user =>
           dossier.addRole(role.copy(projectId = projectId))

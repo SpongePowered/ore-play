@@ -11,7 +11,7 @@ import db.impl.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTab
 import db.{Model, Named}
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
-import ore.permission.role.{Default, RoleTypes, Trust}
+import ore.permission.role.{Default, RoleType, Trust}
 import ore.permission.scope.OrganizationScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
@@ -106,10 +106,10 @@ case class Organization(override val id: Option[Int] = None,
       memberRoles <- this.memberships.getRoles(memberUser)
       setOwner <- this.setOwner(memberUser)
     } yield {
-      roles.filter(_.roleType == RoleTypes.OrganizationOwner)
-        .foreach(_.setRoleType(RoleTypes.OrganizationAdmin))
+      roles.filter(_.roleType == RoleType.OrganizationOwner)
+        .foreach(_.setRoleType(RoleType.OrganizationAdmin))
 
-      memberRoles.foreach(_.setRoleType(RoleTypes.OrganizationOwner))
+      memberRoles.foreach(_.setRoleType(RoleType.OrganizationOwner))
 
       setOwner
     }

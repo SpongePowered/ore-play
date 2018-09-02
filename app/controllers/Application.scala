@@ -19,7 +19,7 @@ import models.user.{LoggedAction, LoggedActionModel, User, UserActionLogger}
 import models.viewhelper.{HeaderData, OrganizationData, ScopedOrganizationData}
 import ore.Platforms.Platform
 import ore.permission._
-import ore.permission.role.{Role, RoleTypes}
+import ore.permission.role.{Role, RoleType}
 import ore.permission.scope.GlobalScope
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
@@ -485,11 +485,11 @@ final class Application @Inject()(data: DataHelper,
         import play.api.libs.json._
         val json = Json.parse(data)
 
-        def updateRoleTable[M <: RoleModel](modelAccess: ModelAccess[M], allowedType: Class[_ <: Role], ownerType: RoleTypes.RoleType, transferOwner: M => Future[Int]) = {
+        def updateRoleTable[M <: RoleModel](modelAccess: ModelAccess[M], allowedType: Class[_ <: Role], ownerType: RoleType, transferOwner: M => Future[Int]) = {
           val id = (json \ "id").as[Int]
           action match {
             case "setRole" => modelAccess.get(id).map { role =>
-              val roleType = RoleTypes.withId((json \ "role").as[Int])
+              val roleType = RoleType.withValue((json \ "role").as[String])
               if (roleType == ownerType) {
                 transferOwner(role)
                 Ok
@@ -519,17 +519,17 @@ final class Application @Inject()(data: DataHelper,
         thing match {
           case "orgRole" =>
             isOrga.filterNot(identity).flatMap { _ =>
-              updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
+              updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleType.OrganizationOwner, transferOrgOwner)
             }
           case "memberRole" =>
             isOrga.filter(identity).flatMap { _ =>
               OptionT.liftF(user.toOrganization).flatMap { orga =>
-                updateRoleTable(orga.memberships.roles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
+                updateRoleTable(orga.memberships.roles, classOf[OrganizationRole], RoleType.OrganizationOwner, transferOrgOwner)
               }
             }
           case "projectRole" =>
             isOrga.filterNot(identity).flatMap { _ =>
-              updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleTypes.ProjectOwner, (r: ProjectRole) => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))))
+              updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleType.ProjectOwner, (r: ProjectRole) => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))))
             }
           case _ => OptionT.none[Future, Status]
         }

@@ -5,7 +5,7 @@ import discourse.OreDiscourseApi
 import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
 import ore.OreConfig
-import ore.permission.role.RoleTypes
+import ore.permission.role.RoleType
 import ore.user.notification.NotificationTypes
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
@@ -68,12 +68,12 @@ class OrganizationBase(override val service: ModelService,
       // and should be treated as such.
       for {
         userOrg <- org.toUser.getOrElse(throw new IllegalStateException("User not created"))
-        _ = userOrg.setGlobalRoles(userOrg.globalRoles + RoleTypes.Organization)
+        _ = userOrg.setGlobalRoles(userOrg.globalRoles + RoleType.Organization)
         _ <- // Add the owner
           org.memberships.addRole(OrganizationRole(
             userId = ownerId,
             organizationId = org.id.get,
-            _roleType = RoleTypes.OrganizationOwner,
+            _roleType = RoleType.OrganizationOwner,
             _isAccepted = true))
         _ <- {
           // Invite the User members that the owner selected during creation.

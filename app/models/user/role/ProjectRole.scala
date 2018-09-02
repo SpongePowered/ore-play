@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import db.impl.ProjectRoleTable
 import ore.Visitable
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 import ore.permission.scope.ProjectScope
 
 import scala.concurrent.{ExecutionContext, Future}

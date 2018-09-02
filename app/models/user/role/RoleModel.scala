@@ -10,7 +10,7 @@ import db.impl.table.ModelKeys._
 import models.user.User
 import ore.Visitable
 import ore.permission.role.Role
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 
 import scala.concurrent.{ExecutionContext, Future}
 

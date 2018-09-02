@@ -24,7 +24,7 @@ import models.project.VisibilityTypes.{Public, Visibility}
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectRole
-import ore.permission.role.{Default, RoleTypes, Trust}
+import ore.permission.role.{Default, RoleType, Trust}
 import ore.permission.scope.ProjectScope
 import ore.project.Categories.Category
 import ore.project.FlagReasons.FlagReason
@@ -182,10 +182,10 @@ case class Project(override val id: Option[Int] = None,
       userRoles <- this.memberships.getRoles(user)
       setOwner <- this.setOwner(user)
     } yield {
-      ownerRoles.filter(_.roleType == RoleTypes.ProjectOwner)
-        .foreach(_.setRoleType(RoleTypes.ProjectDev))
+      ownerRoles.filter(_.roleType == RoleType.ProjectOwner)
+        .foreach(_.setRoleType(RoleType.ProjectDeveloper))
 
-      userRoles.foreach(_.setRoleType(RoleTypes.ProjectOwner))
+      userRoles.foreach(_.setRoleType(RoleType.ProjectOwner))
 
       setOwner
     }

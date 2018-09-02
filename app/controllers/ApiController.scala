@@ -5,24 +5,24 @@ import java.util.{Base64, UUID}
 import akka.http.scaladsl.model.Uri
 import controllers.sugar.Bakery
 import db.ModelService
+import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectApiKeyTable
 import form.OreForms
 import javax.inject.Inject
 import models.api.ProjectApiKey
-import models.user.{LoggedAction, User, UserActionLogger}
+import models.user.{LoggedAction, UserActionLogger}
+import ore.permission.role.RoleType
 import ore.permission.{EditApiKeys, ReviewProjects}
-import ore.permission.role.RoleTypes
-import ore.permission.role.RoleTypes.RoleType
 import ore.project.factory.{PendingVersion, ProjectFactory}
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyTypes._
 import ore.rest.{OreRestfulApi, OreWrites}
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.{Lang, Messages, MessagesApi}
+import play.api.i18n.{Messages, MessagesApi}
 import util.StatusZ
-import util.functional.{EitherT, OptionT, Id}
+import util.functional.{EitherT, Id, OptionT}
 import util.instances.future._
 import util.syntax._
 import play.api.libs.json._
@@ -32,8 +32,6 @@ import security.spauth.SingleSignOnConsumer
 import slick.lifted.Compiled
 
 import scala.concurrent.{ExecutionContext, Future}
-
-import db.access.ModelAccess
 
 /**
   * Ore API (v1)
@@ -337,7 +335,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
               if (groups.trim == "")
                 Set.empty
               else
-                groups.split(",").flatMap(group => RoleTypes.withInternalName(group)).toSet[RoleType]
+                groups.split(",").flatMap(group => RoleType.withValueOpt(group)).toSet[RoleType]
             )
           }
 

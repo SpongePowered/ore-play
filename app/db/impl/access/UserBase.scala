@@ -16,8 +16,7 @@ import util.StringUtils._
 import scala.concurrent.{ExecutionContext, Future}
 
 import ore.permission.role
-import ore.permission.role.RoleTypes
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 import util.functional.OptionT
 import util.instances.future._
 
@@ -108,13 +107,13 @@ class UserBase(override val service: ModelService,
   def getStaff(ordering: String = ORDERING_ROLE, page: Int = 1)(implicit ec: ExecutionContext): Future[Seq[User]] = {
     // determine ordering
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
-    val staffRoles = List(RoleTypes.Admin, RoleTypes.Mod)
+    val staffRoles: List[RoleType] = List(RoleType.OreAdmin, RoleType.OreMod)
 
     val pageSize = this.config.users.get[Int]("author-page-size")
     val offset = (page - 1) * pageSize
 
     val dbio = this.service.getSchema(classOf[UserSchema]).baseQuery
-      .filter(u => u.globalRoles.asColumnOf[List[Int]] @& staffRoles.bind.asColumnOf[List[Int]])
+      .filter(u => u.globalRoles.asColumnOf[List[RoleType]] @& staffRoles.bind.asColumnOf[List[RoleType]])
       .sortBy { users =>
         sort match { // Sort
           case ORDERING_JOIN_DATE => if(reverse) users.joinDate.asc else users.joinDate.desc
