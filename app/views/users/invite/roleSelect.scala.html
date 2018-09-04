@@ -9,6 +9,6 @@
 
 <select id="@id" form="@form" class="@classes" @if(hidden) { style="display: none;" }>
     @for(roleType <- roles) {
-        <option>@roleType.title</option>
+        <option value="@roleType.value">@roleType.title</option>
     }
 </select>
