@@ -62,9 +62,10 @@ If you have a license and want to use Hydra, follow these steps:
        "<username>",
        "<password>")
    resolvers += Resolver.url("Triplequote Plugins Releases", url("https://repo.triplequote.com/artifactory/sbt-plugins-release/"))(Resolver.ivyStylePatterns)
-   addSbtPlugin("com.triplequote" % "sbt-hydra" % "1.0.2")
+   addSbtPlugin("com.triplequote" % "sbt-hydra" % "<version>")
    ```
-   The `<username>` and `<password>` placeholders have to be replaced with your obtained credentials.
+   - The `<username>` and `<password>` placeholders have to be replaced with your credentials.
+   - The `<version>` placeholder has to be replaced with the lastest version of `sbt-hydra` which can be obtained from the [offical changelog](https://docs.triplequote.com/changelog/).
 
 3. Open the sbt console and make use of the following command where `<license key>` is your personal hydra license key:
 
