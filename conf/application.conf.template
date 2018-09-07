@@ -223,6 +223,11 @@ sponge {
           "link": "https://billing.creeperhost.net/link.php?id=8"
         },
         {
+          "name": "Triplequote",
+          "image": "images/sponsors/triplequote_black.svg",
+          "link": "https://triplequote.com/hydra"
+        },
+        {
           "name": "JetBrains",
           "image": "images/sponsors/jetbrains.svg",
           "link": "https://www.jetbrains.com/"
