@@ -394,7 +394,7 @@ trait ProjectFactory {
   private def addMetadataTags(pluginFileData: Option[PluginFileData], version: Version)(implicit ec: ExecutionContext): Future[Seq[ProjectTag]] = {
     Future.sequence(pluginFileData.map(_.ghostTags.map(_.getFilledTag(service))).toList.flatten).map(
       _.map { tag =>
-        tag.addVersionId(version.id.get)
+        tag.addVersionId(version.id.value)
         version.addTag(tag)
         tag
       })
@@ -407,7 +407,7 @@ trait ProjectFactory {
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
       ).map(_.getFilledTag(service))).map(
       _.map { tag =>
-        tag.addVersionId(version.id.get)
+        tag.addVersionId(version.id.value)
         version.addTag(tag)
         tag
       })

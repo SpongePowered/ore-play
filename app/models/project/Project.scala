@@ -510,7 +510,7 @@ case class Project(override val id: ObjectId = ObjectId.Uninitialized,
   def tags(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Tag]] = {
     schema(service)
     // get all the versions for the project
-    this.service.access(classOf[Version]).filter(_.projectId === id.get).flatMap { versions =>
+    this.service.access(classOf[Version]).filter(_.projectId === id.value).flatMap { versions =>
       val tagIds = versions.flatMap(_.tagIds).distinct
       // get all the tags for all the versions
       this.service.access(classOf[Tag]).filter(t => t.id inSet tagIds).map { list =>
@@ -520,10 +520,10 @@ case class Project(override val id: ObjectId = ObjectId.Uninitialized,
           .map { case (_, tags) =>
             tags.maxBy { tag =>
               versions
-                .filter(_.tagIds.contains(tag.id.get))
+                .filter(_.tagIds.contains(tag.id.value))
                 .filter(!_.isDeleted)
                 // get the latest version
-                .map(_.createdAt.get.toInstant.toEpochMilli)
+                .map(_.createdAt.value.toInstant.toEpochMilli)
                 .max
             }
           }

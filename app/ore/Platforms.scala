@@ -3,8 +3,9 @@ package ore
 import models.project.{Tag, TagColors}
 import models.project.TagColors.TagColor
 import ore.project.Dependency
-
 import scala.language.implicitConversions
+
+import db.ObjectId
 
 /**
   * The Platform a plugin/mod runs on
@@ -40,7 +41,7 @@ object Platforms extends Enumeration {
                       url: String
                      ) extends super.Val(id, name) {
 
-    def toGhostTag(version: String): Tag = Tag(None, List(), name, version, tagColor)
+    def toGhostTag(version: String): Tag = Tag(ObjectId.Uninitialized, List(), name, version, tagColor)
 
   }
 

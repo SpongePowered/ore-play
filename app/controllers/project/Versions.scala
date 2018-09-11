@@ -434,9 +434,9 @@ class Versions @Inject()(stats: StatTracker,
       val res = for {
         comment <- bindFormEitherT[Future](this.forms.NeedsChanges)(_ => BadRequest)
         version <- getProjectVersion(author, slug, versionString)
-        _ <- EitherT.right[Result](version.setVisibility(VisibilityTypes.Public, comment, request.user.id.get))
+        _ <- EitherT.right[Result](version.setVisibility(VisibilityTypes.Public, comment, request.user.id.value))
       } yield {
-        UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.getOrElse(-1), s"Restore: ${comment}", "")
+        UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.value, s"Restore: ${comment}", "")
         Redirect(self.showList(author, slug, None))
       }
       res.merge

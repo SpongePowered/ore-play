@@ -402,7 +402,7 @@ case class User(override val id: ObjectId = ObjectId.Uninitialized,
           if (groups.trim == "")
             Set.empty
           else
-            groups.split(",").flatMap(group => RoleTypes.withInternalName(group)).toSet[RoleType]
+            groups.split(",").flatMap(RoleType.withValueOpt).toSet[RoleType]
         )
       }
     }
