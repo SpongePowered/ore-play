@@ -396,6 +396,14 @@ case class User(override val id: Option[Int] = None,
         } else
           url
       }.foreach(this.setAvatarUrl)
+      user.addGroups.foreach { groups =>
+        this.setGlobalRoles(
+          if (groups.trim == "")
+            Set.empty
+          else
+            groups.split(",").flatMap(group => RoleTypes.withInternalName(group)).toSet[RoleType]
+        )
+      }
     }
   }
 

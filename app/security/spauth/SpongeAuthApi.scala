@@ -38,7 +38,8 @@ trait SpongeAuthApi {
     (JsPath \ "username").read[String] and
     (JsPath \ "email").read[String] and
     (JsPath \ "avatar_url").readNullable[String] and
-    (JsPath \ "language").readNullable[String].map(_.flatMap(Lang.get))
+    (JsPath \ "language").readNullable[String].map(_.flatMap(Lang.get)) and
+    (JsPath \ "add_groups").readNullable[String]
   )(SpongeUser.apply _)
 
   /**

@@ -19,7 +19,6 @@ import util.syntax._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
-
 import akka.http.scaladsl.model.Uri
 import play.api.i18n.Lang
 
@@ -132,7 +131,7 @@ trait SingleSignOnConsumer {
       username <- query.get("username")
       email <- query.get("email")
     } yield {
-      nonce -> SpongeUser(externalId, username, email, query.get("avatar_url"), query.get("language").flatMap(Lang.get))
+      nonce -> SpongeUser(externalId, username, email, query.get("avatar_url"), query.get("language").flatMap(Lang.get), query.get("add_groups"))
     }
 
     OptionT
