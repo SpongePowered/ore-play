@@ -10,7 +10,7 @@ import com.github.tminglei.slickpg.InetString
 import controllers.OreBaseController
 import controllers.sugar.{Bakery, Requests}
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
-import db.ModelService
+import db.{ModelService, ModelFilter}
 import db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import form.OreForms
@@ -501,7 +501,7 @@ class Versions @Inject()(stats: StatTracker,
 
     // check for confirmation
     OptionT
-      .fromOption[Future](req.cookies.get(DownloadWarning.COOKIE).map(_.value).orElse(token))
+      .fromOption[Future](req.cookies.get(DownloadWarning.COOKIE + "_" + version.id.value).map(_.value).orElse(token))
       .flatMap { tkn =>
         this.warnings.find { warn =>
           (warn.token === tkn) &&
@@ -556,8 +556,11 @@ class Versions @Inject()(stats: StatTracker,
           val token = UUID.randomUUID().toString
           val expiration = new Timestamp(new Date().getTime + this.config.security.get[Long]("unsafeDownload.maxAge"))
           val address = InetString(StatTracker.remoteAddress)
-          // remove old warning attached to address
-          this.warnings.removeAll(_.address === address)
+          // remove old warning attached to address that are expired (or duplicated for version)
+          this.warnings.removeAll((
+            ModelFilter[DownloadWarning](_.address === address)
+              +&& (ModelFilter[DownloadWarning](_.expiration < new Timestamp(new Date().getTime)) +|| ModelFilter[DownloadWarning](_.versionId === version.id.value))
+            ).fn)
           // create warning
           val warning = this.warnings.add(DownloadWarning(
             expiration = expiration,

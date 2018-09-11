@@ -85,7 +85,7 @@ case class DownloadWarning(override val id: ObjectId = ObjectId.Uninitialized,
     */
   def cookie(implicit bakery: Bakery): Cookie = {
     checkNotNull(this.token, "null token", "")
-    bakery.bake(COOKIE, this.token)
+    bakery.bake(COOKIE + "_" + this.versionId, this.token)
   }
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): DownloadWarning = this.copy(id = id, createdAt = theTime)
