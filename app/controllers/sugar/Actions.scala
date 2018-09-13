@@ -145,14 +145,13 @@ trait Actions extends Calls with ActionHelpers {
     * @return True if valid
     */
   def isNonceValid(nonce: String)(implicit ec: ExecutionContext): Future[Boolean] =
-    this.signOns.find(_.nonce === nonce).exists { signOn =>
+    this.signOns.find(_.nonce === nonce).semiFlatMap { signOn =>
       if (signOn.isCompleted || new Date().getTime - signOn.createdAt.value.getTime > 600000)
-        false
+        Future.successful(false)
       else {
-        service.update(signOn.copy(isCompleted = true))
-        true
+        service.update(signOn.copy(isCompleted = true)).as(true)
       }
-  }
+  }.exists(identity)
 
   /**
     * Returns a NotFound result with the 404 HTML template.

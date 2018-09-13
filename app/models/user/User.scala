@@ -190,9 +190,10 @@ case class User(id: ObjectId = ObjectId.Uninitialized,
     *
     * @param user Sponge User
     */
-  def copyAndUpdateFromSponge(user: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext, service: ModelService): Future[User] = {
+  def copyFromSponge(user: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext, service: ModelService): Future[User] = {
     service.update(
       copy(
+        id = ObjectId(user.id),
         name = user.username,
         email = Some(user.email),
         lang = user.lang,
@@ -374,7 +375,6 @@ object User {
     * @param toConvert User to convert
     * @return Ore user
     */
-  def fromSponge(toConvert: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext, service: ModelService): Future[User] = {
-    User().copyAndUpdateFromSponge(toConvert).map(_.copy(id = ObjectId(toConvert.id)))
-  }
+  def fromSponge(toConvert: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext, service: ModelService): Future[User] =
+    User().copyFromSponge(toConvert)
 }
