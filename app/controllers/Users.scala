@@ -84,7 +84,7 @@ class Users @Inject()(fakeUser: FakeUser,
       Future.successful(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
     } else {
       // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
-      this.sso.authenticate(sso.get, sig.get)(isNonceValid).semiFlatMap(User.fromSponge).semiFlatMap { fromSponge =>
+      this.sso.authenticate(sso.get, sig.get)(isNonceValid).map(User.fromSponge).semiFlatMap { fromSponge =>
         // Complete authentication
         for {
           user <- users.getOrCreate(fromSponge)

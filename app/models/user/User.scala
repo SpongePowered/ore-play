@@ -190,23 +190,21 @@ case class User(id: ObjectId = ObjectId.Uninitialized,
     *
     * @param user Sponge User
     */
-  def copyFromSponge(user: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext, service: ModelService): Future[User] = {
-    service.update(
-      copy(
-        id = ObjectId(user.id),
-        name = user.username,
-        email = Some(user.email),
-        lang = user.lang,
-        avatarUrl = user.avatarUrl.map { url =>
-          if (!url.startsWith("http")) {
-            val baseUrl = config.security.get[String]("api.url")
-            baseUrl + url
-          } else url
-        },
-        globalRoles = user.addGroups.map { groups =>
-          if(groups.trim.isEmpty) Nil else groups.split(",").flatMap(RoleType.withValueOpt).toList
-        }.getOrElse(globalRoles)
-      )
+  def copyFromSponge(user: SpongeUser)(implicit config: OreConfig): User = {
+    copy(
+      id = ObjectId(user.id),
+      name = user.username,
+      email = Some(user.email),
+      lang = user.lang,
+      avatarUrl = user.avatarUrl.map { url =>
+        if (!url.startsWith("http")) {
+          val baseUrl = config.security.get[String]("api.url")
+          baseUrl + url
+        } else url
+      },
+      globalRoles = user.addGroups.map { groups =>
+        if(groups.trim.isEmpty) Nil else groups.split(",").flatMap(RoleType.withValueOpt).toList
+      }.getOrElse(globalRoles)
     )
   }
 
@@ -375,6 +373,6 @@ object User {
     * @param toConvert User to convert
     * @return Ore user
     */
-  def fromSponge(toConvert: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext, service: ModelService): Future[User] =
+  def fromSponge(toConvert: SpongeUser)(implicit config: OreConfig): User =
     User().copyFromSponge(toConvert)
 }
