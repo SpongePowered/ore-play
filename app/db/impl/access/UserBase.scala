@@ -42,7 +42,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig)
     */
   def withName(username: String)(implicit ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] = {
     this.find(equalsIgnoreCase(_.name, username)).orElse {
-      auth.getUser(username).semiFlatMap(User.fromSponge).semiFlatMap(getOrCreate)
+      auth.getUser(username).map(User.fromSponge).semiFlatMap(getOrCreate)
     }
   }
 
