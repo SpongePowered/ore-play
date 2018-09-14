@@ -7,6 +7,8 @@
 @import ore.user.notification.NotificationFilters.NotificationFilter
 @import ore.user.notification.{InviteFilters, NotificationFilters}
 @import views.html.utils.userAvatar
+@import cats.data.{NonEmptyList => NEL}
+
 @(notifications: Seq[(Notification, User)], invites: Seq[(RoleModel, Visitable)], notificationFilter: NotificationFilter,
         inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
@@ -24,9 +26,8 @@
 
 @formatNotification(notification: Notification) = @{
     notification.messageArgs match {
-        case head :: Nil => Html(messages(head))
-        case head :: tail => Html(messages(head, tail: _*))
-        case Nil => throw new IllegalStateException("Got notification with no arguments")
+        case NEL(head, Nil) => Html(messages(head))
+        case NEL(head, tail) => Html(messages(head, tail: _*))
     }
 }
 
