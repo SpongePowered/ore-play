@@ -73,6 +73,7 @@ trait TChannelData {
             )
           )
 
+          //TODO: Replace this with void once IntelliJ understands it
           EitherT.right[NEL[String]](effect).map(_ => ())
       }
     }
