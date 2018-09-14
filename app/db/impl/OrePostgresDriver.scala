@@ -2,6 +2,7 @@ package db.impl
 
 import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
+
 import enumeratum.values.SlickValueEnumSupport
 import models.project.TagColors.TagColor
 import models.project.VisibilityTypes.Visibility
@@ -24,6 +25,7 @@ import ore.user.notification.NotificationTypes.NotificationType
 import play.api.i18n.Lang
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
+import cats.data.{NonEmptyList => NEL}
 
 /**
   * Custom Postgres driver to support array data and custom type mappings.
@@ -56,6 +58,9 @@ trait OrePostgresDriver extends ExPostgresProfile with PgArraySupport with PgAgg
     implicit val loggedActionMapper         : JdbcType[LoggedAction] with BaseTypedType[LoggedAction]               = MappedJdbcType.base[LoggedAction, Int](_.value, LoggedAction.withValue)
     implicit val loggedActionContextMapper  : JdbcType[LoggedActionContext] with BaseTypedType[LoggedActionContext] = MappedJdbcType.base[LoggedActionContext, Int](_.value, LoggedActionContext.withValue)
     implicit val langTypeMapper             : JdbcType[Lang] with BaseTypedType[Lang]                               = MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)
+
+    implicit def nelArrayMapper[A](implicit base: BaseColumnType[List[A]]): JdbcType[NEL[A]] with BaseTypedType[NEL[A]] =
+      MappedJdbcType.base[NEL[A], List[A]](_.toList, NEL.fromListUnsafe)
   }
 
 }

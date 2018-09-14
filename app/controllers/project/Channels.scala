@@ -90,7 +90,7 @@ class Channels @Inject()(forms: OreForms,
 
     val res = for {
       channelData <- bindFormEitherT[Future](this.forms.ChannelEdit)(hasErrors => Redirect(self.showList(author, slug)).withFormErrors(hasErrors.errors))
-      _ <- channelData.saveTo(channelName).leftMap(errors => Redirect(self.showList(author, slug)).withErrors(errors))
+      _ <- channelData.saveTo(channelName).leftMap(errors => Redirect(self.showList(author, slug)).withErrors(errors.toList))
     } yield Redirect(self.showList(author, slug))
 
     res.merge

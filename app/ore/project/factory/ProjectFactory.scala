@@ -24,15 +24,13 @@ import ore.project.{NotifyWatchersTask, ProjectMember}
 import ore.user.MembershipDossier
 import ore.user.notification.NotificationTypes
 import ore.{OreConfig, OreEnv, Platforms}
-
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 import security.pgp.PGPVerifier
 import util.StringUtils._
-import cats.data.EitherT
+import cats.data.{EitherT, NonEmptyList}
 import cats.instances.future._
 import cats.syntax.all._
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -299,7 +297,7 @@ trait ProjectFactory {
               user.sendNotification(Notification(
                 originId = ownerId,
                 notificationType = NotificationTypes.ProjectInvite,
-                messageArgs = List("notification.project.invite", role.roleType.title, project.name)
+                messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name)
               ))
           }
         }

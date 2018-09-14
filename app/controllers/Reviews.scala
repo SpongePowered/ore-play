@@ -28,7 +28,7 @@ import util.DataHelper
 import views.{html => views}
 import cats.instances.future._
 import cats.syntax.all._
-import cats.data.EitherT
+import cats.data.{EitherT, NonEmptyList}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -186,7 +186,7 @@ final class Reviews @Inject()(data: DataHelper,
           createdAt = ObjectTimestamp(Timestamp.from(Instant.now())),
           originId = requestUser.id.value,
           notificationType = NotificationTypes.VersionReviewed,
-          messageArgs = List("notification.project.reviewed", project.slug, version.versionString)
+          messageArgs = NonEmptyList.of("notification.project.reviewed", project.slug, version.versionString)
         )
       }
     } map (notificationTable ++= _) flatMap (service.DB.db.run(_)) // Batch insert all notifications

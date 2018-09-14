@@ -13,7 +13,7 @@ import util.StringUtils
 import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
-import cats.data.{EitherT, OptionT}
+import cats.data.{EitherT, NonEmptyList, OptionT}
 
 class OrganizationBase(implicit val service: ModelService,
                        config: OreConfig,
@@ -81,7 +81,7 @@ class OrganizationBase(implicit val service: ModelService,
               user.sendNotification(Notification(
                 originId = org.id.value,
                 notificationType = NotificationTypes.OrganizationInvite,
-                messageArgs = List("notification.organization.invite", role.roleType.title, org.username)
+                messageArgs = NonEmptyList.of("notification.organization.invite", role.roleType.title, org.username)
               ))
             }
           })

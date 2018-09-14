@@ -8,6 +8,7 @@ import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import scala.concurrent.{ExecutionContext, Future}
 
+import cats.data.NonEmptyList
 import db.ModelService
 import db.impl.{OrganizationMembersTable, OrganizationRoleTable}
 import ore.OreConfig
@@ -53,7 +54,7 @@ case class OrganizationMembersUpdate(override val users: List[Int],
         user.sendNotification(Notification(
           originId = orgId,
           notificationType = NotificationTypes.OrganizationInvite,
-          messageArgs = List("notification.organization.invite", role.roleType.title, organization.name)
+          messageArgs = NonEmptyList.of("notification.organization.invite", role.roleType.title, organization.name)
         ))
       }
     }

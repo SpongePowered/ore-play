@@ -19,9 +19,9 @@ import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import slick.lifted.TableQuery
 import util.StringUtils._
-
 import scala.concurrent.{ExecutionContext, Future}
 
+import cats.data.NonEmptyList
 import db.{Model, ModelService}
 import ore.user.MembershipDossier
 import db.{ObjectId, ObjectReference, ObjectTimestamp}
@@ -120,7 +120,7 @@ case class ProjectSettings(id: ObjectId = ObjectId.Uninitialized,
               userId = role.userId,
               originId = project.ownerId,
               notificationType = NotificationTypes.ProjectInvite,
-              messageArgs = List("notification.project.invite", role.roleType.title, project.name))
+              messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name))
           }
 
           service.DB.db.run(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications

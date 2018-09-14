@@ -292,7 +292,7 @@ class Projects @Inject()(stats: StatTracker,
             errors <- this.forums.postDiscussionReply(data.project, poster, formData.content)
           } yield {
             val result = Redirect(self.showDiscussion(author, slug))
-            if (errors.nonEmpty) result.withErrors(errors) else result
+            result.withErrors(errors)
           }
         }
       }

@@ -5,6 +5,7 @@ import db.impl.NotificationTable
 import ore.user.UserOwned
 import ore.user.notification.NotificationTypes.NotificationType
 import cats.instances.future._
+import cats.data.{NonEmptyList => NEL}
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
@@ -26,12 +27,10 @@ case class Notification(id: ObjectId = ObjectId.Uninitialized,
                         userId: ObjectReference = -1,
                         originId: ObjectReference,
                         notificationType: NotificationType,
-                        messageArgs: List[String],
+                        messageArgs: NEL[String],
                         action: Option[String] = None,
                         isRead: Boolean = false)
                         extends Model with UserOwned {
-  //TODO: Would be neat to have a NonEmptyList to get around guarding against this
-  require(messageArgs.nonEmpty, "Notification created with no message arguments")
 
   override type M = Notification
   override type T = NotificationTable

@@ -4,6 +4,7 @@ import java.sql.Timestamp
 
 import com.github.tminglei.slickpg.InetString
 
+import cats.data.NonEmptyList
 import db.{ObjectId, ObjectTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
@@ -424,7 +425,7 @@ class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "noti
   def userId            =   column[Int]("user_id")
   def originId          =   column[Int]("origin_id")
   def notificationType  =   column[NotificationType]("notification_type")
-  def messageArgs       =   column[List[String]]("message_args")
+  def messageArgs       =   column[NonEmptyList[String]]("message_args")
   def action            =   column[String]("action")
   def read              =   column[Boolean]("read")
 

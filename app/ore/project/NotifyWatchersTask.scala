@@ -5,6 +5,7 @@ import models.user.Notification
 import ore.user.notification.NotificationTypes
 import scala.concurrent.ExecutionContext
 
+import cats.data.NonEmptyList
 import db.ModelService
 import ore.OreConfig
 
@@ -23,7 +24,7 @@ case class NotifyWatchersTask(version: Version, project: Project)(implicit ec: E
     val notification = Notification(
       originId = project.ownerId,
       notificationType = NotificationTypes.NewProjectVersion,
-      messageArgs = List("notification.project.newVersion", project.name, version.name),
+      messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
       action = Some(version.url(project))
     )
 
