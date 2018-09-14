@@ -316,13 +316,14 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
   def tagline               =   column[String]("tagline")
   def globalRoles           =   column[List[RoleType]]("global_roles")
   def joinDate              =   column[Timestamp]("join_date")
+  def avatarUrl             =   column[String]("avatar_url")
   def readPrompts           =   column[List[Prompt]]("read_prompts")
   def lang                  =   column[Lang]("language")
 
   override def * = {
     val convertedUnapply = convertUnapply(User.unapply)
     (id.?, createdAt.?, fullName.?, name, email.?, tagline.?, globalRoles, joinDate.?,
-      readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked, lang.?) <> (convertApply(User.apply _).tupled,
+      avatarUrl.?, readPrompts, pgpPubKey.?, lastPgpPubKeyUpdate.?, isLocked, lang.?) <> (convertApply(User.apply _).tupled,
       convertedUnapply)
   }
 }

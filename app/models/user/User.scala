@@ -48,6 +48,7 @@ case class User(id: ObjectId = ObjectId.Uninitialized,
                 tagline: Option[String] = None,
                 globalRoles: List[RoleType] = List(),
                 joinDate: Option[Timestamp] = None,
+                avatarUrl: Option[String] = None,
                 readPrompts: List[Prompt] = List(),
                 pgpPubKey: Option[String] = None,
                 lastPgpPubKeyUpdate: Option[Timestamp] = None,
@@ -70,8 +71,6 @@ case class User(id: ObjectId = ObjectId.Uninitialized,
     */
   val can: PermissionPredicate = PermissionPredicate(this)
   val cannot: PermissionPredicate = PermissionPredicate(this, not = true)
-
-  def avatarUrl(implicit config: OreConfig): String = config.security.get[String]("api.avatarUrl").format(this.name)
 
   /**
     * Decodes this user's raw PGP public key and returns information about the
@@ -197,6 +196,12 @@ case class User(id: ObjectId = ObjectId.Uninitialized,
       name = user.username,
       email = Some(user.email),
       lang = user.lang,
+      avatarUrl = user.avatarUrl.map { url =>
+        if (!url.startsWith("http")) {
+          val baseUrl = config.security.get[String]("api.url")
+          baseUrl + url
+        } else url
+      },
       globalRoles = user.addGroups.map { groups =>
         if(groups.trim.isEmpty) Nil else groups.split(",").flatMap(RoleType.withValueOpt).toList
       }.getOrElse(globalRoles)
