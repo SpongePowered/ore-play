@@ -6,7 +6,7 @@ import java.time.Instant
 
 import db.impl.OrePostgresDriver.api._
 import db.impl._
-import util.instances.future._
+import cats.instances.future._
 import form.project.ProjectSettingsForm
 import models.user.Notification
 import models.user.role.ProjectRole

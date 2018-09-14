@@ -14,8 +14,8 @@ import db.impl.OrePostgresDriver.api._
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.mvc.Call
-import util.syntax._
-import util.instances.future._
+import cats.syntax.all._
+import cats.instances.future._
 
 // TODO separate Scoped UserData
 
@@ -95,7 +95,7 @@ object UserData {
       val reviewProjectsFut = user can ReviewProjects in user map ((ReviewProjects, _))
       val editSettingsFut = user.toMaybeOrganization.value.flatMap(orga => user can EditSettings in orga map ((EditSettings, _)))
 
-      (viewActivityFut, reviewFlagsFut, reviewProjectsFut, editSettingsFut).parMapN {
+      (viewActivityFut, reviewFlagsFut, reviewProjectsFut, editSettingsFut).mapN {
         case (viewActivity, reviewFlags, reviewProjects, editSettings) =>
           val userPerms: Map[Permission, Boolean] = Seq(viewActivity, reviewFlags, reviewProjects).toMap
           val orgaPerms: Map[Permission, Boolean] = Seq(editSettings).toMap

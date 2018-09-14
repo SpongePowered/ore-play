@@ -12,9 +12,9 @@ import org.apache.commons.codec.binary.Hex
 import play.api.Configuration
 import play.api.http.Status
 import play.api.libs.ws.WSClient
-import util.functional.OptionT
-import util.instances.future._
-import util.syntax._
+import cats.data.OptionT
+import cats.instances.future._
+import cats.syntax.all._
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -136,7 +136,7 @@ trait SingleSignOnConsumer {
 
     OptionT
       .fromOption[Future](info)
-      .semiFlatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user)}
+      .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user)}
       .subflatMap {
         case (false, _) =>
           Logger.debug("<FAILURE> Invalid nonce.")

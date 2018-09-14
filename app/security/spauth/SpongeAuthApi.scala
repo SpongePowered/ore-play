@@ -6,8 +6,8 @@ import com.google.common.base.Preconditions._
 import javax.inject.Inject
 import ore.OreConfig
 import util.WSUtils.parseJson
-import util.functional.{EitherT, OptionT}
-import util.instances.future._
+import cats.data.{EitherT, OptionT}
+import cats.instances.future._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._

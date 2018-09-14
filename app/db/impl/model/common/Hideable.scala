@@ -7,7 +7,7 @@ import db.access.ModelAccess
 import db.impl.table.common.VisibilityColumn
 import models.project.VisibilityTypes
 import models.project.VisibilityTypes.Visibility
-import util.functional.OptionT
+import cats.data.OptionT
 
 /**
   * Represents a [[Model]] that has a toggleable visibility.

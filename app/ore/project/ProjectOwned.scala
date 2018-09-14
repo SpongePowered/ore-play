@@ -2,7 +2,7 @@ package ore.project
 
 import db.impl.access.ProjectBase
 import models.project.Project
-import util.instances.future._
+import cats.instances.future._
 
 import scala.concurrent.{ExecutionContext, Future}
 

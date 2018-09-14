@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelService
 import util.FutureUtils
-import util.instances.future._
+import cats.instances.future._
 
 /**
   * Permission wrapper used for chaining permission checks.

@@ -18,8 +18,8 @@ import play.api.i18n.MessagesApi
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.StringUtils._
 import views.html.projects.{pages => views}
-import util.instances.future._
-import util.syntax._
+import cats.instances.future._
+import cats.syntax.all._
 
 import scala.concurrent.{ExecutionContext, Future}
 import play.api.mvc.{Action, AnyContent}
@@ -119,7 +119,7 @@ class Pages @Inject()(forms: OreForms,
       (p, pages) <- (
         data.project.pages.find(equalsIgnoreCase(_.slug, name)).getOrElseF(data.project.getOrCreatePage(name, parentId)),
         projects.queryProjectPages(data.project)
-      ).parTupled
+      ).tupled
     } yield {
       val pageCount = pages.size + pages.map(_._2.size).sum
       val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }

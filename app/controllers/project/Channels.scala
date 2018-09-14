@@ -13,14 +13,14 @@ import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
-import util.instances.future._
+import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
 import models.project.Project
 import models.viewhelper.ProjectData
 import play.api.mvc.{Action, AnyContent}
-import util.functional.EitherT
-import util.syntax._
+import cats.data.EitherT
+import cats.syntax.all._
 
 /**
   * Controller for handling Channel related actions.
@@ -108,25 +108,22 @@ class Channels @Inject()(forms: OreForms,
   def delete(author: String, slug: String, channelName: String): Action[AnyContent] = ChannelEditAction(author, slug).async { implicit request =>
     implicit val data: ProjectData = request.data
     EitherT.right[Status](data.project.channels.all)
-      .filterOrElse(_.size != 1, Redirect(self.showList(author, slug)).withError("error.channel.last"))
+      .ensure(Redirect(self.showList(author, slug)).withError("error.channel.last"))(_.size != 1)
       .flatMap { channels =>
         EitherT.fromEither[Future](channels.find(_.name == channelName).toRight(NotFound))
-          .semiFlatMap { channel =>
+          .semiflatMap { channel =>
             (channel.versions.isEmpty, Future.traverse(channels.toSeq)(_.versions.nonEmpty).map(_.count(identity)))
-              .parTupled
+              .tupled
               .tupleRight(channel)
           }
-          .filterOrElse(
-            { case ((emptyChannel, nonEmptyChannelCount), _) =>
-              emptyChannel || nonEmptyChannelCount > 1},
-            Redirect(self.showList(author, slug)).withError("error.channel.lastNonEmpty")
+          .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastNonEmpty"))(
+            { case ((emptyChannel, nonEmptyChannelCount), _) => emptyChannel || nonEmptyChannelCount > 1}
           )
           .map(_._2)
-          .filterOrElse(
-            channel => channel.isNonReviewed || channels.count(_.isReviewed) > 1,
-            Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed")
+          .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed"))(
+            channel => channel.isNonReviewed || channels.count(_.isReviewed) > 1
           )
-          .semiFlatMap(channel => projects.deleteChannel(channel))
+          .semiflatMap(channel => projects.deleteChannel(channel))
           .map(_ => Redirect(self.showList(author, slug)))
       }.merge
   }

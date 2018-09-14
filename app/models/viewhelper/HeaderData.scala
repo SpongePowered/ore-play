@@ -13,9 +13,9 @@ import play.api.cache.AsyncCacheApi
 import play.api.mvc.Request
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
-import util.functional.OptionT
-import util.instances.future._
-import util.syntax._
+import cats.data.OptionT
+import cats.instances.future._
+import cats.syntax.all._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -68,7 +68,7 @@ object HeaderData {
   def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[HeaderData] = {
     OptionT.fromOption[Future](request.cookies.get("_oretoken"))
       .flatMap(cookie => getSessionUser(cookie.value))
-      .semiFlatMap(user => getHeaderData(user))
+      .semiflatMap(user => getHeaderData(user))
       .getOrElse(unAuthenticated)
   }
 
@@ -133,7 +133,7 @@ object HeaderData {
         flagQueue(),
         projectApproval(user),
         if (perms(ReviewProjects)) reviewQueue() else Future.successful(false)
-      ).parMapN { (hasNotice, unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>
+      ).mapN { (hasNotice, unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>
         HeaderData(Some(user),
           perms,
           hasNotice,
@@ -161,7 +161,7 @@ object HeaderData {
         user can HardRemoveProject in GlobalScope map ((HardRemoveProject, _)),
         user can HardRemoveVersion in GlobalScope map ((HardRemoveProject, _)),
         user can UserAdmin in GlobalScope map ((UserAdmin, _)),
-      ).parMapN {
+      ).mapN {
         case (reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, hardRemoveVersion, userAdmin) =>
           val perms = Seq(reviewFlags, reviewVisibility, reviewProjects, viewStats, viewHealth, viewLogs, hideProjects, hardRemoveProject, hardRemoveVersion, userAdmin)
           perms.toMap

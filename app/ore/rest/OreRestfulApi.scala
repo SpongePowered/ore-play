@@ -18,10 +18,10 @@ import ore.project.{Categories, ProjectSortingStrategies}
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 import util.StringUtils._
-import util.instances.future._
+import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.OptionT
+import cats.data.OptionT
 
 /**
   * The Ore API
@@ -305,7 +305,7 @@ trait OreRestfulApi {
     * @return         List of project pages
     */
   def getPages(pluginId: String, parentId: Option[Int])(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, JsValue] = {
-    ProjectBase().withPluginId(pluginId).semiFlatMap { project =>
+    ProjectBase().withPluginId(pluginId).semiflatMap { project =>
         for {
           pages <- project.pages.sorted(_.name)
         } yield {
@@ -403,7 +403,7 @@ trait OreRestfulApi {
     */
   def getTags(pluginId: String, version: String)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, JsValue] = {
     ProjectBase().withPluginId(pluginId).flatMap { project =>
-      project.versions.find(v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === VisibilityTypes.Public).semiFlatMap { v =>
+      project.versions.find(v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === VisibilityTypes.Public).semiflatMap { v =>
         v.tags.map { tags =>
           obj(
             "pluginId" -> pluginId,

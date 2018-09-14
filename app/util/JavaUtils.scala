@@ -2,7 +2,7 @@ package util
 
 object JavaUtils {
 
-  def autoClose[A <: AutoCloseable](closeable: A)(fun: (A) ⇒ Unit)(exHandler: Exception => Unit): Unit = {
+  def autoClose[A <: AutoCloseable, B](closeable: A)(fun: A ⇒ B)(exHandler: Exception => B): B = {
     try {
       fun(closeable)
     } catch {

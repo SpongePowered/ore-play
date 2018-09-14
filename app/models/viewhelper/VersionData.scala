@@ -8,13 +8,13 @@ import ore.Platforms
 import ore.project.Dependency
 import play.api.cache.AsyncCacheApi
 import slick.jdbc.JdbcBackend
-import util.instances.future._
-import util.syntax._
+import cats.instances.future._
+import cats.syntax.all._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.syntax._
-import util.instances.future._
+import cats.syntax.all._
+import cats.instances.future._
 
 case class VersionData(p: ProjectData, v: Version, c: Channel,
                        approvedBy: Option[String], // Reviewer if present
@@ -37,7 +37,7 @@ object VersionData {
   def of[A](request: ProjectRequest[A], version: Version)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[VersionData] = {
     val depsFut = Future.sequence(version.dependencies.map(dep => dep.project.value.map((dep, _))))
 
-    (version.channel, version.reviewer.map(_.name).value, depsFut).parMapN {
+    (version.channel, version.reviewer.map(_.name).value, depsFut).mapN {
       case (channel, approvedBy, deps) =>
         VersionData(request.data, version, channel, approvedBy, deps)
     }

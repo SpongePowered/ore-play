@@ -14,8 +14,8 @@ import slick.jdbc.JdbcBackend
 import scala.concurrent.{ExecutionContext, Future}
 import slick.lifted.TableQuery
 
-import util.functional.OptionT
-import util.instances.future._
+import cats.data.OptionT
+import cats.instances.future._
 
 case class OrganizationData(joinable: Organization,
                             ownerRole: OrganizationRole,
@@ -61,6 +61,6 @@ object OrganizationData {
 
   def of[A](orga: Option[Organization])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
                                         service: ModelService): OptionT[Future, OrganizationData] = {
-    OptionT.fromOption[Future](orga).semiFlatMap(of)
+    OptionT.fromOption[Future](orga).semiflatMap(of)
   }
 }

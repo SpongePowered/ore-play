@@ -17,10 +17,10 @@ import ore.{OreConfig, OreEnv}
 import slick.lifted.TableQuery
 import util.FileUtils
 import util.StringUtils._
-import util.instances.future._
+import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.OptionT
+import cats.data.OptionT
 
 class ProjectBase(implicit val service: ModelService,
                   env: OreEnv,

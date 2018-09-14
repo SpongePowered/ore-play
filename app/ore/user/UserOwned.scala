@@ -2,7 +2,7 @@ package ore.user
 
 import db.impl.access.UserBase
 import models.user.User
-import util.instances.future._
+import cats.instances.future._
 
 import scala.concurrent.{ExecutionContext, Future}
 

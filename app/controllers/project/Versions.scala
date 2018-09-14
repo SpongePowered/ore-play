@@ -32,7 +32,7 @@ import play.api.mvc.{Action, AnyContent, Request, Result}
 import play.filters.csrf.CSRF
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.StringUtils._
-import util.syntax._
+import cats.syntax.all._
 import views.html.projects.{versions => views}
 import _root_.views.html.helper
 import models.user.{LoggedAction, UserActionLogger}
@@ -40,8 +40,8 @@ import ore.project.factory.TagAlias.ProjectTag
 import util.JavaUtils.autoClose
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.{EitherT, OptionT}
-import util.instances.future._
+import cats.data.{EitherT, OptionT}
+import cats.instances.future._
 import db.impl.VersionTable
 
 /**
@@ -265,12 +265,12 @@ class Versions @Inject()(stats: StatTracker,
       val success = OptionT.fromOption[Future](this.factory.getPendingVersion(author, slug, versionString))
         // Get pending version
         .flatMap(pendingVersion => pendingOrReal(author, slug).map(pendingVersion -> _))
-        .semiFlatMap {
+        .semiflatMap {
           case (pendingVersion, Left(pending)) =>
             Future.successful((None, ProjectData.of(request, pending), pendingVersion))
           case (pendingVersion, Right(real)) =>
             (real.channels.toSeq, ProjectData.of(real))
-              .parMapN((channels, data) => (Some(channels), data, pendingVersion))
+              .mapN((channels, data) => (Some(channels), data, pendingVersion))
         }
         .map { case (channels, data, pendingVersion) =>
           Ok(views.create(data, data.settings.forumSync, Some(pendingVersion), channels, showFileControls = channels.isDefined))
@@ -327,7 +327,7 @@ class Versions @Inject()(stats: StatTracker,
                       .find(equalsIgnoreCase(_.name, pendingVersion.channelName))
                       .toRight(versionData.addTo(project))
                       .leftFlatMap(identity)
-                      .semiFlatMap { _ =>
+                      .semiflatMap { _ =>
                         // Update description
                         val newPendingVersion = versionData.content.fold(pendingVersion) { content =>
                           val updated = pendingVersion.copy(underlying = pendingVersion.underlying.copy(description = Some(content.trim)))
@@ -480,7 +480,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug).async { implicit request =>
       val project = request.data.project
       implicit val r: OreRequest[AnyContent] = request.request
-      getVersion(project, versionString).semiFlatMap { version =>
+      getVersion(project, versionString).semiflatMap { version =>
         sendVersion(project, version, token)
       }.merge
     }
@@ -557,8 +557,8 @@ class Versions @Inject()(stats: StatTracker,
       implicit val lang: Lang = request.lang
       val project = request.data.project
       getVersion(project, target)
-        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
-        .semiFlatMap { version =>
+        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(v => !v.isReviewed)
+        .semiflatMap { version =>
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
           val token = UUID.randomUUID().toString
@@ -604,7 +604,7 @@ class Versions @Inject()(stats: StatTracker,
                 CSRF.getToken.get.value) + "\n")
                 .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\""))
             } else {
-              (warning, version.channel.map(_.isNonReviewed)).parMapN { (warn, nonReviewed) =>
+              (warning, version.channel.map(_.isNonReviewed)).mapN { (warn, nonReviewed) =>
                 MultipleChoices(views.unsafeDownload(project, version, nonReviewed, dlType, token))
                   .withCookies(warn.cookie)
               }
@@ -618,7 +618,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug) async { request =>
       implicit val r: OreRequest[_] = request.request
       getVersion(request.data.project, target)
-        .filterOrElse(v => !v.isReviewed, Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))
+        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(v => !v.isReviewed)
         .flatMap(version => confirmDownload0(version.id.value, downloadType, token).toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload")))
         .map { dl =>
           dl.downloadType match {
@@ -659,7 +659,7 @@ class Versions @Inject()(stats: StatTracker,
       if(isInvalid) warn.remove()
 
       isInvalid
-    }.semiFlatMap { warn =>
+    }.semiflatMap { warn =>
       // warning confirmed and redirect to download
       val downloads = this.service.access[UnsafeDownload](classOf[UnsafeDownload])
       for {
@@ -703,7 +703,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(author, slug).async { implicit request =>
       val project = request.data.project
       implicit val r: OreRequest[AnyContent] = request.request
-      getVersion(project, versionString).semiFlatMap(version => sendJar(project, version, token)).merge
+      getVersion(project, versionString).semiflatMap(version => sendJar(project, version, token)).merge
     }
   }
 
@@ -733,6 +733,7 @@ class Versions @Inject()(stats: StatTracker,
 
               autoClose(pluginFile.newJarStream) { jarIn =>
                 copy(jarIn, jarPath, StandardCopyOption.REPLACE_EXISTING)
+                ()
               }{ e =>
                 Logger.error("an error occurred while trying to send a plugin", e)
               }
@@ -776,7 +777,7 @@ class Versions @Inject()(stats: StatTracker,
     ProjectAction(pluginId).async { implicit request =>
       val project = request.data.project
       implicit val r: OreRequest[AnyContent] = request.request
-      getVersion(project, versionString).semiFlatMap { version =>
+      getVersion(project, versionString).semiflatMap { version =>
         optToken.map { token =>
           confirmDownload0(version.id.value, Some(JarFile.id), token)(request.request).value.flatMap { _ =>
             sendJar(project, version, optToken, api = true)

@@ -4,9 +4,9 @@ import models.project.{Channel, Project}
 import ore.Colors.Color
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
-import util.functional.{EitherT, OptionT}
-import util.instances.future._
-import util.syntax._
+import cats.data.{EitherT, OptionT}
+import cats.instances.future._
+import cats.syntax.all._
 import util.StringUtils._
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -40,10 +40,10 @@ trait TChannelData {
     */
   def addTo(project: Project)(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, String, Channel] = {
     EitherT.liftF(project.channels.all)
-      .filterOrElse(_.size <= config.projects.get[Int]("max-channels"), "A project may only have up to five channels.")
-      .filterOrElse(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)), "A channel with that name already exists.")
-      .filterOrElse(_.forall(_.color != this.color), "A channel with that color already exists.")
-      .semiFlatMap(_ => this.factory.createChannel(project, this.channelName, this.color, this.nonReviewed))
+      .ensure("A project may only have up to five channels.")(_.size <= config.projects.get[Int]("max-channels"))
+      .ensure("A channel with that name already exists.")(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)))
+      .ensure("A channel with that color already exists.")(_.forall(_.color != this.color))
+      .semiflatMap(_ => this.factory.createChannel(project, this.channelName, this.color, this.nonReviewed))
   }
 
   /**

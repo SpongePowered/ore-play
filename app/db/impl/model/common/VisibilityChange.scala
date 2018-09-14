@@ -8,8 +8,8 @@ import db.Model
 import db.impl.access.UserBase
 import db.impl.table.common.VisibilityChangeColumns
 import models.user.User
-import util.functional.OptionT
-import util.instances.future._
+import cats.data.OptionT
+import cats.instances.future._
 
 trait VisibilityChange extends Model { self =>
 

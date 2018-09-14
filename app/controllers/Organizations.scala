@@ -14,9 +14,9 @@ import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
-import util.instances.future._
-import util.functional.Id
-import util.syntax._
+import cats.instances.future._
+import cats.Id
+import cats.syntax.all._
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.mvc.{Action, AnyContent}
@@ -93,7 +93,7 @@ class Organizations @Inject()(forms: OreForms,
     */
   def setInviteStatus(id: Int, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
     val user = request.user
-    user.organizationRoles.get(id).semiFlatMap { role =>
+    user.organizationRoles.get(id).semiflatMap { role =>
       status match {
         case STATUS_DECLINE  => role.organization.flatMap(_.memberships.removeRole(role)).as(Ok)
         case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)

@@ -25,8 +25,8 @@ import ore.OreConfig
 import ore.permission.scope.ProjectScope
 import play.twirl.api.Html
 import util.StringUtils._
-import util.instances.future._
-import util.functional.OptionT
+import cats.instances.future._
+import cats.data.OptionT
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.ProjectBase

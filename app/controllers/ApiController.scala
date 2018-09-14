@@ -22,9 +22,10 @@ import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Messages, MessagesApi}
 import util.StatusZ
-import util.functional.{EitherT, Id, OptionT}
-import util.instances.future._
-import util.syntax._
+import cats.data.{EitherT, OptionT}
+import cats.Id
+import cats.instances.future._
+import cats.syntax.all._
 import play.api.libs.json._
 import play.api.mvc._
 import security.CryptoUtils
@@ -196,11 +197,11 @@ final class ApiController @Inject()(api: OreRestfulApi,
           val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.value).result)
 
           EitherT.liftF(apiKeyExists)
-            .filterOrElse(apiKey => apiKey, Unauthorized(error("apiKey", "api.deploy.invalidKey")))
-            .semiFlatMap(_ => projectData.project.versions.exists(_.versionString === name))
-            .filterOrElse(nameExists => !nameExists, BadRequest(error("versionName", "api.deploy.versionExists")))
-            .semiFlatMap(_ => projectData.project.owner.user)
-            .semiFlatMap(user => user.toMaybeOrganization.semiFlatMap(_.owner.user).getOrElse(user))
+            .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(identity)
+            .semiflatMap(_ => projectData.project.versions.exists(_.versionString === name))
+            .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists)
+            .semiflatMap(_ => projectData.project.owner.user)
+            .semiflatMap(user => user.toMaybeOrganization.semiflatMap(_.owner.user).getOrElse(user))
             .flatMap { owner =>
 
               val pluginUpload = this.factory.getUploadError(owner)
@@ -221,7 +222,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
                 }
               }
             }
-            .semiFlatMap { pendingVersion =>
+            .semiflatMap { pendingVersion =>
               pendingVersion.createForumPost = formData.createForumPost
               pendingVersion.channelName = formData.channel.name
               formData.changelog.fold(Future.successful(pendingVersion)) { changelog =>
@@ -230,8 +231,8 @@ final class ApiController @Inject()(api: OreRestfulApi,
                   .map(newVersion => pendingVersion.copy(underlying = newVersion))
               }
             }
-            .semiFlatMap(_.complete())
-            .semiFlatMap { case (newVersion, channel, tags) =>
+            .semiflatMap(_.complete())
+            .semiflatMap { case (newVersion, channel, tags) =>
               val update = if (formData.recommended)
                 service.update(projectData.project.copy(recommendedVersionId = Some(newVersion.id.value)))
               else Future.unit
@@ -315,17 +316,16 @@ final class ApiController @Inject()(api: OreRestfulApi,
     Logger.debug("Sync Request received")
 
     bindFormEitherT[Future](this.forms.SyncSso)(hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
-      .filterOrElse(_._3 == confApiKey, BadRequest("API Key not valid")) //_3 is apiKey
-      .filterOrElse(
-        { case (sso, sig, _) => CryptoUtils.hmac_sha256(confSecret, sso.getBytes("UTF-8")) == sig},
-        BadRequest("Signature not matched")
+      .ensure(BadRequest("API Key not valid"))(_._3 == confApiKey) //_3 is apiKey
+      .ensure(BadRequest("Signature not matched"))(
+        { case (sso, sig, _) => CryptoUtils.hmac_sha256(confSecret, sso.getBytes("UTF-8")) == sig}
       )
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
-      .semiFlatMap{q =>
+      .semiflatMap{q =>
         Logger.debug("Sync Payload: " + q)
         users.get(q.get("external_id").get.toInt).value.tupleLeft(q)
       }
-      .semiFlatMap { case (query, optUser) =>
+      .semiflatMap { case (query, optUser) =>
         Logger.debug("Sync user found: " + optUser.isDefined)
         optUser.map { user =>
           val email = query.get("email")

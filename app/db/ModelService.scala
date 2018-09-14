@@ -16,9 +16,9 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
-import util.functional.OptionT
-import util.instances.future._
-import util.syntax._
+import cats.data.OptionT
+import cats.instances.future._
+import cats.syntax.all._
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.

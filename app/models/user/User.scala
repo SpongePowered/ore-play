@@ -23,9 +23,9 @@ import security.pgp.PGPPublicKeyInfo
 import security.spauth.{SpongeAuthApi, SpongeUser}
 import slick.lifted.TableQuery
 import util.StringUtils._
-import util.instances.future._
-import util.syntax._
-import util.functional.OptionT
+import cats.instances.future._
+import cats.syntax.all._
+import cats.data.OptionT
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.i18n.Lang
@@ -180,9 +180,9 @@ case class User(id: ObjectId = ObjectId.Uninitialized,
     */
   def isCurrent(implicit request: Request[_], ec: ExecutionContext, service: ModelService, auth: SpongeAuthApi): Future[Boolean] = {
     checkNotNull(request, "null request", "")
-    UserBase().current.semiFlatMap { user =>
+    UserBase().current.semiflatMap { user =>
       if(user == this) Future.successful(true)
-      else this.toMaybeOrganization.semiFlatMap(_.owner.user).contains(user)
+      else this.toMaybeOrganization.semiflatMap(_.owner.user).exists(_ == user)
     }.exists(identity)
   }
 

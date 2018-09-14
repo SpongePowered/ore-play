@@ -23,9 +23,9 @@ import scala.language.higherKinds
 
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import util.FutureUtils
-import util.functional.OptionT
-import util.instances.future._
-import util.syntax._
+import cats.data.OptionT
+import cats.instances.future._
+import cats.syntax.all._
 
 /**
   * A set of actions used by Ore.
@@ -145,7 +145,7 @@ trait Actions extends Calls with ActionHelpers {
     * @return True if valid
     */
   def isNonceValid(nonce: String)(implicit ec: ExecutionContext): Future[Boolean] =
-    this.signOns.find(_.nonce === nonce).semiFlatMap { signOn =>
+    this.signOns.find(_.nonce === nonce).semiflatMap { signOn =>
       if (signOn.isCompleted || new Date().getTime - signOn.createdAt.value.getTime > 600000)
         Future.successful(false)
       else {
@@ -222,9 +222,9 @@ trait Actions extends Calls with ActionHelpers {
 
   private def maybeAuthRequest[A](request: Request[A], futUser: OptionT[Future, User])(implicit ec: ExecutionContext,
                   asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef): Future[Either[Result, AuthRequest[A]]] = {
-    futUser.semiFlatMap { user =>
+    futUser.semiflatMap { user =>
       HeaderData.of(request).map(hd => new AuthRequest[A](user, hd, request))
-    }.toRight(onUnauthorized(request, ec)).leftSemiFlatMap(identity).value
+    }.toRight(onUnauthorized(request, ec)).leftSemiflatMap(identity).value
   }
 
   def projectAction(author: String, slug: String)(implicit  ec: ExecutionContext,
@@ -245,7 +245,7 @@ trait Actions extends Calls with ActionHelpers {
     implicit val request: OreRequest[A] = r
     project.flatMap { p =>
       processProject(p, request.data.currentUser)
-    }.semiFlatMap { p =>
+    }.semiflatMap { p =>
       toProjectRequest(p) { case (data, scoped) =>
         new ProjectRequest[A](data, scoped, r)
       }
@@ -254,7 +254,7 @@ trait Actions extends Calls with ActionHelpers {
 
   private def toProjectRequest[T](project: Project)(f: (ProjectData, ScopedProjectData) => T)(implicit
     request: OreRequest[_], ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = {
-    (ProjectData.of(project), ScopedProjectData.of(request.data.currentUser, project)).parMapN(f)
+    (ProjectData.of(project), ScopedProjectData.of(request.data.currentUser, project)).mapN(f)
   }
 
   private def processProject(project: Project, user: Option[User])(implicit ec: ExecutionContext) : OptionT[Future,
@@ -295,7 +295,7 @@ trait Actions extends Calls with ActionHelpers {
       implicit val r: AuthRequest[A] = request
 
       project.flatMap { pr =>
-        processProject(pr, Some(request.user)).semiFlatMap { p =>
+        processProject(pr, Some(request.user)).semiflatMap { p =>
           toProjectRequest(p) { case (data, scoped) =>
             new AuthedProjectRequest[A](data, scoped, request)
           }
@@ -350,7 +350,7 @@ trait Actions extends Calls with ActionHelpers {
       case None => Future.successful(Left(notFound))
       case Some(orga) =>
         val rf = Function.untupled(f.tupled.andThen(Right.apply))
-        (OrganizationData.of(orga), ScopedOrganizationData.of(request.data.currentUser, orga)).parMapN(rf)
+        (OrganizationData.of(orga), ScopedOrganizationData.of(request.data.currentUser, orga)).mapN(rf)
     }
   }
 
@@ -361,7 +361,7 @@ trait Actions extends Calls with ActionHelpers {
 
   def getUserData(request: OreRequest[_], userName: String)(implicit ec: ExecutionContext,
           asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef): OptionT[Future, UserData] = {
-    users.withName(userName).semiFlatMap(user => UserData.of(request, user))
+    users.withName(userName).semiflatMap(user => UserData.of(request, user))
   }
 
 }

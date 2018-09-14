@@ -4,6 +4,7 @@ version := "1.6.12"
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.12.6"
+scalacOptions += "-Ypartial-unification"
 routesGenerator := InjectedRoutesGenerator
 resolvers ++= Seq(
   "sponge" at "https://repo.spongepowered.org/maven",
@@ -27,6 +28,7 @@ libraryDependencies ++= Seq(
   "com.beachape"          %%  "enumeratum"              %   "1.5.13",
   "com.beachape"          %%  "enumeratum-slick"        %   "1.5.15",
   "com.chuusai"           %%  "shapeless"               %   "2.3.3",
+  "org.typelevel"         %% "cats-core"                %   "1.4.0",
 
   "com.vladsch.flexmark"  % "flexmark"                       %  "0.34.22",
   "com.vladsch.flexmark"  % "flexmark-ext-autolink"          %  "0.34.22",

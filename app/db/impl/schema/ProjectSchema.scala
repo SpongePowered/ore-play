@@ -11,7 +11,7 @@ import ore.project.Categories.Category
 import ore.project.ProjectSortingStrategies.ProjectSortingStrategy
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.OptionT
+import cats.data.OptionT
 
 /**
   * Project related queries

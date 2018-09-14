@@ -5,8 +5,8 @@ import java.time.Instant
 
 import _root_.util.StringUtils
 import _root_.util.StringUtils._
-import _root_.util.instances.future._
-import _root_.util.syntax._
+import cats.instances.future._
+import cats.syntax.all._
 import com.google.common.base.Preconditions._
 
 import db.access.{ModelAccess, ModelAssociationAccess}
@@ -229,7 +229,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
     */
   def setVisibility(visibility: Visibility, comment: String, creator: Int)(
       implicit ec: ExecutionContext, service: ModelService): Future[(Project, ProjectVisibilityChange)] = {
-    val updateOldChange = lastVisibilityChange.semiFlatMap { vc =>
+    val updateOldChange = lastVisibilityChange.semiflatMap { vc =>
       service.update(
         vc.copy(
           resolvedAt = Some(Timestamp.from(Instant.now())),
@@ -248,7 +248,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
       )
     )
 
-    updateOldChange *> (updateProject, createNewChange).parTupled
+    updateOldChange *> (updateProject, createNewChange).tupled
   }
 
   /**

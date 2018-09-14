@@ -8,7 +8,7 @@ import db.impl.VersionDownloadsTable
 import db.impl.access.UserBase
 import models.project.Version
 import ore.StatTracker._
-import util.instances.future._
+import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.{ObjectId, ObjectTimestamp}

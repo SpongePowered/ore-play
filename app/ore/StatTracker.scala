@@ -13,8 +13,8 @@ import models.statistic.{ProjectView, VersionDownload}
 import ore.StatTracker.COOKIE_NAME
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{RequestHeader, Result}
-import util.instances.future._
-import util.syntax._
+import cats.instances.future._
+import cats.syntax.all._
 import scala.concurrent.{ExecutionContext, Future}
 
 import security.spauth.SpongeAuthApi

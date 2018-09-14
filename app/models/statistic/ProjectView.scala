@@ -9,7 +9,7 @@ import db.impl.access.UserBase
 import models.project.Project
 import ore.StatTracker._
 import ore.permission.scope.ProjectScope
-import util.instances.future._
+import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
 import controllers.sugar.Requests

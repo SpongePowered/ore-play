@@ -7,8 +7,8 @@ import db.table.{AssociativeTable, ModelAssociation, ModelTable}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
-import util.functional.OptionT
-import util.instances.future._
+import cats.data.OptionT
+import cats.instances.future._
 
 /**
   * Defines a set of [[Model]] behaviors such as relationships between other

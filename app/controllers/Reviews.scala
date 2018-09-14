@@ -26,9 +26,9 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import slick.lifted.{Rep, TableQuery}
 import util.DataHelper
 import views.{html => views}
-import util.instances.future._
-import util.syntax._
-import util.functional.EitherT
+import cats.instances.future._
+import cats.syntax.all._
+import cats.data.EitherT
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -130,7 +130,7 @@ final class Reviews @Inject()(data: DataHelper,
             service.update(review.copy(endedAt = Some(Timestamp.from(Instant.now())))),
             // send notification that review happened
             sendReviewNotification(project, version, request.user)
-          ).parTupled
+          ).tupled
         )
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
 
@@ -199,18 +199,18 @@ final class Reviews @Inject()(data: DataHelper,
         message <- bindFormEitherT[Future](this.forms.ReviewDescription)(_ => BadRequest)
         _ <- {
           // Close old review
-          val closeOldReview = version.mostRecentUnfinishedReview.semiFlatMap { oldreview =>
+          val closeOldReview = version.mostRecentUnfinishedReview.semiflatMap { oldreview =>
             (
               oldreview.addMessage(Message(message.trim, System.currentTimeMillis(), "takeover")),
               service.update(oldreview.copy(endedAt = Some(Timestamp.from(Instant.now())))),
-            ).parMapN { (_, _) => () }
+            ).mapN { (_, _) => () }
           }.getOrElse(())
 
           // Then make new one
           val result = (
             closeOldReview,
             this.service.insert(Review(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), version.id.value, request.user.id.value, None, ""))
-          ).parTupled
+          ).tupled
           EitherT.right[Result](result)
         }
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))

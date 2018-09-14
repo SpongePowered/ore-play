@@ -18,8 +18,8 @@ import db.ModelService
 import db.impl.access.UserBase
 import ore.OreConfig
 import play.twirl.api.Html
-import util.syntax._
-import util.instances.future._
+import cats.syntax.all._
+import cats.instances.future._
 
 /**
   * Holds ProjetData that is the same for all users
@@ -108,7 +108,7 @@ object ProjectData {
       lastVisibilityChangeFut,
       lastVisibilityChangeUserFut,
       project.recommendedVersion
-    ).parMapN {
+    ).mapN {
       case (settings, projectOwner, ownerRole, versions, members, logSize, flags, flagUsers, flagResolved, lastVisibilityChange, lastVisibilityChangeUser, recommendedVersion) =>
         val noteCount = project.decodeNotes.size
         val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>

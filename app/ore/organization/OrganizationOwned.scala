@@ -2,7 +2,7 @@ package ore.organization
 
 import db.impl.access.OrganizationBase
 import models.user.Organization
-import util.instances.future._
+import cats.instances.future._
 
 import scala.concurrent.{ExecutionContext, Future}
 

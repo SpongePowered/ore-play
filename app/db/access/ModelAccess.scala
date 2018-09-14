@@ -7,7 +7,7 @@ import slick.lifted.ColumnOrdered
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.OptionT
+import cats.data.OptionT
 
 /**
   * Provides simple, synchronous, access to a ModelTable.

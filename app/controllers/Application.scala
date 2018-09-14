@@ -29,9 +29,9 @@ import play.api.i18n.MessagesApi
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.DataHelper
-import util.functional.OptionT
-import util.instances.future._
-import util.syntax._
+import cats.data.OptionT
+import cats.instances.future._
+import cats.syntax.all._
 import views.{html => views}
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -239,7 +239,7 @@ final class Application @Inject()(data: DataHelper,
   def showFlags(): Action[AnyContent] = FlagAction.async { implicit request =>
     for {
       flags <- this.service.access[Flag](classOf[Flag]).filterNot(_.isResolved)
-      (users, projects) <- (Future.sequence(flags.map(_.user)), Future.sequence(flags.map(_.project))).parTupled
+      (users, projects) <- (Future.sequence(flags.map(_.user)), Future.sequence(flags.map(_.project))).tupled
       perms <- Future.sequence(projects.map { project =>
         val perms = VisibilityTypes.values.map(_.permission).map { perm =>
           request.user can perm in project map (value => (perm, value))
@@ -262,7 +262,7 @@ final class Application @Inject()(data: DataHelper,
     * @return         Ok
     */
   def setFlagResolved(flagId: Int, resolved: Boolean): Action[AnyContent] = FlagAction.async { implicit request =>
-    this.service.access[Flag](classOf[Flag]).get(flagId).semiFlatMap { flag =>
+    this.service.access[Flag](classOf[Flag]).get(flagId).semiflatMap { flag =>
       for {
         user        <- users.current.value
         _           <- flag.markResolved(resolved, user)
@@ -287,7 +287,7 @@ final class Application @Inject()(data: DataHelper,
       projects.missingFile.flatMap { v =>
         Future.sequence(v.map { v => v.project.map(p => (v, p)) })
       }
-    ).parMapN { (noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects) =>
+    ).mapN { (noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects) =>
       Ok(views.users.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
     }
   }
@@ -338,7 +338,7 @@ final class Application @Inject()(data: DataHelper,
     * Show the activities page for a user
     */
   def showActivities(user: String): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
-    users.withName(user).semiFlatMap { u =>
+    users.withName(user).semiflatMap { u =>
       val id = u.id.value
       val reviews = this.service.access[Review](classOf[Review])
         .filter(_.userId === id)
@@ -414,7 +414,7 @@ final class Application @Inject()(data: DataHelper,
       last10DaysCountQuery("project_version_unsafe_downloads", "created_at"),
       last10DaysTotalOpen("project_flags", "created_at", "resolved_at"),
       last10DaysCountQuery("project_flags", "resolved_at")
-    ).parMapN { (reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed) =>
+    ).mapN { (reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed) =>
       Ok(views.users.admin.stats(reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed))
     }
   }
@@ -442,7 +442,7 @@ final class Application @Inject()(data: DataHelper,
       service.DB.db.run(logQuery.result),
       service.access[LoggedActionModel](classOf[LoggedActionModel]).size,
       request.currentUser.get can ViewIp in GlobalScope
-    ).parMapN { (actions, size, canViewIP) =>
+    ).mapN { (actions, size, canViewIP) =>
       Ok(views.users.admin.log(actions, pageSize, offset, page, size, userFilter, projectFilter, versionFilter, pageFilter, actionFilter, subjectFilter, canViewIP))
     }
   }
@@ -460,21 +460,21 @@ final class Application @Inject()(data: DataHelper,
   def UserAdminAction: ActionBuilder[AuthRequest, AnyContent] = Authenticated andThen PermissionAction[AuthRequest](UserAdmin)
 
   def userAdmin(user: String): Action[AnyContent] = UserAdminAction.async { implicit request =>
-    users.withName(user).semiFlatMap { u =>
+    users.withName(user).semiflatMap { u =>
       for {
         isOrga <- u.toMaybeOrganization.isDefined
         (projectRoles, orga) <- {
           if (isOrga)
-            (Future.successful(Seq.empty), getOrga(request, user).value).parTupled
+            (Future.successful(Seq.empty), getOrga(request, user).value).tupled
           else
-            (u.projectRoles.all, Future.successful(None)).parTupled
+            (u.projectRoles.all, Future.successful(None)).tupled
         }
         (userData, projects, orgaData, scopedOrgaData) <- (
           getUserData(request, user).value,
           Future.sequence(projectRoles.map(_.project)),
           OrganizationData.of(orga).value,
           ScopedOrganizationData.of(Some(request.user), orga).value
-        ).parTupled
+        ).tupled
       } yield {
         val pr = projects zip projectRoles
         Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.toSeq))
@@ -498,7 +498,7 @@ final class Application @Inject()(data: DataHelper,
         ) = {
           val id = (json \ "id").as[Int]
           action match {
-            case "setRole" => modelAccess.get(id).semiFlatMap { role =>
+            case "setRole" => modelAccess.get(id).semiflatMap { role =>
               val roleType = RoleType.withValue((json \ "role").as[String])
 
               if (roleType == ownerType)
@@ -511,12 +511,12 @@ final class Application @Inject()(data: DataHelper,
             case "setAccepted" =>
               modelAccess
                 .get(id)
-                .semiFlatMap(role => setAccepted(role, (json \ "accepted").as[Boolean]).as(Ok))
+                .semiflatMap(role => setAccepted(role, (json \ "accepted").as[Boolean]).as(Ok))
             case "deleteRole" =>
               modelAccess
                 .get(id)
                 .filter(_.roleType.isAssignable)
-                .semiFlatMap(_.remove().as(Ok))
+                .semiflatMap(_.remove().as(Ok))
           }
         }
 
@@ -564,7 +564,7 @@ final class Application @Inject()(data: DataHelper,
           case _ => OptionT.none[Future, Status]
         }
       }
-    }.semiFlatMap(_.getOrElse(BadRequest)).getOrElse(NotFound)
+    }.semiflatMap(_.getOrElse(BadRequest)).getOrElse(NotFound)
   }
 
   /**
@@ -578,12 +578,12 @@ final class Application @Inject()(data: DataHelper,
       (projectApprovals, projectChanges) <- (
         projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn, ProjectSortingStrategies.Default, -1, 0),
         projectSchema.collect(ModelFilter[Project](_.visibility === VisibilityTypes.NeedsChanges).fn, ProjectSortingStrategies.Default, -1, 0)
-      ).parTupled
+      ).tupled
       (lastChangeRequests, lastVisibilityChanges, projectVisibilityChanges) <- (
         Future.sequence(projectApprovals.map(_.lastChangeRequest.value)),
         Future.sequence(projectApprovals.map(_.lastVisibilityChange.value)),
         Future.sequence(projectChanges.map(_.lastVisibilityChange.value))
-      ).parTupled
+      ).tupled
 
       (perms, lastChangeRequesters, lastVisibilityChangers, projectChangeRequests, projectVisibilityChangers) <- (
         Future.sequence(projectApprovals.map { project =>
@@ -605,7 +605,7 @@ final class Application @Inject()(data: DataHelper,
           case None => Future.successful(None)
           case Some(lcr) => lcr.created.value
         })
-      ).parTupled
+      ).tupled
     }
     yield {
       val needsApproval = projectApprovals zip perms zip lastChangeRequests zip lastChangeRequesters zip lastVisibilityChanges zip lastVisibilityChangers map { case (((((a,b),c),d),e),f) =>

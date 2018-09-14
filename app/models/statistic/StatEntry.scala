@@ -5,8 +5,8 @@ import com.google.common.base.Preconditions._
 
 import db.Model
 import db.impl.table.StatTable
-import util.instances.future._
-import util.functional.OptionT
+import cats.instances.future._
+import cats.data.OptionT
 import models.user.User
 import scala.concurrent.{ExecutionContext, Future}
 

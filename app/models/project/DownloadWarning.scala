@@ -9,8 +9,8 @@ import controllers.sugar.Bakery
 import db.{Expirable, ObjectId, ObjectReference, ObjectTimestamp, Model, ModelService}
 import db.impl.DownloadWarningsTable
 import models.project.DownloadWarning.COOKIE
-import util.functional.OptionT
-import util.instances.future._
+import cats.data.OptionT
+import cats.instances.future._
 import play.api.mvc.Cookie
 import scala.concurrent.{ExecutionContext, Future}
 

@@ -6,8 +6,8 @@ import models.statistic.StatEntry
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 import db.impl.access.UserBase
-import util.functional.OptionT
-import util.instances.future._
+import cats.data.OptionT
+import cats.instances.future._
 
 /**
   * Records and determines uniqueness of StatEntries in a StatTable.

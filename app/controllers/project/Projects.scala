@@ -36,9 +36,10 @@ import models.viewhelper.ScopedOrganizationData
 import ore.project.ProjectMember
 import ore.user.MembershipDossier
 import play.api.mvc.{Action, AnyContent, Result}
-import util.functional.{EitherT, Id, OptionT}
-import util.instances.future._
-import util.syntax._
+import cats.data.{EitherT, OptionT}
+import cats.Id
+import cats.instances.future._
+import cats.syntax.all._
 
 /**
   * Controller for handling Project related actions.
@@ -132,7 +133,7 @@ class Projects @Inject()(stats: StatTracker,
         Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
       case Some(pending) =>
         for {
-          (orgas, owner) <- (request.user.organizations.all, pending.underlying.owner.user).parTupled
+          (orgas, owner) <- (request.user.organizations.all, pending.underlying.owner.user).tupled
           createOrga <- Future.sequence(orgas.map(orga => owner can CreateProject in orga))
         } yield {
           val createdOrgas = orgas zip createOrga filter (_._2) map (_._1)
@@ -176,7 +177,7 @@ class Projects @Inject()(stats: StatTracker,
                     Future.sequence(authors.filterNot(_.equals(currentUser.name)).map(users.withName(_).value)),
                     this.forums.countUsers(authors),
                     newPending.underlying.owner.user
-                  ).parMapN { (users, registered, owner) =>
+                  ).mapN { (users, registered, owner) =>
                     Ok(views.invite(owner, newPending, users.flatten, registered))
                   }
                 }
@@ -338,7 +339,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showIcon(author: String, slug: String): Action[AnyContent] = Action async { implicit request =>
     // TODO maybe instead of redirect cache this on ore?
-    projects.withSlug(author, slug).semiFlatMap { project =>
+    projects.withSlug(author, slug).semiflatMap { project =>
       projects.fileManager.getIconPath(project) match {
         case None =>
           project.owner.user.map(user => Redirect(user.avatarUrl))
@@ -417,7 +418,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def setInviteStatus(id: Int, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
     val user = request.user
-    user.projectRoles.get(id).semiFlatMap { role =>
+    user.projectRoles.get(id).semiflatMap { role =>
       role.project.flatMap { project =>
         val dossier: MembershipDossier {
           type MembersTable = ProjectMembersTable
@@ -692,8 +693,8 @@ class Projects @Inject()(stats: StatTracker,
       implicit val r: Requests.OreRequest[AnyContent] = request.request
       val project = request.data.project
       for {
-        (changes, logger) <- (project.visibilityChangesByDate, project.logger).parTupled
-        (changedBy, logs) <- (Future.sequence(changes.map(_.created.value)), logger.entries.all).parTupled
+        (changes, logger) <- (project.visibilityChangesByDate, project.logger).tupled
+        (changedBy, logs) <- (Future.sequence(changes.map(_.created.value)), logger.entries.all).tupled
       } yield {
         val visChanges = changes zip changedBy
         Ok(views.log(project, visChanges, logs.toSeq))
@@ -710,7 +711,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def delete(author: String, slug: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
-      getProject(author, slug).semiFlatMap { project =>
+      getProject(author, slug).semiflatMap { project =>
         val deletePost = if (project.topicId != -1) this.forums.deleteProjectTopic(project) else Future.unit
 
         val effects = deletePost *>
@@ -764,7 +765,7 @@ class Projects @Inject()(stats: StatTracker,
     */
   def showNotes(author: String, slug: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewFlags)).async { implicit request =>
-      getProject(author, slug).semiFlatMap { project =>
+      getProject(author, slug).semiflatMap { project =>
         Future.sequence(project.decodeNotes.map(note => users.get(note.user).value.map(user => (note, user)))) map { notes =>
           Ok(views.admin.notes(project, notes))
         }

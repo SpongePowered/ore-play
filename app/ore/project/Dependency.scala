@@ -4,7 +4,7 @@ import db.impl.access.ProjectBase
 import models.project.Project
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.OptionT
+import cats.data.OptionT
 
 /**
   * Represents a dependency to another plugin. Either on or not on Ore.

@@ -18,9 +18,9 @@ import ore.permission.scope.ProjectScope
 import ore.project.Dependency
 import play.twirl.api.Html
 import util.FileUtils
-import util.instances.future._
-import util.functional.OptionT
-import util.syntax._
+import cats.instances.future._
+import cats.data.OptionT
+import cats.syntax.all._
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
@@ -162,7 +162,7 @@ case class Version(id: ObjectId = ObjectId.Uninitialized,
     this.schema.getChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], this)
 
   override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext, service: ModelService): Future[(Version, VersionVisibilityChange)] = {
-    val updateOldChange = lastVisibilityChange.semiFlatMap { vc =>
+    val updateOldChange = lastVisibilityChange.semiflatMap { vc =>
       service.update(
         vc.copy(
           resolvedAt = Some(Timestamp.from(Instant.now())),
@@ -181,7 +181,7 @@ case class Version(id: ObjectId = ObjectId.Uninitialized,
       )
     )
 
-    updateOldChange *> (updateVersion, createNewChange).parTupled
+    updateOldChange *> (updateVersion, createNewChange).tupled
   }
 
   /**

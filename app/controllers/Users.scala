@@ -26,11 +26,11 @@ import play.api.i18n.MessagesApi
 import play.api.mvc._
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
-import util.instances.future._
-import util.syntax._
+import cats.instances.future._
+import cats.syntax.all._
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.EitherT
+import cats.data.EitherT
 
 /**
   * Controller for general user actions.
@@ -84,7 +84,7 @@ class Users @Inject()(fakeUser: FakeUser,
       Future.successful(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
     } else {
       // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
-      this.sso.authenticate(sso.get, sig.get)(isNonceValid).map(User.fromSponge).semiFlatMap { fromSponge =>
+      this.sso.authenticate(sso.get, sig.get)(isNonceValid).map(User.fromSponge).semiflatMap { fromSponge =>
         // Complete authentication
         for {
           user <- users.getOrCreate(fromSponge)
@@ -137,7 +137,7 @@ class Users @Inject()(fakeUser: FakeUser,
     val pageSize = this.config.users.get[Int]("project-page-size")
     val p = page.getOrElse(1)
     val offset = (p - 1) * pageSize
-    users.withName(username).semiFlatMap { user =>
+    users.withName(username).semiflatMap { user =>
       for {
         // TODO include orga projects?
         projectSeq <- service.DB.db.run(queryUserProjects(user).drop(offset).take(pageSize).result)
@@ -149,7 +149,7 @@ class Users @Inject()(fakeUser: FakeUser,
           Future.sequence(starred.map(_.recommendedVersion)),
           OrganizationData.of(orga).value,
           ScopedOrganizationData.of(request.currentUser, orga).value
-        ).parTupled
+        ).tupled
       } yield {
         val data = projectSeq zip tags map { case ((p, v), tags) =>
           (p, user, v, tags)
@@ -326,7 +326,7 @@ class Users @Inject()(fakeUser: FakeUser,
       val notificationsFut = nFilter(user.notifications).flatMap(l => Future.sequence(l.map(notif => notif.origin.map((notif, _)))))
       val invitesFut = iFilter(user).flatMap(invites => Future.sequence(invites.map {invite => invite.subject.map((invite, _))}))
 
-      (notificationsFut, invitesFut).parMapN { (notifications, invites) =>
+      (notificationsFut, invitesFut).mapN { (notifications, invites) =>
         Ok(views.users.notifications(
           notifications,
           invites,
@@ -342,7 +342,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
   def markNotificationRead(id: Int): Action[AnyContent] = Authenticated.async { implicit request =>
-    request.user.notifications.get(id).semiFlatMap { notification =>
+    request.user.notifications.get(id).semiflatMap { notification =>
       service.update(notification.copy(isRead = true)).as(Ok)
     }.getOrElse(notFound)
   }

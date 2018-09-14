@@ -6,7 +6,7 @@ import db.{ModelSchema, ModelService}
 import models.project.Page
 import scala.concurrent.{ExecutionContext, Future}
 
-import util.functional.OptionT
+import cats.data.OptionT
 
 /**
   * Page related queries.

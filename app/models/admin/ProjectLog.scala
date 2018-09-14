@@ -5,7 +5,7 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectLogTable
 import ore.project.ProjectOwned
-import util.instances.future._
+import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -39,7 +39,7 @@ case class ProjectLog(id: ObjectId = ObjectId.Uninitialized,
     val entries = service.access[ProjectLogEntry](
       classOf[ProjectLogEntry], ModelFilter[ProjectLogEntry](_.logId === this.id.value))
     val tag = "error"
-    entries.find(e => e.message === message && e.tag === tag).semiFlatMap { entry =>
+    entries.find(e => e.message === message && e.tag === tag).semiflatMap { entry =>
       entries.update(entry.copy(
         occurrences = entry.occurrences + 1,
         lastOccurrence = service.theTime

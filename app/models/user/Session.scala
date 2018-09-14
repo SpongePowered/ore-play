@@ -8,7 +8,7 @@ import db.impl.access.UserBase
 import scala.concurrent.{ExecutionContext, Future}
 
 import security.spauth.SpongeAuthApi
-import util.functional.OptionT
+import cats.data.OptionT
 import db.{Expirable, Model, ObjectId, ObjectTimestamp}
 
 /**

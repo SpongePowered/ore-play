@@ -7,7 +7,8 @@ import play.api.cache.AsyncCacheApi
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelService
-import util.syntax._
+import cats.instances.future._
+import cats.syntax.all._
 
 /**
   * Holds ProjectData that is specific to a user
@@ -31,7 +32,7 @@ object ScopedProjectData {
         user can EditVersions in project map ((EditVersions, _)),
         user can UploadVersions in project map ((UploadVersions, _)),
         Future.sequence(VisibilityTypes.values.map(_.permission).map(p => user can p in project map ((p, _))))
-      ).parMapN {
+      ).mapN {
         case (canPostAsOwnerOrga, uProjectFlags, starred, watching, editPages, editSettings, editChannels, editVersions, uploadVersions, visibilities) =>
           val perms = visibilities + editPages + editSettings + editChannels + editVersions + uploadVersions
           ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, perms.toMap)

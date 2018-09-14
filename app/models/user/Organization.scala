@@ -14,7 +14,7 @@ import slick.lifted.{Compiled, Rep, TableQuery}
 import scala.concurrent.{ExecutionContext, Future}
 
 import security.spauth.SpongeAuthApi
-import util.functional.OptionT
+import cats.data.OptionT
 
 /**
   * Represents an Ore Organization. An organization is like a [[User]] in the

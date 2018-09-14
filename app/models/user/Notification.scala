@@ -4,7 +4,7 @@ import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.NotificationTable
 import ore.user.UserOwned
 import ore.user.notification.NotificationTypes.NotificationType
-import util.instances.future._
+import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
