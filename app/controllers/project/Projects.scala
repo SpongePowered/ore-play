@@ -710,10 +710,13 @@ class Projects @Inject()(stats: StatTracker,
     */
   def delete(author: String, slug: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
-      getProject(author, slug).map { project =>
-        projects.delete(project)
-        UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.value, "deleted", project.visibility.nameKey)
-        Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name))
+      getProject(author, slug).semiFlatMap { project =>
+        val deletePost = if (project.topicId != -1) this.forums.deleteProjectTopic(project) else Future.unit
+
+        val effects = deletePost *>
+          projects.delete(project) *>
+          UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.value, "deleted", project.visibility.nameKey)
+        effects.as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
       }.merge
     }
   }

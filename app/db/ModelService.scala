@@ -135,8 +135,7 @@ trait ModelService {
     val models = newAction[M](model.getClass)
     doAction {
       models returning models.map(_.id) into {
-        case (m, id) =>
-          model.copyWith(ObjectId(id), m.createdAt).asInstanceOf[M]
+        case (m, id) => m.copyWith(ObjectId(id), m.createdAt).asInstanceOf[M]
       } += toInsert
     }
   }

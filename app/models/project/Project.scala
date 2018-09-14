@@ -217,17 +217,9 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
     */
   def updateSettings(settings: ProjectSettings)(implicit ec: ExecutionContext, service: ModelService): Future[ProjectSettings] = Defined {
     checkNotNull(settings, "null settings", "")
-    val access = service.access[ProjectSettings](classOf[ProjectSettings])
-    val id = this.id.value
-    for {
-      // Delete previous settings
-      _ <- access.removeAll(_.projectId === id)
-      // Add new settings
-      newSettings <- access.add(settings.copy(projectId = id))
-    } yield {
-      newSettings
-    }
-
+    val newSettings = settings.copy(projectId = this.id.value)
+    if(settings.isDefined) service.update(newSettings)
+    else service.insert(newSettings)
   }
 
   /**
@@ -359,7 +351,9 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
     * @return Recommended version
     */
   def recommendedVersion(implicit ec: ExecutionContext, service: ModelService): Future[Version] =
-    this.versions.get(this.recommendedVersionId.get).getOrElse(throw new NoSuchElementException("Get on None"))
+    this.versions
+      .get(this.recommendedVersionId.getOrElse(throw new NoSuchElementException(s"Tried to get non-existant recommended version for $name")))
+      .getOrElse(throw new NoSuchElementException(s"Tried to get non-existant recommended version for $name and id ${recommendedVersionId.get}"))
 
   /**
     * Returns the pages in this Project.

@@ -278,41 +278,36 @@ trait ProjectFactory {
       _ = checkArgument(this.config.isValidProjectName(pending.underlying.name), "invalid name", "")
       // Create the project and it's settings
       newProject <- this.projects.add(pending.underlying)
-    } yield {
-      newProject.updateSettings(pending.settings)
+      _ <- newProject.updateSettings(pending.settings)
+      _<- {
+        // Invite members
+        val dossier: MembershipDossier {
+          type MembersTable = ProjectMembersTable
+          type MemberType = ProjectMember
+          type RoleTable = ProjectRoleTable
+          type ModelType = Project
+          type RoleType = ProjectRole
+        } = newProject.memberships
+        val owner = newProject.owner
+        val ownerId = owner.userId
+        val projectId = newProject.id.value
 
-      // Invite members
-      val dossier: MembershipDossier {
-        type MembersTable = ProjectMembersTable
-
-        type MemberType = ProjectMember
-
-        type RoleTable = ProjectRoleTable
-
-        type ModelType = Project
-
-        type RoleType = ProjectRole
-      } = newProject.memberships
-      val owner = newProject.owner
-      val ownerId = owner.userId
-      val projectId = newProject.id.value
-
-      dossier.addRole(new ProjectRole(ownerId, RoleType.ProjectOwner, projectId, accepted = true, visible = true))
-      pending.roles.map { role =>
-        role.user.map { user =>
-          dossier.addRole(role.copy(projectId = projectId))
-          user.sendNotification(Notification(
-            originId = ownerId,
-            notificationType = NotificationTypes.ProjectInvite,
-            messageArgs = List("notification.project.invite", role.roleType.title, project.name)
-          ))
+        val addRole = dossier.addRole(new ProjectRole(ownerId, RoleType.ProjectOwner, projectId, accepted = true, visible = true))
+        val addOtherRoles = Future.traverse(pending.roles) { role =>
+          role.user.flatMap { user =>
+            dossier.addRole(role.copy(projectId = projectId)) *>
+              user.sendNotification(Notification(
+                originId = ownerId,
+                notificationType = NotificationTypes.ProjectInvite,
+                messageArgs = List("notification.project.invite", role.roleType.title, project.name)
+              ))
+          }
         }
+
+        addRole *> addOtherRoles
       }
-
-      this.forums.createProjectTopic(newProject)
-
-      newProject
-    }
+      withTopicId <- this.forums.createProjectTopic(newProject)
+    } yield withTopicId
   }
 
   /**
@@ -369,18 +364,15 @@ trait ProjectFactory {
         this.service.access[Version](classOf[Version]).add(newVersion)
       }
       tags <- addTags(pending, newVersion)
-    } yield {
       // Notify watchers
-      this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
-
-      uploadPlugin(project, channel, pending.plugin, newVersion)
-
-      if (project.topicId != -1 && pending.createForumPost) {
-        this.forums.postVersionRelease(project, newVersion, newVersion.description)
-      }
-
-      (newVersion, channel, tags)
-    }
+      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
+      _ <- Future.fromTry(uploadPlugin(project, channel, pending.plugin, newVersion))
+      _ <-
+        if (project.topicId != -1 && pending.createForumPost)
+          this.forums.postVersionRelease(project, newVersion, newVersion.description).void
+        else
+          Future.unit
+    } yield (newVersion, channel, tags)
   }
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Version)(implicit ec: ExecutionContext): Future[Seq[ProjectTag]] = {
@@ -436,8 +428,8 @@ trait ProjectFactory {
 
     move(oldPath, newPath)
     move(oldSigPath, newSigPath)
-    delete(oldPath)
-    delete(oldSigPath)
+    deleteIfExists(oldPath)
+    deleteIfExists(oldSigPath)
   }
 
 }

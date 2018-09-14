@@ -77,56 +77,51 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project Project to create topic for.
     * @return        True if successful
     */
-  def createProjectTopic(project: Project)(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Future[Boolean] = {
+  def createProjectTopic(project: Project)(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Future[Project] = {
     if (!this.isEnabled)
-      return Future.successful(true)
+      return Future.successful(project)
     checkArgument(project.isDefined, "undefined project", "")
     val content = this.templates.projectTopic(project)
     val title = this.templates.projectTitle(project)
-    val resultPromise: Promise[Boolean] = Promise()
+
     createTopic(
       poster = project.ownerName,
       title = title,
       content = content,
       categoryId = Some(this.categoryDefault)
-    ).andThen {
-      case Success(errorsOrTopic) => errorsOrTopic match {
-        case Left(errors) =>
-          // Request went through but Discourse responded with errors
-          // Don't schedule a retry because this will just keep happening
-          val message = "Request to create project topic was successful but Discourse responded with errors:\n" +
-            s"Project: ${project.url}\n" +
-            s"Title: $title\n" +
-            s"Content: $content\n" +
-            s"Errors: ${errors.toString}"
-          Logger.warn(message)
-          project.logger.map(_.err(message))
-        case Right(topic) =>
-          // Topic created!
-          // Catch some unexpected cases (should never happen)
-          if (!topic.isTopic)
-            throw new RuntimeException("project post isn't topic?")
-          if (topic.username != project.ownerName)
-            throw new RuntimeException("project post user isn't owner?")
+    ).flatMap {
+      case Left(errors) =>
+        // Request went through but Discourse responded with errors
+        // Don't schedule a retry because this will just keep happening
+        val message =
+          s"""|Request to create project topic was successful but Discourse responded with errors:
+              |Project: ${project.url}
+              |Title: $title
+              |Content: $content
+              |Errors: ${errors.toString}""".stripMargin
+        Logger.warn(message)
+        project.logger.flatMap(_.err(message)).map(_ => project)
+      case Right(topic) =>
+        // Topic created!
+        // Catch some unexpected cases (should never happen)
+        if (!topic.isTopic)
+          throw new RuntimeException("project post isn't topic?")
+        if (topic.username != project.ownerName)
+          throw new RuntimeException("project post user isn't owner?")
 
-          // Update the post and topic id in the project
-          service.update(project.copy(topicId = topic.topicId, postId = topic.postId))
+        Logger.debug(
+          s"""|New project topic:
+              |Project: ${project.url}
+              |Topic ID: ${topic.topicId}
+              |Post ID: ${topic.postId}""".stripMargin)
 
-          Logger.debug(
-            s"New project topic:\n" +
-              s"Project: ${project.url}\n" +
-              s"Topic ID: ${topic.topicId}\n" +
-              s"Post ID: ${topic.postId}")
-
-          resultPromise.success(true)
-      }
-      case Failure(_) =>
-        // Something went wrong. Turn on debug mode to gez debug messages from play discourse for further investigations.
-        Logger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...")
-        resultPromise.success(false)
-    }
-
-    resultPromise.future
+        // Update the post and topic id in the project
+        service.update(project.copy(topicId = topic.topicId, postId = topic.postId))
+    }.transform(identity, e => {
+      // Something went wrong. Turn on debug mode to gez debug messages from play discourse for further investigations.
+      Logger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...")
+      e
+    })
   }
 
   /**
@@ -303,9 +298,8 @@ trait OreDiscourseApi extends DiscourseApi {
           logFailure()
           resultPromise.success(false)
         } else {
-          service.update(project.copy(topicId = -1, postId = -1))
           Logger.debug(s"Successfully deleted project topic for: ${project.url}.")
-          resultPromise.success(true)
+          resultPromise.completeWith(service.update(project.copy(topicId = -1, postId = -1)).map(_ => true))
         }
       case Failure(e) =>
         logFailure()
