@@ -2,8 +2,7 @@
 @import ore.permission.role.Role
 @import views.html.utils.userAvatar
 
-@import ore.OreConfig
-@(owner: User, loadedUsers: Seq[User] = Seq(), roleClass: Class[_ <: Role])(implicit messages: Messages, config: OreConfig)
+@(owner: User, loadedUsers: Seq[User] = Seq(), roleClass: Class[_ <: Role])(implicit messages: Messages)
 
 <script type="text/javascript" src="@routes.Assets.at("javascripts/userSearch.js")"></script>
 <script type="text/javascript" src="@routes.Assets.at("javascripts/membersConfig.js")"></script>
@@ -14,7 +13,7 @@
         <tr id="result-row">
             <td>
                 <input type="hidden"/>
-                @userAvatar(None, clazz = "user-avatar-xs")
+                @userAvatar(None, None, clazz = "user-avatar-xs")
                 <i class="fa fa-times user-cancel"></i>
                 <a class="username" target="_blank" rel="noopener" href=""></a>
                 <span>@users.invite.roleSelect(roleClass)</span>

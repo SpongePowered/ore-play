@@ -371,6 +371,7 @@ trait OreRestfulApi {
           "username"        ->  user.name,
           "roles"           ->  user.globalRoles.map(_.title),
           "starred"         ->  toJson(stars.getOrElse(user.id.value, Seq.empty)),
+          "avatarUrl"       ->  user.avatarUrl,
           "projects"        ->  toJson(projectsByUser.getOrElse(user.id.value, Nil))
         )
       }

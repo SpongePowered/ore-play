@@ -331,6 +331,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
           val email = query.get("email")
           val username = query.get("username")
           val fullName = query.get("name")
+          val avatar_url = query.get("avatar_url")
           val add_groups = query.get("add_groups")
 
           service.update(
@@ -338,6 +339,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
               email = email.orElse(user.email),
               name = username.getOrElse(user.name),
               fullName = fullName.orElse(user.fullName),
+              avatarUrl = avatar_url.orElse(user.avatarUrl),
               globalRoles = add_groups.fold(user.globalRoles) { groups =>
                 if (groups.trim.isEmpty) Nil
                 else groups.split(",").flatMap(RoleType.withValueOpt).toList
