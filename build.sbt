@@ -11,6 +11,9 @@ resolvers ++= Seq(
   "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
 )
 
+sources in (Compile, doc) := Seq.empty
+publishArtifact in (Compile, packageDoc) := false
+
 libraryDependencies ++= Seq( ehcache , ws , specs2 % Test , guice )
 libraryDependencies ++= Seq(
   "org.spongepowered"     %   "play-discourse"          %   "3.0",

@@ -1,23 +1,42 @@
+# This Dockerfile is designed to be used for production
 FROM openjdk:8-jdk-alpine
 
-MAINTAINER Jadon Fowler <jadonflower@gmail.com>
+LABEL maintainer="Jadon Fowler <jadonflower@gmail.com>"
 
-# Install Activator
-RUN apk update
-RUN apk add curl unzip bash postgresql
-RUN curl -O http://downloads.typesafe.com/typesafe-activator/1.3.6/typesafe-activator-1.3.6.zip
-RUN unzip typesafe-activator-1.3.6.zip -d / && rm typesafe-activator-1.3.6.zip && chmod a+x /activator-dist-1.3.6/activator
-ENV PATH $PATH:/activator-dist-1.3.6
+# Temporary build folder for the 'stage' task
+WORKDIR /home/ore/build
+# The .dockerignore file on the project root avoids build cache and personal configuration to be included in the image
+ADD . ./
 
-# Copy Ore
-RUN mkdir -p /home/play/ore/
-WORKDIR /home/play/ore/
-ADD . /home/play/ore/
+# TODO use Docker secrets for the app key and passwords (and any other sensible information)
+ENV SBT_VERSION=1.2.1 \
+    SBT_HOME=/usr/local/sbt \
+    JDBC_DATABASE_URL=jdbc:postgresql://db/ore \
+    SPONGE_AUTH_URL=http://spongeauth:8000 \
+    APPLICATION_SECRET="some_secret"
+
+ENV PATH=${PATH}:${SBT_HOME}/bin
+
+# TODO a shell script to extract the SBT version from project/build.properties and set SBT_VERSION to the output value
+RUN cp conf/application.conf conf/application.conf && \
+    apk add --virtual --no-cache curl ca-certificates bash && \
+# Downloads SBT with the version given above and extracts it
+    curl -sL "https://piccolo.link/sbt-$SBT_VERSION.tgz" -o "sbt-$SBT_VERSION.tgz" && \
+    tar -xvzf "sbt-$SBT_VERSION.tgz" -C /usr/local && \
+# Compiles Ore and makes a production distribution (but not in an archive, unlike 'dist')
+    sbt stage && \
+    mkdir -p /home/ore/prod && \
+# Copy the 'stage' task result _content_ into the production directory
+    cp -r /home/ore/build/target/universal/stage/* /home/ore/prod && \
+# Cleans the temporary build directory, as we don't need it in the final image
+    rm -rf /home/ore/build && \
+# SBT is no longer needed too
+    rm -rf $SBT_HOME && \
+    apk del curl
+
+WORKDIR /home/ore/prod/bin
 
 # Ore runs on port 9000
-# 8888 is the Activator UI
 EXPOSE 9000
 
-RUN cp conf/application.conf.template conf/application.conf
-
-CMD ["/home/play/ore/docker.sh"]
+CMD ["./ore"]

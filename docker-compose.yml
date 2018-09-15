@@ -1,24 +1,27 @@
-version: "2"
+version: '3'
 
 services:
   app:
+    image: ore:1.6.8
     build: .
     depends_on:
       - 'db'
       - 'spongeauth'
     ports:
-      - "9000:9000"
+      - '9000:9000'
     stdin_open: true
   db:
     build: '.docker/db/'
     restart: always
+    ports:
+      - '5432:5432'
     environment:
       POSTGRES_USER: root
-      POSTGRES_PASSWORD: ""
+      POSTGRES_PASSWORD: ''
       POSTGRES_DB: ore
   spongeauth:
     image: spongepowered/spongeauth
     depends_on:
       - 'db'
     ports:
-      - "8000:8000"
+      - '8000:8000'

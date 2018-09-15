@@ -1,3 +1,19 @@
+/*
+
+!app/
+
+!conf/
 # This is created in the Dockerfile
 conf/application.conf
 
+!OreTestPlugin/
+
+!project/
+project/target/
+project/project/
+
+!public/
+
+!scripts/
+
+!build.sbt
