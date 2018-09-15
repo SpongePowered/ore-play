@@ -134,12 +134,12 @@ trait ModelService {
     * @return       Newly created model
     */
   def insert[M <: Model](model: M)(implicit ec: ExecutionContext): Future[M] = {
-    val toInsert = model.copyWith(None, Some(theTime)).asInstanceOf[M]
+    val toInsert = model.copyWith(ObjectId.Uninitialized, ObjectTimestamp(theTime)).asInstanceOf[M]
     val models = newAction[M](model.getClass)
     doAction {
       models returning models.map(_.id) into {
         case (m, id) =>
-          model.copyWith(Some(id), m.createdAt).asInstanceOf[M]
+          model.copyWith(ObjectId(id), m.createdAt).asInstanceOf[M]
       } += toInsert
     }
   }
@@ -158,7 +158,7 @@ trait ModelService {
     DB.db.run {
       (for {
         row <- newAction[M](model.getClass)
-        if row.id === model.id.get
+        if row.id === model.id.value
       } yield column(row)).update(value)
     }
   }
@@ -210,7 +210,7 @@ trait ModelService {
     * @param model Model to delete
     */
   def delete[M <: Model](model: M): Future[Int]
-  = DB.db.run(newAction[M](model.getClass).filter(IdFilter[M](model.id.get).fn).delete)
+  = DB.db.run(newAction[M](model.getClass).filter(IdFilter[M](model.id.value).fn).delete)
 
   /**
     * Deletes all the models meeting the specified filter.

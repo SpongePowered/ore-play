@@ -2,7 +2,7 @@ package form.organization
 
 import form.RoleSetBuilder
 import models.user.role.OrganizationRole
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 
 /**
   * Builds a set of [[OrganizationRole]]s from input data.

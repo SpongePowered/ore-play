@@ -5,7 +5,7 @@ import java.time.Instant
 
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 
-import db.ModelService
+import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.OreModel
@@ -39,24 +39,24 @@ import models.project.VisibilityTypes.{Public, Visibility}
   * @param _description     User description of version
   * @param assets           Path to assets directory within plugin
   * @param projectId        ID of project this version belongs to
-  * @param channelId        ID of channel this version belongs to
+  * @param _channelId        ID of channel this version belongs to
   */
-case class Version(override val id: Option[Int] = None,
-                   override val createdAt: Option[Timestamp] = None,
+case class Version(override val id: ObjectId = ObjectId.Uninitialized,
+                   override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                    override val projectId: Int,
                    versionString: String,
                    dependencyIds: List[String] = List(),
                    assets: Option[String] = None,
-                   channelId: Int = -1,
+                   private var _channelId: Int = -1,
                    fileSize: Long,
                    hash: String,
-                   private var _authorId: Int = -1,
+                   private var _authorId: ObjectReference = -1,
                    private var _description: Option[String] = None,
                    private var _downloads: Int = 0,
                    private var _isReviewed: Boolean = false,
-                   private var _reviewerId: Int = -1,
+                   private var _reviewerId: ObjectReference = -1,
                    private var _approvedAt: Option[Timestamp] = None,
-                   private var _tagIds: List[Int] = List(),
+                   private var _tagIds: List[ObjectReference] = List(),
                    private var _visibility: Visibility = Public,
                    fileName: String,
                    signatureFileName: String,
@@ -87,6 +87,13 @@ case class Version(override val id: Option[Int] = None,
   def channel(implicit ec: ExecutionContext): Future[Channel] =
     this.service.access[Channel](classOf[Channel]).get(this.channelId).getOrElse(throw new NoSuchElementException("None of Option"))
 
+  def channelId: ObjectReference = _channelId
+
+  def setChannel(channelId: Int): Future[AnyVal] = {
+    this._channelId = channelId
+    if(isDefined) update(ChannelId) else Future.unit
+  }
+
   /**
     * Returns the channel this version belongs to from the specified collection
     * of channels if present.
@@ -96,7 +103,7 @@ case class Version(override val id: Option[Int] = None,
     */
   def findChannelFrom(channels: Seq[Channel]): Option[Channel] = Defined {
     if (channels == null) None
-    else channels.find(_.id.get == this.channelId)
+    else channels.find(_.id.value == this.channelId)
   }
 
   /**
@@ -149,11 +156,11 @@ case class Version(override val id: Option[Int] = None,
     if (isDefined) update(IsReviewed)
   }
 
-  def authorId: Int = this._authorId
+  def authorId: ObjectReference = this._authorId
 
   def author(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._authorId)
 
-  def setAuthorId(authorId: Int) = {
+  def setAuthorId(authorId: ObjectReference) = {
     this._authorId = authorId
     // If the project is in the Database
     if (isDefined) {
@@ -161,16 +168,13 @@ case class Version(override val id: Option[Int] = None,
     }
   }
 
-  def reviewerId: Int = this._reviewerId
+  def reviewerId: ObjectReference = this._reviewerId
 
   def reviewer(implicit ec: ExecutionContext): OptionT[Future, User] = this.userBase.get(this._reviewerId)
 
-  def setReviewer(reviewer: User): Future[Int] = Defined {
-    this._reviewerId = reviewer.id.get
-    update(ReviewerId)
-  }
+  def setReviewer(reviewer: User): Future[Int] = setReviewerId(reviewer.id.value)
 
-  def setReviewerId(reviewer: Int): Future[Int] = Defined {
+  def setReviewerId(reviewer: ObjectReference): Future[Int] = Defined {
     this._reviewerId = reviewer
     update(ReviewerId)
   }
@@ -189,15 +193,15 @@ case class Version(override val id: Option[Int] = None,
     update(IsNonReviewedVersion)
   }
 
-  def tagIds: List[Int] = this._tagIds
+  def tagIds: List[ObjectReference] = this._tagIds
 
-  def setTagIds(tags: List[Int]) = {
+  def setTagIds(tags: List[ObjectReference]) = {
     this._tagIds = tags
     if(isDefined) update(TagIds)
   }
 
   def addTag(tag: Tag): Unit = {
-    this._tagIds = this._tagIds :+ tag.id.get
+    this._tagIds = this._tagIds :+ tag.id.value
     if (isDefined) {
       update(TagIds)
     }
@@ -259,7 +263,7 @@ case class Version(override val id: Option[Int] = None,
         0
     }
     cnt.value.flatMap { _ =>
-      val change = VersionVisibilityChange(None, Some(Timestamp.from(Instant.now())), Some(creator), this.id.get, comment, None, None, visibility.id)
+      val change = VersionVisibilityChange(ObjectId.Uninitialized, ObjectTimestamp(Timestamp.from(Instant.now())), Some(creator), this.id.value, comment, None, None, visibility.id)
       this.service.access[VersionVisibilityChange](classOf[VersionVisibilityChange]).add(change)
     }
   }
@@ -298,16 +302,16 @@ case class Version(override val id: Option[Int] = None,
     }
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Version = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Version = this.copy(id = id, createdAt = theTime)
   override def hashCode(): Int = this.id.hashCode
-  override def equals(o: Any): Boolean = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.get == this.id.get
+  override def equals(o: Any): Boolean = o.isInstanceOf[Version] && o.asInstanceOf[Version].id.value == this.id.value
 
-  def byCreationDate(first: Review, second: Review): Boolean = first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+  def byCreationDate(first: Review, second: Review): Boolean = first.createdAt.value.getTime < second.createdAt.value.getTime
   def reviewEntries: ModelAccess[Review] = this.schema.getChildren[Review](classOf[Review], this)
-  def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(rev => rev.createdAt.isDefined && rev.endedAt.isEmpty).sortWith(byCreationDate))
+  def unfinishedReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
   def mostRecentReviews(implicit ec: ExecutionContext): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
-  def reviewById(id: Int)(implicit ec: ExecutionContext): OptionT[Future, Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
+  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext): OptionT[Future, Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
   def equalsInt[T <: Table[_]](int1: T => Rep[Int], int2: Int): T => Rep[Boolean] = int1(_) === int2
 
 }

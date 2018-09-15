@@ -36,7 +36,7 @@
                             @logs.map { entry =>
                                 <tr>
                                     <td>@entry.message</td>
-                                    <td>@prettifyDateAndTime(entry.createdAt.getOrElse(Timestamp.from(Instant.now())))</td>
+                                    <td>@prettifyDateAndTime(entry.createdAt.value)</td>
                                 </tr>
                             }
                         </tbody>

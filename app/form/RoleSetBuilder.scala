@@ -1,8 +1,7 @@
 package form
 
 import models.user.role.RoleModel
-import ore.permission.role.RoleTypes
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 
 /**
   * Builds a set of [[RoleModel]]s based on input data.
@@ -31,7 +30,7 @@ trait RoleSetBuilder[M <: RoleModel] {
     * @return Result set
     */
   def build(): Set[M] = (for ((userId, i) <- this.users.zipWithIndex) yield {
-    newRole(userId, RoleTypes.withName(roles(i)))
+    newRole(userId, RoleType.withValue(roles(i)))
   }).toSet
 
   /**

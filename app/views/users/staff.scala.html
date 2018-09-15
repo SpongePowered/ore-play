@@ -57,7 +57,7 @@
 							}
 
 						</td>
-						<td>@prettifyDate(user.joinDate.getOrElse(user.createdAt.get))</td>
+						<td>@prettifyDate(user.joinDate.getOrElse(user.createdAt.value))</td>
 					</tr>
 					}
 

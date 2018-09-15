@@ -60,7 +60,7 @@ trait MembershipDossier {
     */
   def members(implicit ec: ExecutionContext): Future[Set[MemberType]] = {
     this.association.all.map(_.map { user =>
-      newMember(user.id.get)
+      newMember(user.id.value)
     })
   }
 
@@ -72,7 +72,7 @@ trait MembershipDossier {
   def addRole(role: RoleType)(implicit ec: ExecutionContext): Future[RoleType] = {
     for {
       user <- role.user
-      exists <- this.roles.exists(_.userId === user.id.get)
+      exists <- this.roles.exists(_.userId === user.id.value)
       _ <- if(!exists) addMember(user) else Future.successful(user)
       ret <- this.roleAccess.add(role)
     } yield ret
@@ -84,7 +84,7 @@ trait MembershipDossier {
     * @param user User to get roles for
     * @return     User roles
     */
-  def getRoles(user: User)(implicit ec: ExecutionContext): Future[Set[RoleType]] = this.roles.filter(_.userId === user.id.get).map(_.toSet)
+  def getRoles(user: User)(implicit ec: ExecutionContext): Future[Set[RoleType]] = this.roles.filter(_.userId === user.id.value).map(_.toSet)
 
   /**
     * Returns the highest level of [[ore.permission.role.Trust]] this user has.
@@ -103,7 +103,7 @@ trait MembershipDossier {
     for {
       _ <- this.roleAccess.remove(role)
       user   <- role.user
-      exists <- this.roles.exists(_.userId === user.id.get)
+      exists <- this.roles.exists(_.userId === user.id.value)
       _ <- if(!exists) removeMember(user) else Future.successful(0)
     } yield ()
   }

@@ -5,24 +5,24 @@ import java.util.{Base64, UUID}
 import akka.http.scaladsl.model.Uri
 import controllers.sugar.Bakery
 import db.ModelService
+import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectApiKeyTable
 import form.OreForms
 import javax.inject.Inject
 import models.api.ProjectApiKey
-import models.user.{LoggedAction, User, UserActionLogger}
+import models.user.{LoggedAction, UserActionLogger}
+import ore.permission.role.RoleType
 import ore.permission.{EditApiKeys, ReviewProjects}
-import ore.permission.role.RoleTypes
-import ore.permission.role.RoleTypes.RoleType
 import ore.project.factory.{PendingVersion, ProjectFactory}
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyTypes._
 import ore.rest.{OreRestfulApi, OreWrites}
 import ore.{OreConfig, OreEnv}
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.{Lang, Messages, MessagesApi}
+import play.api.i18n.{Messages, MessagesApi}
 import util.StatusZ
-import util.functional.{EitherT, OptionT, Id}
+import util.functional.{EitherT, Id, OptionT}
 import util.instances.future._
 import util.syntax._
 import play.api.libs.json._
@@ -32,8 +32,6 @@ import security.spauth.SingleSignOnConsumer
 import slick.lifted.Compiled
 
 import scala.concurrent.{ExecutionContext, Future}
-
-import db.access.ModelAccess
 
 /**
   * Ore API (v1)
@@ -90,7 +88,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
   def createKey(version: String, pluginId: String): Action[AnyContent] =
     (Action andThen AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) async { implicit request =>
-      val projectId = request.data.project.id.get
+      val projectId = request.data.project.id.value
       val res = for {
         keyType <- bindFormOptionT[Future](this.forms.ProjectApiKeyCreate)
         if keyType == Deployment
@@ -111,12 +109,12 @@ final class ApiController @Inject()(api: OreRestfulApi,
     (AuthedProjectActionById(pluginId) andThen ProjectPermissionAction(EditApiKeys)) { implicit request =>
       val res = for {
         key <- bindFormOptionT[Id](this.forms.ProjectApiKeyRevoke)
-        if key.projectId == request.data.project.id.get
+        if key.projectId == request.data.project.id.value
       } yield {
         key.remove()
         Ok
       }
-      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.get, s"${request.user.name} removed an ApiKey", "")
+      UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.value, s"${request.user.name} removed an ApiKey", "")
       res.getOrElse(BadRequest)
     }
 
@@ -193,7 +191,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
           val compiled = Compiled(queryApiKey _)
 
-          val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.get).result)
+          val apiKeyExists: Future[Boolean] = this.service.DB.db.run(compiled(Deployment, formData.apiKey, projectData.project.id.value).result)
 
           EitherT.liftF(apiKeyExists)
             .filterOrElse(apiKey => apiKey, Unauthorized(error("apiKey", "api.deploy.invalidKey")))
@@ -337,7 +335,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
               if (groups.trim == "")
                 Set.empty
               else
-                groups.split(",").flatMap(group => RoleTypes.withInternalName(group)).toSet[RoleType]
+                groups.split(",").flatMap(group => RoleType.withValueOpt(group)).toSet[RoleType]
             )
           }
 

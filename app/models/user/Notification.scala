@@ -2,7 +2,7 @@ package models.user
 
 import java.sql.Timestamp
 
-import db.Model
+import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.NotificationTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -24,10 +24,10 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param action           Action to perform on click
   * @param read             True if notification has been read
   */
-case class Notification(override val id: Option[Int] = None,
-                        override val createdAt: Option[Timestamp] = None,
-                        override val userId: Int = -1,
-                        originId: Int,
+case class Notification(override val id: ObjectId = ObjectId.Uninitialized,
+                        override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                        override val userId: ObjectReference = -1,
+                        originId: ObjectReference,
                         notificationType: NotificationType,
                         messageArgs: List[String],
                         action: Option[String] = None,
@@ -65,6 +65,6 @@ case class Notification(override val id: Option[Int] = None,
     update(Read)
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
 
 }

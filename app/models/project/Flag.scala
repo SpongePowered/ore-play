@@ -3,6 +3,7 @@ package models.project
 import java.sql.Timestamp
 import java.time.Instant
 
+import db.{ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.FlagTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -21,15 +22,15 @@ import ore.user.UserOwned
   * @param reason       Reason for flag
   * @param _isResolved  True if has been reviewed and resolved by staff member
   */
-case class Flag(override val id: Option[Int],
-                override val createdAt: Option[Timestamp],
-                override val projectId: Int,
-                override val userId: Int,
+case class Flag(override val id: ObjectId = ObjectId.Uninitialized,
+                override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                override val projectId: ObjectReference,
+                override val userId: ObjectReference,
                 reason: FlagReason,
                 comment: String,
                 private var _isResolved: Boolean = false,
                 var resolvedAt: Option[Timestamp] = None,
-                var resolvedBy: Option[Int] = None)
+                var resolvedBy: Option[ObjectReference] = None)
                 extends OreModel(id, createdAt)
                   with UserOwned
                   with ProjectScope {
@@ -38,7 +39,7 @@ case class Flag(override val id: Option[Int],
   override type T = FlagTable
 
   def this(projectId: Int, userId: Int, reason: FlagReason, comment: String) = {
-    this(id=None, createdAt=None, projectId=projectId, userId=userId, reason=reason, comment=comment)
+    this(id=ObjectId.Uninitialized, createdAt=ObjectTimestamp.Uninitialized, projectId=projectId, userId=userId, reason=reason, comment=comment)
   }
 
   /**
@@ -60,11 +61,10 @@ case class Flag(override val id: Option[Int],
     if (resolved) {
       this.resolvedAt = Some(Timestamp.from(Instant.now))
       update(ResolvedAt)
-      this.resolvedBy = Some(user.flatMap(_.id).getOrElse(-1))
+      this.resolvedBy = Some(user.fold(-1)(_.id.value))
       update(ResolvedBy)
     }
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Flag = this.copy(id = id, createdAt = theTime)
-
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Flag = this.copy(id = id, createdAt = theTime)
 }

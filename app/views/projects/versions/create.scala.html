@@ -145,7 +145,7 @@
                                             <td class="rv">
                                                 <div class="checkbox-inline">
                                                     <input form="form-publish" name="forum-post" type="checkbox"
-                                                            @if(project.project.id.isEmpty || forumSync) { checked } value="true"/>
+                                                            @if(!project.project.isDefined || forumSync) { checked } value="true"/>
                                                 </div>
                                                 <div class="clearfix"></div>
                                             </td>

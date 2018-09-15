@@ -1,8 +1,5 @@
 package db.impl.model.common
 
-import java.sql.Timestamp
-import java.time.Instant
-
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.Model
@@ -46,7 +43,7 @@ trait Hideable extends Model { self =>
     visibilityChanges.all.map(_.toSeq.sortWith(byCreationDate))
 
   def byCreationDate(first: ModelVisibilityChange, second: ModelVisibilityChange): Boolean =
-    first.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime < second.createdAt.getOrElse(Timestamp.from(Instant.MIN)).getTime
+    first.createdAt.value.getTime < second.createdAt.value.getTime
 
   def lastVisibilityChange(implicit ec: ExecutionContext): OptionT[Future, ModelVisibilityChange] =
     OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption))

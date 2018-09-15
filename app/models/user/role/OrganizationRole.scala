@@ -1,11 +1,9 @@
 package models.user.role
 
-import java.sql.Timestamp
-
-import db.Model
+import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.OrganizationRoleTable
 import ore.Visitable
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 import ore.permission.scope.OrganizationScope
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,10 +18,10 @@ import scala.concurrent.{ExecutionContext, Future}
   * @param _roleType      Type of Role
   * @param _isAccepted    True if has been accepted
   */
-case class OrganizationRole(override val id: Option[Int] = None,
-                            override val createdAt: Option[Timestamp] = None,
-                            override val userId: Int,
-                            override val organizationId: Int = -1,
+case class OrganizationRole(override val id: ObjectId = ObjectId.Uninitialized,
+                            override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                            override val userId: ObjectReference,
+                            override val organizationId: ObjectReference = -1,
                             private val _roleType: RoleType,
                             private val _isAccepted: Boolean = false)
                             extends RoleModel(id, createdAt, userId, _roleType, _isAccepted)
@@ -32,9 +30,9 @@ case class OrganizationRole(override val id: Option[Int] = None,
   override type M = OrganizationRole
   override type T = OrganizationRoleTable
 
-  def this(userId: Int, roleType: RoleType) = this(userId = userId, _roleType = roleType)
+  def this(userId: ObjectReference, roleType: RoleType) = this(userId = userId, _roleType = roleType)
 
   override def subject(implicit ec: ExecutionContext): Future[Visitable] = this.organization
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
 
 }

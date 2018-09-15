@@ -59,6 +59,8 @@ general.warning                 =   Warning
 general.disclaimer              =   Disclaimer
 general.linkout.title           =   External Link Warning
 general.linkout.warning         =   You have clicked on an external link to "{0}". If you did not intend to visit this link, please go back. Otherwise, click continue.
+general.restore                 =   Restore deleted
+general.harddelete              =   Hard delete
 
 admin.health.title = Ore Health Report
 admin.health.discuss = Missing discussion topic

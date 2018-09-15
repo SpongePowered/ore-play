@@ -5,9 +5,10 @@ import java.io.BufferedReader
 import models.project.{Tag, TagColors}
 import ore.project.Dependency
 import org.spongepowered.plugin.meta.McModInfo
-
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+
+import db.ObjectId
 
 /**
   * The metadata within a [[PluginFile]]
@@ -42,7 +43,7 @@ class PluginFileData(data: Seq[DataValue[_]]) {
   }
 
   def get[T](key: String): Option[T] = {
-    dataValues.filter(_.key == key).filter(_.isInstanceOf[DataValue[T]]).map(_.asInstanceOf[DataValue[T]].value).headOption
+    dataValues.filter(_.key == key).filter(_.isInstanceOf[DataValue[T @unchecked]]).map(_.asInstanceOf[DataValue[T]].value).headOption
   }
 
   def isValidPlugin: Boolean = {
@@ -54,7 +55,7 @@ class PluginFileData(data: Seq[DataValue[_]]) {
     val buffer = new ArrayBuffer[Tag]
 
     if (containsMixins) {
-      val mixinTag = Tag(None, List(), "Mixin", "", TagColors.Mixin)
+      val mixinTag = Tag(ObjectId.Uninitialized, List(), "Mixin", "", TagColors.Mixin)
       buffer += mixinTag
     }
 

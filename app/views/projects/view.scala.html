@@ -248,7 +248,7 @@ Base template for Project overview.
                                             Staff notes (@p.noteCount) </a></li>
                                     }
                                     @if(request.data.globalPerm(ViewLogs)) {
-                                        <li><a href="@appRoutes.showLog(None, None, p.project.id, None, None, None, None)">
+                                        <li><a href="@appRoutes.showLog(None, None, Some(p.project.id.value), None, None, None, None)">
                                             User Action Logs</a></li>
                                     }
                                     @if(request.data.globalPerm(ViewLogs)) {

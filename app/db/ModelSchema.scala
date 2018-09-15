@@ -107,7 +107,7 @@ class ModelSchema[M <: Model](val service: ModelService,
     */
   def getChildren[C <: Model](childClass: Class[C], model: M): ModelAccess[C] = {
     val ref: C#T => Rep[Int] = this.children(childClass)
-    ImmutableModelAccess(this.service.access[C](childClass, ModelFilter[C](ref(_) === model.id.get)))
+    ImmutableModelAccess(this.service.access[C](childClass, ModelFilter[C](ref(_) === model.id.value)))
   }
 
   /**

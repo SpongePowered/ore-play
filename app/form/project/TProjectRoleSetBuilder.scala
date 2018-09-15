@@ -2,7 +2,7 @@ package form.project
 
 import form.RoleSetBuilder
 import models.user.role.ProjectRole
-import ore.permission.role.RoleTypes.RoleType
+import ore.permission.role.RoleType
 
 /**
   * Takes form data and builds an uninitialized set of [[ProjectRole]].

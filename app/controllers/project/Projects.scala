@@ -179,14 +179,14 @@ class Projects @Inject()(stats: StatTracker,
   private def orgasUserCanUploadTo(user: User): Future[Set[Int]] = {
     for {
       all <- user.organizations.all
-      canCreate <- Future.traverse(all)(org => user can CreateProject in org map { perm => (org.id.get, perm)})
+      canCreate <- Future.traverse(all)(org => user can CreateProject in org map { perm => (org.id.value, perm)})
     } yield {
       // Filter by can Create Project
       val others = canCreate.collect {
         case (id, perm) if perm => id
       }
 
-      others + user.id.get // Add self
+      others + user.id.value // Add self
     }
   }
 
@@ -358,7 +358,7 @@ class Projects @Inject()(stats: StatTracker,
           FormError(ShowProject(data.project), hasErrors),
         formData => {
           data.project.flagFor(user, formData.reason, formData.comment)
-          UserActionLogger.log(request.request, LoggedAction.ProjectFlagged, data.project.id.getOrElse(-1), s"Flagged by ${user.name}", s"Not flagged by ${user.name}")
+          UserActionLogger.log(request.request, LoggedAction.ProjectFlagged, data.project.id.value, s"Flagged by ${user.name}", s"Not flagged by ${user.name}")
           Redirect(self.show(author, slug)).flashing("reported" -> "true")
         }
       )
@@ -517,7 +517,7 @@ class Projects @Inject()(stats: StatTracker,
           Files.createDirectories(pendingDir)
         Files.list(pendingDir).iterator().asScala.foreach(Files.delete)
         tmpFile.ref.moveTo(pendingDir.resolve(tmpFile.filename).toFile, replace = true)
-        UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.getOrElse(-1), "", "") //todo data
+        UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.value, "", "") //todo data
         Ok
     }
   }
@@ -534,7 +534,7 @@ class Projects @Inject()(stats: StatTracker,
     val fileManager = this.projects.fileManager
     fileManager.getIconPath(data.project).foreach(Files.delete)
     fileManager.getPendingIconPath(data.project).foreach(Files.delete)
-    UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.getOrElse(-1), "", "") //todo data
+    UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.value, "", "") //todo data
     Files.delete(fileManager.getPendingIconDir(data.project.ownerName, data.project.name))
     Ok
   }
@@ -569,7 +569,7 @@ class Projects @Inject()(stats: StatTracker,
     } yield {
       val project = request.data.project
       project.memberships.removeMember(user)
-      UserActionLogger.log(request.request, LoggedAction.ProjectMemberRemoved, project.id.getOrElse(-1),
+      UserActionLogger.log(request.request, LoggedAction.ProjectMemberRemoved, project.id.value,
         s"'${user.name}' is not a member of ${project.ownerName}/${project.name}", s"'${user.name}' is a member of ${project.ownerName}/${project.name}")
       Redirect(self.showSettings(author, slug))
     }
@@ -592,7 +592,7 @@ class Projects @Inject()(stats: StatTracker,
           Future.successful(FormError(self.showSettings(author, slug), hasErrors)),
         formData => {
           data.settings.save(data.project, formData).map { _ =>
-            UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.getOrElse(-1), "", "") //todo add old new data
+            UserActionLogger.log(request.request, LoggedAction.ProjectSettingsChanged, request.data.project.id.value, "", "") //todo add old new data
             Redirect(self.show(author, slug))
           }
         }
@@ -618,7 +618,7 @@ class Projects @Inject()(stats: StatTracker,
     } yield {
       val data = request.data
       val oldName = data.project.name
-      UserActionLogger.log(request.request, LoggedAction.ProjectRenamed, data.project.id.getOrElse(-1), s"$author/$newName", s"$author/$oldName")
+      UserActionLogger.log(request.request, LoggedAction.ProjectRenamed, data.project.id.value, s"$author/$newName", s"$author/$oldName")
       Redirect(self.show(author, project.slug))
     }
 
@@ -641,14 +641,14 @@ class Projects @Inject()(stats: StatTracker,
         if (perm) {
           val change = if (newVisibility.showModal) {
             val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-            request.data.project.setVisibility(newVisibility, comment, request.user.id.get)
+            request.data.project.setVisibility(newVisibility, comment, request.user.id.value)
           } else {
-            request.data.project.setVisibility(newVisibility, "", request.user.id.get)
+            request.data.project.setVisibility(newVisibility, "", request.user.id.value)
           }
 
           this.forums.changeTopicVisibility(request.data.project, VisibilityTypes.isPublic(newVisibility))
 
-          UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, request.data.project.id.getOrElse(-1), newVisibility.nameKey, VisibilityTypes.NeedsChanges.nameKey)
+          UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, request.data.project.id.value, newVisibility.nameKey, VisibilityTypes.NeedsChanges.nameKey)
           change.map(_ => Ok)
         } else {
           Future.successful(Unauthorized)
@@ -666,8 +666,8 @@ class Projects @Inject()(stats: StatTracker,
   def publish(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug) { implicit request =>
     val data = request.data
     if (data.visibility == VisibilityTypes.New) {
-      data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.get)
-      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.Public.nameKey, VisibilityTypes.New.nameKey)
+      data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.value)
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.value, VisibilityTypes.Public.nameKey, VisibilityTypes.New.nameKey)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
@@ -681,8 +681,8 @@ class Projects @Inject()(stats: StatTracker,
   def sendForApproval(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug) { implicit request =>
     val data = request.data
     if (data.visibility == VisibilityTypes.NeedsChanges) {
-      data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.get)
-      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), VisibilityTypes.NeedsApproval.nameKey, VisibilityTypes.NeedsChanges.nameKey)
+      data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.value)
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.value, VisibilityTypes.NeedsApproval.nameKey, VisibilityTypes.NeedsChanges.nameKey)
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
   }
@@ -712,7 +712,7 @@ class Projects @Inject()(stats: StatTracker,
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
       getProject(author, slug).map { project =>
         this.projects.delete(project)
-        UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.getOrElse(-1), "deleted", project.visibility.nameKey)
+        UserActionLogger.log(request, LoggedAction.ProjectVisibilityChange, project.id.value, "deleted", project.visibility.nameKey)
         Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name))
       }.merge
     }
@@ -729,11 +729,11 @@ class Projects @Inject()(stats: StatTracker,
     val data = request.data
     val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
     val oldVisibility = data.project.visibility.nameKey
-    data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.get).map { _ =>
+    data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.value).map { _ =>
 
       this.forums.changeTopicVisibility(data.project, false)
 
-      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.getOrElse(-1), data.project.visibility.nameKey, oldVisibility)
+      UserActionLogger.log(request.request, LoggedAction.ProjectVisibilityChange, data.project.id.value, data.project.visibility.nameKey, oldVisibility)
       Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", data.project.name))
     }
   }

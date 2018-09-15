@@ -71,7 +71,7 @@ class Organizations @Inject()(forms: OreForms,
         Future.successful(Redirect(failCall).withError("error.org.disabled"))
       else {
         bindFormEitherT[Future](this.forms.OrganizationCreate)(hasErrors => FormError(failCall, hasErrors)).flatMap { formData =>
-          this.organizations.create(formData.name, user.id.get, formData.build()).bimap(
+          this.organizations.create(formData.name, user.id.value, formData.build()).bimap(
             error => Redirect(failCall).withError(error),
             organization => Redirect(routes.Users.showProjects(organization.name, None))
           )

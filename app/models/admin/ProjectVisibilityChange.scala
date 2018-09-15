@@ -2,7 +2,7 @@ package models.admin
 
 import java.sql.Timestamp
 
-import db.Model
+import db.{Model, ObjectId, ObjectTimestamp}
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
 import models.project.Page
@@ -15,8 +15,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.ProjectVisibilityChangeTable
 import db.impl.model.common.VisibilityChange
 
-case class ProjectVisibilityChange(override val id: Option[Int] = None,
-                            override val createdAt: Option[Timestamp] = None,
+case class ProjectVisibilityChange(override val id: ObjectId = ObjectId.Uninitialized,
+                            override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                             createdBy: Option[Int] = None,
                             projectId: Int = -1,
                             comment: String,
@@ -47,7 +47,7 @@ case class ProjectVisibilityChange(override val id: Option[Int] = None,
     * Set the resolvedBy user
     */
   def setResolvedBy(user: User): Future[Int] = {
-    this.resolvedBy = user.id
+    this.resolvedBy = Some(user.id.value)
     update(ResolvedByVC)
   }
   def setResolvedById(userId: Int): Future[Int] = {
@@ -62,5 +62,5 @@ case class ProjectVisibilityChange(override val id: Option[Int] = None,
     * @param theTime Timestamp
     * @return Copy of model
     */
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Model = this.copy(id = id, createdAt = createdAt)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
 }

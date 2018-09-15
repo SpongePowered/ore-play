@@ -1,7 +1,5 @@
 package models.statistic
 
-import java.sql.Timestamp
-
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 import controllers.sugar.Requests.ProjectRequest
@@ -15,6 +13,7 @@ import util.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
 import controllers.sugar.Requests
+import db.{ObjectId, ObjectReference, ObjectTimestamp}
 
 /**
   * Represents a unique view on a Project.
@@ -26,8 +25,8 @@ import controllers.sugar.Requests
   * @param cookie     Browser cookie
   * @param userId     User ID
   */
-case class ProjectView(override val id: Option[Int] = None,
-                       override val createdAt: Option[Timestamp] = None,
+case class ProjectView(override val id: ObjectId = ObjectId.Uninitialized,
+                       override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                        override val modelId: Int,
                        override val address: InetString,
                        override val cookie: String,
@@ -38,9 +37,8 @@ case class ProjectView(override val id: Option[Int] = None,
   override type M = ProjectView
   override type T = ProjectViewsTable
 
-  override def projectId: Int = this.modelId
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectView = this.copy(id = id, createdAt = theTime)
-
+  override def projectId: ObjectReference = this.modelId
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectView = this.copy(id = id, createdAt = theTime)
 }
 
 object ProjectView {
@@ -56,9 +54,9 @@ object ProjectView {
     implicit val r: Requests.OreRequest[_] = request.request
     checkNotNull(request, "null request", "")
     checkNotNull(users, "null user base", "")
-    users.current.subflatMap(_.id).value.map { userId =>
+    users.current.map(_.id.value).value.map { userId =>
       val view = ProjectView(
-        modelId = request.data.project.id.get,
+        modelId = request.data.project.id.value,
         address = InetString(remoteAddress),
         cookie = currentCookie,
         _userId = userId

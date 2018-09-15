@@ -66,7 +66,7 @@ class ModelAccess[M <: Model](val service: ModelService,
     * @param model Model to look for
     * @return True if contained in set
     */
-  def contains(model: M)(implicit ec: ExecutionContext): Future[Boolean] = this.service.count[M](this.modelClass, (this.baseFilter +&& IdFilter(model.id.get)).fn).map(_ > 0)
+  def contains(model: M)(implicit ec: ExecutionContext): Future[Boolean] = this.service.count[M](this.modelClass, (this.baseFilter +&& IdFilter(model.id.value)).fn).map(_ > 0)
 
   /**
     * Returns true if any models match the specified filter.

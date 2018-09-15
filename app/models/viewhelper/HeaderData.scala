@@ -36,7 +36,7 @@ case class HeaderData(currentUser: Option[User] = None,
 
   def hasUser: Boolean = currentUser.isDefined
 
-  def isCurrentUser(userId: Int): Boolean = currentUser.flatMap(_.id).contains(userId)
+  def isCurrentUser(userId: Int): Boolean = currentUser.map(_.id.value).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
 
@@ -63,7 +63,7 @@ object HeaderData {
 
   val unAuthenticated: HeaderData = HeaderData(None, noPerms)
 
-  def cacheKey(user: User) = s"""user${user.id.get}"""
+  def cacheKey(user: User) = s"""user${user.id.value}"""
 
   def of[A](request: Request[A])(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext, service: ModelService): Future[HeaderData] = {
     OptionT.fromOption[Future](request.cookies.get("_oretoken"))
@@ -96,7 +96,7 @@ object HeaderData {
 
     val tableProject = TableQuery[ProjectTableMain]
     val query = for {
-      p <- tableProject if p.userId === user.id.get && p.visibility === VisibilityTypes.NeedsApproval
+      p <- tableProject if p.userId === user.id.value && p.visibility === VisibilityTypes.NeedsApproval
     } yield {
       p
     }

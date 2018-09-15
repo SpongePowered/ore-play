@@ -4,9 +4,11 @@ import java.sql.Timestamp
 import java.util.Date
 
 import javax.inject.Inject
+
+import db.ObjectId
 import models.user.User
 import ore.OreConfig
-import ore.permission.role.RoleTypes
+import ore.permission.role.RoleType
 
 /**
   * Represents a "fake" User object for bypassing the standard authentication
@@ -22,12 +24,12 @@ final class FakeUser @Inject()(config: OreConfig) {
   lazy val isEnabled: Boolean = conf.get[Boolean]("fakeUser.enabled")
 
   lazy private val user = if (isEnabled) User(
-    id = conf.getOptional[Int]("fakeUser.id"),
+    id = ObjectId(conf.get[Int]("fakeUser.id")),
     _name = conf.getOptional[String]("fakeUser.name"),
     _username = conf.get[String]("fakeUser.username"),
     _email = conf.getOptional[String]("fakeUser.email"),
     _joinDate = Some(new Timestamp(new Date().getTime)),
-    _globalRoles = List(RoleTypes.Admin)
+    _globalRoles = List(RoleType.OreAdmin)
   ) else null
 
 }

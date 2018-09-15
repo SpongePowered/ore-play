@@ -18,7 +18,7 @@ object ScopedOrganizationData {
 
   val noScope = ScopedOrganizationData()
 
-  def cacheKey(orga: Organization, user: User) = s"""organization${orga.id.get}foruser${user.id.get}"""
+  def cacheKey(orga: Organization, user: User) = s"""organization${orga.id.value}foruser${user.id.value}"""
 
   def of[A](currentUser: Option[User], orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
                                                            service: ModelService): Future[ScopedOrganizationData] = {

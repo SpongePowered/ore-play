@@ -12,6 +12,7 @@
 @import ore.permission.ViewLogs
 @import ore.Platforms
 @import ore.PlatformCategory
+@import ore.permission.HardRemoveVersion
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -35,7 +36,7 @@
                     <a href="@routes.Users.showProjects(v.p.project.ownerName, None)">
                         <strong>@v.p.project.ownerName</strong>
                     </a>
-                    released this version on @prettifyDate(v.v.createdAt.get)
+                    released this version on @prettifyDate(v.v.createdAt.value)
                 </p>
 
                 <!-- Buttons -->
@@ -134,7 +135,15 @@
                                         <span class="caret"></span>
                                     </button>
                                     <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
-                                        <li><a href="@appRoutes.showLog(None, None, None, v.v.id, None, None, None)">User Action Logs</a></li>
+                                        <li><a href="@appRoutes.showLog(None, None, None, Some(v.v.id.value), None, None, None)">User Action Logs</a></li>
+                                        @if(request.data.globalPerm(ReviewProjects)) {
+                                            @if(v.v.visibility == VisibilityTypes.SoftDelete) {
+                                                <li><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>
+                                            }
+                                            @if(request.data.globalPerm(HardRemoveVersion) && !v.isRecommended) {
+                                                <li><a href="#" data-toggle="modal" data-target="#modal-harddelete" style="color: darkred">Hard delete</a></li>
+                                            }
+                                        }
                                     </ul>
                                 </div>
                             }
@@ -248,5 +257,64 @@
                 </div>
             </div>
         </div>
+    }
+
+    @if(request.data.globalPerm(ReviewProjects)) {
+        @if(v.v.visibility == VisibilityTypes.SoftDelete) {
+            <div class="modal fade" id="modal-restore" tabindex="-1" role="dialog" aria-labelledby="label-delete">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title" id="label-delete">@messages("general.restore")</h4>
+                        </div>
+                        @form(action = versionRoutes.restore(v.p.project.ownerName, v.p.project.slug, v.v.versionString)) {
+                            <div class="modal-body">
+                                <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <div class="form-inline">
+                                    @CSRF.formField
+                                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                                    @messages("channel.edit.close")
+                                    </button>
+                                    <input type="submit" name="delete" value="@messages("general.restore")" class="btn btn-success">
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        @if(request.data.globalPerm(HardRemoveVersion)) {
+            <div class="modal fade" id="modal-harddelete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title" id="label-delete">@messages("general.harddelete")</h4>
+                        </div>
+                        @form(action = versionRoutes.delete(v.p.project.ownerName, v.p.project.slug, v.v.versionString)) {
+                            <div class="modal-body">
+                                <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <div class="form-inline">
+                                    @CSRF.formField
+                                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                                    @messages("channel.edit.close")
+                                    </button>
+                                    <input type="submit" name="delete" value="@messages("general.harddelete")" class="btn btn-danger">
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     }
 }

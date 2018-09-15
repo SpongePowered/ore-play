@@ -57,8 +57,7 @@ class Pages @Inject()(forms: OreForms,
     if (parts.length == 2) {
       project.pages
         .find(equalsIgnoreCase(_.slug, parts(0)))
-        .subflatMap(_.id)
-        .getOrElse(-1)
+        .fold(0)(_.id.value)
         .flatMap { parentId =>
           project.pages.filter(equalsIgnoreCase(_.slug, parts(1))).map(seq => seq.find(_.parentId == parentId)).map((_, false))
         }
@@ -112,7 +111,7 @@ class Pages @Inject()(forms: OreForms,
 
     for {
       (name, parentId) <- if (parts.size != 2) Future.successful((parts(0), -1)) else {
-        data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).subflatMap(_.id).getOrElse(-1).map((parts(1), _))
+        data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).fold(-1)(_.id.value).map((parts(1), _))
       }
       (p, pages) <- (
         data.project.pages.find(equalsIgnoreCase(_.slug, name)).getOrElseF(data.project.getOrCreatePage(name, parentId)),
@@ -151,7 +150,7 @@ class Pages @Inject()(forms: OreForms,
         val parentId = pageData.parentId.getOrElse(-1)
         //noinspection ComparingUnrelatedTypes
         data.project.rootPages.flatMap { rootPages =>
-          if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.get == parentId)) {
+          if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.HomeName)).exists(_.id.value == parentId)) {
             Future.successful(BadRequest("Invalid parent ID."))
           } else {
             val content = pageData.content
@@ -161,7 +160,7 @@ class Pages @Inject()(forms: OreForms,
               val parts = page.split("/")
 
               val created = if (parts.size == 2) {
-                data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).subflatMap(_.id).getOrElse(-1).flatMap { parentId =>
+                data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).fold(-1)(_.id.value).flatMap { parentId =>
                   val pageName = pageData.name.getOrElse(parts(1))
                   data.project.getOrCreatePage(pageName, parentId, pageData.content)
                 }
@@ -173,7 +172,7 @@ class Pages @Inject()(forms: OreForms,
                 if (pageData.content.isDefined) {
                   val oldPage = createdPage.contents
                   val newPage = pageData.content.get
-                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, createdPage.id.getOrElse(-1), newPage, oldPage)
+                  UserActionLogger.log(request.request, LoggedAction.ProjectPageEdited, createdPage.id.value, newPage, oldPage)
                   createdPage.setContents(newPage)
                 } else Future.successful(createdPage)
               } map { _ =>

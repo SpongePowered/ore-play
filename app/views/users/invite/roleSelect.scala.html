@@ -1,14 +1,14 @@
-@import ore.permission.role.{Role, RoleTypes}
+@import ore.permission.role.{Role, RoleType}
 @(roleClass: Class[_ <: Role], form: String = "form-continue", id: String = "", classes: String = "",
         hidden: Boolean = false)
 
 @roles = @{
-    RoleTypes.values.filter(role => role.roleClass.equals(roleClass) && role.isAssignable)
+    RoleType.values.filter(role => role.roleClass.equals(roleClass) && role.isAssignable)
             .toList.sortBy(_.trust).reverse
 }
 
 <select id="@id" form="@form" class="@classes" @if(hidden) { style="display: none;" }>
     @for(roleType <- roles) {
-        <option>@roleType.title</option>
+        <option value="@roleType.value">@roleType.title</option>
     }
 </select>

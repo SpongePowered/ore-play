@@ -156,7 +156,7 @@ class ProjectBase(override val service: ModelService,
   def deleteChannel(channel: Channel)(implicit context: Project = null, ec: ExecutionContext): Future[Unit] = {
     for {
       project <- if (context != null) Future.successful(context) else channel.project
-      _ = checkArgument(project.id.get == channel.projectId, "invalid project id", "")
+      _ = checkArgument(project.id.value == channel.projectId, "invalid project id", "")
       channels <- project.channels.all
       noVersion <- channel.versions.isEmpty
       nonEmptyChannels <- Future.traverse(channels.toSeq)(_.versions.nonEmpty).map(_.count(identity))
@@ -165,15 +165,16 @@ class ProjectBase(override val service: ModelService,
       reviewedChannels = channels.filter(!_.isNonReviewed)
       _ = checkArgument(channel.isNonReviewed || reviewedChannels.size > 1 || !reviewedChannels.contains(channel),
         "last reviewed channel", "")
-      _ <- channel.remove()
       versions <- channel.versions.all
-    } yield {
-      versions.foreach { version =>
-        val versionFolder = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
-        FileUtils.deleteDirectory(versionFolder)
-        version.remove()
+      _ <- Future.traverse(versions) { version =>
+        val otherChannels = channels.filter(_ != channel)
+        val newChannel =
+          if(channel.isNonReviewed) otherChannels.find(_.isNonReviewed).getOrElse(otherChannels.head)
+          else otherChannels.head
+        version.setChannel(newChannel.id.value)
       }
-    }
+      _ <- channel.remove()
+    } yield ()
   }
 
   def prepareDeleteVersion(version: Version)(implicit ec: ExecutionContext): Future[Project] =
@@ -181,7 +182,7 @@ class ProjectBase(override val service: ModelService,
       proj <- version.project
       size <- proj.versions.count(_.visibility === VisibilityTypes.Public)
       _ = checkArgument(size > 1, "only one public version", "")
-      _ = checkArgument(proj.id.get == version.projectId, "invalid context id", "")
+      _ = checkArgument(proj.id.value == version.projectId, "invalid context id", "")
       rv <- proj.recommendedVersion
       projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
       _ = {
@@ -232,7 +233,7 @@ class ProjectBase(override val service: ModelService,
       (pp, p)
     }
     val filtered = pagesQuery filter { case (pp, p) =>
-      pp.projectId === project.id && pp.parentId === -1
+      pp.projectId === project.id.unsafeToOption && pp.parentId === -1
     }
 
     service.DB.db.run(filtered.result).map(_.groupBy(_._1)) map { grouped => // group by parent page

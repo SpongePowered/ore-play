@@ -1,8 +1,8 @@
 package models.admin
 
-import java.sql.Timestamp
-
 import com.github.tminglei.slickpg.InetString
+
+import db.{ObjectId, ObjectTimestamp}
 import db.impl.{LoggedActionTable, LoggedActionViewTable}
 import db.impl.model.OreModel
 import models.user.{LoggedAction, LoggedActionContext}
@@ -13,8 +13,8 @@ case class LoggedProjectVersion(pvId: Option[Int], pvVersionString: Option[Strin
 case class LoggedProjectPage(ppId: Option[Int], ppSlug: Option[String])
 case class LoggedSubject(sId: Option[Int], sName: Option[String])
 
-case class LoggedActionViewModel(override val id: Option[Int] = None,
-                             override val createdAt: Option[Timestamp] = None,
+case class LoggedActionViewModel(override val id: ObjectId = ObjectId.Uninitialized,
+                             override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                              private val _userId: Int,
                              private val _address: InetString,
                              private val _action: LoggedAction,
@@ -37,7 +37,7 @@ case class LoggedActionViewModel(override val id: Option[Int] = None,
   override type T = LoggedActionViewTable
   override type M = LoggedActionViewModel
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): LoggedActionViewModel = this.copy(createdAt = theTime)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionViewModel = this.copy(createdAt = theTime)
   override def userId: Int = _userId
 
   def address: InetString = _address

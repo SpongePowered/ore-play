@@ -78,7 +78,7 @@
                         <ul class="list-group">
                         @notifications.map { case (notification, origin) =>
                             <li class="list-group-item notification" data-action="@notification.action.getOrElse("none")"
-                            data-id="@notification.id.get">
+                            data-id="@notification.id.value">
 
                                 @userAvatar(Some(origin.name), origin.avatarUrl, clazz = "user-avatar-s")
                                 @formatNotification(notification)
@@ -120,7 +120,7 @@
                             }
 
                         <div class="invite col-xs-12 col-md-6">
-                            <div class="invite-content" data-id="@invite.id.get"
+                            <div class="invite-content" data-id="@invite.id.value"
                             data-type="@subject.getClass.getSimpleName.toLowerCase">
                                 <span class="minor">
                                     <i class="dismiss pull-left fa fa-times" style="display: none;"></i>

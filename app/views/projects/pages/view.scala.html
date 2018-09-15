@@ -61,7 +61,7 @@ Documentation page within Project overview.
 
                     <div class="stats minor">
                         <p>@messages("project.category.info", p.project.category.title)</p>
-                        <p>@messages("project.publishDate", prettifyDate(p.project.createdAt.get))</p>
+                        <p>@messages("project.publishDate", prettifyDate(p.project.createdAt.value))</p>
                         <p>@p.project.viewCount views</p>
                         <p>@NumberFormat.getInstance.format(p.project.downloadCount) total downloads</p>
                         @p.settings.licenseName.map { licenseName =>
@@ -92,12 +92,12 @@ Documentation page within Project overview.
                             @rootPages.filterNot(_._1.name.equals(Page.HomeName)).map { case (pg, children) =>
                                 <li class="list-group-item">
                                     @if(children.nonEmpty) {
-                                        @if(page.parentId != pg.id.get) {
-                                            <a class="page-expand" data-page-id="@pg.id.get">
+                                        @if(page.parentId != pg.id.value) {
+                                            <a class="page-expand" data-page-id="@pg.id.value">
                                                 <i class="fa fa-plus-square-o"></i>
                                             </a>
                                         } else {
-                                            <a class="page-collapse" data-page-id="@pg.id.get">
+                                            <a class="page-collapse" data-page-id="@pg.id.value">
                                                 <i class="fa fa-minus-square-o"></i>
                                             </a>
                                         }
@@ -106,8 +106,8 @@ Documentation page within Project overview.
                                         @pg.name
                                     </a>
                                 </li>
-                              @if(page.parentId != -1 && page.parentId == pg.id.get) {
-                                  <div class="page-children" data-page-id="@pg.id.get">
+                              @if(page.parentId != -1 && page.parentId == pg.id.value) {
+                                  <div class="page-children" data-page-id="@pg.id.value">
                                       @children.map { child =>
                                         <li class="list-group-item page-item-child">
                                             <a href="@routes.Pages.show(p.project.ownerName, p.project.slug, child.fullSlug(Some(pg)))">

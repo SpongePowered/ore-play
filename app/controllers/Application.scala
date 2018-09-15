@@ -19,7 +19,7 @@ import models.user.{LoggedAction, LoggedActionModel, User, UserActionLogger}
 import models.viewhelper.{HeaderData, OrganizationData, ScopedOrganizationData}
 import ore.Platforms.Platform
 import ore.permission._
-import ore.permission.role.{Role, RoleTypes}
+import ore.permission.role.{Role, RoleType}
 import ore.permission.scope.GlobalScope
 import ore.project.Categories.Category
 import ore.project.{Categories, ProjectSortingStrategies}
@@ -90,7 +90,7 @@ final class Application @Inject()(data: DataHelper,
     // Get categories and sorting strategy
 
     val canHideProjects = request.data.globalPerm(HideProjects)
-    val currentUserId = request.data.currentUser.flatMap(_.id).getOrElse(-1)
+    val currentUserId = request.data.currentUser.map(_.id.value).getOrElse(-1)
 
     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
     val pcat = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
@@ -165,7 +165,7 @@ final class Application @Inject()(data: DataHelper,
     val offset = page * limit
 
     val data = this.service.DB.db.run(queryQueue.result).flatMap { list =>
-      service.DB.db.run(queryReviews(list.map(_._1.id.get)).result).map { reviewList =>
+      service.DB.db.run(queryReviews(list.map(_._1.id.value)).result).map { reviewList =>
         reviewList.groupBy(_._1.versionId)
       } map { reviewsByVersion =>
         (list, reviewsByVersion)
@@ -174,7 +174,7 @@ final class Application @Inject()(data: DataHelper,
       val reviewData = reviewsByVersion.mapValues { reviews =>
 
         reviews.filter { case (review, _) =>
-          review.createdAt.isDefined && review.endedAt.isEmpty
+          review.endedAt.isEmpty
         }.sorted(Review.ordering).headOption.map { case (r, a) =>
           (r, true, a) // Unfinished Review
         } orElse reviews.sorted(Review.ordering).headOption.map { case (r, a) =>
@@ -183,7 +183,7 @@ final class Application @Inject()(data: DataHelper,
       }
 
       list.map { case (v, p, c, a, u) =>
-        (v, p, c, a, u, reviewData.getOrElse(v.id.get, None))
+        (v, p, c, a, u, reviewData.getOrElse(v.id.value, None))
       }
     }
     data map { list =>
@@ -333,26 +333,23 @@ final class Application @Inject()(data: DataHelper,
     */
   def showActivities(user: String): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)) async { implicit request =>
     this.users.withName(user).semiFlatMap { u =>
-      val activities: Future[Seq[(Object, Option[Project])]] = u.id match {
-        case None => Future.successful(Seq.empty)
-        case Some(id) =>
-          val reviews = this.service.access[Review](classOf[Review])
-            .filter(_.userId === id)
-            .map(_.take(20).map { review => review ->
-              this.service.access[Version](classOf[Version]).filter(_.id === review.versionId).flatMap { version =>
-                this.projects.find(_.id === version.head.projectId).value
-              }
-            })
-          val flags = this.service.access[Flag](classOf[Flag])
-            .filter(_.resolvedBy === id)
-            .map(_.take(20).map(flag => flag -> this.projects.find(_.id === flag.projectId).value))
+      val id = u.id.value
+      val reviews = this.service.access[Review](classOf[Review])
+        .filter(_.userId === id)
+        .map(_.take(20).map { review => review ->
+          this.service.access[Version](classOf[Version]).filter(_.id === review.versionId).flatMap { version =>
+            this.projects.find(_.id === version.head.projectId).value
+          }
+        })
+      val flags = this.service.access[Flag](classOf[Flag])
+        .filter(_.resolvedBy === id)
+        .map(_.take(20).map(flag => flag -> this.projects.find(_.id === flag.projectId).value))
 
-          val allActivities = reviews.flatMap(r => flags.map(_ ++ r))
+      val allActivities = reviews.flatMap(r => flags.map(_ ++ r))
 
-          allActivities.flatMap(Future.traverse(_) {
-            case (k, fv) => fv.map(k -> _)
-          }.map(_.sortWith(sortActivities)))
-      }
+      val activities = allActivities.flatMap(Future.traverse(_) {
+        case (k, fv) => fv.map(k -> _)
+      }.map(_.sortWith(sortActivities)))
       activities.map(a => Ok(views.users.admin.activity(u, a)))
     }.getOrElse(NotFound)
   }
@@ -485,11 +482,11 @@ final class Application @Inject()(data: DataHelper,
         import play.api.libs.json._
         val json = Json.parse(data)
 
-        def updateRoleTable[M <: RoleModel](modelAccess: ModelAccess[M], allowedType: Class[_ <: Role], ownerType: RoleTypes.RoleType, transferOwner: M => Future[Int]) = {
+        def updateRoleTable[M <: RoleModel](modelAccess: ModelAccess[M], allowedType: Class[_ <: Role], ownerType: RoleType, transferOwner: M => Future[Int]) = {
           val id = (json \ "id").as[Int]
           action match {
             case "setRole" => modelAccess.get(id).map { role =>
-              val roleType = RoleTypes.withId((json \ "role").as[Int])
+              val roleType = RoleType.withValue((json \ "role").as[String])
               if (roleType == ownerType) {
                 transferOwner(role)
                 Ok
@@ -519,17 +516,17 @@ final class Application @Inject()(data: DataHelper,
         thing match {
           case "orgRole" =>
             isOrga.filterNot(identity).flatMap { _ =>
-              updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
+              updateRoleTable(user.organizationRoles, classOf[OrganizationRole], RoleType.OrganizationOwner, transferOrgOwner)
             }
           case "memberRole" =>
             isOrga.filter(identity).flatMap { _ =>
               OptionT.liftF(user.toOrganization).flatMap { orga =>
-                updateRoleTable(orga.memberships.roles, classOf[OrganizationRole], RoleTypes.OrganizationOwner, transferOrgOwner)
+                updateRoleTable(orga.memberships.roles, classOf[OrganizationRole], RoleType.OrganizationOwner, transferOrgOwner)
               }
             }
           case "projectRole" =>
             isOrga.filterNot(identity).flatMap { _ =>
-              updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleTypes.ProjectOwner, (r: ProjectRole) => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))))
+              updateRoleTable(user.projectRoles, classOf[ProjectRole], RoleType.ProjectOwner, (r: ProjectRole) => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))))
             }
           case _ => OptionT.none[Future, Status]
         }

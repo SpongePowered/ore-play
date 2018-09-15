@@ -46,7 +46,7 @@
                                 <tr>
                                     <td>@by</td>
                                     <td>@flag.reason, @flag.comment</td>
-                                    <td>@prettifyDateAndTime(flag.createdAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
+                                    <td>@prettifyDateAndTime(flag.createdAt.value)</td>
                                     @if(flag.isResolved) {
                                         <td>@resolvedBy.get
                                             at @prettifyDateAndTime(flag.resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>

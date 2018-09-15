@@ -3,7 +3,8 @@ package models.user
 import java.sql.Timestamp
 
 import com.google.common.base.Preconditions._
-import db.{ModelFilter, Named}
+
+import db.{ModelFilter, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
@@ -14,7 +15,7 @@ import models.project.{Flag, Project, Version, VisibilityTypes}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.OreConfig
 import ore.permission._
-import ore.permission.role.RoleTypes.{DonorType, RoleType}
+import ore.permission.role.RoleType
 import ore.permission.role._
 import ore.permission.scope._
 import ore.user.Prompts.Prompt
@@ -26,7 +27,6 @@ import slick.lifted.{QueryBase, TableQuery}
 import util.StringUtils._
 import util.instances.future._
 import util.functional.OptionT
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.Breaks._
 
@@ -35,15 +35,15 @@ import play.api.i18n.Lang
 /**
   * Represents a Sponge user.
   *
-  * @param id           External ID provided by authentication.
-  * @param createdAt    Date this user first logged onto Ore.
-  * @param _name        Full name of user
-  * @param _username    Username
-  * @param _email       Email
-  * @param _tagline     The user configured "tagline" displayed on the user page.
+  * @param id        External ID provided by authentication.
+  * @param createdAt Date this user first logged onto Ore.
+  * @param _name     Full name of user
+  * @param _username Username
+  * @param _email    Email
+  * @param _tagline  The user configured "tagline" displayed on the user page.
   */
-case class User(override val id: Option[Int] = None,
-                override val createdAt: Option[Timestamp] = None,
+case class User(override val id: ObjectId = ObjectId.Uninitialized,
+                override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                 private var _name: Option[String] = None,
                 private var _username: String = null,
                 private var _email: Option[String] = None,
@@ -56,10 +56,10 @@ case class User(override val id: Option[Int] = None,
                 private var _lastPgpPubKeyUpdate: Option[Timestamp] = None,
                 private var _isLocked: Boolean = false,
                 private var _lang: Option[Lang] = None)
-                extends OreModel(id, createdAt)
-                  with UserOwned
-                  with ScopeSubject
-                  with Named {
+  extends OreModel(id, createdAt)
+    with UserOwned
+    with ScopeSubject
+    with Named {
 
   override type M = User
   override type T = UserTable
@@ -263,11 +263,12 @@ case class User(override val id: Option[Int] = None,
 
   /**
     * Sets this user's language.
+    *
     * @param lang The new language.
     */
   def setLang(lang: Option[Lang]) = {
     this._lang = lang
-    if(isDefined) update(Language)
+    if (isDefined) update(Language)
   }
 
   /**
@@ -278,7 +279,7 @@ case class User(override val id: Option[Int] = None,
   def globalRoles: Set[RoleType] = this._globalRoles.toSet
 
   /**
-    * Sets the [[RoleTypes]]s that this User has globally.
+    * Sets the [[RoleType]]s that this User has globally.
     *
     * @param _globalRoles Roles to set
     */
@@ -299,7 +300,7 @@ case class User(override val id: Option[Int] = None,
     this.globalRoles.toList
       .filter(_.isInstanceOf[DonorType])
       .map(_.asInstanceOf[DonorType])
-      .sortBy(_.id).lastOption
+      .sortBy(_.rank).headOption
   }
 
   /**
@@ -312,7 +313,7 @@ case class User(override val id: Option[Int] = None,
       case GlobalScope =>
         Future.successful(this.globalRoles.map(_.trust).toList.sorted.lastOption.getOrElse(Default))
       case pScope: ProjectScope =>
-        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId, this.id.get).result).map { projectRoles =>
+        this.service.DB.db.run(Project.roleForTrustQuery(pScope.projectId, this.id.value).result).map { projectRoles =>
           projectRoles.sortBy(_.roleType.trust).headOption.map(_.roleType.trust).getOrElse(Default)
         } flatMap { userTrust =>
           if (!userTrust.equals(Default)) {
@@ -330,7 +331,7 @@ case class User(override val id: Option[Int] = None,
             val query = for {
               p <- projectTable if p.id === pScope.projectId
               pm <- projectMembersTable if p.id === pm.projectId // Join members of project
-              o <- orgaTable if pm.userId == o.userId            // Filter out non organizations
+              o <- orgaTable if pm.userId == o.userId // Filter out non organizations
               m <- memberTable if m.organizationId === o.id
               r <- roleTable if m.userId === r.userId && r.organizationId === o.id
             } yield {
@@ -338,7 +339,7 @@ case class User(override val id: Option[Int] = None,
             }
 
             service.DB.db.run(query.result).map { l =>
-              l.collectFirst {  // Find first non default trust
+              l.collectFirst { // Find first non default trust
                 case u if u.trust != Default => u.trust
               }.getOrElse(Default)
             }
@@ -355,7 +356,7 @@ case class User(override val id: Option[Int] = None,
     * Returns the Projects that this User has starred.
     *
     * @param page Page of user stars
-    * @return     Projects user has starred
+    * @return Projects user has starred
     */
   def starred(page: Int = -1)(implicit ec: ExecutionContext): Future[Seq[Project]] = Defined {
     val starsPerPage = this.config.users.get[Int]("stars-per-page")
@@ -374,7 +375,7 @@ case class User(override val id: Option[Int] = None,
   def isCurrent(implicit request: Request[_], ec: ExecutionContext): Future[Boolean] = {
     checkNotNull(request, "null request", "")
     this.service.getModelBase(classOf[UserBase]).current.semiFlatMap { user =>
-      if(user == this) Future.successful(true)
+      if (user == this) Future.successful(true)
       else this.toMaybeOrganization.semiFlatMap(_.owner.user).contains(user)
     }.exists(identity)
   }
@@ -396,6 +397,14 @@ case class User(override val id: Option[Int] = None,
         } else
           url
       }.foreach(this.setAvatarUrl)
+      user.addGroups.foreach { groups =>
+        this.setGlobalRoles(
+          if (groups.trim == "")
+            Set.empty
+          else
+            groups.split(",").flatMap(RoleType.withValueOpt).toSet[RoleType]
+        )
+      }
     }
   }
 
@@ -409,8 +418,8 @@ case class User(override val id: Option[Int] = None,
   /**
     * Returns the Project with the specified name that this User owns.
     *
-    * @param name   Name of project
-    * @return       Owned project, if any, None otherwise
+    * @param name Name of project
+    * @return Owned project, if any, None otherwise
     */
   def getProject(name: String)(implicit ec: ExecutionContext): OptionT[Future, Project] = this.projects.find(equalsIgnoreCase(_.name, name))
 
@@ -449,7 +458,7 @@ case class User(override val id: Option[Int] = None,
     * @return True if organization
     */
   def isOrganization(implicit ec: ExecutionContext): Future[Boolean] = Defined {
-    this.service.getModelBase(classOf[OrganizationBase]).exists(_.id === this.id.get)
+    this.service.getModelBase(classOf[OrganizationBase]).exists(_.id === this.id.value)
   }
 
   /**
@@ -458,12 +467,12 @@ case class User(override val id: Option[Int] = None,
     * @return Organization
     */
   def toOrganization(implicit ec: ExecutionContext): Future[Organization] = Defined {
-    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
+    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.value)
       .getOrElse(throw new IllegalStateException("user is not an organization"))
   }
 
   def toMaybeOrganization(implicit ec: ExecutionContext): OptionT[Future, Organization] = Defined {
-    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.get)
+    this.service.getModelBase(classOf[OrganizationBase]).get(this.id.value)
   }
 
   /**
@@ -476,7 +485,7 @@ case class User(override val id: Option[Int] = None,
   /**
     * Sets the "watching" status on the specified project.
     *
-    * @param project Project to update status on
+    * @param project  Project to update status on
     * @param watching True if watching
     */
   def setWatching(project: Project, watching: Boolean)(implicit ec: ExecutionContext): Future[Any] = {
@@ -500,13 +509,13 @@ case class User(override val id: Option[Int] = None,
     * Returns true if the User has an unresolved [[Flag]] on the specified
     * [[Project]].
     *
-    * @param project  Project to check
-    * @return         True if has pending flag on Project
+    * @param project Project to check
+    * @return True if has pending flag on Project
     */
   def hasUnresolvedFlagFor(project: Project)(implicit ec: ExecutionContext): Future[Boolean] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
-    this.flags.exists(f => f.projectId === project.id.get && !f.isResolved)
+    this.flags.exists(f => f.projectId === project.id.value && !f.isResolved)
   }
 
   /**
@@ -525,7 +534,7 @@ case class User(override val id: Option[Int] = None,
   def sendNotification(notification: Notification)(implicit ec: ExecutionContext): Future[Notification] = {
     checkNotNull(notification, "null notification", "")
     this.config.debug("Sending notification: " + notification, -1)
-    this.service.access[Notification](classOf[Notification]).add(notification.copy(userId = this.id.get))
+    this.service.access[Notification](classOf[Notification]).add(notification.copy(userId = this.id.value))
   }
 
   /**
@@ -570,11 +579,12 @@ case class User(override val id: Option[Int] = None,
   }
 
   def name: String = this.username
-  def url: String = this.username
-  override val scope: GlobalScope.type = GlobalScope
-  override def userId: Int = this.id.get
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): User = this.copy(createdAt = theTime)
 
+  def url: String = this.username
+
+  override val scope: GlobalScope.type = GlobalScope
+  override def userId: ObjectReference = this.id.value
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): User = this.copy(createdAt = theTime)
 }
 
 object User {
@@ -583,12 +593,12 @@ object User {
     * Create a new [[User]] from the specified [[SpongeUser]].
     *
     * @param toConvert User to convert
-    * @return          Ore user
+    * @return Ore user
     */
   def fromSponge(toConvert: SpongeUser)(implicit config: OreConfig, ec: ExecutionContext): User = {
     val user = User()
     user.fill(toConvert)
-    user.copy(id = Some(toConvert.id))
+    user.copy(id = ObjectId(toConvert.id))
   }
 
 }

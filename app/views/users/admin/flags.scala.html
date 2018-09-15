@@ -29,7 +29,7 @@
             <div class="col-md-12">
                 <ul class="list-group list-flags-admin">
                     @flags.map { case (flag, user, project, projectPerm) =>
-                        <li data-flag-id="@flag.id.get" class="list-group-item">
+                        <li data-flag-id="@flag.id.value" class="list-group-item">
                             <div class="row">
                                 <div class="col-xs-12 col-md-1" style="width: 40px;">
                                     <a href="@routes.Users.showProjects(user.username, None)">

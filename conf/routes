@@ -171,6 +171,7 @@ GET     /:author/:slug/versions                                     @controllers
 
 POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version)
 POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)
+POST    /:author/:slug/versions/:version/restore                    @controllers.project.Versions.restore(author, slug, version)
 POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
 
 GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean])

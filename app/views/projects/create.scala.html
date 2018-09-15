@@ -53,7 +53,7 @@ Page used for uploading and creating new projects.
                                         <select name="owner" form="continue">
                                             <option value="@project.ownerId" selected>@project.ownerName</option>
                                             @createProjectOrgas.map { organization =>
-                                                <option value="@organization.id.get">@organization.name</option>
+                                                <option value="@organization.id.value">@organization.name</option>
                                             }
                                         </select>
                                     } else {

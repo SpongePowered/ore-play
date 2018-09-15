@@ -1,13 +1,11 @@
 package models.project
 
-import java.sql.Timestamp
-
 import scala.concurrent.Future
 
 import com.google.common.base.Preconditions._
 
-import db.Named
 import db.access.ModelAccess
+import db.{Named, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.ChannelTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys
@@ -27,9 +25,9 @@ import ore.permission.scope.ProjectScope
   * @param _color       Color used to represent this Channel
   * @param projectId    ID of project this channel belongs to
   */
-case class Channel(override val id: Option[Int] = None,
-                   override val createdAt: Option[Timestamp] = None,
-                   override val projectId: Int,
+case class Channel(override val id: ObjectId = ObjectId.Uninitialized,
+                   override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                   override val projectId: ObjectReference,
                    private var _name: String,
                    private var _color: Color,
                    private var _isNonReviewed: Boolean = false)
@@ -41,7 +39,7 @@ case class Channel(override val id: Option[Int] = None,
   override type T = ChannelTable
   override type M = Channel
 
-  def this(name: String, color: Color, projectId: Int) = this(_name=name, _color=color, projectId=projectId)
+  def this(name: String, color: Color, projectId: ObjectReference) = this(_name=name, _color=color, projectId=projectId)
 
   /**
     * Returns the name of this Channel.
@@ -98,11 +96,10 @@ case class Channel(override val id: Option[Int] = None,
     */
   def versions: ModelAccess[Version] = this.schema.getChildren[Version](classOf[Version], this)
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): Channel = this.copy(id = id, createdAt = theTime)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Channel = this.copy(id = id, createdAt = theTime)
   override def compare(that: Channel): Int = this._name compare that._name
-  override def hashCode(): Int = this.id.get.hashCode
-  override def equals(o: Any): Boolean = o.isInstanceOf[Channel] && o.asInstanceOf[Channel].id.get == this.id.get
-
+  override def hashCode(): Int = this.id.value.hashCode
+  override def equals(o: Any): Boolean = o.isInstanceOf[Channel] && o.asInstanceOf[Channel].id.value == this.id.value
 }
 
 object Channel {

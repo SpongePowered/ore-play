@@ -4,6 +4,7 @@ import java.sql.Timestamp
 
 import scala.concurrent.Future
 
+import db.{ObjectId, ObjectTimestamp}
 import db.impl.SignOnTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -16,8 +17,8 @@ import db.impl.table.ModelKeys._
   * @param nonce        Nonce used
   * @param _isCompleted True if sign on was completed
   */
-case class SignOn(override val id: Option[Int] = None,
-                  override val createdAt: Option[Timestamp] = None,
+case class SignOn(override val id: ObjectId = ObjectId.Uninitialized,
+                  override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                   nonce: String,
                   var _isCompleted: Boolean = false) extends OreModel(id, createdAt) {
 
@@ -31,6 +32,5 @@ case class SignOn(override val id: Option[Int] = None,
     update(IsCompleted)
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): SignOn = this.copy(id = id, createdAt = theTime)
-
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): SignOn = this.copy(id = id, createdAt = theTime)
 }

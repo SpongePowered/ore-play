@@ -31,7 +31,7 @@ case class OrganizationData(joinable: Organization,
 object OrganizationData {
   val noPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
-  def cacheKey(orga: Organization): String = "organization" + orga.id.get
+  def cacheKey(orga: Organization): String = "organization" + orga.id.value
 
   def of[A](orga: Organization)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext,
                                 service: ModelService): Future[OrganizationData] = {
@@ -41,7 +41,7 @@ object OrganizationData {
       members <- orga.memberships.members
       memberRoles <- Future.sequence(members.map(_.headRole))
       memberUser <- Future.sequence(memberRoles.map(_.user))
-      projectRoles <- db.run(queryProjectRoles(orga.id.get).result)
+      projectRoles <- db.run(queryProjectRoles(orga.id.value).result)
     } yield {
       val members = memberRoles zip memberUser
       OrganizationData(orga, role, members.toSeq, projectRoles)

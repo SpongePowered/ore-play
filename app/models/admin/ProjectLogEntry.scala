@@ -4,6 +4,7 @@ import java.sql.Timestamp
 
 import scala.concurrent.Future
 
+import db.{ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.ProjectLogEntryTable
 import db.impl.model.OreModel
 import db.impl.table.ModelKeys._
@@ -19,9 +20,9 @@ import db.impl.table.ModelKeys._
   * @param _occurrences     Amount of occurrences
   * @param _lastOccurrence  Instant of last occurrence
   */
-case class ProjectLogEntry(override val id: Option[Int] = None,
-                           override val createdAt: Option[Timestamp] = None,
-                           logId: Int,
+case class ProjectLogEntry(override val id: ObjectId = ObjectId.Uninitialized,
+                           override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+                           logId: ObjectReference,
                            tag: String,
                            message: String,
                            private var _occurrences: Int = 1,
@@ -65,6 +66,5 @@ case class ProjectLogEntry(override val id: Option[Int] = None,
     update(LastOccurrence)
   }
 
-  override def copyWith(id: Option[Int], theTime: Option[Timestamp]): ProjectLogEntry = this.copy(id = id, createdAt = theTime)
-
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLogEntry = this.copy(id = id, createdAt = theTime)
 }
