@@ -88,7 +88,7 @@ Base template for Project overview.
                                     </a>
                                 </li>
 
-                                @if(p.project.topicId != -1) {
+                                @if(p.project.topicId.isDefined) {
                                     <li id="discussion" class="">
                                         <a href="@Projects.showDiscussion(
                                             p.project.ownerName, p.project.slug)">

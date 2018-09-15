@@ -5,7 +5,7 @@ import java.time.Instant
 
 import controllers.sugar.{Bakery, Requests}
 import controllers.sugar.Requests.AuthRequest
-import db.{ModelService, ObjectId, ObjectTimestamp}
+import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import form.OreForms
@@ -87,7 +87,7 @@ final class Reviews @Inject()(data: DataHelper,
             version.copy(
               isReviewed = false,
               approvedAt = None,
-              reviewerId = -1
+              reviewerId = None
             )
           )
         )
@@ -138,8 +138,8 @@ final class Reviews @Inject()(data: DataHelper,
     }
   }
 
-  private def queryNotificationUsers(projectId: Rep[Int], userId: Rep[Int], noRole: Rep[Option[RoleType]])
-    : Query[(Rep[Int], Rep[Option[RoleType]]), (Int, Option[RoleType]), Seq] = {
+  private def queryNotificationUsers(projectId: Rep[ObjectReference], userId: Rep[ObjectReference], noRole: Rep[Option[RoleType]])
+    : Query[(Rep[ObjectReference], Rep[Option[RoleType]]), (ObjectReference, Option[RoleType]), Seq] = {
 
     val orgTable = TableQuery[OrganizationTable]
     val orgMemberTable = TableQuery[OrganizationMembersTable]
@@ -147,7 +147,7 @@ final class Reviews @Inject()(data: DataHelper,
     val userTable = TableQuery[UserTable]
 
     // Query Orga Members
-    val q1: Query[(Rep[Int], Rep[Option[RoleType]]), (Int, Option[RoleType]), scala.Seq]  = for {
+    val q1: Query[(Rep[ObjectReference], Rep[Option[RoleType]]), (ObjectReference, Option[RoleType]), scala.Seq]  = for {
       org <- orgTable if org.id === projectId
       members <- orgMemberTable if org.id === members.organizationId
       roles <- orgRolesTable if members.userId === roles.userId // TODO roletype lvl in database?
@@ -157,7 +157,7 @@ final class Reviews @Inject()(data: DataHelper,
     }
 
     // Query version author
-    val q2: Query[(Rep[Int], Rep[Option[RoleType]]), (Int, Option[RoleType]), scala.Seq]  = for {
+    val q2: Query[(Rep[ObjectReference], Rep[Option[RoleType]]), (ObjectReference, Option[RoleType]), scala.Seq]  = for {
       user <- userTable if user.id === userId
     } yield {
       (user.id, noRole)
@@ -170,7 +170,7 @@ final class Reviews @Inject()(data: DataHelper,
 
   private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
 
-    val futUsers: Future[Seq[Int]] = this.service.DB.db.run(notificationUsersQuery(project.id.value, version.authorId, None).result).map { list =>
+    val futUsers: Future[Seq[ObjectReference]] = this.service.DB.db.run(notificationUsersQuery(project.id.value, version.authorId, None).result).map { list =>
       list.filter {
         case (_, Some(level)) => level.trust.level >= Lifted.level
         case (_, None) => true

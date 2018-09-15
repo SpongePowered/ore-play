@@ -4,11 +4,9 @@ import db.impl.ProjectRoleTable
 import ore.Visitable
 import ore.permission.role.RoleType
 import ore.permission.scope.ProjectScope
-
 import scala.concurrent.{ExecutionContext, Future}
-import db.ModelService
 
-import db.{ObjectId, ObjectTimestamp}
+import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 
 /**
   * Represents a [[ore.project.ProjectMember]]'s role in a
@@ -23,8 +21,8 @@ import db.{ObjectId, ObjectTimestamp}
   */
 case class ProjectRole(id: ObjectId = ObjectId.Uninitialized,
                        createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                       userId: Int,
-                       projectId: Int,
+                       userId: ObjectReference,
+                       projectId: ObjectReference,
                        roleType: RoleType,
                        isAccepted: Boolean = false)
                        extends RoleModel
@@ -33,7 +31,7 @@ case class ProjectRole(id: ObjectId = ObjectId.Uninitialized,
   override type M = ProjectRole
   override type T = ProjectRoleTable
 
-  def this(userId: Int, roleType: RoleType, projectId: Int, accepted: Boolean, visible: Boolean) = this(
+  def this(userId: ObjectReference, roleType: RoleType, projectId: ObjectReference, accepted: Boolean, visible: Boolean) = this(
     id = ObjectId.Uninitialized,
     createdAt = ObjectTimestamp.Uninitialized,
     userId = userId,

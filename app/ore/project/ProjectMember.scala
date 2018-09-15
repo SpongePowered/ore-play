@@ -7,7 +7,7 @@ import ore.permission.scope.Scope
 import ore.user.Member
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.ModelService
+import db.{ModelService, ObjectReference}
 
 /**
   * Represents a member of a [[Project]].
@@ -15,7 +15,7 @@ import db.ModelService
   * @param project  Project this Member is a part of
   * @param userId   Member user ID
   */
-class ProjectMember(val project: Project, override val userId: Int)(implicit users: UserBase)
+class ProjectMember(val project: Project, override val userId: ObjectReference)(implicit users: UserBase)
                     extends Member[ProjectRole](userId) {
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectRole]] =

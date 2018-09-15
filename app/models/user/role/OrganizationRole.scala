@@ -19,8 +19,8 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 case class OrganizationRole(id: ObjectId = ObjectId.Uninitialized,
                             createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                            userId: Int,
-                            organizationId: Int = -1,
+                            userId: ObjectReference,
+                            organizationId: ObjectReference = -1,
                             roleType: RoleType,
                             isAccepted: Boolean = false)
                             extends RoleModel with OrganizationScope {

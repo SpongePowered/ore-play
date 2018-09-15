@@ -1,6 +1,6 @@
 package db.table
 
-import db.Model
+import db.{Model, ObjectReference}
 import db.impl.OrePostgresDriver.api._
 
 /**
@@ -13,4 +13,4 @@ abstract class AssociativeTable(tag: Tag,
                                 name: String,
                                 val firstClass: Class[_ <: Model],
                                 val secondClass: Class[_ <: Model])
-  extends Table[(Int, Int)](tag, name)
+  extends Table[(ObjectReference, ObjectReference)](tag, name)

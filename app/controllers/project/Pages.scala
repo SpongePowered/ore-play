@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 import controllers.OreBaseController
 import controllers.sugar.{Bakery, Requests}
 import db.impl.OrePostgresDriver.api._
-import db.{ModelFilter, ModelService}
+import db.{ModelFilter, ModelService, ObjectReference}
 import form.OreForms
 import javax.inject.Inject
 
@@ -22,9 +22,9 @@ import cats.instances.future._
 import cats.syntax.all._
 import cats.data.OptionT
 
+import db.impl.PageTable
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.impl.PageTable
 import play.api.mvc.{Action, AnyContent}
 import play.utils.UriEncoding
 
@@ -74,7 +74,7 @@ class Pages @Inject()(forms: OreForms,
     if (parts.length == 2) {
       OptionT(service.DB.db.run(childPageQuery((parts(0), parts(1))).result).map(_.headOption)).map(_ -> false)
     } else {
-      project.pages.find(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId === -1).map(_ -> false)
+      project.pages.find(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId === -1L).map(_ -> false)
           .orElse(project.pages.find(_.slug.toLowerCase === parts(0).toLowerCase).map(_ -> true))
     }
   }
@@ -119,8 +119,8 @@ class Pages @Inject()(forms: OreForms,
     val parts = pageName.split("/")
 
     for {
-      (name, parentId) <- if (parts.size != 2) Future.successful((parts(0), -1)) else {
-        data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).fold(-1)(_.id.value).map((parts(1), _))
+      (name, parentId) <- if (parts.size != 2) Future.successful((parts(0), None)) else {
+        data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.value).value.map((parts(1), _))
       }
       (p, pages) <- (
         data.project.pages.find(equalsIgnoreCase(_.slug, name)).getOrElseF(data.project.getOrCreatePage(name, parentId)),
@@ -156,10 +156,10 @@ class Pages @Inject()(forms: OreForms,
         Future.successful(Redirect(self.show(author, slug, page)).withFormErrors(hasErrors.errors)),
       pageData => {
         val data = request.data
-        val parentId = pageData.parentId.getOrElse(-1)
+        val parentId = pageData.parentId
         //noinspection ComparingUnrelatedTypes
         data.project.rootPages.flatMap { rootPages =>
-          if (parentId != -1 && !rootPages.filterNot(_.name.equals(Page.homeName)).exists(_.id.value == parentId)) {
+          if (parentId.isDefined && !rootPages.filterNot(_.name.equals(Page.homeName)).exists(p => parentId.contains(p.id.value))) {
             Future.successful(BadRequest("Invalid parent ID."))
           } else {
             val content = pageData.content
@@ -169,7 +169,7 @@ class Pages @Inject()(forms: OreForms,
               val parts = page.split("/")
 
               val created = if (parts.size == 2) {
-                data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).fold(-1)(_.id.value).flatMap { parentId =>
+                data.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.value).value.flatMap { parentId =>
                   val pageName = pageData.name.getOrElse(parts(1))
                   data.project.getOrCreatePage(pageName, parentId, pageData.content)
                 }

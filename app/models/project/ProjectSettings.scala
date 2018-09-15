@@ -144,7 +144,7 @@ case class ProjectSettings(id: ObjectId = ObjectId.Uninitialized,
     }
   }
 
-  private def memberShipUpdate(userId: Rep[Int]) = {
+  private def memberShipUpdate(userId: Rep[ObjectReference]) = {
     val rolesTable = TableQuery[ProjectRoleTable]
 
     for {

@@ -1,5 +1,5 @@
 package object db {
 
-  type ObjectReference = Int
+  type ObjectReference = Long
 
 }

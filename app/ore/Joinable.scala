@@ -5,7 +5,7 @@ import ore.permission.scope.ScopeSubject
 import ore.user.{Member, MembershipDossier}
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.ModelService
+import db.{ModelService, ObjectReference}
 
 /**
   * Represents something with a [[MembershipDossier]].
@@ -19,7 +19,7 @@ trait Joinable[M <: Member[_ <: RoleModel], Self] extends ScopeSubject {
     */
   def owner(implicit service: ModelService): M
 
-  def ownerId: Int
+  def ownerId: ObjectReference
 
   /**
    * Transfers ownership of this object to the given member.

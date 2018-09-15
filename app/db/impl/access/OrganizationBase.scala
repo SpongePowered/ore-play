@@ -1,6 +1,6 @@
 package db.impl.access
 
-import db.{ModelBase, ModelService, ObjectId}
+import db.{ModelBase, ModelService, ObjectId, ObjectReference}
 import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
 import ore.OreConfig
@@ -32,7 +32,7 @@ class OrganizationBase(implicit val service: ModelService,
     * @param ownerId  User ID of the organization owner
     * @return         New organization if successful, None otherwise
     */
-  def create(name: String, ownerId: Int, members: Set[OrganizationRole])(implicit cache: AsyncCacheApi, ec: ExecutionContext, auth: SpongeAuthApi): EitherT[Future, String, Organization] = {
+  def create(name: String, ownerId: ObjectReference, members: Set[OrganizationRole])(implicit cache: AsyncCacheApi, ec: ExecutionContext, auth: SpongeAuthApi): EitherT[Future, String, Organization] = {
     Logger.debug("Creating Organization...")
     Logger.debug("Name     : " + name)
     Logger.debug("Owner ID : " + ownerId)

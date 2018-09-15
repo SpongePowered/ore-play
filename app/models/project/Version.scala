@@ -46,14 +46,14 @@ case class Version(id: ObjectId = ObjectId.Uninitialized,
                    versionString: String,
                    dependencyIds: List[String] = List(),
                    assets: Option[String] = None,
-                   channelId: ObjectReference = -1,
+                   channelId: ObjectReference,
                    fileSize: Long,
                    hash: String,
-                   authorId: ObjectReference = -1,
+                   authorId: ObjectReference,
                    description: Option[String] = None,
-                   downloadCount: Int = 0,
+                   downloadCount: Long = 0,
                    isReviewed: Boolean = false,
-                   reviewerId: ObjectReference = -1,
+                   reviewerId: Option[ObjectReference] = None,
                    approvedAt: Option[Timestamp] = None,
                    tagIds: List[ObjectReference] = List(),
                    visibility: Visibility = VisibilityTypes.Public,
@@ -118,7 +118,8 @@ case class Version(id: ObjectId = ObjectId.Uninitialized,
 
   def author(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] = userBase.get(this.authorId)
 
-  def reviewer(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] = userBase.get(this.reviewerId)
+  def reviewer(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =
+    OptionT.fromOption[Future](this.reviewerId).flatMap(userBase.get)
 
   def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[Tag]] = {
     service.access(classOf[Tag]).filter(_.id inSetBind tagIds).map { list =>
@@ -161,7 +162,7 @@ case class Version(id: ObjectId = ObjectId.Uninitialized,
   override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
     this.schema.getChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], this)
 
-  override def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext, service: ModelService): Future[(Version, VersionVisibilityChange)] = {
+  override def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): Future[(Version, VersionVisibilityChange)] = {
     val updateOldChange = lastVisibilityChange.semiflatMap { vc =>
       service.update(
         vc.copy(
@@ -225,8 +226,8 @@ case class Version(id: ObjectId = ObjectId.Uninitialized,
   def unfinishedReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] = reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] = OptionT(unfinishedReviews.map(_.headOption))
   def mostRecentReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] = reviewEntries.toSeq.map(_.sortWith(byCreationDate))
-  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] = reviewEntries.find(equalsInt[ReviewTable](_.id, id))
-  def equalsInt[T <: Table[_]](int1: T => Rep[Int], int2: Int): T => Rep[Boolean] = int1(_) === int2
+  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] = reviewEntries.find(equalsLong[ReviewTable](_.id, id))
+  def equalsLong[T <: Table[_]](int1: T => Rep[Long], int2: Long): T => Rep[Boolean] = int1(_) === int2
 
 }
 
@@ -242,13 +243,13 @@ object Version {
     private var versionString: String = _
     private var dependencyIds: List[String] = List()
     private var description: String = _
-    private var projectId: Int = -1
-    private var authorId: Int = -1
+    private var projectId: ObjectReference = -1
+    private var authorId: ObjectReference = -1
     private var fileSize: Long = -1
     private var hash: String = _
     private var fileName: String = _
     private var signatureFileName: String = _
-    private var tagIds: List[Int] = List()
+    private var tagIds: List[ObjectReference] = List()
     private var visibility: Visibility = VisibilityTypes.Public
 
     def versionString(versionString: String): Builder = {
@@ -266,7 +267,7 @@ object Version {
       this
     }
 
-    def projectId(projectId: Int): Builder = {
+    def projectId(projectId: ObjectReference): Builder = {
       this.projectId = projectId
       this
     }
@@ -281,7 +282,7 @@ object Version {
       this
     }
 
-    def authorId(authorId: Int): Builder = {
+    def authorId(authorId: ObjectReference): Builder = {
       this.authorId = authorId
       this
     }
@@ -296,7 +297,7 @@ object Version {
       this
     }
 
-    def tagIds(tagIds: List[Int]): Builder = {
+    def tagIds(tagIds: List[ObjectReference]): Builder = {
       this.tagIds = tagIds
       this
     }
@@ -319,7 +320,8 @@ object Version {
         fileName = checkNotNull(this.fileName, "file name null", ""),
         tagIds = this.tagIds,
         visibility = visibility,
-        signatureFileName = checkNotNull(this.signatureFileName, "signature file name null", ""))
+        signatureFileName = checkNotNull(this.signatureFileName, "signature file name null", ""),
+        channelId = -1L)
     }
 
   }

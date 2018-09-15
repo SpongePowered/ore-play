@@ -5,7 +5,7 @@ import scala.collection.immutable
 import com.github.tminglei.slickpg.InetString
 
 import controllers.sugar.Requests.AuthRequest
-import db.{Model, ModelService, ObjectId, ObjectTimestamp}
+import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import db.impl.LoggedActionTable
 import enumeratum.values.{IntEnum, IntEnumEntry}
 import ore.StatTracker
@@ -14,11 +14,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 case class LoggedActionModel(id: ObjectId = ObjectId.Uninitialized,
                              createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                             userId: Int,
+                             userId: ObjectReference,
                              address: InetString,
                              action: LoggedAction,
                              actionContext: LoggedActionContext,
-                             actionContextId: Int,
+                             actionContextId: ObjectReference,
                              newState: String,
                              oldState: String) extends Model with UserOwned {
 
@@ -71,7 +71,7 @@ case object LoggedAction extends IntEnum[LoggedAction] {
 
 object UserActionLogger {
 
-  def log(request: AuthRequest[_], action: LoggedAction, actionContextId: Int, newState: String, oldState: String)
+  def log(request: AuthRequest[_], action: LoggedAction, actionContextId: ObjectReference, newState: String, oldState: String)
          (implicit service: ModelService, ex: ExecutionContext): Future[LoggedActionModel] = {
     service.insert(LoggedActionModel(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, request.user.userId, InetString(StatTracker.remoteAddress(request.request)), action, action.context, actionContextId, newState, oldState))
   }

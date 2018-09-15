@@ -19,7 +19,7 @@ GET     /admin/flags/:id/resolve/:resolved                          @controllers
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats()
-GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], versionFilter: Option[Int], pageFilter: Option[Int], actionFilter: Option[Int], subjectFilter: Option[Int])
+GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[ObjectReference], projectFilter: Option[ObjectReference], versionFilter: Option[ObjectReference], pageFilter: Option[ObjectReference], actionFilter: Option[Int], subjectFilter: Option[ObjectReference])
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
 

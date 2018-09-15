@@ -9,7 +9,7 @@ import ore.permission.role.Trust
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
-import db.{Model, ModelService}
+import db.{Model, ModelService, ObjectReference}
 
 /**
   * Handles and keeps track of [[User]] "memberships" for an [[Model]].
@@ -47,7 +47,7 @@ trait MembershipDossier {
     * @param userId User ID of member
     * @return       New Member
     */
-  def newMember(userId: Int)(implicit ec: ExecutionContext): MemberType
+  def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): MemberType
 
   /**
     * Returns all members of the model. This includes members that have not

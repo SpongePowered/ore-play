@@ -11,7 +11,7 @@ import ore.StatTracker._
 import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{ObjectId, ObjectTimestamp}
+import db.{ObjectId, ObjectReference, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
 
 /**
@@ -26,10 +26,10 @@ import security.spauth.SpongeAuthApi
   */
 case class VersionDownload(id: ObjectId = ObjectId.Uninitialized,
                            createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                           modelId: Int,
+                           modelId: ObjectReference,
                            address: InetString,
                            cookie: String,
-                           userId: Option[Int] = None)
+                           userId: Option[ObjectReference] = None)
                            extends StatEntry[Version] {
 
   override type M = VersionDownload

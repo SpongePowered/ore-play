@@ -2,9 +2,8 @@ package db.access
 
 import db.ModelFilter.IdFilter
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelFilter, ModelService}
+import db.{Model, ModelFilter, ModelService, ObjectReference}
 import slick.lifted.ColumnOrdered
-
 import scala.concurrent.{ExecutionContext, Future}
 
 import cats.data.OptionT
@@ -22,7 +21,7 @@ class ModelAccess[M <: Model](val service: ModelService,
     * @param id   ID to lookup
     * @return     Model with ID or None if not found
     */
-  def get(id: Int)(implicit ec: ExecutionContext): OptionT[Future, M] = this.service.get[M](this.modelClass, id, this.baseFilter.fn)
+  def get(id: ObjectReference)(implicit ec: ExecutionContext): OptionT[Future, M] = this.service.get[M](this.modelClass, id, this.baseFilter.fn)
 
   /**
     * Returns a set of Models that have an ID that is in the specified Int set.
@@ -30,7 +29,7 @@ class ModelAccess[M <: Model](val service: ModelService,
     * @param ids  ID set
     * @return     Models in ID set
     */
-  def in(ids: Set[Int])(implicit ec: ExecutionContext): Future[Set[M]] = this.service.in[M](this.modelClass, ids, this.baseFilter.fn).map(_.toSet)
+  def in(ids: Set[ObjectReference])(implicit ec: ExecutionContext): Future[Set[M]] = this.service.in[M](this.modelClass, ids, this.baseFilter.fn).map(_.toSet)
 
   /**
     * Returns all the [[Model]]s in the set.

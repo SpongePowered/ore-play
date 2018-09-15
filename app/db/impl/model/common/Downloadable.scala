@@ -16,6 +16,6 @@ trait Downloadable extends Model { self =>
     *
     * @return Downloads model has
     */
-  def downloadCount: Int
+  def downloadCount: Long
 
 }

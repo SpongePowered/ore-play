@@ -29,7 +29,7 @@ import cats.data.OptionT
 case class Organization(id: ObjectId = ObjectId.Uninitialized,
                         createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                         username: String,
-                        ownerId: Int)
+                        ownerId: ObjectReference)
                         extends Model
                           with UserOwned
                           with OrganizationScope
@@ -65,7 +65,7 @@ case class Organization(id: ObjectId = ObjectId.Uninitialized,
     val roleClass: Class[RoleType] = classOf[OrganizationRole]
     val model: ModelType = Organization.this
 
-    def newMember(userId: Int)(implicit ec: ExecutionContext): OrganizationMember = new OrganizationMember(this.model, userId)
+    def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): OrganizationMember = new OrganizationMember(this.model, userId)
 
     def clearRoles(user: User): Future[Int] = this.roleAccess.removeAll({ s => (s.userId === user.id.value) && (s.organizationId === id.value) })
 
@@ -120,7 +120,7 @@ case class Organization(id: ObjectId = ObjectId.Uninitialized,
 object Organization {
   lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
 
-  private def queryRoleForTrust(orgId: Rep[Int], userId: Rep[Int]) = {
+  private def queryRoleForTrust(orgId: Rep[ObjectReference], userId: Rep[ObjectReference]) = {
     val memberTable = TableQuery[OrganizationMembersTable]
     val roleTable = TableQuery[OrganizationRoleTable]
 

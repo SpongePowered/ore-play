@@ -38,7 +38,7 @@ case class Flag(id: ObjectId = ObjectId.Uninitialized,
   override type M = Flag
   override type T = FlagTable
 
-  def this(projectId: Int, userId: Int, reason: FlagReason, comment: String) = {
+  def this(projectId: ObjectReference, userId: ObjectReference, reason: FlagReason, comment: String) = {
     this(id=ObjectId.Uninitialized, createdAt=ObjectTimestamp.Uninitialized, projectId=projectId, userId=userId, reason=reason, comment=comment)
   }
 
@@ -49,7 +49,7 @@ case class Flag(id: ObjectId = ObjectId.Uninitialized,
     */
   def markResolved(resolved: Boolean, user: Option[User])(implicit ec: ExecutionContext, service: ModelService): Future[Flag] = Defined {
     val (at, by) = if(resolved)
-      (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1)))
+      (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1)): Option[ObjectReference])
     else
       (None, None)
 

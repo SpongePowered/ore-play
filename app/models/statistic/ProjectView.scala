@@ -28,10 +28,10 @@ import security.spauth.SpongeAuthApi
   */
 case class ProjectView(id: ObjectId = ObjectId.Uninitialized,
                        createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                       modelId: Int,
+                       modelId: ObjectReference,
                        address: InetString,
                        cookie: String,
-                       userId: Option[Int] = None)
+                       userId: Option[ObjectReference] = None)
                        extends StatEntry[Project] with ProjectScope {
 
   override type M = ProjectView

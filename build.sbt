@@ -8,6 +8,7 @@ scalacOptions += "-Ypartial-unification"
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 
 routesGenerator := InjectedRoutesGenerator
+routesImport += "_root_.db.ObjectReference"
 resolvers ++= Seq(
   "sponge" at "https://repo.spongepowered.org/maven",
   "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",

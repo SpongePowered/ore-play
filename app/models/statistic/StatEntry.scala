@@ -3,7 +3,7 @@ package models.statistic
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 
-import db.Model
+import db.{Model, ObjectReference}
 import db.impl.table.StatTable
 import cats.instances.future._
 import cats.data.OptionT
@@ -23,7 +23,7 @@ abstract class StatEntry[Subject <: Model] extends Model { self =>
   /**
     * ID of model the stat is on
     */
-  def modelId: Int
+  def modelId: ObjectReference
 
   /**
     * Client address
@@ -38,7 +38,7 @@ abstract class StatEntry[Subject <: Model] extends Model { self =>
   /**
     * User ID
     */
-  def userId: Option[Int]
+  def userId: Option[ObjectReference]
 
   checkNotNull(address, "client address cannot be null", "")
   checkNotNull(cookie, "browser cookie cannot be null", "")

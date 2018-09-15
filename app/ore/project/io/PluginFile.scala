@@ -6,14 +6,17 @@ import java.util.jar.{JarEntry, JarFile, JarInputStream}
 import java.util.zip.{ZipEntry, ZipFile}
 
 import com.google.common.base.Preconditions._
+
 import models.user.User
 import ore.user.UserOwned
 import org.apache.commons.codec.digest.DigestUtils
-import play.api.i18n.Messages
 
+import play.api.i18n.Messages
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
+
+import db.ObjectReference
 
 /**
   * Represents an uploaded plugin file.
@@ -172,6 +175,6 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     pluginEntry
   }
 
-  override def userId: Int = this.user.id.value
+  override def userId: ObjectReference = this.user.id.value
 
 }

@@ -94,6 +94,6 @@ object ModelFilter {
   def All[M <: Model]: ModelFilter[M] = ModelFilter[M](_ => false)
 
   /** Filters models by ID */
-  def IdFilter[M <: Model](id: Int): ModelFilter[M] = ModelFilter[M](_.id === id)
+  def IdFilter[M <: Model](id: ObjectReference): ModelFilter[M] = ModelFilter[M](_.id === id)
 
 }

@@ -1,6 +1,6 @@
 package models.viewhelper
 
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import models.project.Project
@@ -10,10 +10,9 @@ import ore.organization.OrganizationMember
 import ore.permission._
 import play.api.cache.AsyncCacheApi
 import slick.jdbc.JdbcBackend
-
 import scala.concurrent.{ExecutionContext, Future}
-import slick.lifted.TableQuery
 
+import slick.lifted.TableQuery
 import cats.data.OptionT
 import cats.instances.future._
 
@@ -47,7 +46,7 @@ object OrganizationData {
     }
   }
 
-  private def queryProjectRoles(userId: Int) = {
+  private def queryProjectRoles(userId: ObjectReference) = {
     val tableProjectRole = TableQuery[ProjectRoleTable]
     val tableProject = TableQuery[ProjectTableMain]
 

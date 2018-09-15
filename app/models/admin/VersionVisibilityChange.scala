@@ -15,7 +15,7 @@ case class VersionVisibilityChange(id: ObjectId = ObjectId.Uninitialized,
                             projectId: ObjectReference = -1,
                             comment: String,
                             resolvedAt: Option[Timestamp] = None,
-                            resolvedBy: Option[Int] = None,
+                            resolvedBy: Option[ObjectReference] = None,
                             visibility: Int = 1) extends Model with VisibilityChange {
   /** Self referential type */
   override type M = VersionVisibilityChange

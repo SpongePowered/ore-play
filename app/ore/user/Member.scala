@@ -6,12 +6,12 @@ import ore.permission.scope.ScopeSubject
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
-import db.ModelService
+import db.{ModelService, ObjectReference}
 
 /**
   * Represents a [[User]] member of some entity.
   */
-abstract class Member[RoleType <: RoleModel](override val userId: Int)
+abstract class Member[RoleType <: RoleModel](override val userId: ObjectReference)
                                              extends ScopeSubject with UserOwned {
 
   /**

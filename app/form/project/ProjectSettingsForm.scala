@@ -1,5 +1,7 @@
 package form.project
 
+import db.ObjectReference
+
 /**
   * Represents the configurable Project settings that can be submitted via a
   * form.
@@ -15,6 +17,6 @@ case class ProjectSettingsForm(categoryName: String,
                                userUps: List[String],
                                roleUps: List[String],
                                updateIcon: Boolean,
-                               ownerId: Option[Int],
+                               ownerId: Option[ObjectReference],
                                forumSync: Boolean)
                                extends TProjectRoleSetBuilder

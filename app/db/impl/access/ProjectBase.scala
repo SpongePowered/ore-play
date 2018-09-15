@@ -138,7 +138,7 @@ class ProjectBase(implicit val service: ModelService,
         service.update(project.copy(name = newName, slug = newSlug))
 
         // Project's name alter's the topic title, update it
-        if (project.topicId != -1 && forums.isEnabled)
+        if (project.topicId.isDefined && forums.isEnabled)
           forums.updateProjectTopic(project)
         else
           Future.successful(false)
@@ -219,7 +219,7 @@ class ProjectBase(implicit val service: ModelService,
     */
   def delete(project: Project)(implicit ec: ExecutionContext, forums: OreDiscourseApi): Future[Int] = {
     FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
-    if (project.topicId != -1)
+    if (project.topicId.isDefined)
       forums.deleteProjectTopic(project)
     // TODO: Instead, move to the "projects_deleted" table just in case we couldn't delete the topic
     project.remove()
@@ -230,7 +230,7 @@ class ProjectBase(implicit val service: ModelService,
     val tablePage = TableQuery[PageTable]
     val pagesQuery = for {
       (pp, p) <- tablePage joinLeft tablePage on (_.id === _.parentId)
-      if pp.projectId === project.id.value && pp.parentId === -1
+      if pp.projectId === project.id.value && pp.parentId === -1L
     } yield (pp, p)
 
     service.DB.db.run(pagesQuery.result).map(_.groupBy(_._1)) map { grouped => // group by parent page

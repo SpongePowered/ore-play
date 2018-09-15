@@ -2,22 +2,21 @@ package db.access
 
 import db.impl.OrePostgresDriver.api._
 import db.table.{AssociativeTable, ModelAssociation}
-import db.{Model, ModelFilter, ModelService}
-
+import db.{Model, ModelFilter, ModelService, ObjectReference}
 import scala.concurrent.{ExecutionContext, Future}
 
 class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](service: ModelService,
                                                                     parent: Model,
-                                                                    parentRef: Assoc => Rep[Int],
+                                                                    parentRef: Assoc => Rep[ObjectReference],
                                                                     childClass: Class[M],
-                                                                    childRef: Assoc => Rep[Int],
+                                                                    childRef: Assoc => Rep[ObjectReference],
                                                                     assoc: ModelAssociation[Assoc])
   extends ModelAccess[M](service, childClass, ModelFilter[M] { child =>
     val assocQuery = for {
       row <- assoc.assocTable
       if parentRef(row) === parent.id.value
     } yield childRef(row)
-    val childrenIds: Seq[Int] = service.await(service.DB.db.run(assocQuery.result)).get
+    val childrenIds: Seq[ObjectReference] = service.await(service.DB.db.run(assocQuery.result)).get
     child.id inSetBind childrenIds
   }) {
 

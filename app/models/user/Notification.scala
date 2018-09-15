@@ -24,7 +24,7 @@ import db.impl.access.UserBase
   */
 case class Notification(id: ObjectId = ObjectId.Uninitialized,
                         createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                        userId: ObjectReference = -1,
+                        userId: ObjectReference,
                         originId: ObjectReference,
                         notificationType: NotificationType,
                         messageArgs: NEL[String],

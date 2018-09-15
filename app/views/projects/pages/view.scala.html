@@ -92,7 +92,7 @@ Documentation page within Project overview.
                             @rootPages.filterNot(_._1.name.equals(Page.homeName)).map { case (pg, children) =>
                                 <li class="list-group-item">
                                     @if(children.nonEmpty) {
-                                        @if(page.parentId != pg.id.value) {
+                                        @if(!page.parentId.contains(pg.id.value)) {
                                             <a class="page-expand" data-page-id="@pg.id.value">
                                                 <i class="fa fa-plus-square-o"></i>
                                             </a>
@@ -106,7 +106,7 @@ Documentation page within Project overview.
                                         @pg.name
                                     </a>
                                 </li>
-                              @if(page.parentId != -1 && page.parentId == pg.id.value) {
+                              @if(page.parentId.contains(pg.id.value)) {
                                   <div class="page-children" data-page-id="@pg.id.value">
                                       @children.map { child =>
                                         <li class="list-group-item page-item-child">

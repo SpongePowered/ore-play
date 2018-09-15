@@ -9,10 +9,10 @@ import db.impl.LoggedActionViewTable
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.user.UserOwned
 
-case class LoggedProject(pId: Option[Int], pPluginId: Option[String], pSlug: Option[String], pOwnerName: Option[String])
-case class LoggedProjectVersion(pvId: Option[Int], pvVersionString: Option[String])
-case class LoggedProjectPage(ppId: Option[Int], ppSlug: Option[String])
-case class LoggedSubject(sId: Option[Int], sName: Option[String])
+case class LoggedProject(pId: Option[ObjectReference], pPluginId: Option[String], pSlug: Option[String], pOwnerName: Option[String])
+case class LoggedProjectVersion(pvId: Option[ObjectReference], pvVersionString: Option[String])
+case class LoggedProjectPage(ppId: Option[ObjectReference], ppSlug: Option[String])
+case class LoggedSubject(sId: Option[ObjectReference], sName: Option[String])
 
 case class LoggedActionViewModel(id: ObjectId = ObjectId.Uninitialized,
                                  createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
@@ -20,32 +20,32 @@ case class LoggedActionViewModel(id: ObjectId = ObjectId.Uninitialized,
                                  address: InetString,
                                  action: LoggedAction,
                                  actionContext: LoggedActionContext,
-                                 actionContextId: Int,
+                                 actionContextId: ObjectReference,
                                  newState: String,
                                  oldState: String,
-                                 uId: Int,
+                                 uId: ObjectReference,
                                  uName: String,
                                  loggedProject: LoggedProject,
                                  loggedProjectVerison: LoggedProjectVersion,
                                  loggedProjectPage: LoggedProjectPage,
                                  loggedSubject: LoggedSubject,
-                                 filterProject: Option[Int],
-                                 filterVersion: Option[Int],
-                                 filterPage: Option[Int],
-                                 filterSubject: Option[Int],
+                                 filterProject: Option[ObjectReference],
+                                 filterVersion: Option[ObjectReference],
+                                 filterPage: Option[ObjectReference],
+                                 filterSubject: Option[ObjectReference],
                                  filterAction: Option[Int]) extends Model with UserOwned {
 
-  def contextId: Int = actionContextId
+  def contextId: ObjectReference = actionContextId
   def actionType: LoggedActionContext = action.context
-  def pId: Option[Int] = loggedProject.pId
+  def pId: Option[ObjectReference] = loggedProject.pId
   def pPluginId: Option[String] = loggedProject.pPluginId
   def pSlug: Option[String] = loggedProject.pSlug
   def pOwnerName: Option[String] = loggedProject.pOwnerName
-  def pvId: Option[Int] = loggedProjectVerison.pvId
+  def pvId: Option[ObjectReference] = loggedProjectVerison.pvId
   def pvVersionString: Option[String] = loggedProjectVerison.pvVersionString
-  def ppId: Option[Int] = loggedProjectPage.ppId
+  def ppId: Option[ObjectReference] = loggedProjectPage.ppId
   def ppSlug: Option[String] = loggedProjectPage.ppSlug
-  def sId: Option[Int] = loggedSubject.sId
+  def sId: Option[ObjectReference] = loggedSubject.sId
   def sName: Option[String] = loggedSubject.sName
 
   override type T = LoggedActionViewTable

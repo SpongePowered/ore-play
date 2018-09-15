@@ -229,7 +229,7 @@ trait ModelService {
     * @param id   Model with ID
     * @return     Model if present, None otherwise
     */
-  def get[M <: Model](modelClass: Class[M], id: Int, filter: M#T => Rep[Boolean] = null)(implicit ec: ExecutionContext): OptionT[Future, M]
+  def get[M <: Model](modelClass: Class[M], id: ObjectReference, filter: M#T => Rep[Boolean] = null)(implicit ec: ExecutionContext): OptionT[Future, M]
   = find[M](modelClass, (IdFilter[M](id) && filter).fn)
 
   /**
@@ -241,7 +241,7 @@ trait ModelService {
     * @tparam M         Model type
     * @return           Seq of models in ID set
     */
-  def in[M <: Model](modelClass: Class[M], ids: Set[Int], filter: M#T => Rep[Boolean] = null)(implicit ec: ExecutionContext): Future[Seq[M]]
+  def in[M <: Model](modelClass: Class[M], ids: Set[ObjectReference], filter: M#T => Rep[Boolean] = null)(implicit ec: ExecutionContext): Future[Seq[M]]
   = this.filter[M](modelClass, (ModelFilter[M](_.id inSetBind ids) && filter).fn)
 
   /**

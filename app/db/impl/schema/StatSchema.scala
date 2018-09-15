@@ -1,7 +1,7 @@
 package db.impl.schema
 
 import db.impl.OrePostgresDriver.api._
-import db.{ModelFilter, ModelSchema, ModelService}
+import db.{ModelFilter, ModelSchema, ModelService, ObjectReference}
 import models.statistic.StatEntry
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
@@ -45,7 +45,7 @@ trait StatSchema[M <: StatEntry[_]] extends ModelSchema[M] {
     promise.future
   }
 
-  def setUserId(m: M, id: Int): M
+  def setUserId(m: M, id: ObjectReference): M
 
   override def like(entry: M)(implicit ec: ExecutionContext): OptionT[Future, M] = {
     val baseFilter: ModelFilter[M] = ModelFilter[M](_.modelId === entry.modelId)

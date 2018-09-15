@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path}
 import controllers.OreBaseController
 import controllers.sugar.{Bakery, Requests}
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest}
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
@@ -187,7 +187,7 @@ class Projects @Inject()(stats: StatTracker,
       }
   }
 
-  private def orgasUserCanUploadTo(user: User): Future[Set[Int]] = {
+  private def orgasUserCanUploadTo(user: User): Future[Set[ObjectReference]] = {
     for {
       all <- user.organizations.all
       canCreate <- Future.traverse(all)(org => user can CreateProject in org map { perm => (org.id.value, perm)})
@@ -279,7 +279,7 @@ class Projects @Inject()(stats: StatTracker,
         Future.successful(Redirect(self.showDiscussion(author, slug)).withFormErrors(hasErrors.errors)),
       formData => {
         val data = request.data
-        if (data.project.topicId == -1)
+        if (data.project.topicId.isEmpty)
           Future.successful(BadRequest)
         else {
           // Do forum post and display errors to user if any
@@ -712,7 +712,7 @@ class Projects @Inject()(stats: StatTracker,
   def delete(author: String, slug: String): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](HardRemoveProject)).async { implicit request =>
       getProject(author, slug).semiflatMap { project =>
-        val deletePost = if (project.topicId != -1) this.forums.deleteProjectTopic(project) else Future.unit
+        val deletePost = if (project.topicId.isDefined) this.forums.deleteProjectTopic(project) else Future.unit
 
         val effects = deletePost *>
           projects.delete(project) *>

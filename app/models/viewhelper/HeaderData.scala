@@ -1,7 +1,7 @@
 package models.viewhelper
 
 import controllers.sugar.Requests.ProjectRequest
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.OrganizationBase
 import db.impl._
@@ -36,7 +36,7 @@ case class HeaderData(currentUser: Option[User] = None,
 
   def hasUser: Boolean = currentUser.isDefined
 
-  def isCurrentUser(userId: Int): Boolean = currentUser.map(_.id.value).contains(userId)
+  def isCurrentUser(userId: ObjectReference): Boolean = currentUser.map(_.id.value).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
 

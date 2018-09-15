@@ -4,12 +4,13 @@ import java.util.{Base64, UUID}
 
 import akka.http.scaladsl.model.Uri
 import controllers.sugar.Bakery
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.ProjectApiKeyTable
 import form.OreForms
 import javax.inject.Inject
+
 import models.api.ProjectApiKey
 import models.user.{LoggedAction, UserActionLogger}
 import ore.permission.role.RoleType
@@ -31,7 +32,6 @@ import play.api.mvc._
 import security.CryptoUtils
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import slick.lifted.Compiled
-
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -183,7 +183,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
 
         bindFormEitherT[Future](this.forms.VersionDeploy)(hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))).flatMap { formData =>
           val apiKeyTable = TableQuery[ProjectApiKeyTable]
-          def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[Int]) = {
+          def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[ObjectReference]) = {
             val query = for {
               k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
             } yield {

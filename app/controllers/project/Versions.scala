@@ -10,7 +10,7 @@ import com.github.tminglei.slickpg.InetString
 import controllers.OreBaseController
 import controllers.sugar.{Bakery, Requests}
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
-import db.{ModelService, ModelFilter}
+import db.{ModelFilter, ModelService, ObjectReference}
 import db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import form.OreForms
@@ -155,7 +155,7 @@ class Versions @Inject()(stats: StatTracker,
 
       val res = for {
         version <- getVersion(request.data.project, versionString)
-        _ <- EitherT.right[Result](service.update(version.copy(isReviewed = true, reviewerId = request.user.id.value, approvedAt = Some(service.theTime))))
+        _ <- EitherT.right[Result](service.update(version.copy(isReviewed = true, reviewerId = Some(request.user.id.value), approvedAt = Some(service.theTime))))
       } yield {
         UserActionLogger.log(request.request, LoggedAction.VersionApproved, version.id.value, "approved", "unapproved")
         Redirect(self.show(author, slug, versionString))
@@ -641,7 +641,7 @@ class Versions @Inject()(stats: StatTracker,
   /**
     * Confirms the download and prepares the unsafe download.
     */
-  private def confirmDownload0(versionId: Int, downloadType: Option[Int],token: String)(implicit requestHeader: Request[_]): OptionT[Future, UnsafeDownload] = {
+  private def confirmDownload0(versionId: ObjectReference, downloadType: Option[Int],token: String)(implicit requestHeader: Request[_]): OptionT[Future, UnsafeDownload] = {
     val addr = InetString(StatTracker.remoteAddress)
     val dlType = downloadType
       .flatMap(i => DownloadTypes.values.find(_.id == i))
@@ -652,7 +652,7 @@ class Versions @Inject()(stats: StatTracker,
         (warn.token === token) &&
         (warn.versionId === versionId) &&
         !warn.isConfirmed &&
-        (warn.downloadId === -1)
+        (warn.downloadId === -1L)
     }.filterNot { warn =>
       val isInvalid = warn.hasExpired
       // warning has expired

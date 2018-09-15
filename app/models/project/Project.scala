@@ -65,17 +65,17 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
                    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
                    pluginId: String,
                    ownerName: String,
-                   ownerId: Int,
+                   ownerId: ObjectReference,
                    name: String,
                    slug: String,
-                   recommendedVersionId: Option[Int] = None,
+                   recommendedVersionId: Option[ObjectReference] = None,
                    category: Category = Categories.Undefined,
                    description: Option[String] = None,
-                   starCount: Int = 0,
-                   viewCount: Int = 0,
-                   downloadCount: Int = 0,
-                   topicId: Int = -1,
-                   postId: Int = -1,
+                   starCount: Long = 0,
+                   viewCount: Long = 0,
+                   downloadCount: Long = 0,
+                   topicId: Option[Int] = None,
+                   postId: Option[Int] = None,
                    isTopicDirty: Boolean = false,
                    visibility: Visibility = Public,
                    lastUpdated: Timestamp = null,
@@ -225,7 +225,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
     *
     * @param visibility True if visible
     */
-  def setVisibility(visibility: Visibility, comment: String, creator: Int)(
+  def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
       implicit ec: ExecutionContext, service: ModelService): Future[(Project, ProjectVisibilityChange)] = {
     val updateOldChange = lastVisibilityChange.semiflatMap { vc =>
       service.update(
@@ -366,7 +366,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
     * @return Project home page
     */
   def homePage(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Page = Defined {
-    val page = new Page(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), false, -1)
+    val page = new Page(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), false, None)
     service.await(page.schema.getOrInsert(page)).get
   }
 
@@ -384,7 +384,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
     * @param name   Page name
     * @return       Page with name or new name if it doesn't exist
     */
-  def getOrCreatePage(name: String, parentId: Int = -1, content: Option[String] = None)(implicit ec: ExecutionContext, config: OreConfig, service: ModelService): Future[Page] = Defined {
+  def getOrCreatePage(name: String, parentId: Option[ObjectReference], content: Option[String] = None)(implicit ec: ExecutionContext, config: OreConfig, service: ModelService): Future[Page] = Defined {
     checkNotNull(name, "null name", "")
     val c = content match {
       case None => Page.template(name, Page.homeMessage)
@@ -403,7 +403,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
     * @return Root pages of project
     */
   def rootPages(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Page]] = {
-    service.access[Page](classOf[Page]).sorted(_.name, p => p.projectId === this.id.value && p.parentId === -1)
+    service.access[Page](classOf[Page]).sorted(_.name, p => p.projectId === this.id.value && p.parentId === -1L)
   }
 
   def logger(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLog] = {
@@ -413,7 +413,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
 
   def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] = this.schema.getChildren[ProjectApiKey](classOf[ProjectApiKey], this)
 
-  override def projectId: Int = this.id.value
+  override def projectId: ObjectReference = this.id.value
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Project
   = this.copy(id = id, createdAt = theTime, lastUpdated = theTime.value)
 
@@ -449,7 +449,7 @@ case class Project(id: ObjectId = ObjectId.Uninitialized,
 /**
   * This modal is needed to convert the json
   */
-case class Note(message: String, user: Int, time: Long = System.currentTimeMillis()) {
+case class Note(message: String, user: ObjectReference, time: Long = System.currentTimeMillis()) {
   def printTime(implicit oreConfig: Messages): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
   def render(implicit oreConfig: OreConfig): Html = Page.render(message)
 }
@@ -462,14 +462,14 @@ object Note {
 
   implicit val notesRead: Reads[Note] = (
     (JsPath \ "message").read[String] and
-      (JsPath \ "user").read[Int] and
+      (JsPath \ "user").read[ObjectReference] and
       (JsPath \ "time").read[Long]
     ) (Note.apply _)
 }
 
 object Project {
 
-  private def queryRoleForTrust(projectId: Rep[Int], userId: Rep[Int]) = {
+  private def queryRoleForTrust(projectId: Rep[ObjectReference], userId: Rep[ObjectReference]) = {
     val memberTable = TableQuery[ProjectMembersTable]
     val roleTable = TableQuery[ProjectRoleTable]
 
@@ -491,7 +491,7 @@ object Project {
 
     private var pluginId: String = _
     private var ownerName: String = _
-    private var ownerId: Int = -1
+    private var ownerId: ObjectReference = -1
     private var name: String = _
     private var visibility: Visibility = _
 
@@ -505,7 +505,7 @@ object Project {
       this
     }
 
-    def ownerId(ownerId: Int): Builder = {
+    def ownerId(ownerId: ObjectReference): Builder = {
       this.ownerId = ownerId
       this
     }

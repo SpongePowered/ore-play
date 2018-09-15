@@ -46,8 +46,8 @@ import discourse.OreDiscourseApi
   */
 case class Page(id: ObjectId = ObjectId.Uninitialized,
                 createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                projectId: ObjectReference = -1,
-                parentId: ObjectReference = -1,
+                projectId: ObjectReference,
+                parentId: Option[ObjectReference],
                 name: String,
                 slug: String,
                 isDeletable: Boolean = true,
@@ -67,7 +67,7 @@ case class Page(id: ObjectId = ObjectId.Uninitialized,
   checkNotNull(this.slug, "slug cannot be null", "")
   checkNotNull(this.contents, "contents cannot be null", "")
 
-  def this(projectId: Int, name: String, content: String, isDeletable: Boolean, parentId: Int) = {
+  def this(projectId: ObjectReference, name: String, content: String, isDeletable: Boolean, parentId: Option[ObjectReference]) = {
     this(projectId = projectId, name = compact(name), slug = slugify(name),
       contents = content.trim, isDeletable = isDeletable, parentId = parentId)
   }
@@ -88,7 +88,7 @@ case class Page(id: ObjectId = ObjectId.Uninitialized,
         updated <- service.update(newPage)
         project <- this.project
         // Contents were updated, update on forums
-        _ <- if (this.name.equals(homeName) && project.topicId != -1) forums.updateProjectTopic(project) else Future.successful(false)
+        _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project) else Future.successful(false)
       } yield updated
     }
   }
@@ -105,7 +105,7 @@ case class Page(id: ObjectId = ObjectId.Uninitialized,
     *
     * @return True if home page
     */
-  def isHome(implicit config: OreConfig): Boolean = this.name.equals(homeName) && parentId == -1
+  def isHome(implicit config: OreConfig): Boolean = this.name.equals(homeName) && parentId.isEmpty
 
   /**
     * Get Project associated with page.
@@ -114,9 +114,12 @@ case class Page(id: ObjectId = ObjectId.Uninitialized,
     */
   def parentProject(implicit ec: ExecutionContext, projectBase: ProjectBase): OptionT[Future, Project] = projectBase.get(projectId)
 
-  def parentPage(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Page] = {
-    parentProject.flatMap(_.pages.find(ModelFilter[Page](_.id === parentId).fn))
-  }
+  def parentPage(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Page] =
+    for {
+      parent <- OptionT.fromOption[Future](parentId)
+      project <- parentProject
+      page <- project.pages.find(ModelFilter[Page](_.id === parent).fn)
+    } yield page
 
   /**
     * Get the /:parent/:child

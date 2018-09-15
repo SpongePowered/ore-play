@@ -3,11 +3,12 @@ package form
 import java.net.{MalformedURLException, URL}
 
 import controllers.sugar.Requests.ProjectRequest
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import db.impl.OrePostgresDriver.api._
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
 import javax.inject.Inject
+
 import models.api.ProjectApiKey
 import models.project.{Channel, Page}
 import models.project.Page._
@@ -20,7 +21,6 @@ import play.api.data.Forms._
 import play.api.data.format.Formatter
 import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.data.{FieldMapping, Form, FormError, Mapping}
-
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
@@ -72,7 +72,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * @param allowedIds number that are allowed as ownerId
     * @return Constraint
     */
-  def ownerIdInList(allowedIds: Seq[Int]): Constraint[Option[Int]] = Constraint("constraints.check")({
+  def ownerIdInList(allowedIds: Seq[ObjectReference]): Constraint[Option[ObjectReference]] = Constraint("constraints.check")({
     ownerId =>
       var errors: Seq[ValidationError] = Seq()
       if (ownerId.isDefined) {
@@ -90,7 +90,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   /**
     * Submits settings changes for a Project.
     */
-  def ProjectSave(organisationUserCanUploadTo: Seq[Int]) = Form(mapping(
+  def ProjectSave(organisationUserCanUploadTo: Seq[ObjectReference]) = Form(mapping(
     "category" -> text,
     "issues" -> url,
     "source" -> url,
@@ -102,7 +102,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "userUps" -> list(text),
     "roleUps" -> list(text),
     "update-icon" -> boolean,
-    "owner" -> optional(number).verifying(ownerIdInList(organisationUserCanUploadTo)),
+    "owner" -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo)),
     "forum-sync" -> boolean
   )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply))
 
@@ -169,7 +169,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * Submits changes on a documentation page.
     */
   lazy val PageEdit = Form(mapping(
-    "parent-id" -> optional(number),
+    "parent-id" -> optional(longNumber),
     "name" -> optional(text),
     "content" -> optional(text(
       maxLength = maxLengthPage

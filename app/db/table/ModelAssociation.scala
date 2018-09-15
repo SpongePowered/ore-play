@@ -3,8 +3,9 @@ package db.table
 import scala.concurrent.Future
 
 import com.google.common.base.Preconditions._
+
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelService}
+import db.{Model, ModelService, ObjectReference}
 
 /**
   * Represents an association between two models handled by an associative table.
@@ -16,8 +17,8 @@ import db.{Model, ModelService}
   */
 class ModelAssociation[AssocTable <: AssociativeTable]
                       (service: ModelService,
-                       ref1: AssocTable => Rep[Int],
-                       ref2: AssocTable => Rep[Int],
+                       ref1: AssocTable => Rep[ObjectReference],
+                       ref2: AssocTable => Rep[ObjectReference],
                        val tableClass: Class[AssocTable],
                        val assocTable: TableQuery[AssocTable]) {
 

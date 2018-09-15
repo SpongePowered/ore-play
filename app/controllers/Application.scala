@@ -9,9 +9,10 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.schema.ProjectSchema
-import db.{ModelFilter, ModelService}
+import db.{ModelFilter, ModelService, ObjectReference}
 import form.OreForms
 import javax.inject.Inject
+
 import models.admin.Review
 import models.project.{Tag, _}
 import models.user.role._
@@ -89,7 +90,7 @@ final class Application @Inject()(data: DataHelper,
     // Get categories and sorting strategy
 
     val canHideProjects = request.data.globalPerm(HideProjects)
-    val currentUserId = request.data.currentUser.map(_.id.value).getOrElse(-1)
+    val currentUserId = request.data.currentUser.map(_.id.value).getOrElse(-1L)
 
     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
     val pcat = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
@@ -192,7 +193,7 @@ final class Application @Inject()(data: DataHelper,
 
   }
 
-  private def queryReviews(versions: Seq[Int]) = {
+  private def queryReviews(versions: Seq[ObjectReference]) = {
 
     val reviewsTable = TableQuery[ReviewTable]
     val userTable = TableQuery[UserTable]
@@ -410,8 +411,15 @@ final class Application @Inject()(data: DataHelper,
     }
   }
 
-  def showLog(oPage: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], versionFilter: Option[Int], pageFilter: Option[Int],
-              actionFilter: Option[Int], subjectFilter: Option[Int]): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
+  def showLog(
+      oPage: Option[Int],
+      userFilter: Option[ObjectReference],
+      projectFilter: Option[ObjectReference],
+      versionFilter: Option[ObjectReference],
+      pageFilter: Option[ObjectReference],
+      actionFilter: Option[Int],
+      subjectFilter: Option[ObjectReference]
+  ): Action[AnyContent] = (Authenticated andThen PermissionAction[AuthRequest](ViewLogs)).async { implicit request =>
     val pageSize = 50
     val page = oPage.getOrElse(1)
     val offset = (page - 1) * pageSize
@@ -487,7 +495,7 @@ final class Application @Inject()(data: DataHelper,
           setRoleType: (M, RoleType) => Future[M],
           setAccepted: (M, Boolean) => Future[M]
         ) = {
-          val id = (json \ "id").as[Int]
+          val id = (json \ "id").as[ObjectReference]
           action match {
             case "setRole" => modelAccess.get(id).semiflatMap { role =>
               val roleType = RoleType.withValue((json \ "role").as[String])

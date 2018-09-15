@@ -6,14 +6,13 @@ import java.time.Instant
 import db.impl.OrePostgresDriver.api._
 import db.impl.{OrePostgresDriver, TagTable}
 import db.table.MappedType
-import db.{Model, ModelService, Named, ObjectId, ObjectTimestamp}
+import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.TagColors.TagColor
 import slick.jdbc.JdbcType
-
 import scala.concurrent.{ExecutionContext, Future}
 
 case class Tag(id: ObjectId = ObjectId.Uninitialized,
-               versionIds: List[Int],
+               versionIds: List[ObjectReference],
                name: String,
                data: String,
                color: TagColor)

@@ -116,7 +116,7 @@ trait OreDiscourseApi extends DiscourseApi {
               |Post ID: ${topic.postId}""".stripMargin)
 
         // Update the post and topic id in the project
-        service.update(project.copy(topicId = topic.topicId, postId = topic.postId))
+        service.update(project.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
     }.transform(identity, e => {
       // Something went wrong. Turn on debug mode to gez debug messages from play discourse for further investigations.
       Logger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...")
@@ -134,8 +134,8 @@ trait OreDiscourseApi extends DiscourseApi {
     if (!this.isEnabled)
       return Future.successful(true)
     checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(project.topicId != -1, "undefined topic id", "")
-    checkArgument(project.postId != -1, "undefined post id", "")
+    checkArgument(project.topicId.isDefined, "undefined topic id", "")
+    checkArgument(project.postId.isDefined, "undefined post id", "")
 
     val topicId = project.topicId
     val postId = project.postId
@@ -167,7 +167,7 @@ trait OreDiscourseApi extends DiscourseApi {
     // Update title
     updateTopic(
       username = ownerName,
-      topicId = topicId,
+      topicId = topicId.get,
       title = Some(title),
       categoryId = None
     ).andThen {
@@ -180,7 +180,7 @@ trait OreDiscourseApi extends DiscourseApi {
           // Title updated! Update the content now
           updatePost(
             username = ownerName,
-            postId = postId,
+            postId = postId.get,
             content = content
           ).andThen {
             case Success(updateErrors) =>
@@ -218,11 +218,11 @@ trait OreDiscourseApi extends DiscourseApi {
       Logger.warn("Tried to post discussion with API disabled?") // Shouldn't be reachable
       return Future.successful(List.empty)
     }
-    checkArgument(project.topicId != -1, "undefined topic id", "")
+    checkArgument(project.topicId.isDefined, "undefined topic id", "")
     // It's OK if Discourse responds with errors here, we will just show them to the user
     createPost(
       username = user.name,
-      topicId = project.topicId,
+      topicId = project.topicId.get,
       content = content
     ).map(_.left.toOption.getOrElse(List.empty)).recover {
       case _: Exception =>
@@ -261,10 +261,10 @@ trait OreDiscourseApi extends DiscourseApi {
       return Future.successful(true)
 
     checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(project.topicId != -1, "undefined topic id", "")
+    checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
     val resultPromise: Promise[Boolean] = Promise()
-    updateTopic(this.admin, project.topicId, None, Some(if (isVisible) this.categoryDefault else this.categoryDeleted)).foreach { list =>
+    updateTopic(this.admin, project.topicId.get, None, Some(if (isVisible) this.categoryDefault else this.categoryDeleted)).foreach { list =>
       if(list.isEmpty) {
         Logger.debug(s"Successfully updated topic category for project: ${project.url}.")
         resultPromise.success(true)
@@ -287,19 +287,19 @@ trait OreDiscourseApi extends DiscourseApi {
     if (!this.isEnabled)
       return Future.successful(true)
     checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(project.topicId != -1, "undefined topic id", "")
+    checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
     def logFailure(): Unit = Logger.warn(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")
 
     val resultPromise: Promise[Boolean] = Promise()
-    deleteTopic(this.admin, project.topicId).andThen {
+    deleteTopic(this.admin, project.topicId.get).andThen {
       case Success(result) =>
         if(!result) {
           logFailure()
           resultPromise.success(false)
         } else {
           Logger.debug(s"Successfully deleted project topic for: ${project.url}.")
-          resultPromise.completeWith(service.update(project.copy(topicId = -1, postId = -1)).map(_ => true))
+          resultPromise.completeWith(service.update(project.copy(topicId = None, postId = None)).map(_ => true))
         }
       case Failure(e) =>
         logFailure()

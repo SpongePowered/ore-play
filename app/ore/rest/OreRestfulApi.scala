@@ -2,12 +2,13 @@ package ore.rest
 
 import java.lang.Math._
 
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.access.ProjectBase
 import db.impl.schema.{ProjectSchema, ProjectTag}
 import javax.inject.Inject
+
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
@@ -83,7 +84,7 @@ trait OreRestfulApi {
     }
   }
 
-  private def getMembers(projects: Seq[Int]) = {
+  private def getMembers(projects: Seq[ObjectReference]) = {
     val tableRoles = TableQuery[ProjectRoleTable]
     val tableUsers = TableQuery[UserTable]
 
@@ -167,7 +168,7 @@ trait OreRestfulApi {
     author.fold(withVisibility)(a => withVisibility + (("author", JsString(a))))
   }
 
-  private def queryProjectChannels(projectIds: Seq[Int]) = {
+  private def queryProjectChannels(projectIds: Seq[ObjectReference]) = {
     val tableChannels = TableQuery[ChannelTable]
     for {
       c <- tableChannels if c.projectId inSetBind projectIds
@@ -176,7 +177,7 @@ trait OreRestfulApi {
     }
   }
 
-  private def queryVersionTags(versions: Seq[Int]) = {
+  private def queryVersionTags(versions: Seq[ObjectReference]) = {
     val tableTags = TableQuery[TagTable]
     val tableVersion = TableQuery[VersionTable]
     for {
@@ -282,7 +283,7 @@ trait OreRestfulApi {
   }
 
 
-  private def queryVersions(onlyPublic: Boolean = true): Query[(ProjectTableMain, VersionTable, Rep[Int], ChannelTable, Rep[Option[String]]), (Project, Version, Int, Channel, Option[String]), Seq] = {
+  private def queryVersions(onlyPublic: Boolean = true): Query[(ProjectTableMain, VersionTable, Rep[ObjectReference], ChannelTable, Rep[Option[String]]), (Project, Version, ObjectReference, Channel, Option[String]), Seq] = {
     val tableProject = TableQuery[ProjectTableMain]
     val tableVersion = TableQuery[VersionTable]
     val tableChannels = TableQuery[ChannelTable]
@@ -309,7 +310,7 @@ trait OreRestfulApi {
         for {
           pages <- project.pages.sorted(_.name)
         } yield {
-          val seq = if (parentId.isDefined) pages.filter(_.parentId == parentId.get) else pages
+          val seq = pages.filter(_.parentId == parentId)
           val pageById = pages.map(p => (p.id.value, p)).toMap
           toJson(seq.map(page => obj(
             "createdAt" -> page.createdAt.value,
@@ -317,7 +318,7 @@ trait OreRestfulApi {
             "name" -> page.name,
             "parentId" -> page.parentId,
             "slug" -> page.slug,
-            "fullSlug" -> page.fullSlug(pageById.get(page.parentId))
+            "fullSlug" -> page.fullSlug(page.parentId.flatMap(pageById.get))
           )))
         }
     }

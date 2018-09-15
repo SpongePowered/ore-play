@@ -4,7 +4,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl._
 import db.impl.schema._
 import db.table.ModelAssociation
-import db.{ModelSchema, ModelService}
+import db.{ModelSchema, ModelService, ObjectReference}
 import models.admin.{ProjectLog, ProjectLogEntry, ProjectVisibilityChange, Review, VersionVisibilityChange}
 import models.api.ProjectApiKey
 import models.project._
@@ -107,7 +107,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   case object ViewSchema extends ModelSchema[ProjectView](this, classOf[ProjectView], TableQuery[ProjectViewsTable])
     with StatSchema[ProjectView] {
-    override def setUserId(m: ProjectView, id: Int): ProjectView = m.copy(userId = Some(id))
+    override def setUserId(m: ProjectView, id: ObjectReference): ProjectView = m.copy(userId = Some(id))
   }
 
   val ReviewSchema = new ModelSchema[Review](this, classOf[Review], TableQuery[ReviewTable])
@@ -125,7 +125,7 @@ trait OreModelConfig extends ModelService with OreDBOs {
 
   case object DownloadSchema extends ModelSchema[VersionDownload](
     this, classOf[VersionDownload], TableQuery[VersionDownloadsTable]) with StatSchema[VersionDownload] {
-    override def setUserId(m: VersionDownload, id: Int): VersionDownload = m.copy(userId = Some(id))
+    override def setUserId(m: VersionDownload, id: ObjectReference): VersionDownload = m.copy(userId = Some(id))
   }
 
   val ChannelSchema: ModelSchema[Channel] = new ModelSchema[Channel](this, classOf[Channel], TableQuery[ChannelTable])

@@ -7,7 +7,7 @@ import ore.permission.scope.Scope
 import ore.user.Member
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.ModelService
+import db.{ModelService, ObjectReference}
 
 /**
   * Represents a [[models.user.User]] member of an [[Organization]].
@@ -16,7 +16,7 @@ import db.ModelService
   * @param userId       User ID
   * @param users        UserBase instance
   */
-class OrganizationMember(val organization: Organization, override val userId: Int)(implicit users: UserBase)
+class OrganizationMember(val organization: Organization, override val userId: ObjectReference)(implicit users: UserBase)
   extends Member[OrganizationRole](userId) {
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationRole]] = this.user.flatMap(user => this.organization.memberships.getRoles(user))

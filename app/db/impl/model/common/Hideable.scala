@@ -2,7 +2,7 @@ package db.impl.model.common
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{Model, ModelService}
+import db.{Model, ModelService, ObjectReference}
 import db.access.ModelAccess
 import db.impl.table.common.VisibilityColumn
 import models.project.VisibilityTypes
@@ -32,7 +32,7 @@ trait Hideable extends Model { self =>
     *
     * @param visibility True if visible
     */
-  def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext, service: ModelService): Future[(M, ModelVisibilityChange)]
+  def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): Future[(M, ModelVisibilityChange)]
 
   /**
     * Get VisibilityChanges

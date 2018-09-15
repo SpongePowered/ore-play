@@ -210,7 +210,7 @@ trait ProjectFactory {
       .versionString(metaData.version.get)
       .dependencyIds(metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList)
       .description(metaData.get[String]("description").getOrElse(""))
-      .projectId(project.id.unsafeToOption.getOrElse(-1)) // Version might be for an uncreated project
+      .projectId(project.id.unsafeToOption.getOrElse(-1L)) // Version might be for an uncreated project
       .fileSize(path.toFile.length)
       .hash(plugin.md5)
       .fileName(path.getFileName.toString)
@@ -366,7 +366,7 @@ trait ProjectFactory {
       _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
       _ <- Future.fromTry(uploadPlugin(project, channel, pending.plugin, newVersion))
       _ <-
-        if (project.topicId != -1 && pending.createForumPost)
+        if (project.topicId.isDefined && pending.createForumPost)
           this.forums.postVersionRelease(project, newVersion, newVersion.description).void
         else
           Future.unit
