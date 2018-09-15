@@ -18,21 +18,27 @@ ENV SBT_VERSION=1.2.1 \
 ENV PATH=${PATH}:${SBT_HOME}/bin
 
 # TODO a shell script to extract the SBT version from project/build.properties and set SBT_VERSION to the output value
-RUN cp conf/application.conf conf/application.conf && \
-    apk add --virtual --no-cache curl ca-certificates bash && \
+RUN cp conf/application.conf.template conf/application.conf
+RUN apk update
+RUN apk add --virtual --no-cache curl ca-certificates bash
+
 # Downloads SBT with the version given above and extracts it
-    curl -sL "https://piccolo.link/sbt-$SBT_VERSION.tgz" -o "sbt-$SBT_VERSION.tgz" && \
-    tar -xvzf "sbt-$SBT_VERSION.tgz" -C /usr/local && \
+RUN curl -sL "https://piccolo.link/sbt-$SBT_VERSION.tgz" -o "sbt-$SBT_VERSION.tgz"
+RUN tar -xvzf "sbt-$SBT_VERSION.tgz" -C /usr/local
+
 # Compiles Ore and makes a production distribution (but not in an archive, unlike 'dist')
-    sbt stage && \
-    mkdir -p /home/ore/prod && \
+RUN sbt stage
+RUN mkdir -p /home/ore/prod
+
 # Copy the 'stage' task result _content_ into the production directory
-    cp -r /home/ore/build/target/universal/stage/* /home/ore/prod && \
+RUN cp -r /home/ore/build/target/universal/stage/* /home/ore/prod
+
 # Cleans the temporary build directory, as we don't need it in the final image
-    rm -rf /home/ore/build && \
+RUN rm -rf /home/ore/build
+
 # SBT is no longer needed too
-    rm -rf $SBT_HOME && \
-    apk del curl
+RUN rm -rf $SBT_HOME
+RUN apk del curl
 
 WORKDIR /home/ore/prod/bin
 

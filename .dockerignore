@@ -11,6 +11,8 @@ conf/application.conf
 !project/
 project/target/
 project/project/
+# Hydra Scala Compiler
+project/hydra.sbt
 
 !public/
 
