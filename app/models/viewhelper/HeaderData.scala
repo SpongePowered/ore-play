@@ -15,6 +15,7 @@ import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 import cats.data.OptionT
 import cats.instances.future._
+import org.slf4j.MDC
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -102,6 +103,10 @@ object HeaderData {
   private val flagQueue: Rep[Boolean] = TableQuery[FlagTable].filter(_.isResolved === false).exists
 
   private def getHeaderData(user: User)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef, service: ModelService) = {
+
+    MDC.put("currentUserId", user.id.toString)
+    MDC.put("currentUserName", user.name)
+
     perms(user).flatMap { perms =>
       val query = Query.apply((
         TableQuery[NotificationTable].filter(n => n.userId === user.id.value && !n.read).exists,

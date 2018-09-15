@@ -18,14 +18,15 @@ import play.api.mvc._
 import play.api.i18n.Messages
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import slick.jdbc.JdbcBackend
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
-
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import util.FutureUtils
 import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
+import org.slf4j.MDC
 
 /**
   * A set of actions used by Ore.
@@ -247,6 +248,10 @@ trait Actions extends Calls with ActionHelpers {
       processProject(p, request.data.currentUser)
     }.semiflatMap { p =>
       toProjectRequest(p) { case (data, scoped) =>
+
+        MDC.put("currentProjectId", data.project.id.toString)
+        MDC.put("currentProjectSlug", data.project.slug)
+
         new ProjectRequest[A](data, scoped, r)
       }
     }.toRight(notFound).value
@@ -348,9 +353,14 @@ trait Actions extends Calls with ActionHelpers {
     T)(implicit request: OreRequest[_], ec: ExecutionContext, asyncCacheApi: AsyncCacheApi, db: JdbcBackend#DatabaseDef) = {
     maybeOrga match {
       case None => Future.successful(Left(notFound))
-      case Some(orga) =>
+      case Some(orga) => {
+
+        MDC.put("currentOrgaId", orga.id.toString)
+        MDC.put("currentOrgaName", orga.name)
+
         val rf = Function.untupled(f.tupled.andThen(Right.apply))
         (OrganizationData.of(orga), ScopedOrganizationData.of(request.data.currentUser, orga)).mapN(rf)
+      }
     }
   }
 
