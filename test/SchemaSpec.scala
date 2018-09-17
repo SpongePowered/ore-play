@@ -102,7 +102,7 @@ class SchemaSpec
   }
 
   test("Project watchers") {
-    check(sql"""SELECT project_id, user_id FROM project_watchers""".query[(Long, Long)])
+    check(sql"""SELECT project_id, user_id FROM project_watchers""".query[(ObjectReference, ObjectReference)])
   }
 
   test("Project views") {

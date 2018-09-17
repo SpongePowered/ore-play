@@ -1,7 +1,7 @@
 package controllers
 
 import controllers.sugar.Bakery
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import discourse.OreDiscourseApi
 import form.OreForms
 import javax.inject.Inject
@@ -91,7 +91,7 @@ class Organizations @Inject()(forms: OreForms,
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: Int, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
+  def setInviteStatus(id: ObjectReference, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
     val user = request.user
     user.organizationRoles.get(id).semiflatMap { role =>
       status match {

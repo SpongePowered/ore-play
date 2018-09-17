@@ -4,7 +4,10 @@ version := "1.6.12"
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.12.6"
-scalacOptions += "-Ypartial-unification"
+scalacOptions ++= Seq(
+  "-Ypartial-unification",
+  "-Ywarn-numeric-widen"
+)
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 
 routesGenerator := InjectedRoutesGenerator

@@ -58,7 +58,7 @@ final class DataHelper @Inject()(implicit config: OreConfig,
     *
     * @param users Amount of users to create
     */
-  def seed(users: Int, projects: Int, versions: Int, channels: Int)(implicit ec: ExecutionContext, service: ModelService): Unit = {
+  def seed(users: Long, projects: Int, versions: Int, channels: Int)(implicit ec: ExecutionContext, service: ModelService): Unit = {
     if (sys.env.getOrElse(statusZ.SpongeEnv, "unknown") != "local") return
     // Note: Dangerous as hell, handle with care
     Logger.info("---- Seeding Ore ----")
@@ -73,8 +73,8 @@ final class DataHelper @Inject()(implicit config: OreConfig,
     // Create some users.
     Logger.info("Seeding...")
     var projectNum = 0
-    for (i <- 0 until users) {
-      Logger.info(Math.ceil(i / users.asInstanceOf[Float] * 100).asInstanceOf[Int].toString + "%")
+    for (i <- 0L until users) {
+      Logger.info(Math.ceil(i.toDouble / users.toDouble * 100D).toInt.toString + "%")
       this.users.add(User(id = ObjectId(i), name = s"User-$i")).map { user =>
         // Create some projects
         for (j <- 0 until projects) {

@@ -219,7 +219,7 @@ final class Reviews @Inject()(data: DataHelper,
     }
   }
 
-  def editReview(author: String, slug: String, versionString: String, reviewId: Int): Action[AnyContent] = {
+  def editReview(author: String, slug: String, versionString: String, reviewId: ObjectReference): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
       val res = for {
         version <- getProjectVersion(author, slug, versionString)

@@ -34,7 +34,7 @@ trait SpongeAuthApi {
   val Logger = play.api.Logger("SpongeAuth")
 
   implicit private val spongeUserReads: Reads[SpongeUser] = (
-    (JsPath \ "id").read[Int] and
+    (JsPath \ "id").read[Long] and
     (JsPath \ "username").read[String] and
     (JsPath \ "email").read[String] and
     (JsPath \ "avatar_url").readNullable[String] and

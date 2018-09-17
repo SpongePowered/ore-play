@@ -253,7 +253,7 @@ final class Application @Inject()(data: DataHelper,
     * @param resolved Resolved state
     * @return         Ok
     */
-  def setFlagResolved(flagId: Int, resolved: Boolean): Action[AnyContent] = FlagAction.async { implicit request =>
+  def setFlagResolved(flagId: ObjectReference, resolved: Boolean): Action[AnyContent] = FlagAction.async { implicit request =>
     this.service.access[Flag](classOf[Flag]).get(flagId).semiflatMap { flag =>
       for {
         user        <- users.current.value
@@ -307,7 +307,7 @@ final class Application @Inject()(data: DataHelper,
     *
     * @return Redirect home
     */
-  def seed(users: Int, projects: Int, versions: Int, channels: Int): Action[AnyContent] = {
+  def seed(users: Long, projects: Int, versions: Int, channels: Int): Action[AnyContent] = {
     (Authenticated andThen PermissionAction[AuthRequest](SeedOre)) { implicit request =>
       this.config.checkDebug()
       this.data.seed(users, projects, versions, channels)

@@ -2,7 +2,7 @@ package controllers
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.{ProjectTableMain, VersionTable}
@@ -341,7 +341,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param id Notification ID
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
-  def markNotificationRead(id: Int): Action[AnyContent] = Authenticated.async { implicit request =>
+  def markNotificationRead(id: ObjectReference): Action[AnyContent] = Authenticated.async { implicit request =>
     request.user.notifications.get(id).semiflatMap { notification =>
       service.update(notification.copy(isRead = true)).as(Ok)
     }.getOrElse(notFound)
@@ -354,7 +354,7 @@ class Users @Inject()(fakeUser: FakeUser,
     * @param id Prompt ID
     * @return   Ok if successful
     */
-  def markPromptRead(id: Int): Action[AnyContent] = Authenticated.async { implicit request =>
+  def markPromptRead(id: ObjectReference): Action[AnyContent] = Authenticated.async { implicit request =>
     Prompts.values.find(_.id == id) match {
       case None         => Future.successful(BadRequest)
       case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)

@@ -54,7 +54,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * [[ProjectRole]]s.
     */
   lazy val ProjectMemberRoles = Form(mapping(
-    "users" -> list(number),
+    "users" -> list(longNumber),
     "roles" -> list(text)
   )(ProjectRoleSetBuilder.apply)(ProjectRoleSetBuilder.unapply))
 
@@ -97,7 +97,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     "license-name" -> text,
     "license-url" -> url,
     "description" -> text,
-    "users" -> list(number),
+    "users" -> list(longNumber),
     "roles" -> list(text),
     "userUps" -> list(text),
     "roleUps" -> list(text),
@@ -124,7 +124,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     */
   lazy val OrganizationCreate = Form(mapping(
     "name" -> nonEmptyText,
-    "users" -> list(number),
+    "users" -> list(longNumber),
     "roles" -> list(text)
   )(OrganizationRoleSetBuilder.apply)(OrganizationRoleSetBuilder.unapply))
 
@@ -145,7 +145,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * Submits a list of members to be added or updated.
     */
   lazy val OrganizationUpdateMembers = Form(mapping(
-    "users" -> list(number),
+    "users" -> list(longNumber),
     "roles" -> list(text),
     "userUps" -> list(text),
     "roleUps" -> list(text)
@@ -230,14 +230,14 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   def projectApiKey(implicit ec: ExecutionContext): FieldMapping[ProjectApiKey] = of[ProjectApiKey](new Formatter[ProjectApiKey] {
     def bind(key: String, data: Map[String, String]): Either[Seq[FormError], ProjectApiKey] = {
       data.get(key).
-        flatMap(id => Try(id.toInt).toOption.flatMap(evilAwaitpProjectApiKey(_)))
+        flatMap(id => Try(id.toLong).toOption.flatMap(evilAwaitpProjectApiKey(_)))
         .toRight(required(key))
     }
 
     def unbind(key: String, value: ProjectApiKey): Map[String, String] = Map(key -> value.id.value.toString)
   })
 
-  def evilAwaitpProjectApiKey(key: Int)(implicit ec: ExecutionContext): Option[ProjectApiKey] = {
+  def evilAwaitpProjectApiKey(key: Long)(implicit ec: ExecutionContext): Option[ProjectApiKey] = {
     val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
     // TODO remvove await
     this.service.await(projectApiKeys.get(key).value).getOrElse(None)

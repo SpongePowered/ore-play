@@ -323,7 +323,7 @@ final class ApiController @Inject()(api: OreRestfulApi,
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
       .semiflatMap{q =>
         Logger.debug("Sync Payload: " + q)
-        users.get(q.get("external_id").get.toInt).value.tupleLeft(q)
+        users.get(q.get("external_id").get.toLong).value.tupleLeft(q)
       }
       .semiflatMap { case (query, optUser) =>
         Logger.debug("Sync user found: " + optUser.isDefined)

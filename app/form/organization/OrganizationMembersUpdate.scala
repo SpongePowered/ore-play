@@ -9,7 +9,7 @@ import play.api.i18n.{Lang, MessagesApi}
 import scala.concurrent.{ExecutionContext, Future}
 
 import cats.data.NonEmptyList
-import db.ModelService
+import db.{ModelService, ObjectReference}
 import db.impl.{OrganizationMembersTable, OrganizationRoleTable}
 import ore.OreConfig
 import ore.organization.OrganizationMember
@@ -23,7 +23,7 @@ import ore.user.MembershipDossier
   * @param userUps  Old users
   * @param roleUps  Old roles
   */
-case class OrganizationMembersUpdate(override val users: List[Int],
+case class OrganizationMembersUpdate(override val users: List[ObjectReference],
                                      override val roles: List[String],
                                      userUps: List[String],
                                      roleUps: List[String]) extends TOrganizationRoleSetBuilder {

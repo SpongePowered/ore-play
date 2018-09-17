@@ -416,7 +416,7 @@ class Projects @Inject()(stats: StatTracker,
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: Int, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
+  def setInviteStatus(id: ObjectReference, status: String): Action[AnyContent] = Authenticated.async { implicit request =>
     val user = request.user
     user.projectRoles.get(id).semiflatMap { role =>
       role.project.flatMap { project =>
@@ -446,7 +446,7 @@ class Projects @Inject()(stats: StatTracker,
     * @param behalf Behalf User
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatusOnBehalf(id: Int, status: String, behalf: String): Action[AnyContent] = Authenticated.async { implicit request =>
+  def setInviteStatusOnBehalf(id: ObjectReference, status: String, behalf: String): Action[AnyContent] = Authenticated.async { implicit request =>
     val user = request.user
     val res = for {
       orga <- organizations.withName(behalf)

@@ -127,7 +127,7 @@ trait SingleSignOnConsumer {
     // extract info
     val info = for {
       nonce <- query.get("nonce")
-      externalId <- query.get("external_id").flatMap(s => Try(s.toInt).toOption)
+      externalId <- query.get("external_id").flatMap(s => Try(s.toLong).toOption)
       username <- query.get("username")
       email <- query.get("email")
     } yield {
