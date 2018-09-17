@@ -52,6 +52,7 @@ case class OrganizationMembersUpdate(override val users: List[Int],
       user.flatMap { user =>
         import user.langOrDefault
         user.sendNotification(Notification(
+          userId = user.id.value,
           originId = orgId,
           notificationType = NotificationTypes.OrganizationInvite,
           messageArgs = NonEmptyList.of("notification.organization.invite", role.roleType.title, organization.name)

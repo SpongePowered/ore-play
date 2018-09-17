@@ -79,6 +79,7 @@ class OrganizationBase(implicit val service: ModelService,
             // TODO remove role.user db access we really only need the userid we already have for notifications
             org.memberships.addRole(role.copy(organizationId = org.id.value)).flatMap(_ => role.user).flatMap { user =>
               user.sendNotification(Notification(
+                userId = user.id.value,
                 originId = org.id.value,
                 notificationType = NotificationTypes.OrganizationInvite,
                 messageArgs = NonEmptyList.of("notification.organization.invite", role.roleType.title, org.username)

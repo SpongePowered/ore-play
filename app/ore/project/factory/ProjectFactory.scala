@@ -295,6 +295,7 @@ trait ProjectFactory {
           role.user.flatMap { user =>
             dossier.addRole(role.copy(projectId = projectId)) *>
               user.sendNotification(Notification(
+                userId = user.id.value,
                 originId = ownerId,
                 notificationType = NotificationTypes.ProjectInvite,
                 messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name)
