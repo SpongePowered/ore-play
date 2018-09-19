@@ -15,13 +15,13 @@ import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user._
 import models.user.role.{OrganizationRole, ProjectRole}
-import ore.Colors
+import ore.Color
 import ore.permission.role.RoleType
-import ore.project.io.DownloadTypes
-import ore.project.{Categories, FlagReasons}
-import ore.rest.ProjectApiKeyTypes
-import ore.user.Prompts
-import ore.user.notification.NotificationTypes
+import ore.project.io.DownloadType
+import ore.project.{Category, FlagReason}
+import ore.rest.ProjectApiKeyType
+import ore.user.Prompt
+import ore.user.notification.NotificationType
 
 import cats.data.{NonEmptyList => NEL}
 import cats.effect.IO
@@ -53,28 +53,21 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   implicit val objectIdMeta: Meta[ObjectId]               = Meta[ObjectReference].xmap(ObjectId.apply, _.value)
   implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].xmap(ObjectTimestamp.apply, _.value)
 
-  def enumerationMeta[E <: Enumeration#Value: TypeTag](enum: Enumeration): Meta[E] =
-    Meta[Int].xmap[E](enum.apply(_).asInstanceOf[E], _.id)
-
   def enumeratumMeta[V: TypeTag, E <: ValueEnumEntry[V]: TypeTag](
       enum: ValueEnum[V, E]
   )(implicit meta: Meta[V]): Meta[E] =
     meta.xmap[E](enum.withValue, _.value)
 
-  implicit val colorMeta: Meta[Colors.Color]                = enumerationMeta[Colors.Color](Colors)
-  implicit val tagColorMeta: Meta[TagColors.TagColor]       = enumerationMeta[TagColors.TagColor](TagColors)
-  implicit val roleTypeMeta: Meta[RoleType]                 = enumeratumMeta(RoleType)
-  implicit val categoryMeta: Meta[Categories.Category]      = enumerationMeta[Categories.Category](Categories)
-  implicit val flagReasonMeta: Meta[FlagReasons.FlagReason] = enumerationMeta[FlagReasons.FlagReason](FlagReasons)
-  implicit val notificationTypeMeta: Meta[NotificationTypes.NotificationType] =
-    enumerationMeta[NotificationTypes.NotificationType](NotificationTypes)
-  implicit val promptMeta: Meta[Prompts.Prompt] = enumerationMeta[Prompts.Prompt](Prompts)
-  implicit val downloadTypeMeta: Meta[DownloadTypes.DownloadType] =
-    enumerationMeta[DownloadTypes.DownloadType](DownloadTypes)
-  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyTypes.ProjectApiKeyType] =
-    enumerationMeta[ProjectApiKeyTypes.ProjectApiKeyType](ProjectApiKeyTypes)
-  implicit val visibilityMeta: Meta[VisibilityTypes.Visibility] =
-    enumerationMeta[VisibilityTypes.Visibility](VisibilityTypes)
+  implicit val colorMeta: Meta[Color]                             = enumeratumMeta(Color)
+  implicit val tagColorMeta: Meta[TagColor]                       = enumeratumMeta(TagColor)
+  implicit val roleTypeMeta: Meta[RoleType]                       = enumeratumMeta(RoleType)
+  implicit val categoryMeta: Meta[Category]                       = enumeratumMeta(Category)
+  implicit val flagReasonMeta: Meta[FlagReason]                   = enumeratumMeta(FlagReason)
+  implicit val notificationTypeMeta: Meta[NotificationType]       = enumeratumMeta(NotificationType)
+  implicit val promptMeta: Meta[Prompt]                           = enumeratumMeta(Prompt)
+  implicit val downloadTypeMeta: Meta[DownloadType]               = enumeratumMeta(DownloadType)
+  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType]      = enumeratumMeta(ProjectApiKeyType)
+  implicit val visibilityMeta: Meta[Visibility]                   = enumeratumMeta(Visibility)
   implicit val loggedActionMeta: Meta[LoggedAction]               = enumeratumMeta(LoggedAction)
   implicit val loggedActionContextMeta: Meta[LoggedActionContext] = enumeratumMeta(LoggedActionContext)
 
@@ -82,8 +75,8 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   implicit val inetStringMeta: Meta[InetString] =
     Meta[InetAddress].xmap(address => InetString(address.toString), str => InetAddress.getByName(str.value))
 
-  implicit val promptArrayMeta: Meta[List[Prompts.Prompt]] =
-    Meta[List[Int]].xmap(_.map(x => Prompts.convert(Prompts(x))), _.map(_.id))
+  implicit val promptArrayMeta: Meta[List[Prompt]] =
+    Meta[List[Int]].xmap(_.map(Prompt.withValue), _.map(_.value))
   implicit val roleTypeArrayMeta: Meta[List[RoleType]] =
     Meta[List[String]].xmap(_.map(RoleType.withValue), _.map(_.value))
 

@@ -44,7 +44,7 @@ case class ProjectData(
 
   def project: Project = joinable
 
-  def visibility: VisibilityTypes.Visibility = project.visibility
+  def visibility: Visibility = project.visibility
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
@@ -109,7 +109,7 @@ object ProjectData {
       project.settings,
       project.owner.user,
       project.owner.headRole,
-      project.versions.count(_.visibility === VisibilityTypes.Public),
+      project.versions.count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
       project.logger.flatMap(_.entries.size),
       flagsFut,

@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import models.project.{Channel, Project, Version}
-import ore.Platforms
+import ore.Platform
 import ore.project.Dependency
 
 import cats.instances.future._
@@ -28,7 +28,7 @@ case class VersionData(
     * @return filtered dependencies
     */
   def filteredDependencies: Seq[(Dependency, Option[Project])] =
-    dependencies.filterNot(d => Platforms.values.map(_.dependencyId).contains(d._1.pluginId))
+    dependencies.filterNot(d => Platform.values.map(_.dependencyId).contains(d._1.pluginId))
 }
 
 object VersionData {

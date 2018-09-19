@@ -6,8 +6,9 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 import db.ObjectId
-import models.project.{Tag, TagColors}
+import models.project.{Tag, TagColor}
 import ore.project.Dependency
+
 import org.spongepowered.plugin.meta.McModInfo
 
 /**
@@ -57,7 +58,7 @@ class PluginFileData(data: Seq[DataValue[_]]) {
     val buffer = new ArrayBuffer[Tag]
 
     if (containsMixins) {
-      val mixinTag = Tag(ObjectId.Uninitialized, List(), "Mixin", "", TagColors.Mixin)
+      val mixinTag = Tag(ObjectId.Uninitialized, List(), "Mixin", "", TagColor.Mixin)
       buffer += mixinTag
     }
 

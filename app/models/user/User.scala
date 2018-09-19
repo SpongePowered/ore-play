@@ -20,14 +20,13 @@ import db.impl.schema.{
   UserTable
 }
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
-import models.project.{Flag, Project, VisibilityTypes}
+import models.project.{Flag, Project, Visibility}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.OreConfig
 import ore.permission._
 import ore.permission.role.{RoleType, _}
 import ore.permission.scope._
-import ore.user.Prompts.Prompt
-import ore.user.UserOwned
+import ore.user.{Prompt, UserOwned}
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.{SpongeAuthApi, SpongeUser}
 import util.StringUtils._
@@ -181,7 +180,7 @@ case class User(
     val starsPerPage = config.users.get[Int]("stars-per-page")
     val limit        = if (page < 1) -1 else starsPerPage
     val offset       = (page - 1) * starsPerPage
-    val filter       = VisibilityTypes.isPublicFilter[Project]
+    val filter       = Visibility.isPublicFilter[Project]
     this.schema
       .getAssociation[ProjectStarsTable, Project](classOf[ProjectStarsTable], this)
       .sorted(ordering = _.name, filter = filter.fn, limit = limit, offset = offset)

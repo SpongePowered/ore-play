@@ -7,8 +7,8 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import models.project._
 import models.user.User
-import ore.Platforms.Platform
-import ore.project.Categories.Category
+import ore.Platform
+import ore.project.Category
 import ore.project.ProjectSortingStrategies.ProjectSortingStrategy
 
 import cats.data.OptionT

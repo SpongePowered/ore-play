@@ -1,8 +1,8 @@
 @import controllers.sugar.Requests.OreRequest
-@import models.project.VisibilityTypes
+@import models.project.Visibility
 @import models.viewhelper.{ScopedProjectData, VersionData}
-@import ore.{OreConfig, Platforms}
 @import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
+@import ore.{OreConfig, Platform}
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
@@ -85,7 +85,7 @@
                                 }
                             }
 
-                            @if(v.v.visibility == VisibilityTypes.SoftDelete) {
+                            @if(v.v.visibility == Visibility.SoftDelete) {
                                 <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                 title="@messages("version.delete.alreadyDeleted")">
                                     <i class="fa fa-trash"></i> @messages("general.delete")
@@ -130,7 +130,7 @@
                                     <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
                                         <li><a href="@appRoutes.showLog(None, None, None, Some(v.v.id.value), None, None, None)">User Action Logs</a></li>
                                         @if(request.data.globalPerm(ReviewProjects)) {
-                                            @if(v.v.visibility == VisibilityTypes.SoftDelete) {
+                                            @if(v.v.visibility == Visibility.SoftDelete) {
                                                 <li><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>
                                             }
                                             @if(request.data.globalPerm(HardRemoveVersion) && !v.isRecommended) {
@@ -184,7 +184,7 @@
                         </div>
                         <ul class="list-group">
 
-                            @for(platform <- Platforms.getPlatforms(v.dependencies.map(_._1.pluginId).toList)) {
+                            @for(platform <- Platform.getPlatforms(v.dependencies.map(_._1.pluginId).toList)) {
                                 @v.v.dependencies.find(_.pluginId == platform.dependencyId).map { dependency =>
                                     <li class="list-group-item">
                                         <a href="@{platform.url}">
@@ -253,7 +253,7 @@
     }
 
     @if(request.data.globalPerm(ReviewProjects)) {
-        @if(v.v.visibility == VisibilityTypes.SoftDelete) {
+        @if(v.v.visibility == Visibility.SoftDelete) {
             <div class="modal fade" id="modal-restore" tabindex="-1" role="dialog" aria-labelledby="label-delete">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">

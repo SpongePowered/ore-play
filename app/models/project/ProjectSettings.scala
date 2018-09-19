@@ -16,9 +16,9 @@ import models.user.Notification
 import models.user.role.ProjectRole
 import ore.permission.role.RoleType
 import ore.project.io.ProjectFiles
-import ore.project.{Categories, ProjectMember, ProjectOwned}
+import ore.project.{Category, ProjectMember, ProjectOwned}
 import ore.user.MembershipDossier
-import ore.user.notification.NotificationTypes
+import ore.user.notification.NotificationType
 import util.StringUtils._
 
 import cats.data.NonEmptyList
@@ -71,7 +71,7 @@ case class ProjectSettings(
 
     val updateProject = updateIfDefined(
       project.copy(
-        category = Categories.withName(formData.categoryName),
+        category = Category.values.find(_.title == formData.categoryName).get,
         description = Option(nullIfEmpty(formData.description)),
         ownerId = formData.ownerId.getOrElse(project.ownerId)
       )
@@ -125,7 +125,7 @@ case class ProjectSettings(
                 createdAt = ObjectTimestamp(Timestamp.from(Instant.now())),
                 userId = role.userId,
                 originId = project.ownerId,
-                notificationType = NotificationTypes.ProjectInvite,
+                notificationType = NotificationType.ProjectInvite,
                 messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name)
               )
             }

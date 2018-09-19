@@ -11,7 +11,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
-import models.project.{Channel, Page, Project, Version, VisibilityTypes}
+import models.project.{Channel, Page, Project, Version, Visibility}
 import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import util.FileUtils
@@ -188,7 +188,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   def prepareDeleteVersion(version: Version)(implicit ec: ExecutionContext): Future[Project] =
     for {
       proj <- version.project
-      size <- proj.versions.count(_.visibility === VisibilityTypes.Public)
+      size <- proj.versions.count(_.visibility === (Visibility.Public: Visibility))
       _ = checkArgument(size > 1, "only one public version", "")
       _ = checkArgument(proj.id.value == version.projectId, "invalid context id", "")
       rv       <- proj.recommendedVersion

@@ -10,7 +10,7 @@ import ore.OreConfig
 import ore.organization.OrganizationMember
 import ore.permission.role.RoleType
 import ore.user.MembershipDossier
-import ore.user.notification.NotificationTypes
+import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList
 
@@ -59,7 +59,7 @@ case class OrganizationMembersUpdate(
           Notification(
             userId = user.id.value,
             originId = orgId,
-            notificationType = NotificationTypes.OrganizationInvite,
+            notificationType = NotificationType.OrganizationInvite,
             messageArgs = NonEmptyList.of("notification.organization.invite", role.roleType.title, organization.name)
           )
         )

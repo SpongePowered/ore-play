@@ -20,10 +20,8 @@ import mail.{EmailFactory, Mailer}
 import models.user.{LoggedAction, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.permission.ReviewProjects
-import ore.user.notification.InviteFilters.InviteFilter
-import ore.user.notification.NotificationFilters.NotificationFilter
-import ore.user.notification.{InviteFilters, NotificationFilters}
-import ore.user.{FakeUser, Prompts}
+import ore.user.notification.{InviteFilter, NotificationFilter}
+import ore.user.{FakeUser, Prompt}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
@@ -344,12 +342,12 @@ class Users @Inject()(
 
       // Get visible notifications
       val nFilter: NotificationFilter = notificationFilter
-        .flatMap(str => NotificationFilters.values.find(_.name.equalsIgnoreCase(str)))
-        .getOrElse(NotificationFilters.Unread)
+        .flatMap(str => NotificationFilter.values.find(_.name.equalsIgnoreCase(str)))
+        .getOrElse(NotificationFilter.Unread)
 
       val iFilter: InviteFilter = inviteFilter
-        .flatMap(str => InviteFilters.values.find(_.name.equalsIgnoreCase(str)))
-        .getOrElse(InviteFilters.All)
+        .flatMap(str => InviteFilter.values.find(_.name.equalsIgnoreCase(str)))
+        .getOrElse(InviteFilter.All)
 
       val notificationsFut =
         nFilter(user.notifications).flatMap(l => Future.sequence(l.map(notif => notif.origin.map((notif, _)))))
@@ -363,6 +361,7 @@ class Users @Inject()(
       (notificationsFut, invitesFut).mapN { (notifications, invites) =>
         Ok(views.users.notifications(notifications, invites, nFilter, iFilter))
       }
+      ???
     }
   }
 
@@ -382,14 +381,14 @@ class Users @Inject()(
   }
 
   /**
-    * Marks a [[ore.user.Prompts.Prompt]] as read for the authenticated
+    * Marks a [[ore.user.Prompt]] as read for the authenticated
     * [[models.user.User]].
     *
     * @param id Prompt ID
     * @return   Ok if successful
     */
   def markPromptRead(id: ObjectReference): Action[AnyContent] = Authenticated.async { implicit request =>
-    Prompts.values.find(_.id == id) match {
+    Prompt.values.find(_.value == id) match {
       case None         => Future.successful(BadRequest)
       case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)
     }

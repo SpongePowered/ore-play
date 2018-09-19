@@ -3,7 +3,8 @@ package models.project
 import db.access.ModelAccess
 import db.impl.schema.ChannelTable
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
-import ore.Colors._
+import ore.Color
+import ore.Color._
 import ore.permission.scope.ProjectScope
 
 /**

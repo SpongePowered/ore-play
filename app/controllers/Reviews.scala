@@ -20,7 +20,7 @@ import models.project.{Project, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.permission.ReviewProjects
 import ore.permission.role.{Lifted, RoleType}
-import ore.user.notification.NotificationTypes
+import ore.user.notification.NotificationType
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
@@ -197,7 +197,7 @@ final class Reviews @Inject()(forms: OreForms)(
             userId = userId,
             createdAt = ObjectTimestamp(Timestamp.from(Instant.now())),
             originId = requestUser.id.value,
-            notificationType = NotificationTypes.VersionReviewed,
+            notificationType = NotificationType.VersionReviewed,
             messageArgs = NonEmptyList.of("notification.project.reviewed", project.slug, version.versionString)
           )
         }

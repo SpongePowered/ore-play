@@ -3,7 +3,7 @@ package models.api
 import db.impl.schema.ProjectApiKeyTable
 import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.project.ProjectOwned
-import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
+import ore.rest.ProjectApiKeyType
 
 case class ProjectApiKey(
     override val id: ObjectId = ObjectId.Uninitialized,

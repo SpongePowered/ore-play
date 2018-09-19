@@ -6,7 +6,7 @@ import db.{ModelService, ObjectReference}
 import models.project.{Project, Version}
 import models.user.Notification
 import ore.OreConfig
-import ore.user.notification.NotificationTypes
+import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList
 
@@ -29,7 +29,7 @@ case class NotifyWatchersTask(version: Version, project: Project)(
       Notification(
         userId = userId,
         originId = project.ownerId,
-        notificationType = NotificationTypes.NewProjectVersion,
+        notificationType = NotificationType.NewProjectVersion,
         messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
         action = Some(version.url(project))
     )

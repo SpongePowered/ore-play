@@ -7,7 +7,7 @@ import models.user.role.OrganizationRole
 import models.user.{Notification, Organization}
 import ore.OreConfig
 import ore.permission.role.RoleType
-import ore.user.notification.NotificationTypes
+import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
 import util.StringUtils
 
@@ -89,7 +89,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
                     Notification(
                       userId = user.id.value,
                       originId = org.id.value,
-                      notificationType = NotificationTypes.OrganizationInvite,
+                      notificationType = NotificationType.OrganizationInvite,
                       messageArgs =
                         NonEmptyList.of("notification.organization.invite", role.roleType.title, org.username)
                     )

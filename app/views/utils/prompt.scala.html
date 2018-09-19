@@ -1,7 +1,7 @@
-@import ore.user.Prompts.Prompt
+@import ore.user.Prompt
 @(prompt: Prompt, id: String = "", position: String = "right")(implicit messages: Messages)
 
-<div class="prompt popover @id @position" data-prompt-id="@prompt.id">
+<div class="prompt popover @id @position" data-prompt-id="@prompt.value">
     <div class="arrow"></div>
     <h3 class="popover-title">@messages(prompt.titleId)</h3>
     <div class="popover-content">

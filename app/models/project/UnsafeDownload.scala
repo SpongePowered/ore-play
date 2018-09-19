@@ -2,7 +2,7 @@ package models.project
 
 import db.impl.schema.UnsafeDownloadsTable
 import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
-import ore.project.io.DownloadTypes.DownloadType
+import ore.project.io.DownloadType
 
 import com.github.tminglei.slickpg.InetString
 

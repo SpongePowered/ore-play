@@ -1,6 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.admin.VersionVisibilityChange
-@import models.project.{Project, Version, VisibilityTypes}
+@import models.project.{Project, Version, Visibility}
 @import models.user.User
 @import ore.OreConfig
 @import util.StringUtils._
@@ -38,7 +38,7 @@
 							}
 							@visibilityChanges.reverse.map { case (entry, createdBy) =>
 							<tr>
-								<td>@VisibilityTypes.withId(entry.visibility)</td>
+								<td>@Visibility.withValue(entry.visibility)</td>
 								<td>@prettifyDateAndTime(entry.createdAt.value)</td>
 								<td>@entry.renderComment</td>
 								@if(createdBy.isDefined) {

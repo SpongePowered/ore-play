@@ -2,7 +2,7 @@
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
 @import ore.permission.{EditSettings, ReviewFlags, ReviewProjects, UserAdmin, ViewActivity}
-@import ore.user.Prompts
+@import ore.user.Prompt
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
@@ -60,8 +60,8 @@
                             <i class="fa fa-edit"></i> @messages("user.editAvatar")
                         </div>
 
-                        @if(!u.currentUser.get.readPrompts.contains(Prompts.ChangeAvatar)) {
-                            @prompt(Prompts.ChangeAvatar, "popover-avatar")
+                        @if(!u.currentUser.get.readPrompts.contains(Prompt.ChangeAvatar)) {
+                            @prompt(Prompt.ChangeAvatar, "popover-avatar")
                         }
                     }
 
@@ -85,8 +85,8 @@
                                         data-placement="top" title="@messages("user.pgp.pubKey")"></i>
                                 </span>
 
-                                @if(!u.currentUser.get.readPrompts.contains(Prompts.PGP)) {
-                                    @prompt(Prompts.PGP, "popover-pgp")
+                                @if(!u.currentUser.get.readPrompts.contains(Prompt.PGP)) {
+                                    @prompt(Prompt.PGP, "popover-pgp")
                                 }
                             }
 

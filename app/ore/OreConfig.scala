@@ -5,7 +5,6 @@ import javax.inject.{Inject, Singleton}
 import play.api.{Configuration, Logger}
 
 import models.project.Channel
-import ore.Colors._
 import util.StringUtils._
 
 import org.spongepowered.plugin.meta.version.ComparableVersion

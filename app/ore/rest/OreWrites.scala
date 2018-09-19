@@ -16,7 +16,7 @@ final class OreWrites {
     obj(
       "id"        -> key.id.value,
       "createdAt" -> key.createdAt.value,
-      "keyType"   -> obj("id" -> key.keyType.id, "name" -> key.keyType.name),
+      "keyType"   -> obj("id" -> key.keyType.value, "name" -> key.keyType.name),
       "projectId" -> key.projectId,
       "value"     -> key.value
   )
@@ -56,9 +56,9 @@ final class OreWrites {
     )
   }
 
-  implicit val tagColorWrites: Writes[TagColors.TagColor] = (tagColor: TagColors.TagColor) => {
+  implicit val tagColorWrites: Writes[TagColor] = (tagColor: TagColor) => {
     obj(
-      "id"              -> tagColor.id,
+      "id"              -> tagColor.value,
       "backgroundColor" -> tagColor.background,
       "foregroundColor" -> tagColor.foreground
     )

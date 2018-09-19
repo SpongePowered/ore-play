@@ -28,8 +28,8 @@ import models.viewhelper.{ProjectData, VersionData}
 import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.factory.{PendingProject, PendingVersion, ProjectFactory}
-import ore.project.io.DownloadTypes._
-import ore.project.io.{DownloadTypes, InvalidPluginFileException, PluginFile, PluginUpload}
+import ore.project.io.DownloadType._
+import ore.project.io.{DownloadType, InvalidPluginFileException, PluginFile, PluginUpload}
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.JavaUtils.autoClose
@@ -210,7 +210,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           val inChannel = v.channelId.inSetBind(visibleIds)
           val isVisible =
             if (r.data.globalPerm(ReviewProjects)) true: Rep[Boolean]
-            else v.visibility === VisibilityTypes.Public
+            else v.visibility === (Visibility.Public: Visibility)
           inChannel && isVisible
         }
 
@@ -418,7 +418,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               versionIds = List(version.id.value),
               name = "Unstable",
               data = "",
-              color = TagColors.Unstable
+              color = TagColor.Unstable
             )
             service
               .access(classOf[ProjectTag])
@@ -478,7 +478,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         comment <- bindFormEitherT[Future](this.forms.NeedsChanges)(_ => BadRequest)
         version <- getVersion(project, versionString)
         _       <- EitherT.right[Result](projects.prepareDeleteVersion(version))
-        _       <- EitherT.right[Result](version.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.value))
+        _       <- EitherT.right[Result](version.setVisibility(Visibility.SoftDelete, comment, request.user.id.value))
       } yield {
         UserActionLogger.log(oreRequest, LoggedAction.VersionDeleted, version.id.value, s"SoftDelete: $comment", "")
         Redirect(self.showList(author, slug, None))
@@ -499,7 +499,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val res = for {
         comment <- bindFormEitherT[Future](this.forms.NeedsChanges)(_ => BadRequest)
         version <- getProjectVersion(author, slug, versionString)
-        _       <- EitherT.right[Result](version.setVisibility(VisibilityTypes.Public, comment, request.user.id.value))
+        _       <- EitherT.right[Result](version.setVisibility(Visibility.Public, comment, request.user.id.value))
       } yield {
         UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.value, s"Restore: $comment", "")
         Redirect(self.showList(author, slug, None))
@@ -557,7 +557,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               project.ownerName,
               project.slug,
               version.name,
-              Some(UploadedFile.id),
+              Some(UploadedFile.value),
               api = Some(false)
             )
           )
@@ -621,7 +621,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       api: Option[Boolean]
   ): Action[AnyContent] = {
     ProjectAction(author, slug).async { request =>
-      val dlType                             = downloadType.flatMap(i => DownloadTypes.values.find(_.id == i)).getOrElse(DownloadTypes.UploadedFile)
+      val dlType =
+        downloadType.flatMap(i => DownloadType.values.find(_.value == i)).getOrElse(DownloadType.UploadedFile)
       implicit val r: OreRequest[AnyContent] = request.request
       implicit val lang: Lang                = request.lang
       val project                            = request.data.project
@@ -657,7 +658,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               MultipleChoices(
                 Json.obj(
                   "message" -> this.messagesApi("version.download.confirm.body.api").split('\n'),
-                  "post"    -> self.confirmDownload(author, slug, target, Some(dlType.id), token).absoluteURL(),
+                  "post"    -> self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
                   "url"     -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
                   "token"   -> token
                 )
@@ -682,7 +683,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 MultipleChoices(
                   this.messagesApi(
                     "version.download.confirm.body.plain",
-                    self.confirmDownload(author, slug, target, Some(dlType.id), token).absoluteURL(),
+                    self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
                     CSRF.getToken.get.value
                   ) + "\n"
                 ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
@@ -741,8 +742,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   ): OptionT[Future, UnsafeDownload] = {
     val addr = InetString(StatTracker.remoteAddress)
     val dlType = downloadType
-      .flatMap(i => DownloadTypes.values.find(_.id == i))
-      .getOrElse(DownloadTypes.UploadedFile)
+      .flatMap(i => DownloadType.values.find(_.value == i))
+      .getOrElse(DownloadType.UploadedFile)
     // find warning
     this.warnings
       .find { warn =>
@@ -808,14 +809,15 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def sendJar(project: Project, version: Version, token: Option[String], api: Boolean = false)(
       implicit request: ProjectRequest[_]
   ): Future[Result] = {
-    if (project.visibility == VisibilityTypes.SoftDelete) {
+    if (project.visibility == Visibility.SoftDelete) {
       return Future.successful(NotFound)
     }
     checkConfirmation(version, token).flatMap { passed =>
       if (!passed)
         Future.successful(
           Redirect(
-            self.showDownloadConfirm(project.ownerName, project.slug, version.name, Some(JarFile.id), api = Some(api))
+            self
+              .showDownloadConfirm(project.ownerName, project.slug, version.name, Some(JarFile.value), api = Some(api))
           )
         )
       else {
@@ -879,7 +881,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       getVersion(project, versionString).semiflatMap { version =>
         optToken
           .map { token =>
-            confirmDownload0(version.id.value, Some(JarFile.id), token)(request.request).value.flatMap { _ =>
+            confirmDownload0(version.id.value, Some(JarFile.value), token)(request.request).value.flatMap { _ =>
               sendJar(project, version, optToken, api = true)
             }
           }
@@ -960,7 +962,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   }
 
   private def sendSignatureFile(version: Version, project: Project)(implicit request: OreRequest[_]): Result = {
-    if (project.visibility == VisibilityTypes.SoftDelete) {
+    if (project.visibility == Visibility.SoftDelete) {
       notFound
     } else {
       val path =

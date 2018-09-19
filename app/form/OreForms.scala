@@ -22,8 +22,7 @@ import models.project.{Channel, Page}
 import models.user.role.ProjectRole
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
-import ore.rest.ProjectApiKeyTypes
-import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
+import ore.rest.ProjectApiKeyType
 
 /**
   * Collection of forms used in this application.
@@ -244,9 +243,9 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     def bind(key: String, data: Map[String, String]): Either[Seq[FormError], ProjectApiKeyType] =
       data
         .get(key)
-        .flatMap(id => Try(id.toInt).toOption.map(ProjectApiKeyTypes(_).asInstanceOf[ProjectApiKeyType]))
+        .flatMap(id => Try(id.toInt).toOption.map(ProjectApiKeyType.withValue))
         .toRight(Seq(FormError(key, "error.required", Nil)))
-    def unbind(key: String, value: ProjectApiKeyType): Map[String, String] = Map(key -> value.id.toString)
+    def unbind(key: String, value: ProjectApiKeyType): Map[String, String] = Map(key -> value.value.toString)
   })
 
   lazy val ProjectApiKeyCreate = Form(single("key-type" -> projectApiKeyType))

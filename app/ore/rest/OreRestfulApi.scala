@@ -26,8 +26,7 @@ import models.user.User
 import models.user.role.ProjectRole
 import ore.OreConfig
 import ore.permission.role.RoleType
-import ore.project.Categories.Category
-import ore.project.{Categories, ProjectSortingStrategies}
+import ore.project.{Category, ProjectSortingStrategies}
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -60,7 +59,7 @@ trait OreRestfulApi {
       limit: Option[Int],
       offset: Option[Int]
   )(implicit ec: ExecutionContext): Future[JsValue] = {
-    val cats: Option[Seq[Category]] = categories.map(Categories.fromString).map(_.toSeq)
+    val cats: Option[Seq[Category]] = categories.map(Category.fromString).map(_.toSeq)
     val ordering                    = sort.map(ProjectSortingStrategies.withId(_).get).getOrElse(ProjectSortingStrategies.Default)
 
     val maxLoad = this.config.projects.get[Int]("init-load")
@@ -195,7 +194,7 @@ trait OreRestfulApi {
       "css"  -> v.visibility.cssClass
     )
 
-    val withVisibility = if (v.visibility == VisibilityTypes.Public) json else json + ("visibility" -> jsonVisibility)
+    val withVisibility = if (v.visibility == Visibility.Public) json else json + ("visibility" -> jsonVisibility)
     author.fold(withVisibility)(a => withVisibility + (("author", JsString(a))))
   }
 
@@ -212,7 +211,7 @@ trait OreRestfulApi {
     val tableTags    = TableQuery[TagTable]
     val tableVersion = TableQuery[VersionTable]
     for {
-      v <- tableVersion if v.id.inSetBind(versions) && v.visibility === VisibilityTypes.Public
+      v <- tableVersion if v.id.inSetBind(versions) && v.visibility === (Visibility.Public: Visibility)
       t <- tableTags if t.id === v.tagIds.any
     } yield {
       (v.id, t)
@@ -228,7 +227,7 @@ trait OreRestfulApi {
       p <- tableProject
       v <- tableVersion if p.recommendedVersionId === v.id
       c <- tableChannels if v.channelId === c.id
-      if VisibilityTypes.isPublicFilter[Project].fn(p)
+      if Visibility.isPublicFilter[Project].fn(p)
     } yield (p, v, c)
   }
 
@@ -343,7 +342,8 @@ trait OreRestfulApi {
       p      <- tableProject
       (v, u) <- tableVersion.joinLeft(tableUsers).on(_.authorId === _.id)
       c      <- tableChannels
-      if v.channelId === c.id && p.id === v.projectId && (if (onlyPublic) v.visibility === VisibilityTypes.Public
+      if v.channelId === c.id && p.id === v.projectId && (if (onlyPublic)
+                                                            v.visibility === (Visibility.Public: Visibility)
                                                           else true)
     } yield {
       (p, v, v.id, c, u.map(_.name))
@@ -470,7 +470,9 @@ trait OreRestfulApi {
   )(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, JsValue] = {
     ProjectBase().withPluginId(pluginId).flatMap { project =>
       project.versions
-        .find(v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === VisibilityTypes.Public)
+        .find(
+          v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === (Visibility.Public: Visibility)
+        )
         .semiflatMap { v =>
           v.tags.map { tags =>
             obj("pluginId" -> pluginId, "version" -> version, "tags" -> tags.map(toJson(_))): JsValue
@@ -486,7 +488,7 @@ trait OreRestfulApi {
     * @return The Tag Color
     */
   def getTagColor(tagId: Int): Option[JsValue] =
-    Some(toJson(TagColors.withId(tagId)))
+    Some(toJson(TagColor.withValue(tagId)))
 
 }
 

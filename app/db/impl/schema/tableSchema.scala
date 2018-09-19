@@ -11,8 +11,7 @@ import db.table.{AssociativeTable, ModelTable, NameColumn}
 import db.{ObjectId, ObjectReference}
 import models.admin._
 import models.api.ProjectApiKey
-import models.project.TagColors.TagColor
-import models.project._
+import models.project.{TagColor, _}
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
 import models.user.{
@@ -25,14 +24,13 @@ import models.user.{
   User,
   Session => DbSession
 }
-import ore.Colors.Color
+import ore.Color
 import ore.permission.role.RoleType
-import ore.project.Categories.Category
-import ore.project.FlagReasons.FlagReason
-import ore.project.io.DownloadTypes.DownloadType
-import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
-import ore.user.Prompts.Prompt
-import ore.user.notification.NotificationTypes.NotificationType
+import ore.project.{Category, FlagReason}
+import ore.project.io.DownloadType
+import ore.rest.ProjectApiKeyType
+import ore.user.Prompt
+import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList
 import com.github.tminglei.slickpg.InetString

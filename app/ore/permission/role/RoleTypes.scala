@@ -5,7 +5,8 @@ import scala.collection.immutable
 import db.impl.OrePostgresDriver
 import db.table.MappedType
 import models.user.role.{OrganizationRole, ProjectRole}
-import ore.Colors._
+import ore.Color
+import ore.Color._
 
 import enumeratum.values.{StringEnum, StringEnumEntry}
 import slick.jdbc.JdbcType

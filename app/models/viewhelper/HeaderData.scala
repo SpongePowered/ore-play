@@ -8,7 +8,7 @@ import controllers.sugar.Requests.ProjectRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
 import db.{ModelService, ObjectReference}
-import models.project.VisibilityTypes
+import models.project.Visibility
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -98,7 +98,7 @@ object HeaderData {
 
   private def projectApproval(user: User) =
     TableQuery[ProjectTableMain]
-      .filter(p => p.userId === user.id.value && p.visibility === VisibilityTypes.NeedsApproval)
+      .filter(p => p.userId === user.id.value && p.visibility === (Visibility.NeedsApproval: Visibility))
       .exists
 
   private def reviewQueue: Rep[Boolean] =

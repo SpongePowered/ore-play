@@ -24,15 +24,13 @@ import db.impl.schema.{
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
-import models.project.VisibilityTypes.{Public, Visibility}
+import models.project.Visibility.Public
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectRole
 import ore.permission.role.{Default, RoleType, Trust}
 import ore.permission.scope.ProjectScope
-import ore.project.Categories.Category
-import ore.project.FlagReasons.FlagReason
-import ore.project.{Categories, ProjectMember}
+import ore.project.{Category, FlagReason, ProjectMember}
 import ore.user.MembershipDossier
 import ore.{Joinable, OreConfig, Visitable}
 import _root_.util.StringUtils
@@ -76,7 +74,7 @@ case class Project(
     name: String,
     slug: String,
     recommendedVersionId: Option[ObjectReference] = None,
-    category: Category = Categories.Undefined,
+    category: Category = Category.Undefined,
     description: Option[String] = None,
     starCount: Long = 0,
     viewCount: Long = 0,
@@ -269,7 +267,7 @@ case class Project(
           comment,
           None,
           None,
-          visibility.id
+          visibility.value
         )
       )
 

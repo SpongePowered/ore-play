@@ -9,7 +9,7 @@ import db.impl.schema.FlagTable
 import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.User
 import ore.permission.scope.ProjectScope
-import ore.project.FlagReasons.FlagReason
+import ore.project.FlagReason
 import ore.user.UserOwned
 
 /**

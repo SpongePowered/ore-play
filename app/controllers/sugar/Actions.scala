@@ -16,7 +16,7 @@ import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import models.project.{Project, VisibilityTypes}
+import models.project.{Project, Visibility}
 import models.user.{Organization, SignOn, User}
 import models.viewhelper._
 import ore.permission.scope.GlobalScope
@@ -312,7 +312,7 @@ trait Actions extends Calls with ActionHelpers {
   private def processProject(project: Project, user: Option[User])(
       implicit ec: ExecutionContext
   ): OptionT[Future, Project] = {
-    if (project.visibility == VisibilityTypes.Public || project.visibility == VisibilityTypes.New) {
+    if (project.visibility == Visibility.Public || project.visibility == Visibility.New) {
       OptionT.pure[Future](project)
     } else {
       if (user.isDefined) {
@@ -332,7 +332,7 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   private def canEditAndNeedChangeOrApproval(project: Project, user: Option[User])(implicit ec: ExecutionContext) = {
-    if (project.visibility == VisibilityTypes.NeedsChanges || project.visibility == VisibilityTypes.NeedsApproval) {
+    if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
       user.get.can(EditPages) in project
     } else {
       Future.successful(false)

@@ -5,8 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.access.ModelAccess
 import db.impl.table.common.VisibilityColumn
 import db.{Model, ModelService, ObjectReference}
-import models.project.VisibilityTypes
-import models.project.VisibilityTypes.Visibility
+import models.project.Visibility
 
 import cats.data.OptionT
 
@@ -26,7 +25,7 @@ trait Hideable extends Model { self =>
     */
   def visibility: Visibility
 
-  def isDeleted: Boolean = visibility == VisibilityTypes.SoftDelete
+  def isDeleted: Boolean = visibility == Visibility.SoftDelete
 
   /**
     * Sets whether this project is visible.
@@ -61,7 +60,7 @@ trait Hideable extends Model { self =>
   def lastChangeRequest(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, ModelVisibilityChange] =
     OptionT(
       visibilityChanges.all
-        .map(_.toSeq.filter(cr => cr.visibility == VisibilityTypes.NeedsChanges.id).sortWith(byCreationDate).lastOption)
+        .map(_.toSeq.filter(cr => cr.visibility == Visibility.NeedsChanges.value).sortWith(byCreationDate).lastOption)
     )
 
 }

@@ -16,7 +16,7 @@ import db.ModelService
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
-import models.project.{Project, Version, VisibilityTypes}
+import models.project.{Project, Version, Visibility}
 import models.user.SignOn
 import ore.permission.ReviewProjects
 import ore.{OreConfig, OreEnv}
@@ -63,7 +63,7 @@ abstract class OreBaseController(
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
     val versionMatches = v.versionString.toLowerCase === versionString.toLowerCase
-    val isVisible      = if (canSeeHiden) true.bind else v.visibility === VisibilityTypes.Public
+    val isVisible      = if (canSeeHiden) true.bind else v.visibility === (Visibility.Public: Visibility)
     versionMatches && isVisible
   }
 

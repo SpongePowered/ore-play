@@ -22,8 +22,8 @@ import ore.permission.role.RoleType
 import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.project.factory.{PendingVersion, ProjectFactory}
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
-import ore.rest.ProjectApiKeyTypes._
-import ore.rest.{OreRestfulApi, OreWrites}
+import ore.rest.ProjectApiKeyType._
+import ore.rest.{OreRestfulApi, OreWrites, ProjectApiKeyType}
 import ore.{OreConfig, OreEnv}
 import security.CryptoUtils
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}

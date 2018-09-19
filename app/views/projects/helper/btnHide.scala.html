@@ -1,4 +1,4 @@
-@import models.project.{Project, VisibilityTypes}
+@import models.project.{Project, Visibility}
 @import ore.permission.Permission
 @(project: Project, perms: Map[Permission, Boolean])(implicit messages: Messages)
 
@@ -8,10 +8,10 @@
         <span class="caret"></span>
     </button>
     <ul class="dropdown-menu" aria-labelledby="visibility-actions">
-    @for(visibility <- VisibilityTypes.values.toSeq.sortBy(_.id)) {
+    @for(visibility <- Visibility.values.sortBy(_.value)) {
         @if(perms(visibility.permission)) {
         <li>
-            <a href="#" class="btn-visibility-change" data-project="@project.ownerName/@project.slug" data-level="@visibility.id" @if(visibility.showModal){ data-modal="true" }>
+            <a href="#" class="btn-visibility-change" data-project="@project.ownerName/@project.slug" data-level="@visibility.value" @if(visibility.showModal){ data-modal="true" }>
                 @messages("visibility.name." + visibility.nameKey) @if(project.visibility == visibility) { <i class="fa fa-check" style="color: black" aria-hidden="true"></i> }
             </a>
         </li>

@@ -30,13 +30,11 @@ import models.project.{Tag, _}
 import models.user.role._
 import models.user.{LoggedAction, LoggedActionModel, User, UserActionLogger}
 import models.viewhelper.OrganizationData
-import ore.Platforms.Platform
 import ore.permission._
 import ore.permission.role.{Role, RoleType}
 import ore.permission.scope.GlobalScope
-import ore.project.Categories.Category
-import ore.project.{Categories, ProjectSortingStrategies}
-import ore.{OreConfig, OreEnv, PlatformCategory, Platforms}
+import ore.project.{Category, ProjectSortingStrategies}
+import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.DataHelper
 import views.{html => views}
@@ -102,13 +100,13 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
 
     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
     val pcat     = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
-    val pform    = platform.flatMap(p => Platforms.values.find(_.name.equalsIgnoreCase(p)).map(_.asInstanceOf[Platform]))
+    val pform    = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
 
     // get the categories being queried
     val categoryPlatformNames: List[String] = pcat.toList.flatMap(_.getPlatforms.map(_.name))
     val platformNames: List[String]         = (pform.map(_.name).toList ::: categoryPlatformNames).map(_.toLowerCase)
 
-    val categoryList: Seq[Category] = categories.fold(Categories.fromString(""))(s => Categories.fromString(s)).toSeq
+    val categoryList: Seq[Category] = categories.fold(Category.fromString(""))(s => Category.fromString(s)).toSeq
     val q                           = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
 
     val pageSize = this.config.projects.get[Int]("init-load")
@@ -122,9 +120,9 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
     val dbQueryRaw = for {
       (project, user, version) <- queryProjectRV
       if canHideProjects.bind ||
-        (project.visibility === VisibilityTypes.Public) ||
-        (project.visibility === VisibilityTypes.New) ||
-        ((project.userId === currentUserId) && (project.visibility =!= VisibilityTypes.SoftDelete))
+        (project.visibility === (Visibility.Public: Visibility)) ||
+        (project.visibility === (Visibility.New: Visibility)) ||
+        ((project.userId === currentUserId) && (project.visibility =!= (Visibility.SoftDelete: Visibility)))
       if (if (platformNames.isEmpty) true.bind else project.recommendedVersionId in versionIdsOnPlatform)
       if (if (categoryList.isEmpty) true.bind else project.category.inSetBind(categoryList))
       if (project.name.toLowerCase.like(q)) ||
@@ -151,7 +149,7 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
 
     queryProjects.map { data =>
       val catList =
-        if (categoryList.isEmpty || Categories.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
+        if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
       Ok(views.home(data, catList, query.find(_.nonEmpty), pageNum, ordering, pcat, pform))
     }
   }
@@ -239,7 +237,7 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
     for {
       (v, u) <- versionTable.joinLeft(userTable).on(_.authorId === _.id)
       c      <- channelTable if v.channelId === c.id && v.isReviewed =!= true && v.isNonReviewed =!= true
-      p      <- projectTable if v.projectId === p.id && p.visibility =!= VisibilityTypes.SoftDelete
+      p      <- projectTable if v.projectId === p.id && p.visibility =!= (Visibility.SoftDelete: Visibility)
       ou     <- userTable if p.userId === ou.id
     } yield {
       (v, p, c, u.map(_.name), ou)
@@ -257,7 +255,7 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
       flags             <- this.service.access[Flag](classOf[Flag]).filterNot(_.isResolved)
       (users, projects) <- (Future.sequence(flags.map(_.user)), Future.sequence(flags.map(_.project))).tupled
       perms <- Future.sequence(projects.map { project =>
-        val perms = VisibilityTypes.values.map(_.permission).map { perm =>
+        val perms = Visibility.values.map(_.permission).map { perm =>
           (request.user.can(perm) in project).map(value => (perm, value))
         }
         Future.sequence(perms).map(_.toMap)
@@ -306,7 +304,7 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
         projects.filter(p => p.topicId === -1 || p.postId === -1),
         projects.filter(_.isTopicDirty),
         projects.stale,
-        projects.filterNot(_.visibility === VisibilityTypes.Public),
+        projects.filterNot(_.visibility === (Visibility.Public: Visibility)),
         projects.missingFile.flatMap { v =>
           Future.sequence(v.map { v =>
             v.project.map(p => (v, p))
@@ -648,13 +646,13 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
       for {
         (projectApprovals, projectChanges) <- (
           projectSchema.collect(
-            ModelFilter[Project](_.visibility === VisibilityTypes.NeedsApproval).fn,
+            ModelFilter[Project](_.visibility === (Visibility.NeedsApproval: Visibility)).fn,
             ProjectSortingStrategies.Default,
             -1,
             0
           ),
           projectSchema.collect(
-            ModelFilter[Project](_.visibility === VisibilityTypes.NeedsChanges).fn,
+            ModelFilter[Project](_.visibility === (Visibility.NeedsChanges: Visibility)).fn,
             ProjectSortingStrategies.Default,
             -1,
             0
@@ -668,7 +666,7 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
 
         (perms, lastChangeRequesters, lastVisibilityChangers, projectChangeRequests, projectVisibilityChangers) <- (
           Future.sequence(projectApprovals.map { project =>
-            val perms = VisibilityTypes.values.map(_.permission).map { perm =>
+            val perms = Visibility.values.map(_.permission).map { perm =>
               (request.user.can(perm) in project).map(value => (perm, value))
             }
             Future.sequence(perms).map(_.toMap)

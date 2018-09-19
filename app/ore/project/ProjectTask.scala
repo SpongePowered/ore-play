@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectSchema
 import db.{ModelFilter, ModelService}
-import models.project.{Project, VisibilityTypes}
+import models.project.{Project, Visibility}
 import ore.OreConfig
 
 import akka.actor.ActorSystem
@@ -39,7 +39,7 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
   def run(): Unit = {
     val actions = this.models.getSchema(classOf[ProjectSchema])
 
-    val newFilter: ModelFilter[Project] = ModelFilter[Project](_.visibility === VisibilityTypes.New)
+    val newFilter: ModelFilter[Project] = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
     val future                          = actions.collect(newFilter.fn, ProjectSortingStrategies.Default, -1, 0)
     val projects                        = this.models.await(future).get
 
@@ -50,7 +50,7 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
       val createdAt = project.createdAt.value.getTime
       if (createdAt < dayAgo) {
         Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-        project.setVisibility(VisibilityTypes.Public, "Changed by task", project.ownerId)(ec, models)
+        project.setVisibility(Visibility.Public, "Changed by task", project.ownerId)(ec, models)
       }
     })
 

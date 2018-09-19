@@ -19,14 +19,13 @@ import discourse.OreDiscourseApi
 import models.project._
 import models.user.role.ProjectRole
 import models.user.{Notification, User}
-import ore.Colors.Color
 import ore.permission.role.RoleType
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io._
 import ore.project.{NotifyWatchersTask, ProjectMember}
 import ore.user.MembershipDossier
-import ore.user.notification.NotificationTypes
-import ore.{OreConfig, OreEnv, Platforms}
+import ore.user.notification.NotificationType
+import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
 import util.StringUtils._
 
@@ -180,7 +179,7 @@ trait ProjectFactory {
       .ownerName(owner.name)
       .ownerId(owner.id.value)
       .name(metaData.get[String]("name").getOrElse("name not found"))
-      .visibility(VisibilityTypes.New)
+      .visibility(Visibility.New)
       .build()
 
     val pendingProject = PendingProject(
@@ -312,7 +311,7 @@ trait ProjectFactory {
                 Notification(
                   userId = user.id.value,
                   originId = ownerId,
-                  notificationType = NotificationTypes.ProjectInvite,
+                  notificationType = NotificationType.ProjectInvite,
                   messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name)
                 )
               )
@@ -419,7 +418,7 @@ trait ProjectFactory {
   }
 
   private def addDependencyTags(version: Version)(implicit ec: ExecutionContext): Future[Seq[ProjectTag]] = {
-    val futureTags = Platforms
+    val futureTags = Platform
       .getPlatformGhostTags(
         // filter valid dependency versions
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())

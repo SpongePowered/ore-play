@@ -18,7 +18,7 @@ import db.impl.schema.{ProjectMembersTable, ProjectRoleTable}
 import db.{ModelService, ObjectReference}
 import discourse.OreDiscourseApi
 import form.OreForms
-import models.project.{Note, Project, VisibilityTypes}
+import models.project.{Note, Project, Visibility}
 import models.user._
 import models.user.role.ProjectRole
 import models.viewhelper.ScopedOrganizationData
@@ -27,7 +27,7 @@ import ore.permission.scope.GlobalScope
 import ore.project.ProjectMember
 import ore.project.factory.ProjectFactory
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
-import ore.rest.ProjectApiKeyTypes
+import ore.rest.ProjectApiKeyType
 import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
@@ -520,8 +520,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     request =>
       implicit val r: AuthRequest[AnyContent] = request.request
       val projectData                         = request.data
-      projectData.project.apiKeys.find(_.keyType === ProjectApiKeyTypes.Deployment).value.map { deployKey =>
-        Ok(views.settings(projectData, request.scoped, deployKey))
+      projectData.project.apiKeys.find(_.keyType === (ProjectApiKeyType.Deployment: ProjectApiKeyType)).value.map {
+        deployKey =>
+          Ok(views.settings(projectData, request.scoped, deployKey))
       }
   }
 
@@ -690,7 +691,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(HideProjects))
       .async { implicit request =>
-        val newVisibility = VisibilityTypes.withId(visibility)
+        val newVisibility = Visibility.withValue(visibility)
         (request.user.can(newVisibility.permission) in GlobalScope).flatMap { perm =>
           if (perm) {
             val change = if (newVisibility.showModal) {
@@ -700,14 +701,14 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               request.data.project.setVisibility(newVisibility, "", request.user.id.value)
             }
 
-            this.forums.changeTopicVisibility(request.data.project, VisibilityTypes.isPublic(newVisibility))
+            this.forums.changeTopicVisibility(request.data.project, Visibility.isPublic(newVisibility))
 
             UserActionLogger.log(
               request.request,
               LoggedAction.ProjectVisibilityChange,
               request.data.project.id.value,
               newVisibility.nameKey,
-              VisibilityTypes.NeedsChanges.nameKey
+              Visibility.NeedsChanges.nameKey
             )
             change.map(_ => Ok)
           } else {
@@ -725,14 +726,14 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def publish(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug) { implicit request =>
     val data = request.data
-    if (data.visibility == VisibilityTypes.New) {
-      data.project.setVisibility(VisibilityTypes.Public, "", request.user.id.value)
+    if (data.visibility == Visibility.New) {
+      data.project.setVisibility(Visibility.Public, "", request.user.id.value)
       UserActionLogger.log(
         request.request,
         LoggedAction.ProjectVisibilityChange,
         data.project.id.value,
-        VisibilityTypes.Public.nameKey,
-        VisibilityTypes.New.nameKey
+        Visibility.Public.nameKey,
+        Visibility.New.nameKey
       )
     }
     Redirect(self.show(data.project.ownerName, data.project.slug))
@@ -747,14 +748,14 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def sendForApproval(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug) {
     implicit request =>
       val data = request.data
-      if (data.visibility == VisibilityTypes.NeedsChanges) {
-        data.project.setVisibility(VisibilityTypes.NeedsApproval, "", request.user.id.value)
+      if (data.visibility == Visibility.NeedsChanges) {
+        data.project.setVisibility(Visibility.NeedsApproval, "", request.user.id.value)
         UserActionLogger.log(
           request.request,
           LoggedAction.ProjectVisibilityChange,
           data.project.id.value,
-          VisibilityTypes.NeedsApproval.nameKey,
-          VisibilityTypes.NeedsChanges.nameKey
+          Visibility.NeedsApproval.nameKey,
+          Visibility.NeedsChanges.nameKey
         )
       }
       Redirect(self.show(data.project.ownerName, data.project.slug))
@@ -807,7 +808,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val data          = request.data
       val comment       = this.forms.NeedsChanges.bindFromRequest.get.trim
       val oldVisibility = data.project.visibility.nameKey
-      data.project.setVisibility(VisibilityTypes.SoftDelete, comment, request.user.id.value).map { _ =>
+      data.project.setVisibility(Visibility.SoftDelete, comment, request.user.id.value).map { _ =>
         this.forums.changeTopicVisibility(data.project, isVisible = false)
 
         UserActionLogger.log(

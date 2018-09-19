@@ -14,7 +14,6 @@ import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.{ReviewTable, VersionSchema, VersionTable}
 import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
-import models.project.VisibilityTypes.Visibility
 import models.statistic.VersionDownload
 import models.user.User
 import ore.OreConfig
@@ -57,7 +56,7 @@ case class Version(
     reviewerId: Option[ObjectReference] = None,
     approvedAt: Option[Timestamp] = None,
     tagIds: List[ObjectReference] = List(),
-    visibility: Visibility = VisibilityTypes.Public,
+    visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
     isNonReviewed: Boolean = false
@@ -191,7 +190,7 @@ case class Version(
           comment,
           None,
           None,
-          visibility.id
+          visibility.value
         )
       )
 
@@ -276,7 +275,7 @@ object Version {
     private var fileName: String              = _
     private var signatureFileName: String     = _
     private var tagIds: List[ObjectReference] = List()
-    private var visibility: Visibility        = VisibilityTypes.Public
+    private var visibility: Visibility        = Visibility.Public
 
     def versionString(versionString: String): Builder = {
       this.versionString = versionString
