@@ -22,17 +22,6 @@ class ProjectMember(val project: Project, override val userId: ObjectReference)(
     this.user.flatMap(user => this.project.memberships.getRoles(user))
   override val scope: Scope = this.project.scope
 
-  /*
-  override def toString: String = MoreObjects.toStringHelper(this).add("name", this.user.fullName).toString
-  override def hashCode: Int = Objects.hashCode(this.project, this.user.fullName)
-
-  override def equals(o: Any): Boolean = {
-    o match {
-      case that: ProjectMember => that.project.equals(this.project) && that.userId.equals(this.userId)
-      case _ => false
-    }
-  }
-   */
   /**
     * Returns the Member's top role.
     *

@@ -34,13 +34,10 @@ case class NotifyWatchersTask(version: Version, project: Project)(
         action = Some(version.url(project))
     )
 
-    for {
-      watchers <- project.watchers.all
-    } yield {
-      for (watcher <- watchers.filterNot(_.userId == version.authorId))
-        watcher.sendNotification(notification(watcher.id.value))
+    project.watchers.all.foreach { watchers =>
+      watchers
+        .filterNot(_.userId == version.authorId)
+        .foreach(watcher => watcher.sendNotification(notification(watcher.id.value)))
     }
-
   }
-
 }

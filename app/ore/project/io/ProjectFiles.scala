@@ -56,6 +56,7 @@ class ProjectFiles(val env: OreEnv) {
   def renameProject(owner: String, oldName: String, newName: String): Try[Unit] = Try {
     val newProjectDir = getProjectDir(owner, newName)
     move(getProjectDir(owner, oldName), newProjectDir)
+    ()
   }
 
   /**

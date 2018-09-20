@@ -8,8 +8,6 @@ import slick.dbio.DBIO
 
 trait DBIOInstances {
 
-  cats.instances.future
-
   //TODO: Async instance
   //TODO: Traverse instance
   implicit def dbioInstance(implicit ec: ExecutionContext): MonadError[DBIO, Throwable] =

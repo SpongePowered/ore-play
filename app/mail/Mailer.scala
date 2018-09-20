@@ -7,6 +7,7 @@ import javax.mail.Message.RecipientType
 import javax.mail.Session
 import javax.mail.internet.{InternetAddress, MimeMessage}
 
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
@@ -21,16 +22,16 @@ import com.sun.net.ssl.internal.ssl.Provider
 trait Mailer extends Runnable {
 
   /** The sender username */
-  val username: String
+  def username: String
 
   /** The sender email */
-  val email: InternetAddress
+  def email: InternetAddress
 
   /** The sender password */
-  val password: String
+  def password: String
 
   /** SMTP server URL */
-  val smtpHost: String
+  def smtpHost: String
 
   /** SMTP port number */
   val smtpPort: Int = 465
@@ -40,13 +41,13 @@ trait Mailer extends Runnable {
 
   /** The rate at which to send emails */
   val interval: FiniteDuration = 30.seconds
-  val scheduler: Scheduler
+  def scheduler: Scheduler
 
   /** The properties to be applied to the [[Session]] */
   val properties: Map[String, Any] = Map.empty
 
   /** Pending emails */
-  var queue: Seq[Email] = Seq.empty
+  val queue: ArrayBuffer[Email] = ArrayBuffer.empty
 
   val suppressLogger = false
   val Logger         = play.api.Logger("Mailer")
@@ -93,7 +94,7 @@ trait Mailer extends Runnable {
     *
     * @param email Email to push
     */
-  def push(email: Email): Unit = this.queue :+= email
+  def push(email: Email): Unit = this.queue += email
 
   /**
     * Sends all queued [[Email]]s.
@@ -102,7 +103,7 @@ trait Mailer extends Runnable {
     if (queue.nonEmpty) {
       log(s"Sending ${this.queue.size} queued emails...")
       this.queue.foreach(send)
-      this.queue = Seq.empty
+      this.queue.clear()
       log("Done.")
     }
   }

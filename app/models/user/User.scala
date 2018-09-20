@@ -305,9 +305,9 @@ case class User(
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     val contains = this.watching.contains(project)
-    contains.map {
-      case true  => if (!watching) this.watching.remove(project).as(())
-      case false => if (watching) this.watching.add(project).as(())
+    contains.flatMap {
+      case true  => if (!watching) this.watching.remove(project).void else Future.unit
+      case false => if (watching) this.watching.add(project).void else Future.unit
     }
   }
 

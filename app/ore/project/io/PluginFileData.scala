@@ -24,7 +24,7 @@ class PluginFileData(data: Seq[DataValue[_]]) {
     .flatMap {
       case (key, value) =>
         // combine dependency lists that may come from different files
-        if (value.size > 1 && value.head.isInstanceOf[DependencyDataValue]) {
+        if (value.lengthCompare(1) > 0 && value.head.isInstanceOf[DependencyDataValue]) {
           val dependencies = value.flatMap(_.value.asInstanceOf[Seq[Dependency]])
           Seq(DependencyDataValue(key, dependencies))
         } else value
@@ -94,8 +94,8 @@ object PluginFileData {
   * @tparam T the type of the value
   */
 sealed trait DataValue[T] {
-  val key: String
-  val value: T
+  def key: String
+  def value: T
 }
 
 /**
@@ -128,7 +128,7 @@ object McModInfoHandler extends FileTypeHandler("mcmod.info") {
     val dataValues = new ArrayBuffer[DataValue[_]]
     try {
       val info = McModInfo.DEFAULT.read(bufferedReader).asScala
-      if (info.size < 1) return Seq()
+      if (info.lengthCompare(1) < 0) return Nil
 
       val metadata = info.head
 
@@ -176,5 +176,5 @@ object ManifestHandler extends FileTypeHandler("META-INF/MANIFEST.MF") {
 object ModTomlHandler extends FileTypeHandler("mod.toml") {
   override def getData(bufferedReader: BufferedReader): Seq[DataValue[_]] =
     // TODO: Get format from Forge once it has been decided on
-    Seq()
+    Nil
 }

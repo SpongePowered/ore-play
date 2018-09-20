@@ -5,11 +5,9 @@ import scala.language.higherKinds
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
-import play.api.data.Form
 import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-import controllers.OreBaseController.{BindFormEitherTPartiallyApplied, BindFormOptionTPartiallyApplied}
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
 import controllers.sugar.{Actions, Bakery, Requests}
 import db.ModelService
@@ -22,8 +20,7 @@ import ore.permission.ReviewProjects
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 
-import cats.Monad
-import cats.data.{EitherT, OptionT}
+import cats.data.EitherT
 import cats.instances.future._
 import slick.jdbc.JdbcBackend
 
@@ -78,7 +75,7 @@ abstract class OreBaseController(
   def getVersion(project: Project, versionString: String)(
       implicit request: OreRequest[_]
   ): EitherT[Future, Result, Version] =
-    project.versions.find(versionFindFunc(versionString, request.data.globalPerm(ReviewProjects))).toRight(notFound)
+    project.versions.find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects))).toRight(notFound)
 
   /**
     * Gets a version with the specified author, project slug and version string
@@ -97,10 +94,6 @@ abstract class OreBaseController(
       project <- getProject(author, slug)
       version <- getVersion(project, versionString)
     } yield version
-
-  def bindFormEitherT[F[_]] = new BindFormEitherTPartiallyApplied[F]
-
-  def bindFormOptionT[F[_]] = new BindFormOptionTPartiallyApplied[F]
 
   def OreAction: ActionBuilder[OreRequest, AnyContent] = Action.andThen(oreAction)
 
@@ -202,16 +195,4 @@ abstract class OreBaseController(
       sig: Option[String]
   ): ActionBuilder[AuthRequest, AnyContent] = UserAction(username).andThen(verifiedAction(sso, sig))
 
-}
-object OreBaseController {
-
-  final class BindFormEitherTPartiallyApplied[F[_]](val b: Boolean = true) extends AnyVal {
-    def apply[A, B](form: Form[B])(left: Form[B] => A)(implicit F: Monad[F], request: Request[_]): EitherT[F, A, B] =
-      form.bindFromRequest().fold(left.andThen(EitherT.leftT[F, B](_)), EitherT.rightT[F, A](_))
-  }
-
-  final class BindFormOptionTPartiallyApplied[F[_]](val b: Boolean = true) extends AnyVal {
-    def apply[A](form: Form[A])(implicit F: Monad[F], request: Request[_]): OptionT[F, A] =
-      form.bindFromRequest().fold(_ => OptionT.none[F, A], OptionT.some[F](_))
-  }
 }

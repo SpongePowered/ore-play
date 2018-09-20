@@ -57,7 +57,6 @@ object ProjectView {
   )(implicit ec: ExecutionContext, users: UserBase, auth: SpongeAuthApi): Future[ProjectView] = {
     implicit val r: Requests.OreRequest[_] = request.request
     checkNotNull(request, "null request", "")
-    checkNotNull(users, "null user base", "")
     users.current.map(_.id.value).value.map { userId =>
       ProjectView(
         modelId = request.data.project.id.value,

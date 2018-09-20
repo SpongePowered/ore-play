@@ -6,6 +6,9 @@ import db.impl.OrePostgresDriver.api._
 import db.table.{AssociativeTable, ModelAssociation}
 import db.{Model, ModelFilter, ModelService, ObjectReference}
 
+import cats.syntax.all._
+import cats.instances.future._
+
 class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](
     service: ModelService,
     parent: Model,
@@ -27,7 +30,7 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](
     ) {
 
   override def add(model: M)(implicit ec: ExecutionContext): Future[M] =
-    this.assoc.assoc(this.parent, model).map(_ => model)
+    this.assoc.assoc(this.parent, model).as(model)
 
   override def remove(model: M): Future[Int] = this.assoc.disassoc(this.parent, model)
 

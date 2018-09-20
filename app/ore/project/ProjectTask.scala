@@ -17,8 +17,9 @@ import akka.actor.ActorSystem
   * Task that is responsible for publishing New projects
   */
 @Singleton
-class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, config: OreConfig)(
-    implicit ec: ExecutionContext
+class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
+    implicit ec: ExecutionContext,
+    service: ModelService
 ) extends Runnable {
 
   val Logger                   = play.api.Logger("ProjectTask")
@@ -37,22 +38,21 @@ class ProjectTask @Inject()(models: ModelService, actorSystem: ActorSystem, conf
     * Task runner
     */
   def run(): Unit = {
-    val actions = this.models.getSchema(classOf[ProjectSchema])
+    val actions = this.service.getSchema(classOf[ProjectSchema])
 
     val newFilter: ModelFilter[Project] = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
     val future                          = actions.collect(newFilter.fn, ProjectSortingStrategies.Default, -1, 0)
-    val projects                        = this.models.await(future).get
 
-    val dayAgo = System.currentTimeMillis() - draftExpire
-
-    projects.foreach(project => {
-      Logger.debug(s"Found project: ${project.ownerName}/${project.slug}")
-      val createdAt = project.createdAt.value.getTime
-      if (createdAt < dayAgo) {
-        Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-        project.setVisibility(Visibility.Public, "Changed by task", project.ownerId)(ec, models)
-      }
-    })
-
+    future.foreach { projects =>
+      val dayAgo = System.currentTimeMillis() - draftExpire
+      projects.foreach(project => {
+        Logger.debug(s"Found project: ${project.ownerName}/${project.slug}")
+        val createdAt = project.createdAt.value.getTime
+        if (createdAt < dayAgo) {
+          Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
+          project.setVisibility(Visibility.Public, "Changed by task", project.ownerId)
+        }
+      })
+    }
   }
 }

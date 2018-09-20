@@ -26,7 +26,6 @@ import org.apache.commons.codec.digest.DigestUtils
 class PluginFile(private var _path: Path, val signaturePath: Path, val user: User) extends UserOwned {
 
   private var _data: Option[PluginFileData] = None
-  private var _md5: String                  = _
 
   /**
     * Returns the actual file path associated with this plugin.
@@ -36,16 +35,6 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
   def path: Path = {
     checkNotNull(this._path, "file is deleted", "")
     this._path
-  }
-
-  /**
-    * Moves this PluginFile to the specified [[Path]].
-    *
-    * @param path Path to move file to
-    */
-  def move(path: Path): Unit = {
-    Files.move(this.path, path)
-    this._path = path
   }
 
   /**
@@ -68,11 +57,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     *
     * @return MD5 hash
     */
-  def md5: String = {
-    if (this._md5 == null)
-      this._md5 = DigestUtils.md5Hex(Files.newInputStream(this.path))
-    this._md5
-  }
+  lazy val md5: String = DigestUtils.md5Hex(Files.newInputStream(this.path))
 
   /**
     * Reads the temporary file's plugin meta file and returns the result.

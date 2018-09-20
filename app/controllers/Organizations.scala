@@ -73,7 +73,7 @@ class Organizations @Inject()(forms: OreForms)(
       else if (!this.config.orgs.get[Boolean]("enabled"))
         Future.successful(Redirect(failCall).withError("error.org.disabled"))
       else {
-        bindFormEitherT[Future](this.forms.OrganizationCreate)(hasErrors => FormError(failCall, hasErrors)).flatMap {
+        bindFormEitherT[Future](this.forms.OrganizationCreate)(FormErrorLocalized(failCall)).flatMap {
           formData =>
             organizations
               .create(formData.name, user.id.value, formData.build())

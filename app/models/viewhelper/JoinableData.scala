@@ -10,9 +10,9 @@ import ore.user.Member
 
 trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M, T]] {
 
-  val joinable: T
-  val ownerRole: R
-  val members: Seq[(R, User)]
+  def joinable: T
+  def ownerRole: R
+  def members: Seq[(R, User)]
 
   def roleClass: Class[_ <: Role] = ownerRole.getClass.asInstanceOf[Class[_ <: Role]]
 

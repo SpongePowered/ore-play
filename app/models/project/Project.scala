@@ -102,19 +102,16 @@ case class Project(
   /**
     * Contains all information for [[User]] memberships.
     */
-  override def memberships(implicit service: ModelService): MembershipDossier {
+  override def memberships(implicit service: ModelService): MembershipDossier[Project] {
     type MembersTable = ProjectMembersTable
 
     type MemberType = ProjectMember
 
     type RoleTable = ProjectRoleTable
 
-    type ModelType = Project
-
     type RoleType = ProjectRole
-  } = new MembershipDossier {
+  } = new MembershipDossier[Project](this) {
 
-    type ModelType    = Project
     type RoleType     = ProjectRole
     type RoleTable    = ProjectRoleTable
     type MemberType   = ProjectMember
@@ -122,10 +119,9 @@ case class Project(
 
     val membersTableClass: Class[MembersTable] = classOf[ProjectMembersTable]
     val roleClass: Class[RoleType]             = classOf[ProjectRole]
-    val model: ModelType                       = Project.this
 
     def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): MemberType =
-      new ProjectMember(this.model, userId)
+      new ProjectMember(Project.this, userId)
 
     /**
       * Returns the highest level of [[ore.permission.role.Trust]] this user has.

@@ -26,67 +26,44 @@ import com.google.common.base.Preconditions._
 trait SpongeAuthApi {
 
   /** The base URL of the instance */
-  val url: String
+  def url: String
 
   /** Secret API key */
-  val apiKey: String
-  val ws: WSClient
+  def apiKey: String
+  def ws: WSClient
   val timeout: Duration = 10.seconds
 
   val Logger = play.api.Logger("SpongeAuth")
-
-  implicit private val spongeUserReads: Reads[SpongeUser] =
-    (JsPath \ "id")
-      .read[Long]
-      .and((JsPath \ "username").read[String])
-      .and((JsPath \ "email").read[String])
-      .and((JsPath \ "avatar_url").readNullable[String])
-      .and((JsPath \ "language").readNullable[String].map(_.flatMap(Lang.get)))
-      .and((JsPath \ "add_groups").readNullable[String])(SpongeUser.apply _)
-
-  /**
-    * Creates a new user with the specified credentials.
-    *
-    * @param username Username
-    * @param email    Email
-    * @param password Password (nullable)
-    * @param verified True if should bypass email verification
-    * @return         Newly created user
-    */
-  def createUser(username: String, email: String, password: String)(
-      implicit ec: ExecutionContext
-  ): EitherT[Future, String, SpongeUser] = doCreateUser(username, email, password)
 
   /**
     * Creates a "dummy" user that cannot log in and has no password.
     *
     * @param username Username
     * @param email    Email
-    * @param verified True if should bypass email verification
     * @return         Newly created user
     */
   def createDummyUser(username: String, email: String)(
       implicit ec: ExecutionContext
-  ): EitherT[Future, String, SpongeUser] = doCreateUser(username, email, null, dummy = true)
+  ): EitherT[Future, String, SpongeUser] = doCreateUser(username, email, None, dummy = true)
 
   private def doCreateUser(
       username: String,
       email: String,
-      password: String,
+      password: Option[String],
       dummy: Boolean = false
   )(implicit ec: ExecutionContext): EitherT[Future, String, SpongeUser] = {
     checkNotNull(username, "null username", "")
     checkNotNull(email, "null email", "")
-    var params = Map(
+    val params = Map(
       "api-key"  -> Seq(this.apiKey),
       "username" -> Seq(username),
       "email"    -> Seq(email),
       "verified" -> Seq(false.toString),
       "dummy"    -> Seq(dummy.toString)
     )
-    if (password != null)
-      params += "password" -> Seq(password)
-    readUser(this.ws.url(route("/api/users")).withRequestTimeout(timeout).post(params))
+
+    val withPassword = password.fold(params)(pass => params + ("password" -> Seq(pass)))
+    readUser(this.ws.url(route("/api/users")).withRequestTimeout(timeout).post(withPassword))
   }
 
   /**
@@ -101,18 +78,6 @@ trait SpongeAuthApi {
     readUser(this.ws.url(url).withRequestTimeout(timeout).get()).toOption
   }
 
-  /**
-    * Deletes the user with the specified username.
-    *
-    * @param username Username to lookup
-    * @return         Deleted user
-    */
-  def deleteUser(username: String)(implicit ec: ExecutionContext): EitherT[Future, String, SpongeUser] = {
-    checkNotNull(username, "null username", "")
-    val url = route("/api/users") + s"?username=$username&apiKey=$apiKey"
-    readUser(this.ws.url(url).withRequestTimeout(timeout).delete())
-  }
-
   private def readUser(response: Future[WSResponse])(
       implicit ec: ExecutionContext
   ): EitherT[Future, String, SpongeUser] = {
@@ -125,10 +90,10 @@ trait SpongeAuthApi {
           else
             Right(obj.as[SpongeUser])
         }
-        .getOrElse(Left("error.spongeauth.parse"))
+        .getOrElse(Left("error.spongeauth.auth"))
         .recover {
           case _: TimeoutException =>
-            Left("error.spongeauth.connect")
+            Left("error.spongeauth.auth")
           case e =>
             Logger.error("An unexpected error occured while handling a response", e)
             Left("error.spongeauth.unexpected")

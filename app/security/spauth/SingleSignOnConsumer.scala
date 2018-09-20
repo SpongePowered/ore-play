@@ -4,8 +4,6 @@ import java.math.BigInteger
 import java.net.URLEncoder
 import java.security.SecureRandom
 import java.util.Base64
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 
 import scala.concurrent.duration._
@@ -17,23 +15,24 @@ import play.api.http.Status
 import play.api.i18n.Lang
 import play.api.libs.ws.WSClient
 
+import security.CryptoUtils
+
 import akka.http.scaladsl.model.Uri
 import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
-import org.apache.commons.codec.binary.Hex
 
 /**
   * Manages authentication to Sponge services.
   */
 trait SingleSignOnConsumer {
 
-  val ws: WSClient
-  val loginUrl: String
-  val signupUrl: String
-  val verifyUrl: String
-  val secret: String
-  val timeout: Duration
+  def ws: WSClient
+  def loginUrl: String
+  def signupUrl: String
+  def verifyUrl: String
+  def secret: String
+  def timeout: Duration
 
   val CharEncoding = "UTF-8"
   val Algo         = "HmacSHA256"
@@ -85,7 +84,6 @@ trait SingleSignOnConsumer {
     * Generates a new Base64 encoded SSO payload.
     *
     * @param returnUrl  URL to return to once authenticated
-    * @param baseUrl    Base URL
     * @return           New payload
     */
   def generatePayload(returnUrl: String, nonce: String): String = {
@@ -99,7 +97,7 @@ trait SingleSignOnConsumer {
     * @param payload  Payload to sign
     * @return         Signature of payload
     */
-  def generateSignature(payload: String): String = hmac_sha256(payload.getBytes(this.CharEncoding))
+  def generateSignature(payload: String): String = CryptoUtils.hmac_sha256(secret, payload.getBytes(this.CharEncoding))
 
   /**
     * Validates an incoming payload and extracts user information. The
@@ -118,7 +116,7 @@ trait SingleSignOnConsumer {
     Logger.debug("Authenticating SSO payload...")
     Logger.debug(payload)
     Logger.debug("Signed with : " + sig)
-    if (!hmac_sha256(payload.getBytes(this.CharEncoding)).equals(sig)) {
+    if (generateSignature(payload) != sig) {
       Logger.debug("<FAILURE> Could not verify payload against signature.")
       return OptionT.none[Future, SpongeUser]
     }
@@ -157,14 +155,6 @@ trait SingleSignOnConsumer {
           Some(user)
       }
   }
-
-  private def hmac_sha256(data: Array[Byte]): String = {
-    val hmac    = Mac.getInstance(this.Algo)
-    val keySpec = new SecretKeySpec(this.secret.getBytes(this.CharEncoding), this.Algo)
-    hmac.init(keySpec)
-    Hex.encodeHexString(hmac.doFinal(data))
-  }
-
 }
 
 object SingleSignOnConsumer {
@@ -172,11 +162,9 @@ object SingleSignOnConsumer {
   val Random = new SecureRandom
 
   def nonce: String = new BigInteger(130, Random).toString(32)
-
 }
 
-class SpongeSingleSignOnConsumer @Inject()(override val ws: WSClient, config: Configuration)
-    extends SingleSignOnConsumer {
+class SpongeSingleSignOnConsumer @Inject()(val ws: WSClient, config: Configuration) extends SingleSignOnConsumer {
 
   private val conf = this.config.get[Configuration]("security")
 

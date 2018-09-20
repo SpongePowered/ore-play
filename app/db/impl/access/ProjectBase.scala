@@ -155,13 +155,9 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
 
   /**
     * Irreversibly deletes this channel and all version associated with it.
-    *
-    * @param context Project context
     */
-  def deleteChannel(channel: Channel)(implicit context: Project = null, ec: ExecutionContext): Future[Unit] = {
+  def deleteChannel(project: Project, channel: Channel)(implicit ec: ExecutionContext): Future[Unit] = {
     for {
-      project <- if (context != null) Future.successful(context) else channel.project
-      _ = checkArgument(project.id.value == channel.projectId, "invalid project id", "")
       channels         <- project.channels.all
       noVersion        <- channel.versions.isEmpty
       nonEmptyChannels <- Future.traverse(channels.toSeq)(_.versions.nonEmpty).map(_.count(identity))
@@ -190,17 +186,16 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       proj <- version.project
       size <- proj.versions.count(_.visibility === (Visibility.Public: Visibility))
       _ = checkArgument(size > 1, "only one public version", "")
-      _ = checkArgument(proj.id.value == version.projectId, "invalid context id", "")
       rv       <- proj.recommendedVersion
       projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
-      _ <- {
+      res <- {
         if (version == rv)
           service.update(
             proj.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id.value))
           )
-        else Future.unit
+        else Future.successful(proj)
       }
-    } yield proj
+    } yield res
 
   /**
     * Irreversibly deletes this version.
@@ -215,11 +210,9 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
         FileUtils.deleteDirectory(versionDir)
         version.remove()
       }
-    } yield {
       // Delete channel if now empty
-      if (noVersions) this.deleteChannel(channel)
-      proj
-    }
+      _ <- if (noVersions) this.deleteChannel(proj, channel) else Future.unit
+    } yield proj
   }
 
   /**

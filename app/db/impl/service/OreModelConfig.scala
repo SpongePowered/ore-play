@@ -3,15 +3,18 @@ package db.impl.service
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema._
 import db.table.ModelAssociation
-import db.{ModelSchema, ModelService, ObjectReference}
+import db.{ModelSchema, ObjectReference}
 import models.admin.{ProjectLog, ProjectLogEntry, ProjectVisibilityChange, Review, VersionVisibilityChange}
 import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user._
 import models.user.role.{OrganizationRole, ProjectRole}
+import ore.{OreConfig, OreEnv}
 
-trait OreModelConfig extends ModelService with OreDBOs {
+import slick.jdbc.JdbcProfile
+
+abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfig) extends OreDBOs(driver, env, config) {
 
   val projectWatchers = new ModelAssociation[ProjectWatchersTable](
     this,

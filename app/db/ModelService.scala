@@ -9,7 +9,7 @@ import scala.util.{Failure, Success, Try}
 
 import db.ModelFilter.IdFilter
 import db.access.ModelAccess
-import db.table.{MappedType, ModelTable}
+import db.table.ModelTable
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -23,31 +23,28 @@ import slick.util.ConstArray
 /**
   * Represents a service that creates, deletes, and manipulates Models.
   */
-trait ModelService {
+abstract class ModelService(driver: JdbcProfile) {
+  import driver.api._
 
   /** All registered models. */
-  val registry: ModelRegistry
-
-  /** The base JDBC driver */
-  val driver: JdbcProfile
-  import driver.api._
+  def registry: ModelRegistry
 
   /**
     * The default timeout when awaiting a query result.
     */
-  val DefaultTimeout: Duration
+  def DefaultTimeout: Duration
 
   /**
     * The database config for raw actions. Note: running raw queries will not
     * process any returned models and should be used only for model "meta-data"
     * (e.g. Project stars).
     */
-  val DB: DatabaseConfig[JdbcProfile]
+  def DB: DatabaseConfig[JdbcProfile]
 
   /**
     * Performs initialization code for the ModelService.
     */
-  def start(): Unit = {}
+  def start(): Unit
 
   /**
     * Returns a current Timestamp.
@@ -161,20 +158,6 @@ trait ModelService {
         if row.id === model.id.value
       } yield column(row)).update(value)
     }
-  }
-
-  /**
-    * Sets a [[MappedType]] in a [[ModelTable]].
-    *
-    * @param model  Model to update
-    * @param column Reference of column to update
-    * @param value  Value to set
-    * @tparam A     MappedType type
-    * @tparam M     Model type
-    */
-  def setMappedType[A <: MappedType[A], M <: Model](model: M, column: M#T => Rep[A], value: A): Future[Int] = {
-    import value.mapper
-    set(model, column, value)
   }
 
   /**

@@ -3,7 +3,6 @@ package discourse
 import java.nio.file.Path
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import play.api.libs.ws.WSClient
@@ -28,7 +27,7 @@ class SpongeForums @Inject()(
 
   private val conf = this.config.forums
 
-  isEnabled = this.conf.get[Boolean]("api.enabled")
+  val isEnabled: Boolean = this.conf.get[Boolean]("api.enabled")
   isDebugMode = this.config.ore.get[Boolean]("debug")
 
   override val key: String       = this.conf.get[String]("api.key")
@@ -42,7 +41,6 @@ class SpongeForums @Inject()(
   override val topicTemplatePath: Path                     = this.env.conf.resolve("discourse/project_topic.md")
   override val versionReleasePostTemplatePath: Path        = this.env.conf.resolve("discourse/version_post.md")
   override val scheduler: Scheduler                        = this.actorSystem.scheduler
-  override val bootstrapExecutionContext: ExecutionContext = this.actorSystem.dispatcher
   override val retryRate: FiniteDuration                   = this.conf.get[FiniteDuration]("retryRate")
 
 }

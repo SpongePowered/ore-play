@@ -16,8 +16,8 @@ import cats.instances.future._
 //TODO: Return Use Validated for the values in here
 trait TChannelData {
 
-  val config: OreConfig
-  val factory: ProjectFactory
+  def config: OreConfig
+  def factory: ProjectFactory
 
   /** The [[Channel]] [[Color]] **/
   val color: Color = Channel.Colors.find(_.hex.equalsIgnoreCase(channelColorHex)).get
@@ -28,7 +28,7 @@ trait TChannelData {
   /** Channel color hex **/
   protected def channelColorHex: String
 
-  val nonReviewed: Boolean
+  def nonReviewed: Boolean
 
   /**
     * Attempts to add this ChannelData as a [[Channel]] to the specified
@@ -57,8 +57,9 @@ trait TChannelData {
     * @return         Error, if any
     */
   def saveTo(
+      project: Project,
       oldName: String
-  )(implicit project: Project, ec: ExecutionContext, service: ModelService): EitherT[Future, NEL[String], Unit] = {
+  )(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, NEL[String], Unit] = {
     EitherT.liftF(project.channels.all).flatMap { allChannels =>
       val (channelChangeSet, channels) = allChannels.partition(_.name.equalsIgnoreCase(oldName))
       val channel                      = channelChangeSet.toSeq.head

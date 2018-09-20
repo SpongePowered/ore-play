@@ -40,11 +40,13 @@ case class PendingVersion(
     this.factory.createVersion(this)
   }
 
-  def cancel()(implicit ec: ExecutionContext): Unit = {
+  def cancel()(implicit ec: ExecutionContext): Future[Project] = {
     free()
     this.plugin.delete()
     if (this.underlying.isDefined)
       this.projects.deleteVersion(this.underlying)
+    else
+      Future.successful(project)
   }
 
   override def key: String = this.project.url + '/' + this.underlying.versionString

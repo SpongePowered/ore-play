@@ -22,6 +22,8 @@ import ore.user.notification.NotificationType
 import util.StringUtils._
 
 import cats.data.NonEmptyList
+import cats.syntax.all._
+import cats.instances.future._
 import slick.lifted.TableQuery
 
 /**
@@ -72,16 +74,16 @@ case class ProjectSettings(
     val updateProject = updateIfDefined(
       project.copy(
         category = Category.values.find(_.title == formData.categoryName).get,
-        description = Option(nullIfEmpty(formData.description)),
+        description = noneIfEmpty(formData.description),
         ownerId = formData.ownerId.getOrElse(project.ownerId)
       )
     )
 
     val updateSettings = updateIfDefined(
       copy(
-        issues = Option(nullIfEmpty(formData.issues)),
-        source = Option(nullIfEmpty(formData.source)),
-        licenseUrl = Option(nullIfEmpty(formData.licenseUrl)),
+        issues = noneIfEmpty(formData.issues),
+        source = noneIfEmpty(formData.source),
+        licenseUrl = noneIfEmpty(formData.licenseUrl),
         licenseName = if (formData.licenseUrl.nonEmpty) Some(formData.licenseName) else licenseName,
         forumSync = formData.forumSync
       )
@@ -157,7 +159,7 @@ case class ProjectSettings(
                 }
               }
               .flatMap { updates =>
-                service.DB.db.run(DBIO.sequence(updates)).map(_ => t)
+                service.DB.db.run(DBIO.sequence(updates)).as(t)
               }
           }
       } else Future.successful(t)

@@ -9,9 +9,7 @@ import play.api.mvc.Results._
 import play.api.mvc._
 import play.api.routing.Router
 
-import _root_.db.ModelService
-import discourse.OreDiscourseApi
-import ore.{OreConfig, OreEnv}
+import ore.OreConfig
 
 /** A custom server error handler */
 class ErrorHandler @Inject()(
@@ -19,12 +17,9 @@ class ErrorHandler @Inject()(
     conf: Configuration,
     sourceMapper: OptionalSourceMapper,
     router: Provider[Router],
-    implicit val oreEnv: OreEnv,
-    implicit val config: OreConfig,
-    implicit val service: ModelService,
-    implicit val forums: OreDiscourseApi,
-    override val messagesApi: MessagesApi
-) extends DefaultHttpErrorHandler(env, conf, sourceMapper, router)
+    val messagesApi: MessagesApi
+)(implicit config: OreConfig)
+    extends DefaultHttpErrorHandler(env, conf, sourceMapper, router)
     with I18nSupport {
 
   override def onProdServerError(request: RequestHeader, exception: UsefulException): Future[Result] = {

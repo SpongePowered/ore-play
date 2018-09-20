@@ -45,9 +45,9 @@ object StringUtils {
     * @param str String to check
     * @return Null if empty, trimmed otherwise
     */
-  def nullIfEmpty(str: String): String = {
+  def noneIfEmpty(str: String): Option[String] = {
     val trimmed = str.trim
-    if (trimmed.nonEmpty) trimmed else null
+    if (trimmed.nonEmpty) Some(trimmed) else None
   }
 
   /**

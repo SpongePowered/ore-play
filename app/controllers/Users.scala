@@ -361,7 +361,6 @@ class Users @Inject()(
       (notificationsFut, invitesFut).mapN { (notifications, invites) =>
         Ok(views.users.notifications(notifications, invites, nFilter, iFilter))
       }
-      ???
     }
   }
 

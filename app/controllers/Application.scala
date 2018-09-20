@@ -36,7 +36,6 @@ import ore.permission.scope.GlobalScope
 import ore.project.{Category, ProjectSortingStrategies}
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.DataHelper
 import views.{html => views}
 
 import cats.data.OptionT
@@ -46,7 +45,7 @@ import cats.syntax.all._
 /**
   * Main entry point for application.
   */
-final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
+final class Application @Inject()(forms: OreForms)(
     implicit val ec: ExecutionContext,
     auth: SpongeAuthApi,
     bakery: Bakery,
@@ -322,41 +321,6 @@ final class Application @Inject()(dataHelper: DataHelper, forms: OreForms)(
     * @return     Redirect to proper route
     */
   def removeTrail(path: String) = Action(MovedPermanently('/' + path))
-
-  /**
-    * Helper route to reset Ore.
-    */
-  def reset(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ResetOre)) { implicit request =>
-    this.config.checkDebug()
-    this.dataHelper.reset()
-    cache.removeAll()
-    Redirect(ShowHome).withNewSession
-  }
-
-  /**
-    * Fills Ore with some dummy data.
-    *
-    * @return Redirect home
-    */
-  def seed(users: Long, projects: Int, versions: Int, channels: Int): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](SeedOre)) { implicit request =>
-      this.config.checkDebug()
-      this.dataHelper.seed(users, projects, versions, channels)
-      cache.removeAll()
-      Redirect(ShowHome).withNewSession
-    }
-  }
-
-  /**
-    * Performs miscellaneous migration actions for use in deployment.
-    *
-    * @return Redirect home
-    */
-  def migrate(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](MigrateOre)) {
-    implicit request =>
-      this.dataHelper.migrate()
-      Redirect(ShowHome)
-  }
 
   /**
     * Show the activities page for a user

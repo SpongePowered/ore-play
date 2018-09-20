@@ -26,19 +26,18 @@ trait StatTracker {
 
   implicit def service: ModelService
 
-  val bakery: Bakery
-  val viewSchema: StatSchema[ProjectView]
-  val downloadSchema: StatSchema[VersionDownload]
+  def bakery: Bakery
+  def viewSchema: StatSchema[ProjectView]
+  def downloadSchema: StatSchema[VersionDownload]
 
   /**
     * Signifies that a project has been viewed with the specified request and
     * actions should be taken to check whether a view should be added to the
     * Project's view count.
-    *
-    * @param request Request to view the project
     */
-  def projectViewed(projectRequest: ProjectRequest[_])(f: ProjectRequest[_] => Result)(
-      implicit ec: ExecutionContext,
+  def projectViewed(f: => Result)(
+      implicit projectRequest: ProjectRequest[_],
+      ec: ExecutionContext,
       auth: SpongeAuthApi
   ): Future[Result] = {
     ProjectView.bindFromRequest(projectRequest).flatMap { statEntry =>
@@ -48,7 +47,7 @@ trait StatTracker {
           case true  => projectRequest.data.project.addView
           case false => Future.unit
         }
-        .as(f(projectRequest).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
+        .as(f.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
   }
 
@@ -60,7 +59,7 @@ trait StatTracker {
     * @param version Version to check downloads for
     * @param request Request to download the version
     */
-  def versionDownloaded(version: Version)(f: ProjectRequest[_] => Result)(
+  def versionDownloaded(version: Version)(f: => Result)(
       implicit request: ProjectRequest[_],
       ec: ExecutionContext,
       auth: SpongeAuthApi
@@ -72,7 +71,7 @@ trait StatTracker {
           case true  => version.addDownload *> request.data.project.addDownload
           case false => Future.unit
         }
-        .as(f(request).withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
+        .as(f.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
   }
 

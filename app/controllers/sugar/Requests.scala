@@ -14,14 +14,16 @@ object Requests {
 
   /**
     * Base Request for Ore that holds all data needed for rendering the header
-    *
-    * @param data the HeaderData
-    * @param request the request to wrap
     */
-  class OreRequest[A](val data: HeaderData, val request: Request[A]) extends WrappedRequest[A](request) {
-    def currentUser: Option[User] = data.currentUser
-    def hasUser: Boolean          = data.currentUser.isDefined
+  trait OreRequest[A] extends WrappedRequest[A] {
+    def headerData: HeaderData
+    def currentUser: Option[User] = headerData.currentUser
+    def hasUser: Boolean          = headerData.currentUser.isDefined
   }
+
+  class SimpleOreRequest[A](val headerData: HeaderData, val request: Request[A])
+      extends WrappedRequest[A](request)
+      with OreRequest[A]
 
   /** Represents a Request with a [[User]] and [[ScopeSubject]] */
   trait ScopedRequest[A] extends WrappedRequest[A] {
@@ -35,8 +37,9 @@ object Requests {
     * @param user     Authenticated user
     * @param request  Request to wrap
     */
-  class AuthRequest[A](override val user: User, data: HeaderData, request: Request[A])
-      extends OreRequest[A](data, request)
+  class AuthRequest[A](val user: User, val headerData: HeaderData, request: Request[A])
+      extends WrappedRequest[A](request)
+      with OreRequest[A]
       with ScopedRequest[A]
 
   /**
@@ -46,8 +49,16 @@ object Requests {
     * @param scoped scoped Project data to hold
     * @param request Request to wrap
     */
-  class ProjectRequest[A](val data: ProjectData, val scoped: ScopedProjectData, val request: OreRequest[A])
-      extends WrappedRequest[A](request)
+  class ProjectRequest[A](
+      val data: ProjectData,
+      val scoped: ScopedProjectData,
+      val headerData: HeaderData,
+      val request: Request[A]
+  ) extends WrappedRequest[A](request)
+      with OreRequest[A] {
+
+    def project: Project = data.project
+  }
 
   /**
     * A request that holds a Project and a [[AuthRequest]].
@@ -59,9 +70,12 @@ object Requests {
   case class AuthedProjectRequest[A](
       override val data: ProjectData,
       override val scoped: ScopedProjectData,
+      override val headerData: HeaderData,
       override val request: AuthRequest[A]
-  ) extends ProjectRequest[A](data, scoped, request)
-      with ScopedRequest[A] {
+  ) extends ProjectRequest[A](data, scoped, headerData, request)
+      with ScopedRequest[A]
+      with OreRequest[A] {
+
     override def user: User            = request.user
     override val subject: ScopeSubject = this.data.project
   }
@@ -76,8 +90,10 @@ object Requests {
   class OrganizationRequest[A](
       val data: OrganizationData,
       val scoped: ScopedOrganizationData,
-      val request: OreRequest[A]
+      val headerData: HeaderData,
+      val request: Request[A]
   ) extends WrappedRequest[A](request)
+      with OreRequest[A]
 
   /**
     * A request that holds an [[Organization]] and an [[AuthRequest]].
@@ -89,9 +105,11 @@ object Requests {
   case class AuthedOrganizationRequest[A](
       override val data: OrganizationData,
       override val scoped: ScopedOrganizationData,
+      override val headerData: HeaderData,
       override val request: AuthRequest[A]
-  ) extends OrganizationRequest[A](data, scoped, request)
-      with ScopedRequest[A] {
+  ) extends OrganizationRequest[A](data, scoped, headerData, request)
+      with ScopedRequest[A]
+      with OreRequest[A] {
     override def user: User            = request.user
     override val subject: ScopeSubject = this.data.orga
   }

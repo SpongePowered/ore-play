@@ -42,7 +42,7 @@ scalacOptions ++= Seq(
   "-Ywarn-unused:params",
   "-Ywarn-unused:patvars",
   "-Ywarn-unused:privates",
-  //"-Ywarn-value-discard"
+  "-Ywarn-value-discard"
 )
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 

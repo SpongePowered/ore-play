@@ -36,10 +36,10 @@ import slick.jdbc.JdbcBackend
 trait Actions extends Calls with ActionHelpers {
 
   implicit def service: ModelService
-  val sso: SingleSignOnConsumer
-  val signOns: ModelAccess[SignOn]
-  val bakery: Bakery
-  implicit val auth: SpongeAuthApi
+  def sso: SingleSignOnConsumer
+  def signOns: ModelAccess[SignOn]
+  def bakery: Bakery
+  implicit def auth: SpongeAuthApi
 
   def users: UserBase                 = UserBase()
   def projects: ProjectBase           = ProjectBase()
@@ -70,29 +70,23 @@ trait Actions extends Calls with ActionHelpers {
     */
   def PermissionAction[R[_] <: ScopedRequest[_]](
       p: Permission
-  )(implicit ec: ExecutionContext): ActionRefiner[ScopedRequest, R] = new ActionRefiner[ScopedRequest, R] {
+  )(implicit ec: ExecutionContext): ActionRefiner[R, R] = new ActionRefiner[R, R] {
     def executionContext: ExecutionContext = ec
 
-    private def log(success: Boolean, request: ScopedRequest[_]): Unit = {
+    private def log(success: Boolean, request: R[_]): Unit = {
       val lang = if (success) "GRANTED" else "DENIED"
       PermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")
     }
 
-    def refine[A](request: ScopedRequest[A]): Future[Either[Result, R[A]]] = {
-      implicit val r: ScopedRequest[A] = request
+    def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
+      implicit val r: R[A] = request
 
-      (request.user.can(p) in request.subject).flatMap { perm =>
-        if (!perm) {
-          log(success = false, request)
-          onUnauthorized.map(Left(_))
-        } else {
-          log(success = true, request)
-          Future.successful(Right(request.asInstanceOf[R[A]]))
-        }
+      request.user.can(p).in(request.subject).flatMap { perm =>
+        log(success = perm, request)
+        if (!perm) onUnauthorized.map(Left.apply)
+        else Future.successful(Right(request))
       }
-
     }
-
   }
 
   /**
@@ -104,7 +98,7 @@ trait Actions extends Calls with ActionHelpers {
     */
   def ProjectPermissionAction(p: Permission)(
       implicit ec: ExecutionContext
-  ): ActionRefiner[ScopedRequest, AuthedProjectRequest] = PermissionAction[AuthedProjectRequest](p)
+  ): ActionRefiner[AuthedProjectRequest, AuthedProjectRequest] = PermissionAction[AuthedProjectRequest](p)
 
   /**
     * A PermissionAction that uses an AuthedOrganizationRequest for the
@@ -115,7 +109,8 @@ trait Actions extends Calls with ActionHelpers {
     */
   def OrganizationPermissionAction(p: Permission)(
       implicit ec: ExecutionContext
-  ): ActionRefiner[ScopedRequest, AuthedOrganizationRequest] = PermissionAction[AuthedOrganizationRequest](p)
+  ): ActionRefiner[AuthedOrganizationRequest, AuthedOrganizationRequest] =
+    PermissionAction[AuthedOrganizationRequest](p)
 
   implicit final class ResultWrapper(result: Result) {
 
@@ -130,7 +125,7 @@ trait Actions extends Calls with ActionHelpers {
       val session = users.createSession(user)
       val age     = if (maxAge == -1) None else Some(maxAge)
       session.map { s =>
-        result.withCookies(Actions.this.bakery.bake(AuthTokenName, s.token, age))
+        result.withCookies(bakery.bake(AuthTokenName, s.token, age))
       }
     }
 
@@ -188,21 +183,15 @@ trait Actions extends Calls with ActionHelpers {
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = {
       val auth = for {
-        ssoSome <- sso
-        sigSome <- sig
-      } yield Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)
+        ssoSome <- OptionT.fromOption[Future](sso)
+        sigSome <- OptionT.fromOption[Future](sig)
+        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)
+      } yield res
 
-      OptionT
-        .fromOption[Future](auth)
-        .flatMap(identity)
-        .cata(
-          Some(Unauthorized),
-          spongeUser =>
-            if (spongeUser.id == request.user.id.value)
-              None
-            else
-              Some(Unauthorized)
-        )
+      auth.cata(
+        Some(Unauthorized),
+        spongeUser => if (spongeUser.id == request.user.id.value) None else Some(Unauthorized)
+      )
     }
   }
 
@@ -230,7 +219,7 @@ trait Actions extends Calls with ActionHelpers {
       HeaderData.of(request).map { data =>
         val requestWithLang =
           data.currentUser.flatMap(_.lang).fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
-        new OreRequest(data, requestWithLang)
+        new SimpleOreRequest(data, requestWithLang)
       }
     }
   }
@@ -251,9 +240,7 @@ trait Actions extends Calls with ActionHelpers {
       db: JdbcBackend#DatabaseDef
   ): Future[Either[Result, AuthRequest[A]]] =
     futUser
-      .semiflatMap { user =>
-        HeaderData.of(request).map(hd => new AuthRequest[A](user, hd, request))
-      }
+      .semiflatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
       .toRight(onUnauthorized(request, ec))
       .leftSemiflatMap(identity)
       .value
@@ -285,16 +272,14 @@ trait Actions extends Calls with ActionHelpers {
   ): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request: OreRequest[A] = r
     project
-      .flatMap { p =>
-        processProject(p, request.data.currentUser)
-      }
+      .flatMap(processProject(_, request.headerData.currentUser))
       .semiflatMap { p =>
         toProjectRequest(p) {
           case (data, scoped) =>
             MDC.put("currentProjectId", data.project.id.toString)
             MDC.put("currentProjectSlug", data.project.slug)
 
-            new ProjectRequest[A](data, scoped, r)
+            new ProjectRequest[A](data, scoped, r.headerData, r)
         }
       }
       .toRight(notFound)
@@ -307,7 +292,7 @@ trait Actions extends Calls with ActionHelpers {
       ec: ExecutionContext,
       db: JdbcBackend#DatabaseDef
   ) =
-    (ProjectData.of(project), ScopedProjectData.of(request.data.currentUser, project)).mapN(f)
+    (ProjectData.of(project), ScopedProjectData.of(request.headerData.currentUser, project)).mapN(f)
 
   private def processProject(project: Project, user: Option[User])(
       implicit ec: ExecutionContext
@@ -315,25 +300,24 @@ trait Actions extends Calls with ActionHelpers {
     if (project.visibility == Visibility.Public || project.visibility == Visibility.New) {
       OptionT.pure[Future](project)
     } else {
-      if (user.isDefined) {
-        val check1 = canEditAndNeedChangeOrApproval(project, user)
-        val check2 = user.get.can(HideProjects) in GlobalScope
+      OptionT
+        .fromOption[Future](user)
+        .semiflatMap { user =>
+          val check1 = canEditAndNeedChangeOrApproval(project, user)
+          val check2 = user.can(HideProjects).in(GlobalScope)
 
-        OptionT(
-          FutureUtils.raceBoolean(check1, check2).map {
-            case true  => Some(project)
-            case false => None
-          }
-        )
-      } else {
-        OptionT.none[Future, Project]
-      }
+          FutureUtils.raceBoolean(check1, check2)
+        }
+        .subflatMap {
+          case true  => Some(project)
+          case false => None
+        }
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: Project, user: Option[User])(implicit ec: ExecutionContext) = {
+  private def canEditAndNeedChangeOrApproval(project: Project, user: User)(implicit ec: ExecutionContext) = {
     if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
-      user.get.can(EditPages) in project
+      user.can(EditPages).in(project)
     } else {
       Future.successful(false)
     }
@@ -350,12 +334,10 @@ trait Actions extends Calls with ActionHelpers {
       implicit val r: AuthRequest[A] = request
 
       project
-        .flatMap { pr =>
-          processProject(pr, Some(request.user)).semiflatMap { p =>
-            toProjectRequest(p) {
-              case (data, scoped) =>
-                new AuthedProjectRequest[A](data, scoped, request)
-            }
+        .flatMap(processProject(_, Some(request.user)))
+        .semiflatMap { p =>
+          toProjectRequest(p) {
+            case (data, scoped) => new AuthedProjectRequest[A](data, scoped, r.headerData, request)
           }
         }
         .toRight(notFound)
@@ -382,12 +364,14 @@ trait Actions extends Calls with ActionHelpers {
 
     def refine[A](request: OreRequest[A]): Future[Either[Result, OrganizationRequest[A]]] = {
       implicit val r: OreRequest[A] = request
-      getOrga(organization).value.flatMap {
-        maybeOrgaRequest(_) {
-          case (data, scoped) =>
-            new OrganizationRequest[A](data, scoped, request)
+      getOrga(organization)
+        .semiflatMap { org =>
+          toOrgaRequest(org) {
+            case (data, scoped) => new OrganizationRequest[A](data, scoped, r.headerData, request)
+          }
         }
-      }
+        .toRight(notFound)
+        .value
     }
   }
 
@@ -400,30 +384,27 @@ trait Actions extends Calls with ActionHelpers {
     def refine[A](request: AuthRequest[A]): Future[Either[Result, AuthedOrganizationRequest[A]]] = {
       implicit val r: AuthRequest[A] = request
 
-      getOrga(organization).value.flatMap {
-        maybeOrgaRequest(_) {
-          case (data, scoped) =>
-            new AuthedOrganizationRequest[A](data, scoped, request)
+      getOrga(organization)
+        .semiflatMap { org =>
+          toOrgaRequest(org) {
+            case (data, scoped) => new AuthedOrganizationRequest[A](data, scoped, r.headerData, request)
+          }
         }
-      }
+        .toRight(notFound)
+        .value
     }
 
   }
 
-  private def maybeOrgaRequest[T](maybeOrga: Option[Organization])(f: (OrganizationData, ScopedOrganizationData) => T)(
+  private def toOrgaRequest[T](orga: Organization)(f: (OrganizationData, ScopedOrganizationData) => T)(
       implicit request: OreRequest[_],
       ec: ExecutionContext,
       db: JdbcBackend#DatabaseDef
   ) = {
-    maybeOrga match {
-      case None => Future.successful(Left(notFound))
-      case Some(orga) =>
-        MDC.put("currentOrgaId", orga.id.toString)
-        MDC.put("currentOrgaName", orga.name)
+    MDC.put("currentOrgaId", orga.id.toString)
+    MDC.put("currentOrgaName", orga.name)
 
-        val rf = Function.untupled(f.tupled.andThen(Right.apply))
-        (OrganizationData.of(orga), ScopedOrganizationData.of(request.data.currentUser, orga)).mapN(rf)
-    }
+    (OrganizationData.of(orga), ScopedOrganizationData.of(request.headerData.currentUser, orga)).mapN(f)
   }
 
   def getOrga(organization: String)(
@@ -435,6 +416,6 @@ trait Actions extends Calls with ActionHelpers {
       implicit ec: ExecutionContext,
       db: JdbcBackend#DatabaseDef
   ): OptionT[Future, UserData] =
-    users.withName(userName).semiflatMap(user => UserData.of(request, user))
+    users.withName(userName).semiflatMap(UserData.of(request, _))
 
 }

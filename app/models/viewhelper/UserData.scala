@@ -14,6 +14,7 @@ import models.user.{Organization, User}
 import ore.permission._
 
 import cats.instances.future._
+import cats.instances.option._
 import cats.syntax.all._
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
@@ -47,7 +48,7 @@ case class UserData(
       }
   }
 
-  def pgpFormClass: String = user.pgpPubKey.map(_ => "pgp-delete").getOrElse("")
+  def pgpFormClass: String = user.pgpPubKey.as("pgp-delete").getOrElse("")
 
 }
 

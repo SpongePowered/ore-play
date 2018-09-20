@@ -18,7 +18,7 @@ import cats.instances.future._
 trait StatSchema[M <: StatEntry[_]] extends ModelSchema[M] {
 
   implicit def service: ModelService
-  val modelClass: Class[M]
+  def modelClass: Class[M]
 
   /**
     * Checks if the specified StatEntry exists and records the entry in the

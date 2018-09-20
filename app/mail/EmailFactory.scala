@@ -5,15 +5,13 @@ import javax.inject.Inject
 import play.api.i18n.{I18nSupport, MessagesApi}
 
 import controllers.sugar.Requests.OreRequest
-import db.ModelService
 import models.user.User
 import ore.OreConfig
 
 final class EmailFactory @Inject()(
-    override val messagesApi: MessagesApi,
-    implicit val config: OreConfig,
-    implicit val service: ModelService
-) extends I18nSupport {
+    val messagesApi: MessagesApi
+)(implicit config: OreConfig)
+    extends I18nSupport {
 
   val PgpUpdated      = "email.pgpUpdate"
   val AccountUnlocked = "email.accountUnlock"

@@ -157,9 +157,8 @@ trait ProjectFactory {
       if (!user.isPgpPubKeyReady)
         return Some("error.pgp.keyChangeCooldown")
     }
-    if (user.isLocked)
-      return Some("error.user.locked")
-    None
+    if (user.isLocked) Some("error.user.locked")
+    else None
   }
 
   /**
@@ -454,6 +453,7 @@ trait ProjectFactory {
     move(oldSigPath, newSigPath)
     deleteIfExists(oldPath)
     deleteIfExists(oldSigPath)
+    ()
   }
 
 }

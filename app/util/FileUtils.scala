@@ -32,6 +32,7 @@ object FileUtils {
   def deleteDirectory(dir: Path): Unit = {
     if (Files.exists(dir)) {
       Files.walkFileTree(dir, DeleteFileVisitor)
+      ()
     } else {
       Logger.debug(s"Tried to remove directory that doesn't exist: $dir")
     }
@@ -45,8 +46,9 @@ object FileUtils {
   def cleanDirectory(dir: Path): Unit = {
     if (Files.exists(dir)) {
       Files.walkFileTree(dir, new CleanFileVisitor(dir))
+      ()
     } else {
-      Logger.debug(s"Tried to remove directory that doesn't exist: $dir")
+      Logger.debug(s"Tried to clean directory that doesn't exist: $dir")
     }
   }
 

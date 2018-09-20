@@ -15,16 +15,14 @@ import ore.permission.role.Trust
 /**
   * Handles and keeps track of [[User]] "memberships" for an [[Model]].
   */
-trait MembershipDossier {
+abstract class MembershipDossier[ModelType <: Model](model: ModelType) {
 
-  type ModelType <: Model
   type RoleType <: RoleModel
   type MemberType <: Member[RoleType]
   type MembersTable <: AssociativeTable
 
-  val model: ModelType
-  val roleClass: Class[RoleType]
-  val membersTableClass: Class[MembersTable]
+  def roleClass: Class[RoleType]
+  def membersTableClass: Class[MembersTable]
 
   implicit def convertModel(model: ModelType): this.model.M = model.asInstanceOf[this.model.M]
 
