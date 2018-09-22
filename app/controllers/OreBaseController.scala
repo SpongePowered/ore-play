@@ -75,7 +75,9 @@ abstract class OreBaseController(
   def getVersion(project: Project, versionString: String)(
       implicit request: OreRequest[_]
   ): EitherT[Future, Result, Version] =
-    project.versions.find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects))).toRight(notFound)
+    project.versions
+      .find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
+      .toRight(notFound)
 
   /**
     * Gets a version with the specified author, project slug and version string

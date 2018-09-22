@@ -31,8 +31,8 @@ case class OrganizationRole(
   override type M = OrganizationRole
   override type T = OrganizationRoleTable
 
-  def this(userId: ObjectReference, roleType: RoleType) =
-    this(id = ObjectId.Uninitialized, userId = userId, roleType = roleType)
+  def this(userId: ObjectReference, organizationId: ObjectReference, roleType: RoleType) =
+    this(id = ObjectId.Uninitialized, userId = userId, organizationId = organizationId, roleType = roleType)
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model                          = this.copy(id = id, createdAt = theTime)

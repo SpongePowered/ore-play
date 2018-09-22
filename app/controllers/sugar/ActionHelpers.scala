@@ -12,9 +12,9 @@ import controllers.sugar
 import controllers.sugar.ActionHelpers.LikeFuture
 import controllers.sugar.Requests.OreRequest
 
-import cats.{Functor, Monad}
 import cats.data.{EitherT, OptionT}
-import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+import cats.{Functor, Monad}
+import com.google.common.base.Preconditions.checkArgument
 
 /**
   * A helper class for some common functions of controllers.
@@ -73,7 +73,9 @@ trait ActionHelpers {
     def asyncEitherT[F[_]: LikeFuture: Functor](fr: R[B] => EitherT[F, Result, Result]): Action[B] =
       action.async(r => LikeFuture.toFuture(fr(r).merge))
 
-    def asyncEitherT[F[_]: LikeFuture: Functor, A](bodyParser: BodyParser[A])(fr: R[A] => EitherT[F, Result, Result]): Action[A] =
+    def asyncEitherT[F[_]: LikeFuture: Functor, A](
+        bodyParser: BodyParser[A]
+    )(fr: R[A] => EitherT[F, Result, Result]): Action[A] =
       action.async(bodyParser)(r => LikeFuture.toFuture(fr(r).merge))
   }
 }

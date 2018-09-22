@@ -60,7 +60,7 @@ trait Hideable extends Model { self =>
   def lastChangeRequest(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, ModelVisibilityChange] =
     OptionT(
       visibilityChanges.all
-        .map(_.toSeq.filter(cr => cr.visibility == Visibility.NeedsChanges.value).sortWith(byCreationDate).lastOption)
+        .map(_.toSeq.filter(cr => cr.visibility == Visibility.NeedsChanges).sortWith(byCreationDate).lastOption)
     )
 
 }

@@ -40,7 +40,7 @@ trait StatTracker {
       ec: ExecutionContext,
       auth: SpongeAuthApi
   ): Future[Result] = {
-    ProjectView.bindFromRequest(projectRequest).flatMap { statEntry =>
+    ProjectView.bindFromRequest.flatMap { statEntry =>
       this.viewSchema
         .record(statEntry)
         .flatMap {

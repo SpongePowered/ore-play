@@ -153,7 +153,7 @@ object ProjectData {
 
   def members(
       project: Project
-  )(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectRole, User)]] = {
+  )(implicit db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectRole, User)]] = {
     val query = for {
       r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
       u <- TableQuery[UserTable] if r.userId === u.id

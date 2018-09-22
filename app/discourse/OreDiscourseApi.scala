@@ -14,10 +14,10 @@ import ore.OreConfig
 import util.StringUtils._
 
 import akka.actor.Scheduler
+import cats.instances.future._
+import cats.syntax.all._
 import com.google.common.base.Preconditions.checkArgument
 import org.spongepowered.play.discourse.DiscourseApi
-import cats.syntax.all._
-import cats.instances.future._
 
 /**
   * An implementation of [[DiscourseApi]] suited to Ore's needs.
@@ -29,9 +29,6 @@ import cats.instances.future._
 trait OreDiscourseApi extends DiscourseApi {
 
   def isEnabled: Boolean
-
-  /** Username of admin account to move topics to secured categories */
-  def admin: String
 
   /** The category where project topics are posted to */
   def categoryDefault: Int

@@ -233,25 +233,25 @@ Base template for Project overview.
                                 </div>
                             }
 
-                            @if(request.hasUser && (request.data.globalPerm(ReviewFlags) || request.data.globalPerm(ViewLogs))) {
+                            @if(request.hasUser && (request.headerData.globalPerm(ReviewFlags) || request.headerData.globalPerm(ViewLogs))) {
                                 <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                     Admin actions
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-actions">
-                                    @if(request.data.globalPerm(ReviewFlags)) {
+                                    @if(request.headerData.globalPerm(ReviewFlags)) {
                                         <li><a href="@Projects.showFlags(p.project.ownerName, p.project.slug)">
                                             Flag history (@p.flagCount) </a></li>
                                     }
-                                    @if(request.data.globalPerm(ReviewFlags)) {
+                                    @if(request.headerData.globalPerm(ReviewFlags)) {
                                         <li><a href="@Projects.showNotes(p.project.ownerName, p.project.slug)">
                                             Staff notes (@p.noteCount) </a></li>
                                     }
-                                    @if(request.data.globalPerm(ViewLogs)) {
+                                    @if(request.headerData.globalPerm(ViewLogs)) {
                                         <li><a href="@appRoutes.showLog(None, None, Some(p.project.id.value), None, None, None, None)">
                                             User Action Logs</a></li>
                                     }
-                                    @if(request.data.globalPerm(ViewLogs)) {
+                                    @if(request.headerData.globalPerm(ViewLogs)) {
                                         <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
                                             System Logs (@p.projectLogSize) </a></li>
                                     }

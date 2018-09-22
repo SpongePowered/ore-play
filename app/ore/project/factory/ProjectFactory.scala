@@ -290,11 +290,10 @@ trait ProjectFactory {
       _          <- newProject.updateSettings(pending.settings)
       _ <- {
         // Invite members
-        val dossier: MembershipDossier {
+        val dossier: MembershipDossier[Project] {
           type MembersTable = ProjectMembersTable
           type MemberType   = ProjectMember
           type RoleTable    = ProjectRoleTable
-          type ModelType    = Project
           type RoleType     = ProjectRole
         }             = newProject.memberships
         val owner     = newProject.owner

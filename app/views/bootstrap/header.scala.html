@@ -58,7 +58,7 @@ The main header displayed on each layout.
         <!-- Right navbar -->
         @if(user) {
             <ul class="nav navbar-nav navbar-collapse collapse navbar-right">
-                @request.data.currentUser.map { cu =>
+                @request.headerData.currentUser.map { cu =>
 
                 <li class="dropdown nav-icon new-controls">
                     <a href="#" class="drop-down-toggle" data-toggle="dropdown">
@@ -83,7 +83,7 @@ The main header displayed on each layout.
                     <i class="icon fa fa-users"></i>
                 </li>
 
-                @if(request.data.globalPerm(ReviewProjects)) {
+                @if(request.headerData.globalPerm(ReviewProjects)) {
                     <li class="nav-icon staff-icon" @tooltip(messages("project.viewStaff"))>
                         <i class="icon fa fa-user-md"></i>
                     </li>
@@ -92,7 +92,7 @@ The main header displayed on each layout.
                     @* Show user controls *@
                 <li class="dropdown user-controls nav-icon">
                     <a href="#" class="drop-down-toggle user-toggle" data-toggle="dropdown">
-                        @if(request.data.hasNotice) {
+                        @if(request.headerData.hasNotice) {
                             <span class="unread"></span>
                         }
                         <img height="32" width="32" class="user-avatar" src="@cu.avatarUrl)" />
@@ -110,7 +110,7 @@ The main header displayed on each layout.
                             <a href="@routes.Users.showNotifications(None, None)">
                                 <span class="pull-left">
                                     @messages("notification.plural")
-                                    @if(request.data.hasUnreadNotifications) {
+                                    @if(request.headerData.hasUnreadNotifications) {
                                         <span class="unread"></span>
                                     }
                                 </span>
@@ -118,12 +118,12 @@ The main header displayed on each layout.
                             </a>
                         </li>
 
-                        @if(request.data.globalPerm(ReviewFlags)) {
+                        @if(request.headerData.globalPerm(ReviewFlags)) {
                             <li>
                                 <a href="@routes.Application.showFlags()">
                                     <span class="flags pull-left">
                                         @messages("project.flag.plural")
-                                        @if(request.data.unresolvedFlags) {
+                                        @if(request.headerData.unresolvedFlags) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -132,12 +132,12 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.globalPerm(ReviewVisibility)) {
+                        @if(request.headerData.globalPerm(ReviewVisibility)) {
                             <li>
                                 <a href="@routes.Application.showProjectVisibility()">
                                     <span class="flags pull-left">
                                         Project approvals
-                                        @if(request.data.hasProjectApprovals) {
+                                        @if(request.headerData.hasProjectApprovals) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -146,12 +146,12 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.globalPerm(ReviewProjects)) {
+                        @if(request.headerData.globalPerm(ReviewProjects)) {
                             <li>
                                 <a href="@routes.Application.showQueue()">
                                     <span class="pull-left">
                                         @messages("user.queue")
-                                        @if(request.data.hasReviewQueue) {
+                                        @if(request.headerData.hasReviewQueue) {
                                             <span class="unread"></span>
                                         }
                                     </span>
@@ -160,7 +160,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.globalPerm(ViewStats)) {
+                        @if(request.headerData.globalPerm(ViewStats)) {
                             <li>
                                 <a href="@routes.Application.showStats()">
                                     <span class="pull-left">
@@ -171,7 +171,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.globalPerm(ViewHealth)) {
+                        @if(request.headerData.globalPerm(ViewHealth)) {
                             <li>
                                 <a href="@routes.Application.showHealth()">
                                     <span class="pull-left">
@@ -182,7 +182,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.data.globalPerm(ViewLogs)) {
+                        @if(request.headerData.globalPerm(ViewLogs)) {
                             <li>
                                 <a href="@routes.Application.showLog(None, None, None, None, None, None, None)">
                                     <span class="pull-left">

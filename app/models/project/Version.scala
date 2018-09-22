@@ -188,7 +188,7 @@ case class Version(
           comment,
           None,
           None,
-          visibility.value
+          visibility
         )
       )
 

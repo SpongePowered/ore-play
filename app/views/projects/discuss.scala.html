@@ -26,7 +26,7 @@ Discussion page within Project overview.
     <div class="container">
         <div id='discourse-comments'></div>
         <div class="row">
-            @if(request.data.currentUser.isDefined) {
+            @if(request.headerData.currentUser.isDefined) {
                 <div class="col-md-8">
                     <div class="reply-box">
                         @utils.alert("error")
@@ -36,7 +36,7 @@ Discussion page within Project overview.
                                   <div class="pull-right push-down">
                                       <i class="minor">@messages("project.discuss.postAs")</i>
                                       <select name="poster" form="form-editor-save">
-                                          <option selected>@request.data.currentUser.get.name</option>
+                                          <option selected>@request.headerData.currentUser.get.name</option>
                                           <option>@p.projectOwner.name</option>
                                       </select>
                                   </div>

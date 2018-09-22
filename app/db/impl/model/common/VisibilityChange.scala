@@ -7,6 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.access.UserBase
 import db.impl.table.common.VisibilityChangeColumns
 import db.{Model, ObjectReference}
+import models.project.Visibility
 import models.user.User
 
 import cats.data.OptionT
@@ -21,7 +22,7 @@ trait VisibilityChange extends Model { self =>
   def comment: String
   def resolvedAt: Option[Timestamp]
   def resolvedBy: Option[ObjectReference]
-  def visibility: Int
+  def visibility: Visibility
 
   def created(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =
     OptionT.fromOption[Future](createdBy).flatMap(userBase.get(_))

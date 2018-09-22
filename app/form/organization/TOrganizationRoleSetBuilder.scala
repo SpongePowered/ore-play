@@ -10,6 +10,7 @@ import ore.permission.role.RoleType
   */
 trait TOrganizationRoleSetBuilder extends RoleSetBuilder[OrganizationRole] {
 
-  override def newRole(userId: ObjectReference, role: RoleType): OrganizationRole = new OrganizationRole(userId, role)
+  override def newRole(userId: ObjectReference, role: RoleType): OrganizationRole =
+    new OrganizationRole(userId, -1L, role) //orgId set elsewhere
 
 }

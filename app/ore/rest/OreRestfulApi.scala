@@ -432,7 +432,7 @@ trait OreRestfulApi extends OreWrites {
     * @param tagId The ID of the Tag Color
     * @return The Tag Color
     */
-  def getTagColor(tagId: Int): Option[JsValue] = TagColor.withValueOpt(tagId).map(toJson)
+  def getTagColor(tagId: Int): Option[JsValue] = TagColor.withValueOpt(tagId).map(toJson(_)(tagColorWrites))
 }
 
 class OreRestfulServer @Inject()(val service: ModelService, val config: OreConfig) extends OreRestfulApi

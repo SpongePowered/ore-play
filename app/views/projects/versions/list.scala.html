@@ -30,7 +30,7 @@ Versions page within Project overview.
     TOTAL_VERSIONS = @versionCount;
     TEXT_NOT_APPROVED = '@messages("version.download.confirm.reviewedChannel")';
     TEXT_NOT_APPROVED_CHANNEL = '@messages("version.download.confirm.nonReviewedChannel")';
-    SHOW_HIDDEN = @request.data.globalPerm(ReviewProjects);
+    SHOW_HIDDEN = @request.headerData.globalPerm(ReviewProjects);
     </script>
 
     <div class="container version-container">

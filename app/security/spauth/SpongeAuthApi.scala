@@ -7,8 +7,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.Configuration
-import play.api.i18n.Lang
-import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
@@ -44,13 +42,12 @@ trait SpongeAuthApi {
     */
   def createDummyUser(username: String, email: String)(
       implicit ec: ExecutionContext
-  ): EitherT[Future, String, SpongeUser] = doCreateUser(username, email, None, dummy = true)
+  ): EitherT[Future, String, SpongeUser] = doCreateUser(username, email, None)
 
   private def doCreateUser(
       username: String,
       email: String,
       password: Option[String],
-      dummy: Boolean = false
   )(implicit ec: ExecutionContext): EitherT[Future, String, SpongeUser] = {
     checkNotNull(username, "null username", "")
     checkNotNull(email, "null email", "")
@@ -59,7 +56,7 @@ trait SpongeAuthApi {
       "username" -> Seq(username),
       "email"    -> Seq(email),
       "verified" -> Seq(false.toString),
-      "dummy"    -> Seq(dummy.toString)
+      "dummy"    -> Seq(true.toString)
     )
 
     val withPassword = password.fold(params)(pass => params + ("password" -> Seq(pass)))

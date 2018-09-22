@@ -9,8 +9,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, AnyContent, Result}
 
-import controllers.sugar.Requests.AuthRequest
 import controllers.sugar.Bakery
+import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
 import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
@@ -231,17 +231,18 @@ final class Reviews @Inject()(forms: OreForms)(
   }
 
   def addMessage(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
-      for {
-        version      <- getProjectVersion(author, slug, versionString)
-        recentReview <- version.mostRecentUnfinishedReview.toRight(Ok("Review"))
-        currentUser  <- users.current.toRight(Ok("Review"))
-        _ <- {
-          if (recentReview.userId == currentUser.userId) {
-            EitherT.right[Result](recentReview.addMessage(Message(request.body.trim)))
-          } else EitherT.rightT[Future, Result](0)
-        }
-      } yield Ok("Review")
+    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT(parse.form(forms.ReviewDescription)) {
+      implicit request =>
+        for {
+          version      <- getProjectVersion(author, slug, versionString)
+          recentReview <- version.mostRecentUnfinishedReview.toRight(Ok("Review"))
+          currentUser  <- users.current.toRight(Ok("Review"))
+          _ <- {
+            if (recentReview.userId == currentUser.userId) {
+              EitherT.right[Result](recentReview.addMessage(Message(request.body.trim)))
+            } else EitherT.rightT[Future, Result](0)
+          }
+        } yield Ok("Review")
     }
   }
 

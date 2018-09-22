@@ -15,7 +15,7 @@ import ore.permission.role.Trust
 /**
   * Handles and keeps track of [[User]] "memberships" for an [[Model]].
   */
-abstract class MembershipDossier[ModelType <: Model](model: ModelType) {
+abstract class MembershipDossier[ModelType <: Model](val model: ModelType) {
 
   type RoleType <: RoleModel
   type MemberType <: Member[RoleType]

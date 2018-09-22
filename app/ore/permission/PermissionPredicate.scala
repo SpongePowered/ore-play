@@ -16,9 +16,11 @@ case class PermissionPredicate(user: User) {
 
   def apply(p: Permission): AndThen = AndThen(user, p)
 
-  def asMap(trust: Trust)(perms: Permission*): Map[Permission, Boolean] = perms.map(p => p -> apply(p).withTrust(trust)).toMap
+  def asMap(trust: Trust)(perms: Permission*): Map[Permission, Boolean] =
+    perms.map(p => p -> apply(p).withTrust(trust)).toMap
 
-  def asMap(trust: Option[Trust])(perms: Permission*): Map[Permission, Boolean] = perms.map(p => p -> apply(p).withTrust(trust)).toMap
+  def asMap(trust: Option[Trust])(perms: Permission*): Map[Permission, Boolean] =
+    perms.map(p => p -> apply(p).withTrust(trust)).toMap
 
   protected case class AndThen(user: User, p: Permission) {
     def withTrust(trust: Trust): Boolean =
@@ -28,7 +30,7 @@ case class PermissionPredicate(user: User) {
       else p.trust <= trust
 
     def withTrust(trust: Option[Trust]): Boolean = trust match {
-      case None => false
+      case None        => false
       case Some(value) => withTrust(value)
     }
 

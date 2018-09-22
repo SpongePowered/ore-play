@@ -20,11 +20,10 @@ object ScopedOrganizationData {
   def of[A](currentUser: Option[User], orga: Organization)(
       implicit ec: ExecutionContext,
       service: ModelService
-  ): Future[ScopedOrganizationData] = {
+  ): Future[ScopedOrganizationData] =
     currentUser.fold(Future.successful(noScope)) { user =>
       user.trustIn(orga).map(trust => ScopedOrganizationData(user.can.asMap(trust)(EditSettings)))
     }
-  }
 
   def of[A](currentUser: Option[User], orga: Option[Organization])(
       implicit ec: ExecutionContext,

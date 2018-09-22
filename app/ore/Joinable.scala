@@ -2,7 +2,7 @@ package ore
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{ModelService, ObjectReference}
+import db.{Model, ModelService, ObjectReference}
 import models.user.role.RoleModel
 import ore.permission.scope.ScopeSubject
 import ore.user.{Member, MembershipDossier}
@@ -10,7 +10,7 @@ import ore.user.{Member, MembershipDossier}
 /**
   * Represents something with a [[MembershipDossier]].
   */
-trait Joinable[M <: Member[_ <: RoleModel], Self] extends ScopeSubject {
+trait Joinable[M <: Member[_ <: RoleModel], Self <: Model] extends ScopeSubject {
 
   /**
     * Returns the owner of this object.

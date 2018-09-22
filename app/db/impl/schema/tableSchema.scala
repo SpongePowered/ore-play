@@ -26,8 +26,8 @@ import models.user.{
 }
 import ore.Color
 import ore.permission.role.RoleType
-import ore.project.{Category, FlagReason}
 import ore.project.io.DownloadType
+import ore.project.{Category, FlagReason}
 import ore.rest.ProjectApiKeyType
 import ore.user.Prompt
 import ore.user.notification.NotificationType
@@ -273,7 +273,7 @@ class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag
 
   override def * = {
     val convertedUnapply = convertUnapply(DownloadWarning.unapply)
-    (id.?, createdAt.?, expiration, token, versionId, address, isConfirmed, downloadId) <> (convertApply(
+    (id.?, createdAt.?, expiration, token, versionId, address, isConfirmed, downloadId.?) <> (convertApply(
       DownloadWarning.apply _
     ).tupled, convertedUnapply)
   }

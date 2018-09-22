@@ -39,14 +39,13 @@ object OrganizationData {
       service: ModelService
   ): Future[OrganizationData] =
     for {
-      role         <- orga.owner.headRole
       members      <- orga.memberships.members
       memberRoles  <- Future.traverse(members)(_.headRole)
       memberUser   <- Future.traverse(memberRoles)(_.user)
       projectRoles <- db.run(queryProjectRoles(orga.id.value).result)
     } yield {
       val members = memberRoles.zip(memberUser)
-      OrganizationData(orga, role, members.toSeq, projectRoles)
+      OrganizationData(orga, members.toSeq, projectRoles)
     }
 
   private def queryProjectRoles(userId: ObjectReference) =

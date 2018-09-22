@@ -36,11 +36,11 @@ class SpongeForums @Inject()(
   override val url: String       = this.conf.get[String]("baseUrl")
   override val baseUrl: String   = this.config.app.get[String]("baseUrl")
 
-  override val categoryDefault: Int                        = this.conf.get[Int]("categoryDefault")
-  override val categoryDeleted: Int                        = this.conf.get[Int]("categoryDeleted")
-  override val topicTemplatePath: Path                     = this.env.conf.resolve("discourse/project_topic.md")
-  override val versionReleasePostTemplatePath: Path        = this.env.conf.resolve("discourse/version_post.md")
-  override val scheduler: Scheduler                        = this.actorSystem.scheduler
-  override val retryRate: FiniteDuration                   = this.conf.get[FiniteDuration]("retryRate")
+  override val categoryDefault: Int                 = this.conf.get[Int]("categoryDefault")
+  override val categoryDeleted: Int                 = this.conf.get[Int]("categoryDeleted")
+  override val topicTemplatePath: Path              = this.env.conf.resolve("discourse/project_topic.md")
+  override val versionReleasePostTemplatePath: Path = this.env.conf.resolve("discourse/version_post.md")
+  override val scheduler: Scheduler                 = this.actorSystem.scheduler
+  override val retryRate: FiniteDuration            = this.conf.get[FiniteDuration]("retryRate")
 
 }

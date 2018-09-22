@@ -23,7 +23,7 @@ import slick.util.ConstArray
 /**
   * Represents a service that creates, deletes, and manipulates Models.
   */
-abstract class ModelService(driver: JdbcProfile) {
+abstract class ModelService(val driver: JdbcProfile) {
   import driver.api._
 
   /** All registered models. */

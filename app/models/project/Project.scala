@@ -260,7 +260,7 @@ case class Project(
           comment,
           None,
           None,
-          visibility.value
+          visibility
         )
       )
 

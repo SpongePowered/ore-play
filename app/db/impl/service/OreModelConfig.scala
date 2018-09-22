@@ -14,7 +14,8 @@ import ore.{OreConfig, OreEnv}
 
 import slick.jdbc.JdbcProfile
 
-abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfig) extends OreDBOs(driver, env, config) {
+abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfig)
+    extends OreDBOs(driver, env, config) {
 
   val projectWatchers = new ModelAssociation[ProjectWatchersTable](
     this,

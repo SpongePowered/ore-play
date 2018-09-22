@@ -37,7 +37,7 @@
                             </div>
                         }
 
-                        @users.invite.form(owner = request.data.currentUser.get, roleClass = classOf[OrganizationRole])
+                        @users.invite.form(owner = request.headerData.currentUser.get, roleClass = classOf[OrganizationRole])
 
                         <button title="Continue" type="submit" name="create" form="form-continue"
                                 value="@messages("general.continue")"

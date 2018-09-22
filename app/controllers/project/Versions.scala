@@ -16,11 +16,11 @@ import play.api.mvc.{Action, AnyContent, Request, Result}
 import play.filters.csrf.CSRF
 
 import controllers.OreBaseController
+import controllers.sugar.Bakery
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
-import controllers.sugar.{Bakery, Requests}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
-import db.{ModelFilter, ModelService, ObjectReference}
+import db.{ModelService, ObjectReference}
 import form.OreForms
 import models.project._
 import models.user.{LoggedAction, UserActionLogger}
@@ -619,7 +619,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               expiration = expiration,
               token = token,
               versionId = version.id.value,
-              address = InetString(StatTracker.remoteAddress)
+              address = InetString(StatTracker.remoteAddress),
+              downloadId = None
             )
           )
 

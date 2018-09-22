@@ -7,7 +7,7 @@ import play.twirl.api.Html
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.VersionVisibilityChangeTable
 import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
-import models.project.Page
+import models.project.{Page, Visibility}
 import ore.OreConfig
 
 case class VersionVisibilityChange(
@@ -18,7 +18,7 @@ case class VersionVisibilityChange(
     comment: String,
     resolvedAt: Option[Timestamp] = None,
     resolvedBy: Option[ObjectReference] = None,
-    visibility: Int = 1
+    visibility: Visibility = Visibility.New
 ) extends Model
     with VisibilityChange {
 
