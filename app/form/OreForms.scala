@@ -73,19 +73,13 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * @return Constraint
     */
   def ownerIdInList(allowedIds: Seq[ObjectReference]): Constraint[Option[ObjectReference]] =
-    Constraint("constraints.check")({ ownerId =>
-      var errors: Seq[ValidationError] = Seq()
-      if (ownerId.isDefined) {
-        if (!allowedIds.contains(ownerId.get)) {
-          errors = Seq(ValidationError("error.plugin"))
-        }
-      }
-      if (errors.isEmpty) {
-        Valid
-      } else {
-        Invalid(errors)
-      }
-    })
+    Constraint("constraints.check") { ownerId =>
+      val errors =
+        if (ownerId.isDefined && !allowedIds.contains(ownerId.get)) Seq(ValidationError("error.plugin"))
+        else Nil
+      if (errors.isEmpty) Valid
+      else Invalid(errors)
+    }
 
   /**
     * Submits settings changes for a Project.

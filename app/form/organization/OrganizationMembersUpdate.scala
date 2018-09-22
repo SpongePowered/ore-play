@@ -23,8 +23,8 @@ import cats.data.NonEmptyList
   * @param roleUps  Old roles
   */
 case class OrganizationMembersUpdate(
-    override val users: List[ObjectReference],
-    override val roles: List[String],
+    users: List[ObjectReference],
+    roles: List[String],
     userUps: List[String],
     roleUps: List[String]
 ) extends TOrganizationRoleSetBuilder {
@@ -39,14 +39,12 @@ case class OrganizationMembersUpdate(
       throw new RuntimeException("tried to update members on undefined organization")
 
     // Add new roles
-    val dossier: MembershipDossier {
+    val dossier: MembershipDossier[Organization] {
       type MembersTable = OrganizationMembersTable
 
       type MemberType = OrganizationMember
 
       type RoleTable = OrganizationRoleTable
-
-      type ModelType = Organization
 
       type RoleType = OrganizationRole
     }         = organization.memberships

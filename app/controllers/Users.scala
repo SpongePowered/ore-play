@@ -15,7 +15,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.{ProjectTableMain, VersionTable}
 import db.{ModelService, ObjectReference}
-import form.OreForms
+import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
 import models.user.{LoggedAction, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
@@ -57,10 +57,9 @@ class Users @Inject()(
     *
     * @return Logged in page
     */
-  def signUp() = Action { implicit request =>
+  def signUp(): Action[AnyContent] = Action.async { implicit request =>
     val nonce = SingleSignOnConsumer.nonce
-    this.signOns.add(SignOn(nonce = nonce))
-    redirectToSso(this.sso.getSignupUrl(this.baseUrl + "/login", nonce))
+    this.signOns.add(SignOn(nonce = nonce)).as(redirectToSso(this.sso.getSignupUrl(this.baseUrl + "/login", nonce)))
   }
 
   /**
@@ -75,12 +74,11 @@ class Users @Inject()(
       if (this.fakeUser.isEnabled) {
         // Log in as fake user (debug only)
         this.config.checkDebug()
-        users.getOrCreate(this.fakeUser)
-        this.redirectBack(returnPath.getOrElse(request.path), this.fakeUser)
+        users.getOrCreate(this.fakeUser) *>
+          this.redirectBack(returnPath.getOrElse(request.path), this.fakeUser)
       } else if (sso.isEmpty || sig.isEmpty) {
         val nonce = SingleSignOnConsumer.nonce
-        this.signOns.add(SignOn(nonce = nonce))
-        Future.successful(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
+        this.signOns.add(SignOn(nonce = nonce)).as(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
       } else {
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
@@ -104,10 +102,11 @@ class Users @Inject()(
     * @param returnPath Verified action to perform
     * @return           Redirect to verification
     */
-  def verify(returnPath: Option[String]) = Authenticated { implicit request =>
+  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.async { implicit request =>
     val nonce = SingleSignOnConsumer.nonce
-    this.signOns.add(SignOn(nonce = nonce))
-    redirectToSso(this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce))
+    this.signOns
+      .add(SignOn(nonce = nonce))
+      .as(redirectToSso(this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)))
   }
 
   private def redirectToSso(url: String): Result =
@@ -146,9 +145,11 @@ class Users @Inject()(
       .semiflatMap { user =>
         for {
           // TODO include orga projects?
-          projectSeq <- service.DB.db.run(queryUserProjects(user).drop(offset).take(pageSize).result)
-          starred    <- user.starred()
-          orga       <- getOrga(username).value
+          (projectSeq, starred, orga) <- (
+            service.doAction(queryUserProjects(user).drop(offset).take(pageSize).result),
+            user.starred(),
+            getOrga(username).value
+          ).tupled
           (tagsSeq, userData, starredRv, orgaData, scopedOrgaData) <- (
             Future.sequence(projectSeq.map(_._2.tags)),
             getUserData(request, username).value,
@@ -158,8 +159,7 @@ class Users @Inject()(
           ).tupled
         } yield {
           val data = projectSeq.zip(tagsSeq).map {
-            case ((p, v), tags) =>
-              (p, user, v, tags)
+            case ((p, v), tags) => (p, user, v, tags)
           }
           val starredData = starred.zip(starredRv)
           Ok(
@@ -176,29 +176,16 @@ class Users @Inject()(
       .getOrElse(notFound)
   }
 
-  private def queryUserProjects(user: User) = {
+  private def queryUserProjects(user: User) =
     queryProjectRV
-      .filter {
-        case (p, _) =>
-          p.userId === user.id.value
-      }
-      .sortBy {
-        case (p, _) =>
-          (p.stars.desc, p.name.asc)
-      }
-  }
+      .filter { case (p, _) => p.userId === user.id.value }
+      .sortBy { case (p, _) => (p.stars.desc, p.name.asc) }
 
-  private def queryProjectRV = {
-    val tableProject = TableQuery[ProjectTableMain]
-    val tableVersion = TableQuery[VersionTable]
-
+  private def queryProjectRV =
     for {
-      p <- tableProject
-      v <- tableVersion if p.recommendedVersionId === v.id
-    } yield {
-      (p, v)
-    }
-  }
+      p <- TableQuery[ProjectTableMain]
+      v <- TableQuery[VersionTable] if p.recommendedVersionId === v.id
+    } yield (p, v)
 
   /**
     * Submits a change to the specified user's tagline.
@@ -206,28 +193,27 @@ class Users @Inject()(
     * @param username   User to update
     * @return           View of user page
     */
-  def saveTagline(username: String): Action[AnyContent] = UserAction(username).async { implicit request =>
-    val maxLen = this.config.users.get[Int]("max-tagline-len")
+  def saveTagline(username: String): Action[String] =
+    UserAction(username).asyncEitherT(parse.form(forms.UserTagline)) { implicit request =>
+      val maxLen = this.config.users.get[Int]("max-tagline-len")
 
-    val res = for {
-      user    <- users.withName(username).toRight(NotFound)
-      tagline <- bindFormEitherT[Future](this.forms.UserTagline)(_ => BadRequest)
-      res <- {
-        if (tagline.length > maxLen)
-          EitherT.rightT[Future, Result](
-            Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen))
-          )
-        else {
-          val log = UserActionLogger
-            .log(request, LoggedAction.UserTaglineChanged, user.id.value, tagline, user.tagline.getOrElse("null"))
-          val insert = service.update(user.copy(tagline = Some(tagline)))
-          EitherT.right[Result](log *> insert).map(_ => Redirect(ShowUser(user)))
+      for {
+        user <- users.withName(username).toRight(NotFound)
+        res <- {
+          val tagline = request.body
+          if (tagline.length > maxLen)
+            EitherT.rightT[Future, Result](
+              Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen))
+            )
+          else {
+            val log = UserActionLogger
+              .log(request, LoggedAction.UserTaglineChanged, user.id.value, tagline, user.tagline.getOrElse("null"))
+            val insert = service.update(user.copy(tagline = Some(tagline)))
+            EitherT.right[Result]((log *> insert).as(Redirect(ShowUser(user))))
+          }
         }
-      }
-    } yield res
-
-    res.merge
-  }
+      } yield res
+    }
 
   /**
     * Attempts to save a submitted PGP Public Key to the specified User
@@ -236,30 +222,27 @@ class Users @Inject()(
     * @param username User to save key to
     * @return JSON response
     */
-  def savePgpPublicKey(username: String): Action[AnyContent] = UserAction(username).async { implicit request =>
-    this.forms.UserPgpPubKey.bindFromRequest.fold(
-      hasErrors => Future.successful(Redirect(ShowUser(username)).withFormErrors(hasErrors.errors)),
-      keySubmission => {
-        val keyInfo = keySubmission.info
+  def savePgpPublicKey(username: String): Action[PGPPublicKeySubmission] =
+    UserAction(username).async(parse.form(forms.UserPgpPubKey, onErrors = FormError(ShowUser(username)))) {
+      implicit request =>
+        val keyInfo = request.body.info
         val user    = request.user
 
         // Send email notification
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
-        UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id.value, "", "")
+        val log = UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id.value, "", "")
 
-        service
-          .update(
-            user.copy(
-              pgpPubKey = Some(keyInfo.raw),
-              lastPgpPubKeyUpdate =
-                if (user.lastPgpPubKeyUpdate.isDefined) Some(service.theTime)
-                else user.lastPgpPubKeyUpdate
-            )
+        val update = service.update(
+          user.copy(
+            pgpPubKey = Some(keyInfo.raw),
+            lastPgpPubKeyUpdate =
+              if (user.lastPgpPubKeyUpdate.isDefined) Some(service.theTime)
+              else user.lastPgpPubKeyUpdate
           )
-          .as(Redirect(ShowUser(username)).flashing("pgp-updated" -> "true"))
-      }
-    )
-  }
+        )
+
+        (log *> update).as(Redirect(ShowUser(username)).flashing("pgp-updated" -> "true"))
+    }
 
   /**
     * Deletes the specified [[User]]'s PGP public key if it exists.
@@ -300,9 +283,7 @@ class Users @Inject()(
       if (!locked)
         this.mailer.push(this.emails.create(user, this.emails.AccountUnlocked))
       service
-        .update(
-          user.copy(isLocked = locked)
-        )
+        .update(user.copy(isLocked = locked))
         .as(Redirect(ShowUser(username)))
     }
   }
@@ -323,7 +304,7 @@ class Users @Inject()(
     * Shows a list of [[models.user.User]]s that have Ore staff roles.
     */
   def showStaff(sort: Option[String], page: Option[Int]): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
       val ordering = sort.getOrElse(UserOrdering.Role)
       val p        = page.getOrElse(1)
       users.getStaff(ordering, p).map { u =>
@@ -350,13 +331,8 @@ class Users @Inject()(
         .getOrElse(InviteFilter.All)
 
       val notificationsFut =
-        nFilter(user.notifications).flatMap(l => Future.sequence(l.map(notif => notif.origin.map((notif, _)))))
-      val invitesFut = iFilter(user).flatMap(
-        invites =>
-          Future.sequence(invites.map { invite =>
-            invite.subject.map((invite, _))
-          })
-      )
+        nFilter(user.notifications).flatMap(l => Future.traverse(l)(notif => notif.origin.tupleLeft(notif)))
+      val invitesFut = iFilter(user).flatMap(i => Future.traverse(i)(invite => invite.subject.tupleLeft(invite)))
 
       (notificationsFut, invitesFut).mapN { (notifications, invites) =>
         Ok(views.users.notifications(notifications, invites, nFilter, iFilter))
@@ -373,9 +349,7 @@ class Users @Inject()(
   def markNotificationRead(id: ObjectReference): Action[AnyContent] = Authenticated.async { implicit request =>
     request.user.notifications
       .get(id)
-      .semiflatMap { notification =>
-        service.update(notification.copy(isRead = true)).as(Ok)
-      }
+      .semiflatMap(notification => service.update(notification.copy(isRead = true)).as(Ok))
       .getOrElse(notFound)
   }
 

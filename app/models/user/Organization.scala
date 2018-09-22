@@ -45,19 +45,16 @@ case class Organization(
   /**
     * Contains all information for [[User]] memberships.
     */
-  override def memberships(implicit service: ModelService): MembershipDossier {
+  override def memberships(implicit service: ModelService): MembershipDossier[Organization] {
     type MembersTable = OrganizationMembersTable
 
     type MemberType = OrganizationMember
 
     type RoleTable = OrganizationRoleTable
 
-    type ModelType = Organization
-
     type RoleType = OrganizationRole
-  } = new MembershipDossier {
+  } = new MembershipDossier(this) {
 
-    type ModelType    = Organization
     type RoleType     = OrganizationRole
     type RoleTable    = OrganizationRoleTable
     type MembersTable = OrganizationMembersTable
@@ -65,10 +62,9 @@ case class Organization(
 
     val membersTableClass: Class[MembersTable] = classOf[OrganizationMembersTable]
     val roleClass: Class[RoleType]             = classOf[OrganizationRole]
-    val model: ModelType                       = Organization.this
 
     def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): OrganizationMember =
-      new OrganizationMember(this.model, userId)
+      new OrganizationMember(Organization.this, userId)
 
     def clearRoles(user: User): Future[Int] =
       this.roleAccess.removeAll({ s =>

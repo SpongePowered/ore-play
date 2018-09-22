@@ -6,9 +6,9 @@ import ore.project.ProjectOwned
 import ore.rest.ProjectApiKeyType
 
 case class ProjectApiKey(
-    override val id: ObjectId = ObjectId.Uninitialized,
-    override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    override val projectId: ObjectReference,
+    id: ObjectId = ObjectId.Uninitialized,
+    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    projectId: ObjectReference,
     keyType: ProjectApiKeyType,
     value: String
 ) extends Model

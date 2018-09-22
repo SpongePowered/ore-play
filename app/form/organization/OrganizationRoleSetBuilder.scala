@@ -11,6 +11,6 @@ import models.user.role.OrganizationRole
   */
 case class OrganizationRoleSetBuilder(
     name: String,
-    override val users: List[ObjectReference],
-    override val roles: List[String]
+    users: List[ObjectReference],
+    roles: List[String]
 ) extends TOrganizationRoleSetBuilder

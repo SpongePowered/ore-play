@@ -10,6 +10,6 @@ import ore.permission.role.RoleType
   */
 trait TProjectRoleSetBuilder extends RoleSetBuilder[ProjectRole] {
 
-  override def newRole(userId: ObjectReference, role: RoleType) = new ProjectRole(userId, role, -1, false, true)
+  override def newRole(userId: ObjectReference, role: RoleType) = new ProjectRole(userId, role, -1L, false, true)
 
 }

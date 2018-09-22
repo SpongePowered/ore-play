@@ -8,5 +8,4 @@ import db.ObjectReference
   * @param users Users for result set
   * @param roles Roles for result set
   */
-case class ProjectRoleSetBuilder(override val users: List[ObjectReference], override val roles: List[String])
-    extends TProjectRoleSetBuilder
+case class ProjectRoleSetBuilder(users: List[ObjectReference], roles: List[String]) extends TProjectRoleSetBuilder

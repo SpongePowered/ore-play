@@ -6,6 +6,7 @@ import db.ObjectReference
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.VisibilityChange
 import db.table.ModelTable
+import models.project.Visibility
 
 trait VisibilityChangeColumns[M <: VisibilityChange] extends ModelTable[M] {
 
@@ -13,5 +14,5 @@ trait VisibilityChangeColumns[M <: VisibilityChange] extends ModelTable[M] {
   def comment    = column[String]("comment")
   def resolvedAt = column[Timestamp]("resolved_at")
   def resolvedBy = column[ObjectReference]("resolved_by")
-  def visibility = column[Int]("visibility")
+  def visibility = column[Visibility]("visibility")
 }

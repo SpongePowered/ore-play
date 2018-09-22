@@ -31,18 +31,13 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   implicit val self: ProjectBase = this
 
   def missingFile(implicit ec: ExecutionContext): Future[Seq[Version]] = {
-    val tableVersion = TableQuery[VersionTable]
-    val tableProject = TableQuery[ProjectTableMain]
-
     def allVersions =
       for {
-        v <- tableVersion
-        p <- tableProject if v.projectId === p.id
-      } yield {
-        (p.ownerName, p.name, v)
-      }
+        v <- TableQuery[VersionTable]
+        p <- TableQuery[ProjectTableMain] if v.projectId === p.id
+      } yield (p.ownerName, p.name, v)
 
-    service.DB.db.run(allVersions.result).map { versions =>
+    service.doAction(allVersions.result).map { versions =>
       versions
         .filter {
           case (ownerNamer, name, version) =>

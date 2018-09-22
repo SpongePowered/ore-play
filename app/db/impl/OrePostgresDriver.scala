@@ -15,6 +15,7 @@ import ore.user.notification.NotificationType
 import cats.data.{NonEmptyList => NEL}
 import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
+import com.github.tminglei.slickpg.window.PgWindowFuncSupport
 import enumeratum.values.SlickValueEnumSupport
 
 /**
@@ -24,7 +25,9 @@ trait OrePostgresDriver
     extends ExPostgresProfile
     with PgArraySupport
     with PgAggFuncSupport
+    with PgWindowFuncSupport
     with PgNetSupport
+    with PgJsonSupport
     with SlickValueEnumSupport {
 
   override val api: OreDriver.type = OreDriver
@@ -66,6 +69,8 @@ trait OrePostgresDriver
     implicit def nelArrayMapper[A](
         implicit base: BaseColumnType[List[A]]
     ): BaseColumnType[NEL[A]] = MappedJdbcType.base[NEL[A], List[A]](_.toList, NEL.fromListUnsafe)
+
+    val WindowFunctions: WindowFunctions = new WindowFunctions {}
   }
 
 }

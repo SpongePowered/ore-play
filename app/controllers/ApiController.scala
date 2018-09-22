@@ -105,7 +105,7 @@ final class ApiController @Inject()(
           case "v1" =>
             val projectId = request.data.project.id.value
             val res = for {
-              keyType <- bindFormOptionT[Future](this.forms.ProjectApiKeyCreate)
+              keyType <- forms.ProjectApiKeyCreate.bindOptionT[Future]
               if keyType == Deployment
               exists <- OptionT
                 .liftF(this.projectApiKeys.exists(k => k.projectId === projectId && k.keyType === keyType))
@@ -119,14 +119,16 @@ final class ApiController @Inject()(
                   )
                 )
               )
+              _ <- OptionT.liftF(
+                UserActionLogger.log(
+                  request.request,
+                  LoggedAction.ProjectSettingsChanged,
+                  projectId,
+                  s"${request.user.name} created a new ApiKey",
+                  ""
+                )
+              )
             } yield Created(Json.toJson(pak))
-            UserActionLogger.log(
-              request.request,
-              LoggedAction.ProjectSettingsChanged,
-              projectId,
-              s"${request.user.name} created a new ApiKey",
-              ""
-            )
             res.getOrElse(BadRequest)
           case _ => Future.successful(NotFound)
         }
@@ -137,19 +139,19 @@ final class ApiController @Inject()(
       version match {
         case "v1" =>
           val res = for {
-            key <- bindFormOptionT[Id](this.forms.ProjectApiKeyRevoke)
+            key <- forms.ProjectApiKeyRevoke.bindOptionT[Id]
             if key.projectId == request.data.project.id.value
-          } yield {
-            key.remove()
-            Ok
-          }
-          UserActionLogger.log(
-            request.request,
-            LoggedAction.ProjectSettingsChanged,
-            request.data.project.id.value,
-            s"${request.user.name} removed an ApiKey",
-            ""
-          )
+            _ <- OptionT.liftF(key.remove())
+            _ <- OptionT.liftF(
+              UserActionLogger.log(
+                request.request,
+                LoggedAction.ProjectSettingsChanged,
+                request.data.project.id.value,
+                s"${request.user.name} removed an ApiKey",
+                ""
+              )
+            )
+          } yield Ok
           res.getOrElse(BadRequest)
         case _ => NotFound
       }
@@ -227,8 +229,9 @@ final class ApiController @Inject()(
       version match {
         case "v1" =>
           val projectData = request.data
+          val project     = projectData.project
 
-          bindFormEitherT[Future](this.forms.VersionDeploy)(
+          forms.VersionDeploy.bindEitherT[Future](
             hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))
           ).flatMap { formData =>
             val apiKeyTable = TableQuery[ProjectApiKeyTable]
@@ -244,14 +247,14 @@ final class ApiController @Inject()(
             val compiled = Compiled(queryApiKey _)
 
             val apiKeyExists: Future[Boolean] =
-              this.service.DB.db.run(compiled((Deployment, formData.apiKey, projectData.project.id.value)).result)
+              this.service.doAction(compiled((Deployment, formData.apiKey, project.id.value)).result)
 
             EitherT
               .liftF(apiKeyExists)
               .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(identity)
-              .semiflatMap(_ => projectData.project.versions.exists(_.versionString === name))
+              .semiflatMap(_ => project.versions.exists(_.versionString === name))
               .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists)
-              .semiflatMap(_ => projectData.project.owner.user)
+              .semiflatMap(_ => project.owner.user)
               .semiflatMap(user => user.toMaybeOrganization.semiflatMap(_.owner.user).getOrElse(user))
               .flatMap { owner =>
                 val pluginUpload = this.factory
@@ -264,7 +267,7 @@ final class ApiController @Inject()(
                   //TODO: We should get rid of this try
                   try {
                     this.factory
-                      .processSubsequentPluginUpload(data, owner, projectData.project)
+                      .processSubsequentPluginUpload(data, owner, project)
                       .leftMap(err => BadRequest(error("upload", err)))
                   } catch {
                     case e: InvalidPluginFileException =>
@@ -286,10 +289,10 @@ final class ApiController @Inject()(
                 case (newVersion, channel, tags) =>
                   val update =
                     if (formData.recommended)
-                      service.update(projectData.project.copy(recommendedVersionId = Some(newVersion.id.value)))
+                      service.update(project.copy(recommendedVersionId = Some(newVersion.id.value)))
                     else Future.unit
 
-                  update.as(Created(api.writeVersion(newVersion, projectData.project, channel, None, tags)))
+                  update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
               }
           }.merge
         case _ => Future.successful(NotFound)
@@ -313,7 +316,7 @@ final class ApiController @Inject()(
     */
   def listUsers(version: String, limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
     version match {
-      case "v1" => this.api.getUserList(limit, offset).map(Ok(_))
+      case "v1" => this.api.getUserList(limit, offset).map(Ok.apply)
       case _    => Future.successful(NotFound)
     }
   }
@@ -367,7 +370,7 @@ final class ApiController @Inject()(
 
     Logger.debug("Sync Request received")
 
-    bindFormEitherT[Future](this.forms.SyncSso)(hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
+    forms.SyncSso.bindEitherT[Future](hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
       .ensure(BadRequest("API Key not valid"))(_._3 == confApiKey) //_3 is apiKey
       .ensure(BadRequest("Signature not matched"))(
         { case (ssoStr, sig, _) => CryptoUtils.hmac_sha256(confSecret, ssoStr.getBytes("UTF-8")) == sig }
