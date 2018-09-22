@@ -30,34 +30,25 @@ object ScopedProjectData {
           user.hasUnresolvedFlagFor(project),
           project.stars.contains(user),
           project.watchers.contains(user),
-          (user.can(EditPages) in project).map((EditPages, _)),
-          (user.can(EditSettings) in project).map((EditSettings, _)),
-          (user.can(EditChannels) in project).map((EditChannels, _)),
-          (user.can(EditVersions) in project).map((EditVersions, _)),
-          (user.can(UploadVersions) in project).map((UploadVersions, _)),
-          Future.sequence(Visibility.values.map(_.permission).map(p => (user.can(p) in project).map((p, _))))
+          user.trustIn(project),
         ).mapN {
           case (
               canPostAsOwnerOrga,
               uProjectFlags,
               starred,
               watching,
-              editPages,
-              editSettings,
-              editChannels,
-              editVersions,
-              uploadVersions,
-              visibilities
+              projectTrust
               ) =>
-            val perms = visibilities.toMap + editPages + editSettings + editChannels + editVersions + uploadVersions
-            ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, perms)
+            val perms = EditPages +: EditSettings +: EditChannels +: EditVersions +: UploadVersions +: Visibility.values
+              .map(_.permission)
+            val permMap = user.can.asMap(projectTrust)(perms: _*)
+            ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, permMap)
         }
       }
       .getOrElse(Future.successful(noScope))
   }
 
   val noScope = ScopedProjectData()
-
 }
 
 case class ScopedProjectData(

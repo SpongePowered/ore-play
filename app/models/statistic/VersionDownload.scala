@@ -56,10 +56,7 @@ object VersionDownload {
       users: UserBase,
       auth: SpongeAuthApi
   ): Future[VersionDownload] = {
-    checkNotNull(version, "null version", "")
     checkArgument(version.isDefined, "undefined version", "")
-    checkNotNull(request, "null request", "")
-    checkNotNull(users, "null user base", "")
     users.current.map(_.id.value).value.map { userId =>
       VersionDownload(
         modelId = version.id.value,

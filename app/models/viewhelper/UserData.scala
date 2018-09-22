@@ -38,15 +38,10 @@ case class UserData(
 
   def isCurrent: Boolean = currentUser.contains(user)
 
-  def pgpFormCall: Call = {
+  def pgpFormCall: Call =
     user.pgpPubKey
-      .map { _ =>
-        routes.Users.verify(Some(routes.Users.deletePgpPublicKey(user.name, None, None).path))
-      }
-      .getOrElse {
-        routes.Users.savePgpPublicKey(user.name)
-      }
-  }
+      .as(routes.Users.verify(Some(routes.Users.deletePgpPublicKey(user.name, None, None).path)))
+      .getOrElse(routes.Users.savePgpPublicKey(user.name))
 
   def pgpFormClass: String = user.pgpPubKey.as("pgp-delete").getOrElse("")
 
@@ -54,59 +49,36 @@ case class UserData(
 
 object UserData {
 
-  val noUserPerms: Map[Permission, Boolean] = Map(ViewActivity -> false, ReviewFlags -> false, ReviewProjects -> false)
-  val noOrgaPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
-
-  private def queryRoles(user: User) = {
-    val roleTable = TableQuery[OrganizationRoleTable]
-    val orgaTable = TableQuery[OrganizationTable]
-    val userTable = TableQuery[UserTable]
-
+  private def queryRoles(user: User) =
     for {
-      r  <- roleTable if r.userId === user.id.value
-      o  <- orgaTable if r.organizationId === o.id
-      u  <- userTable if o.id === u.id
-      uo <- userTable if o.userId === uo.id
-    } yield {
-      (o, u, r, uo) // Organization OrgaUser Role Owner
-    }
-
-  }
+      role    <- TableQuery[OrganizationRoleTable] if role.userId === user.id.value
+      org     <- TableQuery[OrganizationTable] if role.organizationId === org.id
+      orgUser <- TableQuery[UserTable] if org.id === orgUser.id
+      owner   <- TableQuery[UserTable] if org.userId === owner.id
+    } yield (org, orgUser, role, owner)
 
   def of[A](request: OreRequest[A], user: User)(
       implicit db: JdbcBackend#DatabaseDef,
       ec: ExecutionContext,
       service: ModelService
-  ): Future[UserData] = {
+  ): Future[UserData] =
     for {
       isOrga                 <- user.toMaybeOrganization.isDefined
       projectCount           <- user.projects.size
       (userPerms, orgaPerms) <- perms(request.currentUser)
       orgas                  <- db.run(queryRoles(user).result)
-    } yield {
-
-      UserData(request.data, user, isOrga, projectCount, orgas, userPerms, orgaPerms)
-    }
-  }
+    } yield UserData(request.headerData, user, isOrga, projectCount, orgas, userPerms, orgaPerms)
 
   def perms(currentUser: Option[User])(
       implicit ec: ExecutionContext,
       service: ModelService
   ): Future[(Map[Permission, Boolean], Map[Permission, Boolean])] = {
-    if (currentUser.isEmpty) Future.successful((Map.empty, Map.empty))
-    else {
-      val user              = currentUser.get
-      val viewActivityFut   = (user.can(ViewActivity) in user).map((ViewActivity, _))
-      val reviewFlagsFut    = (user.can(ReviewFlags) in user).map((ReviewFlags, _))
-      val reviewProjectsFut = (user.can(ReviewProjects) in user).map((ReviewProjects, _))
-      val editSettingsFut =
-        user.toMaybeOrganization.value.flatMap(orga => (user.can(EditSettings) in orga).map((EditSettings, _)))
+    currentUser.fold(Future.successful((Map.empty[Permission, Boolean], Map.empty[Permission, Boolean]))) { user =>
+      user.trustIn(user.scope).map2(user.toMaybeOrganization.semiflatMap(user.trustIn).value) { (userTrust, orgTrust) =>
+        val userPerms = user.can.asMap(userTrust)(ViewActivity, ReviewFlags, ReviewProjects)
+        val orgaPerms = user.can.asMap(orgTrust)(EditSettings)
 
-      (viewActivityFut, reviewFlagsFut, reviewProjectsFut, editSettingsFut).mapN {
-        case (viewActivity, reviewFlags, reviewProjects, editSettings) =>
-          val userPerms: Map[Permission, Boolean] = Seq(viewActivity, reviewFlags, reviewProjects).toMap
-          val orgaPerms: Map[Permission, Boolean] = Seq(editSettings).toMap
-          (userPerms, orgaPerms)
+        (userPerms, orgaPerms)
       }
     }
   }

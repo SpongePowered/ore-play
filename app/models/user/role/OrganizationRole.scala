@@ -22,7 +22,7 @@ case class OrganizationRole(
     id: ObjectId = ObjectId.Uninitialized,
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     userId: ObjectReference,
-    organizationId: ObjectReference = -1,
+    organizationId: ObjectReference,
     roleType: RoleType,
     isAccepted: Boolean = false
 ) extends RoleModel

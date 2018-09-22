@@ -36,7 +36,7 @@ case class DownloadWarning(
     versionId: ObjectReference,
     address: InetString,
     isConfirmed: Boolean = false,
-    downloadId: ObjectReference = -1
+    downloadId: Option[ObjectReference]
 ) extends Model
     with Expirable {
 
@@ -49,10 +49,7 @@ case class DownloadWarning(
     * @return Download
     */
   def download(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, UnsafeDownload] =
-    if (downloadId == -1)
-      OptionT.none[Future, UnsafeDownload]
-    else
-      service.access[UnsafeDownload](classOf[UnsafeDownload]).get(downloadId)
+    OptionT.fromOption[Future](downloadId).flatMap(service.access[UnsafeDownload](classOf[UnsafeDownload]).get)
 
   /**
     * Creates a cookie that should be given to the client.

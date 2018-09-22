@@ -125,9 +125,7 @@ case class Version(
     OptionT.fromOption[Future](this.reviewerId).flatMap(userBase.get)
 
   def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[Tag]] =
-    service.access(classOf[Tag]).filter(_.id.inSetBind(tagIds)).map { list =>
-      list.distinct.toList
-    }
+    service.access(classOf[Tag]).filter(_.id.inSetBind(tagIds)).map(_.distinct.toList)
 
   def isSpongePlugin(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
     tags.map(_.map(_.name).contains("Sponge"))
@@ -227,15 +225,12 @@ case class Version(
     */
   def exists(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = {
     if (this.projectId == -1) Future.successful(false)
-    else {
+    else
       for {
         hashExists <- this.schema.hashExists(this.projectId, this.hash)
         project    <- this.project
         pExists    <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
-      } yield {
-        hashExists && pExists
-      }
-    }
+      } yield hashExists && pExists
   }
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Version = this.copy(id = id, createdAt = theTime)

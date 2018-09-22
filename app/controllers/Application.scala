@@ -231,9 +231,7 @@ final class Application @Inject()(forms: OreForms)(
       perms <- Future.traverse(seq.map(_._2)) { project =>
         request.user
           .trustIn(project)
-          .map { trust =>
-            Visibility.values.map(_.permission).map(perm => perm -> request.user.can(perm).withTrust(trust)).toMap
-          }
+          .map(request.user.can.asMap(_)(Visibility.values.map(_.permission): _*))
       }
     } yield {
       val data = seq.zip(perms).map {

@@ -94,6 +94,10 @@ case class Project(
     with Joinable[ProjectMember, Project]
     with Visitable {
 
+  def this(pluginId: String, name: String, owner: String, ownerId: ObjectReference) = {
+    this(pluginId = pluginId, name = compact(name), slug = slugify(name), ownerName = owner, ownerId = ownerId)
+  }
+
   override type M                     = Project
   override type T                     = ProjectTable
   override type S                     = ProjectSchema
@@ -130,19 +134,12 @@ case class Project(
       * @return Trust of user
       */
     override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] =
-      service.DB.db
-        .run(Project.roleForTrustQuery((id.value, user.id.value)).result)
+      service
+        .doAction(Project.roleForTrustQuery((id.value, user.id.value)).result)
         .map(l => if (l.isEmpty) Default else l.map(_.trust).max)
 
     def clearRoles(user: User): Future[Int] =
-      this.roleAccess.removeAll({ s =>
-        (s.userId === user.id.value) && (s.projectId === id.value)
-      })
-
-  }
-
-  def this(pluginId: String, name: String, owner: String, ownerId: ObjectReference) = {
-    this(pluginId = pluginId, name = compact(name), slug = slugify(name), ownerName = owner, ownerId = ownerId)
+      this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.projectId === id.value))
   }
 
   def isOwner(user: User): Boolean = user.id.value == ownerId
@@ -522,12 +519,9 @@ object Note {
 object Project {
 
   private def queryRoleForTrust(projectId: Rep[ObjectReference], userId: Rep[ObjectReference]) = {
-    val memberTable = TableQuery[ProjectMembersTable]
-    val roleTable   = TableQuery[ProjectRoleTable]
-
     val q = for {
-      m <- memberTable if m.projectId === projectId && m.userId === userId
-      r <- roleTable if m.userId === r.userId && r.projectId === projectId
+      m <- TableQuery[ProjectMembersTable] if m.projectId === projectId && m.userId === userId
+      r <- TableQuery[ProjectRoleTable] if m.userId === r.userId && r.projectId === projectId
     } yield r.roleType
     q.to[Set]
   }

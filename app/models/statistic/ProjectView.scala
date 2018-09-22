@@ -53,10 +53,11 @@ object ProjectView {
     * @return         New ProjectView
     */
   def bindFromRequest(
+      implicit ec: ExecutionContext,
+      users: UserBase,
+      auth: SpongeAuthApi,
       request: ProjectRequest[_]
-  )(implicit ec: ExecutionContext, users: UserBase, auth: SpongeAuthApi): Future[ProjectView] = {
-    implicit val r: Requests.OreRequest[_] = request.request
-    checkNotNull(request, "null request", "")
+  ): Future[ProjectView] = {
     users.current.map(_.id.value).value.map { userId =>
       ProjectView(
         modelId = request.data.project.id.value,

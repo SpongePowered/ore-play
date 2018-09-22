@@ -11,19 +11,18 @@ import ore.user.Member
 trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M, T]] {
 
   def joinable: T
-  def ownerRole: R
   def members: Seq[(R, User)]
 
-  def roleClass: Class[_ <: Role] = ownerRole.getClass.asInstanceOf[Class[_ <: Role]]
+  def roleClass: Class[_ <: Role]
 
   def filteredMembers(implicit request: OreRequest[_]): Seq[(R, User)] = {
-    if (request.data.globalPerm(EditSettings) || // has EditSettings show all
-        request.currentUser.map(_.id.value).contains(joinable.ownerId) // Current User is owner
-        ) members
-    else {
+    val hasEditSettings = request.headerData.globalPerm(EditSettings)
+    val userIsOwner     = request.currentUser.map(_.id.value).contains(joinable.ownerId)
+    if (hasEditSettings || userIsOwner)
+      members
+    else
       members.filter {
         case (role, _) => role.isAccepted // project role is accepted
       }
-    }
   }
 }

@@ -14,10 +14,12 @@ import models.project._
 import models.user.User
 import models.user.role.ProjectRole
 import ore.OreConfig
+import ore.permission.role.Role
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
 
 import cats.instances.future._
+import cats.instances.option._
 import cats.syntax.all._
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
@@ -28,7 +30,6 @@ import slick.lifted.TableQuery
 case class ProjectData(
     joinable: Project,
     projectOwner: User,
-    ownerRole: ProjectRole,
     publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
     settings: ProjectSettings,
     members: Seq[(ProjectRole, User)],
@@ -49,6 +50,8 @@ case class ProjectData(
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
   def renderVisibilityChange(implicit config: OreConfig): Option[Html] = lastVisibilityChange.map(_.renderComment)
+
+  def roleClass: Class[_ <: Role] = classOf[ProjectRole]
 }
 
 object ProjectData {
@@ -60,10 +63,9 @@ object ProjectData {
       project: PendingProject
   ): ProjectData = {
 
-    val projectOwner = request.data.currentUser.get
+    val projectOwner = request.headerData.currentUser.get
 
     val settings                 = project.settings
-    val ownerRole                = null
     val versions                 = 0
     val members                  = Seq.empty
     val logSize                  = 0
@@ -71,10 +73,9 @@ object ProjectData {
     val lastVisibilityChangeUser = "-"
     val recommendedVersion       = None
 
-    val data = new ProjectData(
+    new ProjectData(
       project.underlying,
       projectOwner,
-      ownerRole,
       versions,
       settings,
       members,
@@ -85,8 +86,6 @@ object ProjectData {
       lastVisibilityChangeUser,
       recommendedVersion
     )
-
-    data
   }
 
   def of[A](project: Project)(
@@ -95,9 +94,9 @@ object ProjectData {
       service: ModelService
   ): Future[ProjectData] = {
     val flagsFut     = project.flags.all
-    val flagUsersFut = flagsFut.flatMap(flags => Future.sequence(flags.map(_.user)))
+    val flagUsersFut = flagsFut.flatMap(flags => Future.traverse(flags)(_.user))
     val flagResolvedFut =
-      flagsFut.flatMap(flags => Future.sequence(flags.map(flag => UserBase().get(flag.resolvedBy.getOrElse(-1)).value)))
+      flagsFut.flatMap(flags => Future.traverse(flags)(_.resolvedBy.flatTraverse(UserBase().get(_).value)))
 
     val lastVisibilityChangeFut = project.lastVisibilityChange.value
     val lastVisibilityChangeUserFut = lastVisibilityChangeFut.flatMap { lastVisibilityChange =>
@@ -108,7 +107,6 @@ object ProjectData {
     (
       project.settings,
       project.owner.user,
-      project.owner.headRole,
       project.versions.count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
       project.logger.flatMap(_.entries.size),
@@ -122,7 +120,6 @@ object ProjectData {
       case (
           settings,
           projectOwner,
-          ownerRole,
           versions,
           members,
           logSize,
@@ -135,14 +132,12 @@ object ProjectData {
           ) =>
         val noteCount = project.decodeNotes.size
         val flagData = flags.zip(flagUsers).zip(flagResolved).map {
-          case ((fl, user), resolved) =>
-            (fl, user.name, resolved.map(_.name))
+          case ((fl, user), resolved) => (fl, user.name, resolved.map(_.name))
         }
 
         new ProjectData(
           project,
           projectOwner,
-          ownerRole,
           versions,
           settings,
           members.sortBy(_._1.roleType.trust).reverse,
@@ -159,20 +154,11 @@ object ProjectData {
   def members(
       project: Project
   )(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectRole, User)]] = {
-    val tableUser = TableQuery[UserTable]
-    val tableRole = TableQuery[ProjectRoleTable]
-
     val query = for {
-      r <- tableRole if r.projectId === project.id.value
-      u <- tableUser if r.userId === u.id
-    } yield {
-      (r, u)
-    }
+      r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
+      u <- TableQuery[UserTable] if r.userId === u.id
+    } yield (r, u)
 
     db.run(query.result)
-      .map(_.map {
-        case (r, u) => (r, u)
-      })
   }
-
 }

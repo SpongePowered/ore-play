@@ -21,15 +21,8 @@ object ScopedOrganizationData {
       implicit ec: ExecutionContext,
       service: ModelService
   ): Future[ScopedOrganizationData] = {
-    if (currentUser.isEmpty) Future.successful(noScope)
-    else {
-      for {
-        editSettings <- (currentUser.get.can(EditSettings) in orga).map((EditSettings, _))
-      } yield {
-
-        val perms: Map[Permission, Boolean] = Seq(editSettings).toMap
-        ScopedOrganizationData(perms)
-      }
+    currentUser.fold(Future.successful(noScope)) { user =>
+      user.trustIn(orga).map(trust => ScopedOrganizationData(user.can.asMap(trust)(EditSettings)))
     }
   }
 

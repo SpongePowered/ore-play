@@ -27,8 +27,10 @@ case class VersionData(
     * Filters out platforms from the dependencies
     * @return filtered dependencies
     */
-  def filteredDependencies: Seq[(Dependency, Option[Project])] =
-    dependencies.filterNot(d => Platform.values.map(_.dependencyId).contains(d._1.pluginId))
+  def filteredDependencies: Seq[(Dependency, Option[Project])] = {
+    val platformIds = Platform.values.map(_.dependencyId)
+    dependencies.filterNot(d => platformIds.contains(d._1.pluginId))
+  }
 }
 
 object VersionData {
@@ -36,7 +38,7 @@ object VersionData {
       implicit ec: ExecutionContext,
       service: ModelService
   ): Future[VersionData] = {
-    val depsFut = Future.sequence(version.dependencies.map(dep => dep.project.value.map((dep, _))))
+    val depsFut = Future.traverse(version.dependencies)(dep => dep.project.value.tupleLeft(dep))
 
     (version.channel, version.reviewer.map(_.name).value, depsFut).mapN {
       case (channel, approvedBy, deps) =>

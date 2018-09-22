@@ -14,7 +14,7 @@ case class VersionVisibilityChange(
     id: ObjectId = ObjectId.Uninitialized,
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     createdBy: Option[ObjectReference] = None,
-    projectId: ObjectReference = -1,
+    projectId: ObjectReference,
     comment: String,
     resolvedAt: Option[Timestamp] = None,
     resolvedBy: Option[ObjectReference] = None,

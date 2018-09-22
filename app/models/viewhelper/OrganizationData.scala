@@ -10,6 +10,7 @@ import models.user.role.{OrganizationRole, ProjectRole}
 import models.user.{Organization, User}
 import ore.organization.OrganizationMember
 import ore.permission._
+import ore.permission.role.Role
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -18,13 +19,13 @@ import slick.lifted.TableQuery
 
 case class OrganizationData(
     joinable: Organization,
-    ownerRole: OrganizationRole,
     members: Seq[(OrganizationRole, User)], // TODO sorted/reverse
     projectRoles: Seq[(ProjectRole, Project)]
 ) extends JoinableData[OrganizationRole, OrganizationMember, Organization] {
 
   def orga: Organization = joinable
 
+  def roleClass: Class[_ <: Role] = classOf[OrganizationRole]
 }
 
 object OrganizationData {
@@ -36,34 +37,27 @@ object OrganizationData {
       implicit db: JdbcBackend#DatabaseDef,
       ec: ExecutionContext,
       service: ModelService
-  ): Future[OrganizationData] = {
+  ): Future[OrganizationData] =
     for {
       role         <- orga.owner.headRole
       members      <- orga.memberships.members
-      memberRoles  <- Future.sequence(members.map(_.headRole))
-      memberUser   <- Future.sequence(memberRoles.map(_.user))
+      memberRoles  <- Future.traverse(members)(_.headRole)
+      memberUser   <- Future.traverse(memberRoles)(_.user)
       projectRoles <- db.run(queryProjectRoles(orga.id.value).result)
     } yield {
       val members = memberRoles.zip(memberUser)
       OrganizationData(orga, role, members.toSeq, projectRoles)
     }
-  }
 
-  private def queryProjectRoles(userId: ObjectReference) = {
-    val tableProjectRole = TableQuery[ProjectRoleTable]
-    val tableProject     = TableQuery[ProjectTableMain]
-
+  private def queryProjectRoles(userId: ObjectReference) =
     for {
-      (role, project) <- tableProjectRole.join(tableProject).on(_.projectId === _.id) if role.userId === userId
-    } yield {
-      (role, project)
-    }
-  }
+      (role, project) <- TableQuery[ProjectRoleTable].join(TableQuery[ProjectTableMain]).on(_.projectId === _.id)
+      if role.userId === userId
+    } yield (role, project)
 
   def of[A](orga: Option[Organization])(
       implicit db: JdbcBackend#DatabaseDef,
       ec: ExecutionContext,
       service: ModelService
-  ): OptionT[Future, OrganizationData] =
-    OptionT.fromOption[Future](orga).semiflatMap(of)
+  ): OptionT[Future, OrganizationData] = OptionT.fromOption[Future](orga).semiflatMap(of)
 }

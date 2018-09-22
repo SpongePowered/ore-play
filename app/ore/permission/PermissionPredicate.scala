@@ -14,19 +14,28 @@ import ore.permission.scope.ScopeSubject
   */
 case class PermissionPredicate(user: User) {
 
-  def apply(p: Permission)(implicit ec: ExecutionContext): AndThen = AndThen(user, p)
+  def apply(p: Permission): AndThen = AndThen(user, p)
 
-  protected case class AndThen(user: User, p: Permission)(implicit ec: ExecutionContext) {
+  def asMap(trust: Trust)(perms: Permission*): Map[Permission, Boolean] = perms.map(p => p -> apply(p).withTrust(trust)).toMap
+
+  def asMap(trust: Option[Trust])(perms: Permission*): Map[Permission, Boolean] = perms.map(p => p -> apply(p).withTrust(trust)).toMap
+
+  protected case class AndThen(user: User, p: Permission) {
     def withTrust(trust: Trust): Boolean =
       // Special Ore Developer Case
       if (user.globalRoles.contains(RoleType.OreDev) && (p == ViewHealth || p == ViewLogs || p == ViewActivity || p == ViewStats))
         true
       else p.trust <= trust
 
-    def in(subject: ScopeSubject)(implicit service: ModelService): Future[Boolean] =
+    def withTrust(trust: Option[Trust]): Boolean = trust match {
+      case None => false
+      case Some(value) => withTrust(value)
+    }
+
+    def in(subject: ScopeSubject)(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
       user.trustIn(subject.scope).map(withTrust)
 
-    def in(subject: Option[ScopeSubject])(implicit service: ModelService): Future[Boolean] =
+    def in(subject: Option[ScopeSubject])(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
       subject match {
         case None    => Future.successful(false)
         case Some(s) => this.in(s)

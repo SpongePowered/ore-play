@@ -727,7 +727,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           unsafeDownload <- downloads.add(
             UnsafeDownload(userId = user.map(_.id.value), address = addr, downloadType = dlType)
           )
-          _ <- service.update(warn.copy(isConfirmed = true, downloadId = unsafeDownload.id.value))
+          _ <- service.update(warn.copy(isConfirmed = true, downloadId = Some(unsafeDownload.id.value)))
         } yield unsafeDownload
       }
   }

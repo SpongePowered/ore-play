@@ -28,7 +28,7 @@ import _root_.util.StringUtils
 case class Review(
     id: ObjectId = ObjectId.Uninitialized,
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    versionId: ObjectReference = -1,
+    versionId: ObjectReference,
     userId: ObjectReference,
     endedAt: Option[Timestamp],
     message: String

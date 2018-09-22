@@ -40,11 +40,6 @@ case class HeaderData(
   def isCurrentUser(userId: ObjectReference): Boolean = currentUser.map(_.id.value).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
-
-  def projectPerm(perm: Permission)(implicit r: ProjectRequest[_] = null): Boolean =
-    if (r == null) false // Not a scoped request
-    else r.scoped.permissions(perm)
-
 }
 
 object HeaderData {
@@ -77,19 +72,14 @@ object HeaderData {
     OptionT
       .fromOption[Future](request.cookies.get("_oretoken"))
       .flatMap(cookie => getSessionUser(cookie.value))
-      .semiflatMap(user => getHeaderData(user))
+      .semiflatMap(getHeaderData)
       .getOrElse(unAuthenticated)
 
   private def getSessionUser(token: String)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) = {
-    val tableSession = TableQuery[SessionTable]
-    val tableUser    = TableQuery[UserTable]
-
     val query = for {
-      s <- tableSession if s.token === token
-      u <- tableUser if s.username === u.name
-    } yield {
-      (s, u)
-    }
+      s <- TableQuery[SessionTable] if s.token === token
+      u <- TableQuery[UserTable] if s.username === u.name
+    } yield (s, u)
 
     OptionT(db.run(query.result.headOption)).collect {
       case (session, user) if !session.hasExpired => user
@@ -139,7 +129,5 @@ object HeaderData {
   }
 
   def perms(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Map[Permission, Boolean]] =
-    user
-      .trustIn(GlobalScope)
-      .map(trust => globalPerms.map(perm => perm -> user.can(perm).withTrust(trust)).toMap)
+    user.trustIn(GlobalScope).map(user.can.asMap(_)(globalPerms: _*))
 }

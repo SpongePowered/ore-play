@@ -63,7 +63,6 @@ case class Page(
 
   import models.project.Page._
 
-  checkNotNull(this.projectId != -1, "invalid project id", "")
   checkNotNull(this.name, "name cannot be null", "")
   checkNotNull(this.slug, "slug cannot be null", "")
   checkNotNull(this.contents, "contents cannot be null", "")
@@ -181,7 +180,7 @@ object Page {
 
   private class ExternalLinkResolver(config: OreConfig) extends LinkResolver {
     override def resolveLink(node: Node, context: LinkResolverContext, link: ResolvedLink): ResolvedLink = {
-      if (link.getLinkType.equals(LinkType.IMAGE) || node.isInstanceOf[MailLink]) {
+      if (link.getLinkType == LinkType.IMAGE || node.isInstanceOf[MailLink]) {
         link
       } else {
         link.withStatus(LinkStatus.VALID).withUrl(wrapExternal(link.getUrl))

@@ -139,7 +139,7 @@ object UserActionLogger {
         ObjectId.Uninitialized,
         ObjectTimestamp.Uninitialized,
         request.user.userId,
-        InetString(StatTracker.remoteAddress(request.request)),
+        InetString(StatTracker.remoteAddress(request)),
         action,
         action.context,
         actionContextId,
