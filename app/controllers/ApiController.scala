@@ -42,7 +42,6 @@ final class ApiController @Inject()(
     api: OreRestfulApi,
     status: StatusZ,
     forms: OreForms,
-    writes: OreWrites,
     factory: ProjectFactory
 )(
     implicit val ec: ExecutionContext,
@@ -53,9 +52,7 @@ final class ApiController @Inject()(
     cache: AsyncCacheApi,
     auth: SpongeAuthApi,
     sso: SingleSignOnConsumer,
-) extends OreBaseController {
-
-  import writes._
+) extends OreBaseController with OreWrites {
 
   val files                                      = new ProjectFiles(this.env)
   val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
