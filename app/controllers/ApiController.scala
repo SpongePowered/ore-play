@@ -52,7 +52,8 @@ final class ApiController @Inject()(
     cache: AsyncCacheApi,
     auth: SpongeAuthApi,
     sso: SingleSignOnConsumer,
-) extends OreBaseController with OreWrites {
+) extends OreBaseController
+    with OreWrites {
 
   val files                                      = new ProjectFiles(this.env)
   val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
