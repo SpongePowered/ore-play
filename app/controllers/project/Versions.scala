@@ -709,7 +709,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         (warn.token === token) &&
         (warn.versionId === versionId) &&
         !warn.isConfirmed &&
-        (warn.downloadId === -1L)
+        warn.downloadId.?.isEmpty
       }
       .semiflatMap { warn =>
         val isInvalid = warn.hasExpired
