@@ -4,17 +4,15 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future}
 
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.TagTable
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.schema.VersionTagTable
+import db.{Model, Named, ObjectId, ObjectReference, ObjectTimestamp}
 
 import enumeratum.values._
 
-case class Tag(
+case class VersionTag(
     id: ObjectId = ObjectId.Uninitialized,
-    versionIds: List[ObjectReference],
+    versionId: ObjectReference,
     name: String,
     data: String,
     color: TagColor
@@ -23,26 +21,10 @@ case class Tag(
 
   override val createdAt: ObjectTimestamp = ObjectTimestamp(Timestamp.from(Instant.EPOCH))
 
-  override type M = Tag
-  override type T = TagTable
+  override type M = VersionTag
+  override type T = VersionTagTable
 
-  /**
-    * Used to convert a ghost tag to a normal tag
-    * @author phase
-    */
-  def getFilledTag(service: ModelService)(implicit ex: ExecutionContext): Future[Tag] = {
-    val access = service.access(classOf[Tag])
-    for {
-      tagsWithVersion <- access.filter(t => t.name === this.name && t.data === this.data)
-      tag <- if (tagsWithVersion.isEmpty) {
-        access.add(this)
-      } else {
-        Future.successful(tagsWithVersion.head)
-      }
-    } yield tag
-  }
-
-  def copyWith(id: ObjectId, theTime: ObjectTimestamp): Tag = this.copy(id = id)
+  def copyWith(id: ObjectId, theTime: ObjectTimestamp): VersionTag = this.copy(id = id)
 }
 
 sealed abstract class TagColor(val value: Int, val background: String, val foreground: String) extends IntEnumEntry

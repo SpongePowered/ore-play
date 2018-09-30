@@ -12,9 +12,9 @@ import db.impl.schema.{ProjectRoleTable, UserTable}
 import models.admin.ProjectVisibilityChange
 import models.project._
 import models.user.User
-import models.user.role.ProjectRole
+import models.user.role.ProjectUserRole
 import ore.OreConfig
-import ore.permission.role.Role
+import ore.permission.role.RoleCategory
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
 
@@ -32,14 +32,14 @@ case class ProjectData(
     projectOwner: User,
     publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
     settings: ProjectSettings,
-    members: Seq[(ProjectRole, User)],
+    members: Seq[(ProjectUserRole, User)],
     projectLogSize: Int,
     flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
     noteCount: Int, // getNotes.size
     lastVisibilityChange: Option[ProjectVisibilityChange],
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
     recommendedVersion: Option[Version]
-) extends JoinableData[ProjectRole, ProjectMember, Project] {
+) extends JoinableData[ProjectUserRole, ProjectMember, Project] {
 
   def flagCount: Int = flags.size
 
@@ -51,7 +51,7 @@ case class ProjectData(
 
   def renderVisibilityChange(implicit config: OreConfig): Option[Html] = lastVisibilityChange.map(_.renderComment)
 
-  def roleClass: Class[_ <: Role] = classOf[ProjectRole]
+  def roleCategory: RoleCategory = RoleCategory.Project
 }
 
 object ProjectData {
@@ -140,7 +140,7 @@ object ProjectData {
           projectOwner,
           versions,
           settings,
-          members.sortBy(_._1.roleType.trust).reverse,
+          members.sortBy(_._1.role.trust).reverse,
           logSize,
           flagData.toSeq,
           noteCount,
@@ -153,7 +153,7 @@ object ProjectData {
 
   def members(
       project: Project
-  )(implicit db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectRole, User)]] = {
+  )(implicit db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectUserRole, User)]] = {
     val query = for {
       r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
       u <- TableQuery[UserTable] if r.userId === u.id

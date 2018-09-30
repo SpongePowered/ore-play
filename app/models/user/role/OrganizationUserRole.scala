@@ -5,34 +5,34 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.schema.OrganizationRoleTable
 import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 import ore.permission.scope.OrganizationScope
 
 /**
-  * Represents a [[RoleModel]] within an [[models.user.Organization]].
+  * Represents a [[UserRoleModel]] within an [[models.user.Organization]].
   *
   * @param id             Model ID
   * @param createdAt      Timestamp instant of creation
   * @param userId         ID of User this role belongs to
   * @param organizationId ID of Organization this role belongs to
-  * @param roleType      Type of Role
+  * @param role      Type of Role
   * @param isAccepted    True if has been accepted
   */
-case class OrganizationRole(
+case class OrganizationUserRole(
     id: ObjectId = ObjectId.Uninitialized,
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     userId: ObjectReference,
     organizationId: ObjectReference,
-    roleType: RoleType,
+    role: Role,
     isAccepted: Boolean = false
-) extends RoleModel
+) extends UserRoleModel
     with OrganizationScope {
 
-  override type M = OrganizationRole
+  override type M = OrganizationUserRole
   override type T = OrganizationRoleTable
 
-  def this(userId: ObjectReference, organizationId: ObjectReference, roleType: RoleType) =
-    this(id = ObjectId.Uninitialized, userId = userId, organizationId = organizationId, roleType = roleType)
+  def this(userId: ObjectReference, organizationId: ObjectReference, roleType: Role) =
+    this(id = ObjectId.Uninitialized, userId = userId, organizationId = organizationId, role = roleType)
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model                          = this.copy(id = id, createdAt = theTime)

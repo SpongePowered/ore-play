@@ -1,7 +1,6 @@
 package db
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success}
+import scala.concurrent.{ExecutionContext, Future}
 
 import db.access.{ImmutableModelAccess, ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
@@ -150,18 +149,11 @@ class ModelSchema[M <: Model](
     * @param model  Model to get or create
     * @return       Existing or newly created model
     */
-  def getOrInsert(model: M)(implicit ec: ExecutionContext): Future[M] = {
-    val modelPromise = Promise[M]
-    like(model).value.onComplete {
-      case Failure(thrown) => modelPromise.failure(thrown)
-      case Success(modelOpt) =>
-        modelOpt match {
-          case Some(existing) => modelPromise.success(existing)
-          case None           => modelPromise.completeWith(service.insert(model))
-        }
+  def getOrInsert(model: M)(implicit ec: ExecutionContext): Future[M] =
+    like(model).value.flatMap {
+      case Some(existing) => Future.successful(existing)
+      case None           => service.insert(model)
     }
-    modelPromise.future
-  }
 
   /**
     * Tries to find the specified model in it's table with an unset ID.

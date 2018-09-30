@@ -7,14 +7,14 @@ sorted according to different criteria.
 @import play.api.Configuration
 
 @import controllers.sugar.Requests.OreRequest
-@import models.project.{Project, Tag, Version}
+@import models.project.{Project, Version, VersionTag}
 @import models.user.User
 @import ore.project.ProjectSortingStrategies.{values, _}
 @import ore.project.{Category, ProjectSortingStrategies}
 @import ore.{OreConfig, Platform, PlatformCategory}
 @import security.NonceFilter._
 @import views.html.utils.alert
-@(models: Seq[(Project, User, Version, Seq[Tag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
+@(models: Seq[(Project, User, Version, Seq[VersionTag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
 

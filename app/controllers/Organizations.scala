@@ -18,7 +18,6 @@ import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
 
-import cats.Id
 import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._

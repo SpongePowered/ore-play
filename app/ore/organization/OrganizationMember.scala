@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.access.UserBase
 import db.{ModelService, ObjectReference}
 import models.user.Organization
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import ore.permission.scope.Scope
 import ore.user.Member
 
@@ -17,9 +17,9 @@ import ore.user.Member
   * @param users        UserBase instance
   */
 class OrganizationMember(val organization: Organization, override val userId: ObjectReference)(implicit users: UserBase)
-    extends Member[OrganizationRole](userId) {
+    extends Member[OrganizationUserRole](userId) {
 
-  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationRole]] =
+  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationUserRole]] =
     this.user.flatMap(user => this.organization.memberships.getRoles(user))
 
   override def scope: Scope = this.organization.scope
@@ -29,7 +29,7 @@ class OrganizationMember(val organization: Organization, override val userId: Ob
     *
     * @return Top role
     */
-  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[OrganizationRole] =
-    this.roles.map(role => role.maxBy(_.roleType.trust))
+  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[OrganizationUserRole] =
+    this.roles.map(role => role.maxBy(_.role.trust))
 
 }

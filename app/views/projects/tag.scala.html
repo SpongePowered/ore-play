@@ -1,6 +1,6 @@
-@import models.project.Tag
+@import models.project.VersionTag
 
-@(tag: Tag, tagCount: Int = 0)
+@(tag: VersionTag, tagCount: Int = 0)
 @if(tag.data.isEmpty || tag.data.equals("null") || tagCount > 2 || tag.data.length > 14) {
     <div class="tags">
         <span style="color: @tag.color.foreground; background-color:@tag.color.background; border-color: @tag.color.background" class="tag">@tag.name</span>

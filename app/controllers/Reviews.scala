@@ -19,7 +19,7 @@ import models.admin.{Message, Review}
 import models.project.{Project, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.permission.ReviewProjects
-import ore.permission.role.{Lifted, RoleType}
+import ore.permission.role.{Role, Trust}
 import ore.user.notification.NotificationType
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -134,8 +134,8 @@ final class Reviews @Inject()(forms: OreForms)(
   private def queryNotificationUsers(
       projectId: Rep[ObjectReference],
       userId: Rep[ObjectReference],
-      noRole: Rep[Option[RoleType]]
-  ): Query[(Rep[ObjectReference], Rep[Option[RoleType]]), (ObjectReference, Option[RoleType]), Seq] = {
+      noRole: Rep[Option[Role]]
+  ): Query[(Rep[ObjectReference], Rep[Option[Role]]), (ObjectReference, Option[Role]), Seq] = {
     // Query Orga Members
     val q1 = for {
       org     <- TableQuery[OrganizationTable] if org.id === projectId
@@ -159,7 +159,7 @@ final class Reviews @Inject()(forms: OreForms)(
       service.doAction(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
         list
           .filter {
-            case (_, Some(level)) => level.trust.level >= Lifted.level
+            case (_, Some(level)) => level.trust.level >= Trust.Lifted.level
             case (_, None)        => true
           }
           .map(_._1)

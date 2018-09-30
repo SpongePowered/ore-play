@@ -4,7 +4,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.mvc.Request
 
-import controllers.sugar.Requests.ProjectRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
 import db.{ModelService, ObjectReference}
@@ -15,6 +14,7 @@ import ore.permission.scope.GlobalScope
 
 import cats.data.OptionT
 import cats.instances.future._
+import cats.syntax.all._
 import org.slf4j.MDC
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
@@ -129,5 +129,5 @@ object HeaderData {
   }
 
   def perms(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Map[Permission, Boolean]] =
-    user.trustIn(GlobalScope).map(user.can.asMap(_)(globalPerms: _*))
+    user.trustIn(GlobalScope).map2(user.globalRoles.all)(user.can.asMap(_, _)(globalPerms: _*))
 }

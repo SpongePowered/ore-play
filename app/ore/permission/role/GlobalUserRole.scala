@@ -4,11 +4,11 @@ import db.ObjectReference
 import ore.permission.scope.{GlobalScope, Scope}
 
 /**
-  * Represents a [[Role]] within the [[GlobalScope]].
+  * Represents a [[UserRole]] within the [[GlobalScope]].
   *
   * @param userId   ID of [[models.user.User]] this role belongs to
-  * @param roleType Type of role
+  * @param role Type of role
   */
-case class GlobalRole(override val userId: ObjectReference, override val roleType: RoleType) extends Role {
+case class GlobalUserRole(override val userId: ObjectReference, override val role: Role) extends UserRole {
   override val scope: Scope = GlobalScope
 }

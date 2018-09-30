@@ -1,16 +1,16 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.project.Project
-@import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
+@import models.user.role.{OrganizationUserRole, ProjectUserRole}
 @import models.user.{Organization, User}
 @import models.viewhelper.{OrganizationData, UserData}
 @import ore.OreConfig
-@import ore.permission.role.RoleType
-@(user: UserData, orga: Option[OrganizationData], userProjectRoles: Seq[(Project, ProjectRole)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@import ore.permission.role.Role
+@(user: UserData, orga: Option[OrganizationData], userProjectRoles: Seq[(Project, ProjectUserRole)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @prefix = @{"Edit " + (if(user.isOrga) "Organization" else "User") + ": "}
 
-@orgRoles = @{RoleType.values.filter(r => r.roleClass == classOf[OrganizationRole] && (r.isAssignable || r == RoleType.OrganizationOwner))}
-@projectRoles = @{RoleType.values.filter(r => r.roleClass == classOf[ProjectRole] && (r.isAssignable || r == RoleType.ProjectOwner))}
+@orgRoles = @{Role.organizationRoles.filter(r => r.isAssignable || r == Role.OrganizationOwner)}
+@projectRoles = @{Role.projectRoles.filter(r => r.isAssignable || r == Role.ProjectOwner)}
 
 @panel(title: String, size: Int = 12)(content: Html) = {
     <div class="col-md-@size">
@@ -23,7 +23,7 @@
     </div>
 }
 
-@roleTable[T, M <: RoleModel](keyName: String, tableType: String, withOwner: Boolean, roles: Set[(T, M, String)], roleTypes: IndexedSeq[RoleType])(showKey: (T, M) => Html) = {
+@roleTable[T, M <: UserRoleModel](keyName: String, tableType: String, withOwner: Boolean, roles: Set[(T, M, String)], roleTypes: IndexedSeq[Role])(showKey: (T, M) => Html) = {
     <table class="table role-table">
         <tr><th>@keyName</th>@if(withOwner) {<th>Owner</th>}<th>Role</th><th>Accepted</th></tr>
         @roles.map { case (t, role, owner) =>
@@ -32,15 +32,15 @@
             @if(withOwner) {
                 <td><a href="@routes.Application.userAdmin(owner)">@{owner}</a></td>
             }
-            @if(!role.roleType.isAssignable) {
+            @if(!role.role.isAssignable) {
                 <td colspan="3">
-                @role.roleType.title
+                @role.role.title
                 </td>
             } else {
                 <td><select class="select-role">
                 @for(roleType <- roleTypes) {
-                    <option value="@roleType.forumRoleId" @if(role.roleType == roleType) {selected}
-                    @if(roleType == RoleType.ProjectOwner || roleType == RoleType.OrganizationOwner) {data-refresh="true"}>@roleType.title</option>
+                    <option value="@roleType.forumRoleId" @if(role.role == roleType) {selected}
+                    @if(roleType == Role.ProjectOwner || roleType == Role.OrganizationOwner) {data-refresh="true"}>@roleType.title</option>
                 }
                 </select></td>
                 <td><input type="checkbox" class="role-accepted" @if(role.isAccepted) {checked}></td>
@@ -68,7 +68,7 @@
                 <div class="row">
                 @if(!user.isOrga) {
                     @panel("Organizations") {
-                        @roleTable[Organization, OrganizationRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.name)).toSet, orgRoles) { (org, role) =>
+                        @roleTable[Organization, OrganizationUserRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.name)).toSet, orgRoles) { (org, role) =>
                             <a href="@routes.Application.userAdmin(org.name)">
                             @org.name
                             </a>
@@ -76,7 +76,7 @@
                     }
                 } else {
                     @panel("Members") {
-                        @roleTable[User, OrganizationRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, role) =>
+                        @roleTable[User, OrganizationUserRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, role) =>
                             <a href="@routes.Application.userAdmin(user.name)">
                             @user.name
                             </a>
@@ -87,7 +87,7 @@
                 @if(!user.isOrga) {
                     <div class="row">
                     @panel("Projects") {
-                        @roleTable[Project, ProjectRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, role) =>
+                        @roleTable[Project, ProjectUserRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, role) =>
                             <a href="@controllers.project.routes.Projects.show(project.ownerName, project.slug)">
                             @project.name
                             </a>

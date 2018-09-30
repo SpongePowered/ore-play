@@ -9,7 +9,7 @@ import db.impl.OrePostgresDriver.api._
 import db.table.AssociativeTable
 import db.{Model, ModelService, ObjectReference}
 import models.user.User
-import models.user.role.RoleModel
+import models.user.role.UserRoleModel
 import ore.permission.role.Trust
 
 /**
@@ -17,7 +17,7 @@ import ore.permission.role.Trust
   */
 abstract class MembershipDossier[ModelType <: Model](val model: ModelType) {
 
-  type RoleType <: RoleModel
+  type RoleType <: UserRoleModel
   type MemberType <: Member[RoleType]
   type MembersTable <: AssociativeTable
 

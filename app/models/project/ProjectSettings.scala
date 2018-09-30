@@ -13,8 +13,8 @@ import db.impl.schema.{NotificationTable, ProjectMembersTable, ProjectRoleTable,
 import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import form.project.ProjectSettingsForm
 import models.user.Notification
-import models.user.role.ProjectRole
-import ore.permission.role.RoleType
+import models.user.role.ProjectUserRole
+import ore.permission.role.Role
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectMember, ProjectOwned}
 import ore.user.MembershipDossier
@@ -22,8 +22,8 @@ import ore.user.notification.NotificationType
 import util.StringUtils._
 
 import cats.data.NonEmptyList
-import cats.syntax.all._
 import cats.instances.future._
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 /**
@@ -113,7 +113,7 @@ case class ProjectSettings(
 
           type RoleTable = ProjectRoleTable
 
-          type RoleType = ProjectRole
+          type RoleType = ProjectUserRole
         } = project.memberships
         Future
           .traverse(formData.build()) { role =>
@@ -126,7 +126,7 @@ case class ProjectSettings(
                 userId = role.userId,
                 originId = project.ownerId,
                 notificationType = NotificationType.ProjectInvite,
-                messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name)
+                messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
               )
             }
 
@@ -134,8 +134,6 @@ case class ProjectSettings(
           }
           .flatMap { _ =>
             // Update existing roles
-            val projectRoleTypes = RoleType.values.filter(_.roleClass.equals(classOf[ProjectRole]))
-
             val usersTable = TableQuery[UserTable]
             // Select member userIds
             service
@@ -143,7 +141,7 @@ case class ProjectSettings(
               .map { userIds =>
                 userIds.zip(
                   formData.roleUps.map { role =>
-                    projectRoleTypes
+                    Role.projectRoles
                       .find(_.title.equals(role))
                       .getOrElse(throw new RuntimeException("supplied invalid role type"))
                   }

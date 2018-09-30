@@ -1,7 +1,7 @@
 package security
 
-import javax.crypto.spec.SecretKeySpec
 import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 import com.google.common.base.Preconditions._
 import org.apache.commons.codec.binary.Hex

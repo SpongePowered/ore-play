@@ -6,9 +6,9 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
-import ore.permission.role.{Default, RoleType, Trust}
+import ore.permission.role.{Role, Trust}
 import ore.permission.scope.OrganizationScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
@@ -52,16 +52,16 @@ case class Organization(
 
     type RoleTable = OrganizationRoleTable
 
-    type RoleType = OrganizationRole
+    type RoleType = OrganizationUserRole
   } = new MembershipDossier(this) {
 
-    type RoleType     = OrganizationRole
+    type RoleType     = OrganizationUserRole
     type RoleTable    = OrganizationRoleTable
     type MembersTable = OrganizationMembersTable
     type MemberType   = OrganizationMember
 
     val membersTableClass: Class[MembersTable] = classOf[OrganizationMembersTable]
-    val roleClass: Class[RoleType]             = classOf[OrganizationRole]
+    val roleClass: Class[RoleType]             = classOf[OrganizationUserRole]
 
     def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): OrganizationMember =
       new OrganizationMember(Organization.this, userId)
@@ -97,10 +97,10 @@ case class Organization(
       setOwner             <- service.update(copy(ownerId = memberUser.id.value))
       _ <- Future.sequence(
         roles
-          .filter(_.roleType == RoleType.OrganizationOwner)
-          .map(role => service.update(role.copy(roleType = RoleType.OrganizationAdmin)))
+          .filter(_.role == Role.OrganizationOwner)
+          .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))
       )
-      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(roleType = RoleType.OrganizationOwner))))
+      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(role = Role.OrganizationOwner))))
     } yield setOwner
 
   /**
@@ -140,5 +140,5 @@ object Organization {
   )(implicit ex: ExecutionContext, service: ModelService): Future[Trust] =
     service.DB.db
       .run(Organization.roleForTrustQuery((orgId, userId)).result)
-      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Default))
+      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Trust.Default))
 }

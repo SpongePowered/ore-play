@@ -134,7 +134,7 @@
 
                 <!-- Roles -->
                 <ul class="user-roles">
-                    @defining(u.user.globalRoles.sortBy(_.trust).lastOption) { roleOpt =>
+                    @defining(u.globalRoles.toSeq.sortBy(_.trust).lastOption) { roleOpt =>
                         @roleOpt.map { role =>
                             <li class="user-role channel" style="background-color: @role.color.hex">@role.title</li>
                         }

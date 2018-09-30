@@ -1,5 +1,5 @@
 @import controllers.sugar.Requests.OreRequest
-@import models.user.role.RoleModel
+@import models.user.role.UserRoleModel
 @import models.user.{Notification, User}
 @import ore.user.notification.{InviteFilter, NotificationFilter}
 @import ore.{OreConfig, Visitable}
@@ -7,7 +7,7 @@
 
 @import cats.data.{NonEmptyList => NEL}
 
-@(notifications: Seq[(Notification, User)], invites: Seq[(RoleModel, Visitable)], notificationFilter: NotificationFilter,
+@(notifications: Seq[(Notification, User)], invites: Seq[(UserRoleModel, Visitable)], notificationFilter: NotificationFilter,
         inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @notificationFilterOption(option: NotificationFilter) = @{

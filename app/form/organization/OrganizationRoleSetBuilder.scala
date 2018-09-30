@@ -1,10 +1,10 @@
 package form.organization
 
 import db.ObjectReference
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 
 /**
-  * Builds a set of [[OrganizationRole]]s from input data.
+  * Builds a set of [[OrganizationUserRole]]s from input data.
   *
   * @param users User IDs
   * @param roles Role names

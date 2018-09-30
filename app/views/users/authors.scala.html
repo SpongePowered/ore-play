@@ -1,11 +1,14 @@
+@import java.sql.Timestamp
+
 @import controllers.sugar.Requests.OreRequest
 @import db.impl.access.UserBase.UserOrdering
 @import models.user.User
 @import ore.OreConfig
+@import ore.permission.role.Role
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.utils.userAvatar
-@(authors: Seq[(User, Int)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(authors: Seq[(String, Option[Timestamp], Timestamp, Option[Role], Option[Role], Long)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @pageSize = @{ config.users.get[Int]("author-page-size") }
 @direction = @{ if (ordering.startsWith("-")) "o-chevron-down" else "o-chevron-up" }
@@ -46,30 +49,26 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @authors.map { case (user, projectCount) =>
+                    @authors.map { case (name, joinDate, createdAt, optRole, optDonorRole, projectCount) =>
                       <tr>
-                          <td>@userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")</td>
+                          <td>@userAvatar(Some(name), User.avatarUrl(name), clazz = "user-avatar-xs")</td>
                           <td>
-                              <a href="@routes.Users.showProjects(user.name, None)">@user.name</a>
+                              <a href="@routes.Users.showProjects(name, None)">@name</a>
                           </td>
                           <td>
-                              @defining(user.donorType) { donorType =>
-                                  @donorType.map { dt =>
-                                      <span class="channel channel-sm" style="background-color: @dt.color.hex">
-                                      @dt.title
-                                      </span>
-                                  }
+                              @optDonorRole.map { role =>
+                                  <span class="channel channel-sm" style="background-color: @role.color.hex">
+                                  @role.title
+                                  </span>
                               }
-                              @defining(user.globalRoles.filterNot(user.donorType.contains(_)).sortBy(_.trust).lastOption) { roleType =>
-                                  @roleType.map { role =>
-                                      <span class="user-role channel" style="background-color: @role.color.hex">
-                                      @role.title
-                                      </span>
-                                  }
+                              @optRole.map { role =>
+                                  <span class="user-role channel" style="background-color: @role.color.hex">
+                                  @role.title
+                                  </span>
                               }
 
                           </td>
-                          <td>@prettifyDate(user.joinDate.getOrElse(user.createdAt.value))</td>
+                          <td>@prettifyDate(joinDate.getOrElse(createdAt))</td>
                           <td>@projectCount</td>
                       </tr>
                     }

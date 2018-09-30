@@ -13,7 +13,7 @@ import models.admin._
 import models.api.ProjectApiKey
 import models.project.{TagColor, _}
 import models.statistic.{ProjectView, VersionDownload}
-import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
+import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole, UserRoleModel}
 import models.user.{
   LoggedAction,
   LoggedActionContext,
@@ -25,7 +25,7 @@ import models.user.{
   Session => DbSession
 }
 import ore.Color
-import ore.permission.role.RoleType
+import ore.permission.role.{Role, RoleCategory, Trust}
 import ore.project.io.DownloadType
 import ore.project.{Category, FlagReason}
 import ore.rest.ProjectApiKeyType
@@ -89,11 +89,11 @@ trait ProjectTable
 
 }
 
-class ProjectTableMain(tag: RowTag) extends ModelTable[Project](tag, "projects") with ProjectTable
+class ProjectTableMain(tag: Tag) extends ModelTable[Project](tag, "projects") with ProjectTable
 
-//class ProjectTableDeleted(tag: RowTag) extends ModelTable[Project](tag, "projects_deleted") with ProjectTable
+//class ProjectTableDeleted(tag: Tag) extends ModelTable[Project](tag, "projects_deleted") with ProjectTable
 
-class ProjectSettingsTable(tag: RowTag) extends ModelTable[ProjectSettings](tag, "project_settings") {
+class ProjectSettingsTable(tag: Tag) extends ModelTable[ProjectSettings](tag, "project_settings") {
 
   def projectId   = column[ObjectReference]("project_id")
   def homepage    = column[String]("homepage")
@@ -112,7 +112,7 @@ class ProjectSettingsTable(tag: RowTag) extends ModelTable[ProjectSettings](tag,
 
 }
 
-class ProjectWatchersTable(tag: RowTag)
+class ProjectWatchersTable(tag: Tag)
     extends AssociativeTable(tag, "project_watchers", classOf[Project], classOf[User]) {
 
   def projectId = column[ObjectReference]("project_id")
@@ -122,7 +122,7 @@ class ProjectWatchersTable(tag: RowTag)
 
 }
 
-class ProjectViewsTable(tag: RowTag) extends StatTable[ProjectView](tag, "project_views", "project_id") {
+class ProjectViewsTable(tag: Tag) extends StatTable[ProjectView](tag, "project_views", "project_id") {
 
   override def * = {
     val convertedUnapply = convertUnapply(ProjectView.unapply)
@@ -131,7 +131,7 @@ class ProjectViewsTable(tag: RowTag) extends StatTable[ProjectView](tag, "projec
 
 }
 
-class ProjectStarsTable(tag: RowTag) extends AssociativeTable(tag, "project_stars", classOf[User], classOf[Project]) {
+class ProjectStarsTable(tag: Tag) extends AssociativeTable(tag, "project_stars", classOf[User], classOf[Project]) {
 
   def userId    = column[ObjectReference]("user_id")
   def projectId = column[ObjectReference]("project_id")
@@ -140,7 +140,7 @@ class ProjectStarsTable(tag: RowTag) extends AssociativeTable(tag, "project_star
 
 }
 
-class ProjectLogTable(tag: RowTag) extends ModelTable[ProjectLog](tag, "project_logs") {
+class ProjectLogTable(tag: Tag) extends ModelTable[ProjectLog](tag, "project_logs") {
 
   def projectId = column[ObjectReference]("project_id")
 
@@ -151,7 +151,7 @@ class ProjectLogTable(tag: RowTag) extends ModelTable[ProjectLog](tag, "project_
 
 }
 
-class ProjectLogEntryTable(tg: RowTag) extends ModelTable[ProjectLogEntry](tg, "project_log_entries") {
+class ProjectLogEntryTable(tg: Tag) extends ModelTable[ProjectLogEntry](tg, "project_log_entries") {
 
   def logId          = column[ObjectReference]("log_id")
   def tag            = column[String]("tag")
@@ -167,7 +167,7 @@ class ProjectLogEntryTable(tg: RowTag) extends ModelTable[ProjectLogEntry](tg, "
 
 }
 
-class PageTable(tag: RowTag) extends ModelTable[Page](tag, "project_pages") with NameColumn[Page] {
+class PageTable(tag: Tag) extends ModelTable[Page](tag, "project_pages") with NameColumn[Page] {
 
   def projectId   = column[ObjectReference]("project_id")
   def parentId    = column[ObjectReference]("parent_id")
@@ -182,7 +182,7 @@ class PageTable(tag: RowTag) extends ModelTable[Page](tag, "project_pages") with
 
 }
 
-class ChannelTable(tag: RowTag) extends ModelTable[Channel](tag, "project_channels") with NameColumn[Channel] {
+class ChannelTable(tag: Tag) extends ModelTable[Channel](tag, "project_channels") with NameColumn[Channel] {
 
   def color         = column[Color]("color")
   def projectId     = column[ObjectReference]("project_id")
@@ -195,25 +195,28 @@ class ChannelTable(tag: RowTag) extends ModelTable[Channel](tag, "project_channe
   }
 }
 
-class TagTable(tag: RowTag) extends ModelTable[ProjectTag](tag, "project_tags") with NameColumn[ProjectTag] {
+class VersionTagTable(tag: Tag)
+    extends ModelTable[VersionTag](tag, "project_version_tags")
+    with NameColumn[VersionTag] {
 
-  def versionIds = column[List[ObjectReference]]("version_ids")
-  def data       = column[String]("data")
-  def color      = column[TagColor]("color")
+  def versionId = column[ObjectReference]("version_id")
+  def data      = column[String]("data")
+  def color     = column[TagColor]("color")
 
   override def * = {
-    val convertedApply: ((Option[ObjectReference], List[ObjectReference], String, String, TagColor)) => ProjectTag = {
-      case (id, versionIds, name, data, color) => Tag(ObjectId.unsafeFromOption(id), versionIds, name, data, color)
+    val convertedApply: ((Option[ObjectReference], ObjectReference, String, String, TagColor)) => VersionTag = {
+      case (id, versionIds, name, data, color) =>
+        VersionTag(ObjectId.unsafeFromOption(id), versionIds, name, data, color)
     }
     val convertedUnapply
-      : PartialFunction[ProjectTag, (Option[ObjectReference], List[ObjectReference], String, String, TagColor)] = {
-      case Tag(id, versionIds, name, data, color) => (id.unsafeToOption, versionIds, name, data, color)
+      : PartialFunction[VersionTag, (Option[ObjectReference], ObjectReference, String, String, TagColor)] = {
+      case VersionTag(id, versionIds, name, data, color) => (id.unsafeToOption, versionIds, name, data, color)
     }
-    (id.?, versionIds, name, data, color) <> (convertedApply, convertedUnapply.lift)
+    (id.?, versionId, name, data, color) <> (convertedApply, convertedUnapply.lift)
   }
 }
 
-class VersionTable(tag: RowTag)
+class VersionTable(tag: Tag)
     extends ModelTable[Version](tag, "project_versions")
     with DownloadsColumn[Version]
     with DescriptionColumn[Version]
@@ -232,7 +235,6 @@ class VersionTable(tag: RowTag)
   def approvedAt        = column[Timestamp]("approved_at")
   def fileName          = column[String]("file_name")
   def signatureFileName = column[String]("signature_file_name")
-  def tagIds            = column[List[ObjectReference]]("tags")
   def isNonReviewed     = column[Boolean]("is_non_reviewed")
 
   override def * = {
@@ -253,7 +255,6 @@ class VersionTable(tag: RowTag)
       isReviewed,
       reviewerId.?,
       approvedAt.?,
-      tagIds,
       visibility,
       fileName,
       signatureFileName,
@@ -262,7 +263,7 @@ class VersionTable(tag: RowTag)
   }
 }
 
-class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {
+class DownloadWarningsTable(tag: Tag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {
 
   def expiration  = column[Timestamp]("expiration")
   def token       = column[String]("token")
@@ -280,7 +281,7 @@ class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag
 
 }
 
-class UnsafeDownloadsTable(tag: RowTag) extends ModelTable[UnsafeDownload](tag, "project_version_unsafe_downloads") {
+class UnsafeDownloadsTable(tag: Tag) extends ModelTable[UnsafeDownload](tag, "project_version_unsafe_downloads") {
 
   def userId       = column[ObjectReference]("user_id")
   def address      = column[InetString]("address")
@@ -294,7 +295,7 @@ class UnsafeDownloadsTable(tag: RowTag) extends ModelTable[UnsafeDownload](tag, 
 
 }
 
-class VersionDownloadsTable(tag: RowTag)
+class VersionDownloadsTable(tag: Tag)
     extends StatTable[VersionDownload](tag, "project_version_downloads", "version_id") {
 
   override def * = {
@@ -305,7 +306,7 @@ class VersionDownloadsTable(tag: RowTag)
 
 }
 
-class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameColumn[User] {
+class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn[User] {
 
   // Override to remove auto increment
   override def id = column[ObjectReference]("id", O.PrimaryKey)
@@ -316,7 +317,6 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
   def lastPgpPubKeyUpdate = column[Timestamp]("last_pgp_pub_key_update")
   def isLocked            = column[Boolean]("is_locked")
   def tagline             = column[String]("tagline")
-  def globalRoles         = column[List[RoleType]]("global_roles")
   def joinDate            = column[Timestamp]("join_date")
   def readPrompts         = column[List[Prompt]]("read_prompts")
   def lang                = column[Lang]("language")
@@ -330,7 +330,6 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
       name,
       email.?,
       tagline.?,
-      globalRoles,
       joinDate.?,
       readPrompts,
       pgpPubKey.?,
@@ -342,7 +341,7 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
   }
 }
 
-class SessionTable(tag: RowTag) extends ModelTable[DbSession](tag, "user_sessions") {
+class SessionTable(tag: Tag) extends ModelTable[DbSession](tag, "user_sessions") {
 
   def expiration = column[Timestamp]("expiration")
   def username   = column[String]("username")
@@ -355,7 +354,7 @@ class SessionTable(tag: RowTag) extends ModelTable[DbSession](tag, "user_session
 
 }
 
-class SignOnTable(tag: RowTag) extends ModelTable[SignOn](tag, "user_sign_ons") {
+class SignOnTable(tag: Tag) extends ModelTable[SignOn](tag, "user_sign_ons") {
 
   def nonce       = column[String]("nonce")
   def isCompleted = column[Boolean]("is_completed")
@@ -367,9 +366,7 @@ class SignOnTable(tag: RowTag) extends ModelTable[SignOn](tag, "user_sign_ons") 
 
 }
 
-class OrganizationTable(tag: RowTag)
-    extends ModelTable[Organization](tag, "organizations")
-    with NameColumn[Organization] {
+class OrganizationTable(tag: Tag) extends ModelTable[Organization](tag, "organizations") with NameColumn[Organization] {
 
   override def id = column[ObjectReference]("id", O.PrimaryKey)
   def userId      = column[ObjectReference]("user_id")
@@ -381,7 +378,7 @@ class OrganizationTable(tag: RowTag)
 
 }
 
-class OrganizationMembersTable(tag: RowTag)
+class OrganizationMembersTable(tag: Tag)
     extends AssociativeTable(tag, "organization_members", classOf[User], classOf[Organization]) {
 
   def userId         = column[ObjectReference]("user_id")
@@ -391,43 +388,42 @@ class OrganizationMembersTable(tag: RowTag)
 
 }
 
-trait RoleTable[R <: RoleModel] extends ModelTable[R] {
+trait RoleTable[R <: UserRoleModel] extends ModelTable[R] {
 
   def userId     = column[ObjectReference]("user_id")
-  def roleType   = column[RoleType]("role_type")
+  def roleType   = column[Role]("role_type")
   def isAccepted = column[Boolean]("is_accepted")
 
 }
 
-class OrganizationRoleTable(tag: RowTag)
-    extends ModelTable[OrganizationRole](tag, "user_organization_roles")
-    with RoleTable[OrganizationRole] {
+class OrganizationRoleTable(tag: Tag)
+    extends ModelTable[OrganizationUserRole](tag, "user_organization_roles")
+    with RoleTable[OrganizationUserRole] {
 
   def organizationId = column[ObjectReference]("organization_id")
 
   override def * = {
-    val convertedUnapply = convertUnapply(OrganizationRole.unapply)
-    (id.?, createdAt.?, userId, organizationId, roleType, isAccepted) <> (convertApply(OrganizationRole.apply _).tupled, convertedUnapply)
+    val convertedUnapply = convertUnapply(OrganizationUserRole.unapply)
+    (id.?, createdAt.?, userId, organizationId, roleType, isAccepted) <> (convertApply(OrganizationUserRole.apply _).tupled, convertedUnapply)
   }
 
 }
 
-class ProjectRoleTable(tag: RowTag)
-    extends ModelTable[ProjectRole](tag, "user_project_roles")
-    with RoleTable[ProjectRole] {
+class ProjectRoleTable(tag: Tag)
+    extends ModelTable[ProjectUserRole](tag, "user_project_roles")
+    with RoleTable[ProjectUserRole] {
 
   def projectId = column[ObjectReference]("project_id")
 
   override def * = {
-    val convertedUnapply = convertUnapply(ProjectRole.unapply)
-    (id.?, createdAt.?, userId, projectId, roleType, isAccepted) <> (convertApply(ProjectRole.apply _).tupled,
+    val convertedUnapply = convertUnapply(ProjectUserRole.unapply)
+    (id.?, createdAt.?, userId, projectId, roleType, isAccepted) <> (convertApply(ProjectUserRole.apply _).tupled,
     convertedUnapply)
   }
 
 }
 
-class ProjectMembersTable(tag: RowTag)
-    extends AssociativeTable(tag, "project_members", classOf[Project], classOf[User]) {
+class ProjectMembersTable(tag: Tag) extends AssociativeTable(tag, "project_members", classOf[Project], classOf[User]) {
 
   def projectId = column[ObjectReference]("project_id")
   def userId    = column[ObjectReference]("user_id")
@@ -436,7 +432,7 @@ class ProjectMembersTable(tag: RowTag)
 
 }
 
-class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "notifications") {
+class NotificationTable(tag: Tag) extends ModelTable[Notification](tag, "notifications") {
 
   def userId           = column[ObjectReference]("user_id")
   def originId         = column[ObjectReference]("origin_id")
@@ -453,7 +449,7 @@ class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "noti
   }
 }
 
-class FlagTable(tag: RowTag) extends ModelTable[Flag](tag, "project_flags") {
+class FlagTable(tag: Tag) extends ModelTable[Flag](tag, "project_flags") {
 
   def projectId  = column[ObjectReference]("project_id")
   def userId     = column[ObjectReference]("user_id")
@@ -472,7 +468,7 @@ class FlagTable(tag: RowTag) extends ModelTable[Flag](tag, "project_flags") {
 
 }
 
-class ProjectApiKeyTable(tag: RowTag) extends ModelTable[ProjectApiKey](tag, "project_api_keys") {
+class ProjectApiKeyTable(tag: Tag) extends ModelTable[ProjectApiKey](tag, "project_api_keys") {
 
   def projectId = column[ObjectReference]("project_id")
   def keyType   = column[ProjectApiKeyType]("key_type")
@@ -485,7 +481,7 @@ class ProjectApiKeyTable(tag: RowTag) extends ModelTable[ProjectApiKey](tag, "pr
 
 }
 
-class ReviewTable(tag: RowTag) extends ModelTable[Review](tag, "project_version_reviews") {
+class ReviewTable(tag: Tag) extends ModelTable[Review](tag, "project_version_reviews") {
 
   def versionId = column[ObjectReference]("version_id")
   def userId    = column[ObjectReference]("user_id")
@@ -498,7 +494,7 @@ class ReviewTable(tag: RowTag) extends ModelTable[Review](tag, "project_version_
   }
 }
 
-class ProjectVisibilityChangeTable(tag: RowTag)
+class ProjectVisibilityChangeTable(tag: Tag)
     extends ModelTable[ProjectVisibilityChange](tag, "project_visibility_changes")
     with VisibilityChangeColumns[ProjectVisibilityChange] {
 
@@ -512,7 +508,7 @@ class ProjectVisibilityChangeTable(tag: RowTag)
   }
 }
 
-class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
+class LoggedActionTable(tag: Tag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
 
   def userId          = column[ObjectReference]("user_id")
   def address         = column[InetString]("address")
@@ -529,7 +525,7 @@ class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, 
     ).tupled, convertedUnapply)
   }
 }
-class VersionVisibilityChangeTable(tag: RowTag)
+class VersionVisibilityChangeTable(tag: Tag)
     extends ModelTable[VersionVisibilityChange](tag, "project_version_visibility_changes")
     with VisibilityChangeColumns[VersionVisibilityChange] {
 
@@ -543,7 +539,7 @@ class VersionVisibilityChangeTable(tag: RowTag)
   }
 }
 
-class LoggedActionViewTable(tag: RowTag) extends ModelTable[LoggedActionViewModel](tag, "v_logged_actions") {
+class LoggedActionViewTable(tag: Tag) extends ModelTable[LoggedActionViewModel](tag, "v_logged_actions") {
 
   def userId          = column[ObjectReference]("user_id")
   def address         = column[InetString]("address")
@@ -603,4 +599,40 @@ class LoggedActionViewTable(tag: RowTag) extends ModelTable[LoggedActionViewMode
   def loggedProjectPageProjection =
     (ppId.?, ppSlug.?) <> ((LoggedProjectPage.apply _).tupled, LoggedProjectPage.unapply)
   def loggedSubjectProjection = (sId.?, sName.?) <> ((LoggedSubject.apply _).tupled, LoggedSubject.unapply)
+}
+
+class DbRoleTable(tag: Tag) extends ModelTable[DbRole](tag, "roles") {
+  def name         = column[String]("name")
+  def category     = column[RoleCategory]("category")
+  def trust        = column[Trust]("trust")
+  def title        = column[String]("title")
+  def color        = column[String]("color")
+  def isAssignable = column[Boolean]("is_assignable")
+  def rank         = column[Int]("rank")
+
+  override def * = {
+    val applyFunc
+      : ((Option[ObjectReference], String, RoleCategory, Trust, String, String, Boolean, Option[Int])) => DbRole = {
+      case (id, name, category, trust, title, color, isAssignable, rank) =>
+        DbRole(ObjectId.unsafeFromOption(id), name, category, trust, title, color, isAssignable, rank)
+    }
+
+    val unapplyFunc: DbRole => Option[
+      (Option[ObjectReference], String, RoleCategory, Trust, String, String, Boolean, Option[Int])
+    ] = {
+      case DbRole(id, name, category, trust, title, color, isAssignable, rank) =>
+        Some((id.unsafeToOption, name, category, trust, title, color, isAssignable, rank))
+    }
+
+    (id.?, name, category, trust, title, color, isAssignable, rank.?) <> (applyFunc, unapplyFunc)
+  }
+}
+
+class UserGlobalRolesTable(tag: Tag)
+    extends AssociativeTable(tag, "user_global_roles", classOf[User], classOf[DbRole]) {
+
+  def userId = column[ObjectReference]("user_id")
+  def roleId = column[ObjectReference]("role_id")
+
+  override def * = (userId, roleId)
 }

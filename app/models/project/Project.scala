@@ -27,8 +27,8 @@ import models.api.ProjectApiKey
 import models.project.Visibility.Public
 import models.statistic.ProjectView
 import models.user.User
-import models.user.role.ProjectRole
-import ore.permission.role.{Default, RoleType, Trust}
+import models.user.role.ProjectUserRole
+import ore.permission.role.{Role, Trust}
 import ore.permission.scope.ProjectScope
 import ore.project.{Category, FlagReason, ProjectMember}
 import ore.user.MembershipDossier
@@ -113,16 +113,16 @@ case class Project(
 
     type RoleTable = ProjectRoleTable
 
-    type RoleType = ProjectRole
+    type RoleType = ProjectUserRole
   } = new MembershipDossier[Project](this) {
 
-    type RoleType     = ProjectRole
+    type RoleType     = ProjectUserRole
     type RoleTable    = ProjectRoleTable
     type MemberType   = ProjectMember
     type MembersTable = ProjectMembersTable
 
     val membersTableClass: Class[MembersTable] = classOf[ProjectMembersTable]
-    val roleClass: Class[RoleType]             = classOf[ProjectRole]
+    val roleClass: Class[RoleType]             = classOf[ProjectUserRole]
 
     def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): MemberType =
       new ProjectMember(Project.this, userId)
@@ -136,7 +136,7 @@ case class Project(
     override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] =
       service
         .doAction(Project.roleForTrustQuery((id.value, user.id.value)).result)
-        .map(l => if (l.isEmpty) Default else l.map(_.trust).max)
+        .map(l => if (l.isEmpty) Trust.Default else l.map(_.trust).max)
 
     def clearRoles(user: User): Future[Int] =
       this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.projectId === id.value))
@@ -161,11 +161,11 @@ case class Project(
       setOwner                <- this.setOwner(user)
       _ <- Future.sequence(
         ownerRoles
-          .filter(_.roleType == RoleType.ProjectOwner)
-          .map(role => service.update(role.copy(roleType = RoleType.ProjectDeveloper)))
+          .filter(_.role == Role.ProjectOwner)
+          .map(role => service.update(role.copy(role = Role.ProjectDeveloper)))
       )
       _ <- Future.sequence(
-        userRoles.map(role => service.update(role.copy(roleType = RoleType.ProjectOwner)))
+        userRoles.map(role => service.update(role.copy(role = Role.ProjectOwner)))
       )
     } yield setOwner
   }

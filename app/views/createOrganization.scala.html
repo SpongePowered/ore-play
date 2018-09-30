@@ -1,6 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
-@import models.user.role.OrganizationRole
 @import ore.OreConfig
+@import ore.permission.role.RoleCategory
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.alert
 @()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
@@ -37,7 +37,7 @@
                             </div>
                         }
 
-                        @users.invite.form(owner = request.headerData.currentUser.get, roleClass = classOf[OrganizationRole])
+                        @users.invite.form(owner = request.headerData.currentUser.get, roleCategory = RoleCategory.Organization)
 
                         <button title="Continue" type="submit" name="create" form="form-continue"
                                 value="@messages("general.continue")"

@@ -26,7 +26,6 @@ import models.project._
 import models.user.{LoggedAction, UserActionLogger}
 import models.viewhelper.{ProjectData, VersionData}
 import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
-import ore.project.factory.TagAlias.ProjectTag
 import ore.project.factory.{PendingProject, PendingVersion, ProjectFactory}
 import ore.project.io.DownloadType._
 import ore.project.io.{DownloadType, InvalidPluginFileException, PluginFile, PluginUpload}
@@ -396,26 +395,14 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def addUnstableTag(version: Version, unstable: Boolean) = {
     if (unstable) {
       service
-        .access(classOf[ProjectTag])
-        .filter(t => t.name === "Unstable" && t.data === "")
-        .flatMap { tagsWithVersion =>
-          if (tagsWithVersion.isEmpty) {
-            val tag = Tag(
-              versionIds = List(version.id.value),
-              name = "Unstable",
-              data = "",
-              color = TagColor.Unstable
-            )
-            service
-              .access(classOf[ProjectTag])
-              .add(tag)
-              .flatMap(newTag => service.update(version.copy(tagIds = newTag.id.value :: version.tagIds)))
-          } else {
-            val tag = tagsWithVersion.head
-            service.update(tag.copy(versionIds = version.id.value :: tag.versionIds)) *>
-              service.update(version.copy(tagIds = tag.id.value :: version.tagIds))
-          }
-        }
+        .insert(
+          VersionTag(
+            versionId = version.id.value,
+            name = "Unstable",
+            data = "",
+            color = TagColor.Unstable
+          )
+        )
         .void
     } else Future.unit
   }
