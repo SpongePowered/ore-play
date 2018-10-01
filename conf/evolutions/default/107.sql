@@ -33,40 +33,40 @@ CREATE TABLE roles (
 );
 
 INSERT INTO roles (id, name, category, trust, title, color, is_assignable, rank)
-VALUES (61, 'Ore_Admin', 'global', 5, 'Ore Admin', '#DC0000', TRUE, NULL),
-       (62, 'Ore_Mod', 'global', 2, 'Ore Moderator', '#0096FF', TRUE, NULL),
-       (44, 'Sponge_Leader', 'global', 0, 'Sponge Leader', '#FFC800', TRUE, NULL),
-       (58, 'Team_Leader', 'global', 0, 'Team Leader', '#FFC800', TRUE, NULL),
-       (59, 'Community_Leader', 'global', 0, 'Community Leader', '#FFC800', TRUE, NULL),
-       (3, 'Sponge_Staff', 'global', 0, 'Sponge Staff', '#FFC800', TRUE, NULL),
-       (41, 'Sponge_Developer', 'global', 0, 'Sponge Developer', '#00DC00', TRUE, NULL),
-       (66, 'Ore_Dev', 'global', 0, 'Ore Developer', '#FF8200', TRUE, NULL),
-       (45, 'Web_Dev', 'global', 0, 'Web Developer', '#0000FF', TRUE, NULL),
-       (51, 'Documenter', 'global', 0, 'Documenter', '#0096FF', TRUE, NULL),
-       (43, 'Support', 'global', 0, 'Support', '#0096FF', TRUE, NULL),
-       (49, 'Contributor', 'global', 0, 'Contributor', '#00DC00', TRUE, NULL),
-       (48, 'Advisor', 'global', 0, 'Advisor', '#0096FF', TRUE, NULL);
+VALUES (1, 'Ore_Admin', 'global', 5, 'Ore Admin', '#DC0000', TRUE, NULL),
+       (2, 'Ore_Mod', 'global', 2, 'Ore Moderator', '#0096FF', TRUE, NULL),
+       (3, 'Sponge_Leader', 'global', 0, 'Sponge Leader', '#FFC800', TRUE, NULL),
+       (4, 'Team_Leader', 'global', 0, 'Team Leader', '#FFC800', TRUE, NULL),
+       (5, 'Community_Leader', 'global', 0, 'Community Leader', '#FFC800', TRUE, NULL),
+       (6, 'Sponge_Staff', 'global', 0, 'Sponge Staff', '#FFC800', TRUE, NULL),
+       (7, 'Sponge_Developer', 'global', 0, 'Sponge Developer', '#00DC00', TRUE, NULL),
+       (8, 'Ore_Dev', 'global', 0, 'Ore Developer', '#FF8200', TRUE, NULL),
+       (9, 'Web_Dev', 'global', 0, 'Web Developer', '#0000FF', TRUE, NULL),
+       (10, 'Documenter', 'global', 0, 'Documenter', '#0096FF', TRUE, NULL),
+       (11, 'Support', 'global', 0, 'Support', '#0096FF', TRUE, NULL),
+       (12, 'Contributor', 'global', 0, 'Contributor', '#00DC00', TRUE, NULL),
+       (13, 'Advisor', 'global', 0, 'Advisor', '#0096FF', TRUE, NULL);
 
 INSERT INTO roles (id, name, category, trust, title, color, is_assignable, rank)
-VALUES (57, 'Stone_Donor', 'global', 0, 'Stone Donor', '#A9A9A9', TRUE, 5),
-       (54, 'Quartz_Donor', 'global', 0, 'Quartz Donor', '#E7FEFF', TRUE, 4),
-       (56, 'Iron_Donor', 'global', 0, 'Iron Donor', '#C0C0C0', TRUE, 3),
-       (53, 'Gold_Donor', 'global', 0, 'Gold Donor', '#CFB53B', TRUE, 2),
-       (52, 'Diamond_Donor', 'global', 0, 'Diamond Donor', '#B9F2FF', TRUE, 1);
+VALUES (14, 'Stone_Donor', 'global', 0, 'Stone Donor', '#A9A9A9', TRUE, 5),
+       (15, 'Quartz_Donor', 'global', 0, 'Quartz Donor', '#E7FEFF', TRUE, 4),
+       (16, 'Iron_Donor', 'global', 0, 'Iron Donor', '#C0C0C0', TRUE, 3),
+       (17, 'Gold_Donor', 'global', 0, 'Gold Donor', '#CFB53B', TRUE, 2),
+       (18, 'Diamond_Donor', 'global', 0, 'Diamond Donor', '#B9F2FF', TRUE, 1);
 
 INSERT INTO roles (id, name, category, trust, title, color, is_assignable)
-VALUES (-1, 'Project_Owner', 'project', 5, 'Owner', 'transparent', FALSE),
-       (-2, 'Project_Developer', 'project', 3, 'Developer', 'transparent', TRUE),
-       (-3, 'Project_Editor', 'project', 1, 'Editor', 'transparent', TRUE),
-       (-4, 'Project_Support', 'project', 0, 'Support', 'transparent', TRUE);
+VALUES (19, 'Project_Owner', 'project', 5, 'Owner', 'transparent', FALSE),
+       (20, 'Project_Developer', 'project', 3, 'Developer', 'transparent', TRUE),
+       (21, 'Project_Editor', 'project', 1, 'Editor', 'transparent', TRUE),
+       (22, 'Project_Support', 'project', 0, 'Support', 'transparent', TRUE);
 
 INSERT INTO roles (id, name, category, trust, title, color, is_assignable)
-VALUES (64, 'Organization', 'organization', 5, 'Organization', '#B400FF', FALSE),
-       (-5, 'Organization_Owner', 'organization', 5, 'Owner', '#B400FF', FALSE),
-       (-9, 'Organization_Admin', 'organization', 4, 'Admin', '#B400FF', TRUE),
-       (-6, 'Organization_Developer', 'organization', 3, 'Developer', 'transparent', TRUE),
-       (-7, 'Organization_Editor', 'organization', 1, 'Editor', 'transparent', TRUE),
-       (-8, 'Organization_Support', 'organization', 0, 'Support', 'transparent', TRUE);
+VALUES (23, 'Organization', 'organization', 5, 'Organization', '#B400FF', FALSE),
+       (24, 'Organization_Owner', 'organization', 5, 'Owner', '#B400FF', FALSE),
+       (25, 'Organization_Admin', 'organization', 4, 'Admin', '#B400FF', TRUE),
+       (26, 'Organization_Developer', 'organization', 3, 'Developer', 'transparent', TRUE),
+       (27, 'Organization_Editor', 'organization', 1, 'Editor', 'transparent', TRUE),
+       (28, 'Organization_Support', 'organization', 0, 'Support', 'transparent', TRUE);
 
 CREATE INDEX role_name_idx ON roles (name);
 

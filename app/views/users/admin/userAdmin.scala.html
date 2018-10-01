@@ -39,7 +39,7 @@
             } else {
                 <td><select class="select-role">
                 @for(roleType <- roleTypes) {
-                    <option value="@roleType.forumRoleId" @if(role.role == roleType) {selected}
+                    <option value="@roleType.value" @if(role.role == roleType) {selected}
                     @if(roleType == Role.ProjectOwner || roleType == Role.OrganizationOwner) {data-refresh="true"}>@roleType.title</option>
                 }
                 </select></td>
