@@ -68,7 +68,7 @@ VALUES (23, 'Organization', 'organization', 5, 'Organization', '#B400FF', FALSE)
        (27, 'Organization_Editor', 'organization', 1, 'Editor', 'transparent', TRUE),
        (28, 'Organization_Support', 'organization', 0, 'Support', 'transparent', TRUE);
 
-CREATE INDEX role_name_idx ON roles (name);
+CREATE UNIQUE INDEX role_name_idx ON roles (name);
 
 CREATE TABLE user_global_roles (
   user_id BIGINT NOT NULL REFERENCES users ON DELETE CASCADE,
