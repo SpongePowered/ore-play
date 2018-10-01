@@ -14,6 +14,7 @@ services: postgresql
 
 before_script:
   - psql -c 'CREATE DATABASE ore_test;' -U postgres
+  - cp conf/application.conf.template conf/application.conf
 
 env:
   - DB_USERNAME=postgres
