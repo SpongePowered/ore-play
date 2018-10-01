@@ -9,9 +9,9 @@
 @import security.NonceFilter._
 @import views.html.utils.userAvatar
 
-@(underReview: Seq[(Project, Version, Channel, Option[String], (Review, Boolean, String))],
-  versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@import models.querymodels.{ReviewedQueueEntry, NotStartedQueueEntry}
 
+@(underReview: Seq[ReviewedQueueEntry], versions: Seq[NotStartedQueueEntry])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @versionRoutes = @{controllers.project.routes.Versions}
 
@@ -49,30 +49,30 @@
                                 </th>
                             </tr>
                         }
-                        @underReview.map { case (project, version, channel, author, (review, unfinishedReview, reviewer)) =>
-                            <tr @if(unfinishedReview && request.headerData.isCurrentUser(review.userId)){ class="warning" }>
+                        @underReview.map { entry =>
+                            <tr @if(entry.isUnfinished && request.headerData.isCurrentUser(entry.reviewerId)){ class="warning" }>
                                 <td>
-                                    <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
-                                        @project.ownerName/<string>@project.name</string>
+                                    <a href="@versionRoutes.show(entry.namespace.ownerName, entry.namespace.slug, entry.versionString)">
+                                        @entry.namespace
                                     </a>
                                     <br>
-                                    @version.versionString
-                                    <span class="channel" style="background-color: @channel.color.hex">@channel.name</span>
+                                    @entry.versionString
+                                    <span class="channel" style="background-color: @entry.channelColor.hex">@entry.channelName</span>
                                 </td>
                                 <td>
-                                    @if(author.isDefined) {
-                                        <a href="https://forums.spongepowered.org/users/@project.ownerName">
-                                        @author.get
+                                    @if(entry.versionAuthor.isDefined) {
+                                        <a href="https://forums.spongepowered.org/users/@entry.versionAuthor.get">
+                                        @entry.versionAuthor.get
                                         </a>
                                     } else {
                                         Unknown
                                     }
                                     <br>
-                                    @prettifyDateAndTime(version.createdAt.value)
+                                    @prettifyDateAndTime(entry.versionCreatedAt)
                                 </td>
                                 <td style="text-align: right; max-width: 40px">
-                                @if(unfinishedReview) {
-                                    @if(request.headerData.isCurrentUser(review.userId)) {
+                                @if(entry.isUnfinished) {
+                                    @if(request.headerData.isCurrentUser(entry.reviewerId)) {
                                         <i class="status fa fa-fw fa-play-circle fa-2x" style="color: green"></i>
                                     } else {
                                         <i class="status fa fa-fw fa-cog fa-2x" style="color: black"></i>
@@ -81,19 +81,19 @@
                                     <i class="status fa fa-fw fa-pause-circle fa-2x" style="color: orange"></i>
                                 }
                                 </td>
-                                <td @if(!unfinishedReview){ style="color: darkred" }>
-                                @if(unfinishedReview) {
-                                    @reviewer
+                                <td @if(!entry.isUnfinished){ style="color: darkred" }>
+                                @if(entry.isUnfinished) {
+                                    @entry.reviewerName
                                     <br>
-                                    <span data-ago="@review.createdAt.value.getTime" data-title="started "></span>
+                                    <span data-ago="@entry.reviewStarted.getTime" data-title="started "></span>
                                 } else {
-                                    <strike>@reviewer</strike>
+                                    <strike>@entry.reviewerName</strike>
                                     <br>
-                                    <span data-ago="@review.createdAt.value.getTime" data-title="abandoned "></span>
+                                    <span data-ago="@entry.reviewStarted.getTime" data-title="abandoned "></span>
                                 }
                                 </td>
                                 <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
-                                    <a href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews"><i class="fa fa-2x fa-fw fa-info"></i></a>
+                                    <a href="/@helper.urlEncode(entry.namespace.ownerName)/@helper.urlEncode(entry.namespace.slug)/versions/@helper.urlEncode(entry.versionString)/reviews"><i class="fa fa-2x fa-fw fa-info"></i></a>
                                 </td>
                             </tr>
                         }
@@ -133,30 +133,30 @@
                                 </th>
                             </tr>
                         }
-                        @versions.sortWith(_._2.createdAt.value.getTime < _._2.createdAt.value.getTime).map { case (project, version, channel, author, projectOwner) =>
-                            <tr data-version="@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)">
+                        @versions.sortWith(_.versionCreatedAt.getTime < _.versionCreatedAt.getTime).map { entry =>
+                            <tr data-version="@helper.urlEncode(entry.namespace.ownerName)/@helper.urlEncode(entry.namespace.slug)/versions/@helper.urlEncode(entry.versionString)">
                                 <td>
-                                    @userAvatar(Some(projectOwner.name), projectOwner.avatarUrl, clazz = "user-avatar-xs")
+                                    @userAvatar(Some(entry.namespace.ownerName), User.avatarUrl(entry.namespace.ownerName), clazz = "user-avatar-xs")
                                 </td>
                                 <td>
-                                    <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
-                                        @project.ownerName/<strong>@project.name</strong>
+                                    <a href="@versionRoutes.show(entry.namespace.ownerName, entry.namespace.slug, entry.versionString)">
+                                        @entry.namespace
                                     </a>
                                 </td>
                                 <td>
-                                    <span class="faint">@prettifyDate(version.createdAt.value)</span>
-                                    <span class="minor">@version.versionString</span>
-                                    <span class="channel" style="background-color: @channel.color.hex;">@channel.name</span>
+                                    <span class="faint">@prettifyDate(entry.versionCreatedAt)</span>
+                                    <span class="minor">@entry.versionString</span>
+                                    <span class="channel" style="background-color: @entry.channelColor.hex;">@entry.channelName</span>
                                 </td>
                                 <td>
-                                    @if(author.isDefined) {
-                                        <a href="https://forums.spongepowered.org/users/@project.ownerName">
-                                        @author.get
+                                    @if(entry.versionAuthor.isDefined) {
+                                        <a href="https://forums.spongepowered.org/users/@entry.versionAuthor.get">
+                                        @entry.versionAuthor.get
                                         </a>
                                     }
                                 <br>
                                 <td style="vertical-align: middle; text-align: right">
-                                    <a class="btn btn-success" href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews">Start review</a>
+                                    <a class="btn btn-success" href="/@helper.urlEncode(entry.namespace.ownerName)/@helper.urlEncode(entry.namespace.slug)/versions/@helper.urlEncode(entry.versionString)/reviews">Start review</a>
                                 </td>
                             </tr>
                         }

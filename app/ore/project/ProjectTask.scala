@@ -41,7 +41,7 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
     val actions = this.service.getSchema(classOf[ProjectSchema])
 
     val newFilter: ModelFilter[Project] = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
-    val future                          = actions.collect(newFilter.fn, ProjectSortingStrategies.Default, -1, 0)
+    val future                          = actions.collect(newFilter.fn, ProjectSortingStrategy.Default, -1, 0)
 
     future.foreach { projects =>
       val dayAgo = System.currentTimeMillis() - draftExpire

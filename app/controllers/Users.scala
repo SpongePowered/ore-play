@@ -21,6 +21,7 @@ import models.user.{LoggedAction, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.permission.ReviewProjects
 import ore.permission.role.Role
+import ore.project.ProjectSortingStrategy
 import ore.user.notification.{InviteFilter, NotificationFilter}
 import ore.user.{FakeUser, Prompt}
 import ore.{OreConfig, OreEnv}
@@ -148,33 +149,30 @@ class Users @Inject()(
     val pageSize = this.config.users.get[Int]("project-page-size")
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
+
     users
       .withName(username)
       .semiflatMap { user =>
         for {
           // TODO include orga projects?
-          (projectSeq, starred, orga) <- (
-            service.doAction(queryUserProjects(user).drop(offset).take(pageSize).result),
+          (projects, starred, orga, userData) <- (
+            runDbProgram(UserQueries.getProjects(username, ProjectSortingStrategy.MostStars, pageSize, offset).to[Vector]),
             user.starred(),
-            getOrga(username).value
-          ).tupled
-          (tagsSeq, userData, starredRv, orgaData, scopedOrgaData) <- (
-            Future.sequence(projectSeq.map(_._2.tags)),
+            getOrga(username).value,
             getUserData(request, username).value,
+          ).tupled
+          (starredRv, orgaData, scopedOrgaData) <- (
             Future.sequence(starred.map(_.recommendedVersion)),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).tupled
         } yield {
-          val data = projectSeq.zip(tagsSeq).map {
-            case ((p, v), tags) => (p, user, v, tags)
-          }
           val starredData = starred.zip(starredRv)
           Ok(
             views.users.projects(
               userData.get,
               orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-              data,
+              projects,
               starredData.take(5),
               pageNum
             )
@@ -183,17 +181,6 @@ class Users @Inject()(
       }
       .getOrElse(notFound)
   }
-
-  private def queryUserProjects(user: User) =
-    queryProjectRV
-      .filter { case (p, _) => p.userId === user.id.value }
-      .sortBy { case (p, _) => (p.stars.desc, p.name.asc) }
-
-  private def queryProjectRV =
-    for {
-      p <- TableQuery[ProjectTableMain]
-      v <- TableQuery[VersionTable] if p.recommendedVersionId === v.id
-    } yield (p, v)
 
   /**
     * Submits a change to the specified user's tagline.

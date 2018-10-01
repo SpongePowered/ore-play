@@ -33,7 +33,7 @@
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">@messages("project.settings")</h3>
                         @if(request.headerData.globalPerm(HideProjects)) {
-                            @projects.helper.btnHide(p.project, sp.permissions)
+                            @projects.helper.btnHide(p.project.namespace, p.project.visibility, sp.permissions)
 
                             <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
                                 <div class="modal-dialog" role="document">

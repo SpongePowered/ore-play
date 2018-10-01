@@ -161,7 +161,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                     newPending.cache()
 
                     val version   = newPending.pendingVersion
-                    val namespace = newProject.namespace
+                    val namespace = newProject.namespace.toString
                     this.cache.set(namespace, newPending)
                     this.cache.set(namespace + '/' + version.underlying.versionString, version)
                     implicit val currentUser: User = request.user

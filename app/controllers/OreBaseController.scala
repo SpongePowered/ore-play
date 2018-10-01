@@ -2,6 +2,8 @@ package controllers
 
 import scala.language.higherKinds
 
+import java.sql.Connection
+
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
@@ -44,12 +46,13 @@ abstract class OreBaseController(
     with Actions
     with I18nSupport {
 
-  implicit val xa: Transactor.Aux[IO, JdbcDataSource] = Transactor[IO, JdbcDataSource](
+  implicit lazy val xa: Transactor.Aux[IO, JdbcDataSource] = Transactor[IO, JdbcDataSource](
     service.DB.db.source,
     source => IO(source.createConnection()),
     KleisliInterpreter[IO].ConnectionInterpreter,
     Strategy.default
   )
+  println(service.DB.db.source.maxConnections)
 
   implicit val db: JdbcBackend#DatabaseDef = service.DB.db
 

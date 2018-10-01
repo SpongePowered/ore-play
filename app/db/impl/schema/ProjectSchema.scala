@@ -9,7 +9,7 @@ import models.project._
 import models.user.User
 import ore.Platform
 import ore.project.Category
-import ore.project.ProjectSortingStrategies.ProjectSortingStrategy
+import ore.project.ProjectSortingStrategy
 
 import cats.data.OptionT
 

@@ -13,18 +13,12 @@ import play.twirl.api.Html
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.{Describable, Downloadable, Hideable}
-import db.impl.schema.{
-  ProjectMembersTable,
-  ProjectRoleTable,
-  ProjectSchema,
-  ProjectStarsTable,
-  ProjectTable,
-  ProjectWatchersTable
-}
+import db.impl.schema.{ProjectMembersTable, ProjectRoleTable, ProjectSchema, ProjectStarsTable, ProjectTable, ProjectWatchersTable}
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public
+import models.querymodels.ProjectNamespace
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -194,14 +188,14 @@ case class Project(
   def watchers(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, User] =
     this.schema.getAssociation[ProjectWatchersTable, User](classOf[ProjectWatchersTable], this)
 
-  def namespace: String = this.ownerName + '/' + this.slug
+  def namespace: ProjectNamespace = ProjectNamespace(ownerName, slug)
 
   /**
     * Returns the base URL for this Project.
     *
     * @return Base URL for project
     */
-  override def url: String = this.ownerName + '/' + this.slug
+  override def url: String = namespace.toString
 
   /**
     * Returns this [[Project]]'s [[ProjectSettings]].

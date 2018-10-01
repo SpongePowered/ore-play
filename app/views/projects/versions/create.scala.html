@@ -111,7 +111,7 @@
                                             <td>
                                                 <div class="pull-right" id="upload-platform-tags">
                                                 @for(t <- pending.get.dependenciesAsGhostTags) {
-                                                    @projects.tag(t)
+                                                    @projects.tag(t.asViewTag)
                                                 }
                                                 </div>
                                             </td>

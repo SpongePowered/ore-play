@@ -7,6 +7,7 @@ import scala.collection.immutable
 
 import db.impl.schema.VersionTagTable
 import db.{Model, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import models.querymodels.ViewTag
 
 import enumeratum.values._
 
@@ -23,6 +24,8 @@ case class VersionTag(
 
   override type M = VersionTag
   override type T = VersionTagTable
+
+  def asViewTag: ViewTag = ViewTag(name, data, color)
 
   def copyWith(id: ObjectId, theTime: ObjectTimestamp): VersionTag = this.copy(id = id)
 }

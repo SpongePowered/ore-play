@@ -9,12 +9,13 @@ sorted according to different criteria.
 @import controllers.sugar.Requests.OreRequest
 @import models.project.{Project, Version, VersionTag}
 @import models.user.User
-@import ore.project.ProjectSortingStrategies.{values, _}
-@import ore.project.{Category, ProjectSortingStrategies}
+@import ore.project.ProjectSortingStrategy.{values, _}
+@import ore.project.{Category, ProjectSortingStrategy}
 @import ore.{OreConfig, Platform, PlatformCategory}
 @import security.NonceFilter._
+@import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
-@(models: Seq[(Project, User, Version, Seq[VersionTag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
+@(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
 
@@ -33,7 +34,7 @@ sorted according to different criteria.
 
 @orderingOption = @{
     sort match {
-        case ProjectSortingStrategies.Default => None
+        case ProjectSortingStrategy.Default => None
         case _ => Some(sort.id)
     }
 }
@@ -45,7 +46,7 @@ sorted according to different criteria.
     @if(visibleCategories.isDefined) {
     CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
     }
-    @if(!sort.equals(ProjectSortingStrategies.Default)) {
+    @if(!sort.equals(ProjectSortingStrategy.Default)) {
     SORT_STRING = "@sort.id";
     }
     @if(request.getQueryString("q").isDefined) {

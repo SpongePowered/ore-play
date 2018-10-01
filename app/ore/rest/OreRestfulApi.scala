@@ -25,7 +25,7 @@ import models.user.User
 import models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.permission.role.Role
-import ore.project.{Category, ProjectSortingStrategies}
+import ore.project.{Category, ProjectSortingStrategy}
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -56,7 +56,7 @@ trait OreRestfulApi extends OreWrites {
       offset: Option[Int]
   )(implicit ec: ExecutionContext): Future[JsValue] = {
     val cats: Option[Seq[Category]] = categories.map(Category.fromString).map(_.toSeq)
-    val ordering                    = sort.map(ProjectSortingStrategies.withId(_).get).getOrElse(ProjectSortingStrategies.Default)
+    val ordering                    = sort.map(ProjectSortingStrategy.withValue).getOrElse(ProjectSortingStrategy.Default)
 
     val maxLoad = this.config.projects.get[Int]("init-load")
     val lim     = max(min(limit.getOrElse(maxLoad), maxLoad), 0)

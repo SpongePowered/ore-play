@@ -15,33 +15,33 @@ import controllers.sugar.Requests.AuthRequest
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{
-  ChannelTable,
   FlagTable,
   LoggedActionViewTable,
   ProjectSchema,
   ProjectTableMain,
-  ReviewTable,
   UserTable,
-  VersionTable,
-  VersionTagTable
 }
+import db.query.AppQueries
 import db.{ModelService, ObjectReference}
 import form.OreForms
 import models.admin.Review
-import models.project.{VersionTag, _}
+import models.project._
+import models.querymodels.{FlagActivity, ReviewActivity}
 import models.user.role._
-import models.user.{LoggedAction, LoggedActionModel, User, UserActionLogger}
+import models.user.{LoggedAction, LoggedActionModel, UserActionLogger}
 import models.viewhelper.OrganizationData
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
 import ore.permission.scope.GlobalScope
-import ore.project.{Category, ProjectSortingStrategies}
+import ore.project.{Category, ProjectSortingStrategy}
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
 
+import cats.Order
 import cats.data.OptionT
 import cats.instances.future._
+import cats.instances.vector._
 import cats.syntax.all._
 
 /**
@@ -69,18 +69,6 @@ final class Application @Inject()(forms: OreForms)(
     Ok(views.linkout(remoteUrl))
   }
 
-  private val queryProjectRV = {
-    val tableProject = TableQuery[ProjectTableMain]
-    val tableVersion = TableQuery[VersionTable]
-    val userTable    = TableQuery[UserTable]
-
-    for {
-      p <- tableProject
-      v <- tableVersion if p.recommendedVersionId === v.id
-      u <- userTable if p.userId === u.id
-    } yield (p, u, v)
-  }
-
   /**
     * Display the home page.
     *
@@ -99,55 +87,26 @@ final class Application @Inject()(forms: OreForms)(
     val canHideProjects = request.headerData.globalPerm(HideProjects)
     val currentUserId   = request.headerData.currentUser.map(_.id.value).getOrElse(-1L)
 
-    val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
+    val ordering = sort.flatMap(ProjectSortingStrategy.withValueOpt).getOrElse(ProjectSortingStrategy.Default)
     val pcat     = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
     val pform    = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
 
     // get the categories being queried
-    val categoryPlatformNames: List[String] = pcat.toList.flatMap(_.getPlatforms.map(_.name))
-    val platformNames: List[String]         = (pform.map(_.name).toList ::: categoryPlatformNames).map(_.toLowerCase)
+    val categoryPlatformNames = pcat.toList.flatMap(_.getPlatforms.map(_.name))
+    val platformNames         = (pform.map(_.name).toList ::: categoryPlatformNames).map(_.toLowerCase)
 
-    val categoryList: Seq[Category] = categories.fold(Category.fromString(""))(s => Category.fromString(s)).toSeq
-    val q                           = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
+    val categoryList = categories.fold(Category.fromString(""))(s => Category.fromString(s)).toList
+    val q            = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
 
     val pageSize = this.config.projects.get[Int]("init-load")
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
 
-    val versionIdsOnPlatform =
-      TableQuery[VersionTagTable].filter(_.name.toLowerCase.inSetBind(platformNames)).map(_.versionId)
-
-    //noinspection ScalaUnnecessaryParentheses
-    val dbQueryRaw = for {
-      (project, user, version) <- queryProjectRV
-      if canHideProjects.bind ||
-        (project.visibility === (Visibility.Public: Visibility)) ||
-        (project.visibility === (Visibility.New: Visibility)) ||
-        ((project.userId === currentUserId) && (project.visibility =!= (Visibility.SoftDelete: Visibility)))
-      if (if (platformNames.isEmpty) true.bind else project.recommendedVersionId in versionIdsOnPlatform)
-      if (if (categoryList.isEmpty) true.bind else project.category.inSetBind(categoryList))
-      if (project.name.toLowerCase.like(q)) ||
-        (project.description.toLowerCase.like(q)) ||
-        (project.ownerName.toLowerCase.like(q)) ||
-        (project.pluginId.toLowerCase.like(q))
-    } yield (project, user, version)
-    val projectQuery = dbQueryRaw
-      .sortBy(t => ordering.fn(t._1))
-      .drop(offset)
-      .take(pageSize)
-
-    def queryProjects: Future[Seq[(Project, User, Version, List[VersionTag])]] = {
-      for {
-        projects <- service.DB.db.run(projectQuery.result)
-        tags     <- Future.sequence(projects.map(_._3.tags))
-      } yield {
-        projects.zip(tags).map {
-          case ((p, u, v), t) => (p, u, v, t)
-        }
-      }
-    }
-
-    queryProjects.map { data =>
+    runDbProgram(
+      AppQueries
+        .getHomeProjects(currentUserId, canHideProjects, platformNames, categoryList, q, ordering, offset, pageSize)
+        .to[Vector]
+    ).map { data =>
       val catList =
         if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
       Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform))
@@ -162,55 +121,11 @@ final class Application @Inject()(forms: OreForms)(
   def showQueue(): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
       // TODO: Pages
-      val data = this.service
-        .doAction(queryQueue.result)
-        .flatMap { list =>
-          service
-            .doAction(queryReviews(list.map(_._1.id.value)).result)
-            .map(_.groupBy(_._1.versionId))
-            .tupleLeft(list)
-        }
-        .map {
-          case (list, reviewsByVersion) =>
-            val reviewData = reviewsByVersion.mapValues { reviews =>
-              val sortedReviews = reviews.sorted(Review.ordering)
-              sortedReviews
-                .find { case (review, _) => review.endedAt.isEmpty }
-                .map { case (r, a) => (r, true, a) } // Unfinished Review
-                .orElse(sortedReviews.headOption.map { case (r, a) => (r, false, a) }) // any review
-            }
-
-            list.map {
-              case (v, p, c, a, u) => (v, p, c, a, u, reviewData.getOrElse(v.id.value, None))
-            }
-        }
-      data.map { list =>
-        val lists = list.partition(_._6.isEmpty)
-        val reviewList = lists._2.map {
-          case (v, p, c, a, _, r) => (p, v, c, a, r.get)
-        }
-        val unReviewList = lists._1.map {
-          case (v, p, c, a, u, _) => (p, v, c, a, u)
-        }
-
-        Ok(views.users.admin.queue(reviewList, unReviewList))
+      runDbProgram(AppQueries.getQueue.to[Vector]).map { queueEntries =>
+        val (started, notStarted) = queueEntries.partitionEither(_.sort)
+        Ok(views.users.admin.queue(started, notStarted))
       }
-
     }
-
-  private def queryReviews(versions: Seq[ObjectReference]) =
-    for {
-      r <- TableQuery[ReviewTable] if r.versionId.inSetBind(versions)
-      u <- TableQuery[UserTable] if r.userId === u.id
-    } yield (r, u.name)
-
-  private def queryQueue =
-    for {
-      (v, u) <- TableQuery[VersionTable].joinLeft(TableQuery[UserTable]).on(_.authorId === _.id)
-      c      <- TableQuery[ChannelTable] if v.channelId === c.id && v.isReviewed =!= true && v.isNonReviewed =!= true
-      p      <- TableQuery[ProjectTableMain] if p.id === v.projectId && p.visibility =!= (Visibility.SoftDelete: Visibility)
-      ou     <- TableQuery[UserTable] if p.userId === ou.id
-    } yield (v, p, c, u.map(_.name), ou)
 
   /**
     * Shows the overview page for flags.
@@ -225,11 +140,12 @@ final class Application @Inject()(forms: OreForms)(
     } yield (flag, project, user)
 
     for {
-      seq <- service.doAction(query.result)
+      seq         <- service.doAction(query.result)
+      globalRoles <- request.user.globalRoles.all
       perms <- Future.traverse(seq.map(_._2)) { project =>
         request.user
           .trustIn(project)
-          .map2(request.user.globalRoles.all)(request.user.can.asMap(_, _)(Visibility.values.map(_.permission): _*))
+          .map(request.user.can.asMap(_, globalRoles)(Visibility.values.map(_.permission): _*))
       }
     } yield {
       val data = seq.zip(perms).map {
@@ -270,25 +186,24 @@ final class Application @Inject()(forms: OreForms)(
 
   def showHealth(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ViewHealth)).async {
     implicit request =>
-      val projectTable = TableQuery[ProjectTableMain]
-      val query = for {
-        noTopicProject    <- projectTable if noTopicProject.topicId.?.isEmpty || noTopicProject.postId.?.isEmpty
-        dirtyTopicProject <- projectTable if dirtyTopicProject.isTopicDirty
-        staleProject      <- projectTable
-        if staleProject.lastUpdated > new Timestamp(new Date().getTime - this.config.projects.get[Int]("staleAge"))
-        notPublicProject <- projectTable if notPublicProject.visibility =!= (Visibility.Public: Visibility)
-      } yield (noTopicProject, dirtyTopicProject, staleProject, notPublicProject)
+      implicit val timestampOrder: Order[Timestamp] = Order.from[Timestamp](_.compareTo(_))
 
       (
-        service.doAction(query.result),
+        runDbProgram(AppQueries.getUnhealtyProjects.to[Vector]),
         projects.missingFile.flatMap { versions =>
           Future.traverse(versions)(v => v.project.tupleLeft(v))
         }
-      ).mapN { (queryRes, missingFileProjects) =>
-        val (queryRes1, queryRes2)                = queryRes.map(t => (t._1 -> t._2) -> (t._3 -> t._4)).unzip
-        val (noTopicProjects, topicDirtyProjects) = queryRes1.unzip
-        val (staleProjects, notPublic)            = queryRes2.unzip
-        Ok(views.users.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
+      ).mapN { (unhealthyProjects, missingFileProjects) =>
+        val noTopicProjects    = unhealthyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)
+        val topicDirtyProjects = unhealthyProjects.filter(_.isTopicDirty)
+        val staleProjects = unhealthyProjects
+          .filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.projects.get[Int]("staleAge")))
+        val notPublicProjects = unhealthyProjects.filter(_.visibility != Visibility.Public)
+
+        Ok(
+          views.users.admin
+            .health(noTopicProjects, topicDirtyProjects, staleProjects, notPublicProjects, missingFileProjects)
+        )
       }
   }
 
@@ -305,36 +220,12 @@ final class Application @Inject()(forms: OreForms)(
     */
   def showActivities(user: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
-      users
-        .withName(user)
-        .semiflatMap { u =>
-          val id = u.id.value
-
-          val reviewQuery = for {
-            review  <- TableQuery[ReviewTable] if review.userId === id
-            version <- TableQuery[VersionTable] if version.id === review.versionId
-          } yield (review, version)
-
-          val flagQuery = TableQuery[FlagTable].withFilter(flag => flag.resolvedBy === id).take(20)
-
-          val reviews = service.doAction(reviewQuery.take(20).result).flatMap { seq =>
-            Future.traverse(seq) {
-              case (review, version) =>
-                projects.find(_.id === version.projectId).value.tupleLeft(review.asRight[Flag])
-            }
-          }
-
-          val flags = service.doAction(flagQuery.result).flatMap { seq =>
-            Future.traverse(seq) { flag =>
-              projects.find(_.id === flag.projectId).value.tupleLeft(flag.asLeft[Review])
-            }
-          }
-
-          val activities = reviews.map2(flags)(_ ++ _).map(_.sortWith(sortActivities))
-
-          activities.map(a => Ok(views.users.admin.activity(u, a)))
+      runDbProgram(AppQueries.getReviewActivity(user).to[Vector])
+        .map2(runDbProgram(AppQueries.getFlagActivity(user).to[Vector])) { (reviewActivity, flagActivity) =>
+          val activities       = reviewActivity.map(_.asRight[FlagActivity]) ++ flagActivity.map(_.asLeft[ReviewActivity])
+          val sortedActivities = activities.sortWith(sortActivities)
+          Ok(views.users.admin.activity(user, sortedActivities))
         }
-        .getOrElse(NotFound)
     }
 
   /**
@@ -344,16 +235,16 @@ final class Application @Inject()(forms: OreForms)(
     * @return Boolean
     */
   def sortActivities(
-      o1: (Either[Flag, Review], Option[Project]),
-      o2: (Either[Flag, Review], Option[Project])
+      o1: Either[FlagActivity, ReviewActivity],
+      o2: Either[FlagActivity, ReviewActivity]
   ): Boolean = {
     val o1Time: Long = o1 match {
-      case (Right(review), _) => review.endedAt.getOrElse(Timestamp.from(Instant.EPOCH)).getTime
-      case _                  => 0
+      case Right(review) => review.endedAt.getOrElse(Timestamp.from(Instant.EPOCH)).getTime
+      case _             => 0
     }
     val o2Time: Long = o2 match {
-      case (Left(flag), _) => flag.resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)).getTime
-      case _               => 0
+      case Left(flag) => flag.resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)).getTime
+      case _          => 0
     }
     o1Time > o2Time
   }
@@ -362,44 +253,12 @@ final class Application @Inject()(forms: OreForms)(
     * Show stats
     * @return
     */
-  def showStats(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ViewStats)).async {
-    implicit request =>
-      /**
-        * Query to get a count where columnDate is equal to the date
-        */
-      def last10DaysCountQuery(table: String, columnDate: String): Future[Seq[(String, String)]] = {
-        this.service.DB.db.run(sql"""
-        SELECT
-          (SELECT COUNT(*) FROM #$table WHERE CAST(#$columnDate AS DATE) = day),
-          CAST(day AS DATE)
-        FROM (SELECT current_date - (INTERVAL '1 day' * generate_series(0, 9)) AS day) dates
-        ORDER BY day ASC""".as[(String, String)])
+  def showStats(): Action[AnyContent] =
+    Authenticated.andThen(PermissionAction[AuthRequest](ViewStats)).async { implicit request =>
+      runDbProgram(AppQueries.getStats(0, 10).to[List]).map { stats =>
+        Ok(views.users.admin.stats(stats))
       }
-
-      /**
-        * Query to get a count of open record in last 10 days
-        */
-      def last10DaysTotalOpen(table: String, columnStartDate: String, columnEndDate: String)
-        : Future[Seq[(String, String)]] = {
-        this.service.DB.db.run(sql"""
-        SELECT
-          (SELECT COUNT(*) FROM #$table WHERE CAST(#$columnStartDate AS DATE) <= date.when AND (CAST(#$columnEndDate AS DATE) >= date.when OR #$columnEndDate IS NULL)) count,
-          CAST(date.when AS DATE) AS days
-        FROM (SELECT current_date - (INTERVAL '1 day' * generate_series(0, 9)) AS when) date
-        ORDER BY days ASC""".as[(String, String)])
-      }
-
-      (
-        last10DaysCountQuery("project_version_reviews", "ended_at"),
-        last10DaysCountQuery("project_versions", "created_at"),
-        last10DaysCountQuery("project_version_downloads", "created_at"),
-        last10DaysCountQuery("project_version_unsafe_downloads", "created_at"),
-        last10DaysTotalOpen("project_flags", "created_at", "resolved_at"),
-        last10DaysCountQuery("project_flags", "resolved_at")
-      ).mapN { (reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed) =>
-        Ok(views.users.admin.stats(reviews, uploads, totalDownloads, unsafeDownloads, flagsOpen, flagsClosed))
-      }
-  }
+    }
 
   def showLog(
       oPage: Option[Int],
@@ -572,67 +431,20 @@ final class Application @Inject()(forms: OreForms)(
 
   def showProjectVisibility(): Action[AnyContent] =
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewVisibility)).async { implicit request =>
-      val projectSchema = this.service.getSchema(classOf[ProjectSchema])
+      (
+        runDbProgram(AppQueries.getVisibilityNeedsApproval.to[Vector]),
+        runDbProgram(AppQueries.getVisibilityWaitingProject.to[Vector])
+      ).mapN { (needsApproval, waitingProject) =>
+        val getRoles = Future.traverse(needsApproval) { project =>
+          val perms = Visibility.values.map(_.permission)
 
-      for {
-        (projectApprovals, projectChanges) <- (
-          projectSchema.collect(
-            _.visibility === (Visibility.NeedsApproval: Visibility),
-            ProjectSortingStrategies.Default,
-            -1,
-            0
-          ),
-          projectSchema.collect(
-            _.visibility === (Visibility.NeedsChanges: Visibility),
-            ProjectSortingStrategies.Default,
-            -1,
-            0
-          )
-        ).tupled
-        (lastChangeRequests, projectChangeRequests, lastVisibilityChanges, projectVisibilityChanges) <- (
-          Future.traverse(projectApprovals)(_.lastChangeRequest.value),
-          Future.traverse(projectChanges)(_.lastChangeRequest.value),
-          Future.traverse(projectApprovals)(_.lastVisibilityChange.value),
-          Future.traverse(projectChanges)(_.lastVisibilityChange.value)
-        ).tupled
+          request.user.trustIn(project).map2(request.user.globalRoles.all) {
+            request.user.can.asMap(_, _)(perms: _*)
+          }
+        }
 
-        (perms, lastChangeRequesters, lastVisibilityChangers, projectVisibilityChangers) <- (
-          Future.traverse(projectApprovals) { project =>
-            val perms = Visibility.values.map(_.permission).map { perm =>
-              (request.user.can(perm) in project).map(value => (perm, value))
-            }
-            Future.sequence(perms).map(_.toMap)
-          },
-          Future.traverse(lastChangeRequests) {
-            case None      => Future.successful(None)
-            case Some(lcr) => lcr.created.value
-          },
-          Future.traverse(lastVisibilityChanges) {
-            case None      => Future.successful(None)
-            case Some(lcr) => lcr.created.value
-          },
-          Future.traverse(projectVisibilityChanges) {
-            case None      => Future.successful(None)
-            case Some(lcr) => lcr.created.value
-          }
-        ).tupled
-      } yield {
-        val needsApproval = projectApprovals
-          .zip(perms)
-          .zip(lastChangeRequests)
-          .zip(lastChangeRequesters)
-          .zip(lastVisibilityChanges)
-          .zip(lastVisibilityChangers)
-          .map {
-            case (((((a, b), c), d), e), f) =>
-              (a, b, c, d.fold("Unknown")(_.name), e, f.fold("Unknown")(_.name))
-          }
-        val waitingProjects =
-          projectChanges.zip(projectChangeRequests).zip(projectVisibilityChanges).zip(projectVisibilityChangers).map {
-            case (((a, b), c), d) =>
-              (a, b, c, d.fold("Unknown")(_.name))
-          }
-
+        getRoles.map(perms => (needsApproval.zip(perms), waitingProject))
+      }.flatten.map { case (needsApproval, waitingProjects) =>
         Ok(views.users.admin.visibility(needsApproval, waitingProjects))
       }
     }

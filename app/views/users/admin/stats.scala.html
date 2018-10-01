@@ -3,8 +3,8 @@
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import security.NonceFilter._
-@(reviews: Seq[(String, String)], uploads: Seq[(String, String)], totalDownloads: Seq[(String, String)],
-        unsafeDownloads: Seq[(String, String)], flagsOpen: Seq[(String, String)], flagsClosed: Seq[(String, String)])(implicit messages: Messages,
+@import models.querymodels.Stats
+@(stats: List[Stats])(implicit messages: Messages,
         request: OreRequest[_], config: OreConfig)
 
 @bootstrap.layout("Stats") {
@@ -47,19 +47,19 @@
                     responsive: true,
                     type: 'line',
                     data: {
-                        labels: @Html(Json.stringify(Json.toJson(reviews.map(_._2).toList))),
+                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString)))),
                         datasets: [{
                             label: "Reviews",
                             backgroundColor: "cornflowerblue",
                             borderColor: "dodgerblue",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(reviews.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.reviews))))
                         }, {
                             label: "Uploads",
                             backgroundColor: "lightseagreen",
                             borderColor: "darkseagreen",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(uploads.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.uploads))))
                         }]
                     },
                     options: {
@@ -74,19 +74,19 @@
                     responsive: true,
                     type: 'line',
                     data: {
-                        labels: @Html(Json.stringify(Json.toJson(totalDownloads.map(_._2).toList))),
+                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString)))),
                         datasets: [{
                             label: "Total Downloads",
                             backgroundColor: "cornflowerblue",
                             borderColor: "dodgerblue",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(totalDownloads.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.totalDownloads))))
                         }, {
                             label: "Unsafe Downloads",
                             backgroundColor: "lightseagreen",
                             borderColor: "darkseagreen",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(unsafeDownloads.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.unsafeDownloads))))
                         }]
                     },
                     options: {
@@ -101,19 +101,19 @@
                     responsive: true,
                     type: 'line',
                     data: {
-                        labels: @Html(Json.stringify(Json.toJson(flagsClosed.map(_._2).toList))),
+                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString)))),
                         datasets: [{
                             label: "Open flags",
                             backgroundColor: "cornflowerblue",
                             borderColor: "dodgerblue",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(flagsOpen.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.flagsOpened))))
                         }, {
                             label: "Closed flags",
                             backgroundColor: "lightseagreen",
                             borderColor: "darkseagreen",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(flagsClosed.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.flagsClosed))))
                         }]
                     },
                     options: {

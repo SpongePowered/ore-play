@@ -3,13 +3,47 @@ package db.query
 import java.sql.Timestamp
 
 import db.impl.access.UserBase.UserOrdering
+import models.querymodels.ProjectListEntry
 import ore.OreConfig
 import ore.permission.role.Role
+import ore.project.ProjectSortingStrategy
 
 import doobie._
 import doobie.implicits._
 
 object UserQueries extends DoobieOreProtocol {
+
+  def getProjects(
+      username: String,
+      order: ProjectSortingStrategy,
+      pageSize: Int,
+      offset: Int
+  ): Query0[ProjectListEntry] = {
+
+    val fragments =
+      sql"""|SELECT p.owner_name,
+            |       p.slug,
+            |       p.visibility,
+            |       p.views,
+            |       p.downloads,
+            |       p.stars,
+            |       p.category,
+            |       p.description,
+            |       p.name,
+            |       v.version_string,
+            |       COALESCE((SELECT array_agg(t.name) AS name FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::VARCHAR(255)[]),
+            |       COALESCE((SELECT array_agg(t.data) AS data FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::VARCHAR(255)[]),
+            |       COALESCE((SELECT array_agg(t.color) AS color FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::INTEGER[])
+            |  FROM projects p
+            |         JOIN project_versions v ON p.recommended_version_id = v.id
+            |         JOIN users u ON p.owner_id = u.id
+            |  WHERE p.owner_name = $username AND 
+            |    (p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = 9001 AND p.visibility != 5)) """.stripMargin ++
+        fr"ORDER BY" ++ order.fragment ++
+        fr"LIMIT $pageSize OFFSET $offset"
+
+    fragments.query[ProjectListEntry]
+  }
 
   private def userFragOrder(reverse: Boolean, sortStr: String) = {
     val sort = if (reverse) fr"ASC" else fr"DESC"

@@ -1,10 +1,11 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.project.{Project, Version}
 @import ore.OreConfig
-@(noTopicProjects: Seq[Project],
-  topicDirtyProjects: Seq[Project],
-  staleProjects: Seq[Project],
-  notPublicProjects: Seq[Project],
+@import models.querymodels.UnhealtyProject
+@(noTopicProjects: Seq[UnhealtyProject],
+  topicDirtyProjects: Seq[UnhealtyProject],
+  staleProjects: Seq[UnhealtyProject],
+  notPublicProjects: Seq[UnhealtyProject],
   missingFileProjects: Seq[(Version, Project)])(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -27,10 +28,10 @@
                     <div class="panel-body list-group list-group-health">
                         @noTopicProjects.map { project =>
                           <div class="list-group-item">
-                              <a class="pull-left" href="@projectRoutes.show(project.ownerName, project.slug)">
+                              <a class="pull-left" href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
                                   <strong>@project.namespace</strong>
                               </a>
-                              <a class="pull-right" href="@projectRoutes.showLog(project.ownerName, project.slug)">
+                              <a class="pull-right" href="@projectRoutes.showLog(project.namespace.ownerName, project.namespace.slug)">
                                   <i class="fa fa-book"></i>
                               </a>
                               <div class="clearfix"></div>
@@ -47,10 +48,10 @@
                     <div class="panel-body list-group list-group-health">
                     @topicDirtyProjects.map { project =>
                         <div class="list-group-item">
-                            <a class="pull-left" href="@projectRoutes.show(project.ownerName, project.slug)">
+                            <a class="pull-left" href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
                                 <strong>@project.namespace</strong>
                             </a>
-                            <a class="pull-right" href="@projectRoutes.showLog(project.ownerName, project.slug)">
+                            <a class="pull-right" href="@projectRoutes.showLog(project.namespace.ownerName, project.namespace.slug)">
                                 <i class="fa fa-book"></i>
                             </a>
                             <div class="clearfix"></div>
@@ -69,7 +70,7 @@
                     <div class="panel-body list-group list-group-health">
                         @staleProjects.map { project =>
                           <div class="list-group-item">
-                              <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                              <a href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
                                   <strong>@project.namespace</strong>
                               </a>
                           </div>
@@ -85,7 +86,7 @@
                     <div class="panel-body list-group list-group-health">
                     @notPublicProjects.map { project =>
                         <div class="list-group-item">
-                            <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                            <a href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
                                 <strong>@project.namespace</strong> <small>@messages("visibility.name." + project.visibility.nameKey)</small>
                             </a>
                         </div>

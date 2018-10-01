@@ -8,6 +8,7 @@ import play.api.i18n.Lang
 
 import db.{ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.{TagColor, Visibility}
+import models.querymodels.ViewTag
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
 import ore.permission.role.{Role, RoleCategory, Trust}
@@ -20,10 +21,50 @@ import ore.user.notification.NotificationType
 import cats.data.{NonEmptyList => NEL}
 import com.github.tminglei.slickpg.InetString
 import doobie._
+import doobie.implicits._
+import doobie.postgres._
 import doobie.postgres.implicits._
 import enumeratum.values.{ValueEnum, ValueEnumEntry}
 
 trait DoobieOreProtocol {
+
+  def createLogger(name: String): LogHandler = {
+    val logger = play.api.Logger(name)
+
+    LogHandler {
+      case util.log.Success(sql, args, exec, processing) =>
+        logger.info(
+          s"""|Successful Statement Execution:
+              |
+              |  ${sql.lines.dropWhile(_.trim.isEmpty).mkString("\n  ")}
+              |
+              | arguments = [${args.mkString(", ")}]
+              |   elapsed = ${exec.toMillis} ms exec + ${processing.toMillis} ms processing (${(exec + processing).toMillis} ms total)""".stripMargin
+        )
+      case util.log.ProcessingFailure(sql, args, exec, processing, failure) =>
+        logger.error(
+          s"""|Failed Resultset Processing:
+              |
+              |  ${sql.lines.dropWhile(_.trim.isEmpty).mkString("\n  ")}
+              |
+              | arguments = [${args.mkString(", ")}]
+              |   elapsed = ${exec.toMillis} ms exec + ${processing.toMillis} ms processing (failed) (${(exec + processing).toMillis} ms total)
+              |   failure = ${failure.getMessage}""".stripMargin,
+          failure
+        )
+      case util.log.ExecFailure(sql, args, exec, failure) =>
+        logger.error(
+          s"""Failed Statement Execution:
+             |
+             |  ${sql.lines.dropWhile(_.trim.isEmpty).mkString("\n  ")}
+             |
+             | arguments = [${args.mkString(", ")}]
+             |   elapsed = ${exec.toMillis} ms exec (failed)
+             |   failure = ${failure.getMessage}""".stripMargin,
+          failure
+        )
+    }
+  }
 
   implicit val objectIdMeta: Meta[ObjectId]               = Meta[ObjectReference].xmap(ObjectId.apply, _.value)
   implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].xmap(ObjectTimestamp.apply, _.value)
@@ -70,8 +111,16 @@ trait DoobieOreProtocol {
   implicit val roleTypeArrayMeta: Meta[List[Role]] =
     Meta[List[String]].xmap(_.map(Role.withValue), _.map(_.value))
 
+  implicit val tagColorArrayMeta: Meta[List[TagColor]] =
+    Meta[List[Int]].xmap(_.map(TagColor.withValue), _.map(_.value))
+
   implicit def unsafeNelMeta[A](implicit listMeta: Meta[List[A]], typeTag: TypeTag[NEL[A]]): Meta[NEL[A]] =
     listMeta.xmap(NEL.fromListUnsafe, _.toList)
+
+  implicit val viewTagListComposite: Composite[List[ViewTag]] =
+    Composite[(List[String], List[String], List[TagColor])].imap(
+      { case (name, data, color) => name.zip(data).zip(color).map(t => ViewTag(t._1._1, t._1._2, t._2)) }
+    )(_.flatMap(ViewTag.unapply).unzip3)
 
 }
 object DoobieOreProtocol extends DoobieOreProtocol

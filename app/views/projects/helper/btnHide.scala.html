@@ -1,9 +1,10 @@
 @import models.project.{Project, Visibility}
 @import ore.permission.Permission
-@(project: Project, perms: Map[Permission, Boolean])(implicit messages: Messages)
+@import models.querymodels.ProjectNamespace
+@(namespace: ProjectNamespace, projectVisibility: Visibility, perms: Map[Permission, Boolean])(implicit messages: Messages)
 
 <div class="btn-group btn-group-sm">
-    <button class="btn btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-project="@project.ownerName/@project.slug" style="color: black">
+    <button class="btn btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-project="@namespace" style="color: black">
         <i class="fa fa-eye"></i> Visibility actions
         <span class="caret"></span>
     </button>
@@ -11,8 +12,8 @@
     @for(visibility <- Visibility.values.sortBy(_.value)) {
         @if(perms(visibility.permission)) {
         <li>
-            <a href="#" class="btn-visibility-change" data-project="@project.ownerName/@project.slug" data-level="@visibility.value" @if(visibility.showModal){ data-modal="true" }>
-                @messages("visibility.name." + visibility.nameKey) @if(project.visibility == visibility) { <i class="fa fa-check" style="color: black" aria-hidden="true"></i> }
+            <a href="#" class="btn-visibility-change" data-project="@namespace" data-level="@visibility.value" @if(visibility.showModal){ data-modal="true" }>
+                @messages("visibility.name." + visibility.nameKey) @if(projectVisibility == visibility) { <i class="fa fa-check" style="color: black" aria-hidden="true"></i> }
             </a>
         </li>
         }

@@ -2,12 +2,11 @@
 @import models.admin.ProjectVisibilityChange
 @import models.project.Project
 @import ore.OreConfig
-@* visChange1 is lastChangeRequest users.get(lastChangeRequest.get.createdBy.getOrElse(1)).map(_.username) *@
-@* visChange2 is users.get(project.lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
-@* visChange4 is users.get(lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @import ore.permission.Permission
-@(needsApproval: Seq[(Project, Map[Permission, Boolean], Option[ProjectVisibilityChange], String, Option[ProjectVisibilityChange], String)],
- waitingProjects: Seq[(Project, Option[ProjectVisibilityChange], Option[ProjectVisibilityChange], String)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@import models.querymodels.{VisibilityNeedApprovalProject, VisibilityWaitingProject}
+@import models.project.Page
+@(needsApproval: Seq[(VisibilityNeedApprovalProject, Map[Permission, Boolean])],
+ waitingProjects: Seq[VisibilityWaitingProject])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -34,32 +33,32 @@
                                 <p>No projects found.</p>
                             </li>
                         }
-                        @needsApproval.map { case (project, projectPerms, lastChangeRequest, lastChangeRequester, lastVisibilityChange, lastVisibilityChanger) =>
-                            <li data-flag-id="@project.id.value" class="list-group-item">
+                        @needsApproval.map { case (project, perms) =>
+                            <li data-flag-id="@project.id" class="list-group-item">
                                 <div class="row">
                                     <div class="col-xs-12 col-md-8">
-                                        @if(lastChangeRequest.isDefined) {
+                                        @if(project.changeRequestComment.isDefined) {
                                             <span class="description">
-                                                <strong>@lastChangeRequester</strong>
+                                                <strong>@project.changeRequester.getOrElse("Unknown")</strong>
                                                 <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                                    @project.ownerName/<strong>@project.slug</strong>
+                                                <a href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
+                                                    @project.namespace
                                                 </a>
                                             </span>
                                             <p>
                                                 <strong>Requests:</strong>
-                                                @lastChangeRequest.get.renderComment
+                                                @Page.render(project.changeRequestComment.get)
                                             </p>
                                         } else {
                                             <span class="description">
-                                                @if(lastVisibilityChange.isDefined) {
-                                                    <strong>@lastVisibilityChanger</strong>
+                                                @if(project.hasPreviousChange) {
+                                                    <strong>@project.lastChanger</strong>
                                                 } else {
                                                     <strong>Unknown</strong>
                                                 }
                                                 <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                                    @project.ownerName/<strong>@project.slug</strong>
+                                                <a href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
+                                                    @project.namespace
                                                 </a>
                                             </span>
                                             <p>
@@ -69,7 +68,7 @@
                                     </div>
                                     <div class="col-xs-12 col-md-4">
                                         <span class="pull-right btn-group-sm">
-                                        @projects.helper.btnHide(project, projectPerms)
+                                        @projects.helper.btnHide(project.namespace, project.visibility, perms)
                                         </span>
                                     </div>
                                 </div>
@@ -97,21 +96,21 @@
                                 <p>No projects found.</p>
                             </li>
                         }
-                        @waitingProjects.map { case (project, lastChangeRequest, _, lastVisibilityChanger) =>
-                            @lastChangeRequest.map { lastRequest =>
-                                <li data-flag-id="@project.id.value" class="list-group-item">
+                        @waitingProjects.map { project =>
+                            @project.changeRequestComment.map { lastRequest =>
+                                <li data-flag-id="@project.id" class="list-group-item">
                                     <div class="row">
                                         <div class="col-xs-12">
                                             <span class="description">
-                                                <strong>@lastVisibilityChanger</strong>
+                                                <strong>@project.lastChanger.getOrElse("Unknown")</strong>
                                                 <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                                    @project.ownerName/<strong>@project.slug</strong>
+                                                <a href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
+                                                    @project.namespace
                                                 </a>
                                             </span>
                                             <p>
                                                 <strong>Requests:</strong>
-                                                @lastRequest.renderComment
+                                                @Page.render(lastRequest)
                                             </p>
                                         </div>
                                     </div>

@@ -1,5 +1,6 @@
 package db.impl.access
 
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Files._
 import java.sql.Timestamp
@@ -41,8 +42,15 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       versions
         .filter {
           case (ownerNamer, name, version) =>
-            val versionDir = this.fileManager.getVersionDir(ownerNamer, name, version.name)
-            Files.notExists(versionDir.resolve(version.fileName))
+            try {
+              val versionDir = this.fileManager.getVersionDir(ownerNamer, name, version.name)
+              Files.notExists(versionDir.resolve(version.fileName))
+            }
+            catch {
+              case _: IOException =>
+                //Invalid file name
+                false
+            }
         }
         .map(_._3)
     }

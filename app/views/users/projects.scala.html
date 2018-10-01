@@ -9,7 +9,8 @@
 @import ore.permission.role.Role
 @import views.html.projects.{list => projectList}
 @import views.html.utils.userAvatar
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[VersionTag])], starred: Seq[(Project, Version)],
+@import models.querymodels.ProjectListEntry
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry], starred: Seq[(Project, Version)],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
