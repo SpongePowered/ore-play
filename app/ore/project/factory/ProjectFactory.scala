@@ -14,16 +14,14 @@ import play.api.i18n.Messages
 
 import db.ModelService
 import db.impl.access.ProjectBase
-import db.impl.schema.{ProjectMembersTable, ProjectRoleTable}
 import discourse.OreDiscourseApi
 import models.project._
 import models.user.role.ProjectRole
 import models.user.{Notification, User}
 import ore.permission.role.RoleType
+import ore.project.NotifyWatchersTask
 import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io._
-import ore.project.{NotifyWatchersTask, ProjectMember}
-import ore.user.MembershipDossier
 import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
@@ -290,21 +288,19 @@ trait ProjectFactory {
       _          <- newProject.updateSettings(pending.settings)
       _ <- {
         // Invite members
-        val dossier: MembershipDossier[Project] {
-          type MembersTable = ProjectMembersTable
-          type MemberType   = ProjectMember
-          type RoleTable    = ProjectRoleTable
-          type RoleType     = ProjectRole
-        }             = newProject.memberships
+        val dossier   = newProject.memberships
         val owner     = newProject.owner
         val ownerId   = owner.userId
         val projectId = newProject.id.value
 
         val addRole =
-          dossier.addRole(new ProjectRole(ownerId, RoleType.ProjectOwner, projectId, accepted = true, visible = true))
+          dossier.addRole(
+            newProject,
+            new ProjectRole(ownerId, RoleType.ProjectOwner, projectId, accepted = true, visible = true)
+          )
         val addOtherRoles = Future.traverse(pending.roles) { role =>
           role.user.flatMap { user =>
-            dossier.addRole(role.copy(projectId = projectId)) *>
+            dossier.addRole(newProject, role.copy(projectId = projectId)) *>
               user.sendNotification(
                 Notification(
                   userId = user.id.value,

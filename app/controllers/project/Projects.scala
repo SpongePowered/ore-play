@@ -27,6 +27,7 @@ import ore.permission.scope.GlobalScope
 import ore.project.factory.ProjectFactory
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType
+import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -413,7 +414,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .get(id)
         .semiflatMap { role =>
           status match {
-            case STATUS_DECLINE  => role.project.flatMap(_.memberships.removeRole(role)).as(Ok)
+            case STATUS_DECLINE  => role.project.flatMap(MembershipDossier.project.removeRole(_, role)).as(Ok)
             case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
             case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
             case _               => Future.successful(BadRequest)
@@ -442,7 +443,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         project <- OptionT.liftF(role.project)
         res <- OptionT.liftF[Future, Status] {
           status match {
-            case STATUS_DECLINE  => project.memberships.removeRole(role).as(Ok)
+            case STATUS_DECLINE  => project.memberships.removeRole(project, role).as(Ok)
             case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
             case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
             case _               => Future.successful(BadRequest)
@@ -539,7 +540,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .semiflatMap { user =>
           val project = request.data.project
           project.memberships
-            .removeMember(user)
+            .removeMember(project, user)
             .productR(
               UserActionLogger.log(
                 request.request,

@@ -45,39 +45,11 @@ case class Organization(
   /**
     * Contains all information for [[User]] memberships.
     */
-  override def memberships(implicit service: ModelService): MembershipDossier[Organization] {
-    type MembersTable = OrganizationMembersTable
-
-    type MemberType = OrganizationMember
-
-    type RoleTable = OrganizationRoleTable
-
-    type RoleType = OrganizationRole
-  } = new MembershipDossier(this) {
-
-    type RoleType     = OrganizationRole
-    type RoleTable    = OrganizationRoleTable
-    type MembersTable = OrganizationMembersTable
-    type MemberType   = OrganizationMember
-
-    val membersTableClass: Class[MembersTable] = classOf[OrganizationMembersTable]
-    val roleClass: Class[RoleType]             = classOf[OrganizationRole]
-
-    def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): OrganizationMember =
-      new OrganizationMember(Organization.this, userId)
-
-    def clearRoles(user: User): Future[Int] =
-      this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.organizationId === id.value))
-
-    /**
-      * Returns the highest level of [[ore.permission.role.Trust]] this user has.
-      *
-      * @param user User to get trust of
-      * @return Trust of user
-      */
-    override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] =
-      Organization.getTrust(user.id.value, id.value)
-  }
+  override def memberships(
+      implicit ec: ExecutionContext,
+      service: ModelService
+  ): MembershipDossier.Aux[Future, Organization, OrganizationRole, OrganizationMember] =
+    MembershipDossier[Future, Organization]
 
   /**
     * Returns the [[User]] that owns this Organization.
@@ -93,7 +65,7 @@ case class Organization(
     // Down-grade current owner to "Admin"
     for {
       (owner, memberUser)  <- this.owner.user.zip(member.user)
-      (roles, memberRoles) <- this.memberships.getRoles(owner).zip(this.memberships.getRoles(memberUser))
+      (roles, memberRoles) <- this.memberships.getRoles(this, owner).zip(this.memberships.getRoles(this, memberUser))
       setOwner             <- service.update(copy(ownerId = memberUser.id.value))
       _ <- Future.sequence(
         roles
