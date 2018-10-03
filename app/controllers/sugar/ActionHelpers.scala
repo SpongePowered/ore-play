@@ -13,6 +13,7 @@ import controllers.sugar.ActionHelpers.LikeFuture
 import controllers.sugar.Requests.OreRequest
 
 import cats.data.{EitherT, OptionT}
+import cats.effect.IO
 import cats.{Functor, Monad}
 import com.google.common.base.Preconditions.checkArgument
 
@@ -155,7 +156,6 @@ object ActionHelpers {
     def withSuccesses(messages: List[String]): Result = withAlerts("success", messages)
   }
 
-  //TODO: Change this for Async at some point
   trait LikeFuture[F[_]] {
     def toFuture[A](fa: F[A]): Future[A]
   }
@@ -165,6 +165,10 @@ object ActionHelpers {
 
     implicit val futureLikeFuture: LikeFuture[Future] = new LikeFuture[Future] {
       override def toFuture[A](fa: Future[A]): Future[A] = fa
+    }
+
+    implicit val ioLikeFuture: LikeFuture[IO] = new LikeFuture[IO] {
+      override def toFuture[A](fa: IO[A]): Future[A] = fa.unsafeToFuture()
     }
   }
 

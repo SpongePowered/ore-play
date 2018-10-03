@@ -17,7 +17,6 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{
   FlagTable,
   LoggedActionViewTable,
-  ProjectSchema,
   ProjectTableMain,
   UserTable,
 }
