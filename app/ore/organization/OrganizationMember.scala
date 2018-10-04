@@ -6,7 +6,6 @@ import db.impl.access.UserBase
 import db.{ModelService, ObjectReference}
 import models.user.Organization
 import models.user.role.OrganizationRole
-import ore.permission.scope.Scope
 import ore.user.Member
 
 /**

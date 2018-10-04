@@ -10,15 +10,7 @@ import play.api.mvc.Request
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
-import db.impl.schema.{
-  OrganizationMembersTable,
-  OrganizationRoleTable,
-  OrganizationTable,
-  ProjectMembersTable,
-  ProjectStarsTable,
-  ProjectWatchersTable,
-  UserTable
-}
+import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, ProjectMembersTable, ProjectStarsTable, ProjectWatchersTable, UserTable}
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{OrganizationRole, ProjectRole}

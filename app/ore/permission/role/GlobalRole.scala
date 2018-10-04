@@ -1,7 +1,7 @@
 package ore.permission.role
 
 import db.ObjectReference
-import ore.permission.scope.{GlobalScope, Scope}
+import ore.permission.scope.GlobalScope
 
 /**
   * Represents a [[Role]] within the [[GlobalScope]].
