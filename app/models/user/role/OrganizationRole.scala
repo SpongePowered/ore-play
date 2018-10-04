@@ -5,8 +5,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.schema.OrganizationRoleTable
 import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
+import ore.organization.OrganizationOwned
 import ore.permission.role.RoleType
-import ore.permission.scope.OrganizationScope
 
 /**
   * Represents a [[RoleModel]] within an [[models.user.Organization]].
@@ -26,7 +26,7 @@ case class OrganizationRole(
     roleType: RoleType,
     isAccepted: Boolean = false
 ) extends RoleModel
-    with OrganizationScope {
+    with OrganizationOwned {
 
   override type M = OrganizationRole
   override type T = OrganizationRoleTable

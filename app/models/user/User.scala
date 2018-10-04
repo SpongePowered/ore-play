@@ -63,7 +63,6 @@ case class User(
     lang: Option[Lang] = None
 ) extends Model
     with UserOwned
-    with ScopeSubject
     with Named {
 
   //TODO: Check this in some way
@@ -123,6 +122,9 @@ case class User(
 
   private def globalTrust = biggestRoleTpe(globalRoles.toSet)
 
+  def trustIn[A: HasScope](a: A)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
+    trustIn(Scope.getFor(a))
+
   /**
     * Returns this User's highest level of Trust.
     *
@@ -132,8 +134,8 @@ case class User(
     Defined {
       scope match {
         case GlobalScope => Future.successful(globalTrust)
-        case pScope: ProjectScope =>
-          val projectRoles = service.DB.db.run(Project.roleForTrustQuery((pScope.projectId, this.id.value)).result)
+        case ProjectScope(projectId) =>
+          val projectRoles = service.DB.db.run(Project.roleForTrustQuery((projectId, this.id.value)).result)
 
           val projectTrust = projectRoles
             .map(biggestRoleTpe)
@@ -150,7 +152,7 @@ case class User(
 
                 // TODO review permission logic
                 val query = for {
-                  pm <- projectMembersTable if pm.projectId === pScope.projectId // Join members of project
+                  pm <- projectMembersTable if pm.projectId === projectId // Join members of project
                   o  <- orgaTable if pm.userId == o.userId // Filter out non organizations
                   m  <- memberTable if m.organizationId === o.id
                   r  <- roleTable if m.userId === r.userId && r.organizationId === o.id
@@ -161,8 +163,8 @@ case class User(
             }
 
           projectTrust.map(Set(_, globalTrust).max)
-        case oScope: OrganizationScope =>
-          Organization.getTrust(id.value, oScope.organizationId).map(Set(_, globalTrust).max)
+        case OrganizationScope(organizationId) =>
+          Organization.getTrust(id.value, organizationId).map(Set(_, globalTrust).max)
         case _ =>
           throw new RuntimeException("unknown scope: " + scope)
       }
@@ -367,7 +369,6 @@ case class User(
     )
   }
 
-  override val scope: GlobalScope.type                                = GlobalScope
   override def userId: ObjectReference                                = this.id.value
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): User = this.copy(createdAt = theTime)
 }

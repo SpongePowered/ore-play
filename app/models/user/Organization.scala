@@ -9,7 +9,7 @@ import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestam
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Default, RoleType, Trust}
-import ore.permission.scope.OrganizationScope
+import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
@@ -34,7 +34,6 @@ case class Organization(
     ownerId: ObjectReference
 ) extends Model
     with UserOwned
-    with OrganizationScope
     with Named
     with Visitable
     with Joinable[OrganizationMember, Organization] {
@@ -114,12 +113,13 @@ case class Organization(
   override val name: String                                            = this.username
   override def url: String                                             = this.username
   override val userId: ObjectReference                                 = this.ownerId
-  override def organizationId: ObjectReference                         = this.id.value
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(createdAt = theTime)
 
 }
 
 object Organization {
+  implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
+
   lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
 
   private def queryRoleForTrust(orgId: Rep[ObjectReference], userId: Rep[ObjectReference]) =

@@ -33,13 +33,11 @@ case class ProjectView(
     address: InetString,
     cookie: String,
     userId: Option[ObjectReference] = None
-) extends StatEntry[Project]
-    with ProjectScope {
+) extends StatEntry[Project] {
 
   override type M = ProjectView
   override type T = ProjectViewsTable
 
-  override def projectId: ObjectReference                                    = this.modelId
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectView = this.copy(id = id, createdAt = theTime)
 }
 

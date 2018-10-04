@@ -17,8 +17,7 @@ import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
 import ore.OreConfig
-import ore.permission.scope.ProjectScope
-import ore.project.Dependency
+import ore.project.{Dependency, ProjectOwned}
 import util.FileUtils
 
 import cats.data.OptionT
@@ -61,7 +60,7 @@ case class Version(
     signatureFileName: String,
     isNonReviewed: Boolean = false
 ) extends Model
-    with ProjectScope
+    with ProjectOwned
     with Describable
     with Downloadable
     with Hideable {

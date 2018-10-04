@@ -22,8 +22,6 @@ class OrganizationMember(val organization: Organization, override val userId: Ob
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationRole]] =
     this.user.flatMap(user => this.organization.memberships.getRoles(user))
 
-  override def scope: Scope = this.organization.scope
-
   /**
     * Returns the Member's top role.
     *

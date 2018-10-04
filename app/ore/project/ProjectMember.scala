@@ -20,7 +20,6 @@ class ProjectMember(val project: Project, override val userId: ObjectReference)(
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectRole]] =
     this.user.flatMap(user => this.project.memberships.getRoles(user))
-  override val scope: Scope = this.project.scope
 
   /**
     * Returns the Member's top role.
