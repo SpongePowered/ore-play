@@ -14,12 +14,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{
-  FlagTable,
-  LoggedActionViewTable,
-  ProjectTableMain,
-  UserTable,
-}
+import db.impl.schema.{FlagTable, LoggedActionViewTable, ProjectTableMain, UserTable,}
 import db.query.AppQueries
 import db.{ModelService, ObjectReference}
 import form.OreForms
@@ -434,17 +429,20 @@ final class Application @Inject()(forms: OreForms)(
         runDbProgram(AppQueries.getVisibilityNeedsApproval.to[Vector]),
         runDbProgram(AppQueries.getVisibilityWaitingProject.to[Vector])
       ).mapN { (needsApproval, waitingProject) =>
-        val getRoles = Future.traverse(needsApproval) { project =>
-          val perms = Visibility.values.map(_.permission)
+          val getRoles = Future.traverse(needsApproval) { project =>
+            val perms = Visibility.values.map(_.permission)
 
-          request.user.trustIn(project).map2(request.user.globalRoles.all) {
-            request.user.can.asMap(_, _)(perms: _*)
+            request.user.trustIn(project).map2(request.user.globalRoles.all) {
+              request.user.can.asMap(_, _)(perms: _*)
+            }
           }
-        }
 
-        getRoles.map(perms => (needsApproval.zip(perms), waitingProject))
-      }.flatten.map { case (needsApproval, waitingProjects) =>
-        Ok(views.users.admin.visibility(needsApproval, waitingProjects))
-      }
+          getRoles.map(perms => (needsApproval.zip(perms), waitingProject))
+        }
+        .flatten
+        .map {
+          case (needsApproval, waitingProjects) =>
+            Ok(views.users.admin.visibility(needsApproval, waitingProjects))
+        }
     }
 }

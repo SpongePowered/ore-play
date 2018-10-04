@@ -13,7 +13,14 @@ import play.twirl.api.Html
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.{Describable, Downloadable, Hideable}
-import db.impl.schema.{ProjectMembersTable, ProjectRoleTable, ProjectSchema, ProjectStarsTable, ProjectTable, ProjectWatchersTable}
+import db.impl.schema.{
+  ProjectMembersTable,
+  ProjectRoleTable,
+  ProjectSchema,
+  ProjectStarsTable,
+  ProjectTable,
+  ProjectWatchersTable
+}
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey

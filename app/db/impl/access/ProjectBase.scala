@@ -45,8 +45,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
             try {
               val versionDir = this.fileManager.getVersionDir(ownerNamer, name, version.name)
               Files.notExists(versionDir.resolve(version.fileName))
-            }
-            catch {
+            } catch {
               case _: IOException =>
                 //Invalid file name
                 false

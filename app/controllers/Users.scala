@@ -156,7 +156,9 @@ class Users @Inject()(
         for {
           // TODO include orga projects?
           (projects, starred, orga, userData) <- (
-            runDbProgram(UserQueries.getProjects(username, ProjectSortingStrategy.MostStars, pageSize, offset).to[Vector]),
+            runDbProgram(
+              UserQueries.getProjects(username, ProjectSortingStrategy.MostStars, pageSize, offset).to[Vector]
+            ),
             user.starred(),
             getOrga(username).value,
             getUserData(request, username).value,

@@ -13,7 +13,7 @@ import slick.lifted.ColumnOrdered
 /**
   * Represents a strategy used to sort [[models.project.Project]]s.
   */
-abstract sealed class ProjectSortingStrategy(
+sealed abstract class ProjectSortingStrategy(
     val value: Int,
     val title: String,
     val fn: Project#T => ColumnOrdered[_],
