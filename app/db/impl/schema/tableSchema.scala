@@ -56,7 +56,7 @@ trait ProjectTable
   def category             = column[Category]("category")
   def stars                = column[Long]("stars")
   def views                = column[Long]("views")
-  def topicId              = column[Int]("topic_id")
+  def topicId              = column[Option[Int]]("topic_id")
   def postId               = column[Int]("post_id")
   def isTopicDirty         = column[Boolean]("is_topic_dirty")
   def lastUpdated          = column[Timestamp]("last_updated")
@@ -78,7 +78,7 @@ trait ProjectTable
       stars,
       views,
       downloads,
-      topicId.?,
+      topicId,
       postId.?,
       isTopicDirty,
       visibility,

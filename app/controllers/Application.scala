@@ -274,7 +274,7 @@ final class Application @Inject()(forms: OreForms)(
     implicit request =>
       val projectTable = TableQuery[ProjectTableMain]
       val query = for {
-        noTopicProject    <- projectTable if noTopicProject.topicId.?.isEmpty || noTopicProject.postId.?.isEmpty
+        noTopicProject    <- projectTable if noTopicProject.topicId.isEmpty || noTopicProject.postId.?.isEmpty
         dirtyTopicProject <- projectTable if dirtyTopicProject.isTopicDirty
         staleProject      <- projectTable
         if staleProject.lastUpdated > new Timestamp(new Date().getTime - this.config.projects.get[Int]("staleAge"))
