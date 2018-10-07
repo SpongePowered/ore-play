@@ -447,7 +447,7 @@ case class Project(
     * @return Root pages of project
     */
   def rootPages(implicit service: ModelService): Future[Seq[Page]] =
-    service.access[Page](classOf[Page]).sorted(_.name, p => p.projectId === this.id.value && p.parentId === -1L)
+    service.access[Page](classOf[Page]).sorted(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
 
   def logger(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLog] = {
     val loggers = service.access[ProjectLog](classOf[ProjectLog])

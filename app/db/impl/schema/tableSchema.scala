@@ -170,14 +170,14 @@ class ProjectLogEntryTable(tg: RowTag) extends ModelTable[ProjectLogEntry](tg, "
 class PageTable(tag: RowTag) extends ModelTable[Page](tag, "project_pages") with NameColumn[Page] {
 
   def projectId   = column[ObjectReference]("project_id")
-  def parentId    = column[ObjectReference]("parent_id")
+  def parentId    = column[Option[ObjectReference]]("parent_id")
   def slug        = column[String]("slug")
   def contents    = column[String]("contents")
   def isDeletable = column[Boolean]("is_deletable")
 
   override def * = {
     val convertedUnapply = convertUnapply(Page.unapply)
-    (id.?, createdAt.?, projectId, parentId.?, name, slug, isDeletable, contents) <> (convertApply(Page.apply _).tupled, convertedUnapply)
+    (id.?, createdAt.?, projectId, parentId, name, slug, isDeletable, contents) <> (convertApply(Page.apply _).tupled, convertedUnapply)
   }
 
 }
