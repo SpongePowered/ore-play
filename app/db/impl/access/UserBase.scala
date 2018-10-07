@@ -99,7 +99,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
         case UserOrdering.Projects | _ => baseQuery.sortBy(user => ordered(user._2))
       }
 
-      service.DB.db.run(query.distinct.result).map(_.slice(offset, offset + pageSize))
+      service.doAction(query.distinct.result).map(_.slice(offset, offset + pageSize))
     } else {
       // TODO page and order should be done in Database!
       // get authors
@@ -149,7 +149,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
       .take(pageSize)
       .result
 
-    service.DB.db.run(dbio)
+    service.doAction(dbio)
   }
 
   implicit val timestampOrdering: Ordering[Timestamp] = (x: Timestamp, y: Timestamp) => x.compareTo(y)

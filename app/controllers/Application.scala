@@ -139,7 +139,7 @@ final class Application @Inject()(forms: OreForms)(
 
     def queryProjects: Future[Seq[(Project, User, Version, List[Tag])]] = {
       for {
-        projects <- service.DB.db.run(projectQuery.result)
+        projects <- service.doAction(projectQuery.result)
         tags     <- Future.sequence(projects.map(_._3.tags))
       } yield {
         projects.zip(tags).map {
@@ -370,7 +370,7 @@ final class Application @Inject()(forms: OreForms)(
         * Query to get a count where columnDate is equal to the date
         */
       def last10DaysCountQuery(table: String, columnDate: String): Future[Seq[(String, String)]] = {
-        this.service.DB.db.run(sql"""
+        this.service.doAction(sql"""
         SELECT
           (SELECT COUNT(*) FROM #$table WHERE CAST(#$columnDate AS DATE) = day),
           CAST(day AS DATE)
@@ -383,7 +383,7 @@ final class Application @Inject()(forms: OreForms)(
         */
       def last10DaysTotalOpen(table: String, columnStartDate: String, columnEndDate: String)
         : Future[Seq[(String, String)]] = {
-        this.service.DB.db.run(sql"""
+        this.service.doAction(sql"""
         SELECT
           (SELECT COUNT(*) FROM #$table WHERE CAST(#$columnStartDate AS DATE) <= date.when AND (CAST(#$columnEndDate AS DATE) >= date.when OR #$columnEndDate IS NULL)) count,
           CAST(date.when AS DATE) AS days
