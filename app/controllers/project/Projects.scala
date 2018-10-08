@@ -633,6 +633,12 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         val newVisibility = Visibility.withValue(visibility)
         request.user.can(newVisibility.permission).in(GlobalScope).flatMap { perm =>
           if (perm) {
+            if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
+              this.forums.changeTopicVisibility(request.project, isVisible = false)
+            } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
+              this.forums.changeTopicVisibility(request.project, isVisible = true)
+            }
+
             val change = if (newVisibility.showModal) {
               val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
               request.project.setVisibility(newVisibility, comment, request.user.id.value)
