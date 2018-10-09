@@ -19,7 +19,7 @@ import db.{ModelService, ObjectReference}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
-import models.project.{Note, Visibility}
+import models.project.{Note, Page, Visibility}
 import models.user._
 import models.viewhelper.ScopedOrganizationData
 import ore.permission._
@@ -226,12 +226,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return View of project
     */
   def show(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).async { implicit request =>
-    projects.queryProjectPages(request.project).flatMap { pages =>
-      val pageCount = pages.size + pages.map(_._2.size).sum
-      this.stats.projectViewed(
-        Ok(views.pages.view(request.data, request.scoped, pages, request.project.homePage, None, pageCount))
-      )
-    }
+    Future.successful(Redirect(routes.Pages.show(author, slug, Page.homeName)))
   }
 
   /**
