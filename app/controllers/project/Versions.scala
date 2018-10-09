@@ -382,6 +382,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                   // Found a pending project, create it with first version
                   pendingProject.complete
                     .flatTap { created =>
+                      created._1.homePage
                       UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id.value, "created", "null")
                     }
                     .flatTap(created => addUnstableTag(created._2, versionData.unstable))
