@@ -1,9 +1,9 @@
 package db
 
+import scala.collection.JavaConverters._
+
 import com.google.common.base.Preconditions.checkNotNull
 import com.google.common.collect.{BiMap, HashBiMap}
-
-import scala.collection.JavaConverters._
 
 /**
   * A registry for [[Model]] information such as [[ModelSchema]]s or
@@ -11,7 +11,7 @@ import scala.collection.JavaConverters._
   */
 trait ModelRegistry {
 
-  val modelSchemas: BiMap[Class[_ <: Model], ModelSchema[_]] = HashBiMap.create()
+  val modelSchemas: BiMap[Class[_ <: Model], ModelSchema[_]]  = HashBiMap.create()
   var modelBases: Map[Class[_ <: ModelBase[_]], ModelBase[_]] = Map.empty
 
   /**
@@ -41,9 +41,11 @@ trait ModelRegistry {
   //noinspection ComparingUnrelatedTypes
   def getSchema[S <: ModelSchema[_]](schemaClass: Class[S]): S = {
     checkNotNull(schemaClass, "schema class is null", "")
-    this.modelSchemas.asScala.find(_._2.getClass.equals(schemaClass))
+    this.modelSchemas.asScala
+      .find(_._2.getClass.equals(schemaClass))
       .getOrElse(throw new RuntimeException("schema not found of type " + schemaClass))
-      ._2.asInstanceOf[S]
+      ._2
+      .asInstanceOf[S]
   }
 
   /**
@@ -55,9 +57,11 @@ trait ModelRegistry {
     */
   def getSchemaByModel[M <: Model](modelClass: Class[_ <: M]): ModelSchema[M] = {
     checkNotNull(modelClass, "schema class is null", "")
-    this.modelSchemas.asScala.find(_._1.isAssignableFrom(modelClass))
+    this.modelSchemas.asScala
+      .find(_._1.isAssignableFrom(modelClass))
       .getOrElse(throw new RuntimeException("schema not found for model " + modelClass))
-      ._2.asInstanceOf[ModelSchema[M]]
+      ._2
+      .asInstanceOf[ModelSchema[M]]
   }
 
   /**

@@ -10,13 +10,13 @@ import ore.project.factory.ProjectFactory
   * @param channelColorHex  Channel color hex
   * @param recommended      True if recommended version
   */
-case class VersionData(unstable: Boolean,
-                       recommended: Boolean,
-                       override val channelName: String,
-                       override protected val channelColorHex: String,
-                       override val nonReviewed: Boolean,
-                       content: Option[String],
-                       forumPost: Boolean)
-                      (implicit override val config: OreConfig,
-                       override val factory: ProjectFactory)
-                       extends TChannelData
+case class VersionData(
+    unstable: Boolean,
+    recommended: Boolean,
+    channelName: String,
+    protected val channelColorHex: String,
+    nonReviewed: Boolean,
+    content: Option[String],
+    forumPost: Boolean
+)(implicit val config: OreConfig, val factory: ProjectFactory)
+    extends TChannelData

@@ -10,6 +10,14 @@ jdk:
 scala:
   - 2.12.6
 
+services: postgresql
+
+before_script:
+  - psql -c 'CREATE DATABASE ore_test;' -U postgres
+
+env:
+  - DB_USERNAME=postgres
+
 # Caching taken from https://www.scala-sbt.org/1.0/docs/Travis-CI-with-sbt.html#Caching
 cache:
   directories:
@@ -22,4 +30,7 @@ before_cache:
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION compile
+  - sbt ++$TRAVIS_SCALA_VERSION test
+  - ./scalafmt app --test --non-interactive
+  - ./scalafmt test --test --non-interactive
+  - ./scalafmt build.sbt --test --non-interactive

@@ -1,4 +1,3 @@
-@import db.ModelService
 @import models.user.role.RoleModel
 @import ore.permission.EditSettings
 @import ore.permission.role.Absolute
@@ -10,7 +9,7 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.JoinableData
 @import ore.permission.Permission
-@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_]]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
+@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_], _]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 
 <!-- TODO: Pagination -->
@@ -32,7 +31,7 @@
         <ul style="display: none;">
             <li id="row-user" class="list-group-item">
                 <input type="hidden" />
-                @userAvatar(None, None, clazz = "user-avatar-xs")
+                @userAvatar(None, clazz = "user-avatar-xs")
                 <a class="username"></a>
                 <i class="fa fa-times user-cancel"></i>
                 @users.invite.roleSelect(roleClass = j.roleClass, classes="pull-right")
@@ -96,9 +95,9 @@
             <!-- Member list -->
             @j.filteredMembers.map { case (role, user) =>
                 <li class="list-group-item">
-                    @userAvatar(Some(user.username), user.avatarUrl, clazz = "user-avatar-xs")
-                <a class="username" href="@routes.Users.showProjects(user.username, None)">
-                @user.username
+                    @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
+                <a class="username" href="@routes.Users.showProjects(user.name, None)">
+                @user.name
                 </a>
                     <p style="display: none;" class="role-id">@role.id.value</p>
                     @if(editable && perms.getOrElse(EditSettings, false) && !role.roleType.trust.equals(Absolute)) {

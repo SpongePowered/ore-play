@@ -1,32 +1,38 @@
 import java.security.Security
+import javax.inject.{Inject, Singleton}
+
+import scala.concurrent.ExecutionContext
 
 import db.ModelService
-import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
-import javax.inject.{Inject, Singleton}
 import ore.OreConfig
 import ore.project.ProjectTask
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 /**
   * Handles initialization logic for the application.
   */
-trait Bootstrap {
-
-  val modelService: ModelService
-  val forums: OreDiscourseApi
-  val config: OreConfig
-  val projectTask: ProjectTask
+abstract class Bootstrap(
+    service: ModelService,
+    forums: OreDiscourseApi,
+    config: OreConfig,
+    projectTask: ProjectTask,
+    ec: ExecutionContext
+) {
 
   val Logger = play.api.Logger("Bootstrap")
 
   Logger.info("Initializing Ore...")
   val time: Long = System.currentTimeMillis()
 
-  this.modelService.start()
+  this.service.start()
 
-  this.forums.projects = this.modelService.getModelBase(classOf[ProjectBase])
-  this.forums.start()
+  this.forums.start(
+    ec,
+    service,
+    config
+  )
 
   this.projectTask.start()
 
@@ -38,7 +44,10 @@ trait Bootstrap {
 }
 
 @Singleton
-class BootstrapImpl @Inject()(override val modelService: ModelService,
-                              override val forums: OreDiscourseApi,
-                              override val config: OreConfig,
-                              override val projectTask: ProjectTask) extends Bootstrap
+class BootstrapImpl @Inject()(
+    modelService: ModelService,
+    forums: OreDiscourseApi,
+    config: OreConfig,
+    projectTask: ProjectTask,
+    ec: ExecutionContext
+) extends Bootstrap(modelService, forums, config, projectTask, ec)

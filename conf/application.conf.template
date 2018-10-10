@@ -55,6 +55,7 @@ security {
     api {
         url = "http://localhost:8000"
         url = ${?SPONGE_AUTH_URL}
+        avatarUrl = ${security.api.url}"/avatar/%s?size=120x120"
         key = "changeme"
         key = ${?SPONGE_AUTH_API_KEY}
         timeout = 10000ms
@@ -236,6 +237,11 @@ sponge {
           "name": "YourKit",
           "image": "images/sponsors/yourkit.png",
           "link": "https://www.yourkit.com/"
+        },
+        {
+          "name": "GameServerKings",
+          "image": "images/sponsors/gameserverkings.png",
+          "link": "https://www.gameserverkings.com/games/rust-server-hosting/"
         }
     ]
 }

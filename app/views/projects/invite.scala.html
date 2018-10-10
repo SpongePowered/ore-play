@@ -1,17 +1,14 @@
+@import play.twirl.api.Html
+
 @import controllers.project.{routes => projectRoutes}
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
-@import discourse.OreDiscourseApi
 @import models.user.User
 @import models.user.role.ProjectRole
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
-@import play.twirl.api.Html
 @import views.html.helper.{CSRF, form}
-
-@import scala.concurrent.ExecutionContext
-@(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit executionContext: ExecutionContext, messages: Messages, flash: Flash, request: OreRequest[_],
-        forums: OreDiscourseApi, config: OreConfig, currentUser: User)
+@(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit messages: Messages, request: OreRequest[_],
+        config: OreConfig)
 
 @projects.helper.panelCreate(messages("project.create"), 3) {
     <!-- Start panel -->

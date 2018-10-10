@@ -18,13 +18,14 @@ case class PGPPublicKeySubmission(raw: String) {
     *
     * @return True if validated
     */
-  def validateKey(): Boolean = try {
-    val key = PGPPublicKeyInfo.decode(raw)
-    key.foreach(this.info = _)
-    key.isDefined
-  } catch {
-    case _: IllegalStateException =>
-      false
-  }
+  def validateKey(): Boolean =
+    try {
+      val key = PGPPublicKeyInfo.decode(raw)
+      key.foreach(this.info = _)
+      key.isDefined
+    } catch {
+      case _: IllegalStateException =>
+        false
+    }
 
 }

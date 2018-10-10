@@ -2,13 +2,14 @@ package security
 
 import java.security.SecureRandom
 import java.util.Base64
-
-import akka.stream.Materializer
 import javax.inject.Inject
+
+import scala.concurrent.Future
+
 import play.api.libs.typedmap.TypedKey
 import play.api.mvc.{Filter, RequestHeader, Result}
 
-import scala.concurrent.Future
+import akka.stream.Materializer
 
 object NonceFilter {
 
@@ -24,16 +25,20 @@ object NonceFilter {
 
 }
 
-class NonceFilter @Inject() (implicit val mat: Materializer) extends Filter {
+class NonceFilter @Inject()(implicit val mat: Materializer) extends Filter {
 
   private val random = new SecureRandom()
 
-  override def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
+  override def apply(next: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] = {
     import mat.executionContext
     val nonce = generateNonce
     next(request.addAttr(NonceFilter.NonceKey, nonce)).map { result =>
-      if(result.header.headers.contains("Content-Security-Policy")) {
-        result.withHeaders("Content-Security-Policy" -> result.header.headers("Content-Security-Policy").replace("%NONCE-SOURCE%", s"nonce-$nonce"))
+      if (result.header.headers.contains("Content-Security-Policy")) {
+        result.withHeaders(
+          "Content-Security-Policy" -> result.header
+            .headers("Content-Security-Policy")
+            .replace("%NONCE-SOURCE%", s"nonce-$nonce")
+        )
       } else {
         result
       }

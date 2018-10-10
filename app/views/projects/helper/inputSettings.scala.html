@@ -1,5 +1,5 @@
-@import ore.project.Categories
-@import ore.project.Categories._
+@import ore.project.Category
+
 @(form: String,
   issues: Option[String] = None,
   source: Option[String] = None,
@@ -14,19 +14,17 @@
     <div class="setting-description">
         <h4>Category</h4>
         <p>
-            Categorize your project into one of @Categories.visible.size categories. Appropriately categorizing your
+            Categorize your project into one of @Category.visible.size categories. Appropriately categorizing your
             project makes it easier for people to find.
         </p>
     </div>
     <div class="setting-content">
         <select class="form-control" id="category" name="category" form="@form">
-            @for(i <- 0 until Categories.values.size) {
-                @defining(Categories(i)) { category =>
-                    @if(category.isVisible) {
-                        <option @if(selected.isDefined && selected.get.equals(category)) { selected } >
-                            @category.title
-                        </option>
-                    }
+            @for(category <- Category.values) {
+                @if(category.isVisible) {
+                    <option @if(selected.isDefined && selected.get.equals(category)) { selected } >
+                        @category.title
+                    </option>
                 }
             }
         </select>

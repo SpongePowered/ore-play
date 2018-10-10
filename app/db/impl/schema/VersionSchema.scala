@@ -1,17 +1,16 @@
 package db.impl.schema
 
-import db.impl.OrePostgresDriver.api._
-import db.impl.VersionTable
-import db.{ModelFilter, ModelSchema, ModelService}
-import models.project.Version
-
 import scala.concurrent.Future
+
+import db.impl.OrePostgresDriver.api._
+import db.{ModelFilter, ModelSchema, ModelService, ObjectReference}
+import models.project.Version
 
 /**
   * Version related queries.
   */
 class VersionSchema(override val service: ModelService)
-  extends ModelSchema[Version](service, classOf[Version], TableQuery[VersionTable]) {
+    extends ModelSchema[Version](service, classOf[Version], TableQuery[VersionTable]) {
 
   /**
     * Returns true if the specified hash is found in the specified
@@ -21,11 +20,12 @@ class VersionSchema(override val service: ModelService)
     * @param hash       Version hash
     * @return           True if found
     */
-  def hashExists(projectId: Int, hash: String): Future[Boolean] = service.DB.db.run(((for {
+  def hashExists(projectId: ObjectReference, hash: String): Future[Boolean] =
+    service.doAction(((for {
       model <- this.baseQuery
       if model.projectId === projectId
       if model.hash === hash
-  } yield model.id).length > 0).result)
+    } yield model.id).length > 0).result)
 
   /**
     * Returns a filter based on a Version's channel.
@@ -33,6 +33,7 @@ class VersionSchema(override val service: ModelService)
     * @param channelIds Channel IDs to filter versions with
     * @return           Channel filter
     */
-  def channelFilter(channelIds: Seq[Int]): ModelFilter[Version] = ModelFilter[Version](_.channelId inSetBind channelIds)
+  def channelFilter(channelIds: Seq[ObjectReference]): ModelFilter[Version] =
+    ModelFilter[Version](_.channelId.inSetBind(channelIds))
 
 }

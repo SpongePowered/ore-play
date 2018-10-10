@@ -1,6 +1,11 @@
 package security.spauth
 
 import play.api.i18n.Lang
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Reads._
+import play.api.libs.json._
+
+import db.ObjectReference
 
 /**
   * Represents a Sponge user.
@@ -12,4 +17,21 @@ import play.api.i18n.Lang
   * @param lang      Language
   * @param addGroups Groups
   */
-case class SpongeUser(id: Int, username: String, email: String, avatarUrl: Option[String], lang: Option[Lang], addGroups: Option[String])
+case class SpongeUser(
+    id: ObjectReference,
+    username: String,
+    email: String,
+    avatarUrl: Option[String],
+    lang: Option[Lang],
+    addGroups: Option[String]
+)
+object SpongeUser {
+  implicit val spongeUserReads: Reads[SpongeUser] =
+    (JsPath \ "id")
+      .read[Long]
+      .and((JsPath \ "username").read[String])
+      .and((JsPath \ "email").read[String])
+      .and((JsPath \ "avatar_url").readNullable[String])
+      .and((JsPath \ "language").readNullable[String].map(_.flatMap(Lang.get)))
+      .and((JsPath \ "add_groups").readNullable[String])(SpongeUser.apply _)
+}

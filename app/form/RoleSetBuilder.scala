@@ -1,5 +1,6 @@
 package form
 
+import db.ObjectReference
 import models.user.role.RoleModel
 import ore.permission.role.RoleType
 
@@ -15,7 +16,7 @@ trait RoleSetBuilder[M <: RoleModel] {
     *
     * @return User IDs
     */
-  def users: List[Int]
+  def users: List[ObjectReference]
 
   /**
     * Returns the role names to use in building the set.
@@ -29,9 +30,10 @@ trait RoleSetBuilder[M <: RoleModel] {
     *
     * @return Result set
     */
-  def build(): Set[M] = (for ((userId, i) <- this.users.zipWithIndex) yield {
-    newRole(userId, RoleType.withValue(roles(i)))
-  }).toSet
+  def build(): Set[M] =
+    (for ((userId, i) <- this.users.zipWithIndex) yield {
+      newRole(userId, RoleType.withValue(roles(i)))
+    }).toSet
 
   /**
     * Creates a new role for the specified user ID and role type.
@@ -40,6 +42,6 @@ trait RoleSetBuilder[M <: RoleModel] {
     * @param role   Role type
     * @return       New role
     */
-  def newRole(userId: Int, role: RoleType): M
+  def newRole(userId: ObjectReference, role: RoleType): M
 
 }

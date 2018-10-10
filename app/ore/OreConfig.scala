@@ -1,11 +1,13 @@
 package ore
 
 import javax.inject.{Inject, Singleton}
-import models.project.Channel
-import ore.Colors._
-import org.spongepowered.plugin.meta.version.ComparableVersion
+
 import play.api.{Configuration, Logger}
+
+import models.project.Channel
 import util.StringUtils._
+
+import org.spongepowered.plugin.meta.version.ComparableVersion
 
 /**
   * A helper class for the Ore configuration.
@@ -16,17 +18,17 @@ import util.StringUtils._
 final class OreConfig @Inject()(config: Configuration) {
 
   // Sub-configs
-  lazy val root: Configuration = this.config
-  lazy val app: Configuration = this.config.get[Configuration]("application")
-  lazy val play: Configuration = this.config.get[Configuration]("play")
-  lazy val ore: Configuration = this.config.get[Configuration]("ore")
+  lazy val root: Configuration     = this.config
+  lazy val app: Configuration      = this.config.get[Configuration]("application")
+  lazy val play: Configuration     = this.config.get[Configuration]("play")
+  lazy val ore: Configuration      = this.config.get[Configuration]("ore")
   lazy val channels: Configuration = this.ore.get[Configuration]("channels")
-  lazy val pages: Configuration = this.ore.get[Configuration]("pages")
+  lazy val pages: Configuration    = this.ore.get[Configuration]("pages")
   lazy val projects: Configuration = this.ore.get[Configuration]("projects")
-  lazy val users: Configuration = this.ore.get[Configuration]("users")
-  lazy val orgs: Configuration = this.ore.get[Configuration]("orgs")
-  lazy val forums: Configuration = this.root.get[Configuration]("discourse")
-  lazy val sponge: Configuration = this.root.get[Configuration]("sponge")
+  lazy val users: Configuration    = this.ore.get[Configuration]("users")
+  lazy val orgs: Configuration     = this.ore.get[Configuration]("orgs")
+  lazy val forums: Configuration   = this.root.get[Configuration]("discourse")
+  lazy val sponge: Configuration   = this.root.get[Configuration]("sponge")
   lazy val security: Configuration = this.root.get[Configuration]("security")
 
   /**
@@ -70,8 +72,8 @@ final class OreConfig @Inject()(config: Configuration) {
     * @param version  Version string to parse
     * @return         Suggested channel name
     */
-  def getSuggestedNameForVersion(version: String): String
-  = Option(new ComparableVersion(version).getFirstString).getOrElse(this.defaultChannelName)
+  def getSuggestedNameForVersion(version: String): String =
+    Option(new ComparableVersion(version).getFirstString).getOrElse(this.defaultChannelName)
 
   lazy val debugLevel: Int = this.ore.get[Int]("debug-level")
 
@@ -79,15 +81,13 @@ final class OreConfig @Inject()(config: Configuration) {
   def isDebug: Boolean = this.ore.get[Boolean]("debug")
 
   /** Sends a debug message if in debug mode */
-  def debug(msg: Any, level: Int = 1): Unit = {
+  def debug(msg: Any, level: Int = 1): Unit =
     if (isDebug && (level == this.debugLevel || level == -1))
       Logger.debug(msg.toString)
-  }
 
   /** Asserts that the application is in debug mode. */
-  def checkDebug(): Unit = {
-    if(!isDebug)
+  def checkDebug(): Unit =
+    if (!isDebug)
       throw new UnsupportedOperationException("this function is supported in debug mode only")
-  }
 
 }

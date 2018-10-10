@@ -2,17 +2,19 @@ package mail
 
 import java.security.Security
 import java.util.Date
-
-import akka.actor.{ActorSystem, Scheduler}
-import com.sun.net.ssl.internal.ssl.Provider
 import javax.inject.{Inject, Singleton}
 import javax.mail.Message.RecipientType
 import javax.mail.Session
 import javax.mail.internet.{InternetAddress, MimeMessage}
-import play.api.Configuration
 
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+
+import play.api.Configuration
+
+import akka.actor.{ActorSystem, Scheduler}
+import com.sun.net.ssl.internal.ssl.Provider
 
 /**
   * Handles dispatch of emails to users. Particularly for email verification.
@@ -20,30 +22,35 @@ import scala.concurrent.duration._
 trait Mailer extends Runnable {
 
   /** The sender username */
-  val username: String
+  def username: String
+
   /** The sender email */
-  val email: InternetAddress
+  def email: InternetAddress
+
   /** The sender password */
-  val password: String
+  def password: String
 
   /** SMTP server URL */
-  val smtpHost: String
+  def smtpHost: String
+
   /** SMTP port number */
   val smtpPort: Int = 465
+
   /** SMTP transport protocol */
   val transportProtocol: String = "smtps"
 
   /** The rate at which to send emails */
   val interval: FiniteDuration = 30.seconds
-  val scheduler: Scheduler
+  def scheduler: Scheduler
 
   /** The properties to be applied to the [[Session]] */
   val properties: Map[String, Any] = Map.empty
-  /** Pending emails */
-  var queue: Seq[Email] = Seq.empty
 
-  var suppressLogger = false
-  val Logger = play.api.Logger("Mailer")
+  /** Pending emails */
+  val queue: ArrayBuffer[Email] = ArrayBuffer.empty
+
+  val suppressLogger = false
+  val Logger         = play.api.Logger("Mailer")
 
   private var session: Session = _
 
@@ -87,7 +94,7 @@ trait Mailer extends Runnable {
     *
     * @param email Email to push
     */
-  def push(email: Email): Unit = this.queue :+= email
+  def push(email: Email): Unit = this.queue += email
 
   /**
     * Sends all queued [[Email]]s.
@@ -96,7 +103,7 @@ trait Mailer extends Runnable {
     if (queue.nonEmpty) {
       log(s"Sending ${this.queue.size} queued emails...")
       this.queue.foreach(send)
-      this.queue = Seq.empty
+      this.queue.clear()
       log("Done.")
     }
   }
@@ -104,18 +111,19 @@ trait Mailer extends Runnable {
 }
 
 @Singleton
-final class SpongeMailer @Inject()(config: Configuration, actorSystem: ActorSystem)(implicit ec: ExecutionContext) extends Mailer {
+final class SpongeMailer @Inject()(config: Configuration, actorSystem: ActorSystem)(implicit ec: ExecutionContext)
+    extends Mailer {
 
   private val conf = config.get[Configuration]("mail")
 
-  override val username: String = this.conf.get[String]("username")
-  override val email: InternetAddress = InternetAddress.parse(this.conf.get[String]("email"))(0)
-  override val password: String = this.conf.get[String]("password")
-  override val smtpHost: String = this.conf.get[String]("smtp.host")
-  override val smtpPort: Int = this.conf.get[Int]("smtp.port")
-  override val transportProtocol: String = this.conf.get[String]("transport.protocol")
-  override val interval: FiniteDuration = this.conf.get[FiniteDuration]("interval")
-  override val scheduler: Scheduler = this.actorSystem.scheduler
+  override val username: String                = this.conf.get[String]("username")
+  override val email: InternetAddress          = InternetAddress.parse(this.conf.get[String]("email"))(0)
+  override val password: String                = this.conf.get[String]("password")
+  override val smtpHost: String                = this.conf.get[String]("smtp.host")
+  override val smtpPort: Int                   = this.conf.get[Int]("smtp.port")
+  override val transportProtocol: String       = this.conf.get[String]("transport.protocol")
+  override val interval: FiniteDuration        = this.conf.get[FiniteDuration]("interval")
+  override val scheduler: Scheduler            = this.actorSystem.scheduler
   override val properties: Map[String, String] = this.conf.get[Map[String, String]]("properties")
 
   start()

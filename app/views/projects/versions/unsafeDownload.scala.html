@@ -1,7 +1,7 @@
 @import controllers.sugar.Requests.OreRequest
-@import models.project.{Project, Version, Channel}
+@import models.project.{Project, Version}
 @import ore.OreConfig
-@import ore.project.io.DownloadTypes.DownloadType
+@import ore.project.io.DownloadType
 @import views.html.helper.CSRF
 @(project: Project,
         target: Version,
@@ -46,7 +46,7 @@
                             </div>
 
                             <div class="col-xs-12 col-sm-6">
-                                <form action="@versionRoutes.confirmDownload(project.ownerName, project.slug, target.name, Some(downloadType.id), token)" method="post" id="form-download">
+                                <form action="@versionRoutes.confirmDownload(project.ownerName, project.slug, target.name, Some(downloadType.value), token)" method="post" id="form-download">
                                     @CSRF.formField
 
                                     <button type="submit" form="form-download" class="btn btn-danger pull-right-sm">

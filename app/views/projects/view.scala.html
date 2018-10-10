@@ -4,11 +4,11 @@ Base template for Project overview.
 
 @import controllers.project.routes._
 @import controllers.sugar.Requests.OreRequest
-@import models.project.VisibilityTypes
+@import models.project.Visibility
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.{EditPages, EditSettings, ReviewFlags, ViewLogs}
-@import ore.project.FlagReasons
+@import ore.project.FlagReason
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false)(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
@@ -21,18 +21,18 @@ Base template for Project overview.
 
     <div class="project-header-container">
         <div class="container">
-            @if(p.visibility != VisibilityTypes.Public) {
+            @if(p.visibility != Visibility.Public) {
                 <div class="row">
                     <div class="col-xs-12">
                         <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
-                            @if(p.visibility == VisibilityTypes.New) {
+                            @if(p.visibility == Visibility.New) {
                                 @messages("visibility.notice." + p.visibility.nameKey)
                                 @if(sp.perms(EditPages)) {
                                     <br>
                                     @messages("visibility.notice.author." + p.visibility.nameKey)
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/publish" style="margin-top: -.5em">Publish</a>
                                 }
-                            } else { @if(p.visibility == VisibilityTypes.NeedsChanges) {
+                            } else { @if(p.visibility == Visibility.NeedsChanges) {
                                 @if(sp.perms(EditPages)) {
                                     <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                                 }
@@ -40,7 +40,7 @@ Base template for Project overview.
                                 <br>
                                 @p.renderVisibilityChange.getOrElse("Unknown")
 
-                            } else { @if(p.visibility == VisibilityTypes.SoftDelete) {
+                            } else { @if(p.visibility == Visibility.SoftDelete) {
 
                                 @messages("visibility.notice." + p.visibility.nameKey, p.lastVisibilityChangeUser)
                                 @p.renderVisibilityChange.getOrElse("")
@@ -88,7 +88,7 @@ Base template for Project overview.
                                     </a>
                                 </li>
 
-                                @if(p.project.topicId != -1) {
+                                @if(p.project.topicId.isDefined) {
                                     <li id="discussion" class="">
                                         <a href="@Projects.showDiscussion(
                                             p.project.ownerName, p.project.slug)">
@@ -166,7 +166,7 @@ Base template for Project overview.
                             }
 
                             <!-- Flag button -->
-                            @if(request.hasUser && !request.currentUser.get.username.equals(p.project.ownerName)
+                            @if(request.hasUser && !request.currentUser.get.name.equals(p.project.ownerName)
                                     && !sp.uProjectFlags
                                     && !p.project.isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
@@ -188,12 +188,12 @@ Base template for Project overview.
                                                 @CSRF.formField
                                                 <div class="modal-body">
                                                     <ul class="list-group list-flags">
-                                                    @for(i <- 0 until FlagReasons.values.size) {
+                                                    @for(i <- 0 until FlagReason.values.size) {
                                                         <li class="list-group-item">
-                                                            <span>@FlagReasons(i).title</span>
+                                                            <span>@FlagReason.withValue(i).title</span>
                                                             <span class="pull-right">
                                                                 <input required type="radio"
-                                                                       value="@FlagReasons(i).id" name="flag-reason"/>
+                                                                       value="@FlagReason.withValue(i).value" name="flag-reason"/>
                                                             </span>
                                                         </li>
                                                     }
@@ -233,25 +233,25 @@ Base template for Project overview.
                                 </div>
                             }
 
-                            @if(request.hasUser && (request.data.globalPerm(ReviewFlags) || request.data.globalPerm(ViewLogs))) {
+                            @if(request.hasUser && (request.headerData.globalPerm(ReviewFlags) || request.headerData.globalPerm(ViewLogs))) {
                                 <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                     Admin actions
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-actions">
-                                    @if(request.data.globalPerm(ReviewFlags)) {
+                                    @if(request.headerData.globalPerm(ReviewFlags)) {
                                         <li><a href="@Projects.showFlags(p.project.ownerName, p.project.slug)">
                                             Flag history (@p.flagCount) </a></li>
                                     }
-                                    @if(request.data.globalPerm(ReviewFlags)) {
+                                    @if(request.headerData.globalPerm(ReviewFlags)) {
                                         <li><a href="@Projects.showNotes(p.project.ownerName, p.project.slug)">
                                             Staff notes (@p.noteCount) </a></li>
                                     }
-                                    @if(request.data.globalPerm(ViewLogs)) {
+                                    @if(request.headerData.globalPerm(ViewLogs)) {
                                         <li><a href="@appRoutes.showLog(None, None, Some(p.project.id.value), None, None, None, None)">
                                             User Action Logs</a></li>
                                     }
-                                    @if(request.data.globalPerm(ViewLogs)) {
+                                    @if(request.headerData.globalPerm(ViewLogs)) {
                                         <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
                                             System Logs (@p.projectLogSize) </a></li>
                                     }

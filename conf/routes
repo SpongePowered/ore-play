@@ -8,18 +8,14 @@ GET     /*path/                                                     @controllers
 
 GET     /admin/user/:user                                           @controllers.Application.userAdmin(user)
 POST    /admin/user/:user/update                                    @controllers.Application.updateUser(user)
-#GET     /admin/reset                                                @controllers.Application.reset()
-#GET     /admin/seed                                                 @controllers.Application.seed(users: Int ?= 200, projects: Int ?= 1, versions: Int ?= 2, channels: Int ?= 2)
-#GET     /admin/migrate                                              @controllers.Application.migrate()
 GET     /admin/approval/versions                                    @controllers.Application.showQueue()
-GET     /admin/approval/versions/:page                              @controllers.Application.showQueueWithPage(page: Int)
 GET     /admin/approval/projects                                    @controllers.Application.showProjectVisibility()
 GET     /admin/flags                                                @controllers.Application.showFlags()
-GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: Int, resolved: Boolean)
+GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: ObjectReference, resolved: Boolean)
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats()
-GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[Int], projectFilter: Option[Int], versionFilter: Option[Int], pageFilter: Option[Int], actionFilter: Option[Int], subjectFilter: Option[Int])
+GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[ObjectReference], projectFilter: Option[ObjectReference], versionFilter: Option[ObjectReference], pageFilter: Option[ObjectReference], actionFilter: Option[Int], subjectFilter: Option[ObjectReference])
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()
 
@@ -82,8 +78,8 @@ POST    /new/upload                                                 @controllers
 GET     /new/:author/:slug                                          @controllers.project.Projects.showCreatorWithMeta(author, slug)
 POST    /new/:author/:slug/members                                  @controllers.project.Projects.showInvitationForm(author, slug)
 
-POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: Int, status)
-POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: Int, status: String, behalf: String)
+POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: ObjectReference, status)
+POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: ObjectReference, status: String, behalf: String)
 
 POST    /pages/preview                                              @controllers.project.Pages.showPreview()
 
@@ -92,7 +88,7 @@ POST    /pages/preview                                              @controllers
 GET     /organizations/new                                          @controllers.Organizations.showCreator()
 POST    /organizations/new                                          @controllers.Organizations.create()
 
-POST    /organizations/invite/:id/:status                           @controllers.Organizations.setInviteStatus(id: Int, status)
+POST    /organizations/invite/:id/:status                           @controllers.Organizations.setInviteStatus(id: ObjectReference, status)
 
 POST    /organizations/:organization/settings/avatar                @controllers.Organizations.updateAvatar(organization)
 POST    /organizations/:organization/settings/members               @controllers.Organizations.updateMembers(organization)
@@ -103,9 +99,9 @@ GET     /authors                                                    @controllers
 GET     /staff                                                      @controllers.Users.showStaff(sort: Option[String], page: Option[Int])
 
 GET     /notifications                                              @controllers.Users.showNotifications(notificationFilter: Option[String], inviteFilter: Option[String])
-POST    /notifications/read/:id                                     @controllers.Users.markNotificationRead(id: Int)
+POST    /notifications/read/:id                                     @controllers.Users.markNotificationRead(id: ObjectReference)
 
-POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: Int)
+POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: ObjectReference)
 
 GET     /:user                                                      @controllers.Users.showProjects(user, page: Option[Int])
 POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)
@@ -203,7 +199,7 @@ POST    /:author/:slug/versions/:version/reviews/stop               @controllers
 POST    /:author/:slug/versions/:version/reviews/approve            @controllers.Reviews.approveReview(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/takeover           @controllers.Reviews.takeoverReview(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers.Reviews.addMessage(author, slug, version)
-POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: Int)
+POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: ObjectReference)
 POST    /:author/:slug/versions/:version/reviews/reopen             @controllers.Reviews.reopenReview(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers.Reviews.shouldReviewToggle(author, slug, version)
 

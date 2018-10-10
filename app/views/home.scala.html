@@ -2,26 +2,21 @@
 The main entry point of Ore. This page displays a list of Projects that can be
 sorted according to different criteria.
 *@
+@import scala.util.Random
+
+@import play.api.Configuration
+
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.project.{Project, Tag, Version}
 @import models.user.User
-@import ore.Platforms.Platform
-@import ore.project.Categories._
 @import ore.project.ProjectSortingStrategies.{values, _}
-@import ore.project.{Categories, ProjectSortingStrategies}
-@import ore.{OreConfig, Platforms}
-@import play.api.Configuration
+@import ore.project.{Category, ProjectSortingStrategies}
+@import ore.{OreConfig, Platform, PlatformCategory}
 @import security.NonceFilter._
 @import views.html.utils.alert
-
-@import scala.util.Random
-@import ore.PlatformCategory
 @(models: Seq[(Project, User, Version, Seq[Tag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
-
-@projectRoutes = @{controllers.project.routes.Projects}
 
 @randomSponsor = @{
     val logos: Seq[Configuration] = config.sponge.get[Seq[Configuration]]("sponsors")
@@ -33,7 +28,7 @@ sorted according to different criteria.
 }
 
 @categoryString = @{
-    visibleCategories.map(_.map(_.id.toString).mkString(","))
+    visibleCategories.map(_.map(_.value.toString).mkString(","))
 }
 
 @orderingOption = @{
@@ -48,7 +43,7 @@ sorted according to different criteria.
     <script type="text/javascript" src="@routes.Assets.at("javascripts/home.js")"></script>
     <script nonce="@nonce">
     @if(visibleCategories.isDefined) {
-    CATEGORY_STRING = "@visibleCategories.get.map(_.id).mkString(",")";
+    CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
     }
     @if(!sort.equals(ProjectSortingStrategies.Default)) {
     SORT_STRING = "@sort.id";
@@ -152,8 +147,8 @@ sorted according to different criteria.
 
                     <table class="table panel-body category-table">
                         <tbody>
-                        @for(category <- Categories.visible) {
-                            <tr data-id="@category.id" @if(visibleCategories.isDefined && visibleCategories.get.contains(category)) { class="selected"} >
+                        @for(category <- Category.visible) {
+                            <tr data-id="@category.value" @if(visibleCategories.isDefined && visibleCategories.get.contains(category)) { class="selected"} >
                                 <td><i class="fa @category.icon"></i></td>
                                 <td>
                                     <strong>@category.title</strong>

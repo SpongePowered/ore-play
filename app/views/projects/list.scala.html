@@ -1,13 +1,12 @@
 @*
 Collection of all projects.
 *@
-@import db.ModelService
 @import models.project.{Project, Tag, Version}
 @import models.user.User
 @import ore.OreConfig
-@import ore.project.Categories
+@import ore.project.Category
 @import views.html.utils
-@(models: Seq[(Project, User, Version, Seq[Tag])], page: Int, pageSize: Int, call: Int => Call)(implicit messages: Messages, flash: Flash, config: OreConfig)
+@(models: Seq[(Project, User, Version, Seq[Tag])], page: Int, pageSize: Int, call: Int => Call)(implicit config: OreConfig)
 
 @projectRoutes = @{
     controllers.project.routes.Projects
@@ -44,7 +43,7 @@ Collection of all projects.
                                     <span class="stat" title="Download"><i class="fa fa-download"></i> @project.downloadCount</span>
                                     <span class="stat" title="Stars"><i class="fa fa-star"></i> @project.starCount</span>
 
-                                    @defining(project.category) { category: Categories.Category =>
+                                    @defining(project.category) { category: Category =>
                                         <span class="stat" title="@category.title">
                                             <i class="fa @category.icon"></i>
                                         </span>

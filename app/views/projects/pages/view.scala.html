@@ -6,7 +6,6 @@ Documentation page within Project overview.
 
 @import controllers.project.routes
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.project.Page
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
@@ -85,14 +84,14 @@ Documentation page within Project overview.
                         </div>
                         <ul class="list-group">
                             <li class="list-group-item">
-                                <a href="@routes.Pages.show(p.project.ownerName, p.project.slug, Page.HomeName)">
-                                    @Page.HomeName
+                                <a href="@routes.Pages.show(p.project.ownerName, p.project.slug, Page.homeName)">
+                                    @Page.homeName
                                 </a>
                             </li>
-                            @rootPages.filterNot(_._1.name.equals(Page.HomeName)).map { case (pg, children) =>
+                            @rootPages.filter(_._1.name != Page.homeName).map { case (pg, children) =>
                                 <li class="list-group-item">
                                     @if(children.nonEmpty) {
-                                        @if(page.parentId != pg.id.value) {
+                                        @if(!page.parentId.contains(pg.id.value)) {
                                             <a class="page-expand" data-page-id="@pg.id.value">
                                                 <i class="fa fa-plus-square-o"></i>
                                             </a>
@@ -106,7 +105,7 @@ Documentation page within Project overview.
                                         @pg.name
                                     </a>
                                 </li>
-                              @if(page.parentId != -1 && page.parentId == pg.id.value) {
+                              @if(page.parentId.contains(pg.id.value)) {
                                   <div class="page-children" data-page-id="@pg.id.value">
                                       @children.map { child =>
                                         <li class="list-group-item page-item-child">

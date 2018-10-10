@@ -1,5 +1,4 @@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.project.{Flag, Project}
 @import models.user.User
 @import ore.OreConfig
@@ -32,13 +31,13 @@
                         <li data-flag-id="@flag.id.value" class="list-group-item">
                             <div class="row">
                                 <div class="col-xs-12 col-md-1" style="width: 40px;">
-                                    <a href="@routes.Users.showProjects(user.username, None)">
+                                    <a href="@routes.Users.showProjects(user.name, None)">
                                         @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
                                     </a>
                                 </div>
                                 <div class="col-xs-12 col-md-5">
                                     <span class="description">
-                                        <strong>@user.username</strong>
+                                        <strong>@user.name</strong>
                                         <span class="minor"> reported </span>
                                         <a href="@projectRoutes.show(project.ownerName, project.slug)">
                                             @project.ownerName/<strong>@project.slug</strong>
@@ -52,13 +51,13 @@
                                 </div>
                                 <div class="col-xs-12">
                                     <span class="pull-right btn-group-sm">
-                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@user.username" class="btn btn-default">
+                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@user.name" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageUser")
                                         </a>
                                         <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
                                             <i class="fa fa-reply"></i> @messages("user.flags.messageOwner")
                                         </a>
-                                        @projects.helper.btnHide(project, projectPerm, request.data.currentUser.get)
+                                        @projects.helper.btnHide(project, projectPerm)
                                         <button type="submit" class="btn btn-primary btn-resolve">
                                             <i class="fa fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
                                         </button>

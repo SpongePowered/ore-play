@@ -1,13 +1,13 @@
 @*
 Page used for uploading and creating new projects.
 *@
+@import play.twirl.api.Html
+
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.project.Project
 @import models.user.Organization
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
-@import play.twirl.api.Html
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils

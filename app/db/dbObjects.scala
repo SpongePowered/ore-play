@@ -2,21 +2,19 @@ package db
 
 import java.sql.Timestamp
 
-import db.ObjectId.Uninitialized
-
 sealed trait DbInitialized[A] {
   def value: A
   def unsafeToOption: Option[A]
   override def toString: String = unsafeToOption match {
     case Some(value) => value.toString
-    case None => "DbInitialized.Uninitialized"
+    case None        => "DbInitialized.Uninitialized"
   }
 }
 
 sealed trait ObjectId extends DbInitialized[ObjectReference]
 object ObjectId {
   case object Uninitialized extends ObjectId {
-    override def value: Nothing = sys.error("Tried to access uninitialized ObjectId")
+    override def value: Nothing                  = sys.error("Tried to access uninitialized ObjectId")
     override def unsafeToOption: Option[Nothing] = None
   }
 
@@ -28,14 +26,14 @@ object ObjectId {
 
   def unsafeFromOption(option: Option[ObjectReference]): ObjectId = option match {
     case Some(id) => ObjectId(id)
-    case None => Uninitialized
+    case None     => Uninitialized
   }
 }
 
 sealed trait ObjectTimestamp extends DbInitialized[Timestamp]
 object ObjectTimestamp {
   case object Uninitialized extends ObjectTimestamp {
-    override def value: Nothing = sys.error("Tried to access uninitialized ObjectTimestamp")
+    override def value: Nothing                  = sys.error("Tried to access uninitialized ObjectTimestamp")
     override def unsafeToOption: Option[Nothing] = None
   }
 
@@ -47,6 +45,6 @@ object ObjectTimestamp {
 
   def unsafeFromOption(option: Option[Timestamp]): ObjectTimestamp = option match {
     case Some(id) => ObjectTimestamp(id)
-    case None => Uninitialized
+    case None     => Uninitialized
   }
 }

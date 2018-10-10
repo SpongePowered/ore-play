@@ -1,17 +1,18 @@
 package models.api
 
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
-import db.impl.ProjectApiKeyTable
-import db.impl.model.OreModel
+import db.impl.schema.ProjectApiKeyTable
+import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.project.ProjectOwned
-import ore.rest.ProjectApiKeyTypes.ProjectApiKeyType
+import ore.rest.ProjectApiKeyType
 
-case class ProjectApiKey(override val id: ObjectId = ObjectId.Uninitialized,
-                         override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                         override val projectId: ObjectReference,
-                         keyType: ProjectApiKeyType,
-                         value: String)
-                         extends OreModel(id, createdAt) with ProjectOwned {
+case class ProjectApiKey(
+    id: ObjectId = ObjectId.Uninitialized,
+    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    projectId: ObjectReference,
+    keyType: ProjectApiKeyType,
+    value: String
+) extends Model
+    with ProjectOwned {
 
   override type T = ProjectApiKeyTable
   override type M = ProjectApiKey

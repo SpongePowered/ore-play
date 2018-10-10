@@ -2,9 +2,10 @@ package db.table
 
 import scala.concurrent.Future
 
-import com.google.common.base.Preconditions._
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelService}
+import db.{Model, ModelService, ObjectReference}
+
+import com.google.common.base.Preconditions._
 
 /**
   * Represents an association between two models handled by an associative table.
@@ -14,12 +15,13 @@ import db.{Model, ModelService}
   * @param assocTable   AssociativeTable TableQuery instance
   * @tparam AssocTable  AssociativeTable type
   */
-class ModelAssociation[AssocTable <: AssociativeTable]
-                      (service: ModelService,
-                       ref1: AssocTable => Rep[Int],
-                       ref2: AssocTable => Rep[Int],
-                       val tableClass: Class[AssocTable],
-                       val assocTable: TableQuery[AssocTable]) {
+class ModelAssociation[AssocTable <: AssociativeTable](
+    service: ModelService,
+    ref1: AssocTable => Rep[ObjectReference],
+    ref2: AssocTable => Rep[ObjectReference],
+    val tableClass: Class[AssocTable],
+    val assocTable: TableQuery[AssocTable]
+) {
 
   checkNotNull(this.service, "service null", "")
   checkNotNull(this.ref1, "ref1 null", "")
@@ -35,8 +37,8 @@ class ModelAssociation[AssocTable <: AssociativeTable]
     * @return Future results
     */
   def assoc(model1: Model, model2: Model): Future[Int] = {
-    val modelPair = orderModels(model1, model2)
-    this.service.DB.db.run(this.assocTable += (modelPair._1.id.value, modelPair._2.id.value))
+    val (first, second) = orderModels(model1, model2)
+    this.service.doAction(this.assocTable += ((first.id.value, second.id.value)))
   }
 
   /**
@@ -47,7 +49,7 @@ class ModelAssociation[AssocTable <: AssociativeTable]
     */
   def disassoc(model1: Model, model2: Model): Future[Int] = {
     val modelPair = orderModels(model1, model2)
-    this.service.DB.db.run {
+    this.service.doAction {
       this.assocTable.filter(t => ref1(t) === modelPair._1.id.value && ref2(t) === modelPair._2.id.value).delete
     }
   }
@@ -55,10 +57,10 @@ class ModelAssociation[AssocTable <: AssociativeTable]
   private def orderModels(model1: Model, model2: Model): (Model, Model) = {
     checkNotNull(model1, "model1 null", "")
     checkNotNull(model2, "model2 null", "")
-    val firstModel = this.assocTable.baseTableRow.firstClass
+    val firstModel  = this.assocTable.baseTableRow.firstClass
     val secondModel = this.assocTable.baseTableRow.secondClass
-    val clazz1 = model1.getClass
-    val clazz2 = model2.getClass
+    val clazz1      = model1.getClass
+    val clazz2      = model2.getClass
     if (clazz1.equals(firstModel)) {
       if (clazz2.equals(secondModel)) {
         (model1, model2)

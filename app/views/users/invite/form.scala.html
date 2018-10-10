@@ -1,8 +1,8 @@
 @import models.user.User
+@import ore.OreConfig
 @import ore.permission.role.Role
 @import views.html.utils.userAvatar
-
-@(owner: User, loadedUsers: Seq[User] = Seq(), roleClass: Class[_ <: Role])(implicit messages: Messages)
+@(owner: User, loadedUsers: Seq[User] = Seq(), roleClass: Class[_ <: Role])(implicit messages: Messages, config: OreConfig)
 
 <script type="text/javascript" src="@routes.Assets.at("javascripts/userSearch.js")"></script>
 <script type="text/javascript" src="@routes.Assets.at("javascripts/membersConfig.js")"></script>
@@ -13,7 +13,7 @@
         <tr id="result-row">
             <td>
                 <input type="hidden"/>
-                @userAvatar(None, None, clazz = "user-avatar-xs")
+                @userAvatar(None, clazz = "user-avatar-xs")
                 <i class="fa fa-times user-cancel"></i>
                 <a class="username" target="_blank" rel="noopener" href=""></a>
                 <span>@users.invite.roleSelect(roleClass)</span>
@@ -37,7 +37,7 @@
             <tr>
                 <td>
                     @userAvatar(Some(owner.name), owner.avatarUrl, clazz = "user-avatar-xs")
-                    <strong>@owner.username</strong>
+                    <strong>@owner.name</strong>
                     <span><i class="minor">@messages("project.owner")</i></span>
                 </td>
             </tr>
@@ -47,8 +47,8 @@
                     <td>
                         <input form="form-continue" type="hidden" value="@user.id.value" />
                         @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
-                        <a target="_blank" rel="noopener" href="@routes.Users.showProjects(user.username, None)">
-                            @user.username
+                        <a target="_blank" rel="noopener" href="@routes.Users.showProjects(user.name, None)">
+                            @user.name
                         </a>
                         <span>@users.invite.roleSelect(roleClass)</span>
                     </td>

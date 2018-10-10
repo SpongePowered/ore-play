@@ -1,63 +1,95 @@
 package ore
 
-import models.project.{Tag, TagColors}
-import models.project.TagColors.TagColor
-import ore.project.Dependency
-import scala.language.implicitConversions
+import scala.collection.immutable
 
 import db.ObjectId
+import models.project.{Tag, TagColor}
+import ore.project.Dependency
+
+import enumeratum.values._
 
 /**
   * The Platform a plugin/mod runs on
   *
   * @author phase
   */
-object Platforms extends Enumeration {
+sealed abstract class Platform(
+    val value: Int,
+    val name: String,
+    val platformCategory: PlatformCategory,
+    val priority: Int,
+    val dependencyId: String,
+    val tagColor: TagColor,
+    val url: String
+) extends IntEnumEntry {
 
-  val Sponge = Platform(0, "Sponge", SpongeCategory, 0, "spongeapi",
-    TagColors.Sponge, "https://spongepowered.org/downloads")
+  def toGhostTag(version: String): Tag = Tag(ObjectId.Uninitialized, Nil, name, version, tagColor)
 
-  val SpongeForge = Platform(2, "SpongeForge", SpongeCategory, 2, "spongeforge",
-    TagColors.SpongeForge, "https://www.spongepowered.org/downloads/spongeforge")
+}
+object Platform extends IntEnum[Platform] {
 
-  val SpongeVanilla = Platform(3, "SpongeVanilla", SpongeCategory, 2, "spongevanilla",
-    TagColors.SpongeVanilla, "https://www.spongepowered.org/downloads/spongevanilla")
+  val values: immutable.IndexedSeq[ore.Platform] = findValues
 
-  val SpongeCommon = Platform(4, "SpongeCommon", SpongeCategory, 1, "sponge",
-    TagColors.SpongeCommon, "https://www.spongepowered.org/downloads")
+  case object Sponge
+      extends Platform(
+        0,
+        "Sponge",
+        SpongeCategory,
+        0,
+        "spongeapi",
+        TagColor.Sponge,
+        "https://spongepowered.org/downloads"
+      )
 
-  val Lantern = Platform(5, "Lantern", SpongeCategory, 2, "lantern",
-    TagColors.Lantern, "https://www.lanternpowered.org/")
+  case object SpongeForge
+      extends Platform(
+        2,
+        "SpongeForge",
+        SpongeCategory,
+        2,
+        "spongeforge",
+        TagColor.SpongeForge,
+        "https://www.spongepowered.org/downloads/spongeforge"
+      )
 
-  val Forge = Platform(1, "Forge", ForgeCategory, 0, "forge",
-    TagColors.Forge, "https://files.minecraftforge.net/")
+  case object SpongeVanilla
+      extends Platform(
+        3,
+        "SpongeVanilla",
+        SpongeCategory,
+        2,
+        "spongevanilla",
+        TagColor.SpongeVanilla,
+        "https://www.spongepowered.org/downloads/spongevanilla"
+      )
 
-  case class Platform(override val id: Int,
-                      name: String,
-                      platformCategory: PlatformCategory,
-                      priority: Int,
-                      dependencyId: String,
-                      tagColor: TagColor,
-                      url: String
-                     ) extends super.Val(id, name) {
+  case object SpongeCommon
+      extends Platform(
+        4,
+        "SpongeCommon",
+        SpongeCategory,
+        1,
+        "sponge",
+        TagColor.SpongeCommon,
+        "https://www.spongepowered.org/downloads"
+      )
 
-    def toGhostTag(version: String): Tag = Tag(ObjectId.Uninitialized, List(), name, version, tagColor)
+  case object Lantern
+      extends Platform(5, "Lantern", SpongeCategory, 2, "lantern", TagColor.Lantern, "https://www.lanternpowered.org/")
 
-  }
-
-  implicit def convert(v: Value): Platform = v.asInstanceOf[Platform]
+  case object Forge
+      extends Platform(1, "Forge", ForgeCategory, 0, "forge", TagColor.Forge, "https://files.minecraftforge.net/")
 
   def getPlatforms(dependencyIds: Seq[String]): Seq[Platform] = {
-    Platforms.values
+    Platform.values
       .filter(p => dependencyIds.contains(p.dependencyId))
       .groupBy(_.platformCategory)
       .flatMap(_._2.groupBy(_.priority).maxBy(_._1)._2)
-      .map(_.asInstanceOf[Platform])
       .toSeq
   }
 
   def getPlatformGhostTags(dependencies: Seq[Dependency]): Seq[Tag] = {
-    Platforms.values
+    Platform.values
       .filter(p => dependencies.map(_.pluginId).contains(p.dependencyId))
       .groupBy(_.platformCategory)
       .flatMap(_._2.groupBy(_.priority).maxBy(_._1)._2)
@@ -79,19 +111,17 @@ object Platforms extends Enumeration {
   * @author phase
   */
 sealed trait PlatformCategory {
-  val name: String
+  def name: String
 
-  def getPlatforms: Seq[Platforms.Value] = {
-    Platforms.values.filter(p => p.platformCategory == this).toSeq
-  }
+  def getPlatforms: Seq[Platform] = Platform.values.filter(_.platformCategory == this)
 }
 
 case object SpongeCategory extends PlatformCategory {
-  override val name = "Sponge Plugins"
+  val name = "Sponge Plugins"
 }
 
 case object ForgeCategory extends PlatformCategory {
-  override val name = "Forge Mods"
+  val name = "Forge Mods"
 }
 
 object PlatformCategory {

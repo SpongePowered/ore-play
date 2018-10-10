@@ -1,76 +1,81 @@
 package models.viewhelper
 
+import scala.concurrent.{ExecutionContext, Future}
+
+import play.twirl.api.Html
+
 import controllers.sugar.Requests.OreRequest
+import db.ModelService
 import db.impl.OrePostgresDriver.api._
-import db.impl.{ProjectRoleTable, UserTable}
+import db.impl.access.UserBase
+import db.impl.schema.{ProjectRoleTable, UserTable}
 import models.admin.ProjectVisibilityChange
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
+import ore.OreConfig
+import ore.permission.role.Role
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
-import play.api.cache.AsyncCacheApi
+
+import cats.instances.future._
+import cats.instances.option._
+import cats.syntax.all._
 import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
-
-import scala.concurrent.{ExecutionContext, Future}
-
-import db.impl.access.UserBase
-import play.twirl.api.Html
-import util.syntax._
-import util.instances.future._
 
 /**
   * Holds ProjetData that is the same for all users
   */
-case class ProjectData(joinable: Project,
-                       projectOwner: User,
-                       ownerRole: ProjectRole,
-                       publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
-                       settings: ProjectSettings,
-                       members: Seq[(ProjectRole, User)],
-                       projectLogSize: Int,
-                       flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
-                       noteCount: Int, // getNotes.size
-                       lastVisibilityChange: Option[ProjectVisibilityChange],
-                       lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
-                       recommendedVersion: Option[Version]
-                      ) extends JoinableData[ProjectRole, ProjectMember, Project] {
+case class ProjectData(
+    joinable: Project,
+    projectOwner: User,
+    publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
+    settings: ProjectSettings,
+    members: Seq[(ProjectRole, User)],
+    projectLogSize: Int,
+    flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
+    noteCount: Int, // getNotes.size
+    lastVisibilityChange: Option[ProjectVisibilityChange],
+    lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
+    recommendedVersion: Option[Version]
+) extends JoinableData[ProjectRole, ProjectMember, Project] {
 
   def flagCount: Int = flags.size
 
   def project: Project = joinable
 
-  def visibility: VisibilityTypes.Visibility = project.visibility
+  def visibility: Visibility = project.visibility
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
-  def renderVisibilityChange: Option[Html] = lastVisibilityChange.map(_.renderComment())
+  def renderVisibilityChange(implicit config: OreConfig): Option[Html] = lastVisibilityChange.map(_.renderComment)
+
+  def roleClass: Class[_ <: Role] = classOf[ProjectRole]
 }
 
 object ProjectData {
 
   def cacheKey(project: Project): String = "project" + project.id.value
 
-  def of[A](request: OreRequest[A], project: PendingProject)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): ProjectData = {
+  def of[A](
+      request: OreRequest[A],
+      project: PendingProject
+  ): ProjectData = {
 
-    val projectOwner = request.data.currentUser.get
+    val projectOwner = request.headerData.currentUser.get
 
-    val settings = project.settings
-    val ownerRole = null
-    val versions = 0
-    val members = Seq.empty
-    val uProjectFlags = false
-    val starred = false
-    val watching = false
-    val logSize = 0
-    val lastVisibilityChange = None
+    val settings                 = project.settings
+    val versions                 = 0
+    val members                  = Seq.empty
+    val logSize                  = 0
+    val lastVisibilityChange     = None
     val lastVisibilityChangeUser = "-"
-    val recommendedVersion = None
+    val recommendedVersion       = None
 
-    val data = new ProjectData(project.underlying,
+    new ProjectData(
+      project.underlying,
       projectOwner,
-      ownerRole,
       versions,
       settings,
       members,
@@ -79,29 +84,30 @@ object ProjectData {
       0,
       lastVisibilityChange,
       lastVisibilityChangeUser,
-      recommendedVersion)
-
-    data
+      recommendedVersion
+    )
   }
 
-  def of[A](project: Project)(implicit cache: AsyncCacheApi, db: JdbcBackend#DatabaseDef, ec: ExecutionContext): Future[ProjectData] = {
-
-    implicit val userBase: UserBase = project.userBase
-
-    val flagsFut = project.flags.all
-    val flagUsersFut = flagsFut.flatMap(flags => Future.sequence(flags.map(_.user)))
-    val flagResolvedFut = flagsFut.flatMap(flags => Future.sequence(flags.map(flag => flag.userBase.get(flag.resolvedBy.getOrElse(-1)).value)))
+  def of[A](project: Project)(
+      implicit db: JdbcBackend#DatabaseDef,
+      ec: ExecutionContext,
+      service: ModelService
+  ): Future[ProjectData] = {
+    val flagsFut     = project.flags.all
+    val flagUsersFut = flagsFut.flatMap(flags => Future.traverse(flags)(_.user))
+    val flagResolvedFut =
+      flagsFut.flatMap(flags => Future.traverse(flags)(_.resolvedBy.flatTraverse(UserBase().get(_).value)))
 
     val lastVisibilityChangeFut = project.lastVisibilityChange.value
     val lastVisibilityChangeUserFut = lastVisibilityChangeFut.flatMap { lastVisibilityChange =>
-      if (lastVisibilityChange.isEmpty) Future.successful("Unknown") else lastVisibilityChange.get.created.fold("Unknown")(_.name)
+      if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
+      else lastVisibilityChange.get.created.fold("Unknown")(_.name)
     }
 
     (
       project.settings,
       project.owner.user,
-      project.owner.headRole,
-      project.versions.count(_.visibility === VisibilityTypes.Public),
+      project.versions.count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
       project.logger.flatMap(_.entries.size),
       flagsFut,
@@ -110,17 +116,28 @@ object ProjectData {
       lastVisibilityChangeFut,
       lastVisibilityChangeUserFut,
       project.recommendedVersion
-    ).parMapN {
-      case (settings, projectOwner, ownerRole, versions, members, logSize, flags, flagUsers, flagResolved, lastVisibilityChange, lastVisibilityChangeUser, recommendedVersion) =>
-        val noteCount = project.getNotes().size
-        val flagData = flags zip flagUsers zip flagResolved map { case ((fl, user), resolved) =>
-          (fl, user.name, resolved.map(_.username))
+    ).mapN {
+      case (
+          settings,
+          projectOwner,
+          versions,
+          members,
+          logSize,
+          flags,
+          flagUsers,
+          flagResolved,
+          lastVisibilityChange,
+          lastVisibilityChangeUser,
+          recommendedVersion
+          ) =>
+        val noteCount = project.decodeNotes.size
+        val flagData = flags.zip(flagUsers).zip(flagResolved).map {
+          case ((fl, user), resolved) => (fl, user.name, resolved.map(_.name))
         }
 
         new ProjectData(
           project,
           projectOwner,
-          ownerRole,
           versions,
           settings,
           members.sortBy(_._1.roleType.trust).reverse,
@@ -129,26 +146,19 @@ object ProjectData {
           noteCount,
           lastVisibilityChange,
           lastVisibilityChangeUser,
-          Some(recommendedVersion))
+          Some(recommendedVersion)
+        )
     }
   }
 
-  def members(project: Project)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectRole, User)]] = {
-    val tableUser = TableQuery[UserTable]
-    val tableRole = TableQuery[ProjectRoleTable]
-
+  def members(
+      project: Project
+  )(implicit db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectRole, User)]] = {
     val query = for {
-      r <- tableRole if r.projectId === project.id.value
-      u <- tableUser if r.userId === u.id
-    } yield {
-      (r, u)
-    }
+      r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
+      u <- TableQuery[UserTable] if r.userId === u.id
+    } yield (r, u)
 
-    db.run(query.result).map(_.map {
-      case (r, u) => (r, u)
-    })
+    db.run(query.result)
   }
-
-
-
 }

@@ -1,23 +1,23 @@
 package form.project
 
-import models.project.{Channel, Project}
-import ore.Colors.Color
-import ore.OreConfig
-import ore.project.factory.ProjectFactory
-import util.functional.{EitherT, OptionT}
-import util.instances.future._
-import util.syntax._
-import util.StringUtils._
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import db.ModelService
+import models.project.{Channel, Project}
+import ore.{Color, OreConfig}
+import ore.project.factory.ProjectFactory
+
+import cats.data.{EitherT, NonEmptyList => NEL}
+import cats.instances.future._
 
 /**
   * Represents submitted [[Channel]] data.
   */
+//TODO: Return Use Validated for the values in here
 trait TChannelData {
 
-  val config: OreConfig
-  val factory: ProjectFactory
+  def config: OreConfig
+  def factory: ProjectFactory
 
   /** The [[Channel]] [[Color]] **/
   val color: Color = Channel.Colors.find(_.hex.equalsIgnoreCase(channelColorHex)).get
@@ -28,7 +28,7 @@ trait TChannelData {
   /** Channel color hex **/
   protected def channelColorHex: String
 
-  val nonReviewed: Boolean
+  def nonReviewed: Boolean
 
   /**
     * Attempts to add this ChannelData as a [[Channel]] to the specified
@@ -37,12 +37,15 @@ trait TChannelData {
     * @param project  Project to add Channel to
     * @return         Either the new channel or an error message
     */
-  def addTo(project: Project)(implicit ec: ExecutionContext): EitherT[Future, String, Channel] = {
-    EitherT.liftF(project.channels.all)
-      .filterOrElse(_.size <= config.projects.get[Int]("max-channels"), "A project may only have up to five channels.")
-      .filterOrElse(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)), "A channel with that name already exists.")
-      .filterOrElse(_.forall(_.color != this.color), "A channel with that color already exists.")
-      .semiFlatMap(_ => this.factory.createChannel(project, this.channelName, this.color, this.nonReviewed))
+  def addTo(
+      project: Project
+  )(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, String, Channel] = {
+    EitherT
+      .liftF(project.channels.all)
+      .ensure("A project may only have up to five channels.")(_.size <= config.projects.get[Int]("max-channels"))
+      .ensure("A channel with that name already exists.")(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)))
+      .ensure("A channel with that color already exists.")(_.forall(_.color != this.color))
+      .semiflatMap(_ => this.factory.createChannel(project, this.channelName, this.color))
   }
 
   /**
@@ -53,25 +56,32 @@ trait TChannelData {
     * @param project  Project of channel
     * @return         Error, if any
     */
-  //TODO: Return NEL[String] if we get the type
-  def saveTo(oldName: String)(implicit project: Project, ec: ExecutionContext): EitherT[Future, List[String], Unit] = {
+  def saveTo(
+      project: Project,
+      oldName: String
+  )(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, NEL[String], Unit] = {
     EitherT.liftF(project.channels.all).flatMap { allChannels =>
       val (channelChangeSet, channels) = allChannels.partition(_.name.equalsIgnoreCase(oldName))
-      val channel = channelChangeSet.toSeq.head
+      val channel                      = channelChangeSet.toSeq.head
       //TODO: Rewrite this nicer if we ever get a Validated/Validation type
-      val e1 = if(channels.exists(_.color == this.color)) List("error.channel.duplicateColor") else Nil
-      val e2 = if(channels.exists(_.name.equalsIgnoreCase(this.channelName))) List("error.channel.duplicateName") else Nil
-      val e3 = if(nonReviewed && channels.count(_.isReviewed) < 1) List("error.channel.minOneReviewed") else Nil
-      val errors = e1 ::: e2 ::: e3
+      val e1 = if (channels.exists(_.color == this.color)) List("error.channel.duplicateColor") else Nil
+      val e2 =
+        if (channels.exists(_.name.equalsIgnoreCase(this.channelName))) List("error.channel.duplicateName") else Nil
+      val e3 = if (nonReviewed && channels.count(_.isReviewed) < 1) List("error.channel.minOneReviewed") else Nil
 
-      if(errors.nonEmpty) {
-        EitherT.leftT[Future, Unit](errors)
-      }
-      else {
-        val effects = channel.setName(this.channelName) *>
-          channel.setColor(this.color) *>
-          channel.setNonReviewed(this.nonReviewed)
-        EitherT.right[List[String]](effects).map(_ => ())
+      NEL.fromList(e1 ::: e2 ::: e3) match {
+        case Some(errors) => EitherT.leftT[Future, Unit](errors)
+        case None =>
+          val effect = service.update(
+            channel.copy(
+              name = channelName,
+              color = color,
+              isNonReviewed = nonReviewed
+            )
+          )
+
+          //TODO: Replace this with void once IntelliJ understands it
+          EitherT.right[NEL[String]](effect).map(_ => ())
       }
     }
   }

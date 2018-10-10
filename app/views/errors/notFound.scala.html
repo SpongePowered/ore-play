@@ -1,7 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
-@import ore.{OreConfig, OreEnv}
-@()(implicit messages: Messages, session: Session, requestHeader: RequestHeader, request: OreRequest[_] = null, config: OreConfig, env: OreEnv)
+@import ore.OreConfig
+@()(implicit messages: Messages, requestHeader: RequestHeader, request: OreRequest[_] = null, config: OreConfig)
 
 @bootstrap.layout(messages("error.notFound.title"), user = false) {
 

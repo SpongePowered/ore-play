@@ -1,9 +1,9 @@
-@(userName: Option[String], avatarUrl: Option[String], call: Call = null, clazz: String = "", attr: Map[String, String] = Map(), href: String = null)
+@(userName: Option[String], avatarUrl: String = "", call: Call = null, clazz: String = "", attr: Map[String, String] = Map(), href: String = null)
 
 @src = @{
     if (call == null) {
         if (userName.nonEmpty)
-            avatarUrl.getOrElse("")
+            avatarUrl
         else
             ""
     } else

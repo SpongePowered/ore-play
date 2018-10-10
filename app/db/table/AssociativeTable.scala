@@ -1,7 +1,7 @@
 package db.table
 
-import db.Model
 import db.impl.OrePostgresDriver.api._
+import db.{Model, ObjectReference}
 
 /**
   * Represents a associative table between two models.
@@ -9,8 +9,9 @@ import db.impl.OrePostgresDriver.api._
   * @param tag Table tag
   * @param name Table name
   */
-abstract class AssociativeTable(tag: Tag,
-                                name: String,
-                                val firstClass: Class[_ <: Model],
-                                val secondClass: Class[_ <: Model])
-  extends Table[(Int, Int)](tag, name)
+abstract class AssociativeTable(
+    tag: Tag,
+    name: String,
+    val firstClass: Class[_ <: Model],
+    val secondClass: Class[_ <: Model]
+) extends Table[(ObjectReference, ObjectReference)](tag, name)

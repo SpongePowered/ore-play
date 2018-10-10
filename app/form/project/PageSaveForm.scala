@@ -1,3 +1,5 @@
 package form.project
 
-case class PageSaveForm(parentId: Option[Int], name: Option[String], content: Option[String])
+import db.ObjectReference
+
+case class PageSaveForm(parentId: Option[ObjectReference], name: Option[String], content: Option[String])

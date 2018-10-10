@@ -4,12 +4,13 @@ import java.io.IOException
 import java.nio.file.Files._
 import java.nio.file.Path
 
-import models.project.Project
-import ore.OreEnv
-import play.api.Logger
-
 import scala.collection.JavaConverters._
 import scala.util.Try
+
+import play.api.Logger
+
+import models.project.Project
+import ore.OreEnv
 
 /**
   * Handles file management of Projects.
@@ -33,9 +34,8 @@ class ProjectFiles(val env: OreEnv) {
     * @param version Version
     * @return        Version directory
     */
-  def getVersionDir(owner: String, name: String, version: String): Path = {
+  def getVersionDir(owner: String, name: String, version: String): Path =
     getProjectDir(owner, name).resolve("versions").resolve(version)
-  }
 
   /**
     * Returns the specified user's plugin directory.
@@ -56,6 +56,7 @@ class ProjectFiles(val env: OreEnv) {
   def renameProject(owner: String, oldName: String, newName: String): Try[Unit] = Try {
     val newProjectDir = getProjectDir(owner, newName)
     move(getProjectDir(owner, oldName), newProjectDir)
+    ()
   }
 
   /**
@@ -100,8 +101,8 @@ class ProjectFiles(val env: OreEnv) {
     * @param project Project to get icon for
     * @return Pending icon path
     */
-  def getPendingIconPath(project: Project): Option[Path]
-  = findFirstFile(getPendingIconDir(project.ownerName, project.name))
+  def getPendingIconPath(project: Project): Option[Path] =
+    findFirstFile(getPendingIconDir(project.ownerName, project.name))
 
   private def findFirstFile(dir: Path): Option[Path] = {
     if (exists(dir)) {

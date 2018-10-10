@@ -1,7 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
-@import ore.{OreConfig, OreEnv}
-@(remoteUrl: String)(implicit messages: Messages, session: Session, requestHeader: RequestHeader, request: OreRequest[_], config: OreConfig, env: OreEnv)
+@import ore.OreConfig
+@(remoteUrl: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @bootstrap.layout(messages("general.linkout.title")) {
 

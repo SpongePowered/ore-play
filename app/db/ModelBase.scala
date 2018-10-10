@@ -1,8 +1,8 @@
 package db
 
-import db.access.ModelAccess
-
 import scala.language.implicitConversions
+
+import db.access.ModelAccess
 
 /**
   * Represents something that provides access to a ModelTable.
@@ -12,9 +12,10 @@ import scala.language.implicitConversions
 trait ModelBase[M <: Model] {
 
   /** The [[Model]] that this provides access to */
-  val modelClass: Class[M]
+  def modelClass: Class[M]
+
   /** The [[ModelService]] to retrieve the model */
-  val service: ModelService
+  def service: ModelService
 
   /**
     * Provides access to the ModelTable.

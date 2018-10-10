@@ -6,6 +6,24 @@ Repository software for Sponge plugins and Forge mods https://ore.spongepowered.
  
 Ore is written in Scala using the [Play](https://www.playframework.com/) framework.
 
+### Clone
+The following steps will ensure your project is cloned properly.
+
+1. `git clone https://github.com/SpongePowered/Ore.git`   
+2. `cp scripts/pre-commit .git/hooks`
+
+### Setup
+
+After cloning Ore, the first thing you will want to do is create a new PostgreSQL database for the application to use.
+This is required in order for Ore to run. Learn more about PostgreSQL [here](https://www.postgresql.org/).
+
+After setting up a database, create a copy of `conf/application.conf.template` named `conf/application.conf` and 
+configure the application. This file is in the `.gitignore` so it will not appear in your commits. In a typical 
+development environment, most of the defaults will do except you must set `application.fakeUser` to `true` to disable
+authentication to the Sponge forums. In addition, the SSL certification authority of `https://forums.spongepowered.org` is
+not typically recognized by the JVM so you will either have to manually add the cert to your JVM or set 
+`discourse.api.enabled` to `false` in the configuration file.
+
 ## Running
 
 Running Ore is relatively simple.
@@ -25,26 +43,6 @@ Running Ore is relatively simple.
 * Import the `build.sbt` file.
 * Create a new Play 2 App run configuration.
 * Run it.
-
-## Contributing
-
-Ore's code-style is not unlike the rest of the Sponge projects code-style with some leniency for readability.
-Namely, the differences include:
-* Non-uniform whitespace (see [schema.sql](app/models/db/schema.scala))
-* Inline conditionals / statements
-* Public fields permitted on database properties in models
-
-### Setup
-
-After cloning Ore, the first thing you will want to do is create a new PostgreSQL database for the application to use.
-This is required in order for Ore to run. Learn more about PostgreSQL [here](https://www.postgresql.org/).
-
-After setting up a database, create a copy of `conf/application.conf.template` named `conf/application.conf` and 
-configure the application. This file is in the `.gitignore` so it will not appear in your commits. In a typical 
-development environment, most of the defaults will do except you must set `application.fakeUser` to `true` to disable
-authentication to the Sponge forums. In addition, the SSL certification authority of `https://forums.spongepowered.org` is
-not typically recognized by the JVM so you will either have to manually add the cert to your JVM or set 
-`discourse.api.enabled` to `false` in the configuration file.
 
 ### Using Hydra
 

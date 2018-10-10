@@ -2,13 +2,12 @@
 Discussion page within Project overview.
 *@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.project.ProjectMember
-@import org.spongepowered.play.discourse.DiscourseApi
 @import security.NonceFilter._
 @import views.html.utils
+
+@import org.spongepowered.play.discourse.DiscourseApi
 @(p: ProjectData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, forums: DiscourseApi, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -27,7 +26,7 @@ Discussion page within Project overview.
     <div class="container">
         <div id='discourse-comments'></div>
         <div class="row">
-            @if(request.data.currentUser.isDefined) {
+            @if(request.headerData.currentUser.isDefined) {
                 <div class="col-md-8">
                     <div class="reply-box">
                         @utils.alert("error")
@@ -37,7 +36,7 @@ Discussion page within Project overview.
                                   <div class="pull-right push-down">
                                       <i class="minor">@messages("project.discuss.postAs")</i>
                                       <select name="poster" form="form-editor-save">
-                                          <option selected>@request.data.currentUser.get.name</option>
+                                          <option selected>@request.headerData.currentUser.get.name</option>
                                           <option>@p.projectOwner.name</option>
                                       </select>
                                   </div>

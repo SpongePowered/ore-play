@@ -1,5 +1,4 @@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.api.ProjectApiKey
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
@@ -33,8 +32,8 @@
                 <div class="panel panel-default panel-settings">
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">@messages("project.settings")</h3>
-                        @if(request.data.globalPerm(HideProjects)) {
-                            @projects.helper.btnHide(p.project, sp.permissions, request.currentUser.get)
+                        @if(request.headerData.globalPerm(HideProjects)) {
+                            @projects.helper.btnHide(p.project, sp.permissions)
 
                             <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
                                 <div class="modal-dialog" role="document">
@@ -180,7 +179,7 @@
                             <div class="clearfix"></div>
                         </div>
 
-                        @if(request.data.globalPerm(HardRemoveProject)) {
+                        @if(request.headerData.globalPerm(HardRemoveProject)) {
                             <div class="setting striped">
                                 <div class="setting-description">
                                     <h4 class="danger">Hard Delete</h4>

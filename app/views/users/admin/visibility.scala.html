@@ -1,5 +1,4 @@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.admin.ProjectVisibilityChange
 @import models.project.Project
 @import ore.OreConfig
@@ -49,7 +48,7 @@
                                             </span>
                                             <p>
                                                 <strong>Requests:</strong>
-                                                @lastChangeRequest.get.renderComment()
+                                                @lastChangeRequest.get.renderComment
                                             </p>
                                         } else {
                                             <span class="description">
@@ -70,7 +69,7 @@
                                     </div>
                                     <div class="col-xs-12 col-md-4">
                                         <span class="pull-right btn-group-sm">
-                                        @projects.helper.btnHide(project, projectPerms, request.data.currentUser.get)
+                                        @projects.helper.btnHide(project, projectPerms)
                                         </span>
                                     </div>
                                 </div>
@@ -98,7 +97,7 @@
                                 <p>No projects found.</p>
                             </li>
                         }
-                        @waitingProjects.map { case (project, lastChangeRequest, lastVisibilityChange, lastVisibilityChanger) =>
+                        @waitingProjects.map { case (project, lastChangeRequest, _, lastVisibilityChanger) =>
                             @lastChangeRequest.map { lastRequest =>
                                 <li data-flag-id="@project.id.value" class="list-group-item">
                                     <div class="row">
@@ -112,7 +111,7 @@
                                             </span>
                                             <p>
                                                 <strong>Requests:</strong>
-                                                @lastRequest.renderComment()
+                                                @lastRequest.renderComment
                                             </p>
                                         </div>
                                     </div>

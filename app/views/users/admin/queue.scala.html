@@ -1,21 +1,18 @@
 @import _root_.util.StringUtils._
-@import db.ModelService
-@import models.project.{Project, Version}
+@import play.api.Configuration
+
+@import controllers.sugar.Requests.OreRequest
+@import models.admin.Review
+@import models.project.{Channel, Project, Version}
+@import models.user.User
 @import ore.OreConfig
 @import security.NonceFilter._
-
-@import play.api.Configuration
 @import views.html.utils.userAvatar
-@import models.admin.Review
-@import models.project.Channel
-@import models.user.User
-@import controllers.sugar.Requests.OreRequest
 
 @(underReview: Seq[(Project, Version, Channel, Option[String], (Review, Boolean, String))],
   versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
-@import java.sql.Timestamp
-@import java.time.Instant
+
 @versionRoutes = @{controllers.project.routes.Versions}
 
 @bootstrap.layout(messages("user.queue")) {
@@ -53,7 +50,7 @@
                             </tr>
                         }
                         @underReview.map { case (project, version, channel, author, (review, unfinishedReview, reviewer)) =>
-                            <tr @if(unfinishedReview && request.data.isCurrentUser(review.userId)){ class="warning" }>
+                            <tr @if(unfinishedReview && request.headerData.isCurrentUser(review.userId)){ class="warning" }>
                                 <td>
                                     <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
                                         @project.ownerName/<string>@project.name</string>
@@ -75,7 +72,7 @@
                                 </td>
                                 <td style="text-align: right; max-width: 40px">
                                 @if(unfinishedReview) {
-                                    @if(request.data.isCurrentUser(review.userId)) {
+                                    @if(request.headerData.isCurrentUser(review.userId)) {
                                         <i class="status fa fa-fw fa-play-circle fa-2x" style="color: green"></i>
                                     } else {
                                         <i class="status fa fa-fw fa-cog fa-2x" style="color: black"></i>

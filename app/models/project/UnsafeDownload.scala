@@ -1,10 +1,10 @@
 package models.project
 
+import db.impl.schema.UnsafeDownloadsTable
+import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import ore.project.io.DownloadType
+
 import com.github.tminglei.slickpg.InetString
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
-import db.impl.UnsafeDownloadsTable
-import db.impl.model.OreModel
-import ore.project.io.DownloadTypes.DownloadType
 
 /**
   * Represents a download instance of an unreviewed [[Project]] [[Version]].
@@ -15,11 +15,13 @@ import ore.project.io.DownloadTypes.DownloadType
   * @param address      Address of client
   * @param downloadType Type of download
   */
-case class UnsafeDownload(override val id: ObjectId = ObjectId.Uninitialized,
-                          override val createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-                          userId: Option[ObjectReference] = None,
-                          address: InetString,
-                          downloadType: DownloadType) extends OreModel(id, createdAt) {
+case class UnsafeDownload(
+    id: ObjectId = ObjectId.Uninitialized,
+    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    userId: Option[ObjectReference] = None,
+    address: InetString,
+    downloadType: DownloadType
+) extends Model {
 
   override type M = UnsafeDownload
   override type T = UnsafeDownloadsTable

@@ -1,12 +1,11 @@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.admin.Review
 @import models.project.{Project, Version}
 @import ore.OreConfig
 @import security.NonceFilter._
 @import util.StringUtils._
-@(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Review, Option[String])])(implicit messages: Messages,
-        request: OreRequest[_], config: OreConfig, project: Project, version: Version)
+@(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Review, Option[String])], project: Project, version: Version)(implicit messages: Messages,
+        request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
@@ -30,13 +29,13 @@
                 @if(!version.isReviewed) {
                     <div class="pull-right">
                         <span class="btn-group-sm">
-                            <a href="#" class="btn btn-info btn-skip-review">@if(version.isNonReviewed == false) { Remove from queue } else { Add to queue }</a>
+                            <a href="#" class="btn btn-info btn-skip-review">@if(!version.isNonReviewed) { Remove from queue } else { Add to queue }</a>
                             <a href="@projectRoutes.show(project.ownerName, project.slug)" class="btn btn-info">Project Page</a>
                             <a href="@versionRoutes.downloadJar(project.ownerName, project.slug, version.versionString, None)" class="btn btn-info">Download File</a>
                         </span>
                         <span class="btn-group-sm">
                             @if(mostRecentUnfinishedReview.isDefined) {
-                                @if(request.data.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
+                                @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
                                     <button class="btn btn-review-stop btn-danger"><i class="fa fa-times-circle-o"></i> @messages("review.stop")</button>
                                     <button class="btn btn-review-approve btn-success"><i class="fa fa-thumbs-up"></i> @messages("user.queue.approve")</button>
                                 } else {
@@ -57,7 +56,7 @@
             </div>
         </div>
         @if(mostRecentUnfinishedReview.isDefined) {
-            @if(request.data.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
+            @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
                 <div class="row">
                     <div class="col-md-12">
                         <div class="input-group" style="width: 100%;
@@ -96,10 +95,10 @@
                                                 <strong>@name.getOrElse("Unknown")</strong>
                                                 took over from
                                                 <strong>@name.getOrElse("Unknown")</strong>
-                                                @if(!item.getMessages.exists(_.isTakeover())) {
+                                                @if(!item.decodeMessages.exists(_.isTakeover)) {
                                                     <i>- no message provided -</i>
                                                 } else {
-                                                    <i>@item.getMessages.filter(_.isTakeover()).head.render</i>
+                                                    <i>@item.decodeMessages.filter(_.isTakeover).head.render</i>
                                                 }
                                             </td>
                                         </tr>
@@ -122,17 +121,17 @@
                                                 <strong>@name.getOrElse("Unknown")</strong>
                                                 stopped
                                                 <br>
-                                                @if(item.getMessages.filter(_.isStop()).isEmpty) {
+                                                @if(!item.decodeMessages.exists(_.isStop)) {
                                                     <i>- no message provided -</i>
                                                 } else {
-                                                    <i>@item.getMessages.filter(_.isStop())(0).render</i>
+                                                    <i>@item.decodeMessages.filter(_.isStop).head.render</i>
                                                 }
                                             </td>
                                         </tr>
                                     }
                                 }
                             }
-                            @item.getMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
+                            @item.decodeMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
                                 <tr>
                                     <td>@message.getTime</td>
                                     <td>

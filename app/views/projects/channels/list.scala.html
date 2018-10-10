@@ -1,5 +1,4 @@
 @import controllers.sugar.Requests.OreRequest
-@import db.ModelService
 @import models.project.Channel
 @import models.viewhelper.ProjectData
 @import ore.OreConfig
@@ -8,7 +7,6 @@
 @import views.html.utils
 @(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
-@projectRoutes = @{controllers.project.routes.Projects}
 @channelRoutes = @{controllers.project.routes.Channels}
 @versionRoutes = @{controllers.project.routes.Versions}
 

@@ -1,10 +1,20 @@
 package controllers.sugar
 
-import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+import scala.language.{higherKinds, implicitConversions}
+
+import scala.concurrent.Future
 
 import play.api.data.{Form, FormError}
 import play.api.mvc.Results.Redirect
-import play.api.mvc.{Call, Flash, Result}
+import play.api.mvc.{Action, ActionBuilder, AnyContent, BodyParser, Call, Flash, Request, Result}
+
+import controllers.sugar
+import controllers.sugar.ActionHelpers.LikeFuture
+import controllers.sugar.Requests.OreRequest
+
+import cats.data.{EitherT, OptionT}
+import cats.{Functor, Monad}
+import com.google.common.base.Preconditions.checkArgument
 
 /**
   * A helper class for some common functions of controllers.
@@ -12,22 +22,66 @@ import play.api.mvc.{Call, Flash, Result}
 trait ActionHelpers {
 
   /**
-    * Redirects to the specified call with the first error of the specified
+    * Returns a NotFound result with the 404 HTML template.
+    *
+    * @return NotFound
+    */
+  def notFound(implicit request: OreRequest[_]): Result
+
+  /**
+    * Redirects to the specified call with the errors of the specified
     * Form.
     *
     * @param call Call to redirect to
     * @param form Form with error
     * @return     Redirect to call
     */
-  def FormError(call: Call, form: Form[_]): Result = {
-    checkNotNull(call, "null call", "")
-    checkNotNull(form, "null form", "")
+  def FormErrorLocalized(call: Call): Form[_] => Result = form => {
     checkArgument(form.errors.nonEmpty, "no errors", "")
     val errors = form.errors.map(e => s"${e.message}.${e.key}")
-    Redirect(call).withErrors(errors)
+    Redirect(call).withErrors(errors.toList)
   }
 
-  implicit final class SpongeResult(result: Result) {
+  /**
+    * Redirects to the specified call with the errors of the specified
+    * Form.
+    *
+    * @param call Call to redirect to
+    * @param form Form with error
+    * @return     Redirect to call
+    */
+  def FormError(call: Call): Form[_] => Result = form => {
+    checkArgument(form.errors.nonEmpty, "no errors", "")
+    Redirect(call).withFormErrors(form.errors)
+  }
+
+  implicit def toOreResultOps(result: Result): ActionHelpers.OreResultOps =
+    new ActionHelpers.OreResultOps(result)
+
+  implicit def toFormBindOps[A](form: Form[A]): ActionHelpers.FormBindOps[A] =
+    new sugar.ActionHelpers.FormBindOps(form)
+
+  implicit class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) {
+
+    def asyncF[F[_]: LikeFuture](fr: => F[Result]): Action[AnyContent] = action.async(LikeFuture.toFuture(fr))
+
+    def asyncF[F[_]: LikeFuture](fr: R[B] => F[Result]): Action[B] = action.async(r => LikeFuture.toFuture(fr(r)))
+
+    def asyncEitherT[F[_]: LikeFuture: Functor](fr: => EitherT[F, Result, Result]): Action[AnyContent] =
+      action.async(LikeFuture.toFuture(fr.merge))
+
+    def asyncEitherT[F[_]: LikeFuture: Functor](fr: R[B] => EitherT[F, Result, Result]): Action[B] =
+      action.async(r => LikeFuture.toFuture(fr(r).merge))
+
+    def asyncEitherT[F[_]: LikeFuture: Functor, A](
+        bodyParser: BodyParser[A]
+    )(fr: R[A] => EitherT[F, Result, Result]): Action[A] =
+      action.async(bodyParser)(r => LikeFuture.toFuture(fr(r).merge))
+  }
+}
+object ActionHelpers {
+
+  class OreResultOps(private val result: Result) {
 
     /**
       * Adds an alert message to the result.
@@ -48,13 +102,12 @@ trait ActionHelpers {
       * @param alerts  Alert messages
       * @return        Result with alerts
       */
-    //TODO: Use NEL[String] if we get the type
-    def withAlerts(tpe: String, alerts: Seq[String]): Result = alerts match {
-      case Seq()       => result
-      case Seq(single) => withAlert(tpe, single)
-      case multiple    =>
-        val newValues = multiple.zipWithIndex
-          .map { case (e, i) => s"$tpe-$i" -> e } :+ (s"$tpe-num" -> multiple.size.toString)
+    def withAlerts(tpe: String, alerts: List[String]): Result = alerts match {
+      case Nil           => result
+      case single :: Nil => withAlert(tpe, single)
+      case multiple =>
+        val numPart   = s"$tpe-num" -> multiple.size.toString
+        val newValues = numPart :: multiple.zipWithIndex.map { case (e, i) => s"$tpe-$i" -> e }
 
         val flash = result.newFlash.fold(Flash(newValues.toMap))(f => Flash(f.data ++ newValues))
 
@@ -75,7 +128,7 @@ trait ActionHelpers {
       * @param errors  Error messages
       * @return        Result with errors
       */
-    def withErrors(errors: Seq[String]): Result = withAlerts("error", errors)
+    def withErrors(errors: List[String]): Result = withAlerts("error", errors)
 
     /**
       * Adds one or more form error messages to the result.
@@ -83,7 +136,7 @@ trait ActionHelpers {
       * @param errors  Error messages
       * @return        Result with errors
       */
-    def withFormErrors(errors: Seq[FormError]): Result = withAlerts("error", errors.flatMap(_.messages))
+    def withFormErrors(errors: Seq[FormError]): Result = withAlerts("error", errors.flatMap(_.messages).toList)
 
     /**
       * Adds a success message to the result.
@@ -96,11 +149,34 @@ trait ActionHelpers {
     /**
       * Adds one or more success messages to the result.
       *
-      * @param errors  Success messages
-      * @return        Result with message
+      * @param messages  Success messages
+      * @return          Result with message
       */
-    def withSuccesses(errors: Seq[String]): Result = withAlerts("success", errors)
-
+    def withSuccesses(messages: List[String]): Result = withAlerts("success", messages)
   }
 
+  //TODO: Change this for Async at some point
+  trait LikeFuture[F[_]] {
+    def toFuture[A](fa: F[A]): Future[A]
+  }
+  object LikeFuture {
+    def toFuture[F[_], A](fa: F[A])(implicit likeFuture: LikeFuture[F]): Future[A] =
+      likeFuture.toFuture(fa)
+
+    implicit val futureLikeFuture: LikeFuture[Future] = new LikeFuture[Future] {
+      override def toFuture[A](fa: Future[A]): Future[A] = fa
+    }
+  }
+
+  class FormBindOps[A](private val form: Form[A]) extends AnyVal {
+    def bindEitherT[F[_]] = new BindFormEitherTPartiallyApplied[F, A](form)
+
+    def bindOptionT[F[_]](implicit F: Monad[F], request: Request[_]): OptionT[F, A] =
+      form.bindFromRequest().fold(_ => OptionT.none[F, A], OptionT.some[F](_))
+  }
+
+  final class BindFormEitherTPartiallyApplied[F[_], B](private val form: Form[B]) extends AnyVal {
+    def apply[A](left: Form[B] => A)(implicit F: Monad[F], request: Request[_]): EitherT[F, A, B] =
+      form.bindFromRequest().fold(left.andThen(EitherT.leftT[F, B](_)), EitherT.rightT[F, A](_))
+  }
 }

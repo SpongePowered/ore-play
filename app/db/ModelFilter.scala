@@ -82,7 +82,7 @@ case class ModelFilter[M <: Model](fn: M#T => Rep[Boolean] = null) {
     */
   def +||^(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = (this +|| ModelFilter[M](that)).fn
 
-  private def trueIfNull(fn: M#T => Rep[Boolean]): M#T => Rep[Boolean] = if (fn == null) _ => true else fn
+  private def trueIfNull(fn: M#T => Rep[Boolean]): M#T => Rep[Boolean]  = if (fn == null) _ => true else fn
   private def falseIfNull(fn: M#T => Rep[Boolean]): M#T => Rep[Boolean] = if (fn == null) _ => false else fn
 
 }
@@ -94,6 +94,6 @@ object ModelFilter {
   def All[M <: Model]: ModelFilter[M] = ModelFilter[M](_ => false)
 
   /** Filters models by ID */
-  def IdFilter[M <: Model](id: Int): ModelFilter[M] = ModelFilter[M](_.id === id)
+  def IdFilter[M <: Model](id: ObjectReference): ModelFilter[M] = ModelFilter[M](_.id === id)
 
 }

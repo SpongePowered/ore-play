@@ -1,23 +1,30 @@
 package discourse
 
-import akka.actor.Scheduler
-import db.impl.OrePostgresDriver.api._
-import db.impl.access.ProjectBase
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 import play.api.Logger
 
+import db.{ModelFilter, ModelService}
+import db.impl.OrePostgresDriver.api._
+import db.impl.access.ProjectBase
+import ore.OreConfig
+
+import akka.actor.Scheduler
+import models.project.{Project, Visibility}
+
 /**
   * Task to periodically retry failed Discourse requests.
   */
-class RecoveryTask(scheduler: Scheduler,
-                   retryRate: FiniteDuration,
-                   api: OreDiscourseApi,
-                   projects: ProjectBase)(implicit ec: ExecutionContext) extends Runnable {
+class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApi)(
+    implicit ec: ExecutionContext,
+    service: ModelService,
+    config: OreConfig
+) extends Runnable {
 
   val Logger: Logger = this.api.Logger
+
+  val projects = ProjectBase()
 
   /**
     * Starts the recovery task to be run at the specified interval.
@@ -30,12 +37,15 @@ class RecoveryTask(scheduler: Scheduler,
   override def run(): Unit = {
     Logger.debug("Running Discourse recovery task...")
 
-    this.projects.filter(_.topicId === -1).foreach { toCreate =>
+    val topicFilter: ModelFilter[Project] = ModelFilter[Project](_.topicId.isEmpty)
+    val dirtyFilter: ModelFilter[Project] = ModelFilter[Project](_.isTopicDirty)
+
+    this.projects.filter((topicFilter +&& Visibility.isPublicFilter).fn).foreach { toCreate =>
       Logger.debug(s"Creating ${toCreate.size} topics...")
       toCreate.foreach(this.api.createProjectTopic)
     }
 
-    this.projects.filter(_.isTopicDirty).foreach { toUpdate =>
+    this.projects.filter((dirtyFilter +&& Visibility.isPublicFilter).fn).foreach { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} topics...")
       toUpdate.foreach(this.api.updateProjectTopic)
     }

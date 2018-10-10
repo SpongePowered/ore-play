@@ -1,9 +1,10 @@
 package controllers.sugar
 
+import play.api.mvc.Call
+
 import controllers.routes
 import models.project.Project
 import models.user.User
-import play.api.mvc.Call
 
 /**
   * Helper class for commonly used calls throughout the application.

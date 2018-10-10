@@ -1,4 +1,3 @@
-import com.google.inject.AbstractModule
 import db.ModelService
 import db.impl.service.OreModelService
 import discourse.{OreDiscourseApi, SpongeForums}
@@ -6,11 +5,12 @@ import mail.{Mailer, SpongeMailer}
 import ore._
 import ore.project.factory.{OreProjectFactory, ProjectFactory}
 import ore.rest.{OreRestfulApi, OreRestfulServer}
-import play.api.{Configuration, Environment}
 import security.spauth.{SingleSignOnConsumer, SpongeAuth, SpongeAuthApi, SpongeSingleSignOnConsumer}
 
+import com.google.inject.AbstractModule
+
 /** The Ore Module */
-class Module(environment: Environment, configuration: Configuration) extends AbstractModule {
+class Module extends AbstractModule {
 
   def configure(): Unit = {
     bind(classOf[OreRestfulApi]).to(classOf[OreRestfulServer])

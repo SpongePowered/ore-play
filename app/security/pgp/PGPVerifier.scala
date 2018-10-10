@@ -4,15 +4,15 @@ import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 import java.nio.file.Files._
 import java.nio.file.{Files, Path}
 
+import scala.util.Try
+
+import play.api.Logger
+
 import com.google.common.base.Preconditions._
 import com.google.common.io.ByteStreams
 import org.bouncycastle.openpgp._
 import org.bouncycastle.openpgp.jcajce.{JcaPGPObjectFactory, JcaPGPPublicKeyRingCollection}
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
-
-import scala.util.Try
-
-import play.api.Logger
 
 /**
   * Verifies data within the PGP ecosystem.
@@ -34,8 +34,8 @@ class PGPVerifier {
     Logger.debug("Processing signature...")
     var result = false
     try {
-      val in = PGPUtil.getDecoderStream(sigIn)
-      val factory = new JcaPGPObjectFactory(in)
+      val in                        = PGPUtil.getDecoderStream(sigIn)
+      val factory                   = new JcaPGPObjectFactory(in)
       var sigList: PGPSignatureList = null
 
       def getNextObject = Try(factory.nextObject()).toOption.orNull
@@ -66,9 +66,9 @@ class PGPVerifier {
         return false
       }
 
-      val sig = sigList.get(0)
+      val sig      = sigList.get(0)
       val keyRings = new JcaPGPPublicKeyRingCollection(keyIn)
-      val pubKey = keyRings.getPublicKey(sig.getKeyID)
+      val pubKey   = keyRings.getPublicKey(sig.getKeyID)
       if (pubKey == null) {
         Logger.debug("<VERIFICATION FAILED> Invalid signature for public key.")
         return false
@@ -108,109 +108,4 @@ class PGPVerifier {
     val keyStream = PGPUtil.getDecoderStream(new ByteArrayInputStream(key.getBytes))
     verifyDetachedSignature(Files.readAllBytes(docPath), newInputStream(sigPath), keyStream)
   }
-
-  /**
-    * Verifies the specified [[InputStream]] against the specified public key
-    * [[InputStream]]. Only the first signature will be checked.
-    *
-    * When using GPG one should sign uploaded files with the following command:
-    *
-    * {{{
-    *   gpg --output plugin-signed.jar --sign plugin.jar
-    * }}}
-    *
-    * Where "plugin.jar" is your original plugin file and "plugin-signed.jar" is your output file.
-    *
-    * @see https://www.gnupg.org/gph/en/manual/x135.html
-    * @param verifyIn InputStream to verify
-    * @param keyIn    Public key InputStream
-    * @return         True if verified
-    */
-  @deprecated("use verifyDetachedSignature() instead", "1.0.2")
-  def verifyAndDecrypt(verifyIn: InputStream, out: OutputStream, keyIn: InputStream): Boolean = {
-    checkNotNull(verifyIn, "input is null", "")
-    checkNotNull(out, "output is null", "")
-    checkNotNull(keyIn, "key input is null", "")
-
-    // Retrieve the necessary data
-    val in = PGPUtil.getDecoderStream(verifyIn)
-    var factory = new JcaPGPObjectFactory(in)
-    var sig: PGPOnePassSignature = null
-    var data: Array[Byte] = null
-    var sigList: PGPSignatureList = null
-
-    def doNextObject() = Try(factory.nextObject()).getOrElse(null)
-
-    var currentObject = doNextObject()
-    while ((sig == null || data == null || sigList == null) && currentObject != null) {
-      // Normally the packets will be read in this order
-      currentObject match {
-        case compressedData: PGPCompressedData =>
-          // Decompress and continue
-          factory = new JcaPGPObjectFactory(compressedData.getDataStream)
-        case onePassSigList: PGPOnePassSignatureList =>
-          if (onePassSigList.isEmpty) {
-            Logger.debug("Empty one pass signature list.")
-            return false
-          }
-          sig = onePassSigList.get(0)
-        case literalData: PGPLiteralData =>
-          val dataIn = literalData.getInputStream
-          data = ByteStreams.toByteArray(dataIn)
-          dataIn.close()
-        case signatureList: PGPSignatureList =>
-          if (signatureList.isEmpty) {
-            Logger.debug("Empty signature list.")
-            return false
-          }
-          sigList = signatureList
-        case _ =>
-      }
-      Logger.debug("Processed packet: " + currentObject.toString)
-      currentObject = doNextObject()
-    }
-
-    in.close()
-
-    if (sig == null || data == null || sigList == null) {
-      Logger.debug("Incomplete packet data.")
-      return false
-    }
-
-    Logger.debug("Signature Key ID: " + java.lang.Long.toHexString(sig.getKeyID))
-
-    // Verify against public key
-    val keyRings = new JcaPGPPublicKeyRingCollection(keyIn)
-    val pubKey = keyRings.getPublicKey(sig.getKeyID)
-    keyIn.close()
-    if (pubKey == null)
-      return false
-
-    sig.init(new JcaPGPContentVerifierBuilderProvider().setProvider("BC"), pubKey)
-    sig.update(data)
-    val result = sig.verify(sigList.get(0))
-    Logger.debug("Verified: " + result)
-    if (result) {
-      out.write(data)
-      out.close()
-    }
-    result
-  }
-
-  @deprecated("use verifyDetachedSignature() instead", "1.0.2")
-  def verifyAndDecrypt(in: Path, out: Path, key: String): Boolean = {
-    checkNotNull(in, "input is null", "")
-    checkNotNull(out, "output is null", "")
-    checkNotNull(key, "key is null", "")
-    checkArgument(exists(in), "input does not exist", "")
-    if (notExists(out)) {
-      createDirectories(out.getParent)
-      createFile(out)
-    }
-    val inStream = newInputStream(in)
-    val outStream = newOutputStream(out)
-    val keyStream = PGPUtil.getDecoderStream(new ByteArrayInputStream(key.getBytes))
-    verifyAndDecrypt(inStream, outStream, keyStream)
-  }
-
 }

@@ -1,21 +1,21 @@
 package mail
 
-import controllers.sugar.Requests.OreRequest
-import db.ModelService
-import db.impl.access.UserBase
 import javax.inject.Inject
+
+import play.api.i18n.{I18nSupport, MessagesApi}
+
+import controllers.sugar.Requests.OreRequest
 import models.user.User
 import ore.OreConfig
-import play.api.i18n.{I18nSupport, Lang, MessagesApi}
 
-final class EmailFactory @Inject()(override val messagesApi: MessagesApi,
-                                   implicit val config: OreConfig,
-                                   implicit val service: ModelService) extends I18nSupport {
+final class EmailFactory @Inject()(
+    val messagesApi: MessagesApi
+)(implicit config: OreConfig)
+    extends I18nSupport {
 
-  val PgpUpdated = "email.pgpUpdate"
+  val PgpUpdated      = "email.pgpUpdate"
   val AccountUnlocked = "email.accountUnlock"
 
-  implicit val users: UserBase = this.service.getModelBase(classOf[UserBase])
   def create(user: User, id: String)(implicit request: OreRequest[_]): Email = {
     import user.langOrDefault
     Email(

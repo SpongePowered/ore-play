@@ -7,4 +7,5 @@ case class VersionDeployForm(
     channel: Channel,
     recommended: Boolean,
     createForumPost: Boolean,
-    changelog: Option[String])
+    changelog: Option[String]
+)

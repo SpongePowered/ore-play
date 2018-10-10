@@ -2,12 +2,12 @@ package db.impl.model.common
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.Model
 import db.access.ModelAccess
 import db.impl.table.common.VisibilityColumn
-import models.project.VisibilityTypes
-import models.project.VisibilityTypes.Visibility
-import util.functional.OptionT
+import db.{Model, ModelService, ObjectReference}
+import models.project.Visibility
+
+import cats.data.OptionT
 
 /**
   * Represents a [[Model]] that has a toggleable visibility.
@@ -25,30 +25,42 @@ trait Hideable extends Model { self =>
     */
   def visibility: Visibility
 
-  def isDeleted: Boolean = visibility == VisibilityTypes.SoftDelete
+  def isDeleted: Boolean = visibility == Visibility.SoftDelete
 
   /**
     * Sets whether this project is visible.
     *
     * @param visibility True if visible
     */
-  def setVisibility(visibility: Visibility, comment: String, creator: Int)(implicit ec: ExecutionContext): Future[ModelVisibilityChange]
+  def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
+      implicit ec: ExecutionContext,
+      service: ModelService
+  ): Future[(M, ModelVisibilityChange)]
 
   /**
     * Get VisibilityChanges
     */
-  def visibilityChanges: ModelAccess[ModelVisibilityChange]
+  def visibilityChanges(implicit service: ModelService): ModelAccess[ModelVisibilityChange]
 
-  def visibilityChangesByDate(implicit ec: ExecutionContext): Future[Seq[ModelVisibilityChange]] =
+  def visibilityChangesByDate(
+      implicit ec: ExecutionContext,
+      service: ModelService
+  ): Future[Seq[ModelVisibilityChange]] =
     visibilityChanges.all.map(_.toSeq.sortWith(byCreationDate))
 
   def byCreationDate(first: ModelVisibilityChange, second: ModelVisibilityChange): Boolean =
     first.createdAt.value.getTime < second.createdAt.value.getTime
 
-  def lastVisibilityChange(implicit ec: ExecutionContext): OptionT[Future, ModelVisibilityChange] =
+  def lastVisibilityChange(
+      implicit ec: ExecutionContext,
+      service: ModelService
+  ): OptionT[Future, ModelVisibilityChange] =
     OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption))
 
-  def lastChangeRequest(implicit ec: ExecutionContext): OptionT[Future, ModelVisibilityChange] =
-    OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => cr.visibility == VisibilityTypes.NeedsChanges.id).sortWith(byCreationDate).lastOption))
+  def lastChangeRequest(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, ModelVisibilityChange] =
+    OptionT(
+      visibilityChanges.all
+        .map(_.toSeq.filter(cr => cr.visibility == Visibility.NeedsChanges).sortWith(byCreationDate).lastOption)
+    )
 
 }

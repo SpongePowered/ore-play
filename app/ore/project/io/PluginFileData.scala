@@ -2,13 +2,14 @@ package ore.project.io
 
 import java.io.BufferedReader
 
-import models.project.{Tag, TagColors}
-import ore.project.Dependency
-import org.spongepowered.plugin.meta.McModInfo
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 import db.ObjectId
+import models.project.{Tag, TagColor}
+import ore.project.Dependency
+
+import org.spongepowered.plugin.meta.McModInfo
 
 /**
   * The metadata within a [[PluginFile]]
@@ -18,44 +19,46 @@ import db.ObjectId
   */
 class PluginFileData(data: Seq[DataValue[_]]) {
 
-  val dataValues = data.groupBy(_.key).flatMap { case (key, value) =>
-    // combine dependency lists that may come from different files
-    if (value.size > 1 && value.head.isInstanceOf[DependencyDataValue]) {
-      val dependencies = value.flatMap(_.value.asInstanceOf[Seq[Dependency]])
-      Seq(DependencyDataValue(key, dependencies))
-    } else value
-  }.toSeq
+  private val dataValues = data
+    .groupBy(_.key)
+    .flatMap {
+      case (key, value) =>
+        // combine dependency lists that may come from different files
+        if (value.lengthCompare(1) > 0 && value.head.isInstanceOf[DependencyDataValue]) {
+          val dependencies = value.flatMap(_.value.asInstanceOf[Seq[Dependency]])
+          Seq(DependencyDataValue(key, dependencies))
+        } else value
+    }
+    .toSeq
 
-  def id: Option[String] = {
+  def id: Option[String] =
     get[String]("id")
-  }
 
-  def version: Option[String] = {
+  def version: Option[String] =
     get[String]("version")
-  }
 
-  def authors: Seq[String] = {
+  def authors: Seq[String] =
     get[Seq[String]]("authors").getOrElse(Seq())
-  }
 
-  def dependencies: Seq[Dependency] = {
+  def dependencies: Seq[Dependency] =
     get[Seq[Dependency]]("dependencies").getOrElse(Seq())
-  }
 
-  def get[T](key: String): Option[T] = {
-    dataValues.filter(_.key == key).filter(_.isInstanceOf[DataValue[T @unchecked]]).map(_.asInstanceOf[DataValue[T]].value).headOption
-  }
+  def get[T](key: String): Option[T] =
+    dataValues
+      .filter(_.key == key)
+      .filter(_.isInstanceOf[DataValue[T @unchecked]])
+      .map(_.asInstanceOf[DataValue[T]].value)
+      .headOption
 
-  def isValidPlugin: Boolean = {
+  def isValidPlugin: Boolean =
     dataValues.exists(_.isInstanceOf[StringDataValue]) &&
       dataValues.exists(_.isInstanceOf[StringDataValue])
-  }
 
   def ghostTags: Seq[Tag] = {
     val buffer = new ArrayBuffer[Tag]
 
     if (containsMixins) {
-      val mixinTag = Tag(ObjectId.Uninitialized, List(), "Mixin", "", TagColors.Mixin)
+      val mixinTag = Tag(ObjectId.Uninitialized, List(), "Mixin", "", TagColor.Mixin)
       buffer += mixinTag
     }
 
@@ -68,9 +71,8 @@ class PluginFileData(data: Seq[DataValue[_]]) {
     *
     * @return
     */
-  def containsMixins: Boolean = {
+  def containsMixins: Boolean =
     dataValues.exists(p => p.key == "MixinConfigs" && p.isInstanceOf[StringDataValue])
-  }
 
 }
 
@@ -79,9 +81,8 @@ object PluginFileData {
 
   def fileNames: Seq[String] = fileTypes.map(_.fileName).distinct
 
-  def getData(fileName: String, stream: BufferedReader): Seq[DataValue[_]] = {
+  def getData(fileName: String, stream: BufferedReader): Seq[DataValue[_]] =
     fileTypes.filter(_.fileName == fileName).flatMap(_.getData(stream))
-  }
 
 }
 
@@ -93,8 +94,8 @@ object PluginFileData {
   * @tparam T the type of the value
   */
 sealed trait DataValue[T] {
-  val key: String
-  val value: T
+  def key: String
+  def value: T
 }
 
 /**
@@ -102,24 +103,21 @@ sealed trait DataValue[T] {
   *
   * @param value the value extracted from the file
   */
-case class StringDataValue(key: String, value: String)
-  extends DataValue[String]
+case class StringDataValue(key: String, value: String) extends DataValue[String]
 
 /**
   * A data element that is a list of strings, such as an authors list
   *
   * @param value the value extracted from the file
   */
-case class StringListValue(key: String, value: Seq[String])
-  extends DataValue[Seq[String]]
+case class StringListValue(key: String, value: Seq[String]) extends DataValue[Seq[String]]
 
 /**
   * A data element that is a list of [[Dependency]]
   *
   * @param value the value extracted from the file
   */
-case class DependencyDataValue(key: String, value: Seq[Dependency])
-  extends DataValue[Seq[Dependency]]
+case class DependencyDataValue(key: String, value: Seq[Dependency]) extends DataValue[Seq[Dependency]]
 
 sealed abstract case class FileTypeHandler(fileName: String) {
   def getData(bufferedReader: BufferedReader): Seq[DataValue[_]]
@@ -130,7 +128,7 @@ object McModInfoHandler extends FileTypeHandler("mcmod.info") {
     val dataValues = new ArrayBuffer[DataValue[_]]
     try {
       val info = McModInfo.DEFAULT.read(bufferedReader).asScala
-      if (info.size < 1) return Seq()
+      if (info.lengthCompare(1) < 0) return Nil
 
       val metadata = info.head
 
@@ -176,8 +174,7 @@ object ManifestHandler extends FileTypeHandler("META-INF/MANIFEST.MF") {
 }
 
 object ModTomlHandler extends FileTypeHandler("mod.toml") {
-  override def getData(bufferedReader: BufferedReader): Seq[DataValue[_]] = {
+  override def getData(bufferedReader: BufferedReader): Seq[DataValue[_]] =
     // TODO: Get format from Forge once it has been decided on
-    Seq()
-  }
+    Nil
 }

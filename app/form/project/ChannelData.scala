@@ -9,9 +9,9 @@ import ore.project.factory.ProjectFactory
   * @param channelName     Channel name
   * @param channelColorHex Channel color hex code
   */
-case class ChannelData(override val channelName: String,
-                       override protected val channelColorHex: String,
-                       override val nonReviewed: Boolean)
-                      (implicit override val config: OreConfig,
-                       override val factory: ProjectFactory)
-                       extends TChannelData
+case class ChannelData(
+    channelName: String,
+    protected val channelColorHex: String,
+    nonReviewed: Boolean
+)(implicit val config: OreConfig, val factory: ProjectFactory)
+    extends TChannelData
