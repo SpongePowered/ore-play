@@ -138,7 +138,7 @@ case class User(
               val roleTable     = TableQuery[OrganizationRoleTable]
 
               val query = for {
-                p <- projectsTable if pScope.projectId.bind === p.id
+                p <- projectsTable if projectId.bind === p.id
                 o <- orgaTable if p.userId === o.id
                 m <- memberTable if m.organizationId === o.id && m.userId === this.userId.bind
                 r <- roleTable if this.userId.bind === r.userId && r.organizationId === o.id
@@ -148,7 +148,7 @@ case class User(
                 if (roleTypes.contains(RoleType.OrganizationAdmin) || roleTypes.contains(RoleType.OrganizationOwner)) {
                   biggestRoleTpe(roleTypes)
                 } else {
-                  Default
+                  userTrust
                 }
               }
             }
