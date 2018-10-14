@@ -16,7 +16,9 @@ import util.StringUtils._
 import akka.actor.Scheduler
 import cats.instances.future._
 import cats.syntax.all._
+import com.fasterxml.jackson.core.JsonParseException
 import com.google.common.base.Preconditions.checkArgument
+import org.slf4j.MDC
 import org.spongepowered.play.discourse.DiscourseApi
 
 /**
@@ -199,7 +201,18 @@ trait OreDiscourseApi extends DiscourseApi {
         }
       case Failure(e) =>
         // Discourse never received our request!
-        fail(e.getMessage)
+        MDC.put("username", ownerName)
+        MDC.put("topicId", topicId.get.toString)
+        MDC.put("title", title)
+        e match {
+          case runtimeException: RuntimeException => {
+            if (runtimeException.getCause.isInstanceOf[JsonParseException]) {
+              MDC.put("jsonException", runtimeException.getCause.getMessage)
+            }
+            fail(e.getMessage)
+          }
+          case _ => fail(e.getMessage)
+        }
     }
 
     resultPromise.future

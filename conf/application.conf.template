@@ -237,6 +237,11 @@ sponge {
           "name": "YourKit",
           "image": "images/sponsors/yourkit.png",
           "link": "https://www.yourkit.com/"
+        },
+        {
+          "name": "GameServerKings",
+          "image": "images/sponsors/gameserverkings.png",
+          "link": "https://www.gameserverkings.com/games/rust-server-hosting/"
         }
     ]
 }

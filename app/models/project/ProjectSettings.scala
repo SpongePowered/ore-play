@@ -9,15 +9,14 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{NotificationTable, ProjectMembersTable, ProjectRoleTable, ProjectSettingsTable, UserTable}
+import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable, UserTable}
 import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import form.project.ProjectSettingsForm
 import models.user.Notification
 import models.user.role.ProjectUserRole
 import ore.permission.role.Role
 import ore.project.io.ProjectFiles
-import ore.project.{Category, ProjectMember, ProjectOwned}
-import ore.user.MembershipDossier
+import ore.project.{Category, ProjectOwned}
 import ore.user.notification.NotificationType
 import util.StringUtils._
 
@@ -106,18 +105,10 @@ case class ProjectSettings(
       // Handle member changes
       if (project.isDefined) {
         // Add new roles
-        val dossier: MembershipDossier[Project] {
-          type MembersTable = ProjectMembersTable
-
-          type MemberType = ProjectMember
-
-          type RoleTable = ProjectRoleTable
-
-          type RoleType = ProjectUserRole
-        } = project.memberships
+        val dossier = project.memberships
         Future
           .traverse(formData.build()) { role =>
-            dossier.addRole(role.copy(projectId = project.id.value))
+            dossier.addRole(project, role.copy(projectId = project.id.value))
           }
           .flatMap { roles =>
             val notifications = roles.map { role =>
@@ -142,7 +133,7 @@ case class ProjectSettings(
                 userIds.zip(
                   formData.roleUps.map { role =>
                     Role.projectRoles
-                      .find(_.title.equals(role))
+                      .find(_.value.equals(role))
                       .getOrElse(throw new RuntimeException("supplied invalid role type"))
                   }
                 )

@@ -154,7 +154,7 @@ case class User(
       scope match {
         case GlobalScope => globalTrust
         case pScope: ProjectScope =>
-          val projectRoles = service.DB.db.run(Project.roleForTrustQuery((pScope.projectId, this.id.value)).result)
+          val projectRoles = service.doAction(Project.roleForTrustQuery((pScope.projectId, this.id.value)).result)
 
           val projectTrust = projectRoles
             .map(biggestRoleTpe)
@@ -177,7 +177,7 @@ case class User(
                   r  <- roleTable if m.userId === r.userId && r.organizationId === o.id
                 } yield r.roleType
 
-                service.DB.db.run(query.to[Set].result).map(biggestRoleTpe)
+                service.doAction(query.to[Set].result).map(biggestRoleTpe)
               }
             }
 

@@ -2,14 +2,11 @@ package form.organization
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable}
 import db.{ModelService, ObjectReference}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization}
 import ore.OreConfig
-import ore.organization.OrganizationMember
 import ore.permission.role.Role
-import ore.user.MembershipDossier
 import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList
@@ -39,19 +36,11 @@ case class OrganizationMembersUpdate(
       throw new RuntimeException("tried to update members on undefined organization")
 
     // Add new roles
-    val dossier: MembershipDossier[Organization] {
-      type MembersTable = OrganizationMembersTable
-
-      type MemberType = OrganizationMember
-
-      type RoleTable = OrganizationRoleTable
-
-      type RoleType = OrganizationUserRole
-    }         = organization.memberships
-    val orgId = organization.id.value
+    val dossier = organization.memberships
+    val orgId   = organization.id.value
     for (role <- this.build()) {
       val user = role.user
-      dossier.addRole(role.copy(organizationId = orgId))
+      dossier.addRole(organization, role.copy(organizationId = orgId))
       user.flatMap { user =>
         user.sendNotification(
           Notification(
@@ -66,7 +55,8 @@ case class OrganizationMembersUpdate(
 
     // Update existing roles
     for ((user, i) <- this.userUps.zipWithIndex) {
-      organization.memberships.members
+      organization.memberships
+        .members(organization)
         .flatMap { members =>
           Future.sequence(members.map(member => member.user.map((_, member))))
         }

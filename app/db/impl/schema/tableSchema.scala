@@ -56,7 +56,7 @@ trait ProjectTable
   def category             = column[Category]("category")
   def stars                = column[Long]("stars")
   def views                = column[Long]("views")
-  def topicId              = column[Int]("topic_id")
+  def topicId              = column[Option[Int]]("topic_id")
   def postId               = column[Int]("post_id")
   def isTopicDirty         = column[Boolean]("is_topic_dirty")
   def lastUpdated          = column[Timestamp]("last_updated")
@@ -78,7 +78,7 @@ trait ProjectTable
       stars,
       views,
       downloads,
-      topicId.?,
+      topicId,
       postId.?,
       isTopicDirty,
       visibility,
@@ -170,14 +170,14 @@ class ProjectLogEntryTable(tg: Tag) extends ModelTable[ProjectLogEntry](tg, "pro
 class PageTable(tag: Tag) extends ModelTable[Page](tag, "project_pages") with NameColumn[Page] {
 
   def projectId   = column[ObjectReference]("project_id")
-  def parentId    = column[ObjectReference]("parent_id")
+  def parentId    = column[Option[ObjectReference]]("parent_id")
   def slug        = column[String]("slug")
   def contents    = column[String]("contents")
   def isDeletable = column[Boolean]("is_deletable")
 
   override def * = {
     val convertedUnapply = convertUnapply(Page.unapply)
-    (id.?, createdAt.?, projectId, parentId.?, name, slug, isDeletable, contents) <> (convertApply(Page.apply _).tupled, convertedUnapply)
+    (id.?, createdAt.?, projectId, parentId, name, slug, isDeletable, contents) <> (convertApply(Page.apply _).tupled, convertedUnapply)
   }
 
 }

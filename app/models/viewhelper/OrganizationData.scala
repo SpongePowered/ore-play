@@ -39,7 +39,7 @@ object OrganizationData {
       service: ModelService
   ): Future[OrganizationData] =
     for {
-      members      <- orga.memberships.members
+      members      <- orga.memberships.members(orga)
       memberRoles  <- Future.traverse(members)(_.headRole)
       memberUser   <- Future.traverse(memberRoles)(_.user)
       projectRoles <- db.run(queryProjectRoles(orga.id.value).result)

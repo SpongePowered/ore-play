@@ -154,7 +154,9 @@ case class Page(
     * @return Page's children
     */
   def children(implicit service: ModelService): ModelAccess[Page] =
-    service.access[Page](classOf[Page], ModelFilter[Page](_.parentId === this.id.value))
+    service.access[Page](classOf[Page], ModelFilter[Page](page => {
+      page.parentId.isDefined && page.parentId.get === this.id.value
+    }))
 
   def url(implicit project: Project, parentPage: Option[Page]): String =
     project.url + "/pages/" + this.fullSlug(parentPage)

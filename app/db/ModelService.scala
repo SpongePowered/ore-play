@@ -153,7 +153,7 @@ abstract class ModelService(val driver: JdbcProfile) {
 
   def update[M <: Model](model: M)(implicit ec: ExecutionContext): Future[M] = {
     val models = newAction[M](model.getClass)
-    DB.db.run(models.filter(_.id === model.id.value).update(model)).as(model)
+    doAction(models.filter(_.id === model.id.value).update(model)).as(model)
   }
 
   /**
@@ -167,7 +167,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @tparam M     Model type
     */
   def set[A, M <: Model](model: M, column: M#T => Rep[A], value: A)(implicit mapper: JdbcType[A]): Future[Int] = {
-    DB.db.run {
+    doAction {
       (for {
         row <- newAction[M](model.getClass)
         if row.id === model.id.value
@@ -201,7 +201,7 @@ abstract class ModelService(val driver: JdbcProfile) {
   def count[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean] = null): Future[Int] = {
     var query = newAction[M](modelClass)
     if (filter != null) query = query.filter(filter)
-    DB.db.run(query.length.result)
+    doAction(query.length.result)
   }
 
   /**
@@ -210,7 +210,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param model Model to delete
     */
   def delete[M <: Model](model: M): Future[Int] =
-    DB.db.run(newAction[M](model.getClass).filter(IdFilter[M](model.id.value).fn).delete)
+    doAction(newAction[M](model.getClass).filter(IdFilter[M](model.id.value).fn).delete)
 
   /**
     * Deletes all the models meeting the specified filter.
@@ -220,7 +220,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @tparam M         Model
     */
   def deleteWhere[M <: Model](modelClass: Class[M], filter: M#T => Rep[Boolean]): Future[Int] =
-    DB.db.run(newAction[M](modelClass).filter(filter).delete)
+    doAction(newAction[M](modelClass).filter(filter).delete)
 
   /**
     * Returns the model with the specified ID, if any.

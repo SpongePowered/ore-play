@@ -70,6 +70,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
           _       <- userOrg.globalRoles.add(Role.Organization.toDbRole)
           _ <- // Add the owner
           org.memberships.addRole(
+            org,
             OrganizationUserRole(
               userId = ownerId,
               organizationId = org.id.value,
@@ -83,7 +84,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
 
             Future.sequence(members.map { role =>
               // TODO remove role.user db access we really only need the userid we already have for notifications
-              org.memberships.addRole(role.copy(organizationId = org.id.value)).flatMap(_ => role.user).flatMap {
+              org.memberships.addRole(org, role.copy(organizationId = org.id.value)).flatMap(_ => role.user).flatMap {
                 user =>
                   user.sendNotification(
                     Notification(
