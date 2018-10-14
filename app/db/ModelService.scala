@@ -142,7 +142,7 @@ abstract class ModelService(val driver: JdbcProfile) {
   }
 
   def updateIfDefined[M <: Model](model: M)(implicit ec: ExecutionContext): Future[M] =
-    if(model.isDefined) update(model) else Future.successful(model)
+    if (model.isDefined) update(model) else Future.successful(model)
 
   /**
     * Sets a column in a [[ModelTable]].
