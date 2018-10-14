@@ -30,6 +30,6 @@ trait Joinable[M <: Member[_ <: RoleModel], Self <: Model] {
     *
     * @return Memberships
     */
-  def memberships(implicit service: ModelService): MembershipDossier[Self]
+  def memberships(implicit ec: ExecutionContext, service: ModelService): MembershipDossier[Future, Self]
 
 }

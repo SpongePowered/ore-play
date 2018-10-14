@@ -1,5 +1,5 @@
 name := "ore"
-version := "1.6.12"
+version := "1.6.17"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
@@ -61,7 +61,7 @@ lazy val bouncycastleVersion = "1.60"
 lazy val playSlickVersion    = "3.0.3"
 
 libraryDependencies ++= Seq(
-  "org.spongepowered"    % "play-discourse"                 % "3.0.1",
+  "org.spongepowered"    % "play-discourse"                 % "3.0.2",
   "org.spongepowered"    % "plugin-meta"                    % "0.4.1",
   "com.typesafe.play"    %% "play-slick"                    % playSlickVersion,
   "com.typesafe.play"    %% "play-slick-evolutions"         % playSlickVersion,
@@ -104,3 +104,7 @@ libraryDependencies ++= Seq(
 )
 
 unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test")
+
+// Disable generation of the API documentation for production builds
+sources in (Compile, doc) := Seq.empty
+publishArtifact in (Compile, packageDoc) := false

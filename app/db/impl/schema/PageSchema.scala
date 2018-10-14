@@ -18,8 +18,9 @@ class PageSchema(override val service: ModelService)
     this.service.find[Page](
       this.modelClass,
       p =>
-        p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase
-          && page.parentId.fold(true: Rep[Boolean])(p.parentId === _)
+        p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && page.parentId.fold(
+          true: Rep[Boolean]
+        )(p.parentId.get === _)
     )
 
 }

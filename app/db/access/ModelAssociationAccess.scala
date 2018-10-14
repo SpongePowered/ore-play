@@ -24,7 +24,7 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](
           row <- assoc.assocTable
           if parentRef(row) === parent.id.value
         } yield childRef(row)
-        val childrenIds: Seq[ObjectReference] = service.await(service.DB.db.run(assocQuery.result)).get
+        val childrenIds: Seq[ObjectReference] = service.await(service.doAction(assocQuery.result)).get
         child.id.inSetBind(childrenIds)
       }
     ) {

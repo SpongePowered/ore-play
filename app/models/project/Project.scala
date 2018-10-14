@@ -28,7 +28,7 @@ import models.project.Visibility.Public
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectRole
-import ore.permission.role.{Default, RoleType, Trust}
+import ore.permission.role.RoleType
 import ore.permission.scope.HasScope
 import ore.project.{Category, FlagReason, ProjectMember}
 import ore.user.MembershipDossier
@@ -105,41 +105,11 @@ case class Project(
   /**
     * Contains all information for [[User]] memberships.
     */
-  override def memberships(implicit service: ModelService): MembershipDossier[Project] {
-    type MembersTable = ProjectMembersTable
-
-    type MemberType = ProjectMember
-
-    type RoleTable = ProjectRoleTable
-
-    type RoleType = ProjectRole
-  } = new MembershipDossier[Project](this) {
-
-    type RoleType     = ProjectRole
-    type RoleTable    = ProjectRoleTable
-    type MemberType   = ProjectMember
-    type MembersTable = ProjectMembersTable
-
-    val membersTableClass: Class[MembersTable] = classOf[ProjectMembersTable]
-    val roleClass: Class[RoleType]             = classOf[ProjectRole]
-
-    def newMember(userId: ObjectReference)(implicit ec: ExecutionContext): MemberType =
-      new ProjectMember(Project.this, userId)
-
-    /**
-      * Returns the highest level of [[ore.permission.role.Trust]] this user has.
-      *
-      * @param user User to get trust of
-      * @return Trust of user
-      */
-    override def getTrust(user: User)(implicit ex: ExecutionContext): Future[Trust] =
-      service
-        .doAction(Project.roleForTrustQuery((id.value, user.id.value)).result)
-        .map(l => if (l.isEmpty) Default else l.map(_.trust).max)
-
-    def clearRoles(user: User): Future[Int] =
-      this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.projectId === id.value))
-  }
+  override def memberships(
+      implicit ec: ExecutionContext,
+      service: ModelService
+  ): MembershipDossier.Aux[Future, Project, ProjectRole, ProjectMember] =
+    MembershipDossier[Future, Project]
 
   def isOwner(user: User): Boolean = user.id.value == ownerId
 
@@ -156,7 +126,7 @@ case class Project(
     // Down-grade current owner to "Developer"
     for {
       (owner, user)           <- this.owner.user.zip(member.user)
-      (ownerRoles, userRoles) <- this.memberships.getRoles(owner).zip(this.memberships.getRoles(user))
+      (ownerRoles, userRoles) <- this.memberships.getRoles(this, owner).zip(this.memberships.getRoles(this, user))
       setOwner                <- this.setOwner(user)
       _ <- Future.sequence(
         ownerRoles
@@ -446,7 +416,7 @@ case class Project(
     * @return Root pages of project
     */
   def rootPages(implicit service: ModelService): Future[Seq[Page]] =
-    service.access[Page](classOf[Page]).sorted(_.name, p => p.projectId === this.id.value && p.parentId === -1L)
+    service.access[Page](classOf[Page]).sorted(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
 
   def logger(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLog] = {
     val loggers = service.access[ProjectLog](classOf[ProjectLog])

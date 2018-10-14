@@ -227,10 +227,10 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     val tablePage = TableQuery[PageTable]
     val pagesQuery = for {
       (pp, p) <- tablePage.joinLeft(tablePage).on(_.id === _.parentId)
-      if pp.projectId === project.id.value && pp.parentId === -1L
+      if pp.projectId === project.id.value && pp.parentId.isEmpty
     } yield (pp, p)
 
-    service.DB.db.run(pagesQuery.result).map(_.groupBy(_._1)).map { grouped => // group by parent page
+    service.doAction(pagesQuery.result).map(_.groupBy(_._1)).map { grouped => // group by parent page
       // Sort by key then lists too
       grouped.toSeq.sortBy(_._1.name).map {
         case (pp, p) =>

@@ -21,7 +21,7 @@ class VersionSchema(override val service: ModelService)
     * @return           True if found
     */
   def hashExists(projectId: ObjectReference, hash: String): Future[Boolean] =
-    service.DB.db.run(((for {
+    service.doAction(((for {
       model <- this.baseQuery
       if model.projectId === projectId
       if model.hash === hash
