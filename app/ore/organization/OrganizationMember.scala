@@ -14,7 +14,8 @@ import ore.user.Member
   * @param organization Organization member belongs to
   * @param userId       User ID
   */
-class OrganizationMember(val organization: Organization, val userId: ObjectReference) extends Member[OrganizationUserRole] {
+class OrganizationMember(val organization: Organization, val userId: ObjectReference)
+    extends Member[OrganizationUserRole] {
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationUserRole]] =
     this.user.flatMap(user => this.organization.memberships.getRoles(organization, user))
