@@ -28,6 +28,7 @@ import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
 import ore.permission.scope.GlobalScope
 import ore.project.{Category, ProjectSortingStrategy}
+import ore.user.MembershipDossier
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
@@ -342,7 +343,8 @@ final class Application @Inject()(forms: OreForms)(
           //TODO: Make the form take json directly
           val (thing, action, data) = request.body
           import play.api.libs.json._
-          val json = Json.parse(data)
+          val json       = Json.parse(data)
+          val orgDossier = MembershipDossier.organization
 
           def updateRoleTable[M <: UserRoleModel](
               modelAccess: ModelAccess[M],
@@ -379,7 +381,7 @@ final class Application @Inject()(forms: OreForms)(
 
           def transferOrgOwner(r: OrganizationUserRole) =
             r.organization
-              .flatMap(orga => orga.transferOwner(orga.memberships.newMember(r.userId)))
+              .flatMap(orga => orga.transferOwner(orgDossier.newMember(orga, r.userId)))
               .as(r)
 
           thing match {
@@ -397,12 +399,12 @@ final class Application @Inject()(forms: OreForms)(
             case "memberRole" =>
               user.toMaybeOrganization.flatMap { orga =>
                 updateRoleTable[OrganizationUserRole](
-                  orga.memberships.roles,
+                  orgDossier.roles(orga),
                   RoleCategory.Organization,
                   Role.OrganizationOwner,
                   transferOrgOwner,
-                  (r, tpe) => orga.memberships.roles.update(r.copy(role = tpe)),
-                  (r, accepted) => orga.memberships.roles.update(r.copy(isAccepted = accepted))
+                  (r, tpe) => orgDossier.roles(orga).update(r.copy(role = tpe)),
+                  (r, accepted) => orgDossier.roles(orga).update(r.copy(isAccepted = accepted))
                 )
               }
             case "projectRole" =>
@@ -411,7 +413,7 @@ final class Application @Inject()(forms: OreForms)(
                   user.projectRoles,
                   RoleCategory.Project,
                   Role.ProjectOwner,
-                  r => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(r.userId))).as(r),
+                  r => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(p, r.userId))).as(r),
                   (r, tpe) => user.projectRoles.update(r.copy(role = tpe)),
                   (r, accepted) => user.projectRoles.update(r.copy(isAccepted = accepted))
                 )

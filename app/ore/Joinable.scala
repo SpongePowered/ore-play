@@ -31,6 +31,6 @@ trait Joinable[M <: Member[_ <: UserRoleModel], Self <: Model] extends ScopeSubj
     *
     * @return Memberships
     */
-  def memberships(implicit service: ModelService): MembershipDossier[Self]
+  def memberships(implicit ec: ExecutionContext, service: ModelService): MembershipDossier[Future, Self]
 
 }

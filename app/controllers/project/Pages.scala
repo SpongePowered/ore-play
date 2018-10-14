@@ -75,7 +75,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
       OptionT(service.doAction(childPageQuery((parts(0), parts(1))).result.headOption)).map(_ -> false)
     } else {
       project.pages
-        .find(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId.?.isEmpty)
+        .find(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId.isEmpty)
         .map(_ -> false)
         .orElse(project.pages.find(_.slug.toLowerCase === parts(0).toLowerCase).map(_ -> true))
     }

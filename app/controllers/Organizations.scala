@@ -13,6 +13,7 @@ import db.{ModelService, ObjectReference}
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import ore.permission.EditSettings
+import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -102,7 +103,7 @@ class Organizations @Inject()(forms: OreForms)(
         .get(id)
         .semiflatMap { role =>
           status match {
-            case STATUS_DECLINE  => role.organization.flatMap(_.memberships.removeRole(role)).as(Ok)
+            case STATUS_DECLINE  => role.organization.flatMap(MembershipDossier.organization.removeRole(_, role)).as(Ok)
             case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
             case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
             case _               => Future.successful(BadRequest)
@@ -133,7 +134,7 @@ class Organizations @Inject()(forms: OreForms)(
     EditOrganizationAction(organization).async(parse.form(forms.OrganizationMemberRemove)) { implicit request =>
       val res = for {
         user <- users.withName(request.body)
-        _    <- OptionT.liftF(request.data.orga.memberships.removeMember(user))
+        _    <- OptionT.liftF(request.data.orga.memberships.removeMember(request.data.orga, user))
       } yield Redirect(ShowUser(organization))
 
       res.getOrElse(BadRequest)

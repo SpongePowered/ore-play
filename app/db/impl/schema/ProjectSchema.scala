@@ -26,7 +26,7 @@ class ProjectSchema(override val service: ModelService, implicit val users: User
     */
   def distinctAuthors(implicit ec: ExecutionContext): Future[Seq[User]] =
     for {
-      userIds <- service.DB.db.run(this.baseQuery.map(_.userId).distinct.result)
+      userIds <- service.doAction(this.baseQuery.map(_.userId).distinct.result)
       inIds   <- this.users.in(userIds.toSet)
     } yield inIds.toSeq
 

@@ -38,7 +38,7 @@ class ModelAssociation[AssocTable <: AssociativeTable](
     */
   def assoc(model1: Model, model2: Model): Future[Int] = {
     val (first, second) = orderModels(model1, model2)
-    this.service.DB.db.run(this.assocTable += ((first.id.value, second.id.value)))
+    this.service.doAction(this.assocTable += ((first.id.value, second.id.value)))
   }
 
   /**
@@ -49,7 +49,7 @@ class ModelAssociation[AssocTable <: AssociativeTable](
     */
   def disassoc(model1: Model, model2: Model): Future[Int] = {
     val modelPair = orderModels(model1, model2)
-    this.service.DB.db.run {
+    this.service.doAction {
       this.assocTable.filter(t => ref1(t) === modelPair._1.id.value && ref2(t) === modelPair._2.id.value).delete
     }
   }

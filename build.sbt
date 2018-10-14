@@ -1,5 +1,5 @@
 name := "ore"
-version := "1.6.12"
+version := "1.6.17"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
@@ -57,17 +57,22 @@ resolvers ++= Seq(
 lazy val doobieVersion = "0.5.3"
 
 libraryDependencies ++= Seq(ehcache, ws, guice)
+
+lazy val flexmarkVersion     = "0.34.40"
+lazy val bouncycastleVersion = "1.60"
+lazy val playSlickVersion    = "3.0.3"
+
 libraryDependencies ++= Seq(
-  "org.spongepowered"    % "play-discourse"                 % "3.0",
+  "org.spongepowered"    % "play-discourse"                 % "3.0.2",
   "org.spongepowered"    % "plugin-meta"                    % "0.4.1",
-  "com.typesafe.play"    %% "play-slick"                    % "3.0.3",
-  "com.typesafe.play"    %% "play-slick-evolutions"         % "3.0.3",
+  "com.typesafe.play"    %% "play-slick"                    % playSlickVersion,
+  "com.typesafe.play"    %% "play-slick-evolutions"         % playSlickVersion,
   "org.postgresql"       % "postgresql"                     % "42.2.5",
   "com.github.tminglei"  %% "slick-pg"                      % "0.16.3",
   "io.sentry"            % "sentry-logback"                 % "1.7.10",
-  "org.bouncycastle"     % "bcprov-jdk15on"                 % "1.60",
-  "org.bouncycastle"     % "bcpkix-jdk15on"                 % "1.60",
-  "org.bouncycastle"     % "bcpg-jdk15on"                   % "1.60",
+  "org.bouncycastle"     % "bcprov-jdk15on"                 % bouncycastleVersion,
+  "org.bouncycastle"     % "bcpkix-jdk15on"                 % bouncycastleVersion,
+  "org.bouncycastle"     % "bcpg-jdk15on"                   % bouncycastleVersion,
   "javax.mail"           % "mail"                           % "1.4.7",
   "com.beachape"         %% "enumeratum"                    % "1.5.13",
   "com.beachape"         %% "enumeratum-slick"              % "1.5.15",
@@ -75,14 +80,14 @@ libraryDependencies ++= Seq(
   "org.typelevel"        %% "cats-core"                     % "1.4.0",
   "org.tpolecat"         %% "doobie-core"                   % doobieVersion,
   "org.tpolecat"         %% "doobie-postgres"               % doobieVersion,
-  "com.vladsch.flexmark" % "flexmark"                       % "0.34.40",
-  "com.vladsch.flexmark" % "flexmark-ext-autolink"          % "0.34.40",
-  "com.vladsch.flexmark" % "flexmark-ext-anchorlink"        % "0.34.40",
-  "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % "0.34.40",
-  "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist"      % "0.34.40",
-  "com.vladsch.flexmark" % "flexmark-ext-tables"            % "0.34.40",
-  "com.vladsch.flexmark" % "flexmark-ext-typographic"       % "0.34.40",
-  "com.vladsch.flexmark" % "flexmark-ext-wikilink"          % "0.34.40",
+  "com.vladsch.flexmark" % "flexmark"                       % flexmarkVersion,
+  "com.vladsch.flexmark" % "flexmark-ext-autolink"          % flexmarkVersion,
+  "com.vladsch.flexmark" % "flexmark-ext-anchorlink"        % flexmarkVersion,
+  "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+  "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist"      % flexmarkVersion,
+  "com.vladsch.flexmark" % "flexmark-ext-tables"            % flexmarkVersion,
+  "com.vladsch.flexmark" % "flexmark-ext-typographic"       % flexmarkVersion,
+  "com.vladsch.flexmark" % "flexmark-ext-wikilink"          % flexmarkVersion,
   "org.webjars.npm"      % "jquery"                         % "2.2.4",
   "org.webjars.npm"      % "font-awesome"                   % "4.7.0",
   "org.webjars.npm"      % "filesize"                       % "3.6.1",
@@ -99,3 +104,7 @@ libraryDependencies ++= Seq(
 )
 
 unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test")
+
+// Disable generation of the API documentation for production builds
+sources in (Compile, doc) := Seq.empty
+publishArtifact in (Compile, packageDoc) := false
