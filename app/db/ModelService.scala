@@ -141,6 +141,9 @@ abstract class ModelService(val driver: JdbcProfile) {
     doAction(models.filter(_.id === model.id.value).update(model)).as(model)
   }
 
+  def updateIfDefined[M <: Model](model: M)(implicit ec: ExecutionContext): Future[M] =
+    if(model.isDefined) update(model) else Future.successful(model)
+
   /**
     * Sets a column in a [[ModelTable]].
     *
