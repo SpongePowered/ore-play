@@ -56,7 +56,7 @@ final class ApiController @Inject()(
     with OreWrites {
 
   val files                                      = new ProjectFiles(this.env)
-  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey]()
   val Logger                                     = play.api.Logger("SSO")
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)

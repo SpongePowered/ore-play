@@ -9,11 +9,13 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
-import db.impl.schema.{ReviewSchema, ReviewTable}
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.schema.ReviewTable
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.{Page, Project, Version}
 import ore.OreConfig
 import _root_.util.StringUtils
+
+import slick.lifted.TableQuery
 
 /**
   * Represents an approval instance of [[Project]] [[Version]].
@@ -39,9 +41,6 @@ case class Review(
 
   /** The model's table */
   override type T = ReviewTable
-
-  /** The model's schema */
-  override type S = ReviewSchema
 
   /**
     * Add new message
@@ -117,4 +116,7 @@ object Review {
   def ordering2: Ordering[Review] =
     // TODO make simple + check order
     Ordering.by(_.createdAt.value.getTime)
+
+  implicit val query: ModelQuery[Review] =
+    ModelQuery.from[Review](TableQuery[ReviewTable])
 }

@@ -3,37 +3,36 @@ package db.access
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.OrePostgresDriver.api._
-import db.table.{AssociativeTable, ModelAssociation}
-import db.{Model, ModelFilter, ModelService, ObjectReference}
+import db.table.AssociativeTable
+import db.{AssociationQuery, Model, ModelFilter, ModelQuery, ModelService, ObjectReference}
 
-import cats.syntax.all._
 import cats.instances.future._
+import cats.syntax.all._
 
-class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](
+class ModelAssociationAccess[Assoc <: AssociativeTable, P <: Model, C <: Model: ModelQuery](
     service: ModelService,
-    parent: Model,
-    parentRef: Assoc => Rep[ObjectReference],
-    childClass: Class[M],
-    childRef: Assoc => Rep[ObjectReference],
-    assoc: ModelAssociation[Assoc]
-) extends ModelAccess[M](
+    parent: P,
+)(implicit query: AssociationQuery[Assoc, P, C])
+    extends ModelAccess[C](
       service,
-      childClass,
-      ModelFilter[M] { child =>
+      ModelFilter[C] { child =>
         val assocQuery = for {
-          row <- assoc.assocTable
-          if parentRef(row) === parent.id.value
-        } yield childRef(row)
+          row <- query.baseQuery
+          if query.parentRef(row) === parent.id.value
+        } yield query.childRef(row)
         val childrenIds: Seq[ObjectReference] = service.await(service.doAction(assocQuery.result)).get
         child.id.inSetBind(childrenIds)
       }
     ) {
 
-  override def add(model: M)(implicit ec: ExecutionContext): Future[M] =
-    this.assoc.assoc(this.parent, model).as(model)
+  override def add(model: C)(implicit ec: ExecutionContext): Future[C] =
+    service.doAction(query.baseQuery += ((parent.id.value, model.id.value))).as(model)
 
-  override def remove(model: M): Future[Int] = this.assoc.disassoc(this.parent, model)
+  override def remove(model: C): Future[Int] =
+    service.doAction(
+      query.baseQuery.filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === model.id.value).delete
+    )
 
-  override def removeAll(filter: M#T => Rep[Boolean] = _ => true) = throw new UnsupportedOperationException
+  override def removeAll(filter: C#T => Rep[Boolean] = _ => true) = throw new UnsupportedOperationException
 
 }

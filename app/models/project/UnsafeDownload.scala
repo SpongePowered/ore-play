@@ -1,10 +1,11 @@
 package models.project
 
 import db.impl.schema.UnsafeDownloadsTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.project.io.DownloadType
 
 import com.github.tminglei.slickpg.InetString
+import slick.lifted.TableQuery
 
 /**
   * Represents a download instance of an unreviewed [[Project]] [[Version]].
@@ -27,4 +28,8 @@ case class UnsafeDownload(
   override type T = UnsafeDownloadsTable
 
   def copyWith(id: ObjectId, theTime: ObjectTimestamp): UnsafeDownload = this.copy(id = id, createdAt = theTime)
+}
+object UnsafeDownload {
+  implicit val query: ModelQuery[UnsafeDownload] =
+    ModelQuery.from[UnsafeDownload](TableQuery[UnsafeDownloadsTable])
 }

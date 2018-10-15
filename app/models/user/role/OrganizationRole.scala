@@ -3,10 +3,12 @@ package models.user.role
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.OrganizationRoleTable
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
 import ore.permission.role.RoleType
 import ore.permission.scope.OrganizationScope
+
+import slick.lifted.TableQuery
 
 /**
   * Represents a [[RoleModel]] within an [[models.user.Organization]].
@@ -36,4 +38,8 @@ case class OrganizationRole(
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model                          = this.copy(id = id, createdAt = theTime)
+}
+object OrganizationRole {
+  implicit val query: ModelQuery[OrganizationRole] =
+    ModelQuery.from[OrganizationRole](TableQuery[OrganizationRoleTable])
 }

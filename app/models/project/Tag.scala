@@ -8,9 +8,10 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.TagTable
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 
 import enumeratum.values._
+import slick.lifted.TableQuery
 
 case class Tag(
     id: ObjectId = ObjectId.Uninitialized,
@@ -31,7 +32,7 @@ case class Tag(
     * @author phase
     */
   def getFilledTag(service: ModelService)(implicit ex: ExecutionContext): Future[Tag] = {
-    val access = service.access(classOf[Tag])
+    val access = service.access[Tag]()
     for {
       tagsWithVersion <- access.filter(t => t.name === this.name && t.data === this.data)
       tag <- if (tagsWithVersion.isEmpty) {
@@ -43,6 +44,10 @@ case class Tag(
   }
 
   def copyWith(id: ObjectId, theTime: ObjectTimestamp): Tag = this.copy(id = id)
+}
+object Tag {
+  implicit val query: ModelQuery[Tag] =
+    ModelQuery.from[Tag](TableQuery[TagTable])
 }
 
 sealed abstract class TagColor(val value: Int, val background: String, val foreground: String) extends IntEnumEntry

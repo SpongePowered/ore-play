@@ -258,7 +258,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     })
 
   def evilAwaitpProjectApiKey(key: Long)(implicit ec: ExecutionContext): Option[ProjectApiKey] = {
-    val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+    val projectApiKeys = this.service.access[ProjectApiKey]()
     // TODO remvove await
     this.service.await(projectApiKeys.get(key).value).getOrElse(None)
   }

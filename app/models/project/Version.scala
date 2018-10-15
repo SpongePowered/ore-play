@@ -11,8 +11,8 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
-import db.impl.schema.{ReviewTable, VersionSchema, VersionTable}
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.schema.{ReviewTable, VersionTable}
+import db.{Model, ModelFilter, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -25,6 +25,7 @@ import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+import slick.lifted.TableQuery
 
 /**
   * Represents a single version of a Project.
@@ -71,7 +72,6 @@ case class Version(
 
   override type M                     = Version
   override type T                     = VersionTable
-  override type S                     = VersionSchema
   override type ModelVisibilityChange = VersionVisibilityChange
 
   /**
@@ -88,7 +88,7 @@ case class Version(
     */
   def channel(implicit ec: ExecutionContext, service: ModelService): Future[Channel] =
     service
-      .access[Channel](classOf[Channel])
+      .access[Channel]()
       .get(this.channelId)
       .getOrElse(throw new NoSuchElementException("None of Option"))
 
@@ -125,7 +125,7 @@ case class Version(
     OptionT.fromOption[Future](this.reviewerId).flatMap(userBase.get)
 
   def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[Tag]] =
-    service.access(classOf[Tag]).filter(_.id.inSetBind(tagIds)).map(_.distinct.toList)
+    service.access[Tag]().filter(_.id.inSetBind(tagIds)).map(_.distinct.toList)
 
   def isSpongePlugin(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
     tags.map(_.map(_.name).contains("Sponge"))
@@ -160,7 +160,7 @@ case class Version(
   }
 
   override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
-    this.schema.getChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], this)
+    service.access[VersionVisibilityChange](ModelFilter(_.versionId === id.value))
 
   override def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
       implicit ec: ExecutionContext,
@@ -178,7 +178,7 @@ case class Version(
       .cata((), _ => ())
 
     val createNewChange = service
-      .access(classOf[VersionVisibilityChange])
+      .access[VersionVisibilityChange]()
       .add(
         VersionVisibilityChange(
           ObjectId.Uninitialized,
@@ -207,7 +207,7 @@ case class Version(
     * @return Recorded downloads
     */
   def downloadEntries(implicit service: ModelService): ModelAccess[VersionDownload] =
-    this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
+    service.access[VersionDownload](ModelFilter(_.modelId === id.value))
 
   /**
     * Returns a human readable file size for this Version.
@@ -224,10 +224,20 @@ case class Version(
     * @return True if exists
     */
   def exists(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = {
+    def hashExists = {
+      val baseQuery = for {
+        v <- TableQuery[VersionTable]
+        if v.projectId === projectId
+        if v.hash === hash
+      } yield v.id
+
+      service.doAction((baseQuery.length > 0).result)
+    }
+
     if (this.projectId == -1) Future.successful(false)
     else
       for {
-        hashExists <- this.schema.hashExists(this.projectId, this.hash)
+        hashExists <- hashExists
         project    <- this.project
         pExists    <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
       } yield hashExists && pExists
@@ -238,7 +248,7 @@ case class Version(
   def byCreationDate(first: Review, second: Review): Boolean =
     first.createdAt.value.getTime < second.createdAt.value.getTime
   def reviewEntries(implicit service: ModelService): ModelAccess[Review] =
-    this.schema.getChildren[Review](classOf[Review], this)
+    service.access[Review](ModelFilter(_.versionId === id.value))
   def unfinishedReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] =
     reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
@@ -252,6 +262,9 @@ case class Version(
 }
 
 object Version {
+
+  implicit val query: ModelQuery[Version] =
+    ModelQuery.from[Version](TableQuery[VersionTable])
 
   /**
     * A helper class for easily building new Versions.

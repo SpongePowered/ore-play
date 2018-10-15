@@ -41,7 +41,7 @@ abstract class OreBaseController(
 
   implicit val db: JdbcBackend#DatabaseDef = service.DB.db
 
-  override val signOns: ModelAccess[SignOn] = this.service.access[SignOn](classOf[SignOn])
+  override val signOns: ModelAccess[SignOn] = this.service.access[SignOn]()
 
   override def notFound(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())
 

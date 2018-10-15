@@ -1,11 +1,12 @@
 package models.admin
 
 import db.impl.schema.LoggedActionViewTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.user.UserOwned
 
 import com.github.tminglei.slickpg.InetString
+import slick.lifted.TableQuery
 
 case class LoggedProject(
     pId: Option[ObjectReference],
@@ -58,4 +59,8 @@ case class LoggedActionViewModel(
   override type M = LoggedActionViewModel
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionViewModel = this.copy(createdAt = theTime)
+}
+object LoggedActionViewModel {
+  implicit val query: ModelQuery[LoggedActionViewModel] =
+    ModelQuery.from[LoggedActionViewModel](TableQuery[LoggedActionViewTable])
 }

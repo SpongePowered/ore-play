@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelFilter.IdFilter
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelFilter, ModelService, ObjectReference}
+import db.{Model, ModelFilter, ModelQuery, ModelService, ObjectReference}
 
 import cats.data.OptionT
 import slick.lifted.ColumnOrdered
@@ -12,9 +12,8 @@ import slick.lifted.ColumnOrdered
 /**
   * Provides simple, synchronous, access to a ModelTable.
   */
-class ModelAccess[M <: Model](
+class ModelAccess[M <: Model: ModelQuery](
     val service: ModelService,
-    val modelClass: Class[M],
     val baseFilter: ModelFilter[M] = ModelFilter[M]()
 ) {
 
@@ -25,7 +24,7 @@ class ModelAccess[M <: Model](
     * @return     Model with ID or None if not found
     */
   def get(id: ObjectReference)(implicit ec: ExecutionContext): OptionT[Future, M] =
-    this.service.get[M](this.modelClass, id, this.baseFilter.fn)
+    this.service.get[M](id, this.baseFilter.fn)
 
   /**
     * Returns a set of Models that have an ID that is in the specified Int set.
@@ -34,7 +33,7 @@ class ModelAccess[M <: Model](
     * @return     Models in ID set
     */
   def in(ids: Set[ObjectReference])(implicit ec: ExecutionContext): Future[Set[M]] =
-    this.service.in[M](this.modelClass, ids, this.baseFilter.fn).map(_.toSet)
+    this.service.in[M](ids, this.baseFilter.fn).map(_.toSet)
 
   /**
     * Returns all the [[Model]]s in the set.
@@ -42,14 +41,14 @@ class ModelAccess[M <: Model](
     * @return All models in set
     */
   def all(implicit ec: ExecutionContext): Future[Set[M]] =
-    this.service.filter[M](this.modelClass, this.baseFilter.fn).map(_.toSet)
+    this.service.filter[M](this.baseFilter.fn).map(_.toSet)
 
   /**
     * Returns the size of this set.
     *
     * @return Size of set
     */
-  def size: Future[Int] = this.service.count[M](this.modelClass, this.baseFilter.fn)
+  def size: Future[Int] = this.service.count[M](this.baseFilter.fn)
 
   /**
     * Returns true if this set is empty.
@@ -72,7 +71,7 @@ class ModelAccess[M <: Model](
     * @return True if contained in set
     */
   def contains(model: M)(implicit ec: ExecutionContext): Future[Boolean] =
-    this.service.count[M](this.modelClass, (this.baseFilter +&& IdFilter(model.id.value)).fn).map(_ > 0)
+    this.service.count[M]((this.baseFilter +&& IdFilter(model.id.value)).fn).map(_ > 0)
 
   /**
     * Returns true if any models match the specified filter.
@@ -81,7 +80,7 @@ class ModelAccess[M <: Model](
     * @return       True if any model matches
     */
   def exists(filter: M#T => Rep[Boolean])(implicit ec: ExecutionContext): Future[Boolean] =
-    this.service.count[M](this.modelClass, (this.baseFilter && filter).fn).map(_ > 0)
+    this.service.count[M]((this.baseFilter && filter).fn).map(_ > 0)
 
   /**
     * Adds a new model to it's table.
@@ -115,7 +114,7 @@ class ModelAccess[M <: Model](
     * @param filter Filter to use
     */
   def removeAll(filter: M#T => Rep[Boolean] = _ => true): Future[Int] =
-    this.service.deleteWhere[M](this.modelClass, (this.baseFilter && filter).fn)
+    this.service.deleteWhere[M]((this.baseFilter && filter).fn)
 
   /**
     * Returns the first model matching the specified filter.
@@ -124,7 +123,7 @@ class ModelAccess[M <: Model](
     * @return       Model matching filter, if any
     */
   def find(filter: M#T => Rep[Boolean])(implicit ec: ExecutionContext): OptionT[Future, M] =
-    this.service.find[M](this.modelClass, (this.baseFilter && filter).fn)
+    this.service.find[M]((this.baseFilter && filter).fn)
 
   /**
     * Returns a sorted Seq by the specified [[ColumnOrdered]].
@@ -140,18 +139,7 @@ class ModelAccess[M <: Model](
       filter: M#T => Rep[Boolean] = null,
       limit: Int = -1,
       offset: Int = -1
-  ): Future[Seq[M]] = this.service.sorted[M](this.modelClass, ordering, (this.baseFilter && filter).fn, limit, offset)
-
-  /**
-    * Same as sorted but with multiple orderings
-    */
-  def sortedMultipleOrders(
-      orderings: M#T => List[ColumnOrdered[_]],
-      filter: M#T => Rep[Boolean] = null,
-      limit: Int = -1,
-      offset: Int = -1
-  ): Future[Seq[M]] =
-    this.service.sortedMultipleOrders[M](this.modelClass, orderings, (this.baseFilter && filter).fn, limit, offset)
+  ): Future[Seq[M]] = this.service.sorted[M](ordering, (this.baseFilter && filter).fn, limit, offset)
 
   /**
     * Filters this set by the given function.
@@ -162,7 +150,7 @@ class ModelAccess[M <: Model](
     * @return       Filtered models
     */
   def filter(filter: M#T => Rep[Boolean], limit: Int = -1, offset: Int = -1): Future[Seq[M]] =
-    this.service.filter[M](this.modelClass, (this.baseFilter && filter).fn, limit, offset)
+    this.service.filter[M]((this.baseFilter && filter).fn, limit, offset)
 
   /**
     * Filters this set by the opposite of the given function.
@@ -181,7 +169,7 @@ class ModelAccess[M <: Model](
     * @return The amount of elements that fulfill the predicate.
     */
   def count(predicate: M#T => Rep[Boolean]): Future[Int] =
-    this.service.count(modelClass, (this.baseFilter && predicate).fn)
+    this.service.count((this.baseFilter && predicate).fn)
 
   /**
     * Returns a Seq of this set.

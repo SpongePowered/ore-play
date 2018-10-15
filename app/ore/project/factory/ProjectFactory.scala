@@ -337,7 +337,7 @@ trait ProjectFactory {
     for {
       channelCount <- project.channels.size
       _ = checkState(channelCount < this.config.projects.get[Int]("max-channels"), "channel limit reached", "")
-      channel <- this.service.access[Channel](classOf[Channel]).add(new Channel(name, color, project.id.value))
+      channel <- this.service.access[Channel]().add(new Channel(name, color, project.id.value))
     } yield channel
   }
 
@@ -374,7 +374,7 @@ trait ProjectFactory {
           fileName = pendingVersion.fileName,
           signatureFileName = pendingVersion.signatureFileName
         )
-        this.service.access[Version](classOf[Version]).add(newVersion)
+        this.service.access[Version]().add(newVersion)
       }
       tags <- addTags(pending, newVersion)
       // Notify watchers

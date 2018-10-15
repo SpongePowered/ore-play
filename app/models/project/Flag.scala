@@ -6,11 +6,13 @@ import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.FlagTable
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.User
 import ore.permission.scope.ProjectScope
 import ore.project.FlagReason
 import ore.user.UserOwned
+
+import slick.lifted.TableQuery
 
 /**
   * Represents a flag on a Project that requires staff attention.
@@ -75,4 +77,8 @@ case class Flag(
   }
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Flag = this.copy(id = id, createdAt = theTime)
+}
+object Flag {
+  implicit val query: ModelQuery[Flag] =
+    ModelQuery.from[Flag](TableQuery[FlagTable])
 }

@@ -58,7 +58,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
   private val fileManager = projects.fileManager
   private val self        = controllers.project.routes.Versions
-  private val warnings    = this.service.access[DownloadWarning](classOf[DownloadWarning])
+  private val warnings    = this.service.access[DownloadWarning]()
 
   private def VersionEditAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditVersions))
@@ -396,7 +396,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def addUnstableTag(version: Version, unstable: Boolean) = {
     if (unstable) {
       service
-        .access(classOf[ProjectTag])
+        .access[ProjectTag]()
         .filter(t => t.name === "Unstable" && t.data === "")
         .flatMap { tagsWithVersion =>
           if (tagsWithVersion.isEmpty) {
@@ -407,7 +407,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               color = TagColor.Unstable
             )
             service
-              .access(classOf[ProjectTag])
+              .access[ProjectTag]()
               .add(tag)
               .flatMap(newTag => service.update(version.copy(tagIds = newTag.id.value :: version.tagIds)))
           } else {
@@ -722,7 +722,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .map(_._1)
       .semiflatMap { warn =>
         // warning confirmed and redirect to download
-        val downloads = this.service.access[UnsafeDownload](classOf[UnsafeDownload])
+        val downloads = this.service.access[UnsafeDownload]()
         for {
           user <- users.current.value
           unsafeDownload <- downloads.add(

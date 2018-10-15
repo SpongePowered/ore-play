@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{AssociationQuery, Model, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Default, RoleType, Trust}
@@ -92,6 +92,12 @@ case class Organization(
 }
 
 object Organization {
+  implicit val query: ModelQuery[Organization] =
+    ModelQuery.from[Organization](TableQuery[OrganizationTable])
+
+  implicit val assocMembersQuery: AssociationQuery[OrganizationMembersTable, Organization, User] =
+    AssociationQuery.from(TableQuery[OrganizationMembersTable])(_.organizationId, _.userId)
+
   lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
 
   private def queryRoleForTrust(orgId: Rep[ObjectReference], userId: Rep[ObjectReference]) =

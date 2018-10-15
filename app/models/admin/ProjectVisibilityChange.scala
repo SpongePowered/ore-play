@@ -6,9 +6,11 @@ import play.twirl.api.Html
 
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.ProjectVisibilityChangeTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.{Page, Visibility}
 import ore.OreConfig
+
+import slick.lifted.TableQuery
 
 case class ProjectVisibilityChange(
     id: ObjectId = ObjectId.Uninitialized,
@@ -39,4 +41,8 @@ case class ProjectVisibilityChange(
     * @return Copy of model
     */
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
+}
+object ProjectVisibilityChange {
+  implicit val query: ModelQuery[ProjectVisibilityChange] =
+    ModelQuery.from[ProjectVisibilityChange](TableQuery[ProjectVisibilityChangeTable])
 }

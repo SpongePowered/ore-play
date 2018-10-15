@@ -1,7 +1,9 @@
 package models.user
 
 import db.impl.schema.SignOnTable
-import db.{Model, ObjectId, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjectId, ObjectTimestamp}
+
+import slick.lifted.TableQuery
 
 /**
   * Represents a sign-on instance for a user.
@@ -22,4 +24,8 @@ case class SignOn(
   override type T = SignOnTable
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): SignOn = this.copy(id = id, createdAt = theTime)
+}
+object SignOn {
+  implicit val query: ModelQuery[SignOn] =
+    ModelQuery.from[SignOn](TableQuery[SignOnTable])
 }

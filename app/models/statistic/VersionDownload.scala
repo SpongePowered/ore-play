@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.VersionDownloadsTable
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
+import db.{ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.Version
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
@@ -13,6 +13,7 @@ import security.spauth.SpongeAuthApi
 import cats.instances.future._
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
+import slick.lifted.TableQuery
 
 /**
   * Represents a unique download on a Project Version.
@@ -41,6 +42,9 @@ case class VersionDownload(
 }
 
 object VersionDownload {
+
+  implicit val query: ModelQuery[VersionDownload] =
+    ModelQuery.from[VersionDownload](TableQuery[VersionDownloadsTable])
 
   /**
     * Creates a new VersionDownload to be (or not be) recorded from an incoming

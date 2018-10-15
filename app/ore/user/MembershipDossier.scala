@@ -8,7 +8,7 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
 import db.table.AssociativeTable
-import db.{Model, ModelService, ObjectReference}
+import db.{AssociationQuery, Model, ModelFilter, ModelQuery, ModelService, ObjectReference}
 import models.project.Project
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
 import models.user.{Organization, User}
@@ -105,29 +105,26 @@ object MembershipDossier {
 
   abstract class AbstractMembershipDossier[
       M0 <: Model { type M = M0 },
-      RoleType0 <: RoleModel,
+      RoleType0 <: RoleModel: ModelQuery,
       MembersTable <: AssociativeTable
-  ](
-      roleClass: Class[RoleType0],
-      membersTableClass: Class[MembersTable]
-  )(
+  ](childFilter: M0 => ModelFilter[RoleType0])(
       implicit ec: ExecutionContext,
-      service: ModelService
+      service: ModelService,
+      assocQuery: AssociationQuery[MembersTable, M0, User]
   ) extends MembershipDossier[Future, M0] {
 
     type RoleType = RoleType0
 
     private def association(model: M0) =
-      model.schema.getAssociation[MembersTable, User](membersTableClass, model)
+      service.associationAccess[MembersTable, M0, User](model)
 
     private def addMember(model: M0, user: User) =
       association(model).add(user)
 
-    def roles(model: M0): ModelAccess[RoleType] =
-      model.schema.getChildren(roleClass, model)
+    def roles(model: M0): ModelAccess[RoleType] = service.access[RoleType](childFilter(model))
 
     def roleAccess: ModelAccess[RoleType] =
-      service.access(roleClass)
+      service.access[RoleType]()
 
     def members(model: M0): Future[Set[MemberType]] =
       association(model).all.map(_.map { user =>
@@ -164,8 +161,7 @@ object MembershipDossier {
       service: ModelService
   ): Aux[Future, Project, ProjectRole, ProjectMember] =
     new AbstractMembershipDossier[Project, ProjectRole, ProjectMembersTable](
-      classOf[ProjectRole],
-      classOf[ProjectMembersTable]
+      p => ModelFilter(_.projectId === p.id.value)
     ) {
       override type MemberType = ProjectMember
 
@@ -185,8 +181,7 @@ object MembershipDossier {
       service: ModelService
   ): Aux[Future, Organization, OrganizationRole, OrganizationMember] =
     new AbstractMembershipDossier[Organization, OrganizationRole, OrganizationMembersTable](
-      classOf[OrganizationRole],
-      classOf[OrganizationMembersTable]
+      org => ModelFilter(_.organizationId === org.id.value)
     ) {
       override type MemberType = OrganizationMember
 

@@ -4,12 +4,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
 import cats.data.{NonEmptyList => NEL}
 import cats.instances.future._
+import slick.lifted.TableQuery
 
 /**
   * Represents a [[User]] notification.
@@ -48,4 +49,8 @@ case class Notification(
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
 
+}
+object Notification {
+  implicit val query: ModelQuery[Notification] =
+    ModelQuery.from[Notification](TableQuery[NotificationTable])
 }

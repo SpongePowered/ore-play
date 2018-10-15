@@ -5,10 +5,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
-import db.{Model, ModelFilter, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelFilter, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.project.ProjectOwned
 
 import cats.instances.future._
+import slick.lifted.TableQuery
 
 /**
   * Represents a log for a [[models.project.Project]].
@@ -33,7 +34,7 @@ case class ProjectLog(
     * @return Entries in log
     */
   def entries(implicit service: ModelService): ModelAccess[ProjectLogEntry] =
-    this.schema.getChildren[ProjectLogEntry](classOf[ProjectLogEntry], this)
+    service.access[ProjectLogEntry](ModelFilter(_.logId === id.value))
 
   /**
     * Adds a new entry with an "error" tag to the log.
@@ -42,8 +43,6 @@ case class ProjectLog(
     * @return         New entry
     */
   def err(message: String)(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLogEntry] = Defined {
-    val entries =
-      service.access[ProjectLogEntry](classOf[ProjectLogEntry], ModelFilter[ProjectLogEntry](_.logId === this.id.value))
     val tag = "error"
     entries
       .find(e => e.message === message && e.tag === tag)
@@ -62,4 +61,8 @@ case class ProjectLog(
   }
 
   def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLog = this.copy(id = id, createdAt = theTime)
+}
+object ProjectLog {
+  implicit val query: ModelQuery[ProjectLog] =
+    ModelQuery.from[ProjectLog](TableQuery[ProjectLogTable])
 }

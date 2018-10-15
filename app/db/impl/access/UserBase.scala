@@ -8,7 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{ProjectSchema, ProjectTableMain, UserSchema, UserTable}
+import db.impl.schema.{ProjectTableMain, UserTable}
 import db.{ModelBase, ModelService, ObjectId, ObjectTimestamp}
 import models.user.{Session, User}
 import ore.OreConfig
@@ -101,11 +101,15 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
 
       service.doAction(query.distinct.result).map(_.slice(offset, offset + pageSize))
     } else {
+      def distinctAuthors =
+        for {
+          userIds <- service.doAction(TableQuery[ProjectTableMain].map(_.userId).distinct.result)
+          inIds   <- this.in(userIds.toSet)
+        } yield inIds.toSeq
+
       // TODO page and order should be done in Database!
       // get authors
-      this.service
-        .getSchema(classOf[ProjectSchema])
-        .distinctAuthors
+      distinctAuthors
         .map { users =>
           users.sortBy(_.globalRoles.sortBy(_.trust).headOption.map(_.trust.level).getOrElse(-1))
         }
@@ -134,9 +138,9 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     val pageSize = this.config.users.get[Int]("author-page-size")
     val offset   = (page - 1) * pageSize
 
-    val dbio = this.service
-      .getSchema(classOf[UserSchema])
-      .baseQuery
+    TableQuery[UserTable]
+
+    val dbio = TableQuery[UserTable]
       .filter(u => u.globalRoles.asColumnOf[List[RoleType]] @& staffRoles.bind.asColumnOf[List[RoleType]])
       .sortBy { users =>
         sort match { // Sort
@@ -166,7 +170,14 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     *
     * @return     Found or new User
     */
-  def getOrCreate(user: User)(implicit ec: ExecutionContext): Future[User] = user.schema(this.service).getOrInsert(user)
+  def getOrCreate(user: User)(implicit ec: ExecutionContext): Future[User] = {
+    def like = this.find(_.name.toLowerCase === user.name.toLowerCase)
+
+    like.value.flatMap {
+      case Some(u) => Future.successful(u)
+      case None    => service.insert(user)
+    }
+  }
 
   /**
     * Creates a new [[Session]] for the specified [[User]].
@@ -180,7 +191,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     val expiration = new Timestamp(new Date().getTime + maxAge * 1000L)
     val token      = UUID.randomUUID().toString
     val session    = Session(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, expiration, user.name, token)
-    this.service.access[Session](classOf[Session]).add(session)
+    this.service.access[Session]().add(session)
   }
 
   /**
@@ -191,7 +202,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return       Session if found and has not expired
     */
   private def getSession(token: String)(implicit ec: ExecutionContext): OptionT[Future, Session] =
-    this.service.access[Session](classOf[Session]).find(_.token === token).subflatMap { session =>
+    this.service.access[Session]().find(_.token === token).subflatMap { session =>
       if (session.hasExpired) {
         session.remove()
         None

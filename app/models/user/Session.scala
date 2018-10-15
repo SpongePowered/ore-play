@@ -6,10 +6,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.schema.SessionTable
-import db.{Expirable, Model, ObjectId, ObjectTimestamp}
+import db.{Expirable, Model, ModelQuery, ObjectId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
+import slick.lifted.TableQuery
 
 /**
   * Represents a persistant [[User]] session.
@@ -43,4 +44,8 @@ case class Session(
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
 
+}
+object Session {
+  implicit val query: ModelQuery[Session] =
+    ModelQuery.from[Session](TableQuery[SessionTable])
 }

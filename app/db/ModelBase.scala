@@ -22,10 +22,10 @@ trait ModelBase[M <: Model] {
     *
     * @return ModelAccess
     */
-  def access: ModelAccess[M] = this.service.access[M](this.modelClass)
+  def access(implicit query: ModelQuery[M]): ModelAccess[M] = this.service.access[M]()
 
 }
 
 object ModelBase {
-  implicit def unwrap[M <: Model](base: ModelBase[M]): ModelAccess[M] = base.access
+  implicit def unwrap[M <: Model: ModelQuery](base: ModelBase[M]): ModelAccess[M] = base.access
 }

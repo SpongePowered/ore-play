@@ -6,8 +6,8 @@ import scala.concurrent.duration._
 
 import play.api.db.slick.DatabaseConfigProvider
 
-import db.impl.OrePostgresDriver
 import db.ModelRegistry
+import db.impl.OrePostgresDriver
 import ore.{OreConfig, OreEnv}
 
 import slick.jdbc.JdbcProfile
@@ -23,7 +23,7 @@ class OreModelService @Inject()(
     env: OreEnv,
     config: OreConfig,
     db: DatabaseConfigProvider
-) extends OreModelConfig(OrePostgresDriver, env, config) {
+) extends OreDBOs(OrePostgresDriver, env, config) {
 
   val Logger = play.api.Logger("Database")
 
@@ -32,7 +32,7 @@ class OreModelService @Inject()(
   override lazy val DB                       = db.get[JdbcProfile]
   override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
 
-  import registry.{registerModelBase, registerSchema}
+  import registry.registerModelBase
 
   override def start(): Unit = {
     val time = System.currentTimeMillis()
@@ -42,39 +42,11 @@ class OreModelService @Inject()(
     registerModelBase(Projects)
     registerModelBase(Organizations)
 
-    // Register model schemas
-    registerSchema(UserSchema)
-    registerSchema(SessionSchema)
-    registerSchema(SignOnSchema)
-    registerSchema(ProjectRolesSchema)
-    registerSchema(ProjectSchema)
-    registerSchema(ProjectSettingsSchema)
-    registerSchema(ProjectLogSchema)
-    registerSchema(ProjectLogEntrySchema)
-    registerSchema(FlagSchema)
-    registerSchema(ViewSchema)
-    registerSchema(ReviewSchema)
-    registerSchema(VersionSchema)
-    registerSchema(TagSchema)
-    registerSchema(DownloadWarningSchema)
-    registerSchema(UnsafeDownloadSchema)
-    registerSchema(DownloadSchema)
-    registerSchema(ChannelSchema)
-    registerSchema(PageSchema)
-    registerSchema(NotificationSchema)
-    registerSchema(OrganizationSchema)
-    registerSchema(OrganizationRoleSchema)
-    registerSchema(ProjectApiKeySchema)
-    registerSchema(UserActionLogSchema)
-    registerSchema(ProjectVisibilityChangeSchema)
-    registerSchema(VersionVisibilityChangeSchema)
-
     Logger.info(
-      "Database initialized:\n" +
-        s"Initialization time: ${System.currentTimeMillis() - time}ms\n" +
-        s"Default timeout: ${DefaultTimeout.toString}\n" +
-        s"Registered DBOs: ${this.registry.modelBases.size}\n" +
-        s"Registered Schemas: ${this.registry.modelSchemas.size}"
+      s"""|Database initialized:
+          |Initialization time: ${System.currentTimeMillis() - time}ms
+          |Default timeout: ${DefaultTimeout.toString}
+          |Registered DBOs: ${this.registry.modelBases.size}""".stripMargin
     )
   }
 

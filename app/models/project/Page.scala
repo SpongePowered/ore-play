@@ -9,8 +9,8 @@ import play.twirl.api.Html
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
-import db.impl.schema.{PageSchema, PageTable}
-import db.{Model, ModelFilter, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.schema.PageTable
+import db.{Model, ModelFilter, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.permission.scope.ProjectScope
@@ -31,6 +31,7 @@ import com.vladsch.flexmark.html.renderer._
 import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.options.MutableDataSet
+import slick.lifted.TableQuery
 
 /**
   * Represents a documentation page within a project.
@@ -59,7 +60,6 @@ case class Page(
 
   override type M = Page
   override type T = PageTable
-  override type S = PageSchema
 
   import models.project.Page._
 
@@ -154,7 +154,7 @@ case class Page(
     * @return Page's children
     */
   def children(implicit service: ModelService): ModelAccess[Page] =
-    service.access[Page](classOf[Page], ModelFilter[Page](page => {
+    service.access[Page](ModelFilter[Page](page => {
       page.parentId.isDefined && page.parentId.get === this.id.value
     }))
 
@@ -165,6 +165,9 @@ case class Page(
 }
 
 object Page {
+
+  implicit val query: ModelQuery[Page] =
+    ModelQuery.from[Page](TableQuery[PageTable])
 
   private object ExternalLinkResolver {
 

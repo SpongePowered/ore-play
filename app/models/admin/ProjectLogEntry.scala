@@ -3,7 +3,9 @@ package models.admin
 import java.sql.Timestamp
 
 import db.impl.schema.ProjectLogEntryTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
+
+import slick.lifted.TableQuery
 
 /**
   * Represents an entry in a [[ProjectLog]].
@@ -31,4 +33,8 @@ case class ProjectLogEntry(
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLogEntry =
     this.copy(id = id, createdAt = theTime)
+}
+object ProjectLogEntry {
+  implicit val query: ModelQuery[ProjectLogEntry] =
+    ModelQuery.from[ProjectLogEntry](TableQuery[ProjectLogEntryTable])
 }

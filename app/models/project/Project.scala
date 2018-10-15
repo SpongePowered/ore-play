@@ -16,12 +16,22 @@ import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.{
   ProjectMembersTable,
   ProjectRoleTable,
-  ProjectSchema,
   ProjectStarsTable,
   ProjectTable,
+  ProjectTableMain,
   ProjectWatchersTable
 }
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{
+  AssociationQuery,
+  Model,
+  ModelFilter,
+  ModelQuery,
+  ModelService,
+  Named,
+  ObjectId,
+  ObjectReference,
+  ObjectTimestamp
+}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public
@@ -100,7 +110,6 @@ case class Project(
 
   override type M                     = Project
   override type T                     = ProjectTable
-  override type S                     = ProjectSchema
   override type ModelVisibilityChange = ProjectVisibilityChange
 
   /**
@@ -161,8 +170,8 @@ case class Project(
     *
     * @return Users watching project
     */
-  def watchers(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, User] =
-    this.schema.getAssociation[ProjectWatchersTable, User](classOf[ProjectWatchersTable], this)
+  def watchers(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, Project, User] =
+    service.associationAccess[ProjectWatchersTable, Project, User](this)
 
   def namespace: String = this.ownerName + '/' + this.slug
 
@@ -180,7 +189,7 @@ case class Project(
     */
   def settings(implicit ec: ExecutionContext, service: ModelService): Future[ProjectSettings] =
     service
-      .access[ProjectSettings](classOf[ProjectSettings])
+      .access[ProjectSettings]()
       .find(_.projectId === this.id.value)
       .getOrElse(throw new NoSuchElementException("Get on None"))
 
@@ -220,7 +229,7 @@ case class Project(
       .cata((), _ => ())
 
     val createNewChange = service
-      .access(classOf[ProjectVisibilityChange])
+      .access[ProjectVisibilityChange]()
       .add(
         ProjectVisibilityChange(
           ObjectId.Uninitialized,
@@ -247,7 +256,7 @@ case class Project(
     * Get VisibilityChanges
     */
   override def visibilityChanges(implicit service: ModelService): ModelAccess[ProjectVisibilityChange] =
-    this.schema.getChildren[ProjectVisibilityChange](classOf[ProjectVisibilityChange], this)
+    service.access[ProjectVisibilityChange](ModelFilter(_.projectId === id.value))
 
   /**
     * Returns [[db.access.ModelAccess]] to [[User]]s who have starred this
@@ -255,8 +264,8 @@ case class Project(
     *
     * @return Users who have starred this project
     */
-  def stars(implicit service: ModelService): ModelAssociationAccess[ProjectStarsTable, User] =
-    Defined(this.schema.getAssociation[ProjectStarsTable, User](classOf[ProjectStarsTable], this))
+  def stars(implicit service: ModelService): ModelAssociationAccess[ProjectStarsTable, Project, User] =
+    Defined(service.associationAccess[ProjectStarsTable, Project, User](this))
 
   /**
     * Sets the "starred" state of this Project for the specified User.
@@ -288,7 +297,7 @@ case class Project(
     * @return Unique project views
     */
   def views(implicit service: ModelService): ModelAccess[ProjectView] =
-    this.schema.getChildren[ProjectView](classOf[ProjectView], this)
+    service.access[ProjectView](ModelFilter(_.modelId === id.value))
 
   /**
     * Adds a view to this Project.
@@ -309,7 +318,8 @@ case class Project(
     *
     * @return Flags on project
     */
-  def flags(implicit service: ModelService): ModelAccess[Flag] = this.schema.getChildren[Flag](classOf[Flag], this)
+  def flags(implicit service: ModelService): ModelAccess[Flag] =
+    service.access[Flag](ModelFilter(_.projectId === id.value))
 
   /**
     * Submits a flag on this project for the specified user.
@@ -326,7 +336,7 @@ case class Project(
     checkArgument(user.isDefined, "undefined user", "")
     val userId = user.id.value
     checkArgument(userId != this.ownerId, "cannot flag own project", "")
-    service.access[Flag](classOf[Flag]).add(new Flag(this.id.value, user.id.value, reason, comment))
+    service.access[Flag]().add(new Flag(this.id.value, user.id.value, reason, comment))
   }
 
   /**
@@ -335,7 +345,7 @@ case class Project(
     * @return Channels in project
     */
   def channels(implicit service: ModelService): ModelAccess[Channel] =
-    this.schema.getChildren[Channel](classOf[Channel], this)
+    service.access[Channel](ModelFilter(_.projectId === id.value))
 
   /**
     * Returns all versions in this project.
@@ -343,7 +353,7 @@ case class Project(
     * @return Versions in project
     */
   def versions(implicit service: ModelService): ModelAccess[Version] =
-    this.schema.getChildren[Version](classOf[Version], this)
+    service.access[Version](ModelFilter(_.projectId === id.value))
 
   /**
     * Returns this Project's recommended version.
@@ -367,7 +377,21 @@ case class Project(
     *
     * @return Pages in project
     */
-  def pages(implicit service: ModelService): ModelAccess[Page] = this.schema.getChildren[Page](classOf[Page], this)
+  def pages(implicit service: ModelService): ModelAccess[Page] =
+    service.access[Page](ModelFilter(_.projectId === id.value))
+
+  private def getOrInsert(page: Page)(implicit service: ModelService, ec: ExecutionContext): Future[Page] = {
+    def like =
+      service.find[Page] { p =>
+        p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && page.parentId
+          .fold(true: Rep[Boolean])(p.parentId.get === _)
+      }
+
+    like.value.flatMap {
+      case Some(u) => Future.successful(u)
+      case None    => service.insert(page)
+    }
+  }
 
   /**
     * Returns this Project's home page.
@@ -376,7 +400,7 @@ case class Project(
     */
   def homePage(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Page = Defined {
     val page = new Page(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), false, None)
-    service.await(page.schema.getOrInsert(page)).get
+    service.await(getOrInsert(page)).get
   }
 
   /**
@@ -408,7 +432,7 @@ case class Project(
         text
     }
     val page = new Page(this.id.value, name, c, true, parentId)
-    page.schema.getOrInsert(page)
+    getOrInsert(page)
   }
 
   /**
@@ -417,15 +441,15 @@ case class Project(
     * @return Root pages of project
     */
   def rootPages(implicit service: ModelService): Future[Seq[Page]] =
-    service.access[Page](classOf[Page]).sorted(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
+    service.access[Page]().sorted(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
 
   def logger(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLog] = {
-    val loggers = service.access[ProjectLog](classOf[ProjectLog])
+    val loggers = service.access[ProjectLog]()
     loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog(projectId = this.id.value)))
   }
 
   def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] =
-    this.schema.getChildren[ProjectApiKey](classOf[ProjectApiKey], this)
+    service.access[ProjectApiKey](ModelFilter(_.projectId === id.value))
 
   override def projectId: ObjectReference = this.id.value
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Project =
@@ -487,6 +511,18 @@ object Note {
 }
 
 object Project {
+
+  implicit val query: ModelQuery[Project] =
+    ModelQuery.from[Project](TableQuery[ProjectTableMain])
+
+  implicit val assocWatchersQuery: AssociationQuery[ProjectWatchersTable, Project, User] =
+    AssociationQuery.from(TableQuery[ProjectWatchersTable])(_.projectId, _.userId)
+
+  implicit val assocStarsQuery: AssociationQuery[ProjectStarsTable, Project, User] =
+    AssociationQuery.from(TableQuery[ProjectStarsTable])(_.projectId, _.userId)
+
+  implicit val assocMembersQuery: AssociationQuery[ProjectMembersTable, Project, User] =
+    AssociationQuery.from(TableQuery[ProjectMembersTable])(_.projectId, _.userId)
 
   private def queryRoleForTrust(projectId: Rep[ObjectReference], userId: Rep[ObjectReference]) = {
     val q = for {

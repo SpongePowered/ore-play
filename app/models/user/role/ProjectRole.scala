@@ -3,10 +3,12 @@ package models.user.role
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.ProjectRoleTable
-import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
 import ore.permission.role.RoleType
 import ore.permission.scope.ProjectScope
+
+import slick.lifted.TableQuery
 
 /**
   * Represents a [[ore.project.ProjectMember]]'s role in a
@@ -49,4 +51,8 @@ case class ProjectRole(
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.project
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectRole                    = this.copy(id = id, createdAt = theTime)
+}
+object ProjectRole {
+  implicit val query: ModelQuery[ProjectRole] =
+    ModelQuery.from[ProjectRole](TableQuery[ProjectRoleTable])
 }

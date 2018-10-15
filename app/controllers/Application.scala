@@ -18,14 +18,13 @@ import db.impl.schema.{
   ChannelTable,
   FlagTable,
   LoggedActionViewTable,
-  ProjectSchema,
   ProjectTableMain,
   ReviewTable,
   TagTable,
   UserTable,
   VersionTable
 }
-import db.{ModelService, ObjectReference}
+import db.{ModelQuery, ModelService, ObjectReference}
 import form.OreForms
 import models.admin.Review
 import models.project.{Tag, _}
@@ -251,7 +250,7 @@ final class Application @Inject()(forms: OreForms)(
   def setFlagResolved(flagId: ObjectReference, resolved: Boolean): Action[AnyContent] =
     FlagAction.async { implicit request =>
       this.service
-        .access[Flag](classOf[Flag])
+        .access[Flag]()
         .get(flagId)
         .semiflatMap { flag =>
           for {
@@ -433,7 +432,7 @@ final class Application @Inject()(forms: OreForms)(
 
     (
       service.doAction(logQuery.result),
-      service.access[LoggedActionModel](classOf[LoggedActionModel]).size,
+      service.access[LoggedActionModel]().size,
       request.currentUser.get.can(ViewIp).in(GlobalScope)
     ).mapN { (actions, size, canViewIP) =>
       Ok(
@@ -494,13 +493,13 @@ final class Application @Inject()(forms: OreForms)(
           val json       = Json.parse(data)
           val orgDossier = MembershipDossier.organization
 
-          def updateRoleTable[M <: RoleModel](
-              modelAccess: ModelAccess[M],
+          def updateRoleTable[M0 <: RoleModel { type M = M0 }: ModelQuery](
+              modelAccess: ModelAccess[M0],
               allowedType: Class[_ <: Role],
               ownerType: RoleType,
-              transferOwner: M => Future[M],
-              setRoleType: (M, RoleType) => Future[M],
-              setAccepted: (M, Boolean) => Future[M]
+              transferOwner: M0 => Future[M0],
+              setRoleType: (M0, RoleType) => Future[M0],
+              setAccepted: (M0, Boolean) => Future[M0]
           ) = {
             val id = (json \ "id").as[ObjectReference]
             action match {
@@ -575,19 +574,17 @@ final class Application @Inject()(forms: OreForms)(
 
   def showProjectVisibility(): Action[AnyContent] =
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewVisibility)).async { implicit request =>
-      val projectSchema = this.service.getSchema(classOf[ProjectSchema])
-
       for {
         (projectApprovals, projectChanges) <- (
-          projectSchema.collect(
+          service.collect[Project](
             _.visibility === (Visibility.NeedsApproval: Visibility),
-            ProjectSortingStrategies.Default,
+            ProjectSortingStrategies.Default.fn,
             -1,
             0
           ),
-          projectSchema.collect(
+          service.collect[Project](
             _.visibility === (Visibility.NeedsChanges: Visibility),
-            ProjectSortingStrategies.Default,
+            ProjectSortingStrategies.Default.fn,
             -1,
             0
           )

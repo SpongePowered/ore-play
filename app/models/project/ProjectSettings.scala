@@ -10,7 +10,7 @@ import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import form.project.ProjectSettingsForm
 import models.user.Notification
 import models.user.role.ProjectRole
@@ -68,7 +68,7 @@ case class ProjectSettings(
     Logger.debug("Saving project settings")
     Logger.debug(formData.toString)
 
-    def updateIfDefined[A <: Model](a: A) = if (a.isDefined) service.update(a) else Future.successful(a)
+    def updateIfDefined[A <: Model: ModelQuery](a: A) = if (a.isDefined) service.update(a) else Future.successful(a)
 
     val updateProject = updateIfDefined(
       project.copy(
@@ -160,4 +160,8 @@ case class ProjectSettings(
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectSettings =
     this.copy(id = id, createdAt = theTime)
+}
+object ProjectSettings {
+  implicit val query: ModelQuery[ProjectSettings] =
+    ModelQuery.from[ProjectSettings](TableQuery[ProjectSettingsTable])
 }

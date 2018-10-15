@@ -6,7 +6,6 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.ProjectSchema
 import db.{ModelFilter, ModelService}
 import models.project.{Project, Visibility}
 import ore.OreConfig
@@ -38,10 +37,8 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
     * Task runner
     */
   def run(): Unit = {
-    val actions = this.service.getSchema(classOf[ProjectSchema])
-
-    val newFilter: ModelFilter[Project] = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
-    val future                          = actions.collect(newFilter.fn, ProjectSortingStrategies.Default, -1, 0)
+    val newFilter = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
+    val future    = service.collect[Project](newFilter.fn, ProjectSortingStrategies.Default.fn, -1, 0)
 
     future.foreach { projects =>
       val dayAgo = System.currentTimeMillis() - draftExpire

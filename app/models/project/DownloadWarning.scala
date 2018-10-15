@@ -8,13 +8,14 @@ import play.api.mvc.Cookie
 
 import controllers.sugar.Bakery
 import db.impl.schema.DownloadWarningsTable
-import db.{Expirable, Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Expirable, Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.DownloadWarning.COOKIE
 
 import cats.data.OptionT
 import cats.instances.future._
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
+import slick.lifted.TableQuery
 
 /**
   * Represents an instance of a warning that a client has landed on. Warnings
@@ -49,7 +50,7 @@ case class DownloadWarning(
     * @return Download
     */
   def download(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, UnsafeDownload] =
-    OptionT.fromOption[Future](downloadId).flatMap(service.access[UnsafeDownload](classOf[UnsafeDownload]).get)
+    OptionT.fromOption[Future](downloadId).flatMap(service.access[UnsafeDownload]().get)
 
   /**
     * Creates a cookie that should be given to the client.
@@ -66,6 +67,9 @@ case class DownloadWarning(
 }
 
 object DownloadWarning {
+
+  implicit val query: ModelQuery[DownloadWarning] =
+    ModelQuery.from[DownloadWarning](TableQuery[DownloadWarningsTable])
 
   /**
     * Cookie identifier name.

@@ -19,7 +19,17 @@ import db.impl.schema.{
   ProjectWatchersTable,
   UserTable
 }
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{
+  AssociationQuery,
+  Model,
+  ModelFilter,
+  ModelQuery,
+  ModelService,
+  Named,
+  ObjectId,
+  ObjectReference,
+  ObjectTimestamp
+}
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.OreConfig
@@ -181,8 +191,8 @@ case class User(
     val limit        = if (page < 1) -1 else starsPerPage
     val offset       = (page - 1) * starsPerPage
     val filter       = Visibility.isPublicFilter[Project]
-    this.schema
-      .getAssociation[ProjectStarsTable, Project](classOf[ProjectStarsTable], this)
+    service
+      .associationAccess[ProjectStarsTable, User, Project](this)
       .sorted(ordering = _.name, filter = filter.fn, limit = limit, offset = offset)
   }
 
@@ -231,7 +241,7 @@ case class User(
     * @return Projects owned by user
     */
   def projects(implicit service: ModelService): ModelAccess[Project] =
-    this.schema.getChildren[Project](classOf[Project], this)
+    service.access[Project](ModelFilter(_.userId === id.value))
 
   /**
     * Returns the Project with the specified name that this User owns.
@@ -248,7 +258,7 @@ case class User(
     * @return ProjectRoles
     */
   def projectRoles(implicit service: ModelService): ModelAccess[ProjectRole] =
-    this.schema.getChildren[ProjectRole](classOf[ProjectRole], this)
+    service.access[ProjectRole](ModelFilter(_.userId === id.value))
 
   /**
     * Returns the [[Organization]]s that this User owns.
@@ -256,15 +266,17 @@ case class User(
     * @return Organizations user owns
     */
   def ownedOrganizations(implicit service: ModelService): ModelAccess[Organization] =
-    this.schema.getChildren[Organization](classOf[Organization], this)
+    service.access[Organization](ModelFilter(_.userId === id.value))
 
   /**
     * Returns the [[Organization]]s that this User belongs to.
     *
     * @return Organizations user belongs to
     */
-  def organizations(implicit service: ModelService): ModelAssociationAccess[OrganizationMembersTable, Organization] =
-    this.schema.getAssociation[OrganizationMembersTable, Organization](classOf[OrganizationMembersTable], this)
+  def organizations(
+      implicit service: ModelService
+  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization] =
+    service.associationAccess[OrganizationMembersTable, User, Organization](this)
 
   /**
     * Returns a [[ModelAccess]] of [[OrganizationRole]]s.
@@ -272,7 +284,7 @@ case class User(
     * @return OrganizationRoles
     */
   def organizationRoles(implicit service: ModelService): ModelAccess[OrganizationRole] =
-    this.schema.getChildren[OrganizationRole](classOf[OrganizationRole], this)
+    service.access[OrganizationRole](ModelFilter(_.userId === id.value))
 
   /**
     * Converts this User to an [[Organization]].
@@ -289,8 +301,8 @@ case class User(
     *
     * @return Projects user is watching
     */
-  def watching(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, Project] =
-    this.schema.getAssociation[ProjectWatchersTable, Project](classOf[ProjectWatchersTable], this)
+  def watching(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, User, Project] =
+    service.associationAccess[ProjectWatchersTable, User, Project](this)
 
   /**
     * Sets the "watching" status on the specified project.
@@ -316,7 +328,8 @@ case class User(
     *
     * @return Flags submitted by user
     */
-  def flags(implicit service: ModelService): ModelAccess[Flag] = this.schema.getChildren[Flag](classOf[Flag], this)
+  def flags(implicit service: ModelService): ModelAccess[Flag] =
+    service.access[Flag](ModelFilter(_.userId === id.value))
 
   /**
     * Returns true if the User has an unresolved [[Flag]] on the specified
@@ -337,7 +350,7 @@ case class User(
     * @return User notifications
     */
   def notifications(implicit service: ModelService): ModelAccess[Notification] =
-    this.schema.getChildren[Notification](classOf[Notification], this)
+    service.access[Notification](ModelFilter(_.userId === id.value))
 
   /**
     * Sends a [[Notification]] to this user.
@@ -350,7 +363,7 @@ case class User(
   )(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Future[Notification] = {
     checkNotNull(notification, "null notification", "")
     config.debug("Sending notification: " + notification, -1)
-    service.access[Notification](classOf[Notification]).add(notification.copy(userId = this.id.value))
+    service.access[Notification]().add(notification.copy(userId = this.id.value))
   }
 
   /**
@@ -373,6 +386,18 @@ case class User(
 }
 
 object User {
+
+  implicit val query: ModelQuery[User] =
+    ModelQuery.from[User](TableQuery[UserTable])
+
+  implicit val assocStarredQuery: AssociationQuery[ProjectStarsTable, User, Project] =
+    AssociationQuery.from(TableQuery[ProjectStarsTable])(_.userId, _.projectId)
+
+  implicit val assocOrgMembersQuery: AssociationQuery[OrganizationMembersTable, User, Organization] =
+    AssociationQuery.from(TableQuery[OrganizationMembersTable])(_.userId, _.organizationId)
+
+  implicit val assocWatchingQuery: AssociationQuery[ProjectWatchersTable, User, Project] =
+    AssociationQuery.from(TableQuery[ProjectWatchersTable])(_.userId, _.projectId)
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].

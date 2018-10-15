@@ -5,12 +5,13 @@ import scala.concurrent.Future
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 
 import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
+import slick.lifted.TableQuery
 
 case class LoggedActionModel(
     id: ObjectId = ObjectId.Uninitialized,
@@ -29,6 +30,10 @@ case class LoggedActionModel(
   override type M = LoggedActionModel
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionModel = this.copy(createdAt = theTime)
+}
+object LoggedActionModel {
+  implicit val query: ModelQuery[LoggedActionModel] =
+    ModelQuery.from[LoggedActionModel](TableQuery[LoggedActionTable])
 }
 
 sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry

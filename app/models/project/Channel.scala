@@ -1,11 +1,14 @@
 package models.project
 
 import db.access.ModelAccess
+import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ChannelTable
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelFilter, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Color
 import ore.Color._
 import ore.permission.scope.ProjectScope
+
+import slick.lifted.TableQuery
 
 /**
   * Represents a release channel for Project Versions. Each project gets it's
@@ -44,7 +47,7 @@ case class Channel(
     * @return All versions
     */
   def versions(implicit service: ModelService): ModelAccess[Version] =
-    this.schema.getChildren[Version](classOf[Version], this)
+    service.access[Version](ModelFilter(_.channelId === id.value))
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Channel = this.copy(id = id, createdAt = theTime)
 }
@@ -52,6 +55,9 @@ case class Channel(
 object Channel {
 
   implicit val channelsAreOrdered: Ordering[Channel] = (x: Channel, y: Channel) => x.name.compare(y.name)
+
+  implicit val query: ModelQuery[Channel] =
+    ModelQuery.from[Channel](TableQuery[ChannelTable])
 
   /**
     * The colors a Channel is allowed to have.
