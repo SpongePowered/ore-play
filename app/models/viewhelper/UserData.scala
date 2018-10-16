@@ -12,6 +12,7 @@ import db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
 import models.user.role.OrganizationRole
 import models.user.{Organization, User}
 import ore.permission._
+import ore.permission.scope.GlobalScope
 
 import cats.instances.future._
 import cats.instances.option._
@@ -74,11 +75,12 @@ object UserData {
       service: ModelService
   ): Future[(Map[Permission, Boolean], Map[Permission, Boolean])] = {
     currentUser.fold(Future.successful((Map.empty[Permission, Boolean], Map.empty[Permission, Boolean]))) { user =>
-      user.trustIn(user.scope).map2(user.toMaybeOrganization.semiflatMap(user.trustIn).value) { (userTrust, orgTrust) =>
-        val userPerms = user.can.asMap(userTrust)(ViewActivity, ReviewFlags, ReviewProjects)
-        val orgaPerms = user.can.asMap(orgTrust)(EditSettings)
+      user.trustIn(GlobalScope).map2(user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value) {
+        (userTrust, orgTrust) =>
+          val userPerms = user.can.asMap(userTrust)(ViewActivity, ReviewFlags, ReviewProjects)
+          val orgaPerms = user.can.asMap(orgTrust)(EditSettings)
 
-        (userPerms, orgaPerms)
+          (userPerms, orgaPerms)
       }
     }
   }

@@ -8,8 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.schema.FlagTable
 import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.User
-import ore.permission.scope.ProjectScope
-import ore.project.FlagReason
+import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned
 
 import slick.lifted.TableQuery
@@ -36,7 +35,7 @@ case class Flag(
     resolvedBy: Option[ObjectReference] = None
 ) extends Model
     with UserOwned
-    with ProjectScope {
+    with ProjectOwned {
 
   override type M = Flag
   override type T = FlagTable

@@ -5,7 +5,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.{ModelService, ObjectReference}
 import models.project.Project
 import models.user.role.ProjectRole
-import ore.permission.scope.Scope
 import ore.user.Member
 
 /**
@@ -18,7 +17,6 @@ class ProjectMember(val project: Project, val userId: ObjectReference) extends M
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectRole]] =
     this.user.flatMap(user => this.project.memberships.getRoles(project, user))
-  override val scope: Scope = this.project.scope
 
   /**
     * Returns the Member's top role.

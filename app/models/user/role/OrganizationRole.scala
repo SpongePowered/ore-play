@@ -5,8 +5,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.schema.OrganizationRoleTable
 import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
+import ore.organization.OrganizationOwned
 import ore.permission.role.RoleType
-import ore.permission.scope.OrganizationScope
 
 import slick.lifted.TableQuery
 
@@ -28,7 +28,7 @@ case class OrganizationRole(
     roleType: RoleType,
     isAccepted: Boolean = false
 ) extends RoleModel
-    with OrganizationScope {
+    with OrganizationOwned {
 
   override type M = OrganizationRole
   override type T = OrganizationRoleTable

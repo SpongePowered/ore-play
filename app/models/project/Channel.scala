@@ -6,7 +6,7 @@ import db.impl.schema.ChannelTable
 import db.{Model, ModelFilter, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Color
 import ore.Color._
-import ore.permission.scope.ProjectScope
+import ore.project.ProjectOwned
 
 import slick.lifted.TableQuery
 
@@ -31,7 +31,7 @@ case class Channel(
     isNonReviewed: Boolean = false
 ) extends Model
     with Named
-    with ProjectScope {
+    with ProjectOwned {
 
   override type T = ChannelTable
   override type M = Channel

@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.ModelService
 import models.user.User
 import ore.permission.role.{RoleType, Trust}
-import ore.permission.scope.ScopeSubject
+import ore.permission.scope.HasScope
 
 /**
   * Permission wrapper used for chaining permission checks.
@@ -34,10 +34,10 @@ case class PermissionPredicate(user: User) {
       case Some(value) => withTrust(value)
     }
 
-    def in(subject: ScopeSubject)(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
-      user.trustIn(subject.scope).map(withTrust)
+    def in[A: HasScope](subject: A)(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
+      user.trustIn(subject).map(withTrust)
 
-    def in(subject: Option[ScopeSubject])(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
+    def in[A: HasScope](subject: Option[A])(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
       subject match {
         case None    => Future.successful(false)
         case Some(s) => this.in(s)

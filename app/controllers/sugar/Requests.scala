@@ -5,7 +5,7 @@ import play.api.mvc.{Request, WrappedRequest}
 import models.project.Project
 import models.user.{Organization, User}
 import models.viewhelper._
-import ore.permission.scope.ScopeSubject
+import ore.permission.scope.{GlobalScope, HasScope}
 
 /**
   * Contains the custom WrappedRequests used by Ore.
@@ -25,10 +25,22 @@ object Requests {
       extends WrappedRequest[A](request)
       with OreRequest[A]
 
-  /** Represents a Request with a [[User]] and [[ScopeSubject]] */
-  trait ScopedRequest[A] extends WrappedRequest[A] {
+  /** Represents a Request with a [[User]] and subject */
+  sealed trait ScopedRequest[A] extends WrappedRequest[A] {
+    type Subject
     def user: User
-    def subject: ScopeSubject = this.user
+    def subject: Subject
+  }
+  object ScopedRequest {
+    type Aux[A, Subject0] = ScopedRequest[A] { type Subject = Subject0 }
+  }
+
+  trait UserScopedRequest[A] extends ScopedRequest[A] {
+    type Subject = User
+    def subject: User = user
+  }
+  object UserScopedRequest {
+    implicit def hasScope: HasScope[UserScopedRequest[_]] = (_: UserScopedRequest[_]) => GlobalScope
   }
 
   /**
@@ -40,7 +52,7 @@ object Requests {
   class AuthRequest[A](val user: User, val headerData: HeaderData, request: Request[A])
       extends WrappedRequest[A](request)
       with OreRequest[A]
-      with ScopedRequest[A]
+      with UserScopedRequest[A]
 
   /**
     * A request that holds a [[Project]].
@@ -76,8 +88,12 @@ object Requests {
       with ScopedRequest[A]
       with OreRequest[A] {
 
-    override def user: User            = request.user
-    override val subject: ScopeSubject = this.data.project
+    type Subject = Project
+    override def user: User       = request.user
+    override val subject: Project = this.data.project
+  }
+  object AuthedProjectRequest {
+    implicit def hasScope: HasScope[AuthedProjectRequest[_]] = HasScope.projectScope(_.subject.id.value)
   }
 
   /**
@@ -110,7 +126,11 @@ object Requests {
   ) extends OrganizationRequest[A](data, scoped, headerData, request)
       with ScopedRequest[A]
       with OreRequest[A] {
+    type Subject = Organization
     override def user: User            = request.user
-    override val subject: ScopeSubject = this.data.orga
+    override val subject: Organization = this.data.orga
+  }
+  object AuthedOrganizationRequest {
+    implicit def hasScope: HasScope[AuthedOrganizationRequest[_]] = HasScope.orgScope(_.subject.id.value)
   }
 }

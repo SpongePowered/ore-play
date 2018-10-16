@@ -68,9 +68,7 @@ case class ProjectSettings(
     Logger.debug("Saving project settings")
     Logger.debug(formData.toString)
 
-    def updateIfDefined[A <: Model: ModelQuery](a: A) = if (a.isDefined) service.update(a) else Future.successful(a)
-
-    val updateProject = updateIfDefined(
+    val updateProject = service.updateIfDefined(
       project.copy(
         category = Category.values.find(_.title == formData.categoryName).get,
         description = noneIfEmpty(formData.description),
@@ -78,7 +76,7 @@ case class ProjectSettings(
       )
     )
 
-    val updateSettings = updateIfDefined(
+    val updateSettings = service.updateIfDefined(
       copy(
         issues = noneIfEmpty(formData.issues),
         source = noneIfEmpty(formData.source),

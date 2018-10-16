@@ -13,7 +13,7 @@ import db.impl.schema.PageTable
 import db.{Model, ModelFilter, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import discourse.OreDiscourseApi
 import ore.OreConfig
-import ore.permission.scope.ProjectScope
+import ore.project.ProjectOwned
 import util.StringUtils._
 
 import cats.data.OptionT
@@ -55,7 +55,7 @@ case class Page(
     isDeletable: Boolean = true,
     contents: String
 ) extends Model
-    with ProjectScope
+    with ProjectOwned
     with Named {
 
   override type M = Page
