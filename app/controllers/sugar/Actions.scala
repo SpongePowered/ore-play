@@ -19,7 +19,7 @@ import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import models.project.{Project, Visibility}
 import models.user.{Organization, SignOn, User}
 import models.viewhelper._
-import ore.permission.scope.GlobalScope
+import ore.permission.scope.{GlobalScope, HasScope}
 import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.FutureUtils
@@ -70,7 +70,7 @@ trait Actions extends Calls with ActionHelpers {
     */
   def PermissionAction[R[_] <: ScopedRequest[_]](
       p: Permission
-  )(implicit ec: ExecutionContext): ActionRefiner[R, R] = new ActionRefiner[R, R] {
+  )(implicit ec: ExecutionContext, hasScope: HasScope[R[_]]): ActionRefiner[R, R] = new ActionRefiner[R, R] {
     def executionContext: ExecutionContext = ec
 
     private def log(success: Boolean, request: R[_]): Unit = {
@@ -81,7 +81,7 @@ trait Actions extends Calls with ActionHelpers {
     def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
       implicit val r: R[A] = request
 
-      request.user.can(p).in(request.subject).flatMap { perm =>
+      request.user.can(p).in(request).flatMap { perm =>
         log(success = perm, request)
         if (!perm) onUnauthorized.map(Left.apply)
         else Future.successful(Right(request))

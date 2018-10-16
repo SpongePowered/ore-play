@@ -5,7 +5,7 @@ import db.impl.schema.ChannelTable
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Color
 import ore.Color._
-import ore.permission.scope.ProjectScope
+import ore.project.ProjectOwned
 
 /**
   * Represents a release channel for Project Versions. Each project gets it's
@@ -28,7 +28,7 @@ case class Channel(
     isNonReviewed: Boolean = false
 ) extends Model
     with Named
-    with ProjectScope {
+    with ProjectOwned {
 
   override type T = ChannelTable
   override type M = Channel

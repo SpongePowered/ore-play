@@ -280,7 +280,7 @@ final class ApiController @Inject()(
                   pendingVersion.channelName = formData.channel.name
                   formData.changelog.fold(Future.successful(pendingVersion)) { changelog =>
                     service
-                      .update(pendingVersion.underlying.copy(description = Some(changelog)))
+                      .updateIfDefined(pendingVersion.underlying.copy(description = Some(changelog)))
                       .map(newVersion => pendingVersion.copy(underlying = newVersion))
                   }
                 }
