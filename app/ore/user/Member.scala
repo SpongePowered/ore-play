@@ -7,12 +7,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.ModelService
 import models.user.User
 import models.user.role.UserRoleModel
-import ore.permission.scope.ScopeSubject
 
 /**
   * Represents a [[User]] member of some entity.
   */
-trait Member[RoleType <: UserRoleModel] extends ScopeSubject with UserOwned {
+trait Member[RoleType <: UserRoleModel] extends UserOwned {
 
   /**
     * Returns the [[UserRoleModel]]s the user has in this entity.

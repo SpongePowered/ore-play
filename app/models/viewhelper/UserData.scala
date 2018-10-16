@@ -13,6 +13,7 @@ import models.user.role.OrganizationUserRole
 import models.user.{Organization, User}
 import ore.permission._
 import ore.permission.role.Role
+import ore.permission.scope.GlobalScope
 
 import cats.instances.future._
 import cats.instances.option._
@@ -79,8 +80,8 @@ object UserData {
       Future.successful((Set.empty[Role], Map.empty[Permission, Boolean], Map.empty[Permission, Boolean]))
     ) { user =>
       (
-        user.trustIn(user.scope),
-        user.toMaybeOrganization.semiflatMap(user.trustIn).value,
+        user.trustIn(GlobalScope),
+        user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value,
         user.globalRoles.all,
       ).mapN { (userTrust, orgTrust, globalRoles) =>
         val userPerms = user.can.asMap(userTrust, globalRoles)(ViewActivity, ReviewFlags, ReviewProjects)

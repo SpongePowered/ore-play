@@ -6,7 +6,7 @@ import db.ModelService
 import models.user.User
 import models.user.role.DbRole
 import ore.permission.role.{Role, Trust}
-import ore.permission.scope.ScopeSubject
+import ore.permission.scope.HasScope
 
 import cats.instances.future._
 import cats.syntax.all._
@@ -41,10 +41,10 @@ case class PermissionPredicate(user: User) {
         case _                                => false
       }
 
-    def in(subject: ScopeSubject)(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
-      user.trustIn(subject.scope).map2(user.globalRoles.all)(withTrustAndGlobalRoles)
+    def in[A: HasScope](subject: A)(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
+      user.trustIn(subject).map2(user.globalRoles.all)(withTrustAndGlobalRoles)
 
-    def in(subject: Option[ScopeSubject])(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
+    def in[A: HasScope](subject: Option[A])(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
       subject match {
         case None    => Future.successful(false)
         case Some(s) => this.in(s)

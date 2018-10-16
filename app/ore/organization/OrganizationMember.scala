@@ -5,7 +5,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.{ModelService, ObjectReference}
 import models.user.Organization
 import models.user.role.OrganizationUserRole
-import ore.permission.scope.Scope
 import ore.user.Member
 
 /**
@@ -19,8 +18,6 @@ class OrganizationMember(val organization: Organization, val userId: ObjectRefer
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationUserRole]] =
     this.user.flatMap(user => this.organization.memberships.getRoles(organization, user))
-
-  override def scope: Scope = this.organization.scope
 
   /**
     * Returns the Member's top role.

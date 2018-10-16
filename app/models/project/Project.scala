@@ -30,7 +30,7 @@ import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectUserRole
 import ore.permission.role.Role
-import ore.permission.scope.ProjectScope
+import ore.permission.scope.HasScope
 import ore.project.{Category, FlagReason, ProjectMember}
 import ore.user.MembershipDossier
 import ore.{Joinable, OreConfig, Visitable}
@@ -87,7 +87,6 @@ case class Project(
     lastUpdated: Timestamp = null,
     notes: String = ""
 ) extends Model
-    with ProjectScope
     with Downloadable
     with Named
     with Describable
@@ -428,7 +427,6 @@ case class Project(
   def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] =
     this.schema.getChildren[ProjectApiKey](classOf[ProjectApiKey], this)
 
-  override def projectId: ObjectReference = this.id.value
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Project =
     this.copy(id = id, createdAt = theTime, lastUpdated = theTime.value)
 
@@ -488,6 +486,8 @@ object Note {
 }
 
 object Project {
+
+  implicit val hasScope: HasScope[Project] = HasScope.projectScope(_.id.value)
 
   private def queryRoleForTrust(projectId: Rep[ObjectReference], userId: Rep[ObjectReference]) = {
     val q = for {

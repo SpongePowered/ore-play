@@ -5,8 +5,8 @@ import ore.user.UserOwned
 /**
   * Represents a "role" that is posessed by a [[models.user.User]].
   */
-trait UserRole extends UserOwned {
+trait Role extends UserOwned {
 
-  /** The role itself */
-  def role: Role
+  /** Type of role */
+  def roleType: RoleType
 }
