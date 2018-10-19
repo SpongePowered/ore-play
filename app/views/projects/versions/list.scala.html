@@ -19,7 +19,7 @@ Versions page within Project overview.
 
 @projects.view(p, sp, "#versions") {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/versionList.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/versionList.js")"></script>
     <script nonce="@nonce">
     PLUGIN_ID = '@p.project.pluginId';
     PROJECT_OWNER = '@p.project.ownerName';

@@ -17,8 +17,8 @@
 @if(j.members.nonEmpty) {
 
     @if(editable && perms.getOrElse(EditSettings, false)) {
-        <script type="text/javascript" src="@routes.Assets.at("javascripts/userSearch.js")"></script>
-        <script type="text/javascript" src="@routes.Assets.at("javascripts/memberList.js")"></script>
+        <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
+        <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
 
         @users.invite.roleSelect(
             roleClass = j.roleClass,

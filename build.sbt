@@ -104,6 +104,7 @@ libraryDependencies ++= Seq(
 )
 
 unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test")
+pipelineStages := Seq(digest, gzip)
 
 // Disable generation of the API documentation for production builds
 sources in (Compile, doc) := Seq.empty

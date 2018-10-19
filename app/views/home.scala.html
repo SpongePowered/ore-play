@@ -40,7 +40,7 @@ sorted according to different criteria.
 
 @bootstrap.layout(messages("general.title")) {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/home.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
     <script nonce="@nonce">
     @if(visibleCategories.isDefined) {
     CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
@@ -69,7 +69,7 @@ sorted according to different criteria.
                 <div class="col-md-9 ore-banner">
                         <div class="row aligned-row">
                             <div class="col-xs-2 ore-logo">
-                                <img src="@routes.Assets.at("images/ore-colored.svg")" />
+                                <img src="@routes.Assets.versioned("images/ore-colored.svg")" />
                             </div>
                             <div class="col-xs-10 text">
                                 <div class="headline">Ore</div>
@@ -83,7 +83,7 @@ sorted according to different criteria.
                         <div class="panel-body">
                             @defining(randomSponsor) { sponsor =>
                                 <a href="@sponsor._3">
-                                    <img class="logo" src="@routes.Assets.at(sponsor._2)" />
+                                    <img class="logo" src="@routes.Assets.versioned(sponsor._2)" />
                                 </a>
                             }
                         </div>

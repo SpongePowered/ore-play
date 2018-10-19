@@ -28,7 +28,7 @@ Documentation page within Project overview.
 
 @projects.view(p, sp, "#docs") {
 
-    <script type="text/javascript" src="@controllers.routes.Assets.at("javascripts/pageCollapse.js")"></script>
+    <script type="text/javascript" src="@controllers.routes.Assets.versioned("javascripts/pageCollapse.js")"></script>
     <script nonce="@nonce">
         pluginId = '@p.project.pluginId';
         namespace = '@p.project.namespace';
