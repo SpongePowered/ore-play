@@ -324,6 +324,8 @@ user.unlock.confirm         =   Are you sure you want to unlock your account?
 user.enterPassword          =   Enter your password to continue:
 user.stats                  =   Stats
 
+organization.avatarFailed   =   Failed to request token for changing the organization avatar.
+
 notification.invite                 =   You have been invited to join the {0}
 notification.invites                =   Invites
 notification.invite.all             =   All

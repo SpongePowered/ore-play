@@ -5,7 +5,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
-import play.api.i18n.MessagesApi
+import play.api.i18n.{Lang, MessagesApi}
 import play.api.mvc.{Action, AnyContent}
 
 import controllers.sugar.Bakery
@@ -118,10 +118,18 @@ class Organizations @Inject()(forms: OreForms)(
     * Updates an [[models.user.Organization]]'s avatar.
     *
     * @param organization Organization to update avatar of
-    * @return             Json response with errors if any
+    * @return             Redirect to auth or bad request
     */
-  def updateAvatar(organization: String): Action[AnyContent] = EditOrganizationAction(organization) {
-    Ok
+  def updateAvatar(organization: String): Action[AnyContent] = EditOrganizationAction(organization).asyncF {
+    implicit request =>
+      implicit val lang: Lang = request.lang
+
+      auth.getChangeAvatarToken(request.user.name, organization).value.map {
+        case Left(_) =>
+          Redirect(routes.Users.showProjects(organization, None)).withError(messagesApi("organization.avatarFailed"))
+        case Right(token) =>
+          Redirect(auth.url + s"/accounts/user/$organization/change-avatar/?key=${token.signedData}")
+      }
   }
 
   /**

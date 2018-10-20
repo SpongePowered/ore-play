@@ -149,8 +149,10 @@ function setupAvatarForm() {
 
     $('.organization-avatar').hover(function() {
         $('.edit-avatar').fadeIn('fast');
-    }, function() {
-        $('.edit-avatar').fadeOut('fast');
+    }, function(e) {
+        if(!$(e.relatedTarget).closest("div").hasClass("edit-avatar")) {
+            $('.edit-avatar').fadeOut('fast');
+        }
     });
 
     var avatarModal = $('#modal-avatar');
