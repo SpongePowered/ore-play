@@ -54,6 +54,9 @@ resolvers ++= Seq(
   "Akka Snapshot Repository".at("http://repo.akka.io/snapshots/")
 )
 
+sources in (Compile, doc) := Seq.empty
+publishArtifact in (Compile, packageDoc) := false
+
 libraryDependencies ++= Seq(ehcache, ws, guice)
 
 lazy val flexmarkVersion     = "0.34.52"
