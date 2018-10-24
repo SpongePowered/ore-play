@@ -7,6 +7,7 @@ import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
 import ore.permission.role.Role
 import ore.permission.scope.ProjectScope
+import ore.project.ProjectOwned
 
 /**
   * Represents a [[ore.project.ProjectMember]]'s role in a
@@ -27,7 +28,7 @@ case class ProjectUserRole(
     role: Role,
     isAccepted: Boolean = false
 ) extends UserRoleModel
-    with ProjectScope {
+    with ProjectOwned {
 
   override type M = ProjectUserRole
   override type T = ProjectRoleTable
