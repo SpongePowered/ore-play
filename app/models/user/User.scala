@@ -10,6 +10,7 @@ import play.api.mvc.Request
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
+import db.impl.model.common.Named
 import db.impl.schema._
 import db._
 import models.project.{Flag, Project, Visibility}
@@ -127,7 +128,7 @@ case class User(
       scope match {
         case GlobalScope => Future.successful(globalTrust)
         case ProjectScope(projectId) =>
-          val projectRoles = service.doAction(Project.roleForTrustQuery((projectId, this.id.value)).result)
+          val projectRoles = service.runDBIO(Project.roleForTrustQuery((projectId, this.id.value)).result)
 
           val projectTrust = projectRoles
             .map(biggestRoleTpe)
@@ -144,7 +145,7 @@ case class User(
                 r <- roleTable if this.userId.bind === r.userId && r.organizationId === o.id
               } yield r.roleType
 
-              service.doAction(query.to[Set].result).map { roleTypes =>
+              service.runDBIO(query.to[Set].result).map { roleTypes =>
                 if (roleTypes.contains(RoleType.OrganizationAdmin) || roleTypes.contains(RoleType.OrganizationOwner)) {
                   biggestRoleTpe(roleTypes)
                 } else {
@@ -176,7 +177,7 @@ case class User(
     val filter       = Visibility.isPublicFilter[Project]
     service
       .associationAccess[ProjectStarsTable, User, Project](this)
-      .sorted(ordering = _.name, filter = filter.fn, limit = limit, offset = offset)
+      .sorted(ordering = _.name, filter = filter, limit = limit, offset = offset)
   }
 
   /**
@@ -223,8 +224,7 @@ case class User(
     *
     * @return Projects owned by user
     */
-  def projects(implicit service: ModelService): ModelAccess[Project] =
-    service.access[Project](ModelFilter(_.userId === id.value))
+  def projects(implicit service: ModelService): ModelAccess[Project] = service.access(_.userId === id.value)
 
   /**
     * Returns the Project with the specified name that this User owns.
@@ -240,8 +240,7 @@ case class User(
     *
     * @return ProjectRoles
     */
-  def projectRoles(implicit service: ModelService): ModelAccess[ProjectRole] =
-    service.access[ProjectRole](ModelFilter(_.userId === id.value))
+  def projectRoles(implicit service: ModelService): ModelAccess[ProjectRole] = service.access(_.userId === id.value)
 
   /**
     * Returns the [[Organization]]s that this User owns.
@@ -249,7 +248,7 @@ case class User(
     * @return Organizations user owns
     */
   def ownedOrganizations(implicit service: ModelService): ModelAccess[Organization] =
-    service.access[Organization](ModelFilter(_.userId === id.value))
+    service.access(_.userId === id.value)
 
   /**
     * Returns the [[Organization]]s that this User belongs to.
@@ -258,8 +257,7 @@ case class User(
     */
   def organizations(
       implicit service: ModelService
-  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization] =
-    service.associationAccess[OrganizationMembersTable, User, Organization](this)
+  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization] = service.associationAccess(this)
 
   /**
     * Returns a [[ModelAccess]] of [[OrganizationRole]]s.
@@ -267,7 +265,7 @@ case class User(
     * @return OrganizationRoles
     */
   def organizationRoles(implicit service: ModelService): ModelAccess[OrganizationRole] =
-    service.access[OrganizationRole](ModelFilter(_.userId === id.value))
+    service.access(_.userId === id.value)
 
   /**
     * Converts this User to an [[Organization]].
@@ -285,7 +283,7 @@ case class User(
     * @return Projects user is watching
     */
   def watching(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, User, Project] =
-    service.associationAccess[ProjectWatchersTable, User, Project](this)
+    service.associationAccess(this)
 
   /**
     * Sets the "watching" status on the specified project.
@@ -311,8 +309,7 @@ case class User(
     *
     * @return Flags submitted by user
     */
-  def flags(implicit service: ModelService): ModelAccess[Flag] =
-    service.access[Flag](ModelFilter(_.userId === id.value))
+  def flags(implicit service: ModelService): ModelAccess[Flag] = service.access(_.userId === id.value)
 
   /**
     * Returns true if the User has an unresolved [[Flag]] on the specified
@@ -332,8 +329,7 @@ case class User(
     *
     * @return User notifications
     */
-  def notifications(implicit service: ModelService): ModelAccess[Notification] =
-    service.access[Notification](ModelFilter(_.userId === id.value))
+  def notifications(implicit service: ModelService): ModelAccess[Notification] = service.access(_.userId === id.value)
 
   /**
     * Sends a [[Notification]] to this user.
@@ -363,14 +359,13 @@ case class User(
     )
   }
 
-  override def userId: ObjectReference                                = this.id.value
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): User = this.copy(createdAt = theTime)
+  override def userId: ObjectReference = this.id.value
 }
 
 object User {
 
   implicit val query: ModelQuery[User] =
-    ModelQuery.from[User](TableQuery[UserTable])
+    ModelQuery.from[User](TableQuery[UserTable], (obj, _, time) => obj.copy(createdAt = time))
 
   implicit val assocStarredQuery: AssociationQuery[ProjectStarsTable, User, Project] =
     AssociationQuery.from(TableQuery[ProjectStarsTable])(_.userId, _.projectId)

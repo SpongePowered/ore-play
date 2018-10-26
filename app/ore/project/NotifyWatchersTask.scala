@@ -2,6 +2,7 @@ package ore.project
 
 import scala.concurrent.ExecutionContext
 
+import db.impl.OrePostgresDriver.api._
 import db.{ModelService, ObjectReference}
 import models.project.{Project, Version}
 import models.user.Notification
@@ -34,10 +35,8 @@ case class NotifyWatchersTask(version: Version, project: Project)(
         action = Some(version.url(project))
     )
 
-    project.watchers.all.foreach { watchers =>
-      watchers
-        .filterNot(_.userId == version.authorId)
-        .foreach(watcher => watcher.sendNotification(notification(watcher.id.value)))
+    project.watchers.filterNot(_.id === version.authorId).foreach { watchers =>
+      watchers.foreach(watcher => watcher.sendNotification(notification(watcher.id.value)))
     }
   }
 }

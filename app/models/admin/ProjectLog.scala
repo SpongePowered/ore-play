@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
-import db.{Model, ModelFilter, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.project.ProjectOwned
 
 import cats.instances.future._
@@ -33,8 +33,7 @@ case class ProjectLog(
     *
     * @return Entries in log
     */
-  def entries(implicit service: ModelService): ModelAccess[ProjectLogEntry] =
-    service.access[ProjectLogEntry](ModelFilter(_.logId === id.value))
+  def entries(implicit service: ModelService): ModelAccess[ProjectLogEntry] = service.access(_.logId === id.value)
 
   /**
     * Adds a new entry with an "error" tag to the log.
@@ -59,10 +58,8 @@ case class ProjectLog(
           .add(ProjectLogEntry(logId = this.id.value, tag = tag, message = message, lastOccurrence = service.theTime))
       }
   }
-
-  def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLog = this.copy(id = id, createdAt = theTime)
 }
 object ProjectLog {
   implicit val query: ModelQuery[ProjectLog] =
-    ModelQuery.from[ProjectLog](TableQuery[ProjectLogTable])
+    ModelQuery.from[ProjectLog](TableQuery[ProjectLogTable], _.copy(_, _))
 }

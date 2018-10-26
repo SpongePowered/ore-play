@@ -16,8 +16,6 @@ import cats.instances.future._
 
 class OrganizationBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[Organization] {
 
-  override val modelClass: Class[Organization] = classOf[Organization]
-
   val Logger = play.api.Logger("Organizations")
 
   /**
@@ -118,6 +116,5 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
 object OrganizationBase {
   def apply()(implicit organizationBase: OrganizationBase): OrganizationBase = organizationBase
 
-  implicit def fromService(implicit service: ModelService): OrganizationBase =
-    service.getModelBase(classOf[OrganizationBase])
+  implicit def fromService(implicit service: ModelService): OrganizationBase = service.organizationBase
 }

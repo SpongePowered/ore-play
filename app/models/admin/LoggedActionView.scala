@@ -57,10 +57,9 @@ case class LoggedActionViewModel(
 
   override type T = LoggedActionViewTable
   override type M = LoggedActionViewModel
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionViewModel = this.copy(createdAt = theTime)
 }
 object LoggedActionViewModel {
   implicit val query: ModelQuery[LoggedActionViewModel] =
-    ModelQuery.from[LoggedActionViewModel](TableQuery[LoggedActionViewTable])
+    ModelQuery
+      .from[LoggedActionViewModel](TableQuery[LoggedActionViewTable], (obj, _, time) => obj.copy(createdAt = time))
 }

@@ -1,5 +1,4 @@
-package db
-
+package db.impl.model.common
 import java.sql.Timestamp
 import java.util.Date
 

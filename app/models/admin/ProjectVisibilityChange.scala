@@ -32,17 +32,8 @@ case class ProjectVisibilityChange(
 
   /** Render the comment as Html */
   def renderComment(implicit config: OreConfig): Html = Page.render(comment)
-
-  /**
-    * Returns a copy of this model with an updated ID and timestamp.
-    *
-    * @param id      ID to set
-    * @param theTime Timestamp
-    * @return Copy of model
-    */
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
 }
 object ProjectVisibilityChange {
   implicit val query: ModelQuery[ProjectVisibilityChange] =
-    ModelQuery.from[ProjectVisibilityChange](TableQuery[ProjectVisibilityChangeTable])
+    ModelQuery.from[ProjectVisibilityChange](TableQuery[ProjectVisibilityChangeTable], _.copy(_, _))
 }

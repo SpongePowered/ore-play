@@ -2,8 +2,9 @@ package models.project
 
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
+import db.impl.model.common.Named
 import db.impl.schema.ChannelTable
-import db.{Model, ModelFilter, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
@@ -46,10 +47,7 @@ case class Channel(
     *
     * @return All versions
     */
-  def versions(implicit service: ModelService): ModelAccess[Version] =
-    service.access[Version](ModelFilter(_.channelId === id.value))
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Channel = this.copy(id = id, createdAt = theTime)
+  def versions(implicit service: ModelService): ModelAccess[Version] = service.access(_.channelId === id.value)
 }
 
 object Channel {
@@ -57,7 +55,7 @@ object Channel {
   implicit val channelsAreOrdered: Ordering[Channel] = (x: Channel, y: Channel) => x.name.compare(y.name)
 
   implicit val query: ModelQuery[Channel] =
-    ModelQuery.from[Channel](TableQuery[ChannelTable])
+    ModelQuery.from[Channel](TableQuery[ChannelTable], _.copy(_, _))
 
   /**
     * The colors a Channel is allowed to have.

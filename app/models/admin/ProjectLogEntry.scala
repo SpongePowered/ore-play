@@ -30,11 +30,8 @@ case class ProjectLogEntry(
 
   override type T = ProjectLogEntryTable
   override type M = ProjectLogEntry
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLogEntry =
-    this.copy(id = id, createdAt = theTime)
 }
 object ProjectLogEntry {
   implicit val query: ModelQuery[ProjectLogEntry] =
-    ModelQuery.from[ProjectLogEntry](TableQuery[ProjectLogEntryTable])
+    ModelQuery.from[ProjectLogEntry](TableQuery[ProjectLogEntryTable], _.copy(_, _))
 }

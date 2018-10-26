@@ -74,10 +74,8 @@ case class Flag(
       )
     )
   }
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Flag = this.copy(id = id, createdAt = theTime)
 }
 object Flag {
   implicit val query: ModelQuery[Flag] =
-    ModelQuery.from[Flag](TableQuery[FlagTable])
+    ModelQuery.from[Flag](TableQuery[FlagTable], _.copy(_, _))
 }

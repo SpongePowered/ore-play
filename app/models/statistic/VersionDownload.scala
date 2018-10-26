@@ -36,15 +36,12 @@ case class VersionDownload(
 
   override type M = VersionDownload
   override type T = VersionDownloadsTable
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): VersionDownload =
-    this.copy(id = id, createdAt = theTime)
 }
 
 object VersionDownload {
 
   implicit val query: ModelQuery[VersionDownload] =
-    ModelQuery.from[VersionDownload](TableQuery[VersionDownloadsTable])
+    ModelQuery.from[VersionDownload](TableQuery[VersionDownloadsTable], _.copy(_, _))
 
   /**
     * Creates a new VersionDownload to be (or not be) recorded from an incoming

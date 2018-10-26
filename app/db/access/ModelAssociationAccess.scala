@@ -20,16 +20,16 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, P <: Model, C <: Model: 
           row <- query.baseQuery
           if query.parentRef(row) === parent.id.value
         } yield query.childRef(row)
-        val childrenIds: Seq[ObjectReference] = service.await(service.doAction(assocQuery.result)).get
+        val childrenIds: Seq[ObjectReference] = service.await(service.runDBIO(assocQuery.result)).get
         child.id.inSetBind(childrenIds)
       }
     ) {
 
   override def add(model: C)(implicit ec: ExecutionContext): Future[C] =
-    service.doAction(query.baseQuery += ((parent.id.value, model.id.value))).as(model)
+    service.runDBIO(query.baseQuery += ((parent.id.value, model.id.value))).as(model)
 
   override def remove(model: C): Future[Int] =
-    service.doAction(
+    service.runDBIO(
       query.baseQuery.filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === model.id.value).delete
     )
 

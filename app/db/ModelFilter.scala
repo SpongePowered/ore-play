@@ -1,5 +1,7 @@
 package db
 
+import scala.language.implicitConversions
+
 import db.impl.OrePostgresDriver.api._
 
 /**
@@ -10,7 +12,7 @@ import db.impl.OrePostgresDriver.api._
   * @param fn   Base filter function
   * @tparam M   Model type
   */
-case class ModelFilter[M <: Model](fn: M#T => Rep[Boolean] = null) {
+class ModelFilter[M <: Model](private val fn: M#T => Rep[Boolean]) extends AnyVal {
 
   /**
     * Applies && to the wrapped function and returns a new filter.
@@ -18,34 +20,7 @@ case class ModelFilter[M <: Model](fn: M#T => Rep[Boolean] = null) {
     * @param that Filter function to apply
     * @return New model filter
     */
-  def &&(that: M#T => Rep[Boolean]): ModelFilter[M] = ModelFilter[M](m => trueIfNull(fn)(m) && trueIfNull(that)(m))
-
-  /**
-    * Applies && to the specified filter's function and returns the result
-    * filter.
-    *
-    * @param that Filter to apply
-    * @return New filter
-    */
-  def +&&(that: ModelFilter[M]): ModelFilter[M] = this && that.fn
-
-  /**
-    * Applies && to the specified filter's function and returns the result
-    * filter function.
-    *
-    * @param that Filter function to apply
-    * @return Filter function
-    */
-  def &&^(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = (this && that).fn
-
-  /**
-    * Applies && to the specified filter's function and returns the result
-    * filter function.
-    *
-    * @param that Filter to apply
-    * @return Filter function
-    */
-  def +&&^(that: ModelFilter[M]): M#T => Rep[Boolean] = (this +&& that).fn
+  def &&(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = m => fn(m) && that(m)
 
   /**
     * Applies || to the wrapped function and returns a new filter.
@@ -53,47 +28,20 @@ case class ModelFilter[M <: Model](fn: M#T => Rep[Boolean] = null) {
     * @param that Filter function to apply
     * @return New filter
     */
-  def ||(that: M#T => Rep[Boolean]): ModelFilter[M] = ModelFilter[M](m => falseIfNull(fn)(m) || falseIfNull(that)(m))
-
-  /**
-    * Applies || to the specified filter's function and returns the result
-    * filter.
-    *
-    * @param that Filter to apply
-    * @return New filter
-    */
-  def +||(that: ModelFilter[M]): ModelFilter[M] = this || that.fn
-
-  /**
-    * Applies || to the specified filter's function and returns the result
-    * filter function.
-    *
-    * @param that Filter function to apply
-    * @return Filter function
-    */
-  def ||^(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = (this || that).fn
-
-  /**
-    * Applies || to the specified filter's function and returns the result
-    * filter function.
-    *
-    * @param that Filter to apply
-    * @return Filter function
-    */
-  def +||^(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = (this +|| ModelFilter[M](that)).fn
-
-  private def trueIfNull(fn: M#T => Rep[Boolean]): M#T => Rep[Boolean]  = if (fn == null) _ => true else fn
-  private def falseIfNull(fn: M#T => Rep[Boolean]): M#T => Rep[Boolean] = if (fn == null) _ => false else fn
-
+  def ||(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = m => fn(m) || that(m)
 }
 
 object ModelFilter {
 
-  def Empty[M <: Model]: ModelFilter[M] = ModelFilter[M](_ => true)
+  implicit def liftFilter[M <: Model](f: M#T => Rep[Boolean]): ModelFilter[M] = new ModelFilter(f)
 
-  def All[M <: Model]: ModelFilter[M] = ModelFilter[M](_ => false)
+  def apply[M <: Model](f: M#T => Rep[Boolean]): M#T => Rep[Boolean] = f
+
+  def Empty[M <: Model]: M#T => Rep[Boolean] = _ => false
+
+  def All[M <: Model]: M#T => Rep[Boolean] = _ => true
 
   /** Filters models by ID */
-  def IdFilter[M <: Model](id: ObjectReference): ModelFilter[M] = ModelFilter[M](_.id === id)
+  def IdFilter[M <: Model](id: ObjectReference): M#T => Rep[Boolean] = _.id === id
 
 }

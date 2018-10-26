@@ -22,7 +22,6 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 
 import cats.data.EitherT
 import cats.instances.future._
-import slick.jdbc.JdbcBackend
 
 /**
   * Represents a Secured base Controller for this application.
@@ -38,8 +37,6 @@ abstract class OreBaseController(
 ) extends InjectedController
     with Actions
     with I18nSupport {
-
-  implicit val db: JdbcBackend#DatabaseDef = service.DB.db
 
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn]()
 

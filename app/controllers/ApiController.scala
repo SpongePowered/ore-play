@@ -138,7 +138,7 @@ final class ApiController @Inject()(
           val res = for {
             key <- forms.ProjectApiKeyRevoke.bindOptionT[Future]
             if key.projectId == request.data.project.id.value
-            _ <- OptionT.liftF(key.remove())
+            _ <- OptionT.liftF(service.delete(key))
             _ <- OptionT.liftF(
               UserActionLogger.log(
                 request.request,
@@ -246,7 +246,7 @@ final class ApiController @Inject()(
               val compiled = Compiled(queryApiKey _)
 
               val apiKeyExists: Future[Boolean] =
-                this.service.doAction(compiled((Deployment, formData.apiKey, project.id.value)).result)
+                this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id.value)).result)
 
               EitherT
                 .liftF(apiKeyExists)

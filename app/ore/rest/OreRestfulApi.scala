@@ -10,16 +10,7 @@ import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
-import db.impl.schema.{
-  ChannelTable,
-  ProjectRoleTable,
-  ProjectStarsTable,
-  ProjectTableMain,
-  ProjectTag,
-  TagTable,
-  UserTable,
-  VersionTable
-}
+import db.impl.schema.{ChannelTable, ProjectRoleTable, ProjectStarsTable, ProjectTableMain, ProjectTag, TagTable, UserTable, VersionTable}
 import db.{ModelService, ObjectReference}
 import models.project._
 import models.user.User
@@ -93,7 +84,7 @@ trait OreRestfulApi extends OreWrites {
     val query = filteredProjects(offset, lim)
 
     for {
-      projects <- service.doAction(query.result)
+      projects <- service.runDBIO(query.result)
       json     <- writeProjects(projects)
     } yield {
       toJson(json.map(_._2))
@@ -128,13 +119,13 @@ trait OreRestfulApi extends OreWrites {
     val versionIds = projects.map(_._2.id.value)
 
     for {
-      chans <- service.doAction(queryProjectChannels(projectIds).result).map { chans =>
+      chans <- service.runDBIO(queryProjectChannels(projectIds).result).map { chans =>
         chans.groupBy(_.projectId)
       }
-      vTags <- service.doAction(queryVersionTags(versionIds).result).map { p =>
+      vTags <- service.runDBIO(queryVersionTags(versionIds).result).map { p =>
         p.groupBy(_._1).mapValues(_.map(_._2))
       }
-      members <- service.doAction(getMembers(projectIds).result).map(_.groupBy(_._1.projectId))
+      members <- service.runDBIO(getMembers(projectIds).result).map(_.groupBy(_._1.projectId))
     } yield {
 
       projects.map {
@@ -203,7 +194,7 @@ trait OreRestfulApi extends OreWrites {
       p <- TableQuery[ProjectTableMain]
       v <- TableQuery[VersionTable] if p.recommendedVersionId === v.id
       c <- TableQuery[ChannelTable] if v.channelId === c.id
-      if Visibility.isPublicFilter[Project].fn(p)
+      if Visibility.isPublicFilter[Project](p)
     } yield (p, v, c)
 
   /**
@@ -217,7 +208,7 @@ trait OreRestfulApi extends OreWrites {
       case (p, _, _) => p.pluginId === pluginId
     }
     for {
-      project <- service.doAction(query.result.headOption)
+      project <- service.runDBIO(query.result.headOption)
       json    <- writeProjects(project.toSeq)
     } yield {
       json.headOption.map(_._2)
@@ -258,8 +249,8 @@ trait OreRestfulApi extends OreWrites {
     val limited = filtered.drop(offset.getOrElse(0)).take(lim)
 
     for {
-      data  <- service.doAction(limited.result) // Get Project Version Channel and AuthorName
-      vTags <- service.doAction(queryVersionTags(data.map(_._3)).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
+      data  <- service.runDBIO(limited.result) // Get Project Version Channel and AuthorName
+      vTags <- service.runDBIO(queryVersionTags(data.map(_._3)).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
     } yield {
       val list = data.map {
         case (p, v, vId, c, uName) =>
@@ -285,8 +276,8 @@ trait OreRestfulApi extends OreWrites {
     }
 
     for {
-      data <- service.doAction(filtered.result.headOption)                                     // Get Project Version Channel and AuthorName
-      tags <- service.doAction(queryVersionTags(data.map(_._3).toSeq).result).map(_.map(_._2)) // Get Tags
+      data <- service.runDBIO(filtered.result.headOption)                                     // Get Project Version Channel and AuthorName
+      tags <- service.runDBIO(queryVersionTags(data.map(_._3).toSeq).result).map(_.map(_._2)) // Get Tags
     } yield {
       data.map {
         case (p, v, _, c, uName) =>
@@ -354,7 +345,7 @@ trait OreRestfulApi extends OreWrites {
     */
   def getUserList(limit: Option[Int], offset: Option[Int])(implicit ec: ExecutionContext): Future[JsValue] =
     for {
-      users        <- service.doAction(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(25)).result)
+      users        <- service.runDBIO(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(25)).result)
       writtenUsers <- writeUsers(users)
     } yield toJson(writtenUsers)
 
@@ -366,8 +357,8 @@ trait OreRestfulApi extends OreWrites {
     }
 
     for {
-      allProjects  <- service.doAction(query.result)
-      stars        <- service.doAction(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
+      allProjects  <- service.runDBIO(query.result)
+      stars        <- service.runDBIO(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
       jsonProjects <- writeProjects(allProjects)
     } yield {
       val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
@@ -397,7 +388,7 @@ trait OreRestfulApi extends OreWrites {
     }
 
     for {
-      user <- service.doAction(queryOneUser.result)
+      user <- service.runDBIO(queryOneUser.result)
       json <- writeUsers(user)
     } yield json.headOption
   }

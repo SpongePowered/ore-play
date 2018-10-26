@@ -46,11 +46,8 @@ case class Notification(
     */
   def origin(implicit ec: ExecutionContext, userBase: UserBase): Future[User] =
     userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None"))
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
-
 }
 object Notification {
   implicit val query: ModelQuery[Notification] =
-    ModelQuery.from[Notification](TableQuery[NotificationTable])
+    ModelQuery.from[Notification](TableQuery[NotificationTable], _.copy(_, _))
 }

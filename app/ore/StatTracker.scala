@@ -9,6 +9,7 @@ import play.api.mvc.{RequestHeader, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
+import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
 import db.{Model, ModelFilter, ModelQuery, ModelService, ObjectId, ObjectReference}
 import models.project.{Project, Version}
@@ -45,13 +46,11 @@ trait StatTracker {
   private def like[S <: Model, M <: StatEntry[S]: ModelQuery](
       entry: M
   )(implicit ec: ExecutionContext): OptionT[Future, M] = {
-    val baseFilter                  = ModelFilter[M](_.modelId === entry.modelId)
-    val filter: M#T => Rep[Boolean] = e => e.address === entry.address || e.cookie === entry.cookie
+    val baseFilter = ModelFilter[M](_.modelId === entry.modelId)
+    val filter     = ModelFilter[M](e => e.address === entry.address || e.cookie === entry.cookie)
 
-    val userFilter = entry.user.map(u => (e: M#T) => filter(e) || e.userId === u.id.value).getOrElse(filter)
-    OptionT.liftF(userFilter).flatMap { uFilter =>
-      service.find[M]((baseFilter && uFilter).fn)
-    }
+    val userFilter = entry.user.map(u => ModelFilter[M](e => filter(e) || e.userId === u.id.value)).getOrElse(filter)
+    OptionT.liftF(userFilter).flatMap(uFilter => service.find(baseFilter && uFilter))
   }
 
   /**

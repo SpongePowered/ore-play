@@ -5,13 +5,14 @@ import scala.concurrent.duration.FiniteDuration
 
 import play.api.Logger
 
-import db.{ModelFilter, ModelService}
+import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
+import db.{ModelFilter, ModelService}
+import models.project.{Project, Visibility}
 import ore.OreConfig
 
 import akka.actor.Scheduler
-import models.project.{Project, Visibility}
 
 /**
   * Task to periodically retry failed Discourse requests.
@@ -37,15 +38,15 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
   override def run(): Unit = {
     Logger.debug("Running Discourse recovery task...")
 
-    val topicFilter: ModelFilter[Project] = ModelFilter[Project](_.topicId.isEmpty)
-    val dirtyFilter: ModelFilter[Project] = ModelFilter[Project](_.isTopicDirty)
+    val topicFilter = ModelFilter[Project](_.topicId.isEmpty)
+    val dirtyFilter = ModelFilter[Project](_.isTopicDirty)
 
-    this.projects.filter((topicFilter +&& Visibility.isPublicFilter).fn).foreach { toCreate =>
+    this.projects.filter(topicFilter && Visibility.isPublicFilter).foreach { toCreate =>
       Logger.debug(s"Creating ${toCreate.size} topics...")
       toCreate.foreach(this.api.createProjectTopic)
     }
 
-    this.projects.filter((dirtyFilter +&& Visibility.isPublicFilter).fn).foreach { toUpdate =>
+    this.projects.filter(dirtyFilter && Visibility.isPublicFilter).foreach { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} topics...")
       toUpdate.foreach(this.api.updateProjectTopic)
     }

@@ -5,8 +5,9 @@ import java.sql.Timestamp
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
+import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{Expirable, Model, ModelQuery, ObjectId, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjectId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
@@ -41,11 +42,8 @@ case class Session(
     */
   def user(implicit users: UserBase, ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] =
     users.withName(this.username)
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
-
 }
 object Session {
   implicit val query: ModelQuery[Session] =
-    ModelQuery.from[Session](TableQuery[SessionTable])
+    ModelQuery.from[Session](TableQuery[SessionTable], _.copy(_, _))
 }

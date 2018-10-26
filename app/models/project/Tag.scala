@@ -7,8 +7,9 @@ import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.OrePostgresDriver.api._
+import db.impl.model.common.Named
 import db.impl.schema.TagTable
-import db.{Model, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 
 import enumeratum.values._
 import slick.lifted.TableQuery
@@ -42,12 +43,10 @@ case class Tag(
       }
     } yield tag
   }
-
-  def copyWith(id: ObjectId, theTime: ObjectTimestamp): Tag = this.copy(id = id)
 }
 object Tag {
   implicit val query: ModelQuery[Tag] =
-    ModelQuery.from[Tag](TableQuery[TagTable])
+    ModelQuery.from[Tag](TableQuery[TagTable], (obj, id, _) => obj.copy(id))
 }
 
 sealed abstract class TagColor(val value: Int, val background: String, val foreground: String) extends IntEnumEntry

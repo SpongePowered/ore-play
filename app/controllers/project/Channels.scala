@@ -7,9 +7,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, AnyContent}
 
-import cats.data.EitherT
-import cats.instances.future._
-import cats.syntax.all._
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import db.ModelService
@@ -22,6 +19,9 @@ import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
 
+import cats.data.EitherT
+import cats.instances.future._
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 /**
@@ -56,7 +56,7 @@ class Channels @Inject()(forms: OreForms)(
         channel <- TableQuery[ChannelTable] if channel.projectId === request.project.id.value
       } yield (channel, TableQuery[VersionTable].filter(_.channelId === channel.id).length)
 
-      db.run(query.result).map(listWithVersionCount => Ok(views.list(request.data, listWithVersionCount)))
+      service.runDBIO(query.result).map(listWithVersionCount => Ok(views.list(request.data, listWithVersionCount)))
   }
 
   /**

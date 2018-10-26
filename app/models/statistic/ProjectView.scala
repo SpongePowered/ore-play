@@ -35,14 +35,12 @@ case class ProjectView(
 
   override type M = ProjectView
   override type T = ProjectViewsTable
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectView = this.copy(id = id, createdAt = theTime)
 }
 
 object ProjectView {
 
   implicit val query: ModelQuery[ProjectView] =
-    ModelQuery.from[ProjectView](TableQuery[ProjectViewsTable])
+    ModelQuery.from[ProjectView](TableQuery[ProjectViewsTable], _.copy(_, _))
 
   /**
     * Creates a new ProjectView to be (or not be) recorded from an incoming

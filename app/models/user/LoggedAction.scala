@@ -28,12 +28,10 @@ case class LoggedActionModel(
 
   override type T = LoggedActionTable
   override type M = LoggedActionModel
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionModel = this.copy(createdAt = theTime)
 }
 object LoggedActionModel {
   implicit val query: ModelQuery[LoggedActionModel] =
-    ModelQuery.from[LoggedActionModel](TableQuery[LoggedActionTable])
+    ModelQuery.from[LoggedActionModel](TableQuery[LoggedActionTable], (obj, _, time) => obj.copy(createdAt = time))
 }
 
 sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry

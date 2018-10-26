@@ -26,10 +26,8 @@ case class UnsafeDownload(
 
   override type M = UnsafeDownload
   override type T = UnsafeDownloadsTable
-
-  def copyWith(id: ObjectId, theTime: ObjectTimestamp): UnsafeDownload = this.copy(id = id, createdAt = theTime)
 }
 object UnsafeDownload {
   implicit val query: ModelQuery[UnsafeDownload] =
-    ModelQuery.from[UnsafeDownload](TableQuery[UnsafeDownloadsTable])
+    ModelQuery.from[UnsafeDownload](TableQuery[UnsafeDownloadsTable], _.copy(_, _))
 }

@@ -6,24 +6,15 @@ import play.api.i18n.Lang
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.StatTable
-import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityChangeColumns, VisibilityColumn}
-import db.table.{AssociativeTable, ModelTable, NameColumn}
+import db.impl.table.common.{DescriptionColumn, DownloadsColumn, NameColumn, VisibilityChangeColumns, VisibilityColumn}
+import db.table.{AssociativeTable, ModelTable}
 import db.{ObjectId, ObjectReference}
 import models.admin._
 import models.api.ProjectApiKey
 import models.project.{TagColor, _}
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
-import models.user.{
-  LoggedAction,
-  LoggedActionContext,
-  LoggedActionModel,
-  Notification,
-  Organization,
-  SignOn,
-  User,
-  Session => DbSession
-}
+import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, Notification, Organization, SignOn, User, Session => DbSession}
 import ore.Color
 import ore.permission.role.RoleType
 import ore.project.io.DownloadType
@@ -112,8 +103,7 @@ class ProjectSettingsTable(tag: RowTag) extends ModelTable[ProjectSettings](tag,
 
 }
 
-class ProjectWatchersTable(tag: RowTag)
-    extends AssociativeTable(tag, "project_watchers", classOf[Project], classOf[User]) {
+class ProjectWatchersTable(tag: RowTag) extends AssociativeTable(tag, "project_watchers") {
 
   def projectId = column[ObjectReference]("project_id")
   def userId    = column[ObjectReference]("user_id")
@@ -131,7 +121,7 @@ class ProjectViewsTable(tag: RowTag) extends StatTable[ProjectView](tag, "projec
 
 }
 
-class ProjectStarsTable(tag: RowTag) extends AssociativeTable(tag, "project_stars", classOf[User], classOf[Project]) {
+class ProjectStarsTable(tag: RowTag) extends AssociativeTable(tag, "project_stars") {
 
   def userId    = column[ObjectReference]("user_id")
   def projectId = column[ObjectReference]("project_id")
@@ -381,8 +371,7 @@ class OrganizationTable(tag: RowTag)
 
 }
 
-class OrganizationMembersTable(tag: RowTag)
-    extends AssociativeTable(tag, "organization_members", classOf[User], classOf[Organization]) {
+class OrganizationMembersTable(tag: RowTag) extends AssociativeTable(tag, "organization_members") {
 
   def userId         = column[ObjectReference]("user_id")
   def organizationId = column[ObjectReference]("organization_id")
@@ -426,8 +415,7 @@ class ProjectRoleTable(tag: RowTag)
 
 }
 
-class ProjectMembersTable(tag: RowTag)
-    extends AssociativeTable(tag, "project_members", classOf[Project], classOf[User]) {
+class ProjectMembersTable(tag: RowTag) extends AssociativeTable(tag, "project_members") {
 
   def projectId = column[ObjectReference]("project_id")
   def userId    = column[ObjectReference]("user_id")

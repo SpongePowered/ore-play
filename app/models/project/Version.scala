@@ -11,8 +11,8 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
-import db.impl.schema.{ReviewTable, VersionTable}
-import db.{Model, ModelFilter, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.schema.VersionTable
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -159,7 +159,7 @@ case class Version(
   }
 
   override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
-    service.access[VersionVisibilityChange](ModelFilter(_.versionId === id.value))
+    service.access(_.versionId === id.value)
 
   override def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
       implicit ec: ExecutionContext,
@@ -206,7 +206,7 @@ case class Version(
     * @return Recorded downloads
     */
   def downloadEntries(implicit service: ModelService): ModelAccess[VersionDownload] =
-    service.access[VersionDownload](ModelFilter(_.modelId === id.value))
+    service.access(_.modelId === id.value)
 
   /**
     * Returns a human readable file size for this Version.
@@ -230,7 +230,7 @@ case class Version(
         if v.hash === hash
       } yield v.id
 
-      service.doAction((baseQuery.length > 0).result)
+      service.runDBIO((baseQuery.length > 0).result)
     }
 
     if (this.projectId == -1) Future.successful(false)
@@ -242,28 +242,24 @@ case class Version(
       } yield hashExists && pExists
   }
 
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Version = this.copy(id = id, createdAt = theTime)
+  def reviewEntries(implicit service: ModelService): ModelAccess[Review] = service.access(_.versionId === id.value)
 
-  def byCreationDate(first: Review, second: Review): Boolean =
-    first.createdAt.value.getTime < second.createdAt.value.getTime
-  def reviewEntries(implicit service: ModelService): ModelAccess[Review] =
-    service.access[Review](ModelFilter(_.versionId === id.value))
-  def unfinishedReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] =
-    reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
+  def unfinishedReviews(implicit service: ModelService): Future[Seq[Review]] =
+    reviewEntries.sorted(_.createdAt, _.endedAt.?.isEmpty)
+
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
     OptionT(unfinishedReviews.map(_.headOption))
-  def mostRecentReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] =
-    reviewEntries.toSeq.map(_.sortWith(byCreationDate))
-  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
-    reviewEntries.find(equalsLong[ReviewTable](_.id, id))
-  def equalsLong[A <: Table[_]](int1: A => Rep[Long], int2: Long): A => Rep[Boolean] = int1(_) === int2
 
+  def mostRecentReviews(implicit service: ModelService): Future[Seq[Review]] = reviewEntries.sorted(_.createdAt)
+
+  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
+    reviewEntries.find(_.id === id)
 }
 
 object Version {
 
   implicit val query: ModelQuery[Version] =
-    ModelQuery.from[Version](TableQuery[VersionTable])
+    ModelQuery.from[Version](TableQuery[VersionTable], _.copy(_, _))
 
   /**
     * A helper class for easily building new Versions.

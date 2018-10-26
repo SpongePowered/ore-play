@@ -14,16 +14,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{
-  ChannelTable,
-  FlagTable,
-  LoggedActionViewTable,
-  ProjectTableMain,
-  ReviewTable,
-  TagTable,
-  UserTable,
-  VersionTable
-}
+import db.impl.schema.{ChannelTable, FlagTable, LoggedActionViewTable, ProjectTableMain, ReviewTable, TagTable, UserTable, VersionTable}
 import db.{ModelQuery, ModelService, ObjectReference}
 import form.OreForms
 import models.admin.Review
@@ -138,7 +129,7 @@ final class Application @Inject()(forms: OreForms)(
 
     def queryProjects: Future[Seq[(Project, User, Version, List[Tag])]] = {
       for {
-        projects <- service.doAction(projectQuery.result)
+        projects <- service.runDBIO(projectQuery.result)
         tags     <- Future.sequence(projects.map(_._3.tags))
       } yield {
         projects.zip(tags).map {
@@ -164,10 +155,10 @@ final class Application @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
       // TODO: Pages
       val data = this.service
-        .doAction(queryQueue.result)
+        .runDBIO(queryQueue.result)
         .flatMap { list =>
           service
-            .doAction(queryReviews(list.map(_._1.id.value)).result)
+            .runDBIO(queryReviews(list.map(_._1.id.value)).result)
             .map(_.groupBy(_._1.versionId))
             .tupleLeft(list)
         }
@@ -226,7 +217,7 @@ final class Application @Inject()(forms: OreForms)(
     } yield (flag, project, user)
 
     for {
-      seq <- service.doAction(query.result)
+      seq <- service.runDBIO(query.result)
       perms <- Future.traverse(seq.map(_._2)) { project =>
         request.user
           .trustIn(project)
@@ -281,7 +272,7 @@ final class Application @Inject()(forms: OreForms)(
       } yield (noTopicProject, dirtyTopicProject, staleProject, notPublicProject)
 
       (
-        service.doAction(query.result),
+        service.runDBIO(query.result),
         projects.missingFile.flatMap { versions =>
           Future.traverse(versions)(v => v.project.tupleLeft(v))
         }
@@ -318,14 +309,14 @@ final class Application @Inject()(forms: OreForms)(
 
           val flagQuery = TableQuery[FlagTable].withFilter(flag => flag.resolvedBy === id).take(20)
 
-          val reviews = service.doAction(reviewQuery.take(20).result).flatMap { seq =>
+          val reviews = service.runDBIO(reviewQuery.take(20).result).flatMap { seq =>
             Future.traverse(seq) {
               case (review, version) =>
                 projects.find(_.id === version.projectId).value.tupleLeft(review.asRight[Flag])
             }
           }
 
-          val flags = service.doAction(flagQuery.result).flatMap { seq =>
+          val flags = service.runDBIO(flagQuery.result).flatMap { seq =>
             Future.traverse(seq) { flag =>
               projects.find(_.id === flag.projectId).value.tupleLeft(flag.asLeft[Review])
             }
@@ -369,7 +360,7 @@ final class Application @Inject()(forms: OreForms)(
         * Query to get a count where columnDate is equal to the date
         */
       def last10DaysCountQuery(table: String, columnDate: String): Future[Seq[(String, String)]] = {
-        this.service.doAction(sql"""
+        this.service.runDBIO(sql"""
         SELECT
           (SELECT COUNT(*) FROM #$table WHERE CAST(#$columnDate AS DATE) = day),
           CAST(day AS DATE)
@@ -382,7 +373,7 @@ final class Application @Inject()(forms: OreForms)(
         */
       def last10DaysTotalOpen(table: String, columnStartDate: String, columnEndDate: String)
         : Future[Seq[(String, String)]] = {
-        this.service.doAction(sql"""
+        this.service.runDBIO(sql"""
         SELECT
           (SELECT COUNT(*) FROM #$table WHERE CAST(#$columnStartDate AS DATE) <= date.when AND (CAST(#$columnEndDate AS DATE) >= date.when OR #$columnEndDate IS NULL)) count,
           CAST(date.when AS DATE) AS days
@@ -431,7 +422,7 @@ final class Application @Inject()(forms: OreForms)(
       .take(pageSize)
 
     (
-      service.doAction(logQuery.result),
+      service.runDBIO(logQuery.result),
       service.access[LoggedActionModel]().size,
       request.currentUser.get.can(ViewIp).in(GlobalScope)
     ).mapN { (actions, size, canViewIP) =>
@@ -522,7 +513,7 @@ final class Application @Inject()(forms: OreForms)(
                 modelAccess
                   .get(id)
                   .filter(_.roleType.isAssignable)
-                  .semiflatMap(_.remove().as(Ok))
+                  .semiflatMap(service.delete(_).as(Ok))
             }
           }
 
@@ -579,14 +570,10 @@ final class Application @Inject()(forms: OreForms)(
           service.collect[Project](
             _.visibility === (Visibility.NeedsApproval: Visibility),
             ProjectSortingStrategies.Default.fn,
-            -1,
-            0
           ),
           service.collect[Project](
             _.visibility === (Visibility.NeedsChanges: Visibility),
             ProjectSortingStrategies.Default.fn,
-            -1,
-            0
           )
         ).tupled
         (lastChangeRequests, projectChangeRequests, lastVisibilityChanges, projectVisibilityChanges) <- (

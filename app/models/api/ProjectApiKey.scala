@@ -18,10 +18,8 @@ case class ProjectApiKey(
 
   override type T = ProjectApiKeyTable
   override type M = ProjectApiKey
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectApiKey = this.copy(id = id, createdAt = theTime)
 }
 object ProjectApiKey {
   implicit val query: ModelQuery[ProjectApiKey] =
-    ModelQuery.from[ProjectApiKey](TableQuery[ProjectApiKeyTable])
+    ModelQuery.from[ProjectApiKey](TableQuery[ProjectApiKeyTable], _.copy(_, _))
 }

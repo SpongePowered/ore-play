@@ -562,7 +562,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .exists { warn =>
         if (!warn.hasExpired) true
         else {
-          warn.remove()
+          service.delete(warn)
           false
         }
       }
@@ -714,7 +714,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .semiflatMap { warn =>
         val isInvalid = warn.hasExpired
         // warning has expired
-        val remove = if (isInvalid) warn.remove().void else Future.unit
+        val remove = if (isInvalid) service.delete(warn).void else Future.unit
 
         remove.as((warn, isInvalid))
       }

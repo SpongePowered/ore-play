@@ -73,15 +73,6 @@ case class Review(
       Seq()
     }
   }
-
-  /**
-    * Returns a copy of this model with an updated ID and timestamp.
-    *
-    * @param id      ID to set
-    * @param theTime Timestamp
-    * @return Copy of model
-    */
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
 }
 
 /**
@@ -118,5 +109,5 @@ object Review {
     Ordering.by(_.createdAt.value.getTime)
 
   implicit val query: ModelQuery[Review] =
-    ModelQuery.from[Review](TableQuery[ReviewTable])
+    ModelQuery.from[Review](TableQuery[ReviewTable], _.copy(_, _))
 }

@@ -9,8 +9,9 @@ import play.twirl.api.Html
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
+import db.impl.model.common.Named
 import db.impl.schema.PageTable
-import db.{Model, ModelFilter, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
@@ -138,7 +139,7 @@ case class Page(
     for {
       parent  <- OptionT.fromOption[Future](parentId)
       project <- parentProject
-      page    <- project.pages.find(ModelFilter[Page](_.id === parent).fn)
+      page    <- project.pages.find(_.id === parent)
     } yield page
 
   /**
@@ -154,20 +155,16 @@ case class Page(
     * @return Page's children
     */
   def children(implicit service: ModelService): ModelAccess[Page] =
-    service.access[Page](ModelFilter[Page](page => {
-      page.parentId.isDefined && page.parentId.get === this.id.value
-    }))
+    service.access(page => page.parentId.isDefined && page.parentId.get === this.id.value)
 
   def url(implicit project: Project, parentPage: Option[Page]): String =
     project.url + "/pages/" + this.fullSlug(parentPage)
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Page = this.copy(id = id, createdAt = theTime)
 }
 
 object Page {
 
   implicit val query: ModelQuery[Page] =
-    ModelQuery.from[Page](TableQuery[PageTable])
+    ModelQuery.from[Page](TableQuery[PageTable], _.copy(_, _))
 
   private object ExternalLinkResolver {
 

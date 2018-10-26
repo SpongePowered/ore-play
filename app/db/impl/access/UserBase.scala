@@ -28,8 +28,6 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
 
   import UserBase.UserOrdering
 
-  override val modelClass: Class[User] = classOf[User]
-
   implicit val self: UserBase = this
 
   /**
@@ -99,11 +97,11 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
         case UserOrdering.Projects | _ => baseQuery.sortBy(user => ordered(user._2))
       }
 
-      service.doAction(query.distinct.result).map(_.slice(offset, offset + pageSize))
+      service.runDBIO(query.distinct.result).map(_.slice(offset, offset + pageSize))
     } else {
       def distinctAuthors =
         for {
-          userIds <- service.doAction(TableQuery[ProjectTableMain].map(_.userId).distinct.result)
+          userIds <- service.runDBIO(TableQuery[ProjectTableMain].map(_.userId).distinct.result)
           inIds   <- this.in(userIds.toSet)
         } yield inIds.toSeq
 
@@ -153,7 +151,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
       .take(pageSize)
       .result
 
-    service.doAction(dbio)
+    service.runDBIO(dbio)
   }
 
   implicit val timestampOrdering: Ordering[Timestamp] = (x: Timestamp, y: Timestamp) => x.compareTo(y)
@@ -204,7 +202,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
   private def getSession(token: String)(implicit ec: ExecutionContext): OptionT[Future, Session] =
     this.service.access[Session]().find(_.token === token).subflatMap { session =>
       if (session.hasExpired) {
-        session.remove()
+        service.delete(session)
         None
       } else Some(session)
     }
@@ -226,7 +224,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
 object UserBase {
   def apply()(implicit userBase: UserBase): UserBase = userBase
 
-  implicit def fromService(implicit service: ModelService): UserBase = service.getModelBase(classOf[UserBase])
+  implicit def fromService(implicit service: ModelService): UserBase = service.userBase
 
   trait UserOrdering
   object UserOrdering {

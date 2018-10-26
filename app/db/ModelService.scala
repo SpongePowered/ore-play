@@ -4,17 +4,17 @@ import java.sql.Timestamp
 import java.util.Date
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Try
 
-import db.ModelFilter.IdFilter
+import db.ModelFilter._
 import db.access.{ModelAccess, ModelAssociationAccess}
+import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.table.{AssociativeTable, ModelTable}
 
 import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
-import slick.basic.DatabaseConfig
 import slick.jdbc.{JdbcProfile, JdbcType}
 import slick.lifted.ColumnOrdered
 
@@ -24,20 +24,10 @@ import slick.lifted.ColumnOrdered
 abstract class ModelService(val driver: JdbcProfile) {
   import driver.api._
 
-  /** All registered models. */
-  def registry: ModelRegistry
-
   /**
     * The default timeout when awaiting a query result.
     */
   def DefaultTimeout: Duration
-
-  /**
-    * The database config for raw actions. Note: running raw queries will not
-    * process any returned models and should be used only for model "meta-data"
-    * (e.g. Project stars).
-    */
-  def DB: DatabaseConfig[JdbcProfile]
 
   /**
     * Performs initialization code for the ModelService.
@@ -61,14 +51,11 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def await[M](f: Future[M], timeout: Duration = DefaultTimeout): Try[M] = Await.ready(f, timeout).value.get
 
-  /**
-    * Returns the specified [[ModelBase]].
-    *
-    * @param clazz  ModelBase class
-    * @tparam B     ModelBase type
-    * @return       ModelBase
-    */
-  def getModelBase[B <: ModelBase[_]](clazz: Class[B]): B = this.registry.getModelBase(clazz)
+  def userBase: UserBase
+
+  def projectBase: ProjectBase
+
+  def organizationBase: OrganizationBase
 
   /**
     * Returns the base query for the specified Model class.
@@ -79,13 +66,12 @@ abstract class ModelService(val driver: JdbcProfile) {
   def newAction[M <: Model](implicit query: ModelQuery[M]): Query[M#T, M, Seq] = query.baseQuery
 
   /**
-    * Runs the specified ModelAction on the DB and processes the resulting
-    * model(s).
+    * Runs the specified DBIO on the DB.
     *
     * @param action   Action to run
-    * @return         Processed result
+    * @return         Result
     */
-  def doAction[R](action: DBIO[R]): Future[R] = DB.db.run(action)
+  def runDBIO[R](action: DBIO[R]): Future[R]
 
   /**
     * Returns a new ModelAccess to access a ModelTable synchronously.
@@ -94,7 +80,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @tparam M         Model
     * @return           New ModelAccess
     */
-  def access[M <: Model: ModelQuery](baseFilter: ModelFilter[M] = ModelFilter[M]()) =
+  def access[M <: Model: ModelQuery](baseFilter: M#T => Rep[Boolean] = All[M]) =
     new ModelAccess[M](this, baseFilter)
 
   def associationAccess[Assoc <: AssociativeTable, P <: Model, C <: Model: ModelQuery](
@@ -108,20 +94,18 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M <: Model: ModelQuery](model: M): Future[M] = {
-    val toInsert = model.copyWith(ObjectId.Uninitialized, ObjectTimestamp(theTime)).asInstanceOf[M]
-    val models   = newAction[M]
-    doAction {
+  def insert[M <: Model](model: M)(implicit query: ModelQuery[M]): Future[M] = {
+    val toInsert = query.copyWith(model)(ObjectId.Uninitialized, ObjectTimestamp(theTime))
+    val models   = newAction
+    runDBIO {
       models.returning(models.map(_.id)).into {
-        case (m, id) => m.copyWith(ObjectId(id), m.createdAt).asInstanceOf[M]
+        case (m, id) => query.copyWith(m)(ObjectId(id), m.createdAt)
       } += toInsert
     }
   }
 
-  def update[M <: Model: ModelQuery](model: M)(implicit ec: ExecutionContext): Future[M] = {
-    val models = newAction[M]
-    doAction(models.filter(_.id === model.id.value).update(model)).as(model)
-  }
+  def update[M <: Model: ModelQuery](model: M)(implicit ec: ExecutionContext): Future[M] =
+    runDBIO(newAction.filter(IdFilter(model.id.value)).update(model)).as(model)
 
   def updateIfDefined[M <: Model: ModelQuery](model: M)(implicit ec: ExecutionContext): Future[M] =
     if (model.isDefined) update(model) else Future.successful(model)
@@ -138,14 +122,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def set[A, M <: Model: ModelQuery](model: M, column: M#T => Rep[A], value: A)(
       implicit mapper: JdbcType[A]
-  ): Future[Int] = {
-    doAction {
-      (for {
-        row <- newAction[M]
-        if row.id === model.id.value
-      } yield column(row)).update(value)
-    }
-  }
+  ): Future[Int] = runDBIO(newAction.filter(IdFilter(model.id.value)).map(column(_)).update(value))
 
   /**
     * Returns the first model that matches the given predicate.
@@ -155,26 +132,15 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def find[M <: Model: ModelQuery](filter: M#T => Rep[Boolean])(
       implicit ec: ExecutionContext
-  ): OptionT[Future, M] = {
-    val modelPromise = Promise[Option[M]]
-    val query        = newAction[M].filter(filter).take(1)
-    doAction(query.result).andThen {
-      case Failure(thrown) => modelPromise.failure(thrown)
-      case Success(result) => modelPromise.success(result.headOption)
-    }
-    OptionT(modelPromise.future)
-  }
+  ): OptionT[Future, M] = OptionT(runDBIO(newAction.filter(filter).take(1).result).map(_.headOption))
 
   /**
     * Returns the size of the model table.
     *
     * @return Size of model table
     */
-  def count[M <: Model: ModelQuery](filter: M#T => Rep[Boolean] = null): Future[Int] = {
-    var query = newAction[M]
-    if (filter != null) query = query.filter(filter)
-    doAction(query.length.result)
-  }
+  def count[M <: Model: ModelQuery](filter: M#T => Rep[Boolean] = All): Future[Int] =
+    runDBIO(newAction.filter(filter).length.result)
 
   /**
     * Deletes the specified Model.
@@ -182,7 +148,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param model Model to delete
     */
   def delete[M <: Model: ModelQuery](model: M): Future[Int] =
-    doAction(newAction[M].filter(IdFilter[M](model.id.value).fn).delete)
+    deleteWhere[M](IdFilter(model.id.value))
 
   /**
     * Deletes all the models meeting the specified filter.
@@ -191,7 +157,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @tparam M         Model
     */
   def deleteWhere[M <: Model: ModelQuery](filter: M#T => Rep[Boolean]): Future[Int] =
-    doAction(newAction[M].filter(filter).delete)
+    runDBIO(newAction.filter(filter).delete)
 
   /**
     * Returns the model with the specified ID, if any.
@@ -199,9 +165,9 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param id   Model with ID
     * @return     Model if present, None otherwise
     */
-  def get[M <: Model: ModelQuery](id: ObjectReference, filter: M#T => Rep[Boolean] = null)(
+  def get[M <: Model: ModelQuery](id: ObjectReference, filter: M#T => Rep[Boolean] = All)(
       implicit ec: ExecutionContext
-  ): OptionT[Future, M] = find[M]((IdFilter[M](id) && filter).fn)
+  ): OptionT[Future, M] = find(IdFilter[M](id) && filter)
 
   /**
     * Returns a sequence of Model's that have an ID in the specified Set.
@@ -213,8 +179,8 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def in[M <: Model: ModelQuery](
       ids: Set[ObjectReference],
-      filter: M#T => Rep[Boolean] = null
-  ): Future[Seq[M]] = this.filter[M]((ModelFilter[M](_.id.inSetBind(ids)) && filter).fn)
+      filter: M#T => Rep[Boolean] = All
+  ): Future[Seq[M]] = this.filter(ModelFilter[M](_.id.inSetBind(ids)) && filter)
 
   /**
     * Returns a collection of models with the specified limit and offset.
@@ -224,17 +190,16 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @return       Collection of models
     */
   def collect[M <: Model: ModelQuery](
-      filter: M#T => Rep[Boolean] = null,
+      filter: M#T => Rep[Boolean] = All,
       sort: M#T => ColumnOrdered[_] = null,
       limit: Int = -1,
       offset: Int = -1
   ): Future[Seq[M]] = {
-    var query = newAction[M]
-    if (filter != null) query = query.filter(filter)
+    var query = newAction.filter(filter)
     if (sort != null) query = query.sortBy(sort)
     if (offset > -1) query = query.drop(offset)
     if (limit > -1) query = query.take(limit)
-    doAction(query.result)
+    runDBIO(query.result)
   }
 
   /**
@@ -263,7 +228,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def sorted[M <: Model: ModelQuery](
       sort: M#T => ColumnOrdered[_],
-      filter: M#T => Rep[Boolean] = null,
+      filter: M#T => Rep[Boolean] = All,
       limit: Int = -1,
       offset: Int = -1
   ): Future[Seq[M]] = collect(filter, sort, limit, offset)

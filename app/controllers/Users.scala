@@ -10,7 +10,6 @@ import play.api.i18n.MessagesApi
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.{ProjectTableMain, VersionTable}
@@ -146,7 +145,7 @@ class Users @Inject()(
         for {
           // TODO include orga projects?
           (projectSeq, starred, orga) <- (
-            service.doAction(queryUserProjects(user).drop(offset).take(pageSize).result),
+            service.runDBIO(queryUserProjects(user).drop(offset).take(pageSize).result),
             user.starred(),
             getOrga(username).value
           ).tupled

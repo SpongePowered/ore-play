@@ -12,26 +12,9 @@ import play.twirl.api.Html
 
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.{Describable, Downloadable, Hideable}
-import db.impl.schema.{
-  ProjectMembersTable,
-  ProjectRoleTable,
-  ProjectStarsTable,
-  ProjectTable,
-  ProjectTableMain,
-  ProjectWatchersTable
-}
-import db.{
-  AssociationQuery,
-  Model,
-  ModelFilter,
-  ModelQuery,
-  ModelService,
-  Named,
-  ObjectId,
-  ObjectReference,
-  ObjectTimestamp
-}
+import db.impl.model.common.{Describable, Downloadable, Hideable, Named}
+import db.impl.schema.{ProjectMembersTable, ProjectRoleTable, ProjectStarsTable, ProjectTable, ProjectTableMain, ProjectWatchersTable}
+import db.{AssociationQuery, Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public
@@ -170,7 +153,7 @@ case class Project(
     * @return Users watching project
     */
   def watchers(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, Project, User] =
-    service.associationAccess[ProjectWatchersTable, Project, User](this)
+    service.associationAccess(this)
 
   def namespace: String = this.ownerName + '/' + this.slug
 
@@ -255,7 +238,7 @@ case class Project(
     * Get VisibilityChanges
     */
   override def visibilityChanges(implicit service: ModelService): ModelAccess[ProjectVisibilityChange] =
-    service.access[ProjectVisibilityChange](ModelFilter(_.projectId === id.value))
+    service.access(_.projectId === id.value)
 
   /**
     * Returns [[db.access.ModelAccess]] to [[User]]s who have starred this
@@ -264,7 +247,7 @@ case class Project(
     * @return Users who have starred this project
     */
   def stars(implicit service: ModelService): ModelAssociationAccess[ProjectStarsTable, Project, User] =
-    Defined(service.associationAccess[ProjectStarsTable, Project, User](this))
+    Defined(service.associationAccess(this))
 
   /**
     * Sets the "starred" state of this Project for the specified User.
@@ -295,8 +278,7 @@ case class Project(
     *
     * @return Unique project views
     */
-  def views(implicit service: ModelService): ModelAccess[ProjectView] =
-    service.access[ProjectView](ModelFilter(_.modelId === id.value))
+  def views(implicit service: ModelService): ModelAccess[ProjectView] = service.access(_.modelId === id.value)
 
   /**
     * Adds a view to this Project.
@@ -317,8 +299,7 @@ case class Project(
     *
     * @return Flags on project
     */
-  def flags(implicit service: ModelService): ModelAccess[Flag] =
-    service.access[Flag](ModelFilter(_.projectId === id.value))
+  def flags(implicit service: ModelService): ModelAccess[Flag] = service.access(_.projectId === id.value)
 
   /**
     * Submits a flag on this project for the specified user.
@@ -343,16 +324,14 @@ case class Project(
     *
     * @return Channels in project
     */
-  def channels(implicit service: ModelService): ModelAccess[Channel] =
-    service.access[Channel](ModelFilter(_.projectId === id.value))
+  def channels(implicit service: ModelService): ModelAccess[Channel] = service.access(_.projectId === id.value)
 
   /**
     * Returns all versions in this project.
     *
     * @return Versions in project
     */
-  def versions(implicit service: ModelService): ModelAccess[Version] =
-    service.access[Version](ModelFilter(_.projectId === id.value))
+  def versions(implicit service: ModelService): ModelAccess[Version] = service.access(_.projectId === id.value)
 
   /**
     * Returns this Project's recommended version.
@@ -376,8 +355,7 @@ case class Project(
     *
     * @return Pages in project
     */
-  def pages(implicit service: ModelService): ModelAccess[Page] =
-    service.access[Page](ModelFilter(_.projectId === id.value))
+  def pages(implicit service: ModelService): ModelAccess[Page] = service.access(_.projectId === id.value)
 
   private def getOrInsert(page: Page)(implicit service: ModelService, ec: ExecutionContext): Future[Page] = {
     def like =
@@ -447,11 +425,7 @@ case class Project(
     loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog(projectId = this.id.value)))
   }
 
-  def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] =
-    service.access[ProjectApiKey](ModelFilter(_.projectId === id.value))
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Project =
-    this.copy(id = id, createdAt = theTime, lastUpdated = theTime.value)
+  def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] = service.access(_.projectId === id.value)
 
   /**
     * Add new note
@@ -511,7 +485,10 @@ object Note {
 object Project {
 
   implicit val query: ModelQuery[Project] =
-    ModelQuery.from[Project](TableQuery[ProjectTableMain])
+    ModelQuery.from[Project](
+      TableQuery[ProjectTableMain],
+      (obj, id, time) => obj.copy(id = id, createdAt = time, lastUpdated = time.value)
+    )
 
   implicit val assocWatchersQuery: AssociationQuery[ProjectWatchersTable, Project, User] =
     AssociationQuery.from(TableQuery[ProjectWatchersTable])(_.projectId, _.userId)

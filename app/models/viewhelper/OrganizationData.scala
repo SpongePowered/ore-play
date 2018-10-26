@@ -14,7 +14,6 @@ import ore.permission.role.Role
 
 import cats.data.OptionT
 import cats.instances.future._
-import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 case class OrganizationData(
@@ -34,15 +33,14 @@ object OrganizationData {
   def cacheKey(orga: Organization): String = "organization" + orga.id.value
 
   def of[A](orga: Organization)(
-      implicit db: JdbcBackend#DatabaseDef,
-      ec: ExecutionContext,
+      implicit ec: ExecutionContext,
       service: ModelService
   ): Future[OrganizationData] =
     for {
       members      <- orga.memberships.members(orga)
       memberRoles  <- Future.traverse(members)(_.headRole)
       memberUser   <- Future.traverse(memberRoles)(_.user)
-      projectRoles <- db.run(queryProjectRoles(orga.id.value).result)
+      projectRoles <- service.runDBIO(queryProjectRoles(orga.id.value).result)
     } yield {
       val members = memberRoles.zip(memberUser)
       OrganizationData(orga, members.toSeq, projectRoles)
@@ -55,8 +53,7 @@ object OrganizationData {
     } yield (role, project)
 
   def of[A](orga: Option[Organization])(
-      implicit db: JdbcBackend#DatabaseDef,
-      ec: ExecutionContext,
+      implicit ec: ExecutionContext,
       service: ModelService
   ): OptionT[Future, OrganizationData] = OptionT.fromOption[Future](orga).semiflatMap(of)
 }

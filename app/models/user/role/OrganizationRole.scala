@@ -3,7 +3,7 @@ package models.user.role
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.OrganizationRoleTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
 import ore.organization.OrganizationOwned
 import ore.permission.role.RoleType
@@ -37,9 +37,8 @@ case class OrganizationRole(
     this(id = ObjectId.Uninitialized, userId = userId, organizationId = organizationId, roleType = roleType)
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model                          = this.copy(id = id, createdAt = theTime)
 }
 object OrganizationRole {
   implicit val query: ModelQuery[OrganizationRole] =
-    ModelQuery.from[OrganizationRole](TableQuery[OrganizationRoleTable])
+    ModelQuery.from[OrganizationRole](TableQuery[OrganizationRoleTable], _.copy(_, _))
 }

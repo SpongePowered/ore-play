@@ -51,9 +51,8 @@ case class ProjectRole(
   )
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.project
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectRole                    = this.copy(id = id, createdAt = theTime)
 }
 object ProjectRole {
   implicit val query: ModelQuery[ProjectRole] =
-    ModelQuery.from[ProjectRole](TableQuery[ProjectRoleTable])
+    ModelQuery.from[ProjectRole](TableQuery[ProjectRoleTable], _.copy(_, _))
 }

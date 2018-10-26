@@ -4,8 +4,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
+import db.impl.model.common.Named
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
-import db.{AssociationQuery, Model, ModelQuery, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{AssociationQuery, Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Default, RoleType, Trust}
@@ -82,16 +83,14 @@ case class Organization(
   def toUser(implicit ec: ExecutionContext, users: UserBase, auth: SpongeAuthApi): OptionT[Future, User] =
     users.withName(this.username)
 
-  override val name: String                                            = this.username
-  override def url: String                                             = this.username
-  override val userId: ObjectReference                                 = this.ownerId
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(createdAt = theTime)
-
+  override val name: String            = this.username
+  override def url: String             = this.username
+  override val userId: ObjectReference = this.ownerId
 }
 
 object Organization {
   implicit val query: ModelQuery[Organization] =
-    ModelQuery.from[Organization](TableQuery[OrganizationTable])
+    ModelQuery.from[Organization](TableQuery[OrganizationTable], (obj, _, time) => obj.copy(createdAt = time))
 
   implicit val assocMembersQuery: AssociationQuery[OrganizationMembersTable, Organization, User] =
     AssociationQuery.from(TableQuery[OrganizationMembersTable])(_.organizationId, _.userId)
@@ -116,7 +115,7 @@ object Organization {
       userId: ObjectReference,
       orgId: ObjectReference
   )(implicit ex: ExecutionContext, service: ModelService): Future[Trust] =
-    service.DB.db
-      .run(Organization.roleForTrustQuery((orgId, userId)).result)
+    service
+      .runDBIO(Organization.roleForTrustQuery((orgId, userId)).result)
       .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Default))
 }

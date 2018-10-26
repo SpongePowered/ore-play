@@ -22,10 +22,8 @@ case class SignOn(
 
   override type M = SignOn
   override type T = SignOnTable
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): SignOn = this.copy(id = id, createdAt = theTime)
 }
 object SignOn {
   implicit val query: ModelQuery[SignOn] =
-    ModelQuery.from[SignOn](TableQuery[SignOnTable])
+    ModelQuery.from[SignOn](TableQuery[SignOnTable], _.copy(_, _))
 }

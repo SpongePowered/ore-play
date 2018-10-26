@@ -3,6 +3,7 @@ package db.impl.model.common
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.access.ModelAccess
+import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.VisibilityColumn
 import db.{Model, ModelService, ObjectReference}
 import models.project.Visibility
@@ -42,25 +43,20 @@ trait Hideable extends Model { self =>
     */
   def visibilityChanges(implicit service: ModelService): ModelAccess[ModelVisibilityChange]
 
-  def visibilityChangesByDate(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[Seq[ModelVisibilityChange]] =
-    visibilityChanges.all.map(_.toSeq.sortWith(byCreationDate))
-
-  def byCreationDate(first: ModelVisibilityChange, second: ModelVisibilityChange): Boolean =
-    first.createdAt.value.getTime < second.createdAt.value.getTime
+  def visibilityChangesByDate(implicit service: ModelService): Future[Seq[ModelVisibilityChange]] =
+    visibilityChanges.sorted(_.createdAt)
 
   def lastVisibilityChange(
       implicit ec: ExecutionContext,
       service: ModelService
   ): OptionT[Future, ModelVisibilityChange] =
-    OptionT(visibilityChanges.all.map(_.toSeq.filter(cr => !cr.isResolved).sortWith(byCreationDate).headOption))
+    OptionT(visibilityChanges.sorted(_.createdAt, _.resolvedAt.?.isEmpty, limit = 1).map(_.headOption))
 
   def lastChangeRequest(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, ModelVisibilityChange] =
     OptionT(
-      visibilityChanges.all
-        .map(_.toSeq.filter(cr => cr.visibility == Visibility.NeedsChanges).sortWith(byCreationDate).lastOption)
+      visibilityChanges
+        .sorted(_.createdAt.desc, _.visibility === (Visibility.NeedsChanges: Visibility), limit = 1)
+        .map(_.headOption)
     )
 
 }

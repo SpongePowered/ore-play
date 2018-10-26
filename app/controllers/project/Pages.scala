@@ -72,7 +72,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     val parts = page.split("/").map(page => UriEncoding.decodePathSegment(page, StandardCharsets.UTF_8))
 
     if (parts.length == 2) {
-      OptionT(service.doAction(childPageQuery((parts(0), parts(1))).result.headOption)).map(_ -> false)
+      OptionT(service.runDBIO(childPageQuery((parts(0), parts(1))).result.headOption)).map(_ -> false)
     } else {
       project.pages
         .find(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId.isEmpty)
@@ -211,7 +211,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     PageEditAction(author, slug).async { request =>
       withPage(request.project, page).value.flatMap { optionPage =>
         optionPage
-          .fold(Future.unit)(_._1.remove().void)
+          .fold(Future.unit)(t => service.delete(t._1).void)
           .as(Redirect(routes.Projects.show(author, slug)))
       }
     }

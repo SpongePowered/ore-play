@@ -128,7 +128,7 @@ case class ProjectSettings(
               )
             }
 
-            service.doAction(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
+            service.runDBIO(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
           }
           .flatMap { _ =>
             // Update existing roles
@@ -137,7 +137,7 @@ case class ProjectSettings(
             val usersTable = TableQuery[UserTable]
             // Select member userIds
             service
-              .doAction(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
+              .runDBIO(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
               .map { userIds =>
                 userIds.zip(
                   formData.roleUps.map { role =>
@@ -152,7 +152,7 @@ case class ProjectSettings(
                   case (userId, role) => updateMemberShip(userId).update(role)
                 }
               }
-              .flatMap(updates => service.doAction(DBIO.sequence(updates)).as(t))
+              .flatMap(updates => service.runDBIO(DBIO.sequence(updates)).as(t))
           }
       } else Future.successful(t)
     }
@@ -164,11 +164,8 @@ case class ProjectSettings(
     } yield m.roleType
 
   private lazy val updateMemberShip = Compiled(memberShipUpdate _)
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectSettings =
-    this.copy(id = id, createdAt = theTime)
 }
 object ProjectSettings {
   implicit val query: ModelQuery[ProjectSettings] =
-    ModelQuery.from[ProjectSettings](TableQuery[ProjectSettingsTable])
+    ModelQuery.from[ProjectSettings](TableQuery[ProjectSettingsTable], _.copy(_, _))
 }

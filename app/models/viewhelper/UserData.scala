@@ -17,7 +17,6 @@ import ore.permission.scope.GlobalScope
 import cats.instances.future._
 import cats.instances.option._
 import cats.syntax.all._
-import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 // TODO separate Scoped UserData
@@ -59,15 +58,14 @@ object UserData {
     } yield (org, orgUser, role, owner)
 
   def of[A](request: OreRequest[A], user: User)(
-      implicit db: JdbcBackend#DatabaseDef,
-      ec: ExecutionContext,
+      implicit ec: ExecutionContext,
       service: ModelService
   ): Future[UserData] =
     for {
       isOrga                 <- user.toMaybeOrganization.isDefined
       projectCount           <- user.projects.size
       (userPerms, orgaPerms) <- perms(request.currentUser)
-      orgas                  <- db.run(queryRoles(user).result)
+      orgas                  <- service.runDBIO(queryRoles(user).result)
     } yield UserData(request.headerData, user, isOrga, projectCount, orgas, userPerms, orgaPerms)
 
   def perms(currentUser: Option[User])(

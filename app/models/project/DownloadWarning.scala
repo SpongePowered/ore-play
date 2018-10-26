@@ -7,8 +7,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.mvc.Cookie
 
 import controllers.sugar.Bakery
+import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{Expirable, Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.DownloadWarning.COOKIE
 
 import cats.data.OptionT
@@ -61,15 +62,12 @@ case class DownloadWarning(
     checkNotNull(this.token, "null token", "")
     bakery.bake(COOKIE + "_" + this.versionId, this.token)
   }
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): DownloadWarning =
-    this.copy(id = id, createdAt = theTime)
 }
 
 object DownloadWarning {
 
   implicit val query: ModelQuery[DownloadWarning] =
-    ModelQuery.from[DownloadWarning](TableQuery[DownloadWarningsTable])
+    ModelQuery.from[DownloadWarning](TableQuery[DownloadWarningsTable], _.copy(_, _))
 
   /**
     * Cookie identifier name.

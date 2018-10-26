@@ -156,7 +156,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
     val futUsers =
-      service.doAction(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
+      service.runDBIO(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
         list
           .filter {
             case (_, Some(level)) => level.trust.level >= Lifted.level
@@ -178,7 +178,7 @@ final class Reviews @Inject()(forms: OreForms)(
         }
       }
       .map(TableQuery[NotificationTable] ++= _)
-      .flatMap(service.doAction) // Batch insert all notifications
+      .flatMap(service.runDBIO) // Batch insert all notifications
   }
 
   def takeoverReview(author: String, slug: String, versionString: String): Action[String] = {
