@@ -10,7 +10,6 @@ import play.api.i18n.MessagesApi
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.{ProjectTableMain, VersionTable}
@@ -153,7 +152,7 @@ class Users @Inject()(
           (tagsSeq, userData, starredRv, orgaData, scopedOrgaData) <- (
             Future.sequence(projectSeq.map(_._2.tags)),
             getUserData(request, username).value,
-            Future.sequence(starred.map(_.recommendedVersion)),
+            Future.sequence(starred.map(_.recommendedVersion.value)),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).tupled

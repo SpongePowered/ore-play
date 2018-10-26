@@ -742,9 +742,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommended(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
-      request.project.recommendedVersion.flatMap { rv =>
-        sendVersion(request.project, rv, token)
-      }
+      request.project.recommendedVersion
+        .toRight(NotFound)
+        .semiflatMap(sendVersion(request.project, _, token))
+        .merge
     }
   }
 
@@ -821,9 +822,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommendedJar(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
-      request.project.recommendedVersion.flatMap { rv =>
-        sendJar(request.project, rv, token)
-      }
+      request.project.recommendedVersion
+        .toRight(NotFound)
+        .semiflatMap(sendJar(request.project, _, token))
+        .merge
     }
   }
 
@@ -859,9 +861,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def downloadRecommendedJarById(pluginId: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(pluginId).async { implicit request =>
       val data = request.data
-      data.project.recommendedVersion.flatMap { rv =>
-        sendJar(data.project, rv, token, api = true)
-      }
+      data.project.recommendedVersion
+        .toRight(NotFound)
+        .semiflatMap(sendJar(data.project, _, token, api = true))
+        .merge
     }
   }
 
@@ -901,7 +904,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommendedSignature(author: String, slug: String): Action[AnyContent] =
     ProjectAction(author, slug).async { implicit request =>
-      request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
+      request.project.recommendedVersion.toRight(NotFound).map(sendSignatureFile(_, request.project)).merge
     }
 
   /**
@@ -912,7 +915,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommendedSignatureById(pluginId: String): Action[AnyContent] = ProjectAction(pluginId).async {
     implicit request =>
-      request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
+      request.project.recommendedVersion.toRight(NotFound).map(sendSignatureFile(_, request.project)).merge
   }
 
   private def sendSignatureFile(version: Version, project: Project)(implicit request: OreRequest[_]): Result = {

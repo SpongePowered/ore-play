@@ -13,7 +13,7 @@ scalacOptions ++= Seq(
   "-feature",
   "-unchecked",
   "-Xcheckinit",
-  "-Xfatal-warnings",
+  //"-Xfatal-warnings",
   "-Xlint:adapted-args",
   "-Xlint:by-name-right-associative",
   "-Xlint:constant",

@@ -181,10 +181,10 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       proj <- version.project
       size <- proj.versions.count(_.visibility === (Visibility.Public: Visibility))
       _ = checkArgument(size > 1, "only one public version", "")
-      rv       <- proj.recommendedVersion
+      rv       <- proj.recommendedVersion.value
       projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
       res <- {
-        if (version == rv)
+        if (rv.contains(version))
           service.update(
             proj.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id.value))
           )

@@ -36,6 +36,7 @@ import ore.{Joinable, OreConfig, Visitable}
 import _root_.util.StringUtils
 import _root_.util.StringUtils._
 
+import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
@@ -349,17 +350,8 @@ case class Project(
     *
     * @return Recommended version
     */
-  def recommendedVersion(implicit ec: ExecutionContext, service: ModelService): Future[Version] =
-    this.versions
-      .get(
-        this.recommendedVersionId
-          .getOrElse(throw new NoSuchElementException(s"Tried to get non-existant recommended version for $name"))
-      )
-      .getOrElse(
-        throw new NoSuchElementException(
-          s"Tried to get non-existant recommended version for $name and id ${recommendedVersionId.get}"
-        )
-      )
+  def recommendedVersion(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Version] =
+    OptionT.fromOption[Future](recommendedVersionId).flatMap(versions.get)
 
   /**
     * Returns the pages in this Project.
