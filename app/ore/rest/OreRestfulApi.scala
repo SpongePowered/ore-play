@@ -10,7 +10,16 @@ import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
-import db.impl.schema.{ChannelTable, ProjectRoleTable, ProjectStarsTable, ProjectTableMain, ProjectTag, TagTable, UserTable, VersionTable}
+import db.impl.schema.{
+  ChannelTable,
+  ProjectRoleTable,
+  ProjectStarsTable,
+  ProjectTableMain,
+  ProjectTag,
+  TagTable,
+  UserTable,
+  VersionTable
+}
 import db.{ModelService, ObjectReference}
 import models.project._
 import models.user.User

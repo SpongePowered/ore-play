@@ -14,7 +14,16 @@ import models.api.ProjectApiKey
 import models.project.{TagColor, _}
 import models.statistic.{ProjectView, VersionDownload}
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
-import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, Notification, Organization, SignOn, User, Session => DbSession}
+import models.user.{
+  LoggedAction,
+  LoggedActionContext,
+  LoggedActionModel,
+  Notification,
+  Organization,
+  SignOn,
+  User,
+  Session => DbSession
+}
 import ore.Color
 import ore.permission.role.RoleType
 import ore.project.io.DownloadType
