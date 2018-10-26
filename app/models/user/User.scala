@@ -10,26 +10,8 @@ import play.api.mvc.Request
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
-import db.impl.schema.{
-  OrganizationMembersTable,
-  OrganizationRoleTable,
-  OrganizationTable,
-  ProjectMembersTable,
-  ProjectStarsTable,
-  ProjectWatchersTable,
-  UserTable
-}
-import db.{
-  AssociationQuery,
-  Model,
-  ModelFilter,
-  ModelQuery,
-  ModelService,
-  Named,
-  ObjectId,
-  ObjectReference,
-  ObjectTimestamp
-}
+import db.impl.schema._
+import db._
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.OreConfig
@@ -150,25 +132,24 @@ case class User(
           val projectTrust = projectRoles
             .map(biggestRoleTpe)
             .flatMap { userTrust =>
-              if (userTrust != Default) {
-                Future.successful(userTrust)
-              } else {
+              val projectsTable = TableQuery[ProjectTableMain]
+              val orgaTable     = TableQuery[OrganizationTable]
+              val memberTable   = TableQuery[OrganizationMembersTable]
+              val roleTable     = TableQuery[OrganizationRoleTable]
 
-                val projectMembersTable = TableQuery[ProjectMembersTable]
-                val orgaTable           = TableQuery[OrganizationTable]
+              val query = for {
+                p <- projectsTable if projectId.bind === p.id
+                o <- orgaTable if p.userId === o.id
+                m <- memberTable if m.organizationId === o.id && m.userId === this.userId.bind
+                r <- roleTable if this.userId.bind === r.userId && r.organizationId === o.id
+              } yield r.roleType
 
-                val memberTable = TableQuery[OrganizationMembersTable]
-                val roleTable   = TableQuery[OrganizationRoleTable]
-
-                // TODO review permission logic
-                val query = for {
-                  pm <- projectMembersTable if pm.projectId === projectId // Join members of project
-                  o  <- orgaTable if pm.userId == o.userId // Filter out non organizations
-                  m  <- memberTable if m.organizationId === o.id
-                  r  <- roleTable if m.userId === r.userId && r.organizationId === o.id
-                } yield r.roleType
-
-                service.doAction(query.to[Set].result).map(biggestRoleTpe)
+              service.doAction(query.to[Set].result).map { roleTypes =>
+                if (roleTypes.contains(RoleType.OrganizationAdmin) || roleTypes.contains(RoleType.OrganizationOwner)) {
+                  biggestRoleTpe(roleTypes)
+                } else {
+                  userTrust
+                }
               }
             }
 
