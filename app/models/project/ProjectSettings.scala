@@ -74,7 +74,7 @@ case class ProjectSettings(
       u.name
     }
 
-    val updateProject = service.doAction(queryOwnerName.result).flatMap { ownerName =>
+    val updateProject = service.runDBIO(queryOwnerName.result).flatMap { ownerName =>
       service.updateIfDefined(
         project.copy(
           category = Category.values.find(_.title == formData.categoryName).get,
