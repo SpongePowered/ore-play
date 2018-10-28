@@ -361,8 +361,23 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                               .map(_._1)
                               .flatTap { newVersion =>
                                 if (versionData.recommended)
-                                  service.update(project.copy(recommendedVersionId = Some(newVersion.id.value))).void
-                                else Future.unit
+                                  service
+                                    .update(
+                                      project.copy(
+                                        recommendedVersionId = Some(newVersion.id.value),
+                                        lastUpdated = new Timestamp(new Date().getTime)
+                                      )
+                                    )
+                                    .void
+                                else
+                                  service
+                                    .update(
+                                      project.copy(
+                                        recommendedVersionId = Some(newVersion.id.value),
+                                        lastUpdated = new Timestamp(new Date().getTime)
+                                      )
+                                    )
+                                    .void
                               }
                               .flatTap(addUnstableTag(_, versionData.unstable))
                               .flatTap { newVersion =>
