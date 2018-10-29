@@ -10,7 +10,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
-import db.access.{ModelAccess, ModelAssociationAccess}
+import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.{Describable, Downloadable, Hideable, Named}
 import db.impl.schema.{
@@ -159,8 +159,11 @@ case class Project(
     *
     * @return Users watching project
     */
-  def watchers(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, Project, User] =
-    service.associationAccess(this)
+  def watchers(
+      implicit service: ModelService,
+      ec: ExecutionContext
+  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, Future] =
+    new ModelAssociationAccessImpl
 
   def namespace: String = this.ownerName + '/' + this.slug
 
@@ -253,8 +256,10 @@ case class Project(
     *
     * @return Users who have starred this project
     */
-  def stars(implicit service: ModelService): ModelAssociationAccess[ProjectStarsTable, Project, User] =
-    Defined(service.associationAccess(this))
+  def stars(
+      implicit service: ModelService,
+      ec: ExecutionContext
+  ): ModelAssociationAccess[ProjectStarsTable, Project, User, Future] = new ModelAssociationAccessImpl
 
   /**
     * Sets the "starred" state of this Project for the specified User.
@@ -269,13 +274,13 @@ case class Project(
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     for {
-      contains <- this.stars.contains(user)
+      contains <- this.stars.contains(this, user)
       res <- if (starred) {
         if (!contains) {
-          this.stars.add(user) *> service.update(copy(starCount = starCount + 1))
+          this.stars.addAssoc(this, user) *> service.update(copy(starCount = starCount + 1))
         } else Future.successful(this)
       } else if (contains) {
-        this.stars.remove(user) *> service.update(copy(starCount = starCount - 1))
+        this.stars.removeAssoc(this, user) *> service.update(copy(starCount = starCount - 1))
       } else Future.successful(this)
     } yield res
   }

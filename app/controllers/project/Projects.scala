@@ -68,13 +68,13 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showCreator(): Action[AnyContent] = UserLock().async { implicit request =>
     for {
-      orgas      <- request.user.organizations.all
+      orgas      <- request.user.organizations.allFromParent(request.user)
       createOrga <- Future.traverse(orgas)(request.user.can(CreateProject).in(_))
     } yield {
       val createdOrgas = orgas.zip(createOrga).collect {
         case (orga, true) => orga
       }
-      Ok(views.create(createdOrgas.toSeq, None))
+      Ok(views.create(createdOrgas, None))
     }
   }
 
@@ -123,13 +123,13 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       case None => Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
       case Some(pending) =>
         for {
-          (orgas, owner) <- (request.user.organizations.all, pending.underlying.owner.user).tupled
+          (orgas, owner) <- (request.user.organizations.allFromParent(request.user), pending.underlying.owner.user).tupled
           createOrga     <- Future.traverse(orgas)(owner.can(CreateProject).in(_))
         } yield {
           val createdOrgas = orgas.zip(createOrga).collect {
             case (orga, true) => orga
           }
-          Ok(views.create(createdOrgas.toSeq, Some(pending)))
+          Ok(views.create(createdOrgas, Some(pending)))
         }
     }
   }
@@ -184,7 +184,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
   private def orgasUserCanUploadTo(user: User): Future[Set[ObjectReference]] = {
     for {
-      all       <- user.organizations.all
+      all       <- user.organizations.allFromParent(user)
       canCreate <- Future.traverse(all)(org => user.can(CreateProject).in(org).tupleLeft(org.id.value))
     } yield {
       // Filter by can Create Project
@@ -192,7 +192,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         case (id, true) => id
       }
 
-      others + user.id.value // Add self
+      others.toSet + user.id.value // Add self
     }
   }
 

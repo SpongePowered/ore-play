@@ -8,9 +8,9 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
 
 import db.ModelFilter._
-import db.access.{ModelAccess, ModelAssociationAccess}
+import db.access.ModelAccess
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import db.table.{AssociativeTable, ModelTable}
+import db.table.ModelTable
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -82,11 +82,6 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def access[M <: Model: ModelQuery](baseFilter: M#T => Rep[Boolean] = All[M]) =
     new ModelAccess[M](this, baseFilter)
-
-  def associationAccess[Assoc <: AssociativeTable, P <: Model, C <: Model: ModelQuery](
-      p: P
-  )(implicit query: AssociationQuery[Assoc, P, C]): ModelAssociationAccess[Assoc, P, C] =
-    new ModelAssociationAccess[Assoc, P, C](this, p)
 
   /**
     * Creates the specified model in it's table.

@@ -4,7 +4,7 @@ import scala.language.{higherKinds, implicitConversions}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.access.{ModelAccess, ModelAssociationAccess}
+import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
 import db.table.AssociativeTable
@@ -89,7 +89,7 @@ trait MembershipDossier[F[_], M <: Model] {
     * @param user User to remove
     * @return
     */
-  def removeMember(model: M, user: User): F[Int]
+  def removeMember(model: M, user: User): F[Unit]
 }
 
 object MembershipDossier {
@@ -104,7 +104,7 @@ object MembershipDossier {
   ): Aux[F, M, dossier.RoleType, dossier.MemberType] = dossier
 
   abstract class AbstractMembershipDossier[
-      M0 <: Model { type M = M0 },
+      M0 <: Model { type M = M0 }: ModelQuery,
       RoleType0 <: RoleModel: ModelQuery,
       MembersTable <: AssociativeTable
   ](childFilter: (RoleType0#T, M0) => Rep[Boolean])(
@@ -115,11 +115,11 @@ object MembershipDossier {
 
     type RoleType = RoleType0
 
-    private def association(model: M0): ModelAssociationAccess[MembersTable, M0, User] =
-      service.associationAccess(model)
+    private def association: ModelAssociationAccess[MembersTable, M0, User, Future] =
+      new ModelAssociationAccessImpl
 
     private def addMember(model: M0, user: User) =
-      association(model).add(user)
+      association.addAssoc(model, user)
 
     def roles(model: M0): ModelAccess[RoleType] = service.access[RoleType](childFilter(_, model))
 
@@ -127,9 +127,9 @@ object MembershipDossier {
       service.access[RoleType]()
 
     def members(model: M0): Future[Set[MemberType]] =
-      association(model).all.map(_.map { user =>
-        newMember(model, user.id.value)
-      })
+      association
+        .allFromParent(model)
+        .map(_.map(user => newMember(model, user.id.value)).toSet)
 
     def addRole(model: M0, role: RoleType): Future[RoleType] = {
       for {
@@ -152,8 +152,8 @@ object MembershipDossier {
       } yield ()
     }
 
-    def removeMember(model: M0, user: User): Future[Int] =
-      clearRoles(model, user) *> association(model).remove(user)
+    def removeMember(model: M0, user: User): Future[Unit] =
+      clearRoles(model, user) *> association.removeAssoc(model, user)
   }
 
   implicit def project(

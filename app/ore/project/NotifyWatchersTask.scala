@@ -35,8 +35,9 @@ case class NotifyWatchersTask(version: Version, project: Project)(
         action = Some(version.url(project))
     )
 
-    project.watchers.filterNot(_.id === version.authorId).foreach { watchers =>
-      watchers.foreach(watcher => watcher.sendNotification(notification(watcher.id.value)))
+    service.runDBIO(project.watchers.allQueryFromParent(project).filter(_.id =!= version.authorId).result).foreach {
+      watchers =>
+        watchers.foreach(watcher => watcher.sendNotification(notification(watcher.id.value)))
     }
   }
 }

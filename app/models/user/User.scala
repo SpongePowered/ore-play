@@ -7,7 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.i18n.Lang
 import play.api.mvc.Request
 
-import db.access.{ModelAccess, ModelAssociationAccess}
+import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.model.common.Named
@@ -165,19 +165,18 @@ case class User(
   /**
     * Returns the Projects that this User has starred.
     *
-    * @param page Page of user stars
     * @return Projects user has starred
     */
-  def starred(
-      page: Int = -1
-  )(implicit config: OreConfig, service: ModelService): Future[Seq[Project]] = Defined {
-    val starsPerPage = config.users.get[Int]("stars-per-page")
-    val limit        = if (page < 1) -1 else starsPerPage
-    val offset       = (page - 1) * starsPerPage
-    val filter       = Visibility.isPublicFilter[Project]
-    service
-      .associationAccess[ProjectStarsTable, User, Project](this)
-      .sorted(ordering = _.name, filter = filter, limit = limit, offset = offset)
+  def starred()(implicit service: ModelService): Future[Seq[Project]] = Defined {
+    val filter = Visibility.isPublicFilter[Project]
+
+    val baseQuery = for {
+      assoc   <- TableQuery[ProjectStarsTable] if assoc.userId === id.value
+      project <- TableQuery[ProjectTableMain] if assoc.projectId === project.id
+      if filter(project)
+    } yield project
+
+    service.runDBIO(baseQuery.sortBy(_.name).result)
   }
 
   /**
@@ -256,8 +255,9 @@ case class User(
     * @return Organizations user belongs to
     */
   def organizations(
-      implicit service: ModelService
-  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization] = service.associationAccess(this)
+      implicit service: ModelService,
+      ec: ExecutionContext
+  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization, Future] = new ModelAssociationAccessImpl
 
   /**
     * Returns a [[ModelAccess]] of [[OrganizationRole]]s.
@@ -282,8 +282,11 @@ case class User(
     *
     * @return Projects user is watching
     */
-  def watching(implicit service: ModelService): ModelAssociationAccess[ProjectWatchersTable, User, Project] =
-    service.associationAccess(this)
+  def watching(
+      implicit service: ModelService,
+      ec: ExecutionContext
+  ): ModelAssociationAccess[ProjectWatchersTable, User, Project, Future] =
+    new ModelAssociationAccessImpl
 
   /**
     * Sets the "watching" status on the specified project.
@@ -297,10 +300,10 @@ case class User(
   )(implicit ec: ExecutionContext, service: ModelService): Future[Unit] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
-    val contains = this.watching.contains(project)
+    val contains = this.watching.contains(this, project)
     contains.flatMap {
-      case true  => if (!watching) this.watching.remove(project).void else Future.unit
-      case false => if (watching) this.watching.add(project).void else Future.unit
+      case true  => if (!watching) this.watching.removeAssoc(this, project) else Future.unit
+      case false => if (watching) this.watching.addAssoc(this, project) else Future.unit
     }
   }
 
