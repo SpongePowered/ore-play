@@ -8,7 +8,7 @@ import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImp
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
 import db.table.AssociativeTable
-import db.{AssociationQuery, Model, ModelQuery, ModelService, ObjectReference}
+import db.{AssociationQuery, Model, ModelQuery, ModelService, DbRef}
 import models.project.Project
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
 import models.user.{Organization, User}
@@ -43,7 +43,7 @@ trait MembershipDossier[F[_], M <: Model] {
     * @param userId User ID of member
     * @return       New Member
     */
-  def newMember(model: M, userId: ObjectReference): MemberType
+  def newMember(model: M, userId: DbRef[User]): MemberType
 
   /**
     * Returns all members of the model. This includes members that have not
@@ -104,22 +104,22 @@ object MembershipDossier {
   ): Aux[F, M, dossier.RoleType, dossier.MemberType] = dossier
 
   abstract class AbstractMembershipDossier[
-      M0 <: Model { type M = M0 }: ModelQuery,
-      RoleType0 <: RoleModel: ModelQuery,
-      MembersTable <: AssociativeTable
+      M0 <: Model { type M            = M0 }: ModelQuery,
+      RoleType0 <: RoleModel { type M = RoleType0 }: ModelQuery,
+      MembersTable <: AssociativeTable[User, M0]
   ](childFilter: (RoleType0#T, M0) => Rep[Boolean])(
       implicit ec: ExecutionContext,
       service: ModelService,
-      assocQuery: AssociationQuery[MembersTable, M0, User]
+      assocQuery: AssociationQuery[MembersTable, User, M0]
   ) extends MembershipDossier[Future, M0] {
 
     type RoleType = RoleType0
 
-    private def association: ModelAssociationAccess[MembersTable, M0, User, Future] =
+    private def association: ModelAssociationAccess[MembersTable, User, M0, Future] =
       new ModelAssociationAccessImpl
 
     private def addMember(model: M0, user: User) =
-      association.addAssoc(model, user)
+      association.addAssoc(user, model)
 
     def roles(model: M0): ModelAccess[RoleType] = service.access[RoleType](childFilter(_, model))
 
@@ -128,7 +128,7 @@ object MembershipDossier {
 
     def members(model: M0): Future[Set[MemberType]] =
       association
-        .allFromParent(model)
+        .allFromChild(model)
         .map(_.map(user => newMember(model, user.id.value)).toSet)
 
     def addRole(model: M0, role: RoleType): Future[RoleType] = {
@@ -153,7 +153,7 @@ object MembershipDossier {
     }
 
     def removeMember(model: M0, user: User): Future[Unit] =
-      clearRoles(model, user) *> association.removeAssoc(model, user)
+      clearRoles(model, user) *> association.removeAssoc(user, model)
   }
 
   implicit def project(
@@ -163,7 +163,7 @@ object MembershipDossier {
     new AbstractMembershipDossier[Project, ProjectRole, ProjectMembersTable](_.projectId === _.id.value) {
       override type MemberType = ProjectMember
 
-      override def newMember(model: Project, userId: ObjectReference): ProjectMember = new ProjectMember(model, userId)
+      override def newMember(model: Project, userId: DbRef[User]): ProjectMember = new ProjectMember(model, userId)
 
       override def getTrust(model: Project, user: User): Future[Trust] =
         service
@@ -183,7 +183,7 @@ object MembershipDossier {
     ) {
       override type MemberType = OrganizationMember
 
-      override def newMember(model: Organization, userId: ObjectReference): OrganizationMember =
+      override def newMember(model: Organization, userId: DbRef[User]): OrganizationMember =
         new OrganizationMember(model, userId)
 
       override def getTrust(model: Organization, user: User): Future[Trust] =

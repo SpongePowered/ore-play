@@ -2,7 +2,7 @@ package ore
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{Model, ModelService, ObjectReference}
+import db.{Model, ModelService, DbRef}
 import models.user.role.RoleModel
 import ore.user.{Member, MembershipDossier}
 
@@ -18,7 +18,7 @@ trait Joinable[M <: Member[_ <: RoleModel], Self <: Model] {
     */
   def owner(implicit service: ModelService): M
 
-  def ownerId: ObjectReference
+  def ownerId: DbRef[M]
 
   /**
     * Transfers ownership of this object to the given member.

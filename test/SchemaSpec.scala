@@ -8,7 +8,7 @@ import play.api.db.Databases
 import play.api.db.evolutions.Evolutions
 import play.api.i18n.Lang
 
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
+import db.{ObjId, DbRef, ObjectTimestamp}
 import models.admin._
 import models.api.ProjectApiKey
 import models.project._
@@ -50,7 +50,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   lazy val transactor: Transactor.Aux[IO, DataSource] =
     Transactor.fromDataSource[IO](database.dataSource)
 
-  implicit val objectIdMeta: Meta[ObjectId]               = Meta[ObjectReference].xmap(ObjectId.apply, _.value)
+  implicit val objectIdMeta: Meta[ObjId]                  = Meta[DbRef].xmap(ObjId.apply, _.value)
   implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].xmap(ObjectTimestamp.apply, _.value)
 
   def enumeratumMeta[V: TypeTag, E <: ValueEnumEntry[V]: TypeTag](
@@ -97,7 +97,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   }
 
   test("Project watchers") {
-    check(sql"""SELECT project_id, user_id FROM project_watchers""".query[(ObjectReference, ObjectReference)])
+    check(sql"""SELECT project_id, user_id FROM project_watchers""".query[(DbRef, DbRef)])
   }
 
   test("Project views") {
@@ -106,7 +106,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   }
 
   test("Project stars") {
-    check(sql"""SELECT user_id, project_id FROM project_stars""".query[(ObjectReference, ObjectReference)])
+    check(sql"""SELECT user_id, project_id FROM project_stars""".query[(DbRef, DbRef)])
   }
 
   test("Project log") {
@@ -174,7 +174,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   }
 
   test("OrganizationMember") {
-    check(sql"""SELECT user_id, organization_id FROM organization_members""".query[(ObjectReference, ObjectReference)])
+    check(sql"""SELECT user_id, organization_id FROM organization_members""".query[(DbRef, DbRef)])
   }
 
   test("OrganizationRole") {
@@ -190,7 +190,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   test("ProjectMember") {
     check(
       sql"""SELECT project_id, user_id FROM project_members"""
-        .query[(ObjectReference, ObjectReference)]
+        .query[(DbRef, DbRef)]
     )
   }
 

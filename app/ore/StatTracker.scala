@@ -11,9 +11,10 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelFilter, ModelQuery, ModelService, ObjectId, ObjectReference}
+import db.{DbRef, Model, ModelFilter, ModelQuery, ModelService, ObjId}
 import models.project.{Project, Version}
 import models.statistic.{ProjectView, StatEntry, VersionDownload}
+import models.user.User
 import ore.StatTracker.COOKIE_NAME
 import security.spauth.SpongeAuthApi
 
@@ -32,7 +33,7 @@ trait StatTracker {
 
   private def record[S <: Model, M <: StatEntry[S]: ModelQuery](
       entry: M
-  )(setUserId: (M, ObjectReference) => M)(implicit ec: ExecutionContext): Future[Boolean] = {
+  )(setUserId: (M, DbRef[User]) => M)(implicit ec: ExecutionContext): Future[Boolean] = {
     like[S, M](entry).value.flatMap {
       case None => service.insert(entry).as(true)
       case Some(existingEntry) =>
@@ -64,7 +65,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): Future[Result] = {
     ProjectView.bindFromRequest.flatMap { statEntry =>
-      record[Project, ProjectView](statEntry)((m, id) => m.copy(id = ObjectId(id)))
+      record[Project, ProjectView](statEntry)((m, id) => m.copy(id = ObjId(id)))
         .flatMap {
           case true  => projectRequest.data.project.addView
           case false => Future.unit
@@ -87,7 +88,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): Future[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
-      record[Version, VersionDownload](statEntry)((m, id) => m.copy(id = ObjectId(id)))
+      record[Version, VersionDownload](statEntry)((m, id) => m.copy(id = ObjId(id)))
         .flatMap {
           case true  => version.addDownload *> request.data.project.addDownload
           case false => Future.unit

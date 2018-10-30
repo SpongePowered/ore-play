@@ -1,6 +1,5 @@
 package db.impl.table.common
 
-import db.ObjectReference
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Downloadable
 import db.table.ModelTable
@@ -17,6 +16,6 @@ trait DownloadsColumn[M <: Downloadable] extends ModelTable[M] {
     *
     * @return Column that keeps track of downloads
     */
-  def downloads = column[ObjectReference]("downloads")
+  def downloads = column[Long]("downloads")
 
 }

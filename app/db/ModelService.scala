@@ -90,11 +90,11 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @return       Newly created model
     */
   def insert[M <: Model](model: M)(implicit query: ModelQuery[M]): Future[M] = {
-    val toInsert = query.copyWith(model)(ObjectId.Uninitialized, ObjectTimestamp(theTime))
+    val toInsert = query.copyWith(model)(ObjId.Uninitialized(), ObjectTimestamp(theTime))
     val models   = newAction
     runDBIO {
       models.returning(models.map(_.id)).into {
-        case (m, id) => query.copyWith(m)(ObjectId(id), m.createdAt)
+        case (m, id) => query.copyWith(m)(ObjId(id), m.createdAt)
       } += toInsert
     }
   }
@@ -160,7 +160,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param id   Model with ID
     * @return     Model if present, None otherwise
     */
-  def get[M <: Model: ModelQuery](id: ObjectReference, filter: M#T => Rep[Boolean] = All)(
+  def get[M <: Model: ModelQuery](id: DbRef[M], filter: M#T => Rep[Boolean] = All)(
       implicit ec: ExecutionContext
   ): OptionT[Future, M] = find(IdFilter[M](id) && filter)
 
@@ -173,7 +173,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @return           Seq of models in ID set
     */
   def in[M <: Model: ModelQuery](
-      ids: Set[ObjectReference],
+      ids: Set[DbRef[M]],
       filter: M#T => Rep[Boolean] = All
   ): Future[Seq[M]] = this.filter(ModelFilter[M](_.id.inSetBind(ids)) && filter)
 

@@ -3,7 +3,9 @@ package models.user.role
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.ProjectRoleTable
-import db.{ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import models.project.Project
+import models.user.User
 import ore.Visitable
 import ore.permission.role.RoleType
 import ore.permission.scope.ProjectScope
@@ -23,10 +25,10 @@ import slick.lifted.TableQuery
   * @param projectId  ID of project this role belongs to
   */
 case class ProjectRole(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectRole] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: ObjectReference,
-    projectId: ObjectReference,
+    userId: DbRef[User],
+    projectId: DbRef[Project],
     roleType: RoleType,
     isAccepted: Boolean = false
 ) extends RoleModel
@@ -36,13 +38,13 @@ case class ProjectRole(
   override type T = ProjectRoleTable
 
   def this(
-      userId: ObjectReference,
+      userId: DbRef[User],
       roleType: RoleType,
-      projectId: ObjectReference,
+      projectId: DbRef[Project],
       accepted: Boolean,
       visible: Boolean
   ) = this(
-    id = ObjectId.Uninitialized,
+    id = ObjId.Uninitialized(),
     createdAt = ObjectTimestamp.Uninitialized,
     userId = userId,
     roleType = roleType,

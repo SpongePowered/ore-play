@@ -24,7 +24,7 @@ import db.impl.schema.{
   UserTable,
   VersionTable
 }
-import db.{ModelQuery, ModelService, ObjectReference}
+import db.{ModelQuery, ModelService, DbRef}
 import form.OreForms
 import models.admin.Review
 import models.project.{Tag, _}
@@ -199,7 +199,7 @@ final class Application @Inject()(forms: OreForms)(
 
     }
 
-  private def queryReviews(versions: Seq[ObjectReference]) =
+  private def queryReviews(versions: Seq[DbRef[Version]]) =
     for {
       r <- TableQuery[ReviewTable] if r.versionId.inSetBind(versions)
       u <- TableQuery[UserTable] if r.userId === u.id
@@ -247,7 +247,7 @@ final class Application @Inject()(forms: OreForms)(
     * @param resolved Resolved state
     * @return         Ok
     */
-  def setFlagResolved(flagId: ObjectReference, resolved: Boolean): Action[AnyContent] =
+  def setFlagResolved(flagId: DbRef[Flag], resolved: Boolean): Action[AnyContent] =
     FlagAction.async { implicit request =>
       this.service
         .access[Flag]()
@@ -404,12 +404,12 @@ final class Application @Inject()(forms: OreForms)(
 
   def showLog(
       oPage: Option[Int],
-      userFilter: Option[ObjectReference],
-      projectFilter: Option[ObjectReference],
-      versionFilter: Option[ObjectReference],
-      pageFilter: Option[ObjectReference],
+      userFilter: Option[DbRef[User]],
+      projectFilter: Option[DbRef[Project]],
+      versionFilter: Option[DbRef[Version]],
+      pageFilter: Option[DbRef[Page]],
       actionFilter: Option[Int],
-      subjectFilter: Option[ObjectReference]
+      subjectFilter: Option[DbRef[_]]
   ): Action[AnyContent] = Authenticated.andThen(PermissionAction(ViewLogs)).async { implicit request =>
     val pageSize = 50
     val page     = oPage.getOrElse(1)
@@ -501,7 +501,7 @@ final class Application @Inject()(forms: OreForms)(
               setRoleType: (M0, RoleType) => Future[M0],
               setAccepted: (M0, Boolean) => Future[M0]
           ) = {
-            val id = (json \ "id").as[ObjectReference]
+            val id = (json \ "id").as[DbRef[M0]]
             action match {
               case "setRole" =>
                 modelAccess.get(id).semiflatMap { role =>

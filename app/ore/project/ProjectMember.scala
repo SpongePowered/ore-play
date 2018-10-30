@@ -2,8 +2,9 @@ package ore.project
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import models.project.Project
+import models.user.User
 import models.user.role.ProjectRole
 import ore.user.Member
 
@@ -13,7 +14,7 @@ import ore.user.Member
   * @param project  Project this Member is a part of
   * @param userId   Member user ID
   */
-class ProjectMember(val project: Project, val userId: ObjectReference) extends Member[ProjectRole] {
+class ProjectMember(val project: Project, val userId: DbRef[User]) extends Member[ProjectRole] {
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectRole]] =
     this.user.flatMap(user => this.project.memberships.getRoles(project, user))

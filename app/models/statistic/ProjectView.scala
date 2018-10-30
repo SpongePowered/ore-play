@@ -5,8 +5,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.ProjectViewsTable
-import db.{ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, ModelQuery, ObjId, ObjectTimestamp}
 import models.project.Project
+import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
@@ -25,12 +26,12 @@ import slick.lifted.TableQuery
   * @param userId     User ID
   */
 case class ProjectView(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectView] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    modelId: ObjectReference,
+    modelId: DbRef[Project],
     address: InetString,
     cookie: String,
-    userId: Option[ObjectReference] = None
+    userId: Option[DbRef[User]] = None
 ) extends StatEntry[Project] {
 
   override type M = ProjectView

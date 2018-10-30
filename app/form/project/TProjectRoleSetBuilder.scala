@@ -1,7 +1,8 @@
 package form.project
 
-import db.ObjectReference
+import db.DbRef
 import form.RoleSetBuilder
+import models.user.User
 import models.user.role.ProjectRole
 import ore.permission.role.RoleType
 
@@ -10,6 +11,6 @@ import ore.permission.role.RoleType
   */
 trait TProjectRoleSetBuilder extends RoleSetBuilder[ProjectRole] {
 
-  override def newRole(userId: ObjectReference, role: RoleType) = new ProjectRole(userId, role, -1L, false, true)
+  override def newRole(userId: DbRef[User], role: RoleType) = new ProjectRole(userId, role, -1L, false, true)
 
 }

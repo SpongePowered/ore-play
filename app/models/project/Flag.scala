@@ -6,7 +6,7 @@ import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.FlagTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
 import models.user.User
 import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned
@@ -24,15 +24,15 @@ import slick.lifted.TableQuery
   * @param isResolved   True if has been reviewed and resolved by staff member
   */
 case class Flag(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Flag] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
-    userId: ObjectReference,
+    projectId: DbRef[Project],
+    userId: DbRef[User],
     reason: FlagReason,
     comment: String,
     isResolved: Boolean = false,
     resolvedAt: Option[Timestamp] = None,
-    resolvedBy: Option[ObjectReference] = None
+    resolvedBy: Option[DbRef[User]] = None
 ) extends Model
     with UserOwned
     with ProjectOwned {
@@ -40,9 +40,9 @@ case class Flag(
   override type M = Flag
   override type T = FlagTable
 
-  def this(projectId: ObjectReference, userId: ObjectReference, reason: FlagReason, comment: String) = {
+  def this(projectId: DbRef[Project], userId: DbRef[User], reason: FlagReason, comment: String) = {
     this(
-      id = ObjectId.Uninitialized,
+      id = ObjId.Uninitialized(),
       createdAt = ObjectTimestamp.Uninitialized,
       projectId = projectId,
       userId = userId,
@@ -62,7 +62,7 @@ case class Flag(
   )(implicit ec: ExecutionContext, service: ModelService): Future[Flag] = Defined {
     val (at, by) =
       if (resolved)
-        (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1)): Option[ObjectReference])
+        (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1L)): Option[DbRef[User]])
       else
         (None, None)
 

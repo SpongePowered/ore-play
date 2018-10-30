@@ -12,7 +12,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -40,22 +40,22 @@ import slick.lifted.TableQuery
   * @param _channelId        ID of channel this version belongs to
   */
 case class Version(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Version] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
+    projectId: DbRef[Project],
     versionString: String,
     dependencyIds: List[String] = List(),
     assets: Option[String] = None,
-    channelId: ObjectReference,
+    channelId: DbRef[Channel],
     fileSize: Long,
     hash: String,
-    authorId: ObjectReference,
+    authorId: DbRef[User],
     description: Option[String] = None,
     downloadCount: Long = 0,
     isReviewed: Boolean = false,
-    reviewerId: Option[ObjectReference] = None,
+    reviewerId: Option[DbRef[User]] = None,
     approvedAt: Option[Timestamp] = None,
-    tagIds: List[ObjectReference] = List(),
+    tagIds: List[DbRef[Tag]] = List(),
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
@@ -161,7 +161,7 @@ case class Version(
   override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
     service.access(_.versionId === id.value)
 
-  override def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
+  override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
       implicit ec: ExecutionContext,
       service: ModelService
   ): Future[(Version, VersionVisibilityChange)] = {
@@ -180,7 +180,7 @@ case class Version(
       .access[VersionVisibilityChange]()
       .add(
         VersionVisibilityChange(
-          ObjectId.Uninitialized,
+          ObjId.Uninitialized(),
           ObjectTimestamp(Timestamp.from(Instant.now())),
           Some(creator),
           this.id.value,
@@ -252,7 +252,7 @@ case class Version(
 
   def mostRecentReviews(implicit service: ModelService): Future[Seq[Review]] = reviewEntries.sorted(_.createdAt)
 
-  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
+  def reviewById(id: DbRef[Review])(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
     reviewEntries.find(_.id === id)
 }
 
@@ -268,17 +268,17 @@ object Version {
     */
   case class Builder(service: ModelService) {
 
-    private var versionString: String         = _
-    private var dependencyIds: List[String]   = List()
-    private var description: String           = _
-    private var projectId: ObjectReference    = -1
-    private var authorId: ObjectReference     = -1
-    private var fileSize: Long                = -1
-    private var hash: String                  = _
-    private var fileName: String              = _
-    private var signatureFileName: String     = _
-    private var tagIds: List[ObjectReference] = List()
-    private var visibility: Visibility        = Visibility.Public
+    private var versionString: String       = _
+    private var dependencyIds: List[String] = List()
+    private var description: String         = _
+    private var projectId: DbRef[Project]   = -1L
+    private var authorId: DbRef[User]       = -1L
+    private var fileSize: Long              = -1
+    private var hash: String                = _
+    private var fileName: String            = _
+    private var signatureFileName: String   = _
+    private var tagIds: List[DbRef[Tag]]    = List()
+    private var visibility: Visibility      = Visibility.Public
 
     def versionString(versionString: String): Builder = {
       this.versionString = versionString
@@ -295,7 +295,7 @@ object Version {
       this
     }
 
-    def projectId(projectId: ObjectReference): Builder = {
+    def projectId(projectId: DbRef[Project]): Builder = {
       this.projectId = projectId
       this
     }
@@ -310,7 +310,7 @@ object Version {
       this
     }
 
-    def authorId(authorId: ObjectReference): Builder = {
+    def authorId(authorId: DbRef[User]): Builder = {
       this.authorId = authorId
       this
     }
@@ -325,7 +325,7 @@ object Version {
       this
     }
 
-    def tagIds(tagIds: List[ObjectReference]): Builder = {
+    def tagIds(tagIds: List[DbRef[Tag]]): Builder = {
       this.tagIds = tagIds
       this
     }

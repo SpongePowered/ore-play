@@ -10,8 +10,9 @@ import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.{Page, Project, Version}
+import models.user.User
 import ore.OreConfig
 import _root_.util.StringUtils
 
@@ -28,10 +29,10 @@ import slick.lifted.TableQuery
   * @param message      Message of why it ended
   */
 case class Review(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Review] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    versionId: ObjectReference,
-    userId: ObjectReference,
+    versionId: DbRef[Version],
+    userId: DbRef[User],
     endedAt: Option[Timestamp],
     message: String
 ) extends Model {

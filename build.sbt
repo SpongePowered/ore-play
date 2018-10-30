@@ -3,6 +3,8 @@ version := "1.6.18"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
+offline := true
+
 scalaVersion := "2.12.6"
 scalacOptions ++= Seq(
   "-deprecation",
@@ -13,7 +15,7 @@ scalacOptions ++= Seq(
   "-feature",
   "-unchecked",
   "-Xcheckinit",
-  "-Xfatal-warnings",
+  //"-Xfatal-warnings",
   "-Xlint:adapted-args",
   "-Xlint:by-name-right-associative",
   "-Xlint:constant",
@@ -47,7 +49,15 @@ scalacOptions ++= Seq(
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
 
 routesGenerator := InjectedRoutesGenerator
-routesImport += "_root_.db.ObjectReference"
+routesImport ++= Seq(
+  "db.DbRef",
+  "models.admin._",
+  "models.project._",
+  "models.user._",
+  "models.user.role._",
+  "ore.user._"
+).map(s => s"_root_.$s")
+
 resolvers ++= Seq(
   "sponge".at("https://repo.spongepowered.org/maven"),
   "scalaz-bintray".at("https://dl.bintray.com/scalaz/releases"),

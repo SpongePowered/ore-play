@@ -1,5 +1,7 @@
 package ore.permission.scope
-import db.ObjectReference
+import db.DbRef
+import models.project.Project
+import models.user.Organization
 
 sealed trait Scope
 object Scope {
@@ -10,6 +12,6 @@ object Scope {
   implicit val organizationScopeHasScope: HasScope[OrganizationScope] = (a: OrganizationScope) => a
 }
 
-case object GlobalScope                           extends Scope
-case class ProjectScope(id: ObjectReference)      extends Scope
-case class OrganizationScope(id: ObjectReference) extends Scope
+case object GlobalScope                               extends Scope
+case class ProjectScope(id: DbRef[Project])           extends Scope
+case class OrganizationScope(id: DbRef[Organization]) extends Scope

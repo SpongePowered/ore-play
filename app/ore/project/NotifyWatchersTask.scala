@@ -3,9 +3,9 @@ package ore.project
 import scala.concurrent.ExecutionContext
 
 import db.impl.OrePostgresDriver.api._
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import models.project.{Project, Version}
-import models.user.Notification
+import models.user.{Notification, User}
 import ore.OreConfig
 import ore.user.notification.NotificationType
 
@@ -26,7 +26,7 @@ case class NotifyWatchersTask(version: Version, project: Project)(
 ) extends Runnable {
 
   def run(): Unit = {
-    val notification = (userId: ObjectReference) =>
+    val notification = (userId: DbRef[User]) =>
       Notification(
         userId = userId,
         originId = project.ownerId,

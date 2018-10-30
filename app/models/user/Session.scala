@@ -7,7 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.access.UserBase
 import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{Model, ModelQuery, ObjectId, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
@@ -23,7 +23,7 @@ import slick.lifted.TableQuery
   * @param token      Unique token
   */
 case class Session(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Session] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     expiration: Timestamp,
     username: String,

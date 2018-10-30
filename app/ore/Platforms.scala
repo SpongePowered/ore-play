@@ -2,7 +2,7 @@ package ore
 
 import scala.collection.immutable
 
-import db.ObjectId
+import db.ObjId
 import models.project.{Tag, TagColor}
 import ore.project.Dependency
 
@@ -23,7 +23,7 @@ sealed abstract class Platform(
     val url: String
 ) extends IntEnumEntry {
 
-  def toGhostTag(version: String): Tag = Tag(ObjectId.Uninitialized, Nil, name, version, tagColor)
+  def toGhostTag(version: String): Tag = Tag(ObjId.Uninitialized(), Nil, name, version, tagColor)
 
 }
 object Platform extends IntEnum[Platform] {

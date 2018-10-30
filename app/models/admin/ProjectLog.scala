@@ -5,7 +5,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import models.project.Project
 import ore.project.ProjectOwned
 
 import cats.instances.future._
@@ -19,9 +20,9 @@ import slick.lifted.TableQuery
   * @param projectId  ID of project log is for
   */
 case class ProjectLog(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectLog] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference
+    projectId: DbRef[Project]
 ) extends Model
     with ProjectOwned {
 

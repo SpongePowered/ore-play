@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelQuery, ModelService, ObjectReference}
+import db.{Model, ModelQuery, ModelService, DbRef}
 
 import cats.data.OptionT
 import slick.lifted.ColumnOrdered
@@ -23,7 +23,7 @@ class ModelAccess[M <: Model: ModelQuery](
     * @param id   ID to lookup
     * @return     Model with ID or None if not found
     */
-  def get(id: ObjectReference)(implicit ec: ExecutionContext): OptionT[Future, M] =
+  def get(id: DbRef[M])(implicit ec: ExecutionContext): OptionT[Future, M] =
     this.service.get(id, this.baseFilter)
 
   /**
@@ -32,7 +32,7 @@ class ModelAccess[M <: Model: ModelQuery](
     * @param ids  ID set
     * @return     Models in ID set
     */
-  def in(ids: Set[ObjectReference])(implicit ec: ExecutionContext): Future[Set[M]] =
+  def in(ids: Set[DbRef[M]])(implicit ec: ExecutionContext): Future[Set[M]] =
     this.service.in(ids, this.baseFilter).map(_.toSet)
 
   /**

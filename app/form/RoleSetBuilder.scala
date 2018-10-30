@@ -1,6 +1,7 @@
 package form
 
-import db.ObjectReference
+import db.DbRef
+import models.user.User
 import models.user.role.RoleModel
 import ore.permission.role.RoleType
 
@@ -16,7 +17,7 @@ trait RoleSetBuilder[M <: RoleModel] {
     *
     * @return User IDs
     */
-  def users: List[ObjectReference]
+  def users: List[DbRef[User]]
 
   /**
     * Returns the role names to use in building the set.
@@ -42,6 +43,6 @@ trait RoleSetBuilder[M <: RoleModel] {
     * @param role   Role type
     * @return       New role
     */
-  def newRole(userId: ObjectReference, role: RoleType): M
+  def newRole(userId: DbRef[User], role: RoleType): M
 
 }

@@ -26,7 +26,6 @@ import util.StringUtils._
 
 import cats.data.OptionT
 import cats.instances.future._
-import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
 
@@ -41,7 +40,7 @@ import slick.lifted.TableQuery
   * @param tagline      The user configured "tagline" displayed on the user page.
   */
 case class User(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[User] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     fullName: Option[String] = None,
     name: String = null,
@@ -206,7 +205,7 @@ case class User(
     */
   def copyFromSponge(user: SpongeUser): User = {
     copy(
-      id = ObjectId(user.id),
+      id = ObjId(user.id),
       name = user.username,
       email = Some(user.email),
       lang = user.lang,
@@ -285,7 +284,7 @@ case class User(
   def watching(
       implicit service: ModelService,
       ec: ExecutionContext
-  ): ModelAssociationAccess[ProjectWatchersTable, User, Project, Future] =
+  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, Future] =
     new ModelAssociationAccessImpl
 
   /**
@@ -300,10 +299,10 @@ case class User(
   )(implicit ec: ExecutionContext, service: ModelService): Future[Unit] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
-    val contains = this.watching.contains(this, project)
+    val contains = this.watching.contains(project, this)
     contains.flatMap {
-      case true  => if (!watching) this.watching.removeAssoc(this, project) else Future.unit
-      case false => if (watching) this.watching.addAssoc(this, project) else Future.unit
+      case true  => if (!watching) this.watching.removeAssoc(project, this) else Future.unit
+      case false => if (watching) this.watching.addAssoc(project, this) else Future.unit
     }
   }
 
@@ -362,7 +361,7 @@ case class User(
     )
   }
 
-  override def userId: ObjectReference = this.id.value
+  override def userId: DbRef[User] = this.id.value
 }
 
 object User {
@@ -370,14 +369,17 @@ object User {
   implicit val query: ModelQuery[User] =
     ModelQuery.from[User](TableQuery[UserTable], (obj, _, time) => obj.copy(createdAt = time))
 
-  implicit val assocStarredQuery: AssociationQuery[ProjectStarsTable, User, Project] =
-    AssociationQuery.from(TableQuery[ProjectStarsTable])(_.userId, _.projectId)
+  implicit val assocMembersQuery: AssociationQuery[ProjectMembersTable, User, Project] =
+    AssociationQuery.from[ProjectMembersTable, User, Project](TableQuery[ProjectMembersTable])(_.userId, _.projectId)
 
   implicit val assocOrgMembersQuery: AssociationQuery[OrganizationMembersTable, User, Organization] =
-    AssociationQuery.from(TableQuery[OrganizationMembersTable])(_.userId, _.organizationId)
+    AssociationQuery.from[OrganizationMembersTable, User, Organization](TableQuery[OrganizationMembersTable])(
+      _.userId,
+      _.organizationId
+    )
 
-  implicit val assocWatchingQuery: AssociationQuery[ProjectWatchersTable, User, Project] =
-    AssociationQuery.from(TableQuery[ProjectWatchersTable])(_.userId, _.projectId)
+  implicit val assocStarsQuery: AssociationQuery[ProjectStarsTable, User, Project] =
+    AssociationQuery.from[ProjectStarsTable, User, Project](TableQuery[ProjectStarsTable])(_.userId, _.projectId)
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].

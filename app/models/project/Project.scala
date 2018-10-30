@@ -21,7 +21,7 @@ import db.impl.schema.{
   ProjectTableMain,
   ProjectWatchersTable
 }
-import db.{AssociationQuery, Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{AssociationQuery, Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public
@@ -66,14 +66,14 @@ import slick.lifted.{Rep, TableQuery}
   * @param notes                  JSON notes
   */
 case class Project(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Project] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     pluginId: String,
     ownerName: String,
-    ownerId: ObjectReference,
+    ownerId: DbRef[User],
     name: String,
     slug: String,
-    recommendedVersionId: Option[ObjectReference] = None,
+    recommendedVersionId: Option[DbRef[Version]] = None,
     category: Category = Category.Undefined,
     description: Option[String] = None,
     starCount: Long = 0,
@@ -93,7 +93,7 @@ case class Project(
     with Joinable[ProjectMember, Project]
     with Visitable {
 
-  def this(pluginId: String, name: String, owner: String, ownerId: ObjectReference) = {
+  def this(pluginId: String, name: String, owner: String, ownerId: DbRef[User]) = {
     this(pluginId = pluginId, name = compact(name), slug = slugify(name), ownerName = owner, ownerId = ownerId)
   }
 
@@ -205,7 +205,7 @@ case class Project(
     *
     * @param visibility True if visible
     */
-  def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
+  def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
       implicit ec: ExecutionContext,
       service: ModelService
   ): Future[(Project, ProjectVisibilityChange)] = {
@@ -224,7 +224,7 @@ case class Project(
       .access[ProjectVisibilityChange]()
       .add(
         ProjectVisibilityChange(
-          ObjectId.Uninitialized,
+          ObjId.Uninitialized(),
           ObjectTimestamp(Timestamp.from(Instant.now())),
           Some(creator),
           this.id.value,
@@ -259,7 +259,7 @@ case class Project(
   def stars(
       implicit service: ModelService,
       ec: ExecutionContext
-  ): ModelAssociationAccess[ProjectStarsTable, Project, User, Future] = new ModelAssociationAccessImpl
+  ): ModelAssociationAccess[ProjectStarsTable, User, Project, Future] = new ModelAssociationAccessImpl
 
   /**
     * Sets the "starred" state of this Project for the specified User.
@@ -274,13 +274,13 @@ case class Project(
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     for {
-      contains <- this.stars.contains(this, user)
+      contains <- this.stars.contains(user, this)
       res <- if (starred) {
         if (!contains) {
-          this.stars.addAssoc(this, user) *> service.update(copy(starCount = starCount + 1))
+          this.stars.addAssoc(user, this) *> service.update(copy(starCount = starCount + 1))
         } else Future.successful(this)
       } else if (contains) {
-        this.stars.removeAssoc(this, user) *> service.update(copy(starCount = starCount - 1))
+        this.stars.removeAssoc(user, this) *> service.update(copy(starCount = starCount - 1))
       } else Future.successful(this)
     } yield res
   }
@@ -409,7 +409,7 @@ case class Project(
     */
   def getOrCreatePage(
       name: String,
-      parentId: Option[ObjectReference],
+      parentId: Option[DbRef[Page]],
       content: Option[String] = None
   )(implicit ec: ExecutionContext, config: OreConfig, service: ModelService): Future[Page] = Defined {
     checkNotNull(name, "null name", "")
@@ -475,7 +475,7 @@ case class Project(
 /**
   * This modal is needed to convert the json
   */
-case class Note(message: String, user: ObjectReference, time: Long = System.currentTimeMillis()) {
+case class Note(message: String, user: DbRef[User], time: Long = System.currentTimeMillis()) {
   def printTime(implicit oreConfig: Messages): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
   def render(implicit oreConfig: OreConfig): Html     = Page.render(message)
 }
@@ -490,7 +490,7 @@ object Note {
   implicit val notesRead: Reads[Note] =
     (JsPath \ "message")
       .read[String]
-      .and((JsPath \ "user").read[ObjectReference])
+      .and((JsPath \ "user").read[DbRef[User]])
       .and((JsPath \ "time").read[Long])(Note.apply _)
 }
 
@@ -503,17 +503,11 @@ object Project {
     )
 
   implicit val assocWatchersQuery: AssociationQuery[ProjectWatchersTable, Project, User] =
-    AssociationQuery.from(TableQuery[ProjectWatchersTable])(_.projectId, _.userId)
-
-  implicit val assocStarsQuery: AssociationQuery[ProjectStarsTable, Project, User] =
-    AssociationQuery.from(TableQuery[ProjectStarsTable])(_.projectId, _.userId)
-
-  implicit val assocMembersQuery: AssociationQuery[ProjectMembersTable, Project, User] =
-    AssociationQuery.from(TableQuery[ProjectMembersTable])(_.projectId, _.userId)
+    AssociationQuery.from[ProjectWatchersTable, Project, User](TableQuery[ProjectWatchersTable])(_.projectId, _.userId)
 
   implicit val hasScope: HasScope[Project] = HasScope.projectScope(_.id.value)
 
-  private def queryRoleForTrust(projectId: Rep[ObjectReference], userId: Rep[ObjectReference]) = {
+  private def queryRoleForTrust(projectId: Rep[DbRef[Project]], userId: Rep[DbRef[User]]) = {
     val q = for {
       m <- TableQuery[ProjectMembersTable] if m.projectId === projectId && m.userId === userId
       r <- TableQuery[ProjectRoleTable] if m.userId === r.userId && r.projectId === projectId
@@ -530,11 +524,11 @@ object Project {
     */
   case class Builder(service: ModelService) {
 
-    private var pluginId: String         = _
-    private var ownerName: String        = _
-    private var ownerId: ObjectReference = -1
-    private var name: String             = _
-    private var visibility: Visibility   = _
+    private var pluginId: String       = _
+    private var ownerName: String      = _
+    private var ownerId: DbRef[User]   = -1L
+    private var name: String           = _
+    private var visibility: Visibility = _
 
     def pluginId(pluginId: String): Builder = {
       this.pluginId = pluginId
@@ -546,7 +540,7 @@ object Project {
       this
     }
 
-    def ownerId(ownerId: ObjectReference): Builder = {
+    def ownerId(ownerId: DbRef[User]): Builder = {
       this.ownerId = ownerId
       this
     }

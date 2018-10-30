@@ -5,8 +5,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.VisibilityColumn
-import db.{Model, ModelService, ObjectReference}
+import db.{DbRef, Model, ModelService}
 import models.project.Visibility
+import models.user.User
 
 import cats.data.OptionT
 
@@ -33,7 +34,7 @@ trait Hideable extends Model { self =>
     *
     * @param visibility True if visible
     */
-  def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
+  def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
       implicit ec: ExecutionContext,
       service: ModelService
   ): Future[(M, ModelVisibilityChange)]

@@ -28,7 +28,7 @@ object ScopedProjectData {
             .flatMap(_.toMaybeOrganization.value)
             .flatMap(orgaOwner => user.can(PostAsOrganization) in orgaOwner),
           user.hasUnresolvedFlagFor(project),
-          project.stars.contains(project, user),
+          project.stars.contains(user, project),
           project.watchers.contains(project, user),
           user.trustIn(project),
         ).mapN {

@@ -2,9 +2,9 @@ package form.organization
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import models.user.role.OrganizationRole
-import models.user.{Notification, Organization}
+import models.user.{Notification, Organization, User}
 import ore.OreConfig
 import ore.permission.role.RoleType
 import ore.user.notification.NotificationType
@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
   * @param roleUps  Old roles
   */
 case class OrganizationMembersUpdate(
-    users: List[ObjectReference],
+    users: List[DbRef[User]],
     roles: List[String],
     userUps: List[String],
     roleUps: List[String]

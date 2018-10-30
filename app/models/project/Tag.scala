@@ -9,14 +9,14 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.TagTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
 
 import enumeratum.values._
 import slick.lifted.TableQuery
 
 case class Tag(
-    id: ObjectId = ObjectId.Uninitialized,
-    versionIds: List[ObjectReference],
+    id: ObjId[Tag] = ObjId.Uninitialized(),
+    versionIds: List[DbRef[Version]],
     name: String,
     data: String,
     color: TagColor

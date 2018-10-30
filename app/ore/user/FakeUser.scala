@@ -6,7 +6,7 @@ import java.sql.Timestamp
 import java.util.Date
 import javax.inject.Inject
 
-import db.{ObjectId, ObjectReference}
+import db.{ObjId, DbRef}
 import models.user.User
 import ore.OreConfig
 import ore.permission.role.RoleType
@@ -27,7 +27,7 @@ final class FakeUser @Inject()(config: OreConfig) {
   private lazy val user =
     if (isEnabled)
       User(
-        id = ObjectId(conf.get[ObjectReference]("fakeUser.id")),
+        id = ObjId(conf.get[DbRef[User]]("fakeUser.id")),
         fullName = conf.getOptional[String]("fakeUser.name"),
         name = conf.get[String]("fakeUser.username"),
         email = conf.getOptional[String]("fakeUser.email"),

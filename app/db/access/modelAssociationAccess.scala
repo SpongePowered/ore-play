@@ -10,7 +10,9 @@ import db.{AssociationQuery, Model, ModelQuery, ModelService}
 import cats.instances.future._
 import cats.syntax.all._
 
-trait ModelAssociationAccess[Assoc <: AssociativeTable, P <: Model { type M = P }, C <: Model { type M = C }, F[_]] {
+trait ModelAssociationAccess[Assoc <: AssociativeTable[P, C], P <: Model { type M = P }, C <: Model { type M = C }, F[
+    _
+]] {
 
   def addAssoc(parent: P, child: C): F[Unit]
 
@@ -28,7 +30,7 @@ trait ModelAssociationAccess[Assoc <: AssociativeTable, P <: Model { type M = P 
 }
 
 class ModelAssociationAccessImpl[
-    Assoc <: AssociativeTable,
+    Assoc <: AssociativeTable[P, C],
     P <: Model { type M = P }: ModelQuery,
     C <: Model { type M = C }: ModelQuery
 ](

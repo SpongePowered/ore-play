@@ -6,7 +6,7 @@ import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
-import db.{ModelService, ObjectReference}
+import db.{ModelService, DbRef}
 import models.project.Visibility
 import models.user.User
 import ore.permission._
@@ -35,7 +35,7 @@ case class HeaderData(
 
   def hasUser: Boolean = currentUser.isDefined
 
-  def isCurrentUser(userId: ObjectReference): Boolean = currentUser.map(_.id.value).contains(userId)
+  def isCurrentUser(userId: DbRef[User]): Boolean = currentUser.map(_.id.value).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
 }

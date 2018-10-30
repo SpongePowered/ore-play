@@ -9,7 +9,7 @@ import play.api.mvc.Cookie
 import controllers.sugar.Bakery
 import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
 import models.project.DownloadWarning.COOKIE
 
 import cats.data.OptionT
@@ -31,14 +31,14 @@ import slick.lifted.TableQuery
   * @param downloadId  Download ID
   */
 case class DownloadWarning(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[DownloadWarning] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     expiration: Timestamp,
     token: String,
-    versionId: ObjectReference,
+    versionId: DbRef[Version],
     address: InetString,
     isConfirmed: Boolean = false,
-    downloadId: Option[ObjectReference]
+    downloadId: Option[DbRef[UnsafeDownload]]
 ) extends Model
     with Expirable {
 

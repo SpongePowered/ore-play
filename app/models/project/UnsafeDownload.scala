@@ -1,7 +1,8 @@
 package models.project
 
 import db.impl.schema.UnsafeDownloadsTable
-import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import models.user.User
 import ore.project.io.DownloadType
 
 import com.github.tminglei.slickpg.InetString
@@ -17,9 +18,9 @@ import slick.lifted.TableQuery
   * @param downloadType Type of download
   */
 case class UnsafeDownload(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[UnsafeDownload] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: Option[ObjectReference] = None,
+    userId: Option[DbRef[User]] = None,
     address: InetString,
     downloadType: DownloadType
 ) extends Model {

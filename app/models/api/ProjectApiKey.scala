@@ -1,16 +1,17 @@
 package models.api
 
 import db.impl.schema.ProjectApiKeyTable
-import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import models.project.Project
 import ore.project.ProjectOwned
 import ore.rest.ProjectApiKeyType
 
 import slick.lifted.TableQuery
 
 case class ProjectApiKey(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectApiKey] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
+    projectId: DbRef[Project],
     keyType: ProjectApiKeyType,
     value: String
 ) extends Model

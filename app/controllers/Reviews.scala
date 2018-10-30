@@ -13,7 +13,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{ModelService, ObjId, DbRef, ObjectTimestamp}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, Version}
@@ -63,7 +63,7 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
         val review = new Review(
-          ObjectId.Uninitialized,
+          ObjId.Uninitialized(),
           ObjectTimestamp(Timestamp.from(Instant.now())),
           version.id.value,
           request.user.id.value,
@@ -132,10 +132,10 @@ final class Reviews @Inject()(forms: OreForms)(
   }
 
   private def queryNotificationUsers(
-      projectId: Rep[ObjectReference],
-      userId: Rep[ObjectReference],
+      projectId: Rep[DbRef[Project]],
+      userId: Rep[DbRef[User]],
       noRole: Rep[Option[RoleType]]
-  ): Query[(Rep[ObjectReference], Rep[Option[RoleType]]), (ObjectReference, Option[RoleType]), Seq] = {
+  ): Query[(Rep[DbRef[User]], Rep[Option[RoleType]]), (DbRef[User], Option[RoleType]), Seq] = {
     // Query Orga Members
     val q1 = for {
       org     <- TableQuery[OrganizationTable] if org.id === projectId
@@ -203,7 +203,7 @@ final class Reviews @Inject()(forms: OreForms)(
               closeOldReview,
               this.service.insert(
                 Review(
-                  ObjectId.Uninitialized,
+                  ObjId.Uninitialized(),
                   ObjectTimestamp(Timestamp.from(Instant.now())),
                   version.id.value,
                   request.user.id.value,
@@ -218,7 +218,7 @@ final class Reviews @Inject()(forms: OreForms)(
       }
   }
 
-  def editReview(author: String, slug: String, versionString: String, reviewId: ObjectReference): Action[String] = {
+  def editReview(author: String, slug: String, versionString: String, reviewId: DbRef[Review]): Action[String] = {
     Authenticated
       .andThen(PermissionAction(ReviewProjects))
       .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>

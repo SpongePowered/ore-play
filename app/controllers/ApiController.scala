@@ -14,9 +14,10 @@ import controllers.sugar.Bakery
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectApiKeyTable
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import form.OreForms
 import models.api.ProjectApiKey
+import models.project.Project
 import models.user.{LoggedAction, UserActionLogger}
 import ore.permission.role.RoleType
 import ore.permission.{EditApiKeys, ReviewProjects}
@@ -234,7 +235,7 @@ final class ApiController @Inject()(
             )
             .flatMap { formData =>
               val apiKeyTable = TableQuery[ProjectApiKeyTable]
-              def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[ObjectReference]) = {
+              def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[DbRef[Project]]) = {
                 val query = for {
                   k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
                 } yield {

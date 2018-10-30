@@ -1,6 +1,7 @@
 package form.project
 
-import db.ObjectReference
+import db.DbRef
+import models.user.User
 
 /**
   * Concrete counterpart of [[TProjectRoleSetBuilder]].
@@ -8,4 +9,4 @@ import db.ObjectReference
   * @param users Users for result set
   * @param roles Roles for result set
   */
-case class ProjectRoleSetBuilder(users: List[ObjectReference], roles: List[String]) extends TProjectRoleSetBuilder
+case class ProjectRoleSetBuilder(users: List[DbRef[User]], roles: List[String]) extends TProjectRoleSetBuilder

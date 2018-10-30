@@ -11,7 +11,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 import db.impl.model.common.Named
 import db.impl.schema.PageTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
@@ -47,10 +47,10 @@ import slick.lifted.TableQuery
   * @param isDeletable  True if can be deleted by the user
   */
 case class Page(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Page] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
-    parentId: Option[ObjectReference],
+    projectId: DbRef[Project],
+    parentId: Option[DbRef[Page]],
     name: String,
     slug: String,
     isDeletable: Boolean = true,
@@ -69,11 +69,11 @@ case class Page(
   checkNotNull(this.contents, "contents cannot be null", "")
 
   def this(
-      projectId: ObjectReference,
+      projectId: DbRef[Project],
       name: String,
       content: String,
       isDeletable: Boolean,
-      parentId: Option[ObjectReference]
+      parentId: Option[DbRef[Page]]
   ) = {
     this(
       projectId = projectId,

@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
-import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjId, DbRef, ObjectTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
@@ -25,10 +25,10 @@ import slick.lifted.TableQuery
   * @param isRead             True if notification has been read
   */
 case class Notification(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Notification] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: ObjectReference,
-    originId: ObjectReference,
+    userId: DbRef[User],
+    originId: DbRef[User],
     notificationType: NotificationType,
     messageArgs: NEL[String],
     action: Option[String] = None,

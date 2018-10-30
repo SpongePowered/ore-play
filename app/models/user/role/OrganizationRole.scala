@@ -3,7 +3,8 @@ package models.user.role
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.OrganizationRoleTable
-import db.{ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import models.user.{Organization, User}
 import ore.Visitable
 import ore.organization.OrganizationOwned
 import ore.permission.role.RoleType
@@ -21,10 +22,10 @@ import slick.lifted.TableQuery
   * @param isAccepted    True if has been accepted
   */
 case class OrganizationRole(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[OrganizationRole] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: ObjectReference,
-    organizationId: ObjectReference,
+    userId: DbRef[User],
+    organizationId: DbRef[Organization],
     roleType: RoleType,
     isAccepted: Boolean = false
 ) extends RoleModel
@@ -33,8 +34,8 @@ case class OrganizationRole(
   override type M = OrganizationRole
   override type T = OrganizationRoleTable
 
-  def this(userId: ObjectReference, organizationId: ObjectReference, roleType: RoleType) =
-    this(id = ObjectId.Uninitialized, userId = userId, organizationId = organizationId, roleType = roleType)
+  def this(userId: DbRef[User], organizationId: DbRef[Organization], roleType: RoleType) =
+    this(id = ObjId.Uninitialized(), userId = userId, organizationId = organizationId, roleType = roleType)
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
 }

@@ -1,6 +1,6 @@
 package db.table
 
-import db.ObjectReference
+import db.DbRef
 import db.impl.OrePostgresDriver.api._
 
 /**
@@ -9,7 +9,7 @@ import db.impl.OrePostgresDriver.api._
   * @param tag Table tag
   * @param name Table name
   */
-abstract class AssociativeTable(
+abstract class AssociativeTable[A, B](
     tag: Tag,
     name: String,
-) extends Table[(ObjectReference, ObjectReference)](tag, name)
+) extends Table[(DbRef[A], DbRef[B])](tag, name)

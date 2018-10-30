@@ -2,9 +2,9 @@ package db.impl.access
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{ModelBase, ModelService, ObjectId, ObjectReference}
+import db.{DbRef, ModelBase, ModelService, ObjId}
 import models.user.role.OrganizationRole
-import models.user.{Notification, Organization}
+import models.user.{Notification, Organization, User}
 import ore.OreConfig
 import ore.permission.role.RoleType
 import ore.user.notification.NotificationType
@@ -28,7 +28,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
     */
   def create(
       name: String,
-      ownerId: ObjectReference,
+      ownerId: DbRef[User],
       members: Set[OrganizationRole]
   )(implicit ec: ExecutionContext, auth: SpongeAuthApi): EitherT[Future, String, Organization] = {
     Logger.debug("Creating Organization...")
@@ -56,7 +56,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
         // reference to the Sponge user ID, the organization's username and a
         // reference to the User owner of the organization.
         Logger.info("Creating on Ore...")
-        this.add(Organization(id = ObjectId(spongeUser.id), username = name, ownerId = ownerId))
+        this.add(Organization(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
       }
       .semiflatMap { org =>
         // Every organization model has a regular User companion. Organizations

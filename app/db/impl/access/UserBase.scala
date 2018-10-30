@@ -9,7 +9,7 @@ import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectTableMain, UserTable}
-import db.{ModelBase, ModelService, ObjectId, ObjectTimestamp}
+import db.{ModelBase, ModelService, ObjId, ObjectTimestamp}
 import models.user.{Session, User}
 import ore.OreConfig
 import ore.permission.role.RoleType
@@ -188,7 +188,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     val maxAge     = this.config.play.get[Int]("http.session.maxAge")
     val expiration = new Timestamp(new Date().getTime + maxAge * 1000L)
     val token      = UUID.randomUUID().toString
-    val session    = Session(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, expiration, user.name, token)
+    val session    = Session(ObjId.Uninitialized(), ObjectTimestamp.Uninitialized, expiration, user.name, token)
     this.service.access[Session]().add(session)
   }
 

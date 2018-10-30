@@ -2,7 +2,7 @@ package ore.project
 
 import java.sql.Timestamp
 
-import db.ObjectReference
+import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectTable
 import models.project.Project
@@ -51,21 +51,21 @@ object ProjectSortingStrategies {
   }
 
   case object MostStars extends ProjectSortingStrategy {
-    def fn: ProjectTable => ColumnOrdered[ObjectReference] = _.stars.desc
-    def title                                              = "Most stars"
-    def id                                                 = 0
+    def fn: ProjectTable => ColumnOrdered[Long] = _.stars.desc
+    def title                                   = "Most stars"
+    def id                                      = 0
   }
 
   case object MostDownloads extends ProjectSortingStrategy {
-    def fn: ProjectTable => ColumnOrdered[ObjectReference] = _.downloads.desc
-    def title                                              = "Most downloads"
-    def id                                                 = 1
+    def fn: ProjectTable => ColumnOrdered[Long] = _.downloads.desc
+    def title                                   = "Most downloads"
+    def id                                      = 1
   }
 
   case object MostViews extends ProjectSortingStrategy {
-    def fn: ProjectTable => ColumnOrdered[ObjectReference] = _.views.desc
-    def title                                              = "Most views"
-    def id                                                 = 2
+    def fn: ProjectTable => ColumnOrdered[Long] = _.views.desc
+    def title                                   = "Most views"
+    def id                                      = 2
   }
 
   case object Newest extends ProjectSortingStrategy {

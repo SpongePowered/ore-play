@@ -10,9 +10,9 @@ import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import form.project.ProjectSettingsForm
-import models.user.Notification
+import models.user.{Notification, User}
 import models.user.role.ProjectRole
 import ore.permission.role.RoleType
 import ore.project.io.ProjectFiles
@@ -38,9 +38,9 @@ import slick.lifted.TableQuery
   * @param licenseUrl  Project license URL
   */
 case class ProjectSettings(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectSettings] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference = -1,
+    projectId: DbRef[Project] = -1L,
     homepage: Option[String] = None,
     issues: Option[String] = None,
     source: Option[String] = None,
@@ -158,7 +158,7 @@ case class ProjectSettings(
     }
   }
 
-  private def memberShipUpdate(userId: Rep[ObjectReference]) =
+  private def memberShipUpdate(userId: Rep[DbRef[User]]) =
     for {
       m <- TableQuery[ProjectRoleTable] if m.userId === userId
     } yield m.roleType

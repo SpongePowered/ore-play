@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectTableMain}
-import db.{ModelService, ObjectReference}
+import db.{ModelService, DbRef}
 import models.project.Project
 import models.user.role.{OrganizationRole, ProjectRole}
 import models.user.{Organization, User}
@@ -46,7 +46,7 @@ object OrganizationData {
       OrganizationData(orga, members.toSeq, projectRoles)
     }
 
-  private def queryProjectRoles(userId: ObjectReference) =
+  private def queryProjectRoles(userId: DbRef[User]) =
     for {
       (role, project) <- TableQuery[ProjectRoleTable].join(TableQuery[ProjectTableMain]).on(_.projectId === _.id)
       if role.userId === userId

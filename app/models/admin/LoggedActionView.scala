@@ -1,58 +1,61 @@
 package models.admin
 
 import db.impl.schema.LoggedActionViewTable
-import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
-import models.user.{LoggedAction, LoggedActionContext}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import models.project.{Page, Project, Version}
+import models.user.{LoggedAction, LoggedActionContext, User}
 import ore.user.UserOwned
 
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery
 
+//TODO: Lot's of existential here, what should they be?
+
 case class LoggedProject(
-    pId: Option[ObjectReference],
+    pId: Option[DbRef[Project]],
     pPluginId: Option[String],
     pSlug: Option[String],
     pOwnerName: Option[String]
 )
-case class LoggedProjectVersion(pvId: Option[ObjectReference], pvVersionString: Option[String])
-case class LoggedProjectPage(ppId: Option[ObjectReference], ppSlug: Option[String])
-case class LoggedSubject(sId: Option[ObjectReference], sName: Option[String])
+case class LoggedProjectVersion(pvId: Option[DbRef[Version]], pvVersionString: Option[String])
+case class LoggedProjectPage(ppId: Option[DbRef[Page]], ppSlug: Option[String])
+case class LoggedSubject(sId: Option[DbRef[_]], sName: Option[String])
 
 case class LoggedActionViewModel(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[LoggedActionViewModel] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: ObjectReference,
+    userId: DbRef[User],
     address: InetString,
     action: LoggedAction,
     actionContext: LoggedActionContext,
-    actionContextId: ObjectReference,
+    actionContextId: DbRef[_],
     newState: String,
     oldState: String,
-    uId: ObjectReference,
+    uId: DbRef[User],
     uName: String,
     loggedProject: LoggedProject,
     loggedProjectVerison: LoggedProjectVersion,
     loggedProjectPage: LoggedProjectPage,
     loggedSubject: LoggedSubject,
-    filterProject: Option[ObjectReference],
-    filterVersion: Option[ObjectReference],
-    filterPage: Option[ObjectReference],
-    filterSubject: Option[ObjectReference],
+    filterProject: Option[DbRef[Project]],
+    filterVersion: Option[DbRef[Version]],
+    filterPage: Option[DbRef[Page]],
+    filterSubject: Option[DbRef[_]],
     filterAction: Option[Int]
 ) extends Model
     with UserOwned {
 
-  def contextId: ObjectReference      = actionContextId
+  def contextId: DbRef[_]             = actionContextId
   def actionType: LoggedActionContext = action.context
-  def pId: Option[ObjectReference]    = loggedProject.pId
+  def pId: Option[DbRef[Project]]     = loggedProject.pId
   def pPluginId: Option[String]       = loggedProject.pPluginId
   def pSlug: Option[String]           = loggedProject.pSlug
   def pOwnerName: Option[String]      = loggedProject.pOwnerName
-  def pvId: Option[ObjectReference]   = loggedProjectVerison.pvId
+  def pvId: Option[DbRef[Version]]    = loggedProjectVerison.pvId
   def pvVersionString: Option[String] = loggedProjectVerison.pvVersionString
-  def ppId: Option[ObjectReference]   = loggedProjectPage.ppId
+  def ppId: Option[DbRef[Page]]       = loggedProjectPage.ppId
   def ppSlug: Option[String]          = loggedProjectPage.ppSlug
-  def sId: Option[ObjectReference]    = loggedSubject.sId
+  def sId: Option[DbRef[_]]           = loggedSubject.sId
   def sName: Option[String]           = loggedSubject.sName
 
   override type T = LoggedActionViewTable

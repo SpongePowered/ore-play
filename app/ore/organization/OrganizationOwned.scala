@@ -2,7 +2,7 @@ package ore.organization
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.ObjectReference
+import db.DbRef
 import db.impl.access.OrganizationBase
 import models.user.Organization
 
@@ -14,7 +14,7 @@ import cats.instances.future._
 trait OrganizationOwned {
 
   /** Returns the Organization's ID */
-  def organizationId: ObjectReference
+  def organizationId: DbRef[Organization]
 
   /** Returns the Organization */
   def organization(implicit organizations: OrganizationBase, ec: ExecutionContext): Future[Organization] =

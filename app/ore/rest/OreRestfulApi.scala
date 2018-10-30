@@ -20,7 +20,7 @@ import db.impl.schema.{
   UserTable,
   VersionTable
 }
-import db.{ModelService, ObjectReference}
+import db.{ModelService, DbRef}
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole
@@ -100,7 +100,7 @@ trait OreRestfulApi extends OreWrites {
     }
   }
 
-  private def getMembers(projects: Seq[ObjectReference]) =
+  private def getMembers(projects: Seq[DbRef[Project]]) =
     for {
       r <- TableQuery[ProjectRoleTable] if r.isAccepted === true && r.projectId.inSetBind(projects)
       u <- TableQuery[UserTable] if r.userId === u.id
@@ -189,10 +189,10 @@ trait OreRestfulApi extends OreWrites {
     author.fold(withVisibility)(a => withVisibility + (("author", JsString(a))))
   }
 
-  private def queryProjectChannels(projectIds: Seq[ObjectReference]) =
+  private def queryProjectChannels(projectIds: Seq[DbRef[Project]]) =
     TableQuery[ChannelTable].filter(_.projectId.inSetBind(projectIds))
 
-  private def queryVersionTags(versions: Seq[ObjectReference]) =
+  private def queryVersionTags(versions: Seq[DbRef[Version]]) =
     for {
       v <- TableQuery[VersionTable] if v.id.inSetBind(versions) && v.visibility === (Visibility.Public: Visibility)
       t <- TableQuery[TagTable] if t.id === v.tagIds.any

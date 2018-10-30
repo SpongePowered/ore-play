@@ -11,7 +11,7 @@ import scala.util.control.Breaks._
 
 import play.api.i18n.Messages
 
-import db.ObjectReference
+import db.DbRef
 import models.user.User
 import ore.user.UserOwned
 
@@ -164,6 +164,6 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     pluginEntry
   }
 
-  override def userId: ObjectReference = this.user.id.value
+  override def userId: DbRef[User] = this.user.id.value
 
 }

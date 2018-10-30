@@ -15,12 +15,13 @@ import controllers.OreBaseController
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
 import models.project.{Note, Visibility}
 import models.user._
+import models.user.role.ProjectRole
 import models.viewhelper.ScopedOrganizationData
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -182,7 +183,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
   }
 
-  private def orgasUserCanUploadTo(user: User): Future[Set[ObjectReference]] = {
+  private def orgasUserCanUploadTo(user: User): Future[Set[DbRef[Organization]]] = {
     for {
       all       <- user.organizations.allFromParent(user)
       canCreate <- Future.traverse(all)(org => user.can(CreateProject).in(org).tupleLeft(org.id.value))
@@ -407,7 +408,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: ObjectReference, status: String): Action[AnyContent] = Authenticated.async {
+  def setInviteStatus(id: DbRef[ProjectRole], status: String): Action[AnyContent] = Authenticated.async {
     implicit request =>
       val user = request.user
       user.projectRoles
@@ -431,7 +432,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param behalf Behalf User
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatusOnBehalf(id: ObjectReference, status: String, behalf: String): Action[AnyContent] =
+  def setInviteStatusOnBehalf(id: DbRef[ProjectRole], status: String, behalf: String): Action[AnyContent] =
     Authenticated.async { implicit request =>
       val user = request.user
       val res = for {

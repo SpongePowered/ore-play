@@ -3,7 +3,7 @@ package models.admin
 import java.sql.Timestamp
 
 import db.impl.schema.ProjectLogEntryTable
-import db.{Model, ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjId, DbRef, ObjectTimestamp}
 
 import slick.lifted.TableQuery
 
@@ -19,9 +19,9 @@ import slick.lifted.TableQuery
   * @param lastOccurrence   Instant of last occurrence
   */
 case class ProjectLogEntry(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectLogEntry] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    logId: ObjectReference,
+    logId: DbRef[ProjectLog],
     tag: String,
     message: String,
     occurrences: Int = 1,

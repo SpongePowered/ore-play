@@ -5,8 +5,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.VersionDownloadsTable
-import db.{ModelQuery, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, ModelQuery, ObjId, ObjectTimestamp}
 import models.project.Version
+import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
@@ -26,12 +27,12 @@ import slick.lifted.TableQuery
   * @param userId     User ID
   */
 case class VersionDownload(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[VersionDownload] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    modelId: ObjectReference,
+    modelId: DbRef[Version],
     address: InetString,
     cookie: String,
-    userId: Option[ObjectReference] = None
+    userId: Option[DbRef[User]] = None
 ) extends StatEntry[Version] {
 
   override type M = VersionDownload

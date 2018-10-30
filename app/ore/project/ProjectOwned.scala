@@ -2,7 +2,7 @@ package ore.project
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.ObjectReference
+import db.DbRef
 import db.impl.access.ProjectBase
 import models.project.Project
 
@@ -14,7 +14,7 @@ import cats.instances.future._
 trait ProjectOwned {
 
   /** Returns the Project ID */
-  def projectId: ObjectReference
+  def projectId: DbRef[Project]
 
   /** Returns the Project */
   def project(implicit projects: ProjectBase, ec: ExecutionContext): Future[Project] =

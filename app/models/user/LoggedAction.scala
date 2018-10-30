@@ -5,7 +5,7 @@ import scala.concurrent.Future
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 
@@ -14,13 +14,13 @@ import enumeratum.values.{IntEnum, IntEnumEntry}
 import slick.lifted.TableQuery
 
 case class LoggedActionModel(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[LoggedActionModel] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: ObjectReference,
+    userId: DbRef[User],
     address: InetString,
     action: LoggedAction,
     actionContext: LoggedActionContext,
-    actionContextId: ObjectReference,
+    actionContextId: DbRef[_],
     newState: String,
     oldState: String
 ) extends Model
@@ -133,13 +133,13 @@ object UserActionLogger {
   def log(
       request: AuthRequest[_],
       action: LoggedAction,
-      actionContextId: ObjectReference,
+      actionContextId: DbRef[_],
       newState: String,
       oldState: String
   )(implicit service: ModelService): Future[LoggedActionModel] =
     service.insert(
       LoggedActionModel(
-        ObjectId.Uninitialized,
+        ObjId.Uninitialized(),
         ObjectTimestamp.Uninitialized,
         request.user.userId,
         InetString(StatTracker.remoteAddress(request)),

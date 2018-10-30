@@ -42,6 +42,6 @@ object ModelFilter {
   def All[M <: Model]: M#T => Rep[Boolean] = _ => true
 
   /** Filters models by ID */
-  def IdFilter[M <: Model](id: ObjectReference): M#T => Rep[Boolean] = _.id === id
+  def IdFilter[M <: Model](id: DbRef[M]): M#T => Rep[Boolean] = _.id === id
 
 }

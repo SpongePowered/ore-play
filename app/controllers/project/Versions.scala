@@ -20,7 +20,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
-import db.{ModelService, ObjectReference}
+import db.{ModelService, DbRef}
 import form.OreForms
 import models.project._
 import models.user.{LoggedAction, UserActionLogger}
@@ -695,7 +695,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   /**
     * Confirms the download and prepares the unsafe download.
     */
-  private def confirmDownload0(versionId: ObjectReference, downloadType: Option[Int], token: String)(
+  private def confirmDownload0(versionId: DbRef[Version], downloadType: Option[Int], token: String)(
       implicit requestHeader: Request[_]
   ): OptionT[Future, UnsafeDownload] = {
     val addr = InetString(StatTracker.remoteAddress)

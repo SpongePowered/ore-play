@@ -9,7 +9,7 @@ import db.table.ModelTable
   */
 abstract class Model { self =>
 
-  def id: ObjectId
+  def id: ObjId[M]
   def createdAt: ObjectTimestamp
 
   /** Self referential type */
