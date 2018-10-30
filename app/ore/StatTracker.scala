@@ -11,7 +11,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
-import db.{DbRef, Model, ModelFilter, ModelQuery, ModelService, ObjId}
+import db.{DbRef, Model, ModelFilter, ModelQuery, ModelService}
 import models.project.{Project, Version}
 import models.statistic.{ProjectView, StatEntry, VersionDownload}
 import models.user.User
@@ -31,10 +31,10 @@ trait StatTracker {
 
   def bakery: Bakery
 
-  private def record[S <: Model, M <: StatEntry[S]: ModelQuery](
-      entry: M
-  )(setUserId: (M, DbRef[User]) => M)(implicit ec: ExecutionContext): Future[Boolean] = {
-    like[S, M](entry).value.flatMap {
+  private def record[S <: Model, M0 <: StatEntry[S] { type M = M0 }: ModelQuery](
+      entry: M0
+  )(setUserId: (M0, DbRef[User]) => M0)(implicit ec: ExecutionContext): Future[Boolean] = {
+    like[S, M0](entry).value.flatMap {
       case None => service.insert(entry).as(true)
       case Some(existingEntry) =>
         val effect = if (existingEntry.userId.isEmpty && entry.userId.isDefined) {
@@ -65,7 +65,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): Future[Result] = {
     ProjectView.bindFromRequest.flatMap { statEntry =>
-      record[Project, ProjectView](statEntry)((m, id) => m.copy(id = ObjId(id)))
+      record[Project, ProjectView](statEntry)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => projectRequest.data.project.addView
           case false => Future.unit
@@ -88,7 +88,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): Future[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
-      record[Version, VersionDownload](statEntry)((m, id) => m.copy(id = ObjId(id)))
+      record[Version, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => version.addDownload *> request.data.project.addDownload
           case false => Future.unit

@@ -18,7 +18,7 @@ trait Hideable extends Model { self =>
 
   override type M <: Hideable { type M = self.M }
   override type T <: VisibilityColumn[M]
-  type ModelVisibilityChange <: VisibilityChange
+  type ModelVisibilityChange <: VisibilityChange { type M = ModelVisibilityChange }
 
   /**
     * Returns true if the [[Model]] is visible.

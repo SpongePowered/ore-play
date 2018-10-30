@@ -23,7 +23,7 @@ import cats.syntax.all._
   * Handles and keeps track of [[User]] "memberships" for an [[Model]].
   */
 trait MembershipDossier[F[_], M <: Model] {
-  type RoleType <: RoleModel
+  type RoleType <: RoleModel { type M = RoleType }
   type MemberType <: Member[RoleType]
 
   def roles(model: M): ModelAccess[RoleType]

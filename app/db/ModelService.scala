@@ -77,11 +77,11 @@ abstract class ModelService(val driver: JdbcProfile) {
     * Returns a new ModelAccess to access a ModelTable synchronously.
     *
     * @param baseFilter Base filter to apply
-    * @tparam M         Model
+    * @tparam M0         Model
     * @return           New ModelAccess
     */
-  def access[M <: Model: ModelQuery](baseFilter: M#T => Rep[Boolean] = All[M]) =
-    new ModelAccess[M](this, baseFilter)
+  def access[M0 <: Model { type M = M0 }: ModelQuery](baseFilter: M0#T => Rep[Boolean] = All[M0]) =
+    new ModelAccess[M0](this, baseFilter)
 
   /**
     * Creates the specified model in it's table.
@@ -99,10 +99,10 @@ abstract class ModelService(val driver: JdbcProfile) {
     }
   }
 
-  def update[M <: Model: ModelQuery](model: M)(implicit ec: ExecutionContext): Future[M] =
+  def update[M0 <: Model { type M = M0 }: ModelQuery](model: M0)(implicit ec: ExecutionContext): Future[M0] =
     runDBIO(newAction.filter(IdFilter(model.id.value)).update(model)).as(model)
 
-  def updateIfDefined[M <: Model: ModelQuery](model: M)(implicit ec: ExecutionContext): Future[M] =
+  def updateIfDefined[M0 <: Model { type M = M0 }: ModelQuery](model: M0)(implicit ec: ExecutionContext): Future[M0] =
     if (model.isDefined) update(model) else Future.successful(model)
 
   /**
@@ -113,9 +113,9 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param value  Value to set
     * @param mapper JdbcType
     * @tparam A     Value type
-    * @tparam M     Model type
+    * @tparam M0     Model type
     */
-  def set[A, M <: Model: ModelQuery](model: M, column: M#T => Rep[A], value: A)(
+  def set[A, M0 <: Model { type M = M0 }: ModelQuery](model: M0, column: M0#T => Rep[A], value: A)(
       implicit mapper: JdbcType[A]
   ): Future[Int] = runDBIO(newAction.filter(IdFilter(model.id.value)).map(column(_)).update(value))
 
@@ -142,8 +142,8 @@ abstract class ModelService(val driver: JdbcProfile) {
     *
     * @param model Model to delete
     */
-  def delete[M <: Model: ModelQuery](model: M): Future[Int] =
-    deleteWhere[M](IdFilter(model.id.value))
+  def delete[M0 <: Model { type M = M0 }: ModelQuery](model: M0): Future[Int] =
+    deleteWhere[M0](IdFilter(model.id.value))
 
   /**
     * Deletes all the models meeting the specified filter.
@@ -160,22 +160,22 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param id   Model with ID
     * @return     Model if present, None otherwise
     */
-  def get[M <: Model: ModelQuery](id: DbRef[M], filter: M#T => Rep[Boolean] = All)(
+  def get[M0 <: Model { type M = M0 }: ModelQuery](id: DbRef[M0], filter: M0#T => Rep[Boolean] = All)(
       implicit ec: ExecutionContext
-  ): OptionT[Future, M] = find(IdFilter[M](id) && filter)
+  ): OptionT[Future, M0] = find(IdFilter[M0](id) && filter)
 
   /**
     * Returns a sequence of Model's that have an ID in the specified Set.
     *
     * @param ids        ID set
     * @param filter     Additional filter
-    * @tparam M         Model type
+    * @tparam M0         Model type
     * @return           Seq of models in ID set
     */
-  def in[M <: Model: ModelQuery](
-      ids: Set[DbRef[M]],
-      filter: M#T => Rep[Boolean] = All
-  ): Future[Seq[M]] = this.filter(ModelFilter[M](_.id.inSetBind(ids)) && filter)
+  def in[M0 <: Model { type M = M0 }: ModelQuery](
+      ids: Set[DbRef[M0]],
+      filter: M0#T => Rep[Boolean] = All
+  ): Future[Seq[M0]] = this.filter(ModelFilter[M0](_.id.inSetBind(ids)) && filter)
 
   /**
     * Returns a collection of models with the specified limit and offset.

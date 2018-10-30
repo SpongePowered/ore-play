@@ -54,6 +54,12 @@ trait OrePostgresDriver
     implicit val langTypeMapper: BaseColumnType[Lang] =
       MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)
 
+    /*
+    implicit def dbRefBaseType[A]: BaseColumnType[DbRef[A]] = longColumnType.asInstanceOf[BaseColumnType[DbRef[A]]]
+    implicit def dbRefArrayBaseType[A]: BaseColumnType[List[DbRef[A]]] =
+      simpleLongListTypeMapper.asInstanceOf[BaseColumnType[List[DbRef[A]]]]
+     */
+
     implicit val roleTypeListTypeMapper: DriverJdbcType[List[RoleType]] = new AdvancedArrayJdbcType[RoleType](
       "varchar",
       str => utils.SimpleArrayUtils.fromString[RoleType](s => RoleType.withValue(s))(str).orNull,

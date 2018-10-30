@@ -7,9 +7,9 @@ import db.access.ModelAccess
 /**
   * Represents something that provides access to a ModelTable.
   *
-  * @tparam M Model
+  * @tparam M0 Model
   */
-trait ModelBase[M <: Model] {
+trait ModelBase[M0 <: Model { type M = M0 }] {
 
   /** The [[ModelService]] to retrieve the model */
   def service: ModelService
@@ -19,10 +19,10 @@ trait ModelBase[M <: Model] {
     *
     * @return ModelAccess
     */
-  def access(implicit query: ModelQuery[M]): ModelAccess[M] = this.service.access[M]()
+  def access(implicit query: ModelQuery[M0]): ModelAccess[M0] = this.service.access[M0]()
 
 }
 
 object ModelBase {
-  implicit def unwrap[M <: Model: ModelQuery](base: ModelBase[M]): ModelAccess[M] = base.access
+  implicit def unwrap[M0 <: Model { type M = M0 }: ModelQuery](base: ModelBase[M0]): ModelAccess[M0] = base.access
 }
