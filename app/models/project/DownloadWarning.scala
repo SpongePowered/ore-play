@@ -9,7 +9,7 @@ import play.api.mvc.Cookie
 import controllers.sugar.Bakery
 import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.DownloadWarning.COOKIE
 
 import cats.data.OptionT

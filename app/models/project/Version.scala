@@ -12,7 +12,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionTable
-import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User

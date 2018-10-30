@@ -7,12 +7,12 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.i18n.Lang
 import play.api.mvc.Request
 
+import db._
 import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.model.common.Named
 import db.impl.schema._
-import db._
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{OrganizationRole, ProjectRole}
 import ore.OreConfig

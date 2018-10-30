@@ -20,7 +20,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
-import db.{ModelService, DbRef}
+import db.{DbRef, ModelService}
 import form.OreForms
 import models.project._
 import models.user.{LoggedAction, UserActionLogger}

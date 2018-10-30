@@ -6,7 +6,7 @@ import java.sql.Timestamp
 import java.util.Date
 import javax.inject.Inject
 
-import db.{ObjId, DbRef}
+import db.{DbRef, ObjId}
 import models.user.User
 import ore.OreConfig
 import ore.permission.role.RoleType

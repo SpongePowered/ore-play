@@ -2,7 +2,7 @@ package ore
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{Model, ModelService, DbRef}
+import db.{DbRef, Model, ModelService}
 import models.user.role.RoleModel
 import ore.user.{Member, MembershipDossier}
 

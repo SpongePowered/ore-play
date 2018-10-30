@@ -24,7 +24,7 @@ import db.impl.schema.{
   UserTable,
   VersionTable
 }
-import db.{ModelQuery, ModelService, DbRef}
+import db.{DbRef, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.project.{Tag, _}

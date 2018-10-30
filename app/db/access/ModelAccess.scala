@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelQuery, ModelService, DbRef}
+import db.{DbRef, Model, ModelQuery, ModelService}
 
 import cats.data.OptionT
 import slick.lifted.ColumnOrdered

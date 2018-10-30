@@ -5,7 +5,7 @@ import scala.concurrent.Future
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 

@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.table.StatTable
-import db.{Model, DbRef}
+import db.{DbRef, Model}
 import models.user.User
 
 import cats.data.OptionT

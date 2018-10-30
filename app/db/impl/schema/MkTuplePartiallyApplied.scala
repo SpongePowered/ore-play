@@ -3,9 +3,9 @@ import java.sql.Timestamp
 
 import db.{DbRef, ObjId, ObjectTimestamp}
 
-import shapeless.{::, Generic, HList, HNil}
-import shapeless.Nat.{_0, _1, _2}
-import shapeless.ops.hlist.{At, Drop, Prepend, Tupler}
+import shapeless.nat._
+import shapeless.ops.hlist._
+import shapeless._
 
 class MkTuplePartiallyApplied[A](private val b: Boolean = false) extends AnyVal {
   def apply[ARepr <: HList, Rest <: HList, Out <: Product, OutRepr <: HList]()(

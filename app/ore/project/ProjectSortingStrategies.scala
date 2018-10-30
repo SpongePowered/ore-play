@@ -2,7 +2,6 @@ package ore.project
 
 import java.sql.Timestamp
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectTable
 import models.project.Project

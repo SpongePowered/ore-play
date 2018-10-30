@@ -13,7 +13,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, ModelService, ObjId, ObjectTimestamp}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, Version}

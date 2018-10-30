@@ -6,7 +6,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.table.common.VisibilityChangeColumns
-import db.{Model, DbRef}
+import db.{DbRef, Model}
 import models.project.Visibility
 import models.user.User
 

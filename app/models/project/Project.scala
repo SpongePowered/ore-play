@@ -21,7 +21,7 @@ import db.impl.schema.{
   ProjectTableMain,
   ProjectWatchersTable
 }
-import db.{AssociationQuery, Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{AssociationQuery, DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public

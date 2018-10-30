@@ -11,7 +11,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 import db.impl.model.common.Named
 import db.impl.schema.PageTable
-import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned

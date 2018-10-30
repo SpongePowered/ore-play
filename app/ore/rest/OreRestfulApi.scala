@@ -20,7 +20,7 @@ import db.impl.schema.{
   UserTable,
   VersionTable
 }
-import db.{ModelService, DbRef}
+import db.{DbRef, ModelService}
 import models.project._
 import models.user.User
 import models.user.role.ProjectRole

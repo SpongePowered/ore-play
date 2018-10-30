@@ -1,8 +1,8 @@
 package db.impl.table
 
-import db.{DbRef, Model}
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
+import db.{DbRef, Model}
 import models.statistic.StatEntry
 import models.user.User
 

@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.TagTable
-import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 
 import enumeratum.values._
 import slick.lifted.TableQuery

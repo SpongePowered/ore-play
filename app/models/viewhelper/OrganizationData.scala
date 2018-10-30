@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectTableMain}
-import db.{ModelService, DbRef}
+import db.{DbRef, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationRole, ProjectRole}
 import models.user.{Organization, User}

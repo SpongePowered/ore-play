@@ -6,7 +6,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.Named
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
-import db.{AssociationQuery, Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.role.OrganizationRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Default, RoleType, Trust}

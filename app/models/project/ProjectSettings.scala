@@ -12,8 +12,8 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable, UserTable}
 import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import form.project.ProjectSettingsForm
-import models.user.{Notification, User}
 import models.user.role.ProjectRole
+import models.user.{Notification, User}
 import ore.permission.role.RoleType
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}

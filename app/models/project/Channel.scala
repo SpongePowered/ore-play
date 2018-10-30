@@ -4,7 +4,7 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.ChannelTable
-import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned

@@ -6,7 +6,7 @@ import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.schema.FlagTable
-import db.{Model, ModelQuery, ModelService, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.User
 import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned

@@ -8,7 +8,7 @@ import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImp
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
 import db.table.AssociativeTable
-import db.{AssociationQuery, Model, ModelQuery, ModelService, DbRef}
+import db.{AssociationQuery, DbRef, Model, ModelQuery, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
 import models.user.{Organization, User}

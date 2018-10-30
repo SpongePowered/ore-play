@@ -3,8 +3,8 @@ package ore.organization
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.{DbRef, ModelService}
-import models.user.{Organization, User}
 import models.user.role.OrganizationRole
+import models.user.{Organization, User}
 import ore.user.Member
 
 /**

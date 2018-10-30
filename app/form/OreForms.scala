@@ -19,7 +19,7 @@ import form.project._
 import models.api.ProjectApiKey
 import models.project.Page._
 import models.project.{Channel, Page}
-import models.user.{Organization, User}
+import models.user.Organization
 import models.user.role.ProjectRole
 import ore.OreConfig
 import ore.project.factory.ProjectFactory

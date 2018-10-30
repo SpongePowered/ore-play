@@ -3,7 +3,7 @@ package models.admin
 import java.sql.Timestamp
 
 import db.impl.schema.ProjectLogEntryTable
-import db.{Model, ModelQuery, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
 
 import slick.lifted.TableQuery
 

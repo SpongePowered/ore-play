@@ -7,7 +7,7 @@ import play.twirl.api.Html
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.VersionVisibilityChangeTable
 import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
-import models.project.{Page, Project, Visibility}
+import models.project.{Page, Version, Visibility}
 import models.user.User
 import ore.OreConfig
 
@@ -17,7 +17,7 @@ case class VersionVisibilityChange(
     id: ObjId[VersionVisibilityChange] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     createdBy: Option[DbRef[User]] = None,
-    projectId: DbRef[Project],
+    versionId: DbRef[Version],
     comment: String,
     resolvedAt: Option[Timestamp] = None,
     resolvedBy: Option[DbRef[User]] = None,

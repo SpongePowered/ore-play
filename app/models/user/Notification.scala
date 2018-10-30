@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
-import db.{Model, ModelQuery, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
