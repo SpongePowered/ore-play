@@ -1,6 +1,7 @@
 package controllers
 
-import java.util.{Base64, UUID}
+import java.sql.Timestamp
+import java.util.{Base64, Date, UUID}
 import javax.inject.Inject
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,7 +19,7 @@ import db.{ModelService, ObjectReference}
 import form.OreForms
 import models.api.ProjectApiKey
 import models.user.{LoggedAction, UserActionLogger}
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.project.factory.{PendingVersion, ProjectFactory}
 import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
@@ -32,6 +33,7 @@ import _root_.util.StatusZ
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
 import cats.instances.future._
+import cats.instances.list._
 import cats.syntax.all._
 import slick.lifted.Compiled
 
@@ -288,8 +290,14 @@ final class ApiController @Inject()(
                   case (newVersion, channel, tags) =>
                     val update =
                       if (formData.recommended)
-                        service.update(project.copy(recommendedVersionId = Some(newVersion.id.value)))
-                      else Future.unit
+                        service.update(
+                          project.copy(
+                            recommendedVersionId = Some(newVersion.id.value),
+                            lastUpdated = new Timestamp(new Date().getTime)
+                          )
+                        )
+                      else
+                        service.update(project.copy(lastUpdated = new Timestamp(new Date().getTime)))
 
                     update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
                 }
@@ -391,17 +399,22 @@ final class ApiController @Inject()(
               val fullName   = query.get("name")
               val add_groups = query.get("add_groups")
 
+              val globalRoles = add_groups.map { groups =>
+                if (groups.trim.isEmpty) Nil
+                else groups.split(",").flatMap(Role.withValueOpt).toList
+              }
+
+              val updateRoles = globalRoles.fold(Future.unit) { roles =>
+                user.globalRoles.removeAll() *> roles.map(_.toDbRole).traverse(user.globalRoles.add).void
+              }
+
               service.update(
                 user.copy(
                   email = email.orElse(user.email),
                   name = username.getOrElse(user.name),
-                  fullName = fullName.orElse(user.fullName),
-                  globalRoles = add_groups.fold(user.globalRoles) { groups =>
-                    if (groups.trim.isEmpty) Nil
-                    else groups.split(",").flatMap(RoleType.withValueOpt).toList
-                  }
+                  fullName = fullName.orElse(user.fullName)
                 )
-              )
+              ) *> updateRoles
             }
             .getOrElse(Future.unit)
             .as(Ok(Json.obj("status" -> "success")))

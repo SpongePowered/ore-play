@@ -4,8 +4,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelService
 import models.project.{Channel, Project}
-import ore.{Color, OreConfig}
 import ore.project.factory.ProjectFactory
+import ore.{Color, OreConfig}
 
 import cats.data.{EitherT, NonEmptyList => NEL}
 import cats.instances.future._

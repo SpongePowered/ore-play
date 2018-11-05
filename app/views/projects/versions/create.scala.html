@@ -17,9 +17,9 @@
 
 @bootstrap.layout(messages("version.create.pageTitle")) {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/projectDetail.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/channelManage.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pluginUpload.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDetail.js")"></script>
 
     <div class="container" style="margin-top: 90px">
         <div class="row">
@@ -81,7 +81,7 @@
                                                            data-target="#channel-settings"></i>
                                                     </a>
                                                     <script type="text/javascript"
-                                                            src="@routes.Assets.at("javascripts/versionCreateChannelNew.js")"></script>
+                                                            src="@routes.Assets.versioned("javascripts/versionCreateChannelNew.js")"></script>
                                                     <script nonce="@nonce">DEFAULT_COLOR = '@config.defaultChannelColor.hex';</script>
                                                 } else {
                                                     <span id="channel-name" class="channel" style="background-color: @pending.get.channelColor;">

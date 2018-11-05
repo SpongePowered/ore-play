@@ -12,7 +12,7 @@
 
 @bootstrap.layout(messages("channel.list.title", p.project.ownerName, p.project.slug)) {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/channelManage.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/channelManage.js")"></script>
     <script nonce="@nonce">
         PROJECT_OWNER = '@p.project.ownerName';
         PROJECT_SLUG = '@p.project.slug';

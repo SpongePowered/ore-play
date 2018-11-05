@@ -20,19 +20,19 @@ import db.impl.schema.{
   LoggedActionViewTable,
   ProjectTableMain,
   ReviewTable,
-  TagTable,
   UserTable,
-  VersionTable
+  VersionTable,
+  VersionTagTable
 }
 import db.{ModelQuery, ModelService, ObjectReference}
 import form.OreForms
 import models.admin.Review
-import models.project.{Tag, _}
+import models.project.{VersionTag, _}
 import models.user.role._
 import models.user.{LoggedAction, LoggedActionModel, User, UserActionLogger}
 import models.viewhelper.OrganizationData
 import ore.permission._
-import ore.permission.role.{Role, RoleType}
+import ore.permission.role.{Role, RoleCategory}
 import ore.permission.scope.GlobalScope
 import ore.project.{Category, ProjectSortingStrategies}
 import ore.user.MembershipDossier
@@ -115,7 +115,7 @@ final class Application @Inject()(forms: OreForms)(
     val offset   = (pageNum - 1) * pageSize
 
     val versionIdsOnPlatform =
-      TableQuery[TagTable].filter(_.name.toLowerCase.inSetBind(platformNames)).map(_.versionIds.unnest)
+      TableQuery[VersionTagTable].filter(_.name.toLowerCase.inSetBind(platformNames)).map(_.versionId)
 
     //noinspection ScalaUnnecessaryParentheses
     val dbQueryRaw = for {
@@ -136,14 +136,13 @@ final class Application @Inject()(forms: OreForms)(
       .drop(offset)
       .take(pageSize)
 
-    def queryProjects: Future[Seq[(Project, User, Version, List[Tag])]] = {
+    def queryProjects: Future[Seq[(Project, User, Version, List[VersionTag])]] = {
       for {
         projects <- service.runDBIO(projectQuery.result)
         tags     <- Future.sequence(projects.map(_._3.tags))
       } yield {
         projects.zip(tags).map {
-          case ((p, u, v), t) =>
-            (p, u, v, t)
+          case ((p, u, v), t) => (p, u, v, t)
         }
       }
     }
@@ -151,7 +150,7 @@ final class Application @Inject()(forms: OreForms)(
     queryProjects.map { data =>
       val catList =
         if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
-      Ok(views.home(data, catList, query.find(_.nonEmpty), pageNum, ordering, pcat, pform))
+      Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform))
     }
   }
 
@@ -209,7 +208,7 @@ final class Application @Inject()(forms: OreForms)(
     for {
       (v, u) <- TableQuery[VersionTable].joinLeft(TableQuery[UserTable]).on(_.authorId === _.id)
       c      <- TableQuery[ChannelTable] if v.channelId === c.id && v.isReviewed =!= true && v.isNonReviewed =!= true
-      p      <- TableQuery[ProjectTableMain] if v.projectId === p.id && p.visibility =!= (Visibility.SoftDelete: Visibility)
+      p      <- TableQuery[ProjectTableMain] if p.id === v.projectId && p.visibility =!= (Visibility.SoftDelete: Visibility)
       ou     <- TableQuery[UserTable] if p.userId === ou.id
     } yield (v, p, c, u.map(_.name), ou)
 
@@ -230,7 +229,7 @@ final class Application @Inject()(forms: OreForms)(
       perms <- Future.traverse(seq.map(_._2)) { project =>
         request.user
           .trustIn(project)
-          .map(request.user.can.asMap(_)(Visibility.values.map(_.permission): _*))
+          .map2(request.user.globalRoles.all)(request.user.can.asMap(_, _)(Visibility.values.map(_.permission): _*))
       }
     } yield {
       val data = seq.zip(perms).map {
@@ -493,23 +492,23 @@ final class Application @Inject()(forms: OreForms)(
           val json       = Json.parse(data)
           val orgDossier = MembershipDossier.organization
 
-          def updateRoleTable[M0 <: RoleModel { type M = M0 }: ModelQuery](
+          def updateRoleTable[M0 <: UserRoleModel { type M = M0 }: ModelQuery](
               modelAccess: ModelAccess[M0],
-              allowedType: Class[_ <: Role],
-              ownerType: RoleType,
+              allowedCategory: RoleCategory,
+              ownerType: Role,
               transferOwner: M0 => Future[M0],
-              setRoleType: (M0, RoleType) => Future[M0],
+              setRoleType: (M0, Role) => Future[M0],
               setAccepted: (M0, Boolean) => Future[M0]
           ) = {
             val id = (json \ "id").as[ObjectReference]
             action match {
               case "setRole" =>
                 modelAccess.get(id).semiflatMap { role =>
-                  val roleType = RoleType.withValue((json \ "role").as[String])
+                  val roleType = Role.withValue((json \ "role").as[String])
 
                   if (roleType == ownerType)
                     transferOwner(role).as(Ok)
-                  else if (roleType.roleClass == allowedType && roleType.isAssignable)
+                  else if (roleType.category == allowedCategory && roleType.isAssignable)
                     setRoleType(role, roleType).as(Ok)
                   else
                     Future.successful(BadRequest)
@@ -521,12 +520,12 @@ final class Application @Inject()(forms: OreForms)(
               case "deleteRole" =>
                 modelAccess
                   .get(id)
-                  .filter(_.roleType.isAssignable)
+                  .filter(_.role.isAssignable)
                   .semiflatMap(service.delete(_).as(Ok))
             }
           }
 
-          def transferOrgOwner(r: OrganizationRole) =
+          def transferOrgOwner(r: OrganizationUserRole) =
             r.organization
               .flatMap(orga => orga.transferOwner(orgDossier.newMember(orga, r.userId)))
               .as(r)
@@ -534,34 +533,34 @@ final class Application @Inject()(forms: OreForms)(
           thing match {
             case "orgRole" =>
               OptionT.liftF(user.toMaybeOrganization.isEmpty).filter(identity).flatMap { _ =>
-                updateRoleTable[OrganizationRole](
+                updateRoleTable[OrganizationUserRole](
                   user.organizationRoles,
-                  classOf[OrganizationRole],
-                  RoleType.OrganizationOwner,
+                  RoleCategory.Organization,
+                  Role.OrganizationOwner,
                   transferOrgOwner,
-                  (r, tpe) => user.organizationRoles.update(r.copy(roleType = tpe)),
+                  (r, tpe) => user.organizationRoles.update(r.copy(role = tpe)),
                   (r, accepted) => user.organizationRoles.update(r.copy(isAccepted = accepted))
                 )
               }
             case "memberRole" =>
               user.toMaybeOrganization.flatMap { orga =>
-                updateRoleTable[OrganizationRole](
+                updateRoleTable[OrganizationUserRole](
                   orgDossier.roles(orga),
-                  classOf[OrganizationRole],
-                  RoleType.OrganizationOwner,
+                  RoleCategory.Organization,
+                  Role.OrganizationOwner,
                   transferOrgOwner,
-                  (r, tpe) => orgDossier.roles(orga).update(r.copy(roleType = tpe)),
+                  (r, tpe) => orgDossier.roles(orga).update(r.copy(role = tpe)),
                   (r, accepted) => orgDossier.roles(orga).update(r.copy(isAccepted = accepted))
                 )
               }
             case "projectRole" =>
               OptionT.liftF(user.toMaybeOrganization.isEmpty).filter(identity).flatMap { _ =>
-                updateRoleTable[ProjectRole](
+                updateRoleTable[ProjectUserRole](
                   user.projectRoles,
-                  classOf[ProjectRole],
-                  RoleType.ProjectOwner,
+                  RoleCategory.Project,
+                  Role.ProjectOwner,
                   r => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(p, r.userId))).as(r),
-                  (r, tpe) => user.projectRoles.update(r.copy(roleType = tpe)),
+                  (r, tpe) => user.projectRoles.update(r.copy(role = tpe)),
                   (r, accepted) => user.projectRoles.update(r.copy(isAccepted = accepted))
                 )
               }

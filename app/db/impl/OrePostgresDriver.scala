@@ -5,7 +5,7 @@ import play.api.i18n.Lang
 import models.project.{TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
-import ore.permission.role.RoleType
+import ore.permission.role.{Role, RoleCategory, Trust}
 import ore.project.io.DownloadType
 import ore.project.{Category, FlagReason}
 import ore.rest.ProjectApiKeyType
@@ -17,6 +17,7 @@ import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
 import com.github.tminglei.slickpg.window.PgWindowFuncSupport
 import enumeratum.values.SlickValueEnumSupport
+import slick.jdbc.JdbcType
 
 /**
   * Custom Postgres driver to support array data and custom type mappings.
@@ -28,6 +29,7 @@ trait OrePostgresDriver
     with PgWindowFuncSupport
     with PgNetSupport
     with PgJsonSupport
+    with PgEnumSupport
     with SlickValueEnumSupport {
 
   override val api: OreDriver.type = OreDriver
@@ -37,7 +39,7 @@ trait OrePostgresDriver
   object OreDriver extends API with ArrayImplicits with NetImplicits {
     implicit val colorTypeMapper: BaseColumnType[Color]           = mappedColumnTypeForValueEnum(Color)
     implicit val tagColorTypeMapper: BaseColumnType[TagColor]     = mappedColumnTypeForValueEnum(TagColor)
-    implicit val roleTypeTypeMapper: BaseColumnType[RoleType]     = mappedColumnTypeForValueEnum(RoleType)
+    implicit val roleTypeTypeMapper: BaseColumnType[Role]         = mappedColumnTypeForValueEnum(Role)
     implicit val categoryTypeMapper: BaseColumnType[Category]     = mappedColumnTypeForValueEnum(Category)
     implicit val flagReasonTypeMapper: BaseColumnType[FlagReason] = mappedColumnTypeForValueEnum(FlagReason)
     implicit val notificationTypeTypeMapper: BaseColumnType[NotificationType] =
@@ -50,14 +52,15 @@ trait OrePostgresDriver
     implicit val loggedActionMapper: BaseColumnType[LoggedAction] = mappedColumnTypeForValueEnum(LoggedAction)
     implicit val loggedActionContextMapper: BaseColumnType[LoggedActionContext] =
       mappedColumnTypeForValueEnum(LoggedActionContext)
+    implicit val trustTypeMapper: BaseColumnType[Trust] = mappedColumnTypeForValueEnum(Trust)
 
     implicit val langTypeMapper: BaseColumnType[Lang] =
       MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)
 
-    implicit val roleTypeListTypeMapper: DriverJdbcType[List[RoleType]] = new AdvancedArrayJdbcType[RoleType](
+    implicit val roleTypeListTypeMapper: DriverJdbcType[List[Role]] = new AdvancedArrayJdbcType[Role](
       "varchar",
-      str => utils.SimpleArrayUtils.fromString[RoleType](s => RoleType.withValue(s))(str).orNull,
-      value => utils.SimpleArrayUtils.mkString[RoleType](_.value)(value)
+      str => utils.SimpleArrayUtils.fromString[Role](s => Role.withValue(s))(str).orNull,
+      value => utils.SimpleArrayUtils.mkString[Role](_.value)(value)
     ).to(_.toList)
 
     implicit val promptListTypeMapper: DriverJdbcType[List[Prompt]] = new AdvancedArrayJdbcType[Prompt](
@@ -65,6 +68,21 @@ trait OrePostgresDriver
       str => utils.SimpleArrayUtils.fromString[Prompt](s => Prompt.withValue(Integer.parseInt(s)))(str).orNull,
       value => utils.SimpleArrayUtils.mkString[Prompt](_.value.toString)(value)
     ).to(_.toList)
+
+    implicit val roleCategoryTypeMapper: JdbcType[RoleCategory] = createEnumJdbcType[RoleCategory](
+      sqlEnumTypeName = "ROLE_CATEGORY",
+      enumToString = {
+        case RoleCategory.Global       => "global"
+        case RoleCategory.Project      => "project"
+        case RoleCategory.Organization => "organization"
+      },
+      stringToEnum = {
+        case "global"       => RoleCategory.Global
+        case "project"      => RoleCategory.Project
+        case "organization" => RoleCategory.Organization
+      },
+      quoteName = false
+    )
 
     implicit def nelArrayMapper[A](
         implicit base: BaseColumnType[List[A]]

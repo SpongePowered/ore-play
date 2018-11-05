@@ -1,6 +1,7 @@
 package ore.permission
 
-import ore.permission.role._
+import ore.permission.role.Trust
+import ore.permission.role.Trust._
 
 /**
   * Represents a permission for a user to do something in the application.

@@ -193,5 +193,4 @@ abstract class OreBaseController(
       sso: Option[String],
       sig: Option[String]
   ): ActionBuilder[AuthRequest, AnyContent] = UserAction(username).andThen(verifiedAction(sso, sig))
-
 }

@@ -13,8 +13,8 @@ import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable
 import db.{Model, ModelQuery, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import form.project.ProjectSettingsForm
 import models.user.Notification
-import models.user.role.ProjectRole
-import ore.permission.role.RoleType
+import models.user.role.ProjectUserRole
+import ore.permission.role.Role
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}
 import ore.user.notification.NotificationType
@@ -124,7 +124,7 @@ case class ProjectSettings(
                 userId = role.userId,
                 originId = project.ownerId,
                 notificationType = NotificationType.ProjectInvite,
-                messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name)
+                messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
               )
             }
 
@@ -132,8 +132,6 @@ case class ProjectSettings(
           }
           .flatMap { _ =>
             // Update existing roles
-            val projectRoleTypes = RoleType.values.filter(_.roleClass.equals(classOf[ProjectRole]))
-
             val usersTable = TableQuery[UserTable]
             // Select member userIds
             service
@@ -141,7 +139,7 @@ case class ProjectSettings(
               .map { userIds =>
                 userIds.zip(
                   formData.roleUps.map { role =>
-                    projectRoleTypes
+                    Role.projectRoles
                       .find(_.value.equals(role))
                       .getOrElse(throw new RuntimeException("supplied invalid role type"))
                   }

@@ -60,3 +60,11 @@ BLANK_LINE
 * Prefer withFilter if more monadic operations follow.
 * Prefer foreach instead of map if the result type is Unit.
 * isDefinedAt for Seq instead of checking length.
+
+## Intellij code style
+
+We provide an Intellij code style which can be easily imported. The code style sets:
+- the formatter to `scalafmt`
+- the import rules defined by the [our import formatting rules](#import-formatting)
+
+It's located in the `extra` package of the repository. If you need additional information about how to import a code style into Intellij take a look at their [official documentation](https://www.jetbrains.com/help/idea/copying-code-style-settings.html).

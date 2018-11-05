@@ -1,6 +1,6 @@
-@import models.user.role.RoleModel
+@import models.user.role.UserRoleModel
 @import ore.permission.EditSettings
-@import ore.permission.role.Absolute
+@import ore.permission.role.Trust.Absolute
 @import ore.user.Member
 @import ore.{Joinable, OreConfig}
 @import views.html.helper.{CSRF, form}
@@ -9,7 +9,7 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.JoinableData
 @import ore.permission.Permission
-@(j: JoinableData[_ <: RoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_], _]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
+@(j: JoinableData[_ <: UserRoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_], _]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 
 <!-- TODO: Pagination -->
@@ -17,11 +17,11 @@
 @if(j.members.nonEmpty) {
 
     @if(editable && perms.getOrElse(EditSettings, false)) {
-        <script type="text/javascript" src="@routes.Assets.at("javascripts/userSearch.js")"></script>
-        <script type="text/javascript" src="@routes.Assets.at("javascripts/memberList.js")"></script>
+        <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
+        <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
 
         @users.invite.roleSelect(
-            roleClass = j.roleClass,
+            roleCategory = j.roleCategory,
             id = "select-role",
             classes = "pull-right",
             hidden = true
@@ -34,7 +34,7 @@
                 @userAvatar(None, clazz = "user-avatar-xs")
                 <a class="username"></a>
                 <i class="fa fa-times user-cancel"></i>
-                @users.invite.roleSelect(roleClass = j.roleClass, classes="pull-right")
+                @users.invite.roleSelect(roleCategory = j.roleCategory, classes="pull-right")
             </li>
         </ul>
 
@@ -100,7 +100,7 @@
                 @user.name
                 </a>
                     <p style="display: none;" class="role-id">@role.id.value</p>
-                    @if(editable && perms.getOrElse(EditSettings, false) && !role.roleType.trust.equals(Absolute)) {
+                    @if(editable && perms.getOrElse(EditSettings, false) && !role.role.trust.equals(Absolute)) {
                         <a href="#">
                             <i style="padding-left:5px" class="fa fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
                         </a>
@@ -109,9 +109,9 @@
 
                 <span class="minor pull-right">
                 @if(!role.isAccepted) {
-                    <span class="minor">(Invited as @role.roleType.title)</span>
+                    <span class="minor">(Invited as @role.role.title)</span>
                 } else {
-                    @role.roleType.title
+                    @role.role.title
                 }
                 </span>
 

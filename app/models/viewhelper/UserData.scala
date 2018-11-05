@@ -9,9 +9,10 @@ import controllers.sugar.Requests.OreRequest
 import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import models.user.{Organization, User}
 import ore.permission._
+import ore.permission.role.Role
 import ore.permission.scope.GlobalScope
 
 import cats.instances.future._
@@ -26,7 +27,8 @@ case class UserData(
     user: User,
     isOrga: Boolean,
     projectCount: Int,
-    orgas: Seq[(Organization, User, OrganizationRole, User)],
+    orgas: Seq[(Organization, User, OrganizationUserRole, User)],
+    globalRoles: Set[Role],
     userPerm: Map[Permission, Boolean],
     orgaPerm: Map[Permission, Boolean]
 ) {
@@ -62,23 +64,28 @@ object UserData {
       service: ModelService
   ): Future[UserData] =
     for {
-      isOrga                 <- user.toMaybeOrganization.isDefined
-      projectCount           <- user.projects.size
-      (userPerms, orgaPerms) <- perms(request.currentUser)
-      orgas                  <- service.runDBIO(queryRoles(user).result)
-    } yield UserData(request.headerData, user, isOrga, projectCount, orgas, userPerms, orgaPerms)
+      isOrga                              <- user.toMaybeOrganization.isDefined
+      projectCount                        <- user.projects.size
+      (globalRoles, userPerms, orgaPerms) <- perms(request.currentUser)
+      orgas                               <- service.runDBIO(queryRoles(user).result)
+    } yield UserData(request.headerData, user, isOrga, projectCount, orgas, globalRoles, userPerms, orgaPerms)
 
   def perms(currentUser: Option[User])(
       implicit ec: ExecutionContext,
       service: ModelService
-  ): Future[(Map[Permission, Boolean], Map[Permission, Boolean])] = {
-    currentUser.fold(Future.successful((Map.empty[Permission, Boolean], Map.empty[Permission, Boolean]))) { user =>
-      user.trustIn(GlobalScope).map2(user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value) {
-        (userTrust, orgTrust) =>
-          val userPerms = user.can.asMap(userTrust)(ViewActivity, ReviewFlags, ReviewProjects)
-          val orgaPerms = user.can.asMap(orgTrust)(EditSettings)
+  ): Future[(Set[Role], Map[Permission, Boolean], Map[Permission, Boolean])] = {
+    currentUser.fold(
+      Future.successful((Set.empty[Role], Map.empty[Permission, Boolean], Map.empty[Permission, Boolean]))
+    ) { user =>
+      (
+        user.trustIn(GlobalScope),
+        user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value,
+        user.globalRoles.all,
+      ).mapN { (userTrust, orgTrust, globalRoles) =>
+        val userPerms = user.can.asMap(userTrust, globalRoles)(ViewActivity, ReviewFlags, ReviewProjects)
+        val orgaPerms = user.can.asMap(orgTrust, Some(globalRoles))(EditSettings)
 
-          (userPerms, orgaPerms)
+        (globalRoles.map(_.toRole), userPerms, orgaPerms)
       }
     }
   }

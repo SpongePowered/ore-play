@@ -11,8 +11,6 @@ import shapeless.ops.hlist._
 
 // Alias Slick's Tag type because we have our own Tag type
 package object schema {
-  type RowTag     = slick.lifted.Tag
-  type ProjectTag = models.project.Tag
 
   def convertApply[F, Rest <: HList, R](f: F)(
       implicit toHList: FnToProduct.Aux[F, ObjectId :: ObjectTimestamp :: Rest => R],

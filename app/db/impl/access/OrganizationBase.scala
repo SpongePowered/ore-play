@@ -3,10 +3,10 @@ package db.impl.access
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.{ModelBase, ModelService, ObjectId, ObjectReference}
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization}
 import ore.OreConfig
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
 import util.StringUtils
@@ -29,7 +29,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
   def create(
       name: String,
       ownerId: ObjectReference,
-      members: Set[OrganizationRole]
+      members: Set[OrganizationUserRole]
   )(implicit ec: ExecutionContext, auth: SpongeAuthApi): EitherT[Future, String, Organization] = {
     Logger.debug("Creating Organization...")
     Logger.debug("Name     : " + name)
@@ -65,14 +65,14 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
         // and should be treated as such.
         for {
           userOrg <- org.toUser.getOrElse(throw new IllegalStateException("User not created"))
-          _       <- service.update(userOrg.copy(globalRoles = RoleType.Organization :: userOrg.globalRoles))
+          _       <- userOrg.globalRoles.add(Role.Organization.toDbRole)
           _ <- // Add the owner
           org.memberships.addRole(
             org,
-            OrganizationRole(
+            OrganizationUserRole(
               userId = ownerId,
               organizationId = org.id.value,
-              roleType = RoleType.OrganizationOwner,
+              role = Role.OrganizationOwner,
               isAccepted = true
             )
           )
@@ -89,8 +89,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
                       userId = user.id.value,
                       originId = org.id.value,
                       notificationType = NotificationType.OrganizationInvite,
-                      messageArgs =
-                        NonEmptyList.of("notification.organization.invite", role.roleType.title, org.username)
+                      messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
                     )
                   )
               }
