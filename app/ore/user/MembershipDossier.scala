@@ -1,7 +1,6 @@
 package ore.user
 
 import scala.language.{higherKinds, implicitConversions}
-
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.access.ModelAccess
@@ -10,12 +9,11 @@ import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
 import db.table.AssociativeTable
 import db.{AssociationQuery, Model, ModelFilter, ModelQuery, ModelService, ObjectReference}
 import models.project.Project
-import models.user.role.{OrganizationRole, ProjectRole, RoleModel}
+import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 import models.user.{Organization, User}
 import ore.organization.OrganizationMember
-import ore.permission.role.{Default, Trust}
+import ore.permission.role.Trust
 import ore.project.ProjectMember
-
 import cats.instances.future._
 import cats.syntax.all._
 
@@ -23,7 +21,7 @@ import cats.syntax.all._
   * Handles and keeps track of [[User]] "memberships" for an [[Model]].
   */
 trait MembershipDossier[F[_], M <: Model] {
-  type RoleType <: RoleModel
+  type RoleType <: UserRoleModel
   type MemberType <: Member[RoleType]
 
   def roles(model: M): ModelAccess[RoleType]
@@ -94,7 +92,7 @@ trait MembershipDossier[F[_], M <: Model] {
 
 object MembershipDossier {
 
-  type Aux[F[_], M <: Model, RoleType0 <: RoleModel, MemberType0 <: Member[RoleType0]] = MembershipDossier[F, M] {
+  type Aux[F[_], M <: Model, RoleType0 <: UserRoleModel, MemberType0 <: Member[RoleType0]] = MembershipDossier[F, M] {
     type RoleType   = RoleType0
     type MemberType = MemberType0
   }
@@ -105,7 +103,7 @@ object MembershipDossier {
 
   abstract class AbstractMembershipDossier[
       M0 <: Model { type M = M0 },
-      RoleType0 <: RoleModel: ModelQuery,
+      RoleType0 <: UserRoleModel: ModelQuery,
       MembersTable <: AssociativeTable
   ](childFilter: M0 => ModelFilter[RoleType0])(
       implicit ec: ExecutionContext,
@@ -159,8 +157,8 @@ object MembershipDossier {
   implicit def project(
       implicit ec: ExecutionContext,
       service: ModelService
-  ): Aux[Future, Project, ProjectRole, ProjectMember] =
-    new AbstractMembershipDossier[Project, ProjectRole, ProjectMembersTable](
+  ): Aux[Future, Project, ProjectUserRole, ProjectMember] =
+    new AbstractMembershipDossier[Project, ProjectUserRole, ProjectMembersTable](
       p => ModelFilter(_.projectId === p.id.value)
     ) {
       override type MemberType = ProjectMember
@@ -170,7 +168,7 @@ object MembershipDossier {
       override def getTrust(model: Project, user: User): Future[Trust] =
         service
           .doAction(Project.roleForTrustQuery((model.id.value, user.id.value)).result)
-          .map(l => if (l.isEmpty) Default else l.map(_.trust).max)
+          .map(l => if (l.isEmpty) Trust.Default else l.map(_.trust).max)
 
       override def clearRoles(model: Project, user: User): Future[Int] =
         this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.projectId === model.id.value))
@@ -179,8 +177,8 @@ object MembershipDossier {
   implicit def organization(
       implicit ec: ExecutionContext,
       service: ModelService
-  ): Aux[Future, Organization, OrganizationRole, OrganizationMember] =
-    new AbstractMembershipDossier[Organization, OrganizationRole, OrganizationMembersTable](
+  ): Aux[Future, Organization, OrganizationUserRole, OrganizationMember] =
+    new AbstractMembershipDossier[Organization, OrganizationUserRole, OrganizationMembersTable](
       org => ModelFilter(_.organizationId === org.id.value)
     ) {
       override type MemberType = OrganizationMember

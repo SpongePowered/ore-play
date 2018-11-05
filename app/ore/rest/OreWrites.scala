@@ -33,7 +33,7 @@ trait OreWrites {
   implicit val channelWrites: Writes[Channel] = (channel: Channel) =>
     obj("name" -> channel.name, "color" -> channel.color.hex, "nonReviewed" -> channel.isNonReviewed)
 
-  implicit val tagWrites: Writes[Tag] = (tag: Tag) => {
+  implicit val tagWrites: Writes[VersionTag] = (tag: VersionTag) => {
     obj(
       "id"              -> tag.id.value,
       "name"            -> tag.name,

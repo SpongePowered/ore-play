@@ -1,5 +1,5 @@
 @import controllers.sugar.Requests.OreRequest
-@import models.user.role.RoleModel
+@import models.user.role.UserRoleModel
 @import models.user.{Notification, User}
 @import ore.user.notification.{InviteFilter, NotificationFilter}
 @import ore.{OreConfig, Visitable}
@@ -7,7 +7,7 @@
 
 @import cats.data.{NonEmptyList => NEL}
 
-@(notifications: Seq[(Notification, User)], invites: Seq[(RoleModel, Visitable)], notificationFilter: NotificationFilter,
+@(notifications: Seq[(Notification, User)], invites: Seq[(UserRoleModel, Visitable)], notificationFilter: NotificationFilter,
         inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @notificationFilterOption(option: NotificationFilter) = @{
@@ -31,7 +31,7 @@
 
 @bootstrap.layout(messages("notification.plural")) {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/notifications.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/notifications.js")"></script>
 
     <div class="container" style="margin-top: 90px">
         <div class="row">

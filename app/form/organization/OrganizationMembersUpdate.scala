@@ -3,16 +3,16 @@ package form.organization
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.{ModelService, ObjectReference}
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization}
 import ore.OreConfig
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList
 
 /**
-  * Saves new and old [[OrganizationRole]]s.
+  * Saves new and old [[OrganizationUserRole]]s.
   *
   * @param users    New users
   * @param roles    New roles
@@ -47,14 +47,13 @@ case class OrganizationMembersUpdate(
             userId = user.id.value,
             originId = orgId,
             notificationType = NotificationType.OrganizationInvite,
-            messageArgs = NonEmptyList.of("notification.organization.invite", role.roleType.title, organization.name)
+            messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, organization.name)
           )
         )
       }
     }
 
     // Update existing roles
-    val orgRoleTypes = RoleType.values.filter(_.roleClass.equals(classOf[OrganizationRole]))
     for ((user, i) <- this.userUps.zipWithIndex) {
       organization.memberships
         .members(organization)
@@ -64,10 +63,10 @@ case class OrganizationMembersUpdate(
         .map { users =>
           users.find(_._1.name.equalsIgnoreCase(user.trim)).foreach { user =>
             user._2.headRole.flatMap { role =>
-              val roleType = orgRoleTypes
+              val roleType = Role.organizationRoles
                 .find(_.title.equals(roleUps(i)))
                 .getOrElse(throw new RuntimeException("supplied invalid role type"))
-              service.update(role.copy(roleType = roleType))
+              service.update(role.copy(role = roleType))
             }
           }
         }

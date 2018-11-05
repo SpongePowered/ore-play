@@ -118,6 +118,23 @@ abstract class ModelService(val driver: JdbcProfile) {
     }
   }
 
+  /**
+    * Creates the specified models in it's table.
+    *
+    * @param models  Models to create
+    * @return       Newly created models
+    */
+  def bulkInsert[M <: Model: ModelQuery](models: Seq[M]): Future[Seq[M]] =
+    if (models.nonEmpty) {
+      val toInsert = models.map(_.copyWith(ObjectId.Uninitialized, ObjectTimestamp(theTime))).asInstanceOf[Seq[M]]
+      val query    = newAction[M]
+      doAction {
+        query
+          .returning(query.map(_.id))
+          .into((m, id) => m.copyWith(ObjectId(id), m.createdAt).asInstanceOf[M]) ++= toInsert
+      }
+    } else Future.successful(Nil)
+
   def update[M <: Model: ModelQuery](model: M)(implicit ec: ExecutionContext): Future[M] = {
     val models = newAction[M]
     doAction(models.filter(_.id === model.id.value).update(model)).as(model)
@@ -267,5 +284,4 @@ abstract class ModelService(val driver: JdbcProfile) {
       limit: Int = -1,
       offset: Int = -1
   ): Future[Seq[M]] = collect(filter, sort, limit, offset)
-
 }

@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.{ModelService, ObjectReference}
 import models.project.Project
-import models.user.role.ProjectRole
+import models.user.role.ProjectUserRole
 import ore.user.Member
 
 /**
@@ -13,9 +13,9 @@ import ore.user.Member
   * @param project  Project this Member is a part of
   * @param userId   Member user ID
   */
-class ProjectMember(val project: Project, val userId: ObjectReference) extends Member[ProjectRole] {
+class ProjectMember(val project: Project, val userId: ObjectReference) extends Member[ProjectUserRole] {
 
-  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectRole]] =
+  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectUserRole]] =
     this.user.flatMap(user => this.project.memberships.getRoles(project, user))
 
   /**
@@ -23,6 +23,6 @@ class ProjectMember(val project: Project, val userId: ObjectReference) extends M
     *
     * @return Top role
     */
-  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[ProjectRole] =
-    this.roles.map(_.maxBy(_.roleType.trust))
+  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[ProjectUserRole] =
+    this.roles.map(_.maxBy(_.role.trust))
 }

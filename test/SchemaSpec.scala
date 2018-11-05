@@ -14,9 +14,9 @@ import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user._
-import models.user.role.{OrganizationRole, ProjectRole}
+import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.Color
-import ore.permission.role.RoleType
+import ore.permission.role.{Role, RoleCategory, Trust}
 import ore.project.io.DownloadType
 import ore.project.{Category, FlagReason}
 import ore.rest.ProjectApiKeyType
@@ -36,54 +36,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
 
 @RunWith(classOf[JUnitRunner])
-class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAfterAll {
-
-  lazy val database = Databases(
-    "org.postgresql.Driver",
-    sys.env.getOrElse("ORE_TESTDB_JDBC", "jdbc:postgresql://localhost/ore_test"),
-    config = Map(
-      "username" -> sys.env.getOrElse("DB_USERNAME", "ore"),
-      "password" -> sys.env.getOrElse("DB_PASSWORD", "")
-    )
-  )
-
-  lazy val transactor: Transactor.Aux[IO, DataSource] =
-    Transactor.fromDataSource[IO](database.dataSource)
-
-  implicit val objectIdMeta: Meta[ObjectId]               = Meta[ObjectReference].xmap(ObjectId.apply, _.value)
-  implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].xmap(ObjectTimestamp.apply, _.value)
-
-  def enumeratumMeta[V: TypeTag, E <: ValueEnumEntry[V]: TypeTag](
-      enum: ValueEnum[V, E]
-  )(implicit meta: Meta[V]): Meta[E] =
-    meta.xmap[E](enum.withValue, _.value)
-
-  implicit val colorMeta: Meta[Color]                             = enumeratumMeta(Color)
-  implicit val tagColorMeta: Meta[TagColor]                       = enumeratumMeta(TagColor)
-  implicit val roleTypeMeta: Meta[RoleType]                       = enumeratumMeta(RoleType)
-  implicit val categoryMeta: Meta[Category]                       = enumeratumMeta(Category)
-  implicit val flagReasonMeta: Meta[FlagReason]                   = enumeratumMeta(FlagReason)
-  implicit val notificationTypeMeta: Meta[NotificationType]       = enumeratumMeta(NotificationType)
-  implicit val promptMeta: Meta[Prompt]                           = enumeratumMeta(Prompt)
-  implicit val downloadTypeMeta: Meta[DownloadType]               = enumeratumMeta(DownloadType)
-  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType]      = enumeratumMeta(ProjectApiKeyType)
-  implicit val visibilityMeta: Meta[Visibility]                   = enumeratumMeta(Visibility)
-  implicit val loggedActionMeta: Meta[LoggedAction]               = enumeratumMeta(LoggedAction)
-  implicit val loggedActionContextMeta: Meta[LoggedActionContext] = enumeratumMeta(LoggedActionContext)
-
-  implicit val langMeta: Meta[Lang] = Meta[String].xmap(Lang.apply, _.toLocale.toLanguageTag)
-  implicit val inetStringMeta: Meta[InetString] =
-    Meta[InetAddress].xmap(address => InetString(address.toString), str => InetAddress.getByName(str.value))
-
-  implicit val promptArrayMeta: Meta[List[Prompt]] =
-    Meta[List[Int]].xmap(_.map(Prompt.withValue), _.map(_.value))
-  implicit val roleTypeArrayMeta: Meta[List[RoleType]] =
-    Meta[List[String]].xmap(_.map(RoleType.withValue), _.map(_.value))
-
-  implicit def unsafeNelMeta[A](implicit listMeta: Meta[List[A]], typeTag: TypeTag[NEL[A]]): Meta[NEL[A]] =
-    listMeta.xmap(NEL.fromListUnsafe, _.toList)
-
-  override def beforeAll(): Unit = Evolutions.applyEvolutions(database)
+class SchemaSpec extends DbSpec {
 
   test("Project") {
     check(sql"""|SELECT id, created_at, plugin_id, owner_name, owner_id, name, slug, recommended_version_id,
@@ -129,12 +82,12 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   }
 
   test("Tag") {
-    check(sql"""SELECT id, version_ids, name, data, color FROM project_tags""".query[Tag])
+    check(sql"""SELECT id, version_id, name, data, color FROM project_version_tags""".query[VersionTag])
   }
 
   test("Version") {
     check(sql"""|SELECT id, created_at, project_id, version_string, dependencies, assets, channel_id, file_size, hash,
-                |author_id, description, downloads, is_reviewed, reviewer_id, approved_at, tags, visibility, file_name,
+                |author_id, description, downloads, is_reviewed, reviewer_id, approved_at, visibility, file_name,
                 |signature_file_name, is_non_reviewed FROM project_versions
        """.stripMargin.query[Version])
   }
@@ -156,7 +109,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
 
   test("User") {
     check(
-      sql"""|SELECT id, created_at, full_name, name, email, tagline, global_roles, join_date, read_prompts, pgp_pub_key,
+      sql"""|SELECT id, created_at, full_name, name, email, tagline, join_date, read_prompts, pgp_pub_key,
             |last_pgp_pub_key_update, is_locked, language FROM users""".stripMargin.query[User]
     )
   }
@@ -179,12 +132,12 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
 
   test("OrganizationRole") {
     check(sql"""|SELECT id, created_at, user_id, organization_id, role_type,
-                |is_accepted FROM user_organization_roles""".stripMargin.query[OrganizationRole])
+                |is_accepted FROM user_organization_roles""".stripMargin.query[OrganizationUserRole])
   }
 
   test("ProjectRole") {
     check(sql"""|SELECT id, created_at, user_id, project_id, role_type,
-                |is_accepted FROM user_project_roles""".stripMargin.query[ProjectRole])
+                |is_accepted FROM user_project_roles""".stripMargin.query[ProjectUserRole])
   }
 
   test("ProjectMember") {
@@ -215,7 +168,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   }
 
   test("ProjectVisibilityChange") {
-    check(sql"""|SELECT id, created_at, created_by, project_id, comment, resolved_at, resolved_by, visibility
+    check(sql"""|SELECT id, created_at, created_by, project_id, comment, resolved_at, resolved_by, visibility 
                 |FROM project_visibility_changes""".stripMargin.query[ProjectVisibilityChange])
   }
 
@@ -227,7 +180,7 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
   }
 
   test("VersionVisibilityChange") {
-    check(sql"""|SELECT id, created_at, created_by, version_id, comment, resolved_at, resolved_by, visibility
+    check(sql"""|SELECT id, created_at, created_by, version_id, comment, resolved_at, resolved_by, visibility 
                 |FROM project_version_visibility_changes""".stripMargin.query[VersionVisibilityChange])
   }
 
@@ -245,5 +198,11 @@ class SchemaSpec extends FunSuite with Matchers with IOChecker with BeforeAndAft
     check(sql"""SELECT s_id, s_name FROM v_logged_actions""".query[LoggedSubject])
   }
 
-  override def afterAll(): Unit = database.shutdown()
+  test("DbRole") {
+    check(sql"""SELECT id, name, category, trust, title, color, is_assignable, rank FROM roles""".query[DbRole])
+  }
+
+  test("UserGlobalRoles") {
+    check(sql"""SELECT user_id, role_id FROM user_global_roles""".query[(ObjectReference, ObjectReference)])
+  }
 }

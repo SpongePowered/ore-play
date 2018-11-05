@@ -33,6 +33,4 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, P <: Model, C <: Model: 
       query.baseQuery.filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === model.id.value).delete
     )
 
-  override def removeAll(filter: C#T => Rep[Boolean] = _ => true) = throw new UnsupportedOperationException
-
 }
