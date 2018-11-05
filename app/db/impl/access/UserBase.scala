@@ -138,8 +138,6 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     val pageSize = this.config.users.get[Int]("author-page-size")
     val offset   = (page - 1) * pageSize
 
-    TableQuery[UserTable]
-
     val dbio = TableQuery[UserTable]
       .filter(u => u.globalRoles.asColumnOf[List[RoleType]] @& staffRoles.bind.asColumnOf[List[RoleType]])
       .sortBy { users =>
