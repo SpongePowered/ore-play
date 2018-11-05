@@ -18,7 +18,7 @@
 
 @bootstrap.layout(u.user.name) {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/userPage.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userPage.js")"></script>
     <script nonce="@nonce">USERNAME = '@u.user.name';</script>
 
     <div class="container" style="margin-top: 90px">
@@ -134,7 +134,7 @@
 
                 <!-- Roles -->
                 <ul class="user-roles">
-                    @defining(u.user.globalRoles.sortBy(_.trust).lastOption) { roleOpt =>
+                    @defining(u.globalRoles.toSeq.sortBy(_.trust).lastOption) { roleOpt =>
                         @roleOpt.map { role =>
                             <li class="user-role channel" style="background-color: @role.color.hex">@role.title</li>
                         }

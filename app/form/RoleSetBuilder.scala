@@ -2,15 +2,15 @@ package form
 
 import db.DbRef
 import models.user.User
-import models.user.role.RoleModel
-import ore.permission.role.RoleType
+import models.user.role.UserRoleModel
+import ore.permission.role.Role
 
 /**
-  * Builds a set of [[RoleModel]]s based on input data.
+  * Builds a set of [[UserRoleModel]]s based on input data.
   *
   * @tparam M RoleModel type
   */
-trait RoleSetBuilder[M <: RoleModel] {
+trait RoleSetBuilder[M <: UserRoleModel] {
 
   /**
     * Returns the user IDs to use in building the set.
@@ -33,7 +33,7 @@ trait RoleSetBuilder[M <: RoleModel] {
     */
   def build(): Set[M] =
     (for ((userId, i) <- this.users.zipWithIndex) yield {
-      newRole(userId, RoleType.withValue(roles(i)))
+      newRole(userId, Role.withValue(roles(i)))
     }).toSet
 
   /**
@@ -43,6 +43,5 @@ trait RoleSetBuilder[M <: RoleModel] {
     * @param role   Role type
     * @return       New role
     */
-  def newRole(userId: DbRef[User], role: RoleType): M
-
+  def newRole(userId: DbRef[User], role: Role): M
 }

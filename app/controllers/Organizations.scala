@@ -12,7 +12,7 @@ import controllers.sugar.Bakery
 import db.{DbRef, ModelService}
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import ore.permission.EditSettings
 import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
@@ -98,7 +98,7 @@ class Organizations @Inject()(forms: OreForms)(
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: DbRef[OrganizationRole], status: String): Action[AnyContent] =
+  def setInviteStatus(id: DbRef[OrganizationUserRole], status: String): Action[AnyContent] =
     Authenticated.async { implicit request =>
       request.user.organizationRoles
         .get(id)

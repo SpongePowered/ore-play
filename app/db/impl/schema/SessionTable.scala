@@ -6,7 +6,7 @@ import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.user.{Session => DbSession}
 
-class SessionTable(tag: RowTag) extends ModelTable[DbSession](tag, "user_sessions") {
+class SessionTable(tag: Tag) extends ModelTable[DbSession](tag, "user_sessions") {
 
   def expiration = column[Timestamp]("expiration")
   def username   = column[String]("username")

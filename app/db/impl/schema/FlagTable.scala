@@ -9,7 +9,7 @@ import models.project.{Flag, Project}
 import models.user.User
 import ore.project.FlagReason
 
-class FlagTable(tag: RowTag) extends ModelTable[Flag](tag, "project_flags") {
+class FlagTable(tag: Tag) extends ModelTable[Flag](tag, "project_flags") {
 
   def projectId  = column[DbRef[Project]]("project_id")
   def userId     = column[DbRef[User]]("user_id")

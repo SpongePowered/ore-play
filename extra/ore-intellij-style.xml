@@ -1,0 +1,32 @@
+<code_scheme name="Ore">
+    <ScalaCodeStyleSettings>
+        <option name="importLayout">
+            <array>
+                <option value="scala.language" />
+                <option value="_______ blank line _______" />
+                <option value="java" />
+                <option value="javax" />
+                <option value="_______ blank line _______" />
+                <option value="scala" />
+                <option value="_______ blank line _______" />
+                <option value="play" />
+                <option value="_______ blank line _______" />
+                <option value="controllers" />
+                <option value="db" />
+                <option value="discourse" />
+                <option value="filters" />
+                <option value="form" />
+                <option value="mail" />
+                <option value="models" />
+                <option value="ore" />
+                <option value="security" />
+                <option value="util" />
+                <option value="views" />
+                <option value="_______ blank line _______" />
+                <option value="all other imports" />
+                <option value="_______ blank line _______" />
+            </array>
+        </option>
+        <option name="FORMATTER" value="1" />
+    </ScalaCodeStyleSettings>
+</code_scheme>

@@ -20,7 +20,7 @@ import models.api.ProjectApiKey
 import models.project.Page._
 import models.project.{Channel, Page}
 import models.user.Organization
-import models.user.role.ProjectRole
+import models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyType
@@ -52,7 +52,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
 
   /**
     * Submits changes to a [[models.project.Project]]'s
-    * [[ProjectRole]]s.
+    * [[ProjectUserRole]]s.
     */
   lazy val ProjectMemberRoles = Form(
     mapping(

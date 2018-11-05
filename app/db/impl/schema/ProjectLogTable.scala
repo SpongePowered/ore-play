@@ -6,7 +6,7 @@ import db.table.ModelTable
 import models.admin.ProjectLog
 import models.project.Project
 
-class ProjectLogTable(tag: RowTag) extends ModelTable[ProjectLog](tag, "project_logs") {
+class ProjectLogTable(tag: Tag) extends ModelTable[ProjectLog](tag, "project_logs") {
 
   def projectId = column[DbRef[Project]]("project_id")
 

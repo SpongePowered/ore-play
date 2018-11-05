@@ -4,9 +4,10 @@ import java.io.BufferedReader
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.Future
 
-import db.ObjId
-import models.project.{Tag, TagColor}
+import db.{DbRef, ModelService, ObjId}
+import models.project.{TagColor, Version, VersionTag}
 import ore.project.Dependency
 
 import org.spongepowered.plugin.meta.McModInfo
@@ -54,16 +55,16 @@ class PluginFileData(data: Seq[DataValue[_]]) {
     dataValues.exists(_.isInstanceOf[StringDataValue]) &&
       dataValues.exists(_.isInstanceOf[StringDataValue])
 
-  def ghostTags: Seq[Tag] = {
-    val buffer = new ArrayBuffer[Tag]
+  def createTags(versionId: DbRef[Version])(implicit service: ModelService): Future[Seq[VersionTag]] = {
+    val buffer = new ArrayBuffer[VersionTag]
 
     if (containsMixins) {
-      val mixinTag = Tag(ObjId.Uninitialized(), List(), "Mixin", "", TagColor.Mixin)
+      val mixinTag = VersionTag(ObjId.Uninitialized(), versionId, "Mixin", "", TagColor.Mixin)
       buffer += mixinTag
     }
 
     println("PluginFileData#getGhostTags: " + buffer)
-    buffer
+    service.bulkInsert(buffer)
   }
 
   /**

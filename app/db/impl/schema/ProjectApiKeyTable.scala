@@ -7,7 +7,7 @@ import models.api.ProjectApiKey
 import models.project.Project
 import ore.rest.ProjectApiKeyType
 
-class ProjectApiKeyTable(tag: RowTag) extends ModelTable[ProjectApiKey](tag, "project_api_keys") {
+class ProjectApiKeyTable(tag: Tag) extends ModelTable[ProjectApiKey](tag, "project_api_keys") {
 
   def projectId = column[DbRef[Project]]("project_id")
   def keyType   = column[ProjectApiKeyType]("key_type")

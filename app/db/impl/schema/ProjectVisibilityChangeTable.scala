@@ -7,7 +7,7 @@ import db.table.ModelTable
 import models.admin.ProjectVisibilityChange
 import models.project.Project
 
-class ProjectVisibilityChangeTable(tag: RowTag)
+class ProjectVisibilityChangeTable(tag: Tag)
     extends ModelTable[ProjectVisibilityChange](tag, "project_visibility_changes")
     with VisibilityChangeColumns[ProjectVisibilityChange] {
 

@@ -21,7 +21,7 @@ import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
 import models.project.{Note, Visibility}
 import models.user._
-import models.user.role.ProjectRole
+import models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -408,7 +408,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: DbRef[ProjectRole], status: String): Action[AnyContent] = Authenticated.async {
+  def setInviteStatus(id: DbRef[ProjectUserRole], status: String): Action[AnyContent] = Authenticated.async {
     implicit request =>
       val user = request.user
       user.projectRoles
@@ -432,7 +432,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param behalf Behalf User
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatusOnBehalf(id: DbRef[ProjectRole], status: String, behalf: String): Action[AnyContent] =
+  def setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String): Action[AnyContent] =
     Authenticated.async { implicit request =>
       val user = request.user
       val res = for {

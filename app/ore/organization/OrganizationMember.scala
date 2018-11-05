@@ -3,8 +3,8 @@ package ore.organization
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.{DbRef, ModelService}
-import models.user.role.OrganizationRole
 import models.user.{Organization, User}
+import models.user.role.OrganizationUserRole
 import ore.user.Member
 
 /**
@@ -13,9 +13,9 @@ import ore.user.Member
   * @param organization Organization member belongs to
   * @param userId       User ID
   */
-class OrganizationMember(val organization: Organization, val userId: DbRef[User]) extends Member[OrganizationRole] {
+class OrganizationMember(val organization: Organization, val userId: DbRef[User]) extends Member[OrganizationUserRole] {
 
-  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationRole]] =
+  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationUserRole]] =
     this.user.flatMap(user => this.organization.memberships.getRoles(organization, user))
 
   /**
@@ -23,7 +23,7 @@ class OrganizationMember(val organization: Organization, val userId: DbRef[User]
     *
     * @return Top role
     */
-  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[OrganizationRole] =
-    this.roles.map(role => role.maxBy(_.roleType.trust))
+  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[OrganizationUserRole] =
+    this.roles.map(role => role.maxBy(_.role.trust))
 
 }

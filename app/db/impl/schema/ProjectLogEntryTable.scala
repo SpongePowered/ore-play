@@ -7,7 +7,7 @@ import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.admin.{ProjectLog, ProjectLogEntry}
 
-class ProjectLogEntryTable(tg: RowTag) extends ModelTable[ProjectLogEntry](tg, "project_log_entries") {
+class ProjectLogEntryTable(tg: Tag) extends ModelTable[ProjectLogEntry](tg, "project_log_entries") {
 
   def logId          = column[DbRef[ProjectLog]]("log_id")
   def tag            = column[String]("tag")

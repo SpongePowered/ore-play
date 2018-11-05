@@ -1,15 +1,15 @@
 @import controllers.project.{routes => projectRoutes}
 @import controllers.routes.{Users => userRoutes}
 @import controllers.sugar.Requests.OreRequest
-@import models.project.{Project, Tag, Version}
+@import models.project.{Project, Version, VersionTag}
 @import models.user.User
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
 @import ore.permission.EditSettings
-@import ore.permission.role.RoleType
+@import ore.permission.role.Role
 @import views.html.projects.{list => projectList}
 @import views.html.utils.userAvatar
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[Tag])], starred: Seq[(Project, Version)],
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[(Project, User, Version, Seq[VersionTag])], starred: Seq[(Project, Version)],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
@@ -33,7 +33,7 @@
 
         <div class="col-md-4">
             @if(u.isOrga && o.isDefined && canEditOrgSettings) {
-                <script type="text/javascript" src="@routes.Assets.at("javascripts/orgInvites.js")"></script>
+                <script type="text/javascript" src="@routes.Assets.versioned("javascripts/orgInvites.js")"></script>
 
                 <div class="panel-stars panel panel-default">
                     <div class="panel-heading">
@@ -45,10 +45,10 @@
                             <tr>
                                 <td>
                                     <a href="@projectRoutes.Projects.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a>
-                                    <span class="minor">@role.roleType.title</span>
+                                    <span class="minor">@role.role.title</span>
                                 </td>
                                 <td>
-                                    @if(role.roleType != RoleType.ProjectOwner) {
+                                    @if(role.role != Role.ProjectOwner) {
                                         @if(role.isAccepted) {
                                             <button class="btn btn-sm btn-danger pull-right btn-invite" data-invite-id="@role.id" data-invite-behalf="@u.user.name" data-invite-accepted="decline">Leave</button>
                                         } else {
@@ -80,7 +80,7 @@
                                 @organization.name
                                 </a>
                                 <div class="pull-right">
-                                @role.roleType.title
+                                @role.role.title
                             </div>
                             </td>
                             </tr>

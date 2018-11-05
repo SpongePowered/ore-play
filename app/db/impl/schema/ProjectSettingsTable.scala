@@ -5,7 +5,7 @@ import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.project.{Project, ProjectSettings}
 
-class ProjectSettingsTable(tag: RowTag) extends ModelTable[ProjectSettings](tag, "project_settings") {
+class ProjectSettingsTable(tag: Tag) extends ModelTable[ProjectSettings](tag, "project_settings") {
 
   def projectId   = column[DbRef[Project]]("project_id")
   def homepage    = column[String]("homepage")

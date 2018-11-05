@@ -6,13 +6,8 @@ import play.api.cache.SyncCacheApi
 
 import db.impl.access.ProjectBase
 import models.project._
-import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io.PluginFile
 import ore.{Cacheable, Color, Platform}
-
-object TagAlias {
-  type ProjectTag = models.project.Tag
-}
 
 /**
   * Represents a pending version to be created later.
@@ -35,7 +30,7 @@ case class PendingVersion(
     override val cacheApi: SyncCacheApi
 ) extends Cacheable {
 
-  def complete()(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[ProjectTag])] = {
+  def complete()(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[VersionTag])] = {
     free()
     this.factory.createVersion(this)
   }
@@ -51,7 +46,7 @@ case class PendingVersion(
 
   override def key: String = this.project.url + '/' + this.underlying.versionString
 
-  def dependenciesAsGhostTags: Seq[Tag] =
-    Platform.getPlatformGhostTags(this.underlying.dependencies)
+  def dependenciesAsGhostTags: Seq[VersionTag] =
+    Platform.ghostTags(-1L, this.underlying.dependencies)
 
 }

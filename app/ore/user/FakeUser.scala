@@ -9,7 +9,6 @@ import javax.inject.Inject
 import db.{DbRef, ObjId}
 import models.user.User
 import ore.OreConfig
-import ore.permission.role.RoleType
 
 /**
   * Represents a "fake" User object for bypassing the standard authentication
@@ -32,7 +31,6 @@ final class FakeUser @Inject()(config: OreConfig) {
         name = conf.get[String]("fakeUser.username"),
         email = conf.getOptional[String]("fakeUser.email"),
         joinDate = Some(new Timestamp(new Date().getTime)),
-        globalRoles = List(RoleType.OreAdmin)
       )
     else null
 

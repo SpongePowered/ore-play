@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelService
 import models.user.User
-import models.user.role.RoleModel
+import models.user.role.UserRoleModel
 
 import cats.instances.future._
 import cats.syntax.all._
@@ -18,9 +18,9 @@ sealed abstract class InviteFilter(
     val value: Int,
     val name: String,
     val title: String,
-    val filter: ExecutionContext => ModelService => User => Future[Seq[RoleModel]]
+    val filter: ExecutionContext => ModelService => User => Future[Seq[UserRoleModel]]
 ) extends IntEnumEntry {
-  def apply(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Seq[RoleModel]] =
+  def apply(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Seq[UserRoleModel]] =
     filter(ec)(service)(user)
 }
 

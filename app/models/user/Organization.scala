@@ -7,9 +7,9 @@ import db.impl.access.UserBase
 import db.impl.model.common.Named
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
-import ore.permission.role.{Default, RoleType, Trust}
+import ore.permission.role.{Role, Trust}
 import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
@@ -48,7 +48,7 @@ case class Organization(
   override def memberships(
       implicit ec: ExecutionContext,
       service: ModelService
-  ): MembershipDossier.Aux[Future, Organization, OrganizationRole, OrganizationMember] =
+  ): MembershipDossier.Aux[Future, Organization, OrganizationUserRole, OrganizationMember] =
     MembershipDossier[Future, Organization]
 
   /**
@@ -69,10 +69,10 @@ case class Organization(
       setOwner             <- service.update(copy(ownerId = memberUser.id.value))
       _ <- Future.sequence(
         roles
-          .filter(_.roleType == RoleType.OrganizationOwner)
-          .map(role => service.update(role.copy(roleType = RoleType.OrganizationAdmin)))
+          .filter(_.role == Role.OrganizationOwner)
+          .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))
       )
-      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(roleType = RoleType.OrganizationOwner))))
+      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(role = Role.OrganizationOwner))))
     } yield setOwner
 
   /**
@@ -114,5 +114,5 @@ object Organization {
   )(implicit ex: ExecutionContext, service: ModelService): Future[Trust] =
     service
       .runDBIO(Organization.roleForTrustQuery((orgId, userId)).result)
-      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Default))
+      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Trust.Default))
 }

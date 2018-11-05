@@ -1,9 +1,9 @@
-@import ore.permission.role.{Role, RoleType}
-@(roleClass: Class[_ <: Role], form: String = "form-continue", id: String = "", classes: String = "",
+@import ore.permission.role.{Role, RoleCategory}
+@(roleCategory: RoleCategory, form: String = "form-continue", id: String = "", classes: String = "",
         hidden: Boolean = false)
 
 @roles = @{
-    RoleType.values.filter(role => role.roleClass.equals(roleClass) && role.isAssignable)
+    Role.values.filter(role => role.category == roleCategory && role.isAssignable)
             .toList.sortBy(_.trust).reverse
 }
 

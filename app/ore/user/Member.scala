@@ -6,15 +6,15 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.ModelService
 import models.user.User
-import models.user.role.RoleModel
+import models.user.role.UserRoleModel
 
 /**
   * Represents a [[User]] member of some entity.
   */
-trait Member[RoleType <: RoleModel] extends UserOwned {
+trait Member[RoleType <: UserRoleModel] extends UserOwned {
 
   /**
-    * Returns the [[RoleModel]]s the user has in this entity.
+    * Returns the [[UserRoleModel]]s the user has in this entity.
     *
     * @return Roles user has
     */

@@ -55,7 +55,6 @@ case class Version(
     isReviewed: Boolean = false,
     reviewerId: Option[DbRef[User]] = None,
     approvedAt: Option[Timestamp] = None,
-    tagIds: List[DbRef[Tag]] = List(),
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
@@ -123,8 +122,8 @@ case class Version(
   def reviewer(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =
     OptionT.fromOption[Future](this.reviewerId).flatMap(userBase.get)
 
-  def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[Tag]] =
-    service.access[Tag]().filter(_.id.inSetBind(tagIds)).map(_.distinct.toList)
+  def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[VersionTag]] =
+    service.access[VersionTag]().filter(_.versionId === this.id.value).map(_.toList)
 
   def isSpongePlugin(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
     tags.map(_.map(_.name).contains("Sponge"))
@@ -277,7 +276,6 @@ object Version {
     private var hash: String                = _
     private var fileName: String            = _
     private var signatureFileName: String   = _
-    private var tagIds: List[DbRef[Tag]]    = List()
     private var visibility: Visibility      = Visibility.Public
 
     def versionString(versionString: String): Builder = {
@@ -325,11 +323,6 @@ object Version {
       this
     }
 
-    def tagIds(tagIds: List[DbRef[Tag]]): Builder = {
-      this.tagIds = tagIds
-      this
-    }
-
     def visibility(visibility: Visibility): Builder = {
       this.visibility = visibility
       this
@@ -346,7 +339,6 @@ object Version {
         hash = checkNotNull(this.hash, "hash null", ""),
         authorId = checkNotNull(this.authorId, "author id null", ""),
         fileName = checkNotNull(this.fileName, "file name null", ""),
-        tagIds = this.tagIds,
         visibility = visibility,
         signatureFileName = checkNotNull(this.signatureFileName, "signature file name null", ""),
         channelId = -1L

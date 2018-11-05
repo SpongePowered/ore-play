@@ -31,17 +31,19 @@ object ScopedProjectData {
           project.stars.contains(user, project),
           project.watchers.contains(project, user),
           user.trustIn(project),
+          user.globalRoles.allFromParent(user)
         ).mapN {
           case (
               canPostAsOwnerOrga,
               uProjectFlags,
               starred,
               watching,
-              projectTrust
+              projectTrust,
+              globalRoles
               ) =>
             val perms = EditPages +: EditSettings +: EditChannels +: EditVersions +: UploadVersions +: Visibility.values
               .map(_.permission)
-            val permMap = user.can.asMap(projectTrust)(perms: _*)
+            val permMap = user.can.asMap(projectTrust, globalRoles.toSet)(perms: _*)
             ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, permMap)
         }
       }

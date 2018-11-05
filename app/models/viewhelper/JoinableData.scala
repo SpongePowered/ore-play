@@ -3,18 +3,18 @@ package models.viewhelper
 import controllers.sugar.Requests.OreRequest
 import db.Model
 import models.user.User
-import models.user.role.RoleModel
+import models.user.role.UserRoleModel
 import ore.Joinable
 import ore.permission.EditSettings
-import ore.permission.role.Role
+import ore.permission.role.RoleCategory
 import ore.user.Member
 
-trait JoinableData[R <: RoleModel, M <: Member[R], T <: Joinable[M, T] with Model] {
+trait JoinableData[R <: UserRoleModel, M <: Member[R], T <: Joinable[M, T] with Model] {
 
   def joinable: T
   def members: Seq[(R, User)]
 
-  def roleClass: Class[_ <: Role]
+  def roleCategory: RoleCategory
 
   def filteredMembers(implicit request: OreRequest[_]): Seq[(R, User)] = {
     val hasEditSettings = request.headerData.globalPerm(EditSettings)

@@ -7,7 +7,7 @@ import db.table.ModelTable
 import models.admin.VersionVisibilityChange
 import models.project.Version
 
-class VersionVisibilityChangeTable(tag: RowTag)
+class VersionVisibilityChangeTable(tag: Tag)
     extends ModelTable[VersionVisibilityChange](tag, "project_version_visibility_changes")
     with VisibilityChangeColumns[VersionVisibilityChange] {
 

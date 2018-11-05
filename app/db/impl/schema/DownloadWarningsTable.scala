@@ -9,7 +9,7 @@ import models.project.{DownloadWarning, UnsafeDownload, Version}
 
 import com.github.tminglei.slickpg.InetString
 
-class DownloadWarningsTable(tag: RowTag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {
+class DownloadWarningsTable(tag: Tag) extends ModelTable[DownloadWarning](tag, "project_version_download_warnings") {
 
   def expiration  = column[Timestamp]("expiration")
   def token       = column[String]("token")

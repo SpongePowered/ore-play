@@ -7,7 +7,7 @@ import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, User}
 
 import com.github.tminglei.slickpg.InetString
 
-class LoggedActionTable(tag: RowTag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
+class LoggedActionTable(tag: Tag) extends ModelTable[LoggedActionModel](tag, "logged_actions") {
 
   def userId          = column[DbRef[User]]("user_id")
   def address         = column[InetString]("address")

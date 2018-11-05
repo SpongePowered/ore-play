@@ -8,10 +8,10 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.NameColumn
 import db.table.ModelTable
 import models.user.User
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 import ore.user.Prompt
 
-class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameColumn[User] {
+class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn[User] {
 
   // Override to remove auto increment
   override def id = column[DbRef[User]]("id", O.PrimaryKey)
@@ -22,7 +22,6 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
   def lastPgpPubKeyUpdate = column[Timestamp]("last_pgp_pub_key_update")
   def isLocked            = column[Boolean]("is_locked")
   def tagline             = column[String]("tagline")
-  def globalRoles         = column[List[RoleType]]("global_roles")
   def joinDate            = column[Timestamp]("join_date")
   def readPrompts         = column[List[Prompt]]("read_prompts")
   def lang                = column[Lang]("language")
@@ -36,7 +35,6 @@ class UserTable(tag: RowTag) extends ModelTable[User](tag, "users") with NameCol
         name,
         email.?,
         tagline.?,
-        globalRoles,
         joinDate.?,
         readPrompts,
         pgpPubKey.?,

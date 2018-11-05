@@ -8,7 +8,7 @@ import db.table.ModelTable
 import models.project.{Channel, Project, Version}
 import models.user.User
 
-class VersionTable(tag: RowTag)
+class VersionTable(tag: Tag)
     extends ModelTable[Version](tag, "project_versions")
     with DownloadsColumn[Version]
     with DescriptionColumn[Version]
@@ -27,7 +27,6 @@ class VersionTable(tag: RowTag)
   def approvedAt        = column[Timestamp]("approved_at")
   def fileName          = column[String]("file_name")
   def signatureFileName = column[String]("signature_file_name")
-  def tagIds            = column[List[DbRef[ProjectTag]]]("tags")
   def isNonReviewed     = column[Boolean]("is_non_reviewed")
 
   override def * =
@@ -48,7 +47,6 @@ class VersionTable(tag: RowTag)
         isReviewed,
         reviewerId.?,
         approvedAt.?,
-        tagIds,
         visibility,
         fileName,
         signatureFileName,

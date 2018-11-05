@@ -7,39 +7,39 @@ import db.{DbRef, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.{Organization, User}
 import ore.Visitable
 import ore.organization.OrganizationOwned
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 
 import slick.lifted.TableQuery
 
 /**
-  * Represents a [[RoleModel]] within an [[models.user.Organization]].
+  * Represents a [[UserRoleModel]] within an [[models.user.Organization]].
   *
   * @param id             Model ID
   * @param createdAt      Timestamp instant of creation
   * @param userId         ID of User this role belongs to
   * @param organizationId ID of Organization this role belongs to
-  * @param roleType      Type of Role
+  * @param role      Type of Role
   * @param isAccepted    True if has been accepted
   */
-case class OrganizationRole(
-    id: ObjId[OrganizationRole] = ObjId.Uninitialized(),
+case class OrganizationUserRole(
+    id: ObjId[OrganizationUserRole] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     userId: DbRef[User],
     organizationId: DbRef[Organization],
-    roleType: RoleType,
+    role: Role,
     isAccepted: Boolean = false
-) extends RoleModel
+) extends UserRoleModel
     with OrganizationOwned {
 
-  override type M = OrganizationRole
+  override type M = OrganizationUserRole
   override type T = OrganizationRoleTable
 
-  def this(userId: DbRef[User], organizationId: DbRef[Organization], roleType: RoleType) =
-    this(id = ObjId.Uninitialized(), userId = userId, organizationId = organizationId, roleType = roleType)
+  def this(userId: DbRef[User], organizationId: DbRef[Organization], roleType: Role) =
+    this(id = ObjId.Uninitialized(), userId = userId, organizationId = organizationId, role = roleType)
 
   override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
 }
-object OrganizationRole {
-  implicit val query: ModelQuery[OrganizationRole] =
-    ModelQuery.from[OrganizationRole](TableQuery[OrganizationRoleTable], _.copy(_, _))
+object OrganizationUserRole {
+  implicit val query: ModelQuery[OrganizationUserRole] =
+    ModelQuery.from[OrganizationUserRole](TableQuery[OrganizationRoleTable], _.copy(_, _))
 }

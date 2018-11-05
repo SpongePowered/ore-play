@@ -8,7 +8,7 @@ import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList
 
-class NotificationTable(tag: RowTag) extends ModelTable[Notification](tag, "notifications") {
+class NotificationTable(tag: Tag) extends ModelTable[Notification](tag, "notifications") {
 
   def userId           = column[DbRef[User]]("user_id")
   def originId         = column[DbRef[User]]("origin_id")

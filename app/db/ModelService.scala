@@ -15,6 +15,7 @@ import db.table.ModelTable
 import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
+import doobie.ConnectionIO
 import slick.jdbc.{JdbcProfile, JdbcType}
 import slick.lifted.ColumnOrdered
 
@@ -74,6 +75,14 @@ abstract class ModelService(val driver: JdbcProfile) {
   def runDBIO[R](action: DBIO[R]): Future[R]
 
   /**
+    * Runs the specified db program on the DB.
+    *
+    * @param action   Action to run
+    * @return         Result
+    */
+  def runDbCon[R](program: ConnectionIO[R]): Future[R]
+
+  /**
     * Returns a new ModelAccess to access a ModelTable synchronously.
     *
     * @param baseFilter Base filter to apply
@@ -98,6 +107,23 @@ abstract class ModelService(val driver: JdbcProfile) {
       } += toInsert
     }
   }
+
+  /**
+    * Creates the specified models in it's table.
+    *
+    * @param models  Models to create
+    * @return       Newly created models
+    */
+  def bulkInsert[M <: Model](models: Seq[M])(implicit query: ModelQuery[M]): Future[Seq[M]] =
+    if (models.nonEmpty) {
+      val toInsert = models.map(query.copyWith(_)(ObjId.Uninitialized(), ObjectTimestamp(theTime)))
+      val action   = newAction[M]
+      runDBIO {
+        action
+          .returning(action.map(_.id))
+          .into((m, id) => query.copyWith(m)(ObjId(id), m.createdAt)) ++= toInsert
+      }
+    } else Future.successful(Nil)
 
   def update[M0 <: Model { type M = M0 }: ModelQuery](model: M0)(implicit ec: ExecutionContext): Future[M0] =
     runDBIO(newAction.filter(IdFilter(model.id.value)).update(model)).as(model)
@@ -227,5 +253,4 @@ abstract class ModelService(val driver: JdbcProfile) {
       limit: Int = -1,
       offset: Int = -1
   ): Future[Seq[M]] = collect(filter, sort, limit, offset)
-
 }

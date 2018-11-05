@@ -4,12 +4,12 @@ import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.user.User
-import models.user.role.RoleModel
-import ore.permission.role.RoleType
+import models.user.role.UserRoleModel
+import ore.permission.role.Role
 
-trait RoleTable[R <: RoleModel] extends ModelTable[R] {
+trait RoleTable[R <: UserRoleModel] extends ModelTable[R] {
 
   def userId     = column[DbRef[User]]("user_id")
-  def roleType   = column[RoleType]("role_type")
+  def roleType   = column[Role]("role_type")
   def isAccepted = column[Boolean]("is_accepted")
 }

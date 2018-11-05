@@ -6,7 +6,7 @@ import db.impl.table.common.NameColumn
 import db.table.ModelTable
 import models.project.{Page, Project}
 
-class PageTable(tag: RowTag) extends ModelTable[Page](tag, "project_pages") with NameColumn[Page] {
+class PageTable(tag: Tag) extends ModelTable[Page](tag, "project_pages") with NameColumn[Page] {
 
   def projectId   = column[DbRef[Project]]("project_id")
   def parentId    = column[Option[DbRef[Page]]]("parent_id")

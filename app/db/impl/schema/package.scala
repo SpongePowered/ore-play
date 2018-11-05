@@ -7,8 +7,6 @@ import slick.lifted.{MappedProjection, ShapedValue}
 
 // Alias Slick's Tag type because we have our own Tag type
 package object schema {
-  type RowTag     = slick.lifted.Tag
-  type ProjectTag = models.project.Tag
 
   def mkTuple[A] = new MkTuplePartiallyApplied[A]
 

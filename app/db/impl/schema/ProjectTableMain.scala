@@ -57,4 +57,4 @@ trait ProjectTable
     )(mkTuple[Project]())
 }
 
-class ProjectTableMain(tag: RowTag) extends ModelTable[Project](tag, "projects") with ProjectTable
+class ProjectTableMain(tag: Tag) extends ModelTable[Project](tag, "projects") with ProjectTable

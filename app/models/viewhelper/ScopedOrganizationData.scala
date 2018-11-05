@@ -8,6 +8,7 @@ import ore.permission._
 
 import cats.data.OptionT
 import cats.instances.future._
+import cats.syntax.all._
 
 case class ScopedOrganizationData(permissions: Map[Permission, Boolean] = Map.empty)
 
@@ -22,7 +23,11 @@ object ScopedOrganizationData {
       service: ModelService
   ): Future[ScopedOrganizationData] =
     currentUser.fold(Future.successful(noScope)) { user =>
-      user.trustIn(orga).map(trust => ScopedOrganizationData(user.can.asMap(trust)(EditSettings)))
+      user
+        .trustIn(orga)
+        .map2(user.globalRoles.allFromParent(user))(
+          (trust, globalRoles) => ScopedOrganizationData(user.can.asMap(trust, globalRoles.toSet)(EditSettings))
+        )
     }
 
   def of[A](currentUser: Option[User], orga: Option[Organization])(
