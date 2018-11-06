@@ -3,8 +3,6 @@ version := "1.6.18"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
-offline := true
-
 scalaVersion := "2.12.6"
 scalacOptions ++= Seq(
   "-deprecation",
