@@ -7,6 +7,7 @@ import models.user._
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 
 import doobie.implicits._
+import doobie.postgres.implicits._
 import org.junit.runner._
 import org.scalatest.junit.JUnitRunner
 
