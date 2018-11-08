@@ -47,8 +47,7 @@ case class ProjectSettings(
     licenseName: Option[String] = None,
     licenseUrl: Option[String] = None,
     forumSync: Boolean = true
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type M = ProjectSettings
   override type T = ProjectSettingsTable
@@ -165,4 +164,7 @@ case class ProjectSettings(
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectSettings =
     this.copy(id = id, createdAt = theTime)
+}
+object ProjectSettings {
+  implicit val isProjectOwned: ProjectOwned[ProjectSettings] = (a: ProjectSettings) => a.projectId
 }

@@ -39,6 +39,7 @@ import ore.project.{Category, ProjectSortingStrategies}
 import ore.user.MembershipDossier
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.syntax._
 import views.{html => views}
 
 import cats.data.OptionT

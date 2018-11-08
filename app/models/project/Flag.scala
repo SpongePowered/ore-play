@@ -31,9 +31,7 @@ case class Flag(
     isResolved: Boolean = false,
     resolvedAt: Option[Timestamp] = None,
     resolvedBy: Option[ObjectReference] = None
-) extends Model
-    with UserOwned
-    with ProjectOwned {
+) extends Model {
 
   override type M = Flag
   override type T = FlagTable
@@ -74,4 +72,8 @@ case class Flag(
   }
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Flag = this.copy(id = id, createdAt = theTime)
+}
+object Flag {
+  implicit val isProjectOwned: ProjectOwned[Flag] = (a: Flag) => a.projectId
+  implicit val isUserOwned: UserOwned[Flag]       = (a: Flag) => a.userId
 }
