@@ -13,7 +13,6 @@ import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable
 import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import form.project.ProjectSettingsForm
 import models.user.Notification
-import models.user.role.ProjectUserRole
 import ore.permission.role.Role
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}

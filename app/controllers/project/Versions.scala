@@ -609,7 +609,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
           val token      = UUID.randomUUID().toString
-          val expiration = new Timestamp(new Date().getTime + this.config.security.get[Long]("unsafeDownload.maxAge"))
+          val expiration = new Timestamp(new Date().getTime + this.config.security.unsafeDownloadMaxAge)
           val address    = InetString(StatTracker.remoteAddress)
           // remove old warning attached to address that are expired (or duplicated for version)
           val removeWarnings = this.warnings.removeAll { warning =>

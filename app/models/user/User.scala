@@ -7,11 +7,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.i18n.Lang
 import play.api.mvc.Request
 
+import db._
 import db.access.{ModelAccess, ModelAssociationAccess}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.schema._
-import db._
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
@@ -85,7 +85,7 @@ case class User(
     */
   def isPgpPubKeyReady(implicit config: OreConfig, service: ModelService): Boolean =
     this.pgpPubKey.isDefined && this.lastPgpPubKeyUpdate.forall { lastUpdate =>
-      val cooldown = config.security.get[Long]("keyChangeCooldown")
+      val cooldown = config.security.keyChangeCooldown
       val minTime  = new Timestamp(lastUpdate.getTime + cooldown)
       minTime.before(service.theTime)
     }
@@ -189,7 +189,7 @@ case class User(
   def starred(
       page: Int = -1
   )(implicit config: OreConfig, service: ModelService): Future[Seq[Project]] = Defined {
-    val starsPerPage = config.users.get[Int]("stars-per-page")
+    val starsPerPage = config.ore.users.starsPerPage
     val limit        = if (page < 1) -1 else starsPerPage
     val offset       = (page - 1) * starsPerPage
     val filter       = Visibility.isPublicFilter[Project]
@@ -381,7 +381,7 @@ case class User(
 object User {
 
   def avatarUrl(name: String)(implicit config: OreConfig): String =
-    config.security.get[String]("api.avatarUrl").format(name)
+    config.security.api.avatarUrl.format(name)
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].

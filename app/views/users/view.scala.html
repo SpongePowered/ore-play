@@ -70,7 +70,7 @@
                             @u.user.name
 
                             @if(u.isCurrent && !u.isOrga) {
-                                <a class="user-settings" href="@config.security.get[String]("api.url")/accounts/settings">
+                                <a class="user-settings" href="@config.security.api.url/accounts/settings">
                                     <i class="fa fa-cog" data-toggle="tooltip"
                                         data-placement="top" title="Settings"></i>
                                 </a>
@@ -287,7 +287,7 @@
                         <p>@messages("user.tagline.info")</p>
                     </div>
                     <input class="form-control" type="text" value="@u.user.tagline.getOrElse("")" id="tagline"
-                           name="tagline" maxlength="@config.users.get[Int]("max-tagline-len")" />
+                           name="tagline" maxlength="@config.ore.users.maxTaglineLen" />
                 </div>
                 <div class="clearfix"></div>
             </div>

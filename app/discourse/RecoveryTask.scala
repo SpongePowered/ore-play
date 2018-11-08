@@ -5,13 +5,13 @@ import scala.concurrent.duration.FiniteDuration
 
 import play.api.Logger
 
-import db.{ModelFilter, ModelService}
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
+import db.{ModelFilter, ModelService}
+import models.project.{Project, Visibility}
 import ore.OreConfig
 
 import akka.actor.Scheduler
-import models.project.{Project, Visibility}
 
 /**
   * Task to periodically retry failed Discourse requests.

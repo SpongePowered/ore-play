@@ -26,7 +26,7 @@
         @projectList(
             models = models,
             page = page,
-            pageSize = config.users.get[Int]("project-page-size"),
+            pageSize = config.ore.users.projectPageSize,
             call = page => routes.Users.showProjects(u.user.name, Some(page))
         )
         </div>

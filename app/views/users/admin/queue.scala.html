@@ -1,5 +1,4 @@
 @import _root_.util.StringUtils._
-@import play.api.Configuration
 
 @import controllers.sugar.Requests.OreRequest
 @import models.admin.Review
@@ -170,7 +169,7 @@
     <script nonce="@nonce">
         $(function(){
             var momentNow = moment();
-            var maxDifference = @config.ore.get[Configuration]("queue").getOptional[Int]("max-review-time").getOrElse(86400000);
+            var maxDifference = @config.ore.queue.maxReviewTime.toMillis;
             $('span[data-ago]').each(function() {
                 var momentAgo = moment($(this).data('ago'))
                 $(this).text($(this).data('title') + momentAgo.fromNow());

@@ -4,8 +4,6 @@ sorted according to different criteria.
 *@
 @import scala.util.Random
 
-@import play.api.Configuration
-
 @import controllers.sugar.Requests.OreRequest
 @import models.project.{Project, Version, VersionTag}
 @import models.user.User
@@ -19,12 +17,10 @@ sorted according to different criteria.
         request: OreRequest[_], config: OreConfig)
 
 @randomSponsor = @{
-    val logos: Seq[Configuration] = config.sponge.get[Seq[Configuration]]("sponsors")
+    val logos = config.sponge.sponsors
 
     val index = new Random().nextInt(logos.size)
-    val logo = logos(index)
-
-    (logo.get[String]("name"), logo.get[String]("image"), logo.get[String]("link"))
+    logos(index)
 }
 
 @categoryString = @{
@@ -82,8 +78,8 @@ sorted according to different criteria.
                         <span>Sponsored by</span>
                         <div class="panel-body">
                             @defining(randomSponsor) { sponsor =>
-                                <a href="@sponsor._3">
-                                    <img class="logo" src="@routes.Assets.versioned(sponsor._2)" />
+                                <a href="@sponsor.link">
+                                    <img class="logo" src="@routes.Assets.versioned(sponsor.image)" />
                                 </a>
                             }
                         </div>
@@ -114,7 +110,7 @@ sorted according to different criteria.
                 @projects.list(
                     models = models,
                     page = page,
-                    pageSize = config.projects.get[Int]("init-load"),
+                    pageSize = config.ore.projects.initLoad,
                     call = page => routes.Application.showHome(
                         categoryString, query, orderingOption, Some(page),
                         platformCategory.map(_.name) ,platform.map(_.name))

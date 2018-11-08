@@ -1,6 +1,7 @@
 package ore.user
 
 import scala.language.{higherKinds, implicitConversions}
+
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.access.ModelAccess
@@ -14,6 +15,7 @@ import models.user.{Organization, User}
 import ore.organization.OrganizationMember
 import ore.permission.role.Trust
 import ore.project.ProjectMember
+
 import cats.instances.future._
 import cats.syntax.all._
 

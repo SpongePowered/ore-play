@@ -54,7 +54,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return Stale projects
     */
   def stale: Future[Seq[Project]] =
-    this.filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.projects.get[Int]("staleAge")))
+    this.filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
 
   /**
     * Returns the Project with the specified owner name and name.

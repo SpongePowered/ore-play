@@ -17,7 +17,7 @@
                     <div class="form-inline">
                         <label for="channel-input">@messages("channel.name")</label>
                         <input class="form-control channel-input" name="channel-input" type="text" value=""
-                               maxlength="@config.channels.get[Int]("max-name-len")"/>
+                               maxlength="@config.ore.channels.maxNameLen"/>
                         <input type="hidden" name="channel-color-input" class="channel-color-input" value="" />
                         <a href="#">
                             <i class="fa fa-circle channel-id color-picker" style=""
