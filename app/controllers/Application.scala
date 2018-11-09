@@ -13,16 +13,9 @@ import play.api.mvc.{Action, ActionBuilder, AnyContent}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelAccess
-import db.impl.OrePostgresDriver.api._
 import db.query.AppQueries
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
-import db.impl.schema.{
-  FlagTable,
-  LoggedActionViewTable,
-  ProjectTableMain,
-  UserTable,
-}
 import db.{ModelService, ObjectReference}
 import form.OreForms
 import models.admin.Review
@@ -133,25 +126,14 @@ final class Application @Inject()(forms: OreForms)(
     * @return Flag overview
     */
   def showFlags(): Action[AnyContent] = FlagAction.async { implicit request =>
-    val query = for {
-      flag    <- TableQuery[FlagTable] if !flag.isResolved
-      project <- TableQuery[ProjectTableMain] if flag.projectId === project.id
-      user    <- TableQuery[UserTable] if flag.userId === user.id
-    } yield (flag, project, user)
-
-    for {
-      seq         <- service.doAction(query.result)
-      globalRoles <- request.user.globalRoles.all
-      perms <- Future.traverse(seq.map(_._2)) { project =>
-        request.user
-          .trustIn(project)
-          .map2(request.user.globalRoles.all)(request.user.can.asMap(_, _)(Visibility.values.map(_.permission): _*))
+    runDbProgram(AppQueries.flags(request.user.id.value).to[Vector]).map { flagSeq =>
+      val flagsWithPerms = flagSeq.map { shownFlag =>
+        val perms = request.user.can.asMap(shownFlag.requesterTrust, shownFlag.requesterRoles.map(_.toDbRole).toSet)(
+          Visibility.values.map(_.permission): _*
+        )
+        shownFlag -> perms
       }
-    } yield {
-      val data = seq.zip(perms).map {
-        case ((flag, project, user), perm) => (flag, user, project, perm)
-      }
-      Ok(views.users.admin.flags(data))
+      Ok(views.users.admin.flags(flagsWithPerms))
     }
   }
 
@@ -220,12 +202,17 @@ final class Application @Inject()(forms: OreForms)(
     */
   def showActivities(user: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
-      runDbProgram(AppQueries.getReviewActivity(user).to[Vector])
-        .map2(runDbProgram(AppQueries.getFlagActivity(user).to[Vector])) { (reviewActivity, flagActivity) =>
+      val dbProgram = for {
+        reviewActibity <- AppQueries.getReviewActivity(user).to[Vector]
+        flagActivity   <- AppQueries.getFlagActivity(user).to[Vector]
+      } yield (reviewActibity, flagActivity)
+
+      runDbProgram(dbProgram).map {
+        case (reviewActivity, flagActivity) =>
           val activities       = reviewActivity.map(_.asRight[FlagActivity]) ++ flagActivity.map(_.asLeft[ReviewActivity])
           val sortedActivities = activities.sortWith(sortActivities)
           Ok(views.users.admin.activity(user, sortedActivities))
-        }
+      }
     }
 
   /**
@@ -273,23 +260,12 @@ final class Application @Inject()(forms: OreForms)(
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
 
-    val default = LiteralColumn(true)
-
-    val logQuery = TableQuery[LoggedActionViewTable]
-      .filter { action =>
-        (action.userId === userFilter).getOrElse(default) &&
-        (action.filterProject === projectFilter).getOrElse(default) &&
-        (action.filterVersion === versionFilter).getOrElse(default) &&
-        (action.filterPage === pageFilter).getOrElse(default) &&
-        (action.filterAction === actionFilter).getOrElse(default) &&
-        (action.filterSubject === subjectFilter).getOrElse(default)
-      }
-      .sortBy(_.id.desc)
-      .drop(offset)
-      .take(pageSize)
-
     (
-      service.doAction(logQuery.result),
+      runDbProgram(
+        AppQueries
+          .getLog(oPage, userFilter, projectFilter, versionFilter, pageFilter, actionFilter, subjectFilter)
+          .to[Vector]
+      ),
       service.access[LoggedActionModel](classOf[LoggedActionModel]).size,
       request.currentUser.get.can(ViewIp).in(GlobalScope)
     ).mapN { (actions, size, canViewIP) =>

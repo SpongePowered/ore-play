@@ -1,6 +1,7 @@
 package db.query
 
 import db.ObjectReference
+import models.admin.LoggedActionViewModel
 import models.querymodels._
 import ore.project.{Category, ProjectSortingStrategy}
 
@@ -96,6 +97,28 @@ object AppQueries extends DoobieOreProtocol {
           |  ORDER BY sq.project_name DESC, sq.version_string DESC""".stripMargin.query[UnsortedQueueEntry]
   }
 
+  def flags(userId: Long): Query0[ShownFlag] = {
+    sql"""|SELECT pf.id                                     AS flag_id,
+          |       pf.reason                                 AS flag_reason,
+          |       pf.comment                                AS flag_comment,
+          |       fu.name                                   AS reporter,
+          |       p.owner_name                              AS project_owner_name,
+          |       p.slug                                    AS project_slug,
+          |       p.visibility                              AS project_visibility,
+          |       array_agg(rr.name)                        AS request_role,
+          |       greatest(gt.trust, coalesce(pt.trust, 0)) AS trust
+          |  FROM project_flags pf
+          |         JOIN projects p ON pf.project_id = p.id
+          |         JOIN users fu ON pf.user_id = fu.id
+          |         JOIN users ru ON ru.id = $userId
+          |         JOIN user_global_roles rgr ON ru.id = rgr.user_id
+          |         JOIN roles rr ON rgr.role_id = rr.id
+          |         JOIN global_trust gt ON ru.id = gt.user_id
+          |         LEFT JOIN project_trust pt ON ru.id = pt.project_id
+          |  GROUP BY pf.id, pf.reason, pf.comment, fu.name, p.owner_name, p.slug, p.visibility, gt.trust, pt.trust""".stripMargin
+      .query[ShownFlag]
+  }
+
   val getUnhealtyProjects: Query0[UnhealtyProject] = {
     sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, p.is_topic_dirty, p.last_updated, p.visibility
           |  FROM projects p
@@ -141,6 +164,31 @@ object AppQueries extends DoobieOreProtocol {
           |       CAST(day AS DATE)
           |  FROM (SELECT CURRENT_DATE - (INTERVAL '1 day' * generate_series($skippedDays, $daysBack)) AS day) dates
           |  ORDER BY day ASC""".stripMargin.query[Stats]
+  }
+
+  def getLog(
+      oPage: Option[Int],
+      userFilter: Option[ObjectReference],
+      projectFilter: Option[ObjectReference],
+      versionFilter: Option[ObjectReference],
+      pageFilter: Option[ObjectReference],
+      actionFilter: Option[Int],
+      subjectFilter: Option[ObjectReference]
+  ): Query0[LoggedActionViewModel] = {
+    val pageSize = 50
+    val page     = oPage.getOrElse(1)
+    val offset   = (page - 1) * pageSize
+
+    val frags = sql"SELECT * FROM v_logged_actions la" ++ Fragments.whereAndOpt(
+      userFilter.map(id => fr"la.user_id = $id"),
+      projectFilter.map(id => fr"la.filter_project = $id"),
+      versionFilter.map(id => fr"la.filter_version = $id"),
+      pageFilter.map(id => fr"la.filter_page = $id"),
+      actionFilter.map(i => fr"la.filter_action = $i"),
+      subjectFilter.map(id => fr"la.filter_subject = $id")
+    ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
+
+    frags.query[LoggedActionViewModel]
   }
 
   //TODO: Only latest changes
