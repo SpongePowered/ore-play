@@ -1,7 +1,8 @@
 package models.querymodels
 import db.ObjectReference
 import models.project.Visibility
-import ore.permission.scope.ProjectScope
+import ore.permission.scope.HasScope
+import ore.project.ProjectOwned
 
 case class VisibilityNeedApprovalProject(
     id: ObjectReference,
@@ -11,8 +12,11 @@ case class VisibilityNeedApprovalProject(
     changeRequester: Option[String],
     hasPreviousChange: Boolean,
     lastChanger: Option[String]
-) extends ProjectScope {
+) extends ProjectOwned {
   override def projectId: ObjectReference = id
+}
+object VisibilityNeedApprovalProject {
+  implicit val hasScope: HasScope[VisibilityNeedApprovalProject] = HasScope.projectScope(_.projectId)
 }
 
 case class VisibilityWaitingProject(

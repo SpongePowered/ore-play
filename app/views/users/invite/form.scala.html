@@ -4,8 +4,8 @@
 @import views.html.utils.userAvatar
 @(owner: User, loadedUsers: Seq[User] = Seq(), roleCategory: RoleCategory)(implicit messages: Messages, config: OreConfig)
 
-<script type="text/javascript" src="@routes.Assets.at("javascripts/userSearch.js")"></script>
-<script type="text/javascript" src="@routes.Assets.at("javascripts/membersConfig.js")"></script>
+<script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
+<script type="text/javascript" src="@routes.Assets.versioned("javascripts/membersConfig.js")"></script>
 
 <!-- Template row -->
 <table style="display: none;">

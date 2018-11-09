@@ -17,8 +17,8 @@ Page used for uploading and creating new projects.
 
 @projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/projectCreateValidate.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/pluginUpload.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectCreateValidate.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pluginUpload.js")"></script>
 
     <div class="panel-body project-body">
         <div class="minor create-blurb">

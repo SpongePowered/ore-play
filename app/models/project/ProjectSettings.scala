@@ -68,13 +68,22 @@ case class ProjectSettings(
     Logger.debug("Saving project settings")
     Logger.debug(formData.toString)
 
-    val updateProject = service.updateIfDefined(
-      project.copy(
-        category = Category.values.find(_.title == formData.categoryName).get,
-        description = noneIfEmpty(formData.description),
-        ownerId = formData.ownerId.getOrElse(project.ownerId)
+    val queryOwnerName = for {
+      u <- TableQuery[UserTable] if formData.ownerId.getOrElse(project.ownerId).bind === u.id
+    } yield {
+      u.name
+    }
+
+    val updateProject = service.doAction(queryOwnerName.result).flatMap { ownerName =>
+      service.updateIfDefined(
+        project.copy(
+          category = Category.values.find(_.title == formData.categoryName).get,
+          description = noneIfEmpty(formData.description),
+          ownerId = formData.ownerId.getOrElse(project.ownerId),
+          ownerName = ownerName.head
+        )
       )
-    )
+    }
 
     val updateSettings = service.updateIfDefined(
       copy(

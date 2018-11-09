@@ -12,9 +12,9 @@
 
 @projects.view(p, sp, "#settings") {
 
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/hideProject.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/iconUpload.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.at("javascripts/keyGen.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/iconUpload.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/keyGen.js")"></script>
     <script nonce="@nonce">
         projectName = "@p.project.name";
         PROJECT_OWNER = "@p.project.ownerName";

@@ -1,5 +1,5 @@
 name := "ore"
-version := "1.6.17"
+version := "1.6.18"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
@@ -44,7 +44,7 @@ scalacOptions ++= Seq(
   "-Ywarn-unused:privates",
   "-Ywarn-value-discard"
 )
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
 
 routesGenerator := InjectedRoutesGenerator
 routesImport += "_root_.db.ObjectReference"
@@ -58,7 +58,7 @@ lazy val doobieVersion = "0.5.3"
 
 libraryDependencies ++= Seq(ehcache, ws, guice)
 
-lazy val flexmarkVersion     = "0.34.40"
+lazy val flexmarkVersion     = "0.34.52"
 lazy val bouncycastleVersion = "1.60"
 lazy val playSlickVersion    = "3.0.3"
 
@@ -69,7 +69,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.play"    %% "play-slick-evolutions"         % playSlickVersion,
   "org.postgresql"       % "postgresql"                     % "42.2.5",
   "com.github.tminglei"  %% "slick-pg"                      % "0.16.3",
-  "io.sentry"            % "sentry-logback"                 % "1.7.10",
+  "io.sentry"            % "sentry-logback"                 % "1.7.12",
   "org.bouncycastle"     % "bcprov-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"     % "bcpkix-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"     % "bcpg-jdk15on"                   % bouncycastleVersion,
@@ -104,6 +104,7 @@ libraryDependencies ++= Seq(
 )
 
 unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test")
+pipelineStages := Seq(digest, gzip)
 
 // Disable generation of the API documentation for production builds
 sources in (Compile, doc) := Seq.empty

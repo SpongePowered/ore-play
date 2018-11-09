@@ -1,6 +1,7 @@
 package controllers
 
-import java.util.{Base64, UUID}
+import java.sql.Timestamp
+import java.util.{Base64, Date, UUID}
 import javax.inject.Inject
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -289,8 +290,14 @@ final class ApiController @Inject()(
                   case (newVersion, channel, tags) =>
                     val update =
                       if (formData.recommended)
-                        service.update(project.copy(recommendedVersionId = Some(newVersion.id.value)))
-                      else Future.unit
+                        service.update(
+                          project.copy(
+                            recommendedVersionId = Some(newVersion.id.value),
+                            lastUpdated = new Timestamp(new Date().getTime)
+                          )
+                        )
+                      else
+                        service.update(project.copy(lastUpdated = new Timestamp(new Date().getTime)))
 
                     update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
                 }

@@ -14,13 +14,18 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{FlagTable, LoggedActionViewTable, ProjectTableMain, UserTable,}
 import db.query.AppQueries
+import models.project._
+import models.querymodels.{FlagActivity, ReviewActivity}
+import db.impl.schema.{
+  FlagTable,
+  LoggedActionViewTable,
+  ProjectTableMain,
+  UserTable,
+}
 import db.{ModelService, ObjectReference}
 import form.OreForms
 import models.admin.Review
-import models.project._
-import models.querymodels.{FlagActivity, ReviewActivity}
 import models.user.role._
 import models.user.{LoggedAction, LoggedActionModel, UserActionLogger}
 import models.viewhelper.OrganizationData
@@ -140,7 +145,7 @@ final class Application @Inject()(forms: OreForms)(
       perms <- Future.traverse(seq.map(_._2)) { project =>
         request.user
           .trustIn(project)
-          .map(request.user.can.asMap(_, globalRoles)(Visibility.values.map(_.permission): _*))
+          .map2(request.user.globalRoles.all)(request.user.can.asMap(_, _)(Visibility.values.map(_.permission): _*))
       }
     } yield {
       val data = seq.zip(perms).map {

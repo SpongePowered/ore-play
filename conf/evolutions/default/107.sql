@@ -10,9 +10,10 @@ CREATE TABLE project_version_tags (
 );
 
 INSERT INTO project_version_tags (version_id, name, data, color)
-SELECT pt.version_id, pt.name, pt.data, pt.color
-FROM (SELECT unnest(version_ids) AS version_id, name, data, color FROM project_tags) AS pt
-       JOIN project_versions v ON v.id = pt.version_id;
+SELECT version.id, pt.name, pt.data, pt.color
+FROM (SELECT unnest(tags) AS tags, id FROM project_versions) AS version
+       JOIN project_tags pt ON version.tags = pt.id
+       JOIN project_versions v ON v.id = version.id;
 
 ALTER TABLE project_versions
   DROP COLUMN tags;
