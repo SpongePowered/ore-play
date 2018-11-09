@@ -14,6 +14,7 @@ import db.table.ModelTable
 import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
+import doobie._
 import slick.basic.DatabaseConfig
 import slick.jdbc.{JdbcProfile, JdbcType}
 import slick.lifted.ColumnOrdered
@@ -106,6 +107,8 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @return         Processed result
     */
   def doAction[R](action: DBIO[R]): Future[R] = DB.db.run(action)
+
+  def runConIO[R](program: ConnectionIO[R]): Future[R]
 
   /**
     * Returns a new ModelAccess to access a ModelTable synchronously.

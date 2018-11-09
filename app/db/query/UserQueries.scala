@@ -2,10 +2,11 @@ package db.query
 
 import java.sql.Timestamp
 
+import db.ObjectReference
 import db.impl.access.UserBase.UserOrdering
 import models.querymodels.ProjectListEntry
 import ore.OreConfig
-import ore.permission.role.Role
+import ore.permission.role.{Role, Trust}
 import ore.project.ProjectSortingStrategy
 
 import doobie._
@@ -120,6 +121,27 @@ object UserQueries extends DoobieOreProtocol {
         fr"""OFFSET $offset LIMIT $pageSize"""
 
     fragments.query[(String, Role, Option[Timestamp], Timestamp)]
+  }
+
+  def globalTrust(userId: ObjectReference) =
+    sql"""SELECT gt.trust FROM global_trust gt WHERE gt.user_id = $userId""".query[Trust]
+
+  def projectTrust(userId: ObjectReference, projectId: ObjectReference) = {
+    sql"""|SELECT greatest(gt.trust, pt.trust)
+          |  FROM global_trust gt,
+          |       project_trust pt
+          |  WHERE gt.user_id = $userId
+          |    AND pt.user_id = $userId
+          |    AND pt.project_id = $projectId""".stripMargin.query[Trust]
+  }
+
+  def organizationTrust(userId: ObjectReference, organizationId: ObjectReference) = {
+    sql"""|SELECT greatest(gt.trust, pt.trust)
+          |  FROM global_trust gt,
+          |       organization_trust ot
+          |  WHERE gt.user_id = 
+          |    AND ot.user_id = $userId
+          |    AND ot.organization_id = $organizationId""".stripMargin.query[Trust]
   }
 
 }

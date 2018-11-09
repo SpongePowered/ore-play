@@ -2,6 +2,7 @@ package db.impl.service
 
 import javax.inject.{Inject, Singleton}
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 import play.api.db.slick.DatabaseConfigProvider
@@ -10,7 +11,11 @@ import db.ModelRegistry
 import db.impl.OrePostgresDriver
 import ore.{OreConfig, OreEnv}
 
-import slick.jdbc.JdbcProfile
+import cats.effect.IO
+import doobie._
+import doobie.implicits._
+import doobie.util.transactor.Strategy
+import slick.jdbc.{JdbcDataSource, JdbcProfile}
 
 /**
   * The Ore ModelService implementation. Contains registration of Ore-specific
@@ -31,6 +36,15 @@ class OreModelService @Inject()(
   override lazy val registry: ModelRegistry  = new ModelRegistry {}
   override lazy val DB                       = db.get[JdbcProfile]
   override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
+
+  implicit lazy val xa: Transactor.Aux[IO, JdbcDataSource] = Transactor[IO, JdbcDataSource](
+    DB.db.source,
+    source => IO(source.createConnection()),
+    KleisliInterpreter[IO].ConnectionInterpreter,
+    Strategy.default
+  )
+
+  override def runConIO[R](program: ConnectionIO[R]): Future[R] = program.transact(xa).unsafeToFuture()
 
   import registry.{registerModelBase, registerSchema}
 
@@ -78,5 +92,4 @@ class OreModelService @Inject()(
         s"Registered Schemas: ${this.registry.modelSchemas.size}"
     )
   }
-
 }

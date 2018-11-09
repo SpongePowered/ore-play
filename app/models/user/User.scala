@@ -12,6 +12,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.schema._
 import db._
+import db.query.UserQueries
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
@@ -120,20 +121,7 @@ case class User(
       }
     )
 
-  private def biggestRoleTpe(roles: Set[Role]): Trust =
-    if (roles.isEmpty) Trust.Default
-    else roles.map(_.trust).max
-
-  private def globalTrust(implicit service: ModelService, ec: ExecutionContext) = {
-    val q = for {
-      ur <- TableQuery[UserGlobalRolesTable] if ur.userId === id.value
-      r  <- TableQuery[DbRoleTable] if ur.roleId === r.id
-    } yield r.trust
-
-    service.doAction(Query(q.max).result.head).map(_.getOrElse(Trust.Default))
-  }
-
-  def trustIn[A: HasScope](a: A)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
+  def trustIn[A: HasScope](a: A)(implicit service: ModelService): Future[Trust] =
     trustIn(Scope.getFor(a))
 
   /**
@@ -141,43 +129,15 @@ case class User(
     *
     * @return Highest level of trust
     */
-  def trustIn(scope: Scope = GlobalScope)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
+  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService): Future[Trust] =
     Defined {
-      scope match {
-        case GlobalScope => globalTrust
-        case ProjectScope(projectId) =>
-          val projectRoles = service.doAction(Project.roleForTrustQuery((projectId, this.id.value)).result)
-
-          val projectTrust = projectRoles
-            .map(biggestRoleTpe)
-            .flatMap { userTrust =>
-              val projectsTable = TableQuery[ProjectTableMain]
-              val orgaTable     = TableQuery[OrganizationTable]
-              val memberTable   = TableQuery[OrganizationMembersTable]
-              val roleTable     = TableQuery[OrganizationRoleTable]
-
-              val query = for {
-                p <- projectsTable if projectId.bind === p.id
-                o <- orgaTable if p.userId === o.id
-                m <- memberTable if m.organizationId === o.id && m.userId === this.userId.bind
-                r <- roleTable if this.userId.bind === r.userId && r.organizationId === o.id
-              } yield r.roleType
-
-              service.doAction(query.to[Set].result).map { roleTypes =>
-                if (roleTypes.contains(Role.OrganizationAdmin) || roleTypes.contains(Role.OrganizationOwner)) {
-                  biggestRoleTpe(roleTypes)
-                } else {
-                  userTrust
-                }
-              }
-            }
-
-          projectTrust.map2(globalTrust)(_ max _)
-        case OrganizationScope(organizationId) =>
-          Organization.getTrust(id.value, organizationId).map2(globalTrust)(_ max _)
-        case _ =>
-          throw new RuntimeException("unknown scope: " + scope)
+      val conIO = scope match {
+        case GlobalScope                       => UserQueries.globalTrust(id.value).unique
+        case ProjectScope(projectId)           => UserQueries.projectTrust(id.value, projectId).unique
+        case OrganizationScope(organizationId) => UserQueries.organizationTrust(id.value, organizationId).unique
       }
+
+      service.runConIO(conIO)
     }
 
   /**

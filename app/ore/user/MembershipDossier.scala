@@ -67,14 +67,6 @@ trait MembershipDossier[F[_], M <: Model] {
   def getRoles(model: M, user: User): F[Set[RoleType]]
 
   /**
-    * Returns the highest level of [[ore.permission.role.Trust]] this user has.
-    *
-    * @param user User to get trust of
-    * @return Trust of user
-    */
-  def getTrust(model: M, user: User): F[Trust]
-
-  /**
     * Removes a role from the dossier and removes the member if last role.
     *
     * @param role Role to remove
@@ -169,11 +161,6 @@ object MembershipDossier {
 
       override def newMember(model: Project, userId: ObjectReference): ProjectMember = new ProjectMember(model, userId)
 
-      override def getTrust(model: Project, user: User): Future[Trust] =
-        service
-          .doAction(Project.roleForTrustQuery((model.id.value, user.id.value)).result)
-          .map(l => if (l.isEmpty) Trust.Default else l.map(_.trust).max)
-
       override def clearRoles(model: Project, user: User): Future[Int] =
         this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.projectId === model.id.value))
     }
@@ -190,9 +177,6 @@ object MembershipDossier {
 
       override def newMember(model: Organization, userId: ObjectReference): OrganizationMember =
         new OrganizationMember(model, userId)
-
-      override def getTrust(model: Organization, user: User): Future[Trust] =
-        Organization.getTrust(user.id.value, model.id.value)
 
       override def clearRoles(model: Organization, user: User): Future[Int] =
         this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.organizationId === model.id.value))

@@ -2,20 +2,18 @@ package models.user
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
-import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
+import db.impl.schema.OrganizationTable
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
 import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
-import ore.permission.role.{Role, Trust}
+import ore.permission.role.Role
 import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
-import slick.lifted.{Compiled, Rep, TableQuery}
 
 /**
   * Represents an Ore Organization. An organization is like a [[User]] in the
@@ -91,26 +89,4 @@ case class Organization(
 
 object Organization {
   implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
-
-  lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
-
-  private def queryRoleForTrust(orgId: Rep[ObjectReference], userId: Rep[ObjectReference]) =
-    for {
-      m <- TableQuery[OrganizationMembersTable] if m.organizationId === orgId && m.userId === userId
-      r <- TableQuery[OrganizationRoleTable] if m.userId === r.userId && r.organizationId === orgId
-    } yield r.roleType
-
-  /**
-    * Returns the highest level of [[ore.permission.role.Trust]] this user has.
-    *
-    * @param user User to get trust of
-    * @return Trust of user
-    */
-  def getTrust(
-      userId: ObjectReference,
-      orgId: ObjectReference
-  )(implicit ex: ExecutionContext, service: ModelService): Future[Trust] =
-    service.DB.db
-      .run(Organization.roleForTrustQuery((orgId, userId)).result)
-      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Trust.Default))
 }
