@@ -180,6 +180,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
                 val pageName = pageData.name.getOrElse(parts(0))
                 project.getOrCreatePage(pageName, parentId, content)
               }
+
               created
                 .flatMap { createdPage =>
                   content.fold(Future.successful(createdPage)) { newPage =>
