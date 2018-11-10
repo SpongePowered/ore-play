@@ -10,6 +10,7 @@ import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
 import util.StringUtils
+import util.syntax._
 
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.instances.future._

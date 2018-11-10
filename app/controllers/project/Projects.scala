@@ -31,6 +31,7 @@ import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import _root_.util.syntax._
 import _root_.util.StringUtils._
 import views.html.{projects => views}
 
@@ -394,7 +395,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def setStarred(author: String, slug: String, starred: Boolean): Action[AnyContent] =
     AuthedProjectAction(author, slug).async { implicit request =>
-      if (request.project.ownerId != request.user.userId)
+      if (request.project.ownerId != request.user.id.value)
         request.data.project.setStarredBy(request.user, starred).as(Ok)
       else
         Future.successful(BadRequest)
@@ -807,7 +808,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .andThen(PermissionAction[AuthRequest](ReviewProjects))
       .asyncEitherT(parse.form(forms.NoteDescription)) { implicit request =>
         getProject(author, slug)
-          .semiflatMap(_.addNote(Note(request.body.trim, request.user.userId)))
+          .semiflatMap(_.addNote(Note(request.body.trim, request.user.id.value)))
           .map(_ => Ok("Review"))
       }
   }

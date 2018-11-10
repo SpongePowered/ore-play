@@ -35,6 +35,7 @@ import ore.user.MembershipDossier
 import ore.{Joinable, OreConfig, Visitable}
 import _root_.util.StringUtils
 import _root_.util.StringUtils._
+import _root_.util.syntax._
 
 import cats.instances.future._
 import cats.syntax.all._

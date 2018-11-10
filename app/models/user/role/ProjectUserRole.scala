@@ -8,6 +8,7 @@ import ore.Visitable
 import ore.permission.role.Role
 import ore.permission.scope.ProjectScope
 import ore.project.ProjectOwned
+import ore.user.UserOwned
 
 /**
   * Represents a [[ore.project.ProjectMember]]'s role in a
@@ -27,8 +28,7 @@ case class ProjectUserRole(
     projectId: ObjectReference,
     role: Role,
     isAccepted: Boolean = false
-) extends UserRoleModel
-    with ProjectOwned {
+) extends UserRoleModel {
 
   override type M = ProjectUserRole
   override type T = ProjectRoleTable
@@ -48,7 +48,12 @@ case class ProjectUserRole(
     isAccepted = accepted
   )
 
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.project
+  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+    ProjectOwned[ProjectUserRole].project(this)
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectUserRole =
     this.copy(id = id, createdAt = theTime)
+}
+object ProjectUserRole {
+  implicit val isProjectOwned: ProjectOwned[ProjectUserRole] = (a: ProjectUserRole) => a.projectId
+  implicit val isUserOwned: UserOwned[ProjectUserRole]       = (a: ProjectUserRole) => a.userId
 }

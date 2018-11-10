@@ -38,8 +38,7 @@ case class LoggedActionViewModel(
     filterPage: Option[ObjectReference],
     filterSubject: Option[ObjectReference],
     filterAction: Option[Int]
-) extends Model
-    with UserOwned {
+) extends Model {
 
   def contextId: ObjectReference      = actionContextId
   def actionType: LoggedActionContext = action.context
@@ -58,4 +57,7 @@ case class LoggedActionViewModel(
   override type M = LoggedActionViewModel
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionViewModel = this.copy(createdAt = theTime)
+}
+object LoggedActionViewModel {
+  implicit val isUserOwned: UserOwned[LoggedActionViewModel] = (a: LoggedActionViewModel) => a.userId
 }

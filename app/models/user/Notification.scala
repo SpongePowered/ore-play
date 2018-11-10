@@ -32,8 +32,7 @@ case class Notification(
     messageArgs: NEL[String],
     action: Option[String] = None,
     isRead: Boolean = false
-) extends Model
-    with UserOwned {
+) extends Model {
 
   override type M = Notification
   override type T = NotificationTable
@@ -47,5 +46,7 @@ case class Notification(
     userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None"))
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
-
+}
+object Notification {
+  implicit val isUserOwned: UserOwned[Notification] = (a: Notification) => a.userId
 }

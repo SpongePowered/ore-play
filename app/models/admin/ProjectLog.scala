@@ -21,8 +21,7 @@ case class ProjectLog(
     id: ObjectId = ObjectId.Uninitialized,
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     projectId: ObjectReference
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type T = ProjectLogTable
   override type M = ProjectLog
@@ -62,4 +61,7 @@ case class ProjectLog(
   }
 
   def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLog = this.copy(id = id, createdAt = theTime)
+}
+object ProjectLog {
+  implicit val isProjectOwned: ProjectOwned[ProjectLog] = (a: ProjectLog) => a.projectId
 }

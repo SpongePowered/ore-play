@@ -7,6 +7,7 @@ import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
 import ore.organization.OrganizationOwned
 import ore.permission.role.Role
+import ore.user.UserOwned
 
 /**
   * Represents a [[UserRoleModel]] within an [[models.user.Organization]].
@@ -25,8 +26,7 @@ case class OrganizationUserRole(
     organizationId: ObjectReference,
     role: Role,
     isAccepted: Boolean = false
-) extends UserRoleModel
-    with OrganizationOwned {
+) extends UserRoleModel {
 
   override type M = OrganizationUserRole
   override type T = OrganizationRoleTable
@@ -34,6 +34,11 @@ case class OrganizationUserRole(
   def this(userId: ObjectReference, organizationId: ObjectReference, roleType: Role) =
     this(id = ObjectId.Uninitialized, userId = userId, organizationId = organizationId, role = roleType)
 
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model                          = this.copy(id = id, createdAt = theTime)
+  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+    OrganizationOwned[OrganizationUserRole].organization(this)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
+}
+object OrganizationUserRole {
+  implicit val isOrgOwned: OrganizationOwned[OrganizationUserRole] = (a: OrganizationUserRole) => a.organizationId
+  implicit val isUserOwned: UserOwned[OrganizationUserRole]        = (a: OrganizationUserRole) => a.userId
 }
