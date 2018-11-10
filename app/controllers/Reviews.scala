@@ -7,6 +7,7 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
+import play.api.libs.json.JsObject
 import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.sugar.Bakery
@@ -68,7 +69,7 @@ final class Reviews @Inject()(forms: OreForms)(
           version.id.value,
           request.user.id.value,
           None,
-          ""
+          JsObject.empty
         )
         this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
       }.merge
@@ -208,7 +209,7 @@ final class Reviews @Inject()(forms: OreForms)(
                   version.id.value,
                   request.user.id.value,
                   None,
-                  ""
+                  JsObject.empty
                 )
               )
             ).tupled

@@ -28,7 +28,7 @@ trait OrePostgresDriver
     with PgAggFuncSupport
     with PgWindowFuncSupport
     with PgNetSupport
-    with PgJsonSupport
+    with PgPlayJsonSupport
     with PgEnumSupport
     with SlickValueEnumSupport {
 
@@ -36,7 +36,7 @@ trait OrePostgresDriver
 
   def pgjson = "jsonb"
 
-  object OreDriver extends API with ArrayImplicits with NetImplicits {
+  object OreDriver extends API with ArrayImplicits with NetImplicits with JsonImplicits {
     implicit val colorTypeMapper: BaseColumnType[Color]           = mappedColumnTypeForValueEnum(Color)
     implicit val tagColorTypeMapper: BaseColumnType[TagColor]     = mappedColumnTypeForValueEnum(TagColor)
     implicit val roleTypeTypeMapper: BaseColumnType[Role]         = mappedColumnTypeForValueEnum(Role)

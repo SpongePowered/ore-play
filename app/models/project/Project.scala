@@ -84,7 +84,7 @@ case class Project(
     isTopicDirty: Boolean = false,
     visibility: Visibility = Public,
     lastUpdated: Timestamp = null,
-    notes: String = ""
+    notes: JsValue = JsObject.empty
 ) extends Model
     with Downloadable
     with Named
@@ -434,15 +434,10 @@ case class Project(
     */
   def addNote(message: Note)(implicit ec: ExecutionContext, service: ModelService): Future[Project] = {
     val messages = decodeNotes :+ message
-    val js       = Json.toJson(messages)
     service.update(
       copy(
-        notes = Json.stringify(
-          JsObject(
-            Seq(
-              "messages" -> js
-            )
-          )
+        notes = JsObject(
+          Seq("messages" -> Json.toJson(messages))
         )
       )
     )
@@ -452,14 +447,7 @@ case class Project(
     * Get all messages
     * @return
     */
-  def decodeNotes: Seq[Note] = {
-    if (this.notes.startsWith("{") && notes.endsWith("}")) {
-      val messages: JsValue = Json.parse(notes)
-      (messages \ "messages").as[Seq[Note]]
-    } else {
-      Seq()
-    }
-  }
+  def decodeNotes: Seq[Note] = (notes \ "messages").as[Seq[Note]]
 }
 
 /**

@@ -61,6 +61,7 @@ libraryDependencies ++= Seq(ehcache, ws, guice)
 lazy val flexmarkVersion     = "0.34.52"
 lazy val bouncycastleVersion = "1.60"
 lazy val playSlickVersion    = "3.0.3"
+lazy val slickPgVersion      = "0.16.3"
 
 libraryDependencies ++= Seq(
   "org.spongepowered"    % "play-discourse"                 % "3.0.2",
@@ -68,7 +69,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.play"    %% "play-slick"                    % playSlickVersion,
   "com.typesafe.play"    %% "play-slick-evolutions"         % playSlickVersion,
   "org.postgresql"       % "postgresql"                     % "42.2.5",
-  "com.github.tminglei"  %% "slick-pg"                      % "0.16.3",
+  "com.github.tminglei"  %% "slick-pg"                      % slickPgVersion,
+  "com.github.tminglei"  %% "slick-pg_play-json"            % slickPgVersion,
   "io.sentry"            % "sentry-logback"                 % "1.7.12",
   "org.bouncycastle"     % "bcprov-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"     % "bcpkix-jdk15on"                 % bouncycastleVersion,
