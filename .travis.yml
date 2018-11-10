@@ -13,7 +13,7 @@ scala:
 services: postgresql
 
 addons:
-  postgresql: "9.6.10"
+  postgresql: "9.6"
 
 before_script:
   - psql -c 'CREATE DATABASE ore_test;' -U postgres
