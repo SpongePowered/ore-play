@@ -5,6 +5,7 @@ import java.sql.Timestamp
 import scala.reflect.runtime.universe.TypeTag
 
 import play.api.i18n.Lang
+import play.api.libs.json.{JsValue, Json}
 
 import db.{ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.{TagColor, Visibility}
@@ -22,11 +23,25 @@ import com.github.tminglei.slickpg.InetString
 import doobie._
 import doobie.postgres.implicits._
 import enumeratum.values.{ValueEnum, ValueEnumEntry}
+import org.postgresql.util.PGobject
 
 trait DoobieOreProtocol {
 
   implicit val objectIdMeta: Meta[ObjectId]               = Meta[ObjectReference].xmap(ObjectId.apply, _.value)
   implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].xmap(ObjectTimestamp.apply, _.value)
+
+  implicit val jsonMeta: Meta[JsValue] = Meta
+    .other[PGobject]("jsonb")
+    .xmap[JsValue](
+      o => Option(o).map(a => Json.parse(a.getValue)).orNull,
+      a =>
+        Option(a).map { a =>
+          val o = new PGobject
+          o.setType("jsonb")
+          o.setValue(a.toString())
+          o
+        }.orNull
+    )
 
   def enumeratumMeta[V: TypeTag, E <: ValueEnumEntry[V]: TypeTag](
       enum: ValueEnum[V, E]
