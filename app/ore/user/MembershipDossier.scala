@@ -15,6 +15,7 @@ import models.user.{Organization, User}
 import ore.organization.OrganizationMember
 import ore.permission.role.Trust
 import ore.project.ProjectMember
+import util.syntax._
 
 import cats.instances.future._
 import cats.syntax.all._
@@ -112,7 +113,8 @@ object MembershipDossier {
       membersTableClass: Class[MembersTable]
   )(
       implicit ec: ExecutionContext,
-      service: ModelService
+      service: ModelService,
+      roleUserOwned: UserOwned[RoleType0]
   ) extends MembershipDossier[Future, M0] {
 
     type RoleType = RoleType0

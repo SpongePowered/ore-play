@@ -16,6 +16,7 @@ import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import util.FileUtils
 import util.StringUtils._
+import util.syntax._
 
 import cats.data.OptionT
 import cats.instances.future._

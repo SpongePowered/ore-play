@@ -17,6 +17,7 @@ import ore.OreConfig
 import ore.permission.role.RoleCategory
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
+import util.syntax._
 
 import cats.instances.future._
 import cats.instances.option._

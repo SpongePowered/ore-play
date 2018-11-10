@@ -13,6 +13,7 @@ import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
+import util.syntax._
 
 import cats.data.OptionT
 import slick.lifted.{Compiled, Rep, TableQuery}
@@ -33,7 +34,6 @@ case class Organization(
     username: String,
     ownerId: ObjectReference
 ) extends Model
-    with UserOwned
     with Named
     with Visitable
     with Joinable[OrganizationMember, Organization] {
@@ -84,13 +84,13 @@ case class Organization(
 
   override val name: String                                            = this.username
   override def url: String                                             = this.username
-  override val userId: ObjectReference                                 = this.ownerId
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(createdAt = theTime)
 
 }
 
 object Organization {
-  implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
+  implicit val orgHasScope: HasScope[Organization]  = HasScope.orgScope(_.id.value)
+  implicit val isUserOwned: UserOwned[Organization] = (a: Organization) => a.ownerId
 
   lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
 

@@ -25,6 +25,7 @@ import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
 import util.StringUtils._
+import util.syntax._
 
 import akka.actor.ActorSystem
 import cats.data.{EitherT, NonEmptyList}

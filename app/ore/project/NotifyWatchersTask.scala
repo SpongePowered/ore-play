@@ -36,7 +36,7 @@ case class NotifyWatchersTask(version: Version, project: Project)(
 
     project.watchers.all.foreach { watchers =>
       watchers
-        .filterNot(_.userId == version.authorId)
+        .filterNot(_.id.value == version.authorId)
         .foreach(watcher => watcher.sendNotification(notification(watcher.id.value)))
     }
   }
