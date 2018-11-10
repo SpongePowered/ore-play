@@ -1,6 +1,8 @@
 package db.impl.schema
 
-import db.DbRef
+import java.sql.Timestamp
+
+import db.{DbRef, ObjId, ObjectTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.admin.{LoggedActionViewModel, LoggedProject, LoggedProjectPage, LoggedProjectVersion, LoggedSubject}
@@ -9,13 +11,13 @@ import models.user.{LoggedAction, LoggedActionContext, User}
 
 import com.github.tminglei.slickpg.InetString
 
-class LoggedActionViewTable(tag: Tag) extends ModelTable[LoggedActionViewModel](tag, "v_logged_actions") {
+class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewModel[Ctx]](tag, "v_logged_actions") {
 
   def userId          = column[DbRef[User]]("user_id")
   def address         = column[InetString]("address")
-  def action          = column[LoggedAction]("action")
-  def actionContext   = column[LoggedActionContext]("action_context")
-  def actionContextId = column[DbRef[_]]("action_context_id")
+  def action          = column[LoggedAction[Ctx]]("action")
+  def actionContext   = column[LoggedActionContext[Ctx]]("action_context")
+  def actionContextId = column[DbRef[Ctx]]("action_context_id")
   def newState        = column[String]("new_state")
   def oldState        = column[String]("old_state")
   def uId             = column[DbRef[User]]("u_id")
@@ -36,11 +38,54 @@ class LoggedActionViewTable(tag: Tag) extends ModelTable[LoggedActionViewModel](
   def filterSubject   = column[DbRef[_]]("filter_subject")
   def filterAction    = column[Int]("filter_action")
 
-  override def * =
-    mkProj(
-      (
-        id.?,
-        createdAt.?,
+  private def rawApply(
+      id: Option[DbRef[LoggedActionViewModel[Ctx]]],
+      createdAt: Option[Timestamp],
+      userId: DbRef[User],
+      address: InetString,
+      action: LoggedAction[Ctx],
+      actionContext: LoggedActionContext[Ctx],
+      actionContextId: DbRef[Ctx],
+      newState: String,
+      oldState: String,
+      uId: DbRef[User],
+      uName: String,
+      loggedProject: LoggedProject,
+      loggedProjectVersion: LoggedProjectVersion,
+      loggedProjectPage: LoggedProjectPage,
+      loggedSubject: LoggedSubject,
+      filterProject: Option[DbRef[Project]],
+      filterVersion: Option[DbRef[Version]],
+      filterPage: Option[DbRef[Page]],
+      filterSubject: Option[DbRef[_]],
+      filterAction: Option[Int]
+  ) = LoggedActionViewModel[Ctx](
+    ObjId.unsafeFromOption(id),
+    ObjectTimestamp.unsafeFromOption(createdAt),
+    userId,
+    address,
+    action,
+    actionContext,
+    actionContextId,
+    newState,
+    oldState,
+    uId,
+    uName,
+    loggedProject,
+    loggedProjectVersion,
+    loggedProjectPage,
+    loggedSubject,
+    filterProject,
+    filterVersion,
+    filterPage,
+    filterSubject,
+    filterAction
+  )
+
+  private def rawUnapply(m: LoggedActionViewModel[Ctx]) = m match {
+    case LoggedActionViewModel(
+        id,
+        createdAt,
         userId,
         address,
         action,
@@ -50,17 +95,67 @@ class LoggedActionViewTable(tag: Tag) extends ModelTable[LoggedActionViewModel](
         oldState,
         uId,
         uName,
-        loggedProjectProjection,
-        loggedProjectVersionProjection,
-        loggedProjectPageProjection,
-        loggedSubjectProjection,
-        filterProject.?,
-        filterVersion.?,
-        filterPage.?,
-        filterSubject.?,
-        filterAction.?
+        loggedProject,
+        loggedProjectVersion,
+        loggedProjectPage,
+        loggedSubject,
+        filterProject,
+        filterVersion,
+        filterPage,
+        filterSubject,
+        filterAction
+        ) =>
+      Some(
+        (
+          id.unsafeToOption,
+          createdAt.unsafeToOption,
+          userId,
+          address,
+          action,
+          actionContext,
+          actionContextId,
+          newState,
+          oldState,
+          uId,
+          uName,
+          loggedProject,
+          loggedProjectVersion,
+          loggedProjectPage,
+          loggedSubject,
+          filterProject,
+          filterVersion,
+          filterPage,
+          filterSubject,
+          filterAction
+        )
       )
-    )(mkTuple[LoggedActionViewModel]())
+    case _ => None
+  }
+
+  override def * = {
+    (
+      id.?,
+      createdAt.?,
+      userId,
+      address,
+      action,
+      actionContext,
+      actionContextId,
+      newState,
+      oldState,
+      uId,
+      uName,
+      loggedProjectProjection,
+      loggedProjectVersionProjection,
+      loggedProjectPageProjection,
+      loggedSubjectProjection,
+      filterProject.?,
+      filterVersion.?,
+      filterPage.?,
+      filterSubject.?,
+      filterAction.?
+    ) <> ((rawApply _).tupled, rawUnapply _)
+  }
 
   def loggedProjectProjection =
     (pId.?, pPluginId.?, pSlug.?, pOwnerName.?) <> ((LoggedProject.apply _).tupled, LoggedProject.unapply)

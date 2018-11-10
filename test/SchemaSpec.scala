@@ -150,7 +150,7 @@ class SchemaSpec extends DbSpec {
   test("LoggedAction") {
     check(
       sql"""|SELECT id, created_at, user_id, address, action, action_context, action_context_id, new_state, old_state
-            |FROM logged_actions""".stripMargin.query[LoggedActionModel]
+            |FROM logged_actions""".stripMargin.query[LoggedActionModel[Any]]
     )
   }
 

@@ -34,19 +34,21 @@ trait DoobieOreProtocol {
   )(implicit meta: Meta[V]): Meta[E] =
     meta.xmap[E](enum.withValue, _.value)
 
-  implicit val colorMeta: Meta[Color]                             = enumeratumMeta(Color)
-  implicit val tagColorMeta: Meta[TagColor]                       = enumeratumMeta(TagColor)
-  implicit val roleTypeMeta: Meta[Role]                           = enumeratumMeta(Role)
-  implicit val categoryMeta: Meta[Category]                       = enumeratumMeta(Category)
-  implicit val flagReasonMeta: Meta[FlagReason]                   = enumeratumMeta(FlagReason)
-  implicit val notificationTypeMeta: Meta[NotificationType]       = enumeratumMeta(NotificationType)
-  implicit val promptMeta: Meta[Prompt]                           = enumeratumMeta(Prompt)
-  implicit val downloadTypeMeta: Meta[DownloadType]               = enumeratumMeta(DownloadType)
-  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType]      = enumeratumMeta(ProjectApiKeyType)
-  implicit val visibilityMeta: Meta[Visibility]                   = enumeratumMeta(Visibility)
-  implicit val loggedActionMeta: Meta[LoggedAction]               = enumeratumMeta(LoggedAction)
-  implicit val loggedActionContextMeta: Meta[LoggedActionContext] = enumeratumMeta(LoggedActionContext)
-  implicit val trustMeta: Meta[Trust]                             = enumeratumMeta(Trust)
+  implicit val colorMeta: Meta[Color]                        = enumeratumMeta(Color)
+  implicit val tagColorMeta: Meta[TagColor]                  = enumeratumMeta(TagColor)
+  implicit val roleTypeMeta: Meta[Role]                      = enumeratumMeta(Role)
+  implicit val categoryMeta: Meta[Category]                  = enumeratumMeta(Category)
+  implicit val flagReasonMeta: Meta[FlagReason]              = enumeratumMeta(FlagReason)
+  implicit val notificationTypeMeta: Meta[NotificationType]  = enumeratumMeta(NotificationType)
+  implicit val promptMeta: Meta[Prompt]                      = enumeratumMeta(Prompt)
+  implicit val downloadTypeMeta: Meta[DownloadType]          = enumeratumMeta(DownloadType)
+  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType] = enumeratumMeta(ProjectApiKeyType)
+  implicit val visibilityMeta: Meta[Visibility]              = enumeratumMeta(Visibility)
+  implicit def loggedActionMeta[Ctx]: Meta[LoggedAction[Ctx]] =
+    enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]]
+  implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
+    enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]]
+  implicit val trustMeta: Meta[Trust] = enumeratumMeta(Trust)
 
   implicit val langMeta: Meta[Lang] = Meta[String].xmap(Lang.apply, _.toLocale.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =

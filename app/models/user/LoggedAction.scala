@@ -13,50 +13,53 @@ import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
 import slick.lifted.TableQuery
 
-case class LoggedActionModel(
-    id: ObjId[LoggedActionModel] = ObjId.Uninitialized(),
+case class LoggedActionModel[Ctx](
+    id: ObjId[LoggedActionModel[Ctx]] = ObjId.Uninitialized[LoggedActionModel[Ctx]](),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     userId: DbRef[User],
     address: InetString,
-    action: LoggedAction,
-    actionContext: LoggedActionContext,
-    actionContextId: DbRef[_],
+    action: LoggedAction[Ctx],
+    actionContext: LoggedActionContext[Ctx],
+    actionContextId: DbRef[Ctx],
     newState: String,
     oldState: String
 ) extends Model {
 
-  override type T = LoggedActionTable
-  override type M = LoggedActionModel
+  override type T = LoggedActionTable[Ctx]
+  override type M = LoggedActionModel[Ctx]
 }
 object LoggedActionModel {
-  implicit val query: ModelQuery[LoggedActionModel] =
-    ModelQuery.from[LoggedActionModel](TableQuery[LoggedActionTable], (obj, _, time) => obj.copy(createdAt = time))
+  implicit def query[Ctx]: ModelQuery[LoggedActionModel[Ctx]] =
+    ModelQuery.from[LoggedActionModel[Ctx]](
+      TableQuery[LoggedActionTable[Ctx]],
+      (obj, _, time) => obj.copy(createdAt = time)
+    )
 
-  implicit val isUserOwned: UserOwned[LoggedActionModel] = (a: LoggedActionModel) => a.userId
+  implicit val isUserOwned: UserOwned[LoggedActionModel[_]] = (a: LoggedActionModel[_]) => a.userId
 }
 
-sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry
+sealed abstract class LoggedActionContext[Ctx](val value: Int) extends IntEnumEntry
 
-object LoggedActionContext extends IntEnum[LoggedActionContext] {
+object LoggedActionContext extends IntEnum[LoggedActionContext[_]] {
 
-  case object Project      extends LoggedActionContext(0)
-  case object Version      extends LoggedActionContext(1)
-  case object ProjectPage  extends LoggedActionContext(2)
-  case object User         extends LoggedActionContext(3)
-  case object Organization extends LoggedActionContext(4)
+  case object Project      extends LoggedActionContext[models.project.Project](0)
+  case object Version      extends LoggedActionContext[models.project.Version](1)
+  case object ProjectPage  extends LoggedActionContext[models.project.Page](2)
+  case object User         extends LoggedActionContext[models.user.User](3)
+  case object Organization extends LoggedActionContext[models.user.Organization](4)
 
-  val values: immutable.IndexedSeq[LoggedActionContext] = findValues
+  val values: immutable.IndexedSeq[LoggedActionContext[_]] = findValues
 
 }
 
-sealed abstract class LoggedAction(
+sealed abstract class LoggedAction[Ctx](
     val value: Int,
     val name: String,
-    val context: LoggedActionContext,
+    val context: LoggedActionContext[Ctx],
     val description: String
 ) extends IntEnumEntry
 
-case object LoggedAction extends IntEnum[LoggedAction] {
+case object LoggedAction extends IntEnum[LoggedAction[_]] {
 
   case object ProjectVisibilityChange
       extends LoggedAction(
@@ -126,21 +129,21 @@ case object LoggedAction extends IntEnum[LoggedAction] {
       extends LoggedAction(15, "UserPgpKeySaved", LoggedActionContext.User, "The user saved a PGP Public Key")
   case object UserPgpKeyRemoved
       extends LoggedAction(16, "UserPgpKeyRemoved", LoggedActionContext.User, "The user removed a PGP Public Key")
-  val values: immutable.IndexedSeq[LoggedAction] = findValues
+  val values: immutable.IndexedSeq[LoggedAction[_]] = findValues
 }
 
 object UserActionLogger {
 
-  def log(
+  def log[Ctx](
       request: AuthRequest[_],
-      action: LoggedAction,
-      actionContextId: DbRef[_],
+      action: LoggedAction[Ctx],
+      actionContextId: DbRef[Ctx],
       newState: String,
       oldState: String
-  )(implicit service: ModelService): Future[LoggedActionModel] =
+  )(implicit service: ModelService): Future[LoggedActionModel[Ctx]] =
     service.insert(
       LoggedActionModel(
-        ObjId.Uninitialized(),
+        ObjId.Uninitialized[LoggedActionModel[Ctx]](),
         ObjectTimestamp.Uninitialized,
         request.user.id.value,
         InetString(StatTracker.remoteAddress(request)),

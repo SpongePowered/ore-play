@@ -49,9 +49,10 @@ trait OrePostgresDriver
     implicit val projectApiKeyTypeTypeMapper: BaseColumnType[ProjectApiKeyType] =
       mappedColumnTypeForValueEnum(ProjectApiKeyType)
     implicit val visibilityTypeMapper: BaseColumnType[Visibility] = mappedColumnTypeForValueEnum(Visibility)
-    implicit val loggedActionMapper: BaseColumnType[LoggedAction] = mappedColumnTypeForValueEnum(LoggedAction)
-    implicit val loggedActionContextMapper: BaseColumnType[LoggedActionContext] =
-      mappedColumnTypeForValueEnum(LoggedActionContext)
+    implicit def loggedActionMapper[Ctx]: BaseColumnType[LoggedAction[Ctx]] =
+      mappedColumnTypeForValueEnum(LoggedAction).asInstanceOf[BaseColumnType[LoggedAction[Ctx]]]
+    implicit def loggedActionContextMapper[Ctx]: BaseColumnType[LoggedActionContext[Ctx]] =
+      mappedColumnTypeForValueEnum(LoggedActionContext).asInstanceOf[BaseColumnType[LoggedActionContext[Ctx]]]
     implicit val trustTypeMapper: BaseColumnType[Trust] = mappedColumnTypeForValueEnum(Trust)
 
     implicit val langTypeMapper: BaseColumnType[Lang] =

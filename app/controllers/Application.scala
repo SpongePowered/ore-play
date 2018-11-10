@@ -419,7 +419,7 @@ final class Application @Inject()(forms: OreForms)(
 
     val default = LiteralColumn(true)
 
-    val logQuery = TableQuery[LoggedActionViewTable]
+    val logQuery = TableQuery[LoggedActionViewTable[Any]]
       .filter { action =>
         (action.userId === userFilter).getOrElse(default) &&
         (action.filterProject === projectFilter).getOrElse(default) &&
@@ -434,7 +434,7 @@ final class Application @Inject()(forms: OreForms)(
 
     (
       service.runDBIO(logQuery.result),
-      service.access[LoggedActionModel]().size,
+      service.access[LoggedActionModel[Any]]().size,
       request.currentUser.get.can(ViewIp).in(GlobalScope)
     ).mapN { (actions, size, canViewIP) =>
       Ok(

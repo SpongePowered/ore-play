@@ -9,8 +9,6 @@ import ore.user.UserOwned
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery
 
-//TODO: Lot's of existential here, what should they be?
-
 case class LoggedProject(
     pId: Option[DbRef[Project]],
     pPluginId: Option[String],
@@ -21,14 +19,14 @@ case class LoggedProjectVersion(pvId: Option[DbRef[Version]], pvVersionString: O
 case class LoggedProjectPage(ppId: Option[DbRef[Page]], ppSlug: Option[String])
 case class LoggedSubject(sId: Option[DbRef[_]], sName: Option[String])
 
-case class LoggedActionViewModel(
-    id: ObjId[LoggedActionViewModel] = ObjId.Uninitialized(),
+case class LoggedActionViewModel[Ctx](
+    id: ObjId[LoggedActionViewModel[Ctx]] = ObjId.Uninitialized[LoggedActionViewModel[Ctx]](),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     userId: DbRef[User],
     address: InetString,
-    action: LoggedAction,
-    actionContext: LoggedActionContext,
-    actionContextId: DbRef[_],
+    action: LoggedAction[Ctx],
+    actionContext: LoggedActionContext[Ctx],
+    actionContextId: DbRef[Ctx],
     newState: String,
     oldState: String,
     uId: DbRef[User],
@@ -44,26 +42,29 @@ case class LoggedActionViewModel(
     filterAction: Option[Int]
 ) extends Model {
 
-  def contextId: DbRef[_]             = actionContextId
-  def actionType: LoggedActionContext = action.context
-  def pId: Option[DbRef[Project]]     = loggedProject.pId
-  def pPluginId: Option[String]       = loggedProject.pPluginId
-  def pSlug: Option[String]           = loggedProject.pSlug
-  def pOwnerName: Option[String]      = loggedProject.pOwnerName
-  def pvId: Option[DbRef[Version]]    = loggedProjectVerison.pvId
-  def pvVersionString: Option[String] = loggedProjectVerison.pvVersionString
-  def ppId: Option[DbRef[Page]]       = loggedProjectPage.ppId
-  def ppSlug: Option[String]          = loggedProjectPage.ppSlug
-  def sId: Option[DbRef[_]]           = loggedSubject.sId
-  def sName: Option[String]           = loggedSubject.sName
+  def contextId: DbRef[Ctx]                = actionContextId
+  def actionType: LoggedActionContext[Ctx] = action.context
+  def pId: Option[DbRef[Project]]          = loggedProject.pId
+  def pPluginId: Option[String]            = loggedProject.pPluginId
+  def pSlug: Option[String]                = loggedProject.pSlug
+  def pOwnerName: Option[String]           = loggedProject.pOwnerName
+  def pvId: Option[DbRef[Version]]         = loggedProjectVerison.pvId
+  def pvVersionString: Option[String]      = loggedProjectVerison.pvVersionString
+  def ppId: Option[DbRef[Page]]            = loggedProjectPage.ppId
+  def ppSlug: Option[String]               = loggedProjectPage.ppSlug
+  def sId: Option[DbRef[_]]                = loggedSubject.sId
+  def sName: Option[String]                = loggedSubject.sName
 
-  override type T = LoggedActionViewTable
-  override type M = LoggedActionViewModel
+  override type T = LoggedActionViewTable[Ctx]
+  override type M = LoggedActionViewModel[Ctx]
 }
 object LoggedActionViewModel {
-  implicit val query: ModelQuery[LoggedActionViewModel] =
+  implicit def query[Ctx]: ModelQuery[LoggedActionViewModel[Ctx]] =
     ModelQuery
-      .from[LoggedActionViewModel](TableQuery[LoggedActionViewTable], (obj, _, time) => obj.copy(createdAt = time))
+      .from[LoggedActionViewModel[Ctx]](
+        TableQuery[LoggedActionViewTable[Ctx]],
+        (obj, _, time) => obj.copy(createdAt = time)
+      )
 
-  implicit val isUserOwned: UserOwned[LoggedActionViewModel] = (a: LoggedActionViewModel) => a.userId
+  implicit val isUserOwned: UserOwned[LoggedActionViewModel[_]] = (a: LoggedActionViewModel[_]) => a.userId
 }
