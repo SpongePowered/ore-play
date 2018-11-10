@@ -19,10 +19,11 @@ import ore.OreConfig
 import ore.permission._
 import ore.permission.role.{Role, _}
 import ore.permission.scope._
-import ore.user.{Prompt, UserOwned}
+import ore.user.Prompt
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.{SpongeAuthApi, SpongeUser}
 import util.StringUtils._
+import util.syntax._
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -54,7 +55,6 @@ case class User(
     isLocked: Boolean = false,
     lang: Option[Lang] = None
 ) extends Model
-    with UserOwned
     with Named {
 
   //TODO: Check this in some way
@@ -138,7 +138,7 @@ case class User(
   }
 
   def trustIn[A: HasScope](a: A)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
-    trustIn(Scope.getFor(a))
+    trustIn(a.scope)
 
   /**
     * Returns this User's highest level of Trust.
@@ -163,8 +163,8 @@ case class User(
               val query = for {
                 p <- projectsTable if projectId.bind === p.id
                 o <- orgaTable if p.userId === o.id
-                m <- memberTable if m.organizationId === o.id && m.userId === this.userId.bind
-                r <- roleTable if this.userId.bind === r.userId && r.organizationId === o.id
+                m <- memberTable if m.organizationId === o.id && m.userId === id.value.bind
+                r <- roleTable if id.value.bind === r.userId && r.organizationId === o.id
               } yield r.roleType
 
               service.runDBIO(query.to[Set].result).map { roleTypes =>
@@ -378,8 +378,6 @@ case class User(
       )
     )
   }
-
-  override def userId: DbRef[User] = this.id.value
 }
 
 object User {

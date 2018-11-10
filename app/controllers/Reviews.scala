@@ -238,7 +238,7 @@ final class Reviews @Inject()(forms: OreForms)(
           recentReview <- version.mostRecentUnfinishedReview.toRight(Ok("Review"))
           currentUser  <- users.current.toRight(Ok("Review"))
           _ <- {
-            if (recentReview.userId == currentUser.userId) {
+            if (recentReview.userId == currentUser.id.value) {
               EitherT.right[Result](recentReview.addMessage(Message(request.body.trim)))
             } else EitherT.rightT[Future, Result](0)
           }

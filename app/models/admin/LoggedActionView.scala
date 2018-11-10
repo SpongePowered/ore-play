@@ -42,8 +42,7 @@ case class LoggedActionViewModel(
     filterPage: Option[DbRef[Page]],
     filterSubject: Option[DbRef[_]],
     filterAction: Option[Int]
-) extends Model
-    with UserOwned {
+) extends Model {
 
   def contextId: DbRef[_]             = actionContextId
   def actionType: LoggedActionContext = action.context
@@ -65,4 +64,6 @@ object LoggedActionViewModel {
   implicit val query: ModelQuery[LoggedActionViewModel] =
     ModelQuery
       .from[LoggedActionViewModel](TableQuery[LoggedActionViewTable], (obj, _, time) => obj.copy(createdAt = time))
+
+  implicit val isUserOwned: UserOwned[LoggedActionViewModel] = (a: LoggedActionViewModel) => a.userId
 }

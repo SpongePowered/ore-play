@@ -18,6 +18,7 @@ import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.syntax._
 import views.{html => views}
 
 import cats.data.OptionT

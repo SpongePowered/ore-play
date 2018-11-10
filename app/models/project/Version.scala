@@ -60,7 +60,6 @@ case class Version(
     signatureFileName: String,
     isNonReviewed: Boolean = false
 ) extends Model
-    with ProjectOwned
     with Describable
     with Downloadable
     with Hideable {
@@ -236,7 +235,7 @@ case class Version(
     else
       for {
         hashExists <- hashExists
-        project    <- this.project
+        project    <- ProjectOwned[Version].project(this)
         pExists    <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
       } yield hashExists && pExists
   }
@@ -259,6 +258,8 @@ object Version {
 
   implicit val query: ModelQuery[Version] =
     ModelQuery.from[Version](TableQuery[VersionTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[Version] = (a: Version) => a.projectId
 
   /**
     * A helper class for easily building new Versions.

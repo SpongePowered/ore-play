@@ -6,6 +6,7 @@ import db.ModelService
 import models.project.{Project, Visibility}
 import models.user.User
 import ore.permission._
+import util.syntax._
 
 import cats.instances.future._
 import cats.syntax.all._

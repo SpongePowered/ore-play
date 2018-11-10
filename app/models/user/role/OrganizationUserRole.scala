@@ -8,6 +8,7 @@ import models.user.{Organization, User}
 import ore.Visitable
 import ore.organization.OrganizationOwned
 import ore.permission.role.Role
+import ore.user.UserOwned
 
 import slick.lifted.TableQuery
 
@@ -28,8 +29,7 @@ case class OrganizationUserRole(
     organizationId: DbRef[Organization],
     role: Role,
     isAccepted: Boolean = false
-) extends UserRoleModel
-    with OrganizationOwned {
+) extends UserRoleModel {
 
   override type M = OrganizationUserRole
   override type T = OrganizationRoleTable
@@ -37,9 +37,13 @@ case class OrganizationUserRole(
   def this(userId: DbRef[User], organizationId: DbRef[Organization], roleType: Role) =
     this(id = ObjId.Uninitialized(), userId = userId, organizationId = organizationId, role = roleType)
 
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.organization
+  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+    OrganizationOwned[OrganizationUserRole].organization(this)
 }
 object OrganizationUserRole {
   implicit val query: ModelQuery[OrganizationUserRole] =
     ModelQuery.from[OrganizationUserRole](TableQuery[OrganizationRoleTable], _.copy(_, _))
+
+  implicit val isOrgOwned: OrganizationOwned[OrganizationUserRole] = (a: OrganizationUserRole) => a.organizationId
+  implicit val isUserOwned: UserOwned[OrganizationUserRole]        = (a: OrganizationUserRole) => a.userId
 }

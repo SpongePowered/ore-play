@@ -30,6 +30,7 @@ import ore.{OreConfig, OreEnv}
 import security.CryptoUtils
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.StatusZ
+import _root_.util.syntax._
 
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}

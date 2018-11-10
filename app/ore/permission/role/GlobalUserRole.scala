@@ -3,6 +3,7 @@ package ore.permission.role
 import db.DbRef
 import models.user.User
 import ore.permission.scope.GlobalScope
+import ore.user.UserOwned
 
 /**
   * Represents a [[UserRole]] within the [[GlobalScope]].
@@ -10,4 +11,7 @@ import ore.permission.scope.GlobalScope
   * @param userId   ID of [[models.user.User]] this role belongs to
   * @param role Type of role
   */
-case class GlobalUserRole(override val userId: DbRef[User], override val role: Role) extends UserRole
+case class GlobalUserRole(userId: DbRef[User], override val role: Role) extends UserRole
+object GlobalUserRole {
+  implicit val isUserOwned: UserOwned[GlobalUserRole] = (a: GlobalUserRole) => a.userId
+}

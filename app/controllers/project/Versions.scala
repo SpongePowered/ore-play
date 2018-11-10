@@ -33,6 +33,7 @@ import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.JavaUtils.autoClose
 import util.StringUtils._
+import util.syntax._
 import views.html.projects.{versions => views}
 
 import cats.data.{EitherT, OptionT}

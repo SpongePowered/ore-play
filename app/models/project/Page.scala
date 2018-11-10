@@ -56,7 +56,6 @@ case class Page(
     isDeletable: Boolean = true,
     contents: String
 ) extends Model
-    with ProjectOwned
     with Named {
 
   override type M = Page
@@ -105,7 +104,7 @@ case class Page(
     else {
       for {
         updated <- service.update(newPage)
-        project <- this.project
+        project <- ProjectOwned[Page].project(this)
         // Contents were updated, update on forums
         _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
         else Future.successful(false)
@@ -165,6 +164,8 @@ object Page {
 
   implicit val query: ModelQuery[Page] =
     ModelQuery.from[Page](TableQuery[PageTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[Page] = (a: Page) => a.projectId
 
   private object ExternalLinkResolver {
 

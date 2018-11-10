@@ -8,6 +8,7 @@ import models.user.role.OrganizationUserRole
 import ore.OreConfig
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
+import util.syntax._
 
 import cats.data.NonEmptyList
 

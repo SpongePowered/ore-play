@@ -23,8 +23,7 @@ case class LoggedActionModel(
     actionContextId: DbRef[_],
     newState: String,
     oldState: String
-) extends Model
-    with UserOwned {
+) extends Model {
 
   override type T = LoggedActionTable
   override type M = LoggedActionModel
@@ -32,6 +31,8 @@ case class LoggedActionModel(
 object LoggedActionModel {
   implicit val query: ModelQuery[LoggedActionModel] =
     ModelQuery.from[LoggedActionModel](TableQuery[LoggedActionTable], (obj, _, time) => obj.copy(createdAt = time))
+
+  implicit val isUserOwned: UserOwned[LoggedActionModel] = (a: LoggedActionModel) => a.userId
 }
 
 sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry
@@ -141,7 +142,7 @@ object UserActionLogger {
       LoggedActionModel(
         ObjId.Uninitialized(),
         ObjectTimestamp.Uninitialized,
-        request.user.userId,
+        request.user.id.value,
         InetString(StatTracker.remoteAddress(request)),
         action,
         action.context,

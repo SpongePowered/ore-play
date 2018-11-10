@@ -23,8 +23,7 @@ case class ProjectLog(
     id: ObjId[ProjectLog] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     projectId: DbRef[Project]
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type T = ProjectLogTable
   override type M = ProjectLog
@@ -63,4 +62,6 @@ case class ProjectLog(
 object ProjectLog {
   implicit val query: ModelQuery[ProjectLog] =
     ModelQuery.from[ProjectLog](TableQuery[ProjectLogTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[ProjectLog] = (a: ProjectLog) => a.projectId
 }

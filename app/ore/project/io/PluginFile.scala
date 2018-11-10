@@ -11,7 +11,6 @@ import scala.util.control.Breaks._
 
 import play.api.i18n.Messages
 
-import db.DbRef
 import models.user.User
 import ore.user.UserOwned
 
@@ -23,7 +22,7 @@ import org.apache.commons.codec.digest.DigestUtils
   *
   * @param _path Path to uploaded file
   */
-class PluginFile(private var _path: Path, val signaturePath: Path, val user: User) extends UserOwned {
+class PluginFile(private var _path: Path, val signaturePath: Path, val user: User) {
 
   private var _data: Option[PluginFileData] = None
 
@@ -163,7 +162,7 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
       throw InvalidPluginFileException(messages("error.plugin.jarNotFound"))
     pluginEntry
   }
-
-  override def userId: DbRef[User] = this.user.id.value
-
+}
+object PluginFile {
+  implicit val isUserOwned: UserOwned[PluginFile] = (a: PluginFile) => a.user.id.value
 }

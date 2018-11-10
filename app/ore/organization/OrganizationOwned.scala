@@ -1,5 +1,7 @@
 package ore.organization
 
+import scala.language.implicitConversions
+
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.DbRef
@@ -7,16 +9,17 @@ import db.impl.access.OrganizationBase
 import models.user.Organization
 
 import cats.instances.future._
+import simulacrum.typeclass
 
 /**
   * Represents anything that has an [[Organization]].
   */
-trait OrganizationOwned {
+@typeclass trait OrganizationOwned[A] {
 
   /** Returns the Organization's ID */
-  def organizationId: DbRef[Organization]
+  def organizationId(a: A): DbRef[Organization]
 
   /** Returns the Organization */
-  def organization(implicit organizations: OrganizationBase, ec: ExecutionContext): Future[Organization] =
-    organizations.get(this.organizationId).getOrElse(throw new NoSuchElementException("Get on None"))
+  def organization(a: A)(implicit organizations: OrganizationBase, ec: ExecutionContext): Future[Organization] =
+    organizations.get(organizationId(a)).getOrElse(throw new NoSuchElementException("Get on None"))
 }

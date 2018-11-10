@@ -31,8 +31,7 @@ case class Channel(
     color: Color,
     isNonReviewed: Boolean = false
 ) extends Model
-    with Named
-    with ProjectOwned {
+    with Named {
 
   override type T = ChannelTable
   override type M = Channel
@@ -56,6 +55,8 @@ object Channel {
 
   implicit val query: ModelQuery[Channel] =
     ModelQuery.from[Channel](TableQuery[ChannelTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[Channel] = (a: Channel) => a.projectId
 
   /**
     * The colors a Channel is allowed to have.

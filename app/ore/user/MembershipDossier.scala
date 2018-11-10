@@ -14,6 +14,8 @@ import models.user.{Organization, User}
 import ore.organization.OrganizationMember
 import ore.permission.role.Trust
 import ore.project.ProjectMember
+import util.syntax._
+
 import cats.instances.future._
 import cats.syntax.all._
 
@@ -108,7 +110,8 @@ object MembershipDossier {
   ](childFilter: (RoleType0#T, M0) => Rep[Boolean])(
       implicit ec: ExecutionContext,
       service: ModelService,
-      assocQuery: AssociationQuery[MembersTable, User, M0]
+      assocQuery: AssociationQuery[MembersTable, User, M0],
+      roleUserOwned: UserOwned[RoleType0]
   ) extends MembershipDossier[Future, M0] {
 
     type RoleType = RoleType0

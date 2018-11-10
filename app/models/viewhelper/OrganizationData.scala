@@ -11,6 +11,7 @@ import models.user.{Organization, User}
 import ore.organization.OrganizationMember
 import ore.permission._
 import ore.permission.role.RoleCategory
+import util.syntax._
 
 import cats.data.OptionT
 import cats.instances.future._

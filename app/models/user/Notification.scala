@@ -33,8 +33,7 @@ case class Notification(
     messageArgs: NEL[String],
     action: Option[String] = None,
     isRead: Boolean = false
-) extends Model
-    with UserOwned {
+) extends Model {
 
   override type M = Notification
   override type T = NotificationTable
@@ -50,4 +49,6 @@ case class Notification(
 object Notification {
   implicit val query: ModelQuery[Notification] =
     ModelQuery.from[Notification](TableQuery[NotificationTable], _.copy(_, _))
+
+  implicit val isUserOwned: UserOwned[Notification] = (a: Notification) => a.userId
 }

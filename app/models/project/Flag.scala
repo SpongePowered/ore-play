@@ -33,9 +33,7 @@ case class Flag(
     isResolved: Boolean = false,
     resolvedAt: Option[Timestamp] = None,
     resolvedBy: Option[DbRef[User]] = None
-) extends Model
-    with UserOwned
-    with ProjectOwned {
+) extends Model {
 
   override type M = Flag
   override type T = FlagTable
@@ -78,4 +76,7 @@ case class Flag(
 object Flag {
   implicit val query: ModelQuery[Flag] =
     ModelQuery.from[Flag](TableQuery[FlagTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[Flag] = (a: Flag) => a.projectId
+  implicit val isUserOwned: UserOwned[Flag]       = (a: Flag) => a.userId
 }

@@ -10,6 +10,7 @@ import ore.Visitable
 import ore.permission.role.Role
 import ore.permission.scope.ProjectScope
 import ore.project.ProjectOwned
+import ore.user.UserOwned
 
 import slick.lifted.TableQuery
 
@@ -31,8 +32,7 @@ case class ProjectUserRole(
     projectId: DbRef[Project],
     role: Role,
     isAccepted: Boolean = false
-) extends UserRoleModel
-    with ProjectOwned {
+) extends UserRoleModel {
 
   override type M = ProjectUserRole
   override type T = ProjectRoleTable
@@ -52,9 +52,13 @@ case class ProjectUserRole(
     isAccepted = accepted
   )
 
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.project
+  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+    ProjectOwned[ProjectUserRole].project(this)
 }
 object ProjectUserRole {
   implicit val query: ModelQuery[ProjectUserRole] =
     ModelQuery.from[ProjectUserRole](TableQuery[ProjectRoleTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[ProjectUserRole] = (a: ProjectUserRole) => a.projectId
+  implicit val isUserOwned: UserOwned[ProjectUserRole]       = (a: ProjectUserRole) => a.userId
 }

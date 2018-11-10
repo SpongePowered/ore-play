@@ -46,8 +46,7 @@ case class ProjectSettings(
     licenseName: Option[String] = None,
     licenseUrl: Option[String] = None,
     forumSync: Boolean = true
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type M = ProjectSettings
   override type T = ProjectSettingsTable
@@ -165,4 +164,6 @@ case class ProjectSettings(
 object ProjectSettings {
   implicit val query: ModelQuery[ProjectSettings] =
     ModelQuery.from[ProjectSettings](TableQuery[ProjectSettingsTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[ProjectSettings] = (a: ProjectSettings) => a.projectId
 }

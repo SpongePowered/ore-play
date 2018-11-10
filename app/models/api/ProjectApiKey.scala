@@ -14,8 +14,7 @@ case class ProjectApiKey(
     projectId: DbRef[Project],
     keyType: ProjectApiKeyType,
     value: String
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type T = ProjectApiKeyTable
   override type M = ProjectApiKey
@@ -23,4 +22,6 @@ case class ProjectApiKey(
 object ProjectApiKey {
   implicit val query: ModelQuery[ProjectApiKey] =
     ModelQuery.from[ProjectApiKey](TableQuery[ProjectApiKeyTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[ProjectApiKey] = (a: ProjectApiKey) => a.projectId
 }
