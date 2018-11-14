@@ -6,11 +6,12 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectTableMain}
 import db.{ModelService, ObjectReference}
 import models.project.Project
-import models.user.role.{OrganizationRole, ProjectRole}
+import models.user.role.{OrganizationUserRole, ProjectUserRole}
 import models.user.{Organization, User}
 import ore.organization.OrganizationMember
 import ore.permission._
-import ore.permission.role.Role
+import ore.permission.role.RoleCategory
+import util.syntax._
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -19,13 +20,13 @@ import slick.lifted.TableQuery
 
 case class OrganizationData(
     joinable: Organization,
-    members: Seq[(OrganizationRole, User)], // TODO sorted/reverse
-    projectRoles: Seq[(ProjectRole, Project)]
-) extends JoinableData[OrganizationRole, OrganizationMember, Organization] {
+    members: Seq[(OrganizationUserRole, User)], // TODO sorted/reverse
+    projectRoles: Seq[(ProjectUserRole, Project)]
+) extends JoinableData[OrganizationUserRole, OrganizationMember, Organization] {
 
   def orga: Organization = joinable
 
-  def roleClass: Class[_ <: Role] = classOf[OrganizationRole]
+  def roleCategory: RoleCategory = RoleCategory.Organization
 }
 
 object OrganizationData {

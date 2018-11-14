@@ -13,15 +13,16 @@ import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.schema._
 import db._
 import models.project.{Flag, Project, Visibility}
-import models.user.role.{OrganizationRole, ProjectRole}
+import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
 import ore.permission._
-import ore.permission.role.{RoleType, _}
+import ore.permission.role.{Role, _}
 import ore.permission.scope._
-import ore.user.{Prompt, UserOwned}
+import ore.user.Prompt
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.{SpongeAuthApi, SpongeUser}
 import util.StringUtils._
+import util.syntax._
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -46,7 +47,6 @@ case class User(
     name: String = null,
     email: Option[String] = None,
     tagline: Option[String] = None,
-    globalRoles: List[RoleType] = List(),
     joinDate: Option[Timestamp] = None,
     readPrompts: List[Prompt] = List(),
     pgpPubKey: Option[String] = None,
@@ -54,7 +54,6 @@ case class User(
     isLocked: Boolean = false,
     lang: Option[Lang] = None
 ) extends Model
-    with UserOwned
     with Named {
 
   //TODO: Check this in some way
@@ -69,7 +68,7 @@ case class User(
     */
   val can: PermissionPredicate = PermissionPredicate(this)
 
-  def avatarUrl(implicit config: OreConfig): String = config.security.get[String]("api.avatarUrl").format(this.name)
+  def avatarUrl(implicit config: OreConfig): String = User.avatarUrl(name)
 
   /**
     * Decodes this user's raw PGP public key and returns information about the
@@ -98,24 +97,44 @@ case class User(
   implicit def langOrDefault: Lang = lang.getOrElse(Lang.defaultLang)
 
   /**
-    * Returns the highest level [[DonorType]] this User has.
+    * Returns the [[DbRole]]s that this User has.
+    *
+    * @return Roles the user has.
+    */
+  def globalRoles(implicit service: ModelService): ModelAssociationAccess[UserGlobalRolesTable, DbRole] =
+    this.schema.getAssociation[UserGlobalRolesTable, DbRole](classOf[UserGlobalRolesTable], this)
+
+  /**
+    * Returns the highest level [[DonorRole]] this User has.
     *
     * @return Highest level donor type
     */
-  def donorType: Option[DonorType] =
-    this.globalRoles
-      .collect { case donor: DonorType => donor }
-      .sortBy(_.rank)
-      .headOption
+  def donorType(implicit service: ModelService, ec: ExecutionContext): OptionT[Future, DonorRole] =
+    OptionT(
+      this.globalRoles.filter(_.rank.?.isDefined).map { seq =>
+        seq
+          .map(_.toRole)
+          .collect { case donor: DonorRole => donor }
+          .sortBy(_.rank)
+          .headOption
+      }
+    )
 
-  private def biggestRoleTpe(roles: Set[RoleType]): Trust =
-    if (roles.isEmpty) Default
+  private def biggestRoleTpe(roles: Set[Role]): Trust =
+    if (roles.isEmpty) Trust.Default
     else roles.map(_.trust).max
 
-  private def globalTrust = biggestRoleTpe(globalRoles.toSet)
+  private def globalTrust(implicit service: ModelService, ec: ExecutionContext) = {
+    val q = for {
+      ur <- TableQuery[UserGlobalRolesTable] if ur.userId === id.value
+      r  <- TableQuery[DbRoleTable] if ur.roleId === r.id
+    } yield r.trust
+
+    service.doAction(Query(q.max).result.head).map(_.getOrElse(Trust.Default))
+  }
 
   def trustIn[A: HasScope](a: A)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
-    trustIn(Scope.getFor(a))
+    trustIn(a.scope)
 
   /**
     * Returns this User's highest level of Trust.
@@ -125,7 +144,7 @@ case class User(
   def trustIn(scope: Scope = GlobalScope)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
     Defined {
       scope match {
-        case GlobalScope => Future.successful(globalTrust)
+        case GlobalScope => globalTrust
         case ProjectScope(projectId) =>
           val projectRoles = service.doAction(Project.roleForTrustQuery((projectId, this.id.value)).result)
 
@@ -140,12 +159,12 @@ case class User(
               val query = for {
                 p <- projectsTable if projectId.bind === p.id
                 o <- orgaTable if p.userId === o.id
-                m <- memberTable if m.organizationId === o.id && m.userId === this.userId.bind
-                r <- roleTable if this.userId.bind === r.userId && r.organizationId === o.id
+                m <- memberTable if m.organizationId === o.id && m.userId === id.value.bind
+                r <- roleTable if id.value.bind === r.userId && r.organizationId === o.id
               } yield r.roleType
 
               service.doAction(query.to[Set].result).map { roleTypes =>
-                if (roleTypes.contains(RoleType.OrganizationAdmin) || roleTypes.contains(RoleType.OrganizationOwner)) {
+                if (roleTypes.contains(Role.OrganizationAdmin) || roleTypes.contains(Role.OrganizationOwner)) {
                   biggestRoleTpe(roleTypes)
                 } else {
                   userTrust
@@ -153,9 +172,9 @@ case class User(
               }
             }
 
-          projectTrust.map(Set(_, globalTrust).max)
+          projectTrust.map2(globalTrust)(_ max _)
         case OrganizationScope(organizationId) =>
-          Organization.getTrust(id.value, organizationId).map(Set(_, globalTrust).max)
+          Organization.getTrust(id.value, organizationId).map2(globalTrust)(_ max _)
         case _ =>
           throw new RuntimeException("unknown scope: " + scope)
       }
@@ -209,12 +228,7 @@ case class User(
       id = ObjectId(user.id),
       name = user.username,
       email = Some(user.email),
-      lang = user.lang,
-      globalRoles = user.addGroups
-        .map { groups =>
-          if (groups.trim.isEmpty) Nil else groups.split(",").flatMap(RoleType.withValueOpt).toList
-        }
-        .getOrElse(globalRoles)
+      lang = user.lang
     )
   }
 
@@ -236,12 +250,12 @@ case class User(
     this.projects.find(equalsIgnoreCase(_.name, name))
 
   /**
-    * Returns a [[ModelAccess]] of [[ProjectRole]]s.
+    * Returns a [[ModelAccess]] of [[ProjectUserRole]]s.
     *
     * @return ProjectRoles
     */
-  def projectRoles(implicit service: ModelService): ModelAccess[ProjectRole] =
-    this.schema.getChildren[ProjectRole](classOf[ProjectRole], this)
+  def projectRoles(implicit service: ModelService): ModelAccess[ProjectUserRole] =
+    this.schema.getChildren[ProjectUserRole](classOf[ProjectUserRole], this)
 
   /**
     * Returns the [[Organization]]s that this User owns.
@@ -260,12 +274,12 @@ case class User(
     this.schema.getAssociation[OrganizationMembersTable, Organization](classOf[OrganizationMembersTable], this)
 
   /**
-    * Returns a [[ModelAccess]] of [[OrganizationRole]]s.
+    * Returns a [[ModelAccess]] of [[OrganizationUserRole]]s.
     *
     * @return OrganizationRoles
     */
-  def organizationRoles(implicit service: ModelService): ModelAccess[OrganizationRole] =
-    this.schema.getChildren[OrganizationRole](classOf[OrganizationRole], this)
+  def organizationRoles(implicit service: ModelService): ModelAccess[OrganizationUserRole] =
+    this.schema.getChildren[OrganizationUserRole](classOf[OrganizationUserRole], this)
 
   /**
     * Converts this User to an [[Organization]].
@@ -360,11 +374,13 @@ case class User(
     )
   }
 
-  override def userId: ObjectReference                                = this.id.value
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): User = this.copy(createdAt = theTime)
 }
 
 object User {
+
+  def avatarUrl(name: String)(implicit config: OreConfig): String =
+    config.security.get[String]("api.avatarUrl").format(name)
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].

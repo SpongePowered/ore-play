@@ -6,8 +6,8 @@ import scala.concurrent.duration._
 
 import play.api.db.slick.DatabaseConfigProvider
 
-import db.impl.OrePostgresDriver
 import db.ModelRegistry
+import db.impl.OrePostgresDriver
 import ore.{OreConfig, OreEnv}
 
 import slick.jdbc.JdbcProfile
@@ -55,7 +55,7 @@ class OreModelService @Inject()(
     registerSchema(ViewSchema)
     registerSchema(ReviewSchema)
     registerSchema(VersionSchema)
-    registerSchema(TagSchema)
+    registerSchema(VersionTagSchema)
     registerSchema(DownloadWarningSchema)
     registerSchema(UnsafeDownloadSchema)
     registerSchema(DownloadSchema)
@@ -68,6 +68,7 @@ class OreModelService @Inject()(
     registerSchema(UserActionLogSchema)
     registerSchema(ProjectVisibilityChangeSchema)
     registerSchema(VersionVisibilityChangeSchema)
+    registerSchema(DbRoleSchema)
 
     Logger.info(
       "Database initialized:\n" +

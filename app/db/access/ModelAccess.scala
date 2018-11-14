@@ -143,17 +143,6 @@ class ModelAccess[M <: Model](
   ): Future[Seq[M]] = this.service.sorted[M](this.modelClass, ordering, (this.baseFilter && filter).fn, limit, offset)
 
   /**
-    * Same as sorted but with multiple orderings
-    */
-  def sortedMultipleOrders(
-      orderings: M#T => List[ColumnOrdered[_]],
-      filter: M#T => Rep[Boolean] = null,
-      limit: Int = -1,
-      offset: Int = -1
-  ): Future[Seq[M]] =
-    this.service.sortedMultipleOrders[M](this.modelClass, orderings, (this.baseFilter && filter).fn, limit, offset)
-
-  /**
     * Filters this set by the given function.
     *
     * @param filter Filter to use

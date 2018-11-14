@@ -26,7 +26,6 @@ import models.project._
 import models.user.{LoggedAction, UserActionLogger}
 import models.viewhelper.{ProjectData, VersionData}
 import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
-import ore.project.factory.TagAlias.ProjectTag
 import ore.project.factory.{PendingProject, PendingVersion, ProjectFactory}
 import ore.project.io.DownloadType._
 import ore.project.io.{DownloadType, InvalidPluginFileException, PluginFile, PluginUpload}
@@ -34,6 +33,7 @@ import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.JavaUtils.autoClose
 import util.StringUtils._
+import util.syntax._
 import views.html.projects.{versions => views}
 
 import cats.data.{EitherT, OptionT}
@@ -361,8 +361,23 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                               .map(_._1)
                               .flatTap { newVersion =>
                                 if (versionData.recommended)
-                                  service.update(project.copy(recommendedVersionId = Some(newVersion.id.value))).void
-                                else Future.unit
+                                  service
+                                    .update(
+                                      project.copy(
+                                        recommendedVersionId = Some(newVersion.id.value),
+                                        lastUpdated = new Timestamp(new Date().getTime)
+                                      )
+                                    )
+                                    .void
+                                else
+                                  service
+                                    .update(
+                                      project.copy(
+                                        recommendedVersionId = Some(newVersion.id.value),
+                                        lastUpdated = new Timestamp(new Date().getTime)
+                                      )
+                                    )
+                                    .void
                               }
                               .flatTap(addUnstableTag(_, versionData.unstable))
                               .flatTap { newVersion =>
@@ -396,26 +411,14 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def addUnstableTag(version: Version, unstable: Boolean) = {
     if (unstable) {
       service
-        .access(classOf[ProjectTag])
-        .filter(t => t.name === "Unstable" && t.data === "")
-        .flatMap { tagsWithVersion =>
-          if (tagsWithVersion.isEmpty) {
-            val tag = Tag(
-              versionIds = List(version.id.value),
-              name = "Unstable",
-              data = "",
-              color = TagColor.Unstable
-            )
-            service
-              .access(classOf[ProjectTag])
-              .add(tag)
-              .flatMap(newTag => service.update(version.copy(tagIds = newTag.id.value :: version.tagIds)))
-          } else {
-            val tag = tagsWithVersion.head
-            service.update(tag.copy(versionIds = version.id.value :: tag.versionIds)) *>
-              service.update(version.copy(tagIds = tag.id.value :: version.tagIds))
-          }
-        }
+        .insert(
+          VersionTag(
+            versionId = version.id.value,
+            name = "Unstable",
+            data = "",
+            color = TagColor.Unstable
+          )
+        )
         .void
     } else Future.unit
   }

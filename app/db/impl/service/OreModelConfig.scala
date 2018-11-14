@@ -9,7 +9,7 @@ import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user._
-import models.user.role.{OrganizationRole, ProjectRole}
+import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.{OreConfig, OreEnv}
 
 import slick.jdbc.JdbcProfile
@@ -49,12 +49,20 @@ abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfi
     TableQuery[ProjectStarsTable]
   )
 
+  val globalRoles = new ModelAssociation[UserGlobalRolesTable](
+    this,
+    _.userId,
+    _.roleId,
+    classOf[UserGlobalRolesTable],
+    TableQuery[UserGlobalRolesTable]
+  )
+
   // Begin schemas
 
   val UserSchema: ModelSchema[User] = new UserSchema(this)
     .withChildren[Project](classOf[Project], _.userId)
-    .withChildren[ProjectRole](classOf[ProjectRole], _.userId)
-    .withChildren[OrganizationRole](classOf[OrganizationRole], _.userId)
+    .withChildren[ProjectUserRole](classOf[ProjectUserRole], _.userId)
+    .withChildren[OrganizationUserRole](classOf[OrganizationUserRole], _.userId)
     .withChildren[Flag](classOf[Flag], _.userId)
     .withChildren[Notification](classOf[Notification], _.userId)
     .withChildren[Organization](classOf[Organization], _.userId)
@@ -82,12 +90,19 @@ abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfi
       targetClass = classOf[Project],
       targetReference = _.projectId
     )
+    .withAssociation[UserGlobalRolesTable, DbRole](
+      association = this.globalRoles,
+      selfReference = _.userId,
+      targetClass = classOf[DbRole],
+      targetReference = _.roleId
+    )
 
   val SessionSchema = new ModelSchema[models.user.Session](this, classOf[models.user.Session], TableQuery[SessionTable])
 
   val SignOnSchema = new ModelSchema[SignOn](this, classOf[SignOn], TableQuery[SignOnTable])
 
-  val ProjectRolesSchema = new ModelSchema[ProjectRole](this, classOf[ProjectRole], TableQuery[ProjectRoleTable])
+  val ProjectRolesSchema =
+    new ModelSchema[ProjectUserRole](this, classOf[ProjectUserRole], TableQuery[ProjectRoleTable])
 
   val ProjectVisibilityChangeSchema = new ModelSchema[ProjectVisibilityChange](
     this,
@@ -105,7 +120,7 @@ abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfi
     .withChildren[Version](classOf[Version], _.projectId)
     .withChildren[Page](classOf[Page], _.projectId)
     .withChildren[Flag](classOf[Flag], _.projectId)
-    .withChildren[ProjectRole](classOf[ProjectRole], _.projectId)
+    .withChildren[ProjectUserRole](classOf[ProjectUserRole], _.projectId)
     .withChildren[ProjectView](classOf[ProjectView], _.modelId)
     .withChildren[ProjectApiKey](classOf[ProjectApiKey], _.projectId)
     .withChildren[ProjectVisibilityChange](classOf[ProjectVisibilityChange], _.projectId)
@@ -168,7 +183,7 @@ abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfi
   val ChannelSchema: ModelSchema[Channel] = new ModelSchema[Channel](this, classOf[Channel], TableQuery[ChannelTable])
     .withChildren[Version](classOf[Version], _.channelId)
 
-  val TagSchema = new ModelSchema[ProjectTag](this, classOf[ProjectTag], TableQuery[TagTable])
+  val VersionTagSchema = new ModelSchema[VersionTag](this, classOf[VersionTag], TableQuery[VersionTagTable])
 
   val PageSchema = new PageSchema(this)
 
@@ -177,7 +192,7 @@ abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfi
   val OrganizationSchema: ModelSchema[Organization] =
     new ModelSchema[Organization](this, classOf[Organization], TableQuery[OrganizationTable])
       .withChildren[Project](classOf[Project], _.userId)
-      .withChildren[OrganizationRole](classOf[OrganizationRole], _.organizationId)
+      .withChildren[OrganizationUserRole](classOf[OrganizationUserRole], _.organizationId)
       .withAssociation[OrganizationMembersTable, User](
         association = this.organizationMembers,
         selfReference = _.organizationId,
@@ -186,11 +201,19 @@ abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfi
       )
 
   val OrganizationRoleSchema =
-    new ModelSchema[OrganizationRole](this, classOf[OrganizationRole], TableQuery[OrganizationRoleTable])
+    new ModelSchema[OrganizationUserRole](this, classOf[OrganizationUserRole], TableQuery[OrganizationRoleTable])
 
   val ProjectApiKeySchema = new ModelSchema[ProjectApiKey](this, classOf[ProjectApiKey], TableQuery[ProjectApiKeyTable])
 
   val UserActionLogSchema =
     new ModelSchema[LoggedActionModel](this, classOf[LoggedActionModel], TableQuery[LoggedActionTable])
+
+  val DbRoleSchema: ModelSchema[DbRole] = new ModelSchema[DbRole](this, classOf[DbRole], TableQuery[DbRoleTable])
+    .withAssociation[UserGlobalRolesTable, User](
+      association = this.globalRoles,
+      selfReference = _.roleId,
+      targetClass = classOf[User],
+      targetReference = _.userId
+    )
 
 }

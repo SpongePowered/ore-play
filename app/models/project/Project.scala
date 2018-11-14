@@ -27,14 +27,15 @@ import models.api.ProjectApiKey
 import models.project.Visibility.Public
 import models.statistic.ProjectView
 import models.user.User
-import models.user.role.ProjectRole
-import ore.permission.role.RoleType
+import models.user.role.ProjectUserRole
+import ore.permission.role.Role
 import ore.permission.scope.HasScope
 import ore.project.{Category, FlagReason, ProjectMember}
 import ore.user.MembershipDossier
 import ore.{Joinable, OreConfig, Visitable}
 import _root_.util.StringUtils
 import _root_.util.StringUtils._
+import _root_.util.syntax._
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -109,7 +110,7 @@ case class Project(
   override def memberships(
       implicit ec: ExecutionContext,
       service: ModelService
-  ): MembershipDossier.Aux[Future, Project, ProjectRole, ProjectMember] =
+  ): MembershipDossier.Aux[Future, Project, ProjectUserRole, ProjectMember] =
     MembershipDossier[Future, Project]
 
   def isOwner(user: User): Boolean = user.id.value == ownerId
@@ -131,11 +132,11 @@ case class Project(
       setOwner                <- this.setOwner(user)
       _ <- Future.sequence(
         ownerRoles
-          .filter(_.roleType == RoleType.ProjectOwner)
-          .map(role => service.update(role.copy(roleType = RoleType.ProjectDeveloper)))
+          .filter(_.role == Role.ProjectOwner)
+          .map(role => service.update(role.copy(role = Role.ProjectDeveloper)))
       )
       _ <- Future.sequence(
-        userRoles.map(role => service.update(role.copy(roleType = RoleType.ProjectOwner)))
+        userRoles.map(role => service.update(role.copy(role = Role.ProjectOwner)))
       )
     } yield setOwner
   }

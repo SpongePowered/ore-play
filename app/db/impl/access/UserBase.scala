@@ -8,25 +8,20 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{ProjectSchema, ProjectTableMain, UserSchema, UserTable}
 import db.{ModelBase, ModelService, ObjectId, ObjectTimestamp}
 import models.user.{Session, User}
 import ore.OreConfig
-import ore.permission.role.RoleType
-import ore.permission.{Permission, role}
+import ore.permission.Permission
 import security.spauth.SpongeAuthApi
 import util.StringUtils._
 
 import cats.data.OptionT
 import cats.instances.future._
-import slick.lifted.ColumnOrdered
 
 /**
   * Represents a central location for all Users.
   */
 class UserBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[User] {
-
-  import UserBase.UserOrdering
 
   override val modelClass: Class[User] = classOf[User]
 
@@ -67,95 +62,6 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
           }
         }
     }
-  }
-
-  /**
-    * Returns a page of [[User]]s with at least one [[models.project.Project]].
-    *
-    * FIXME: Ordering is messed up
-    *
-    * @return Users with at least one project
-    */
-  def getAuthors(ordering: String = UserOrdering.Projects, page: Int = 1)(
-      implicit ec: ExecutionContext
-  ): Future[Seq[(User, Int)]] = {
-    // determine ordering
-    val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
-    val pageSize        = this.config.users.get[Int]("author-page-size")
-    val offset          = (page - 1) * pageSize
-
-    if (sort != UserOrdering.Role) {
-      val baseQuery = for {
-        project <- TableQuery[ProjectTableMain]
-        user    <- TableQuery[UserTable] if project.userId === user.id
-      } yield (user, TableQuery[ProjectTableMain].filter(_.userId === user.id).length)
-
-      def ordered[A](a: ColumnOrdered[A]) = if (reverse) a.desc else a.asc
-
-      //TODO Page in database
-      val query = sort match {
-        case UserOrdering.JoinDate     => baseQuery.sortBy(user => (ordered(user._1.joinDate), ordered(user._1.createdAt)))
-        case UserOrdering.UserName     => baseQuery.sortBy(user => ordered(user._1.name))
-        case UserOrdering.Projects | _ => baseQuery.sortBy(user => ordered(user._2))
-      }
-
-      service.doAction(query.distinct.result).map(_.slice(offset, offset + pageSize))
-    } else {
-      // TODO page and order should be done in Database!
-      // get authors
-      this.service
-        .getSchema(classOf[ProjectSchema])
-        .distinctAuthors
-        .map { users =>
-          users.sortBy(_.globalRoles.sortBy(_.trust).headOption.map(_.trust.level).getOrElse(-1))
-        }
-        .map { users => // Reverse?
-          if (reverse) users.reverse else users
-        }
-        .map { users =>
-          // get page slice
-          val offset = (page - 1) * pageSize
-          users.slice(offset, offset + pageSize)
-        }
-        .flatMap { users =>
-          Future.sequence(users.map(u => u.projects.size.map((u, _))))
-        }
-    }
-  }
-
-  /**
-    * Returns a page of [[User]]s that have Ore staff roles.
-    */
-  def getStaff(ordering: String = UserOrdering.Role, page: Int = 1): Future[Seq[User]] = {
-    // determine ordering
-    val (sort, reverse)            = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
-    val staffRoles: List[RoleType] = List(RoleType.OreAdmin, RoleType.OreMod)
-
-    val pageSize = this.config.users.get[Int]("author-page-size")
-    val offset   = (page - 1) * pageSize
-
-    val dbio = this.service
-      .getSchema(classOf[UserSchema])
-      .baseQuery
-      .filter(u => u.globalRoles.asColumnOf[List[RoleType]] @& staffRoles.bind.asColumnOf[List[RoleType]])
-      .sortBy { users =>
-        sort match { // Sort
-          case UserOrdering.JoinDate => if (reverse) users.joinDate.asc else users.joinDate.desc
-          case UserOrdering.Role     => if (reverse) users.globalRoles.asc else users.globalRoles.desc
-          case _                     => if (reverse) users.name.asc else users.joinDate.desc
-        }
-      }
-      .drop(offset)
-      .take(pageSize)
-      .result
-
-    service.doAction(dbio)
-  }
-
-  implicit val timestampOrdering: Ordering[Timestamp] = (x: Timestamp, y: Timestamp) => x.compareTo(y)
-  implicit val rolesOrdering: Ordering[List[RoleType]] = (x: List[RoleType], y: List[RoleType]) => {
-    def maxOrZero[A, B: Ordering](xs: List[A])(f: A => B, zero: B) = if (xs.isEmpty) zero else xs.map(f).max
-    maxOrZero(x)(_.trust, role.Default).compareTo(maxOrZero(y)(_.trust, role.Default))
   }
 
   /**

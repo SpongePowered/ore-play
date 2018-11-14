@@ -14,11 +14,9 @@ import db.table.ModelTable
 import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
-import slick.ast.{AnonSymbol, Ref, SortBy}
 import slick.basic.DatabaseConfig
 import slick.jdbc.{JdbcProfile, JdbcType}
-import slick.lifted.{ColumnOrdered, WrappingQuery}
-import slick.util.ConstArray
+import slick.lifted.ColumnOrdered
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.
@@ -135,6 +133,23 @@ abstract class ModelService(val driver: JdbcProfile) {
       } += toInsert
     }
   }
+
+  /**
+    * Creates the specified models in it's table.
+    *
+    * @param models  Models to create
+    * @return       Newly created models
+    */
+  def bulkInsert[M <: Model](models: Seq[M], clazz: Class[M]): Future[Seq[M]] =
+    if (models.nonEmpty) {
+      val toInsert = models.map(_.copyWith(ObjectId.Uninitialized, ObjectTimestamp(theTime))).asInstanceOf[Seq[M]]
+      val query    = newAction[M](clazz)
+      doAction {
+        query
+          .returning(query.map(_.id))
+          .into((m, id) => m.copyWith(ObjectId(id), m.createdAt).asInstanceOf[M]) ++= toInsert
+      }
+    } else Future.successful(Nil)
 
   def update[M <: Model](model: M)(implicit ec: ExecutionContext): Future[M] = {
     val models = newAction[M](model.getClass)
@@ -258,32 +273,6 @@ abstract class ModelService(val driver: JdbcProfile) {
   }
 
   /**
-    * Same as collect but with multiple sorted columns
-    */
-  def collectMultipleSorts[M <: Model](
-      modelClass: Class[M],
-      filter: M#T => Rep[Boolean] = null,
-      sort: M#T => List[ColumnOrdered[_]] = null,
-      limit: Int = -1,
-      offset: Int = -1
-  ): Future[Seq[M]] = {
-    var query = newAction[M](modelClass)
-    if (filter != null) query = query.filter(filter)
-    if (sort != null) {
-      val generator = new AnonSymbol
-      val aliased   = query.shaped.encodeRef(Ref(generator))
-      val l         = sort(aliased.value)
-      val c = ConstArray.from(l.foldLeft(l.head.columns) { (r, c) =>
-        r ++ c.columns
-      })
-      query = new WrappingQuery(SortBy(generator, query.toNode, c), query.shaped)
-    }
-    if (offset > -1) query = query.drop(offset)
-    if (limit > -1) query = query.take(limit)
-    doAction(query.result)
-  }
-
-  /**
     * Filters the the models.
     *
     * @param filter Model filter
@@ -316,16 +305,4 @@ abstract class ModelService(val driver: JdbcProfile) {
       limit: Int = -1,
       offset: Int = -1
   ): Future[Seq[M]] = collect(modelClass, filter, sort, limit, offset)
-
-  /**
-    * Same as sorted but with multiple sorts
-    */
-  def sortedMultipleOrders[M <: Model](
-      modelClass: Class[M],
-      sorts: M#T => List[ColumnOrdered[_]],
-      filter: M#T => Rep[Boolean] = null,
-      limit: Int = -1,
-      offset: Int = -1
-  ): Future[Seq[M]] = collectMultipleSorts(modelClass, filter, sorts, limit, offset)
-
 }

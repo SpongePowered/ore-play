@@ -54,13 +54,11 @@ case class Version(
     isReviewed: Boolean = false,
     reviewerId: Option[ObjectReference] = None,
     approvedAt: Option[Timestamp] = None,
-    tagIds: List[ObjectReference] = List(),
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
     isNonReviewed: Boolean = false
 ) extends Model
-    with ProjectOwned
     with Describable
     with Downloadable
     with Hideable {
@@ -123,8 +121,8 @@ case class Version(
   def reviewer(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =
     OptionT.fromOption[Future](this.reviewerId).flatMap(userBase.get)
 
-  def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[Tag]] =
-    service.access(classOf[Tag]).filter(_.id.inSetBind(tagIds)).map(_.distinct.toList)
+  def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[VersionTag]] =
+    service.access(classOf[VersionTag]).filter(_.versionId === this.id.value).map(_.toList)
 
   def isSpongePlugin(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
     tags.map(_.map(_.name).contains("Sponge"))
@@ -227,7 +225,7 @@ case class Version(
     else
       for {
         hashExists <- this.schema.hashExists(this.projectId, this.hash)
-        project    <- this.project
+        project    <- ProjectOwned[Version].project(this)
         pExists    <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
       } yield hashExists && pExists
   }
@@ -252,6 +250,8 @@ case class Version(
 
 object Version {
 
+  implicit val isProjectOwned: ProjectOwned[Version] = (a: Version) => a.projectId
+
   /**
     * A helper class for easily building new Versions.
     *
@@ -259,17 +259,16 @@ object Version {
     */
   case class Builder(service: ModelService) {
 
-    private var versionString: String         = _
-    private var dependencyIds: List[String]   = List()
-    private var description: String           = _
-    private var projectId: ObjectReference    = -1
-    private var authorId: ObjectReference     = -1
-    private var fileSize: Long                = -1
-    private var hash: String                  = _
-    private var fileName: String              = _
-    private var signatureFileName: String     = _
-    private var tagIds: List[ObjectReference] = List()
-    private var visibility: Visibility        = Visibility.Public
+    private var versionString: String       = _
+    private var dependencyIds: List[String] = List()
+    private var description: String         = _
+    private var projectId: ObjectReference  = -1
+    private var authorId: ObjectReference   = -1
+    private var fileSize: Long              = -1
+    private var hash: String                = _
+    private var fileName: String            = _
+    private var signatureFileName: String   = _
+    private var visibility: Visibility      = Visibility.Public
 
     def versionString(versionString: String): Builder = {
       this.versionString = versionString
@@ -316,11 +315,6 @@ object Version {
       this
     }
 
-    def tagIds(tagIds: List[ObjectReference]): Builder = {
-      this.tagIds = tagIds
-      this
-    }
-
     def visibility(visibility: Visibility): Builder = {
       this.visibility = visibility
       this
@@ -337,7 +331,6 @@ object Version {
         hash = checkNotNull(this.hash, "hash null", ""),
         authorId = checkNotNull(this.authorId, "author id null", ""),
         fileName = checkNotNull(this.fileName, "file name null", ""),
-        tagIds = this.tagIds,
         visibility = visibility,
         signatureFileName = checkNotNull(this.signatureFileName, "signature file name null", ""),
         channelId = -1L

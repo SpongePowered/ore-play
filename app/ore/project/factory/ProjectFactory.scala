@@ -16,20 +16,21 @@ import db.ModelService
 import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
 import models.project._
-import models.user.role.ProjectRole
+import models.user.role.ProjectUserRole
 import models.user.{Notification, User}
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 import ore.project.NotifyWatchersTask
-import ore.project.factory.TagAlias.ProjectTag
 import ore.project.io._
 import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
 import util.StringUtils._
+import util.syntax._
 
 import akka.actor.ActorSystem
 import cats.data.{EitherT, NonEmptyList}
 import cats.instances.future._
+import cats.instances.option._
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
 
@@ -293,11 +294,10 @@ trait ProjectFactory {
         val ownerId   = owner.userId
         val projectId = newProject.id.value
 
-        val addRole =
-          dossier.addRole(
-            newProject,
-            new ProjectRole(ownerId, RoleType.ProjectOwner, projectId, accepted = true, visible = true)
-          )
+        val addRole = dossier.addRole(
+          newProject,
+          new ProjectUserRole(ownerId, Role.ProjectOwner, projectId, accepted = true, visible = true)
+        )
         val addOtherRoles = Future.traverse(pending.roles) { role =>
           role.user.flatMap { user =>
             dossier.addRole(newProject, role.copy(projectId = projectId)) *>
@@ -306,7 +306,7 @@ trait ProjectFactory {
                   userId = user.id.value,
                   originId = ownerId,
                   notificationType = NotificationType.ProjectInvite,
-                  messageArgs = NonEmptyList.of("notification.project.invite", role.roleType.title, project.name)
+                  messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
                 )
               )
           }
@@ -349,7 +349,7 @@ trait ProjectFactory {
     */
   def createVersion(
       pending: PendingVersion
-  )(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[ProjectTag])] = {
+  )(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[VersionTag])] = {
     val project = pending.project
 
     val pendingVersion = pending.underlying
@@ -389,42 +389,25 @@ trait ProjectFactory {
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Version)(
       implicit ec: ExecutionContext
-  ): Future[Seq[ProjectTag]] = {
+  ): Future[Seq[VersionTag]] =
     for {
       (metadataTags, dependencyTags) <- (
         addMetadataTags(pendingVersion.plugin.data, newVersion),
         addDependencyTags(newVersion)
       ).tupled
-    } yield {
-      metadataTags ++ dependencyTags
-    }
-  }
+    } yield metadataTags ++ dependencyTags
 
   private def addMetadataTags(pluginFileData: Option[PluginFileData], version: Version)(
       implicit ec: ExecutionContext
-  ): Future[Seq[ProjectTag]] = {
-    val futureTags = pluginFileData.map(_.ghostTags.map(_.getFilledTag(service))).toList.flatten
-    Future.traverse(futureTags) { futureTag =>
-      futureTag
-        .flatTap(tag => service.update(tag.copy(versionIds = (tag.versionIds :+ version.id.value).distinct)))
-        .flatTap(tag => service.update(version.copy(tagIds = (version.tagIds :+ tag.id.value).distinct)))
-    }
-  }
+  ): Future[Seq[VersionTag]] = pluginFileData.traverse(_.createTags(version.id.value)).map(_.toList.flatten)
 
-  private def addDependencyTags(version: Version)(implicit ec: ExecutionContext): Future[Seq[ProjectTag]] = {
-    val futureTags = Platform
-      .getPlatformGhostTags(
+  private def addDependencyTags(version: Version): Future[Seq[VersionTag]] =
+    Platform
+      .createPlatformTags(
+        version.id.value,
         // filter valid dependency versions
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
       )
-      .map(_.getFilledTag(service))
-
-    Future.traverse(futureTags) { futureTag =>
-      futureTag
-        .flatTap(tag => service.update(tag.copy(versionIds = (tag.versionIds :+ version.id.value).distinct)))
-        .flatTap(tag => service.update(version.copy(tagIds = (version.tagIds :+ tag.id.value).distinct)))
-    }
-  }
 
   private def getOrCreateChannel(pending: PendingVersion, project: Project)(implicit ec: ExecutionContext) =
     project.channels

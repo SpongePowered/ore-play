@@ -6,6 +6,7 @@ import db.ModelService
 import models.project.{Project, Visibility}
 import models.user.User
 import ore.permission._
+import util.syntax._
 
 import cats.instances.future._
 import cats.syntax.all._
@@ -31,17 +32,19 @@ object ScopedProjectData {
           project.stars.contains(user),
           project.watchers.contains(user),
           user.trustIn(project),
+          user.globalRoles.all
         ).mapN {
           case (
               canPostAsOwnerOrga,
               uProjectFlags,
               starred,
               watching,
-              projectTrust
+              projectTrust,
+              globalRoles
               ) =>
             val perms = EditPages +: EditSettings +: EditChannels +: EditVersions +: UploadVersions +: Visibility.values
               .map(_.permission)
-            val permMap = user.can.asMap(projectTrust)(perms: _*)
+            val permMap = user.can.asMap(projectTrust, globalRoles)(perms: _*)
             ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, permMap)
         }
       }

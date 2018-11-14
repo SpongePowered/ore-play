@@ -45,6 +45,7 @@ scalacOptions ++= Seq(
   "-Ywarn-value-discard"
 )
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
+addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.0").cross(CrossVersion.full))
 
 routesGenerator := InjectedRoutesGenerator
 routesImport += "_root_.db.ObjectReference"
@@ -53,6 +54,8 @@ resolvers ++= Seq(
   "scalaz-bintray".at("https://dl.bintray.com/scalaz/releases"),
   "Akka Snapshot Repository".at("http://repo.akka.io/snapshots/")
 )
+
+lazy val doobieVersion = "0.5.3"
 
 libraryDependencies ++= Seq(ehcache, ws, guice)
 
@@ -76,6 +79,9 @@ libraryDependencies ++= Seq(
   "com.beachape"         %% "enumeratum-slick"              % "1.5.15",
   "com.chuusai"          %% "shapeless"                     % "2.3.3",
   "org.typelevel"        %% "cats-core"                     % "1.4.0",
+  "com.github.mpilquist" %% "simulacrum"                    % "0.14.0",
+  "org.tpolecat"         %% "doobie-core"                   % doobieVersion,
+  "org.tpolecat"         %% "doobie-postgres"               % doobieVersion,
   "com.vladsch.flexmark" % "flexmark"                       % flexmarkVersion,
   "com.vladsch.flexmark" % "flexmark-ext-autolink"          % flexmarkVersion,
   "com.vladsch.flexmark" % "flexmark-ext-anchorlink"        % flexmarkVersion,
@@ -92,18 +98,15 @@ libraryDependencies ++= Seq(
   "org.webjars.npm"      % "chart.js"                       % "2.7.2"
 )
 
-lazy val doobieVersion = "0.5.3"
-
 libraryDependencies ++= Seq(
   jdbc % Test,
   //specs2 % Test,
   "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2"       % Test,
-  "org.tpolecat"           %% "doobie-core"        % doobieVersion % Test,
-  "org.tpolecat"           %% "doobie-postgres"    % doobieVersion % Test,
   "org.tpolecat"           %% "doobie-scalatest"   % doobieVersion % Test
 )
 
 unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test")
+pipelineStages := Seq(digest, gzip)
 
 // Disable generation of the API documentation for production builds
 sources in (Compile, doc) := Seq.empty

@@ -11,11 +11,13 @@ case class ProjectApiKey(
     projectId: ObjectReference,
     keyType: ProjectApiKeyType,
     value: String
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type T = ProjectApiKeyTable
   override type M = ProjectApiKey
 
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectApiKey = this.copy(id = id, createdAt = theTime)
+}
+object ProjectApiKey {
+  implicit val isProjectOwned: ProjectOwned[ProjectApiKey] = (a: ProjectApiKey) => a.projectId
 }

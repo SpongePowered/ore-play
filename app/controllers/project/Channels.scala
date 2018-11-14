@@ -7,9 +7,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, AnyContent}
 
-import cats.data.EitherT
-import cats.instances.future._
-import cats.syntax.all._
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import db.ModelService
@@ -22,6 +19,9 @@ import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
 
+import cats.data.EitherT
+import cats.instances.future._
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 /**

@@ -6,8 +6,8 @@ import db.impl.OrePostgresDriver.api._
 import db.table.{AssociativeTable, ModelAssociation}
 import db.{Model, ModelFilter, ModelService, ObjectReference}
 
-import cats.syntax.all._
 import cats.instances.future._
+import cats.syntax.all._
 
 class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](
     service: ModelService,
@@ -33,7 +33,5 @@ class ModelAssociationAccess[Assoc <: AssociativeTable, M <: Model](
     this.assoc.assoc(this.parent, model).as(model)
 
   override def remove(model: M): Future[Int] = this.assoc.disassoc(this.parent, model)
-
-  override def removeAll(filter: M#T => Rep[Boolean] = _ => true) = throw new UnsupportedOperationException
 
 }

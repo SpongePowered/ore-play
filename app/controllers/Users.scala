@@ -13,12 +13,14 @@ import controllers.sugar.Bakery
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.{ProjectTableMain, VersionTable}
+import db.query.UserQueries
 import db.{ModelService, ObjectReference}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
 import models.user.{LoggedAction, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.permission.ReviewProjects
+import ore.permission.role.Role
 import ore.user.notification.{InviteFilter, NotificationFilter}
 import ore.user.{FakeUser, Prompt}
 import ore.{OreConfig, OreEnv}
@@ -27,6 +29,7 @@ import views.{html => views}
 
 import cats.data.EitherT
 import cats.instances.future._
+import cats.instances.list._
 import cats.syntax.all._
 
 /**
@@ -74,6 +77,9 @@ class Users @Inject()(
         // Log in as fake user (debug only)
         this.config.checkDebug()
         users.getOrCreate(this.fakeUser) *>
+          this.fakeUser.globalRoles
+            .contains(Role.OreAdmin.toDbRole)
+            .ifM(ifTrue = Future.unit, ifFalse = this.fakeUser.globalRoles.add(Role.OreAdmin.toDbRole).void) *>
           this.redirectBack(returnPath.getOrElse(request.path), this.fakeUser)
       } else if (sso.isEmpty || sig.isEmpty) {
         val nonce = SingleSignOnConsumer.nonce
@@ -82,13 +88,16 @@ class Users @Inject()(
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
           .authenticate(sso.get, sig.get)(isNonceValid)
-          .map(User.fromSponge)
-          .semiflatMap { fromSponge =>
-            // Complete authentication
-            for {
-              user   <- users.getOrCreate(fromSponge)
-              result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
-            } yield result
+          .map(sponge => User.fromSponge(sponge) -> sponge)
+          .semiflatMap {
+            case (fromSponge, sponge) =>
+              // Complete authentication
+              for {
+                user   <- users.getOrCreate(fromSponge)
+                _      <- user.globalRoles.removeAll()
+                _      <- sponge.newGlobalRoles.fold(Future.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.add))
+                result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
+              } yield result
           }
           .getOrElse(Redirect(ShowHome).withError("error.loginFailed"))
       }
@@ -294,7 +303,8 @@ class Users @Inject()(
   def showAuthors(sort: Option[String], page: Option[Int]): Action[AnyContent] = OreAction.async { implicit request =>
     val ordering = sort.getOrElse(UserOrdering.Projects)
     val p        = page.getOrElse(1)
-    users.getAuthors(ordering, p).map { u =>
+
+    runDbProgram(UserQueries.getAuthors(p, ordering).to[Vector]).map { u =>
       Ok(views.users.authors(u, ordering, p))
     }
   }
@@ -306,7 +316,8 @@ class Users @Inject()(
     Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
       val ordering = sort.getOrElse(UserOrdering.Role)
       val p        = page.getOrElse(1)
-      users.getStaff(ordering, p).map { u =>
+
+      runDbProgram(UserQueries.getStaff(p, ordering).to[Vector]).map { u =>
         Ok(views.users.staff(u, ordering, p))
       }
     }

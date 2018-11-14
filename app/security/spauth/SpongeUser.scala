@@ -6,6 +6,7 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 
 import db.ObjectReference
+import ore.permission.role.Role
 
 /**
   * Represents a Sponge user.
@@ -24,7 +25,13 @@ case class SpongeUser(
     avatarUrl: Option[String],
     lang: Option[Lang],
     addGroups: Option[String]
-)
+) {
+
+  def newGlobalRoles: Option[List[Role]] = addGroups.map { groups =>
+    if (groups.trim.isEmpty) Nil
+    else groups.split(",").flatMap(Role.withValueOpt).toList
+  }
+}
 object SpongeUser {
   implicit val spongeUserReads: Reads[SpongeUser] =
     (JsPath \ "id")

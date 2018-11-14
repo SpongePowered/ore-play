@@ -5,9 +5,10 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.schema.ProjectRoleTable
 import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import ore.Visitable
-import ore.permission.role.RoleType
+import ore.permission.role.Role
 import ore.permission.scope.ProjectScope
 import ore.project.ProjectOwned
+import ore.user.UserOwned
 
 /**
   * Represents a [[ore.project.ProjectMember]]'s role in a
@@ -17,25 +18,24 @@ import ore.project.ProjectOwned
   * @param id         Model ID
   * @param createdAt  Timestamp instant of creation
   * @param userId     ID of User this role belongs to
-  * @param roleType   Type of role
+  * @param role   Type of role
   * @param projectId  ID of project this role belongs to
   */
-case class ProjectRole(
+case class ProjectUserRole(
     id: ObjectId = ObjectId.Uninitialized,
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     userId: ObjectReference,
     projectId: ObjectReference,
-    roleType: RoleType,
+    role: Role,
     isAccepted: Boolean = false
-) extends RoleModel
-    with ProjectOwned {
+) extends UserRoleModel {
 
-  override type M = ProjectRole
+  override type M = ProjectUserRole
   override type T = ProjectRoleTable
 
   def this(
       userId: ObjectReference,
-      roleType: RoleType,
+      roleType: Role,
       projectId: ObjectReference,
       accepted: Boolean,
       visible: Boolean
@@ -43,11 +43,17 @@ case class ProjectRole(
     id = ObjectId.Uninitialized,
     createdAt = ObjectTimestamp.Uninitialized,
     userId = userId,
-    roleType = roleType,
+    role = roleType,
     projectId = projectId,
     isAccepted = accepted
   )
 
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] = this.project
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectRole                    = this.copy(id = id, createdAt = theTime)
+  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+    ProjectOwned[ProjectUserRole].project(this)
+  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectUserRole =
+    this.copy(id = id, createdAt = theTime)
+}
+object ProjectUserRole {
+  implicit val isProjectOwned: ProjectOwned[ProjectUserRole] = (a: ProjectUserRole) => a.projectId
+  implicit val isUserOwned: UserOwned[ProjectUserRole]       = (a: ProjectUserRole) => a.userId
 }

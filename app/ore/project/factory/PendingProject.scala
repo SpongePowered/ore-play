@@ -8,7 +8,7 @@ import db.ModelService
 import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
 import models.project.{Project, ProjectSettings, Version}
-import models.user.role.ProjectRole
+import models.user.role.ProjectUserRole
 import ore.project.io.PluginFile
 import ore.{Cacheable, OreConfig}
 
@@ -30,7 +30,7 @@ case class PendingProject(
     channelName: String,
     settings: ProjectSettings = ProjectSettings(),
     var pendingVersion: PendingVersion,
-    roles: Set[ProjectRole] = Set(),
+    roles: Set[ProjectUserRole] = Set(),
     cacheApi: SyncCacheApi
 )(implicit service: ModelService, val config: OreConfig)
     extends Cacheable {

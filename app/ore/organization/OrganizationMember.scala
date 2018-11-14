@@ -4,8 +4,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.{ModelService, ObjectReference}
 import models.user.Organization
-import models.user.role.OrganizationRole
-import ore.user.Member
+import models.user.role.OrganizationUserRole
+import ore.user.{Member, UserOwned}
 
 /**
   * Represents a [[models.user.User]] member of an [[Organization]].
@@ -13,17 +13,21 @@ import ore.user.Member
   * @param organization Organization member belongs to
   * @param userId       User ID
   */
-class OrganizationMember(val organization: Organization, val userId: ObjectReference) extends Member[OrganizationRole] {
+class OrganizationMember(val organization: Organization, val userId: ObjectReference)
+    extends Member[OrganizationUserRole] {
 
-  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationRole]] =
-    this.user.flatMap(user => this.organization.memberships.getRoles(organization, user))
+  override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[OrganizationUserRole]] =
+    UserOwned[OrganizationMember].user(this).flatMap(user => this.organization.memberships.getRoles(organization, user))
 
   /**
     * Returns the Member's top role.
     *
     * @return Top role
     */
-  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[OrganizationRole] =
-    this.roles.map(role => role.maxBy(_.roleType.trust))
+  override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[OrganizationUserRole] =
+    this.roles.map(role => role.maxBy(_.role.trust))
 
+}
+object OrganizationMember {
+  implicit val isUserOwned: UserOwned[OrganizationMember] = (a: OrganizationMember) => a.userId
 }

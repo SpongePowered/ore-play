@@ -3,8 +3,8 @@
 @import controllers.project.{routes => projectRoutes}
 @import controllers.sugar.Requests.OreRequest
 @import models.user.User
-@import models.user.role.ProjectRole
 @import ore.OreConfig
+@import ore.permission.role.RoleCategory
 @import ore.project.factory.PendingProject
 @import views.html.helper.{CSRF, form}
 @(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit messages: Messages, request: OreRequest[_],
@@ -24,7 +24,7 @@
         @users.invite.form(
             owner = owner,
             loadedUsers = userList,
-            roleClass = classOf[ProjectRole]
+            roleCategory = RoleCategory.Project
         )
 
         <!-- Submission form -->

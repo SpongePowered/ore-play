@@ -6,13 +6,14 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
 import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
-import models.user.role.OrganizationRole
+import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
-import ore.permission.role.{Default, RoleType, Trust}
+import ore.permission.role.{Role, Trust}
 import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
+import util.syntax._
 
 import cats.data.OptionT
 import slick.lifted.{Compiled, Rep, TableQuery}
@@ -33,7 +34,6 @@ case class Organization(
     username: String,
     ownerId: ObjectReference
 ) extends Model
-    with UserOwned
     with Named
     with Visitable
     with Joinable[OrganizationMember, Organization] {
@@ -47,7 +47,7 @@ case class Organization(
   override def memberships(
       implicit ec: ExecutionContext,
       service: ModelService
-  ): MembershipDossier.Aux[Future, Organization, OrganizationRole, OrganizationMember] =
+  ): MembershipDossier.Aux[Future, Organization, OrganizationUserRole, OrganizationMember] =
     MembershipDossier[Future, Organization]
 
   /**
@@ -68,10 +68,10 @@ case class Organization(
       setOwner             <- service.update(copy(ownerId = memberUser.id.value))
       _ <- Future.sequence(
         roles
-          .filter(_.roleType == RoleType.OrganizationOwner)
-          .map(role => service.update(role.copy(roleType = RoleType.OrganizationAdmin)))
+          .filter(_.role == Role.OrganizationOwner)
+          .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))
       )
-      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(roleType = RoleType.OrganizationOwner))))
+      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(role = Role.OrganizationOwner))))
     } yield setOwner
 
   /**
@@ -84,13 +84,13 @@ case class Organization(
 
   override val name: String                                            = this.username
   override def url: String                                             = this.username
-  override val userId: ObjectReference                                 = this.ownerId
   override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(createdAt = theTime)
 
 }
 
 object Organization {
-  implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
+  implicit val orgHasScope: HasScope[Organization]  = HasScope.orgScope(_.id.value)
+  implicit val isUserOwned: UserOwned[Organization] = (a: Organization) => a.ownerId
 
   lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
 
@@ -112,5 +112,5 @@ object Organization {
   )(implicit ex: ExecutionContext, service: ModelService): Future[Trust] =
     service.DB.db
       .run(Organization.roleForTrustQuery((orgId, userId)).result)
-      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Default))
+      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Trust.Default))
 }
