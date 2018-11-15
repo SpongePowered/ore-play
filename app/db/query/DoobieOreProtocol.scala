@@ -7,7 +7,7 @@ import scala.reflect.runtime.universe.TypeTag
 import play.api.i18n.Lang
 
 import db.{ObjectId, ObjectReference, ObjectTimestamp}
-import models.project.{TagColor, Visibility}
+import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
 import ore.permission.role.{Role, RoleCategory, Trust}
@@ -46,6 +46,7 @@ trait DoobieOreProtocol {
   implicit val loggedActionMeta: Meta[LoggedAction]               = enumeratumMeta(LoggedAction)
   implicit val loggedActionContextMeta: Meta[LoggedActionContext] = enumeratumMeta(LoggedActionContext)
   implicit val trustMeta: Meta[Trust]                             = enumeratumMeta(Trust)
+  implicit val reviewStateMeta: Meta[ReviewState]                 = enumeratumMeta(ReviewState)
 
   implicit val langMeta: Meta[Lang] = Meta[String].xmap(Lang.apply, _.toLocale.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =
