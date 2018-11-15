@@ -2,7 +2,7 @@ package db.impl
 
 import play.api.i18n.Lang
 
-import models.project.{TagColor, Visibility}
+import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
 import ore.permission.role.{Role, RoleCategory, Trust}
@@ -52,7 +52,8 @@ trait OrePostgresDriver
     implicit val loggedActionMapper: BaseColumnType[LoggedAction] = mappedColumnTypeForValueEnum(LoggedAction)
     implicit val loggedActionContextMapper: BaseColumnType[LoggedActionContext] =
       mappedColumnTypeForValueEnum(LoggedActionContext)
-    implicit val trustTypeMapper: BaseColumnType[Trust] = mappedColumnTypeForValueEnum(Trust)
+    implicit val trustTypeMapper: BaseColumnType[Trust]             = mappedColumnTypeForValueEnum(Trust)
+    implicit val reviewStateTypeMapper: BaseColumnType[ReviewState] = mappedColumnTypeForValueEnum(ReviewState)
 
     implicit val langTypeMapper: BaseColumnType[Lang] =
       MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)

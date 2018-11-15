@@ -1,5 +1,5 @@
 @import controllers.sugar.Requests.OreRequest
-@import models.project.{Project, Version}
+@import models.project.{Project, ReviewState, Version}
 @import ore.OreConfig
 @import ore.project.io.DownloadType
 @import views.html.helper.CSRF
@@ -27,10 +27,14 @@
                     </div>
                     <div class="panel-body">
                         <div class="alert alert-danger" style="margin-bottom: 10px">
-                            @if(isTargetChannelNonReviewed) {
+                            @if(isTargetChannelNonReviewed || target.reviewState == ReviewState.Backlog) {
                                 @messages("version.download.confirm.nonReviewedChannel")
                             } else {
-                                @messages("version.download.confirm.reviewedChannel")
+                                @if(target.reviewState != ReviewState.PartiallyReviewed) {
+                                    @messages("version.download.confirm.reviewedChannel")
+                                } else {
+                                    @messages("version.download.confirmPartial.reviewedChannel")
+                                }
                             }
                         </div>
                         <p>

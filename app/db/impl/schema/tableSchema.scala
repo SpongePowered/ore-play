@@ -230,12 +230,11 @@ class VersionTable(tag: Tag)
   def fileSize          = column[Long]("file_size")
   def hash              = column[String]("hash")
   def authorId          = column[ObjectReference]("author_id")
-  def isReviewed        = column[Boolean]("is_reviewed")
+  def reviewStatus      = column[ReviewState]("review_state")
   def reviewerId        = column[ObjectReference]("reviewer_id")
   def approvedAt        = column[Timestamp]("approved_at")
   def fileName          = column[String]("file_name")
   def signatureFileName = column[String]("signature_file_name")
-  def isNonReviewed     = column[Boolean]("is_non_reviewed")
 
   override def * = {
     val convertedUnapply = convertUnapply(Version.unapply)
@@ -252,13 +251,12 @@ class VersionTable(tag: Tag)
       authorId,
       description.?,
       downloads,
-      isReviewed,
+      reviewStatus,
       reviewerId.?,
       approvedAt.?,
       visibility,
       fileName,
-      signatureFileName,
-      isNonReviewed
+      signatureFileName
     ) <> (convertApply(Version.apply _).tupled, convertedUnapply)
   }
 }

@@ -209,7 +209,7 @@ final class Application @Inject()(forms: OreForms)(
   private def queryQueue =
     for {
       (v, u) <- TableQuery[VersionTable].joinLeft(TableQuery[UserTable]).on(_.authorId === _.id)
-      c      <- TableQuery[ChannelTable] if v.channelId === c.id && v.isReviewed =!= true && v.isNonReviewed =!= true
+      c      <- TableQuery[ChannelTable] if v.channelId === c.id && v.reviewStatus === (ReviewState.Unreviewed: ReviewState)
       p      <- TableQuery[ProjectTableMain] if p.id === v.projectId && p.visibility =!= (Visibility.SoftDelete: Visibility)
       ou     <- TableQuery[UserTable] if p.userId === ou.id
     } yield (v, p, c, u.map(_.name), ou)

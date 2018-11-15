@@ -51,13 +51,12 @@ case class Version(
     authorId: ObjectReference,
     description: Option[String] = None,
     downloadCount: Long = 0,
-    isReviewed: Boolean = false,
+    reviewState: ReviewState = ReviewState.Unreviewed,
     reviewerId: Option[ObjectReference] = None,
     approvedAt: Option[Timestamp] = None,
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
-    isNonReviewed: Boolean = false
 ) extends Model
     with Describable
     with Downloadable

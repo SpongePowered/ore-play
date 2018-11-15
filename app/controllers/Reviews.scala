@@ -16,7 +16,7 @@ import db.impl.schema.{NotificationTable, OrganizationMembersTable, Organization
 import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
 import form.OreForms
 import models.admin.{Message, Review}
-import models.project.{Project, Version}
+import models.project.{Project, ReviewState, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.permission.ReviewProjects
 import ore.permission.role.{Role, Trust}
@@ -83,7 +83,7 @@ final class Reviews @Inject()(forms: OreForms)(
         _ <- EitherT.right[Result](
           service.update(
             version.copy(
-              isReviewed = false,
+              reviewState = ReviewState.Unreviewed,
               approvedAt = None,
               reviewerId = None
             )
@@ -246,20 +246,30 @@ final class Reviews @Inject()(forms: OreForms)(
     }
   }
 
-  def shouldReviewToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
+  def backlogToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
+        oldState <- EitherT.cond[Future](
+          Seq(ReviewState.Backlog, ReviewState.Unreviewed).contains(version.reviewState),
+          version.reviewState,
+          BadRequest("Invalid state for toggle backlog")
+        )
+        newState = oldState match {
+          case ReviewState.Unreviewed => ReviewState.Backlog
+          case ReviewState.Backlog    => ReviewState.Unreviewed
+          case _                      => oldState
+        }
         _ <- EitherT.liftF(
           UserActionLogger.log(
             request,
-            LoggedAction.VersionNonReviewChanged,
+            LoggedAction.VersionReviewStateChanged,
             version.id.value,
-            s"In review queue: ${version.isNonReviewed}",
-            s"In review queue: ${!version.isNonReviewed}"
+            newState.toString,
+            oldState.toString,
           )
         )
-        _ <- EitherT.liftF(service.update(version.copy(isNonReviewed = !version.isNonReviewed)))
+        _ <- EitherT.liftF(service.update(version.copy(reviewState = newState)))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }

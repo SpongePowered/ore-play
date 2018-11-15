@@ -173,7 +173,7 @@ trait OreRestfulApi extends OreWrites {
       "channel"       -> toJson(c),
       "fileSize"      -> v.fileSize,
       "md5"           -> v.hash,
-      "staffApproved" -> v.isReviewed,
+      "staffApproved" -> v.reviewState.isChecked,
       "href"          -> ('/' + v.url(p)),
       "tags"          -> tags.map(toJson(_)),
       "downloads"     -> v.downloadCount

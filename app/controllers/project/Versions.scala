@@ -149,25 +149,30 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param versionString  Version name
     * @return               View of version
     */
-  def approve(author: String, slug: String, versionString: String): Action[AnyContent] = {
+  def approve(author: String, slug: String, versionString: String, partial: Boolean): Action[AnyContent] = {
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(ReviewProjects))
       .asyncEitherT { implicit request =>
+        val newState = if (partial) ReviewState.PartiallyReviewed else ReviewState.Reviewed
         for {
           version <- getVersion(request.data.project, versionString)
           _ <- EitherT.right[Result](
             service.update(
               version
-                .copy(isReviewed = true, reviewerId = Some(request.user.id.value), approvedAt = Some(service.theTime))
+                .copy(
+                  reviewState = newState,
+                  reviewerId = Some(request.user.id.value),
+                  approvedAt = Some(service.theTime)
+                )
             )
           )
           _ <- EitherT.right(
             UserActionLogger.log(
               request.request,
-              LoggedAction.VersionApproved,
+              LoggedAction.VersionReviewStateChanged,
               version.id.value,
-              "approved",
-              "unapproved"
+              version.reviewState.toString,
+              newState.toString
             )
           )
         } yield Redirect(self.show(author, slug, versionString))
@@ -548,7 +553,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def checkConfirmation(version: Version, token: Option[String])(
       implicit req: ProjectRequest[_]
   ): Future[Boolean] = {
-    if (version.isReviewed)
+    if (version.reviewState == ReviewState.Reviewed)
       return Future.successful(true)
 
     // check for confirmation
@@ -605,7 +610,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       implicit val lang: Lang = request.lang
       val project             = request.project
       getVersion(project, target)
-        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(v => !v.isReviewed)
+        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(
+          _.reviewState != ReviewState.Reviewed
+        )
         .semiflatMap { version =>
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
@@ -627,11 +634,15 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             )
           )
 
+          val isPartial = version.reviewState == ReviewState.PartiallyReviewed
+          val apiMsg =
+            if (isPartial) "version.download.confirmPartial.body.api" else "version.download.confirm.body.api"
+
           if (api.getOrElse(false)) {
             (removeWarnings *> addWarning).as {
               MultipleChoices(
                 Json.obj(
-                  "message" -> this.messagesApi("version.download.confirm.body.api").split('\n'),
+                  "message" -> this.messagesApi(apiMsg).split('\n'),
                   "post"    -> self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
                   "url"     -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
                   "token"   -> token
@@ -650,7 +661,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               Future.successful(
                 MultipleChoices(
                   this.messagesApi(
-                    "version.download.confirm.body.plain",
+                    apiMsg,
                     self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
                     CSRF.getToken.get.value
                   ) + "\n"
@@ -677,7 +688,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   ): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
       getVersion(request.data.project, target)
-        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(v => !v.isReviewed)
+        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(
+          _.reviewState != ReviewState.Reviewed
+        )
         .flatMap { version =>
           confirmDownload0(version.id.value, downloadType, token)
             .toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload"))
