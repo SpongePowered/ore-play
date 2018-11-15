@@ -34,7 +34,6 @@ import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
   * @param dependencyIds    List of plugin dependencies with the plugin ID and
   *                         version separated by a ':'
   * @param description     User description of version
-  * @param assets           Path to assets directory within plugin
   * @param projectId        ID of project this version belongs to
   * @param _channelId        ID of channel this version belongs to
   */
@@ -44,7 +43,6 @@ case class Version(
     projectId: ObjectReference,
     versionString: String,
     dependencyIds: List[String] = List(),
-    assets: Option[String] = None,
     channelId: ObjectReference,
     fileSize: Long,
     hash: String,

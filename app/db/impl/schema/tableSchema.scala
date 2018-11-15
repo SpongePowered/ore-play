@@ -224,7 +224,6 @@ class VersionTable(tag: Tag)
 
   def versionString     = column[String]("version_string")
   def dependencies      = column[List[String]]("dependencies")
-  def assets            = column[String]("assets")
   def projectId         = column[ObjectReference]("project_id")
   def channelId         = column[ObjectReference]("channel_id")
   def fileSize          = column[Long]("file_size")
@@ -245,7 +244,6 @@ class VersionTable(tag: Tag)
       projectId,
       versionString,
       dependencies,
-      assets.?,
       channelId,
       fileSize,
       hash,

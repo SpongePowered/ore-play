@@ -365,7 +365,6 @@ trait ProjectFactory {
           versionString = pendingVersion.versionString,
           dependencyIds = pendingVersion.dependencyIds,
           description = pendingVersion.description,
-          assets = pendingVersion.assets,
           projectId = project.id.value,
           channelId = channel.id.value,
           fileSize = pendingVersion.fileSize,
