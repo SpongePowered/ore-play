@@ -72,7 +72,7 @@ libraryDependencies ++= Seq(
   "org.postgresql"             % "postgresql"                     % "42.2.5",
   "com.github.tminglei"        %% "slick-pg"                      % slickPgVersion,
   "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
-  "com.fasterxml.jackson.core" % "jackson-databind"               % "2.9.7",
+  "com.fasterxml.jackson.core" % "jackson-databind"               % "2.8.11.2",
   "io.sentry"                  % "sentry-logback"                 % "1.7.12",
   "org.bouncycastle"           % "bcprov-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"           % "bcpkix-jdk15on"                 % bouncycastleVersion,

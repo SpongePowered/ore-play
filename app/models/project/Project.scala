@@ -448,7 +448,7 @@ case class Project(
     * Get all messages
     * @return
     */
-  def decodeNotes: Seq[Note] = (notes \ "messages").as[Seq[Note]]
+  def decodeNotes: Seq[Note] = (notes \ "messages").asOpt[Seq[Note]].getOrElse(Nil)
 }
 
 /**

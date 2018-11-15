@@ -62,7 +62,7 @@ case class Review(
     * @return
     */
   def decodeMessages: Seq[Message] =
-    (message \ "messages").as[Seq[Message]]
+    (message \ "messages").asOpt[Seq[Message]].getOrElse(Nil)
 
   /**
     * Returns a copy of this model with an updated ID and timestamp.
