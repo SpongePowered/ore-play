@@ -622,8 +622,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               expiration = expiration,
               token = token,
               versionId = version.id.value,
-              address = InetString(StatTracker.remoteAddress),
-              downloadId = None
+              address = InetString(StatTracker.remoteAddress)
             )
           )
 
@@ -682,14 +681,12 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           confirmDownload0(version.id.value, downloadType, token)
             .toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload"))
         }
-        .map { dl =>
-          dl.downloadType match {
-            case UploadedFile => Redirect(self.download(author, slug, target, Some(token)))
-            case JarFile      => Redirect(self.downloadJar(author, slug, target, Some(token)))
-            // Note: Shouldn't get here in the first place since sig files
-            // don't need confirmation, but added as a failsafe.
-            case SignatureFile => Redirect(self.downloadSignature(author, slug, target))
-          }
+        .map {
+          case UploadedFile => Redirect(self.download(author, slug, target, Some(token)))
+          case JarFile      => Redirect(self.downloadJar(author, slug, target, Some(token)))
+          // Note: Shouldn't get here in the first place since sig files
+          // don't need confirmation, but added as a failsafe.
+          case SignatureFile => Redirect(self.downloadSignature(author, slug, target))
         }
         .merge
     }
@@ -700,7 +697,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   private def confirmDownload0(versionId: ObjectReference, downloadType: Option[Int], token: String)(
       implicit requestHeader: Request[_]
-  ): OptionT[Future, UnsafeDownload] = {
+  ): OptionT[Future, DownloadType] = {
     val addr = InetString(StatTracker.remoteAddress)
     val dlType = downloadType
       .flatMap(DownloadType.withValueOpt)
@@ -711,8 +708,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         (warn.address === addr) &&
         (warn.token === token) &&
         (warn.versionId === versionId) &&
-        !warn.isConfirmed &&
-        warn.downloadId.?.isEmpty
+        !warn.isConfirmed
       }
       .semiflatMap { warn =>
         val isInvalid = warn.hasExpired
@@ -725,14 +721,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .map(_._1)
       .semiflatMap { warn =>
         // warning confirmed and redirect to download
-        val downloads = this.service.access[UnsafeDownload](classOf[UnsafeDownload])
-        for {
-          user <- users.current.value
-          unsafeDownload <- downloads.add(
-            UnsafeDownload(userId = user.map(_.id.value), address = addr, downloadType = dlType)
-          )
-          _ <- service.update(warn.copy(isConfirmed = true, downloadId = Some(unsafeDownload.id.value)))
-        } yield unsafeDownload
+        service.update(warn.copy(isConfirmed = true)).as(dlType)
       }
   }
 

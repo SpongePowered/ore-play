@@ -269,28 +269,13 @@ class DownloadWarningsTable(tag: Tag) extends ModelTable[DownloadWarning](tag, "
   def token       = column[String]("token")
   def versionId   = column[ObjectReference]("version_id")
   def address     = column[InetString]("address")
-  def downloadId  = column[ObjectReference]("download_id")
   def isConfirmed = column[Boolean]("is_confirmed")
 
   override def * = {
     val convertedUnapply = convertUnapply(DownloadWarning.unapply)
-    (id.?, createdAt.?, expiration, token, versionId, address, isConfirmed, downloadId.?) <> (convertApply(
+    (id.?, createdAt.?, expiration, token, versionId, address, isConfirmed) <> (convertApply(
       DownloadWarning.apply _
     ).tupled, convertedUnapply)
-  }
-
-}
-
-class UnsafeDownloadsTable(tag: Tag) extends ModelTable[UnsafeDownload](tag, "project_version_unsafe_downloads") {
-
-  def userId       = column[ObjectReference]("user_id")
-  def address      = column[InetString]("address")
-  def downloadType = column[DownloadType]("download_type")
-
-  override def * = {
-    val convertedUnapply = convertUnapply(UnsafeDownload.unapply)
-    (id.?, createdAt.?, userId.?, address, downloadType) <> (convertApply(UnsafeDownload.apply _).tupled,
-    convertedUnapply)
   }
 
 }

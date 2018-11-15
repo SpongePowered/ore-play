@@ -171,9 +171,6 @@ abstract class OreModelConfig(driver: JdbcProfile, env: OreEnv, config: OreConfi
   val DownloadWarningSchema =
     new ModelSchema[DownloadWarning](this, classOf[DownloadWarning], TableQuery[DownloadWarningsTable])
 
-  val UnsafeDownloadSchema =
-    new ModelSchema[UnsafeDownload](this, classOf[UnsafeDownload], TableQuery[UnsafeDownloadsTable])
-
   case object DownloadSchema
       extends ModelSchema[VersionDownload](this, classOf[VersionDownload], TableQuery[VersionDownloadsTable])
       with StatSchema[VersionDownload] {

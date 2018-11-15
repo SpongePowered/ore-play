@@ -2,17 +2,13 @@ package models.project
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.mvc.Cookie
 
 import controllers.sugar.Bakery
 import db.impl.schema.DownloadWarningsTable
-import db.{Expirable, Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{Expirable, Model, ObjectId, ObjectReference, ObjectTimestamp}
 import models.project.DownloadWarning.COOKIE
 
-import cats.data.OptionT
-import cats.instances.future._
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 
@@ -26,7 +22,6 @@ import com.google.common.base.Preconditions._
   * @param token        Unique token for the client to identify by
   * @param versionId    Version ID the warning is for
   * @param address      Address of client who landed on the warning
-  * @param downloadId  Download ID
   */
 case class DownloadWarning(
     id: ObjectId = ObjectId.Uninitialized,
@@ -36,20 +31,11 @@ case class DownloadWarning(
     versionId: ObjectReference,
     address: InetString,
     isConfirmed: Boolean = false,
-    downloadId: Option[ObjectReference]
 ) extends Model
     with Expirable {
 
   override type M = DownloadWarning
   override type T = DownloadWarningsTable
-
-  /**
-    * Returns the download this warning was for.
-    *
-    * @return Download
-    */
-  def download(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, UnsafeDownload] =
-    OptionT.fromOption[Future](downloadId).flatMap(service.access[UnsafeDownload](classOf[UnsafeDownload]).get)
 
   /**
     * Creates a cookie that should be given to the client.

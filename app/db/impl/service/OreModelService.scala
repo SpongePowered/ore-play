@@ -57,7 +57,6 @@ class OreModelService @Inject()(
     registerSchema(VersionSchema)
     registerSchema(VersionTagSchema)
     registerSchema(DownloadWarningSchema)
-    registerSchema(UnsafeDownloadSchema)
     registerSchema(DownloadSchema)
     registerSchema(ChannelSchema)
     registerSchema(PageSchema)
