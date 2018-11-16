@@ -1,7 +1,8 @@
 package models.querymodels
 import java.sql.Timestamp
 
-import db.ObjectReference
+import db.DbRef
+import models.user.User
 import ore.Color
 
 case class UnsortedQueueEntry(
@@ -12,7 +13,7 @@ case class UnsortedQueueEntry(
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String],
-    reviewerId: Option[ObjectReference],
+    reviewerId: Option[DbRef[User]],
     reviewerName: Option[String],
     reviewStarted: Option[Timestamp],
     reviewEnded: Option[Timestamp]
@@ -58,7 +59,7 @@ case class ReviewedQueueEntry(
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String],
-    reviewerId: ObjectReference,
+    reviewerId: DbRef[User],
     reviewerName: String,
     reviewStarted: Timestamp,
     reviewEnded: Option[Timestamp]

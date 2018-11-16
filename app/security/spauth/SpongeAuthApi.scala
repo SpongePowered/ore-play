@@ -6,7 +6,6 @@ import javax.inject.Inject
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
-import play.api.Configuration
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
@@ -104,10 +103,10 @@ trait SpongeAuthApi {
 
 final class SpongeAuth @Inject()(config: OreConfig, override val ws: WSClient) extends SpongeAuthApi {
 
-  val conf: Configuration = this.config.security
+  private val conf = this.config.security.api
 
-  override val url: String             = this.conf.get[String]("api.url")
-  override val apiKey: String          = this.conf.get[String]("api.key")
-  override val timeout: FiniteDuration = this.conf.get[FiniteDuration]("api.timeout")
+  override val url: String             = conf.url
+  override val apiKey: String          = conf.key
+  override val timeout: FiniteDuration = conf.timeout
 
 }

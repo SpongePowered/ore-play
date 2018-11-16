@@ -12,6 +12,7 @@ import models.project.{Project, Version}
 import models.user.User
 import ore.OreConfig
 import util.StringUtils._
+import util.syntax._
 
 import akka.actor.Scheduler
 import cats.instances.future._

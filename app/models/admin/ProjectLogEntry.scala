@@ -3,7 +3,9 @@ package models.admin
 import java.sql.Timestamp
 
 import db.impl.schema.ProjectLogEntryTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+
+import slick.lifted.TableQuery
 
 /**
   * Represents an entry in a [[ProjectLog]].
@@ -17,9 +19,9 @@ import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
   * @param lastOccurrence   Instant of last occurrence
   */
 case class ProjectLogEntry(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectLogEntry] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    logId: ObjectReference,
+    logId: DbRef[ProjectLog],
     tag: String,
     message: String,
     occurrences: Int = 1,
@@ -28,7 +30,8 @@ case class ProjectLogEntry(
 
   override type T = ProjectLogEntryTable
   override type M = ProjectLogEntry
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLogEntry =
-    this.copy(id = id, createdAt = theTime)
+}
+object ProjectLogEntry {
+  implicit val query: ModelQuery[ProjectLogEntry] =
+    ModelQuery.from[ProjectLogEntry](TableQuery[ProjectLogEntryTable], _.copy(_, _))
 }

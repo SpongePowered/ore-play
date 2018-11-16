@@ -1,6 +1,6 @@
-package db
-
-import db.table.NameColumn
+package db.impl.model.common
+import db.Model
+import db.impl.table.common.NameColumn
 
 /**
   * Represents a [[Model]] with a name.

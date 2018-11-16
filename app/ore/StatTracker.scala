@@ -9,13 +9,16 @@ import play.api.mvc.{RequestHeader, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
-import db.ModelService
-import db.impl.schema.StatSchema
-import models.project.Version
-import models.statistic.{ProjectView, VersionDownload}
+import db.ModelFilter._
+import db.impl.OrePostgresDriver.api._
+import db.{DbRef, Model, ModelFilter, ModelQuery, ModelService}
+import models.project.{Project, Version}
+import models.statistic.{ProjectView, StatEntry, VersionDownload}
+import models.user.User
 import ore.StatTracker.COOKIE_NAME
 import security.spauth.SpongeAuthApi
 
+import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
 
@@ -27,8 +30,29 @@ trait StatTracker {
   implicit def service: ModelService
 
   def bakery: Bakery
-  def viewSchema: StatSchema[ProjectView]
-  def downloadSchema: StatSchema[VersionDownload]
+
+  private def record[S <: Model, M0 <: StatEntry[S] { type M = M0 }: ModelQuery](
+      entry: M0
+  )(setUserId: (M0, DbRef[User]) => M0)(implicit ec: ExecutionContext): Future[Boolean] = {
+    like[S, M0](entry).value.flatMap {
+      case None => service.insert(entry).as(true)
+      case Some(existingEntry) =>
+        val effect = if (existingEntry.userId.isEmpty && entry.userId.isDefined) {
+          service.update(setUserId(existingEntry, entry.userId.get)).void
+        } else Future.unit
+        effect.as(false)
+    }
+  }
+
+  private def like[S <: Model, M <: StatEntry[S]: ModelQuery](
+      entry: M
+  )(implicit ec: ExecutionContext): OptionT[Future, M] = {
+    val baseFilter = ModelFilter[M](_.modelId === entry.modelId)
+    val filter     = ModelFilter[M](e => e.address === entry.address || e.cookie === entry.cookie)
+
+    val userFilter = entry.user.map(u => ModelFilter[M](e => filter(e) || e.userId === u.id.value)).getOrElse(filter)
+    OptionT.liftF(userFilter).flatMap(uFilter => service.find(baseFilter && uFilter))
+  }
 
   /**
     * Signifies that a project has been viewed with the specified request and
@@ -41,8 +65,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): Future[Result] = {
     ProjectView.bindFromRequest.flatMap { statEntry =>
-      this.viewSchema
-        .record(statEntry)
+      record[Project, ProjectView](statEntry)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => projectRequest.data.project.addView
           case false => Future.unit
@@ -65,8 +88,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): Future[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
-      this.downloadSchema
-        .record(statEntry)
+      record[Version, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => version.addDownload *> request.data.project.addDownload
           case false => Future.unit
@@ -105,11 +127,4 @@ object StatTracker {
 
 }
 
-class OreStatTracker @Inject()(val service: ModelService, override val bakery: Bakery) extends StatTracker {
-  override val viewSchema: StatSchema[ProjectView] =
-    this.service.getSchemaByModel(classOf[ProjectView]).asInstanceOf[StatSchema[ProjectView]]
-
-  override val downloadSchema: StatSchema[VersionDownload] = this.service
-    .getSchemaByModel(classOf[VersionDownload])
-    .asInstanceOf[StatSchema[VersionDownload]]
-}
+class OreStatTracker @Inject()(val service: ModelService, override val bakery: Bakery) extends StatTracker

@@ -2,9 +2,11 @@ package db.query
 
 import java.sql.Timestamp
 
-import db.ObjectReference
+import db.DbRef
 import db.impl.access.UserBase.UserOrdering
+import models.project.Project
 import models.querymodels.ProjectListEntry
+import models.user.{Organization, User}
 import ore.OreConfig
 import ore.permission.role.{Role, Trust}
 import ore.project.ProjectSortingStrategy
@@ -65,7 +67,7 @@ object UserQueries extends DoobieOreProtocol {
       implicit config: OreConfig
   ): Query0[(String, Option[Timestamp], Timestamp, Option[Role], Option[Role], Long)] = {
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
-    val pageSize        = config.users.get[Long]("author-page-size")
+    val pageSize        = config.ore.users.authorPageSize
     val offset          = (page - 1) * pageSize
 
     val fragments =
@@ -100,7 +102,7 @@ object UserQueries extends DoobieOreProtocol {
       implicit config: OreConfig
   ): Query0[(String, Role, Option[Timestamp], Timestamp)] = {
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
-    val pageSize        = config.users.get[Long]("author-page-size")
+    val pageSize        = config.ore.users.authorPageSize
     val offset          = (page - 1) * pageSize
 
     val fragments =
@@ -123,10 +125,10 @@ object UserQueries extends DoobieOreProtocol {
     fragments.query[(String, Role, Option[Timestamp], Timestamp)]
   }
 
-  def globalTrust(userId: ObjectReference) =
+  def globalTrust(userId: DbRef[User]) =
     sql"""SELECT gt.trust FROM global_trust gt WHERE gt.user_id = $userId""".query[Trust]
 
-  def projectTrust(userId: ObjectReference, projectId: ObjectReference) = {
+  def projectTrust(userId: DbRef[User], projectId: DbRef[Project]) = {
     sql"""|SELECT greatest(gt.trust, pt.trust)
           |  FROM global_trust gt,
           |       project_trust pt
@@ -135,7 +137,7 @@ object UserQueries extends DoobieOreProtocol {
           |    AND pt.project_id = $projectId""".stripMargin.query[Trust]
   }
 
-  def organizationTrust(userId: ObjectReference, organizationId: ObjectReference) = {
+  def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]) = {
     sql"""|SELECT greatest(gt.trust, pt.trust)
           |  FROM global_trust gt,
           |       organization_trust ot

@@ -1,39 +1,15 @@
-import java.net.InetAddress
-import java.sql.Timestamp
-import javax.sql.DataSource
-
-import scala.reflect.runtime.universe.TypeTag
-
-import play.api.db.Databases
-import play.api.db.evolutions.Evolutions
-import play.api.i18n.Lang
-
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
+import db.DbRef
 import models.admin._
 import models.api.ProjectApiKey
 import models.project._
 import models.statistic.{ProjectView, VersionDownload}
 import models.user._
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
-import ore.Color
-import ore.permission.role.{Role, RoleCategory, Trust}
-import ore.project.io.DownloadType
-import ore.project.{Category, FlagReason}
-import ore.rest.ProjectApiKeyType
-import ore.user.Prompt
-import ore.user.notification.NotificationType
 
-import cats.data.{NonEmptyList => NEL}
-import cats.effect.IO
-import com.github.tminglei.slickpg.InetString
-import doobie._
 import doobie.implicits._
 import doobie.postgres.implicits._
-import doobie.scalatest.IOChecker
-import enumeratum.values.{ValueEnum, ValueEnumEntry}
 import org.junit.runner._
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
 
 @RunWith(classOf[JUnitRunner])
 class SchemaSpec extends DbSpec {
@@ -50,7 +26,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Project watchers") {
-    check(sql"""SELECT project_id, user_id FROM project_watchers""".query[(ObjectReference, ObjectReference)])
+    check(sql"""SELECT project_id, user_id FROM project_watchers""".query[(DbRef[Project], DbRef[User])])
   }
 
   test("Project views") {
@@ -59,7 +35,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Project stars") {
-    check(sql"""SELECT user_id, project_id FROM project_stars""".query[(ObjectReference, ObjectReference)])
+    check(sql"""SELECT user_id, project_id FROM project_stars""".query[(DbRef[User], DbRef[Project])])
   }
 
   test("Project log") {
@@ -86,9 +62,9 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Version") {
-    check(sql"""|SELECT id, created_at, project_id, version_string, dependencies, assets, channel_id, file_size, hash,
-                |author_id, description, downloads, is_reviewed, reviewer_id, approved_at, visibility, file_name,
-                |signature_file_name, is_non_reviewed FROM project_versions
+    check(sql"""|SELECT id, created_at, project_id, version_string, dependencies, channel_id, file_size, hash,
+                |author_id, description, downloads, review_state, reviewer_id, approved_at, visibility, file_name,
+                |signature_file_name FROM project_versions
        """.stripMargin.query[Version])
   }
 
@@ -127,7 +103,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("OrganizationMember") {
-    check(sql"""SELECT user_id, organization_id FROM organization_members""".query[(ObjectReference, ObjectReference)])
+    check(sql"""SELECT user_id, organization_id FROM organization_members""".query[(DbRef[User], DbRef[Organization])])
   }
 
   test("OrganizationRole") {
@@ -142,8 +118,7 @@ class SchemaSpec extends DbSpec {
 
   test("ProjectMember") {
     check(
-      sql"""SELECT project_id, user_id FROM project_members"""
-        .query[(ObjectReference, ObjectReference)]
+      sql"""SELECT project_id, user_id FROM project_members""".query[(DbRef[Project], DbRef[User])]
     )
   }
 
@@ -175,7 +150,7 @@ class SchemaSpec extends DbSpec {
   test("LoggedAction") {
     check(
       sql"""|SELECT id, created_at, user_id, address, action, action_context, action_context_id, new_state, old_state
-            |FROM logged_actions""".stripMargin.query[LoggedActionModel]
+            |FROM logged_actions""".stripMargin.query[LoggedActionModel[Any]]
     )
   }
 
@@ -203,6 +178,6 @@ class SchemaSpec extends DbSpec {
   }
 
   test("UserGlobalRoles") {
-    check(sql"""SELECT user_id, role_id FROM user_global_roles""".query[(ObjectReference, ObjectReference)])
+    check(sql"""SELECT user_id, role_id FROM user_global_roles""".query[(DbRef[User], DbRef[DbRole])])
   }
 }

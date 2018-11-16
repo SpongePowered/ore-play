@@ -36,7 +36,7 @@ abstract class Bootstrap(
 
   this.projectTask.start()
 
-  if (this.config.security.get[Boolean]("requirePgp"))
+  if (this.config.security.requirePgp)
     Security.addProvider(new BouncyCastleProvider)
 
   Logger.info(s"Ore Initialized (${System.currentTimeMillis() - time}ms).")

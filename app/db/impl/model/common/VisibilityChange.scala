@@ -6,7 +6,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.table.common.VisibilityChangeColumns
-import db.{Model, ObjectReference}
+import db.{DbRef, Model}
 import models.project.Visibility
 import models.user.User
 
@@ -18,10 +18,10 @@ trait VisibilityChange extends Model { self =>
   type M <: VisibilityChange { type M = self.M }
   type T <: VisibilityChangeColumns[M]
 
-  def createdBy: Option[ObjectReference]
+  def createdBy: Option[DbRef[User]]
   def comment: String
   def resolvedAt: Option[Timestamp]
-  def resolvedBy: Option[ObjectReference]
+  def resolvedBy: Option[DbRef[User]]
   def visibility: Visibility
 
   def created(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =

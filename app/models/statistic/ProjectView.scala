@@ -5,13 +5,15 @@ import scala.concurrent.{ExecutionContext, Future}
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.ProjectViewsTable
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, ModelQuery, ObjId, ObjectTimestamp}
 import models.project.Project
+import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
 import cats.instances.future._
 import com.github.tminglei.slickpg.InetString
+import slick.lifted.TableQuery
 
 /**
   * Represents a unique view on a Project.
@@ -24,21 +26,22 @@ import com.github.tminglei.slickpg.InetString
   * @param userId     User ID
   */
 case class ProjectView(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectView] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    modelId: ObjectReference,
+    modelId: DbRef[Project],
     address: InetString,
     cookie: String,
-    userId: Option[ObjectReference] = None
+    userId: Option[DbRef[User]] = None
 ) extends StatEntry[Project] {
 
   override type M = ProjectView
   override type T = ProjectViewsTable
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectView = this.copy(id = id, createdAt = theTime)
 }
 
 object ProjectView {
+
+  implicit val query: ModelQuery[ProjectView] =
+    ModelQuery.from[ProjectView](TableQuery[ProjectViewsTable], _.copy(_, _))
 
   /**
     * Creates a new ProjectView to be (or not be) recorded from an incoming

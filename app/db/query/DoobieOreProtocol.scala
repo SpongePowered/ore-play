@@ -5,10 +5,11 @@ import java.sql.Timestamp
 import scala.reflect.runtime.universe.TypeTag
 
 import play.api.i18n.Lang
+import play.api.libs.json.{JsValue, Json}
 
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
-import models.project.{TagColor, Visibility}
 import models.querymodels.ViewTag
+import db.{ObjId, ObjectTimestamp}
+import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
 import ore.permission.role.{Role, RoleCategory, Trust}
@@ -25,6 +26,7 @@ import doobie.implicits._
 import doobie.postgres._
 import doobie.postgres.implicits._
 import enumeratum.values.{ValueEnum, ValueEnumEntry}
+import org.postgresql.util.PGobject
 
 trait DoobieOreProtocol {
 
@@ -66,27 +68,44 @@ trait DoobieOreProtocol {
     }
   }
 
-  implicit val objectIdMeta: Meta[ObjectId]               = Meta[ObjectReference].xmap(ObjectId.apply, _.value)
+  implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
+    Meta[Long].xmap(ObjId.apply[A], _.value)
   implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].xmap(ObjectTimestamp.apply, _.value)
+
+  implicit val jsonMeta: Meta[JsValue] = Meta
+    .other[PGobject]("jsonb")
+    .xmap[JsValue](
+      o => Option(o).map(a => Json.parse(a.getValue)).orNull,
+      a =>
+        Option(a).map { a =>
+          val o = new PGobject
+          o.setType("jsonb")
+          o.setValue(a.toString())
+          o
+        }.orNull
+    )
 
   def enumeratumMeta[V: TypeTag, E <: ValueEnumEntry[V]: TypeTag](
       enum: ValueEnum[V, E]
   )(implicit meta: Meta[V]): Meta[E] =
     meta.xmap[E](enum.withValue, _.value)
 
-  implicit val colorMeta: Meta[Color]                             = enumeratumMeta(Color)
-  implicit val tagColorMeta: Meta[TagColor]                       = enumeratumMeta(TagColor)
-  implicit val roleTypeMeta: Meta[Role]                           = enumeratumMeta(Role)
-  implicit val categoryMeta: Meta[Category]                       = enumeratumMeta(Category)
-  implicit val flagReasonMeta: Meta[FlagReason]                   = enumeratumMeta(FlagReason)
-  implicit val notificationTypeMeta: Meta[NotificationType]       = enumeratumMeta(NotificationType)
-  implicit val promptMeta: Meta[Prompt]                           = enumeratumMeta(Prompt)
-  implicit val downloadTypeMeta: Meta[DownloadType]               = enumeratumMeta(DownloadType)
-  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType]      = enumeratumMeta(ProjectApiKeyType)
-  implicit val visibilityMeta: Meta[Visibility]                   = enumeratumMeta(Visibility)
-  implicit val loggedActionMeta: Meta[LoggedAction]               = enumeratumMeta(LoggedAction)
-  implicit val loggedActionContextMeta: Meta[LoggedActionContext] = enumeratumMeta(LoggedActionContext)
-  implicit val trustMeta: Meta[Trust]                             = enumeratumMeta(Trust)
+  implicit val colorMeta: Meta[Color]                        = enumeratumMeta(Color)
+  implicit val tagColorMeta: Meta[TagColor]                  = enumeratumMeta(TagColor)
+  implicit val roleTypeMeta: Meta[Role]                      = enumeratumMeta(Role)
+  implicit val categoryMeta: Meta[Category]                  = enumeratumMeta(Category)
+  implicit val flagReasonMeta: Meta[FlagReason]              = enumeratumMeta(FlagReason)
+  implicit val notificationTypeMeta: Meta[NotificationType]  = enumeratumMeta(NotificationType)
+  implicit val promptMeta: Meta[Prompt]                      = enumeratumMeta(Prompt)
+  implicit val downloadTypeMeta: Meta[DownloadType]          = enumeratumMeta(DownloadType)
+  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType] = enumeratumMeta(ProjectApiKeyType)
+  implicit val visibilityMeta: Meta[Visibility]              = enumeratumMeta(Visibility)
+  implicit def loggedActionMeta[Ctx]: Meta[LoggedAction[Ctx]] =
+    enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]]
+  implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
+    enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]]
+  implicit val trustMeta: Meta[Trust]             = enumeratumMeta(Trust)
+  implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
 
   implicit val langMeta: Meta[Lang] = Meta[String].xmap(Lang.apply, _.toLocale.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =

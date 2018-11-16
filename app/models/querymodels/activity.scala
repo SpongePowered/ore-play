@@ -1,11 +1,12 @@
 package models.querymodels
 import java.sql.Timestamp
 
-import db.ObjectReference
+import db.DbRef
+import models.admin.Review
 
 case class ReviewActivity(
     endedAt: Option[Timestamp],
-    id: ObjectReference,
+    id: DbRef[Review],
     project: ProjectNamespace
 )
 

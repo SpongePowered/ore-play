@@ -9,11 +9,14 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
-import db.impl.schema.{ReviewSchema, ReviewTable}
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.schema.ReviewTable
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.{Page, Project, Version}
+import models.user.User
 import ore.OreConfig
 import _root_.util.StringUtils
+
+import slick.lifted.TableQuery
 
 /**
   * Represents an approval instance of [[Project]] [[Version]].
@@ -26,12 +29,12 @@ import _root_.util.StringUtils
   * @param message      Message of why it ended
   */
 case class Review(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Review] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    versionId: ObjectReference,
-    userId: ObjectReference,
+    versionId: DbRef[Version],
+    userId: DbRef[User],
     endedAt: Option[Timestamp],
-    message: String
+    message: JsValue
 ) extends Model {
 
   /** Self referential type */
@@ -40,23 +43,15 @@ case class Review(
   /** The model's table */
   override type T = ReviewTable
 
-  /** The model's schema */
-  override type S = ReviewSchema
-
   /**
     * Add new message
     */
   def addMessage(message: Message)(implicit ec: ExecutionContext, service: ModelService): Future[Review] = {
     val messages = decodeMessages :+ message
-    val js       = Json.toJson(messages)
     service.update(
       copy(
-        message = Json.stringify(
-          JsObject(
-            Seq(
-              "messages" -> js
-            )
-          )
+        message = JsObject(
+          Seq("messages" -> Json.toJson(messages))
         )
       )
     )
@@ -66,23 +61,8 @@ case class Review(
     * Get all messages
     * @return
     */
-  def decodeMessages: Seq[Message] = {
-    if (message.startsWith("{") && message.endsWith("}")) {
-      val messages: JsValue = Json.parse(message)
-      (messages \ "messages").as[Seq[Message]]
-    } else {
-      Seq()
-    }
-  }
-
-  /**
-    * Returns a copy of this model with an updated ID and timestamp.
-    *
-    * @param id      ID to set
-    * @param theTime Timestamp
-    * @return Copy of model
-    */
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
+  def decodeMessages: Seq[Message] =
+    (message \ "messages").asOpt[Seq[Message]].getOrElse(Nil)
 }
 
 /**
@@ -117,4 +97,7 @@ object Review {
   def ordering2: Ordering[Review] =
     // TODO make simple + check order
     Ordering.by(_.createdAt.value.getTime)
+
+  implicit val query: ModelQuery[Review] =
+    ModelQuery.from[Review](TableQuery[ReviewTable], _.copy(_, _))
 }

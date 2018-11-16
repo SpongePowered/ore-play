@@ -77,7 +77,7 @@ Page used for uploading and creating new projects.
                                     @defining(pending.get.pendingVersion.underlying.description) { description =>
                                         <input form="continue" class="form-control" type="text" id="description"
                                                name="description"
-                                               maxlength="@config.projects.get[Int]("max-desc-len")"
+                                               maxlength="@config.ore.projects.maxDescLen"
                                             @description.map { v =>
                                                value="@v"
                                             }.getOrElse {

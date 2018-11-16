@@ -1,11 +1,15 @@
 package models.project
 
 import db.access.ModelAccess
+import db.impl.OrePostgresDriver.api._
+import db.impl.model.common.Named
 import db.impl.schema.ChannelTable
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
+
+import slick.lifted.TableQuery
 
 /**
   * Represents a release channel for Project Versions. Each project gets it's
@@ -20,21 +24,20 @@ import ore.project.ProjectOwned
   * @param projectId    ID of project this channel belongs to
   */
 case class Channel(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Channel] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
+    projectId: DbRef[Project],
     name: String,
     color: Color,
     isNonReviewed: Boolean = false
 ) extends Model
-    with Named
-    with ProjectOwned {
+    with Named {
 
   override type T = ChannelTable
   override type M = Channel
 
-  def this(name: String, color: Color, projectId: ObjectReference) =
-    this(id = ObjectId.Uninitialized, name = name, color = color, projectId = projectId)
+  def this(name: String, color: Color, projectId: DbRef[Project]) =
+    this(id = ObjId.Uninitialized(), name = name, color = color, projectId = projectId)
 
   def isReviewed: Boolean = !isNonReviewed
 
@@ -43,15 +46,17 @@ case class Channel(
     *
     * @return All versions
     */
-  def versions(implicit service: ModelService): ModelAccess[Version] =
-    this.schema.getChildren[Version](classOf[Version], this)
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Channel = this.copy(id = id, createdAt = theTime)
+  def versions(implicit service: ModelService): ModelAccess[Version] = service.access(_.channelId === id.value)
 }
 
 object Channel {
 
   implicit val channelsAreOrdered: Ordering[Channel] = (x: Channel, y: Channel) => x.name.compare(y.name)
+
+  implicit val query: ModelQuery[Channel] =
+    ModelQuery.from[Channel](TableQuery[ChannelTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[Channel] = (a: Channel) => a.projectId
 
   /**
     * The colors a Channel is allowed to have.

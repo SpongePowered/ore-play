@@ -10,10 +10,9 @@ import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import form.project.ProjectSettingsForm
-import models.user.Notification
-import models.user.role.ProjectUserRole
+import models.user.{Notification, User}
 import ore.permission.role.Role
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}
@@ -38,17 +37,16 @@ import slick.lifted.TableQuery
   * @param licenseUrl  Project license URL
   */
 case class ProjectSettings(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectSettings] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference = -1,
+    projectId: DbRef[Project] = -1L,
     homepage: Option[String] = None,
     issues: Option[String] = None,
     source: Option[String] = None,
     licenseName: Option[String] = None,
     licenseUrl: Option[String] = None,
     forumSync: Boolean = true
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type M = ProjectSettings
   override type T = ProjectSettingsTable
@@ -74,7 +72,7 @@ case class ProjectSettings(
       u.name
     }
 
-    val updateProject = service.doAction(queryOwnerName.result).flatMap { ownerName =>
+    val updateProject = service.runDBIO(queryOwnerName.result).flatMap { ownerName =>
       service.updateIfDefined(
         project.copy(
           category = Category.values.find(_.title == formData.categoryName).get,
@@ -128,14 +126,14 @@ case class ProjectSettings(
               )
             }
 
-            service.doAction(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
+            service.runDBIO(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
           }
           .flatMap { _ =>
             // Update existing roles
             val usersTable = TableQuery[UserTable]
             // Select member userIds
             service
-              .doAction(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
+              .runDBIO(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
               .map { userIds =>
                 userIds.zip(
                   formData.roleUps.map { role =>
@@ -150,19 +148,22 @@ case class ProjectSettings(
                   case (userId, role) => updateMemberShip(userId).update(role)
                 }
               }
-              .flatMap(updates => service.doAction(DBIO.sequence(updates)).as(t))
+              .flatMap(updates => service.runDBIO(DBIO.sequence(updates)).as(t))
           }
       } else Future.successful(t)
     }
   }
 
-  private def memberShipUpdate(userId: Rep[ObjectReference]) =
+  private def memberShipUpdate(userId: Rep[DbRef[User]]) =
     for {
       m <- TableQuery[ProjectRoleTable] if m.userId === userId
     } yield m.roleType
 
   private lazy val updateMemberShip = Compiled(memberShipUpdate _)
+}
+object ProjectSettings {
+  implicit val query: ModelQuery[ProjectSettings] =
+    ModelQuery.from[ProjectSettings](TableQuery[ProjectSettingsTable], _.copy(_, _))
 
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectSettings =
-    this.copy(id = id, createdAt = theTime)
+  implicit val isProjectOwned: ProjectOwned[ProjectSettings] = (a: ProjectSettings) => a.projectId
 }

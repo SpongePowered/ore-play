@@ -4,12 +4,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
 import cats.data.{NonEmptyList => NEL}
 import cats.instances.future._
+import slick.lifted.TableQuery
 
 /**
   * Represents a [[User]] notification.
@@ -24,16 +25,15 @@ import cats.instances.future._
   * @param isRead             True if notification has been read
   */
 case class Notification(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Notification] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: ObjectReference,
-    originId: ObjectReference,
+    userId: DbRef[User],
+    originId: DbRef[User],
     notificationType: NotificationType,
     messageArgs: NEL[String],
     action: Option[String] = None,
     isRead: Boolean = false
-) extends Model
-    with UserOwned {
+) extends Model {
 
   override type M = Notification
   override type T = NotificationTable
@@ -45,7 +45,10 @@ case class Notification(
     */
   def origin(implicit ec: ExecutionContext, userBase: UserBase): Future[User] =
     userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None"))
+}
+object Notification {
+  implicit val query: ModelQuery[Notification] =
+    ModelQuery.from[Notification](TableQuery[NotificationTable], _.copy(_, _))
 
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
-
+  implicit val isUserOwned: UserOwned[Notification] = (a: Notification) => a.userId
 }

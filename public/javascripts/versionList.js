@@ -28,6 +28,7 @@ var PROJECT_OWNER = null;
 var PROJECT_SLUG = null;
 var TOTAL_VERSIONS = 0;
 var TEXT_NOT_APPROVED = "";
+var TEXT_PARTIALLY_APPROVED = "";
 var TEXT_NOT_APPROVED_CHANNEL = "";
 var SHOW_HIDDEN = false;
 
@@ -191,14 +192,29 @@ function loadVersions(increment, scrollTop) {
 
                 downloadLink.append("<i class='fa fa-2x fa-download'></i>");
 
-                if (!version.staffApproved) {
-                    var text = channel.nonReviewed ? TEXT_NOT_APPROVED_CHANNEL : TEXT_NOT_APPROVED;
+                if(version.reviewState !== "Reviewed") {
+                    var text;
+                    if (channel.nonReviewed) {
+                        text = TEXT_NOT_APPROVED_CHANNEL;
+                    }
+                    else if (version.reviewState === "PartiallyReviewed") {
+                        text = TEXT_PARTIALLY_APPROVED;
+                    }
+                    else {
+                        text = TEXT_NOT_APPROVED;
+                    }
 
                     var warning = $("<i>");
                     warning.attr("title", text);
                     warning.attr("data-toggle", "tooltip");
                     warning.attr("data-placement", "bottom");
-                    warning.addClass("fa fa-exclamation-circle");
+
+                    if(version.reviewState === "PartiallyReviewed") {
+                        warning.addClass("fa fa-check");
+                    }
+                    else {
+                        warning.addClass("fa fa-exclamation-circle");
+                    }
 
                     downloadLink.append(warning);
                 }

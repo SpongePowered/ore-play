@@ -5,10 +5,12 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
-import db.{Model, ModelFilter, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import models.project.Project
 import ore.project.ProjectOwned
 
 import cats.instances.future._
+import slick.lifted.TableQuery
 
 /**
   * Represents a log for a [[models.project.Project]].
@@ -18,11 +20,10 @@ import cats.instances.future._
   * @param projectId  ID of project log is for
   */
 case class ProjectLog(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectLog] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference
-) extends Model
-    with ProjectOwned {
+    projectId: DbRef[Project]
+) extends Model {
 
   override type T = ProjectLogTable
   override type M = ProjectLog
@@ -32,8 +33,7 @@ case class ProjectLog(
     *
     * @return Entries in log
     */
-  def entries(implicit service: ModelService): ModelAccess[ProjectLogEntry] =
-    this.schema.getChildren[ProjectLogEntry](classOf[ProjectLogEntry], this)
+  def entries(implicit service: ModelService): ModelAccess[ProjectLogEntry] = service.access(_.logId === id.value)
 
   /**
     * Adds a new entry with an "error" tag to the log.
@@ -42,8 +42,6 @@ case class ProjectLog(
     * @return         New entry
     */
   def err(message: String)(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLogEntry] = Defined {
-    val entries =
-      service.access[ProjectLogEntry](classOf[ProjectLogEntry], ModelFilter[ProjectLogEntry](_.logId === this.id.value))
     val tag = "error"
     entries
       .find(e => e.message === message && e.tag === tag)
@@ -60,6 +58,10 @@ case class ProjectLog(
           .add(ProjectLogEntry(logId = this.id.value, tag = tag, message = message, lastOccurrence = service.theTime))
       }
   }
+}
+object ProjectLog {
+  implicit val query: ModelQuery[ProjectLog] =
+    ModelQuery.from[ProjectLog](TableQuery[ProjectLogTable], _.copy(_, _))
 
-  def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectLog = this.copy(id = id, createdAt = theTime)
+  implicit val isProjectOwned: ProjectOwned[ProjectLog] = (a: ProjectLog) => a.projectId
 }

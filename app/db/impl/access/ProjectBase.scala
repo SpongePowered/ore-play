@@ -17,6 +17,7 @@ import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import util.FileUtils
 import util.StringUtils._
+import util.syntax._
 
 import cats.data.OptionT
 import cats.instances.future._
@@ -24,8 +25,6 @@ import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
 
 class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreConfig) extends ModelBase[Project] {
-
-  override val modelClass: Class[Project] = classOf[Project]
 
   val fileManager = new ProjectFiles(this.env)
 
@@ -38,7 +37,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
         p <- TableQuery[ProjectTableMain] if v.projectId === p.id
       } yield (p.ownerName, p.name, v)
 
-    service.doAction(allVersions.result).map { versions =>
+    service.runDBIO(allVersions.result).map { versions =>
       versions
         .filter {
           case (ownerNamer, name, version) =>
@@ -61,7 +60,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return Stale projects
     */
   def stale: Future[Seq[Project]] =
-    this.filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.projects.get[Int]("staleAge")))
+    this.filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
 
   /**
     * Returns the Project with the specified owner name and name.
@@ -179,7 +178,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
           else otherChannels.head
         service.update(version.copy(channelId = newChannel.id.value))
       }
-      _ <- channel.remove()
+      _ <- service.delete(channel)
     } yield ()
   }
 
@@ -188,10 +187,10 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       proj <- version.project
       size <- proj.versions.count(_.visibility === (Visibility.Public: Visibility))
       _ = checkArgument(size > 1, "only one public version", "")
-      rv       <- proj.recommendedVersion
+      rv       <- proj.recommendedVersion.value
       projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
       res <- {
-        if (version == rv)
+        if (rv.contains(version))
           service.update(
             proj.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id.value))
           )
@@ -210,7 +209,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       _ <- {
         val versionDir = this.fileManager.getVersionDir(proj.ownerName, proj.name, version.name)
         FileUtils.deleteDirectory(versionDir)
-        version.remove()
+        service.delete(version)
       }
       // Delete channel if now empty
       _ <- if (noVersions) this.deleteChannel(proj, channel) else Future.unit
@@ -227,7 +226,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     if (project.topicId.isDefined)
       forums.deleteProjectTopic(project)
     // TODO: Instead, move to the "projects_deleted" table just in case we couldn't delete the topic
-    project.remove()
+    service.delete(project)
   }
 
   def queryProjectPages(project: Project)(implicit ec: ExecutionContext): Future[Seq[(Page, Seq[Page])]] = {
@@ -237,7 +236,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       if pp.projectId === project.id.value && pp.parentId.isEmpty
     } yield (pp, p)
 
-    service.doAction(pagesQuery.result).map(_.groupBy(_._1)).map { grouped => // group by parent page
+    service.runDBIO(pagesQuery.result).map(_.groupBy(_._1)).map { grouped => // group by parent page
       // Sort by key then lists too
       grouped.toSeq.sortBy(_._1.name).map {
         case (pp, p) =>
@@ -250,5 +249,5 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
 object ProjectBase {
   def apply()(implicit projectBase: ProjectBase): ProjectBase = projectBase
 
-  implicit def fromService(implicit service: ModelService): ProjectBase = service.getModelBase(classOf[ProjectBase])
+  implicit def fromService(implicit service: ModelService): ProjectBase = service.projectBase
 }

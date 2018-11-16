@@ -13,7 +13,7 @@ scalacOptions ++= Seq(
   "-feature",
   "-unchecked",
   "-Xcheckinit",
-  "-Xfatal-warnings",
+  //"-Xfatal-warnings",
   "-Xlint:adapted-args",
   "-Xlint:by-name-right-associative",
   "-Xlint:constant",
@@ -45,9 +45,18 @@ scalacOptions ++= Seq(
   "-Ywarn-value-discard"
 )
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
+addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.0").cross(CrossVersion.full))
 
 routesGenerator := InjectedRoutesGenerator
-routesImport += "_root_.db.ObjectReference"
+routesImport ++= Seq(
+  "db.DbRef",
+  "models.admin._",
+  "models.project._",
+  "models.user._",
+  "models.user.role._",
+  "ore.user._"
+).map(s => s"_root_.$s")
+
 resolvers ++= Seq(
   "sponge".at("https://repo.spongepowered.org/maven"),
   "scalaz-bintray".at("https://dl.bintray.com/scalaz/releases"),
@@ -61,39 +70,43 @@ libraryDependencies ++= Seq(ehcache, ws, guice)
 lazy val flexmarkVersion     = "0.34.52"
 lazy val bouncycastleVersion = "1.60"
 lazy val playSlickVersion    = "3.0.3"
+lazy val slickPgVersion      = "0.16.3"
 
 libraryDependencies ++= Seq(
-  "org.spongepowered"    % "play-discourse"                 % "3.0.2",
-  "org.spongepowered"    % "plugin-meta"                    % "0.4.1",
-  "com.typesafe.play"    %% "play-slick"                    % playSlickVersion,
-  "com.typesafe.play"    %% "play-slick-evolutions"         % playSlickVersion,
-  "org.postgresql"       % "postgresql"                     % "42.2.5",
-  "com.github.tminglei"  %% "slick-pg"                      % "0.16.3",
-  "io.sentry"            % "sentry-logback"                 % "1.7.12",
-  "org.bouncycastle"     % "bcprov-jdk15on"                 % bouncycastleVersion,
-  "org.bouncycastle"     % "bcpkix-jdk15on"                 % bouncycastleVersion,
-  "org.bouncycastle"     % "bcpg-jdk15on"                   % bouncycastleVersion,
-  "javax.mail"           % "mail"                           % "1.4.7",
-  "com.beachape"         %% "enumeratum"                    % "1.5.13",
-  "com.beachape"         %% "enumeratum-slick"              % "1.5.15",
-  "com.chuusai"          %% "shapeless"                     % "2.3.3",
-  "org.typelevel"        %% "cats-core"                     % "1.4.0",
-  "org.tpolecat"         %% "doobie-core"                   % doobieVersion,
-  "org.tpolecat"         %% "doobie-postgres"               % doobieVersion,
-  "com.vladsch.flexmark" % "flexmark"                       % flexmarkVersion,
-  "com.vladsch.flexmark" % "flexmark-ext-autolink"          % flexmarkVersion,
-  "com.vladsch.flexmark" % "flexmark-ext-anchorlink"        % flexmarkVersion,
-  "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
-  "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist"      % flexmarkVersion,
-  "com.vladsch.flexmark" % "flexmark-ext-tables"            % flexmarkVersion,
-  "com.vladsch.flexmark" % "flexmark-ext-typographic"       % flexmarkVersion,
-  "com.vladsch.flexmark" % "flexmark-ext-wikilink"          % flexmarkVersion,
-  "org.webjars.npm"      % "jquery"                         % "2.2.4",
-  "org.webjars.npm"      % "font-awesome"                   % "4.7.0",
-  "org.webjars.npm"      % "filesize"                       % "3.6.1",
-  "org.webjars.npm"      % "moment"                         % "2.22.2",
-  "org.webjars.npm"      % "clipboard"                      % "2.0.1",
-  "org.webjars.npm"      % "chart.js"                       % "2.7.2"
+  "org.spongepowered"          % "play-discourse"                 % "3.0.2",
+  "org.spongepowered"          % "plugin-meta"                    % "0.4.1",
+  "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
+  "com.typesafe.play"          %% "play-slick-evolutions"         % playSlickVersion,
+  "org.postgresql"             % "postgresql"                     % "42.2.5",
+  "com.github.tminglei"        %% "slick-pg"                      % slickPgVersion,
+  "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
+  "com.fasterxml.jackson.core" % "jackson-databind"               % "2.8.11.2",
+  "io.sentry"                  % "sentry-logback"                 % "1.7.12",
+  "org.bouncycastle"           % "bcprov-jdk15on"                 % bouncycastleVersion,
+  "org.bouncycastle"           % "bcpkix-jdk15on"                 % bouncycastleVersion,
+  "org.bouncycastle"           % "bcpg-jdk15on"                   % bouncycastleVersion,
+  "javax.mail"                 % "mail"                           % "1.4.7",
+  "com.beachape"               %% "enumeratum"                    % "1.5.13",
+  "com.beachape"               %% "enumeratum-slick"              % "1.5.15",
+  "com.chuusai"                %% "shapeless"                     % "2.3.3",
+  "org.typelevel"              %% "cats-core"                     % "1.4.0",
+  "com.github.mpilquist"       %% "simulacrum"                    % "0.14.0",
+  "org.tpolecat"               %% "doobie-core"                   % doobieVersion,
+  "org.tpolecat"               %% "doobie-postgres"               % doobieVersion,
+  "com.vladsch.flexmark"       % "flexmark"                       % flexmarkVersion,
+  "com.vladsch.flexmark"       % "flexmark-ext-autolink"          % flexmarkVersion,
+  "com.vladsch.flexmark"       % "flexmark-ext-anchorlink"        % flexmarkVersion,
+  "com.vladsch.flexmark"       % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+  "com.vladsch.flexmark"       % "flexmark-ext-gfm-tasklist"      % flexmarkVersion,
+  "com.vladsch.flexmark"       % "flexmark-ext-tables"            % flexmarkVersion,
+  "com.vladsch.flexmark"       % "flexmark-ext-typographic"       % flexmarkVersion,
+  "com.vladsch.flexmark"       % "flexmark-ext-wikilink"          % flexmarkVersion,
+  "org.webjars.npm"            % "jquery"                         % "2.2.4",
+  "org.webjars.npm"            % "font-awesome"                   % "4.7.0",
+  "org.webjars.npm"            % "filesize"                       % "3.6.1",
+  "org.webjars.npm"            % "moment"                         % "2.22.2",
+  "org.webjars.npm"            % "clipboard"                      % "2.0.1",
+  "org.webjars.npm"            % "chart.js"                       % "2.7.2"
 )
 
 libraryDependencies ++= Seq(

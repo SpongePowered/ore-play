@@ -20,7 +20,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import form.OreForms
 import models.project._
 import models.user.{LoggedAction, UserActionLogger}
@@ -33,6 +33,7 @@ import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.JavaUtils.autoClose
 import util.StringUtils._
+import util.syntax._
 import views.html.projects.{versions => views}
 
 import cats.data.{EitherT, OptionT}
@@ -57,7 +58,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
   private val fileManager = projects.fileManager
   private val self        = controllers.project.routes.Versions
-  private val warnings    = this.service.access[DownloadWarning](classOf[DownloadWarning])
+  private val warnings    = this.service.access[DownloadWarning]()
 
   private def VersionEditAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditVersions))
@@ -148,25 +149,30 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param versionString  Version name
     * @return               View of version
     */
-  def approve(author: String, slug: String, versionString: String): Action[AnyContent] = {
+  def approve(author: String, slug: String, versionString: String, partial: Boolean): Action[AnyContent] = {
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(ReviewProjects))
       .asyncEitherT { implicit request =>
+        val newState = if (partial) ReviewState.PartiallyReviewed else ReviewState.Reviewed
         for {
           version <- getVersion(request.data.project, versionString)
           _ <- EitherT.right[Result](
             service.update(
               version
-                .copy(isReviewed = true, reviewerId = Some(request.user.id.value), approvedAt = Some(service.theTime))
+                .copy(
+                  reviewState = newState,
+                  reviewerId = Some(request.user.id.value),
+                  approvedAt = Some(service.theTime)
+                )
             )
           )
           _ <- EitherT.right(
             UserActionLogger.log(
               request.request,
-              LoggedAction.VersionApproved,
+              LoggedAction.VersionReviewStateChanged,
               version.id.value,
-              "approved",
-              "unapproved"
+              newState.toString,
+              version.reviewState.toString,
             )
           )
         } yield Redirect(self.show(author, slug, versionString))
@@ -547,7 +553,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def checkConfirmation(version: Version, token: Option[String])(
       implicit req: ProjectRequest[_]
   ): Future[Boolean] = {
-    if (version.isReviewed)
+    if (version.reviewState == ReviewState.Reviewed)
       return Future.successful(true)
 
     // check for confirmation
@@ -564,7 +570,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .exists { warn =>
         if (!warn.hasExpired) true
         else {
-          warn.remove()
+          service.delete(warn)
           false
         }
       }
@@ -604,12 +610,14 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       implicit val lang: Lang = request.lang
       val project             = request.project
       getVersion(project, target)
-        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(v => !v.isReviewed)
+        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(
+          _.reviewState != ReviewState.Reviewed
+        )
         .semiflatMap { version =>
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
           val token      = UUID.randomUUID().toString
-          val expiration = new Timestamp(new Date().getTime + this.config.security.get[Long]("unsafeDownload.maxAge"))
+          val expiration = new Timestamp(new Date().getTime + this.config.security.unsafeDownloadMaxAge)
           val address    = InetString(StatTracker.remoteAddress)
           // remove old warning attached to address that are expired (or duplicated for version)
           val removeWarnings = this.warnings.removeAll { warning =>
@@ -626,11 +634,15 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             )
           )
 
+          val isPartial = version.reviewState == ReviewState.PartiallyReviewed
+          val apiMsg =
+            if (isPartial) "version.download.confirmPartial.body.api" else "version.download.confirm.body.api"
+
           if (api.getOrElse(false)) {
             (removeWarnings *> addWarning).as {
               MultipleChoices(
                 Json.obj(
-                  "message" -> this.messagesApi("version.download.confirm.body.api").split('\n'),
+                  "message" -> this.messagesApi(apiMsg).split('\n'),
                   "post"    -> self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
                   "url"     -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
                   "token"   -> token
@@ -649,7 +661,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               Future.successful(
                 MultipleChoices(
                   this.messagesApi(
-                    "version.download.confirm.body.plain",
+                    apiMsg,
                     self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
                     CSRF.getToken.get.value
                   ) + "\n"
@@ -676,7 +688,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   ): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
       getVersion(request.data.project, target)
-        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(v => !v.isReviewed)
+        .ensure(Redirect(ShowProject(author, slug)).withError("error.plugin.stateChanged"))(
+          _.reviewState != ReviewState.Reviewed
+        )
         .flatMap { version =>
           confirmDownload0(version.id.value, downloadType, token)
             .toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload"))
@@ -697,7 +711,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   /**
     * Confirms the download and prepares the unsafe download.
     */
-  private def confirmDownload0(versionId: ObjectReference, downloadType: Option[Int], token: String)(
+  private def confirmDownload0(versionId: DbRef[Version], downloadType: Option[Int], token: String)(
       implicit requestHeader: Request[_]
   ): OptionT[Future, UnsafeDownload] = {
     val addr = InetString(StatTracker.remoteAddress)
@@ -716,7 +730,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .semiflatMap { warn =>
         val isInvalid = warn.hasExpired
         // warning has expired
-        val remove = if (isInvalid) warn.remove().void else Future.unit
+        val remove = if (isInvalid) service.delete(warn).void else Future.unit
 
         remove.as((warn, isInvalid))
       }
@@ -724,7 +738,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .map(_._1)
       .semiflatMap { warn =>
         // warning confirmed and redirect to download
-        val downloads = this.service.access[UnsafeDownload](classOf[UnsafeDownload])
+        val downloads = this.service.access[UnsafeDownload]()
         for {
           user <- users.current.value
           unsafeDownload <- downloads.add(
@@ -744,9 +758,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommended(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
-      request.project.recommendedVersion.flatMap { rv =>
-        sendVersion(request.project, rv, token)
-      }
+      request.project.recommendedVersion
+        .toRight(NotFound)
+        .semiflatMap(sendVersion(request.project, _, token))
+        .merge
     }
   }
 
@@ -823,9 +838,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommendedJar(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).async { implicit request =>
-      request.project.recommendedVersion.flatMap { rv =>
-        sendJar(request.project, rv, token)
-      }
+      request.project.recommendedVersion
+        .toRight(NotFound)
+        .semiflatMap(sendJar(request.project, _, token))
+        .merge
     }
   }
 
@@ -861,9 +877,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def downloadRecommendedJarById(pluginId: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(pluginId).async { implicit request =>
       val data = request.data
-      data.project.recommendedVersion.flatMap { rv =>
-        sendJar(data.project, rv, token, api = true)
-      }
+      data.project.recommendedVersion
+        .toRight(NotFound)
+        .semiflatMap(sendJar(data.project, _, token, api = true))
+        .merge
     }
   }
 
@@ -903,7 +920,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommendedSignature(author: String, slug: String): Action[AnyContent] =
     ProjectAction(author, slug).async { implicit request =>
-      request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
+      request.project.recommendedVersion.toRight(NotFound).map(sendSignatureFile(_, request.project)).merge
     }
 
   /**
@@ -914,7 +931,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def downloadRecommendedSignatureById(pluginId: String): Action[AnyContent] = ProjectAction(pluginId).async {
     implicit request =>
-      request.project.recommendedVersion.map(sendSignatureFile(_, request.project))
+      request.project.recommendedVersion.toRight(NotFound).map(sendSignatureFile(_, request.project)).merge
   }
 
   private def sendSignatureFile(version: Version, project: Project)(implicit request: OreRequest[_]): Result = {

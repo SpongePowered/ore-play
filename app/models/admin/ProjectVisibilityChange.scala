@@ -6,18 +6,21 @@ import play.twirl.api.Html
 
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.ProjectVisibilityChangeTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
-import models.project.{Page, Visibility}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import models.project.{Page, Project, Visibility}
+import models.user.User
 import ore.OreConfig
 
+import slick.lifted.TableQuery
+
 case class ProjectVisibilityChange(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectVisibilityChange] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    createdBy: Option[ObjectReference] = None,
-    projectId: ObjectReference,
+    createdBy: Option[DbRef[User]] = None,
+    projectId: DbRef[Project],
     comment: String,
     resolvedAt: Option[Timestamp] = None,
-    resolvedBy: Option[ObjectReference] = None,
+    resolvedBy: Option[DbRef[User]] = None,
     visibility: Visibility = Visibility.New
 ) extends Model
     with VisibilityChange {
@@ -30,13 +33,8 @@ case class ProjectVisibilityChange(
 
   /** Render the comment as Html */
   def renderComment(implicit config: OreConfig): Html = Page.render(comment)
-
-  /**
-    * Returns a copy of this model with an updated ID and timestamp.
-    *
-    * @param id      ID to set
-    * @param theTime Timestamp
-    * @return Copy of model
-    */
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = createdAt)
+}
+object ProjectVisibilityChange {
+  implicit val query: ModelQuery[ProjectVisibilityChange] =
+    ModelQuery.from[ProjectVisibilityChange](TableQuery[ProjectVisibilityChangeTable], _.copy(_, _))
 }

@@ -11,7 +11,7 @@ import models.user.role.UserRoleModel
 /**
   * Represents a [[User]] member of some entity.
   */
-trait Member[RoleType <: UserRoleModel] extends UserOwned {
+trait Member[RoleType <: UserRoleModel] {
 
   /**
     * Returns the [[UserRoleModel]]s the user has in this entity.

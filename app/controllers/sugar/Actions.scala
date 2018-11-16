@@ -28,7 +28,6 @@ import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
 import org.slf4j.MDC
-import slick.jdbc.JdbcBackend
 
 /**
   * A set of actions used by Ore.
@@ -210,8 +209,7 @@ trait Actions extends Calls with ActionHelpers {
     }
 
   def oreAction(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionTransformer[Request, OreRequest] = new ActionTransformer[Request, OreRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -225,8 +223,7 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   def authAction(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[Request, AuthRequest] = new ActionRefiner[Request, AuthRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -236,8 +233,7 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   private def maybeAuthRequest[A](request: Request[A], futUser: OptionT[Future, User])(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): Future[Either[Result, AuthRequest[A]]] =
     futUser
       .semiflatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
@@ -246,8 +242,7 @@ trait Actions extends Calls with ActionHelpers {
       .value
 
   def projectAction(author: String, slug: String)(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[OreRequest, ProjectRequest] = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -256,8 +251,7 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   def projectAction(pluginId: String)(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[OreRequest, ProjectRequest] = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -266,9 +260,7 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   private def maybeProjectRequest[A](r: OreRequest[A], project: OptionT[Future, Project])(
-      implicit
-      db: JdbcBackend#DatabaseDef,
-      ec: ExecutionContext
+      implicit ec: ExecutionContext
   ): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request: OreRequest[A] = r
     project
@@ -289,8 +281,7 @@ trait Actions extends Calls with ActionHelpers {
   private def toProjectRequest[T](project: Project)(f: (ProjectData, ScopedProjectData) => T)(
       implicit
       request: OreRequest[_],
-      ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      ec: ExecutionContext
   ) =
     (ProjectData.of(project), ScopedProjectData.of(request.headerData.currentUser, project)).mapN(f)
 
@@ -324,8 +315,7 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   def authedProjectActionImpl(project: OptionT[Future, Project])(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
 
     def executionContext: ExecutionContext = ec
@@ -346,18 +336,15 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   def authedProjectAction(author: String, slug: String)(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withSlug(author, slug))
 
   def authedProjectActionById(pluginId: String)(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withPluginId(pluginId))
 
   def organizationAction(organization: String)(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[OreRequest, OrganizationRequest] = new ActionRefiner[OreRequest, OrganizationRequest] {
 
     def executionContext: ExecutionContext = ec
@@ -376,8 +363,7 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   def authedOrganizationAction(organization: String)(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedOrganizationRequest] = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -398,8 +384,7 @@ trait Actions extends Calls with ActionHelpers {
 
   private def toOrgaRequest[T](orga: Organization)(f: (OrganizationData, ScopedOrganizationData) => T)(
       implicit request: OreRequest[_],
-      ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      ec: ExecutionContext
   ) = {
     MDC.put("currentOrgaId", orga.id.toString)
     MDC.put("currentOrgaName", orga.name)
@@ -413,8 +398,7 @@ trait Actions extends Calls with ActionHelpers {
     organizations.withName(organization)
 
   def getUserData(request: OreRequest[_], userName: String)(
-      implicit ec: ExecutionContext,
-      db: JdbcBackend#DatabaseDef
+      implicit ec: ExecutionContext
   ): OptionT[Future, UserData] =
     users.withName(userName).semiflatMap(UserData.of(request, _))
 

@@ -1,50 +1,24 @@
 package db.impl
 
-import java.sql.Timestamp
+import scala.reflect.ClassTag
 
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
-
-import shapeless.Nat._
-import shapeless._
-import shapeless.ops.function._
-import shapeless.ops.hlist._
+import slick.ast.MappedScalaType
+import slick.lifted.{MappedProjection, ShapedValue}
 
 // Alias Slick's Tag type because we have our own Tag type
 package object schema {
 
-  def convertApply[F, Rest <: HList, R](f: F)(
-      implicit toHList: FnToProduct.Aux[F, ObjectId :: ObjectTimestamp :: Rest => R],
-      fromHList: FnFromProduct[Option[ObjectReference] :: Option[Timestamp] :: Rest => R]
-  ): fromHList.Out = {
-    val objHListFun: ObjectId :: ObjectTimestamp :: Rest => R = toHList(f)
-    val optHListFun: Option[ObjectReference] :: Option[Timestamp] :: Rest => R = {
-      case id :: time :: rest =>
-        objHListFun(ObjectId.unsafeFromOption(id) :: ObjectTimestamp.unsafeFromOption(time) :: rest)
-    }
-    val normalFun: fromHList.Out = fromHList.apply(optHListFun)
+  def mkTuple[A] = new MkTuplePartiallyApplied[A]
 
-    normalFun
-  }
-
-  def convertUnapply[P <: Product, A, Repr <: HList, Rest <: HList](f: A => Option[P])(
-      implicit
-      fromTuple: Generic.Aux[P, Repr],
-      at0: At.Aux[Repr, _0, ObjectId],
-      at1: At.Aux[Repr, _1, ObjectTimestamp],
-      drop2: Drop.Aux[Repr, _2, Rest],
-      toTuple: Tupler[Option[ObjectReference] :: Option[Timestamp] :: Rest]
-  ): A => Option[toTuple.Out] = a => {
-    val optProd: Option[P] = f(a)
-    val mappedOptProd: Option[toTuple.Out] = optProd.map { prod =>
-      val repr: Repr            = fromTuple.to(prod)
-      val id: ObjectId          = at0(repr)
-      val time: ObjectTimestamp = at1(repr)
-      val rest: Rest            = drop2(repr)
-      val newGen
-        : Option[ObjectReference] :: Option[Timestamp] :: Rest = id.unsafeToOption :: time.unsafeToOption :: rest
-      toTuple(newGen)
-    }
-
-    mappedOptProd
+  def mkProj[T, U, R: ClassTag](
+      shapedValue: ShapedValue[T, U]
+  )(fg: (U => R, R => Option[U])): MappedProjection[R, U] = {
+    val f = fg._1
+    val g = fg._2
+    new MappedProjection[R, U](
+      shapedValue.shape.toNode(shapedValue.value),
+      MappedScalaType.Mapper(g.andThen(_.get).asInstanceOf[Any => Any], f.asInstanceOf[Any => Any], None),
+      implicitly[ClassTag[R]]
+    )
   }
 }

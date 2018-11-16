@@ -233,28 +233,32 @@ version.create.info             =   Release a new version for <strong>{0}</stron
 version.create.unstable         =   Mark this version as unstable
 version.recommended             =   Recommended version
 version.approved                =   Approved
+version.approvedPartial         =   Partially Approved
 version.approved.info           =   <strong>{0}</strong> approved this version on <strong>{1}</strong>
 version.releaseBulletin         =   Release Bulletin
 version.releaseBulletin.info    =   What''s new in this release?
 version.delete.info             =   Are you sure you want to delete this version? This action cannot be undone. Please explain why you want to delete it.
 version.delete.title            =   Delete version
 
-version.download.confirm.title                =   Download Warning for
-version.download.confirm.header               =   {1} {2} by {0}
-version.download.confirm.disclaimer           =   We disclaim all responsibility for any harm to your server or system should you choose not to heed this warning.
-version.download.confirm.reviewedChannel      =   This version has not been reviewed by our moderation staff yet and may not be safe to use.
-version.download.confirm.nonReviewedChannel   =   This version will not be reviewed and may not be safe to use.
-version.download.confirm.download             =   Download it at my own risk
-
-version.download.confirm.body.plain = \
-  This version has not been reviewed by our moderation staff and may not be safe for download.\n\
-  Disclaimer: We disclaim all responsibility for any harm to your server or system should you choose not to heed this \
-  warning.\n\
-  Please use the following curl to acknowledge this disclaimer and continue to the download:\n\
-  curl -O -J -L -d -X "{0}&csrfToken={1}"
+version.download.confirm.title                  =   Download Warning for
+version.download.confirm.header                 =   {1} {2} by {0}
+version.download.confirm.disclaimer             =   We disclaim all responsibility for any harm to your server or system should you choose not to heed this warning.
+version.download.confirm.reviewedChannel        =   This version has not been reviewed by our moderation staff yet and may not be safe to use.
+version.download.confirmPartial.reviewedChannel =   \
+  This version has only been partially reviewed by our moderation staff and may not be safe for use. \
+  While the core plugin has been reviewed, other resources like shaded libraries have not.
+version.download.confirm.nonReviewedChannel     =   This version will not be reviewed and may not be safe to use.
+version.download.confirm.download               =   Download it at my own risk
 
 version.download.confirm.body.api = \
   This version has not been reviewed by our moderation staff and may not be safe for download.\n\
+  Disclaimer: We disclaim all responsibility for any harm to your server or system should you choose not to heed this \
+  warning.\n\
+  Please POST to the attached link to acknowledge this disclaimer and continue to the download.
+
+version.download.confirmPartial.body.api = \
+  This version has only been partially reviewed by our moderation staff and may not be safe for download.\
+  While the core plugin has been reviewed, other resources like shaded libraries have not. \n\
   Disclaimer: We disclaim all responsibility for any harm to your server or system should you choose not to heed this \
   warning.\n\
   Please POST to the attached link to acknowledge this disclaimer and continue to the download.
@@ -304,6 +308,7 @@ user.flags.messageOwner     =   Message project owner
 user.queue                  =   Version approvals
 user.queue.none             =   There are no versions to review.
 user.queue.approve          =   Approve
+user.queue.approvePartial   =   Approve Partial
 user.queue.open             =   Approval queue
 user.queue.progress         =   In Review
 user.pgp.edit               =   PGP Public Key

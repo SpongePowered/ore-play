@@ -17,11 +17,11 @@ import ore.OreConfig
 import ore.permission.role.RoleCategory
 import ore.project.ProjectMember
 import ore.project.factory.PendingProject
+import util.syntax._
 
 import cats.instances.future._
 import cats.instances.option._
 import cats.syntax.all._
-import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 /**
@@ -89,8 +89,7 @@ object ProjectData {
   }
 
   def of[A](project: Project)(
-      implicit db: JdbcBackend#DatabaseDef,
-      ec: ExecutionContext,
+      implicit ec: ExecutionContext,
       service: ModelService
   ): Future[ProjectData] = {
     val flagsFut     = project.flags.all
@@ -115,7 +114,7 @@ object ProjectData {
       flagResolvedFut,
       lastVisibilityChangeFut,
       lastVisibilityChangeUserFut,
-      project.recommendedVersion
+      project.recommendedVersion.value
     ).mapN {
       case (
           settings,
@@ -146,19 +145,19 @@ object ProjectData {
           noteCount,
           lastVisibilityChange,
           lastVisibilityChangeUser,
-          Some(recommendedVersion)
+          recommendedVersion
         )
     }
   }
 
   def members(
       project: Project
-  )(implicit db: JdbcBackend#DatabaseDef): Future[Seq[(ProjectUserRole, User)]] = {
+  )(implicit service: ModelService): Future[Seq[(ProjectUserRole, User)]] = {
     val query = for {
       r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
       u <- TableQuery[UserTable] if r.userId === u.id
     } yield (r, u)
 
-    db.run(query.result)
+    service.runDBIO(query.result)
   }
 }

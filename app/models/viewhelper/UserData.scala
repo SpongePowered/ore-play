@@ -18,7 +18,6 @@ import ore.permission.scope.GlobalScope
 import cats.instances.future._
 import cats.instances.option._
 import cats.syntax.all._
-import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 // TODO separate Scoped UserData
@@ -61,15 +60,14 @@ object UserData {
     } yield (org, orgUser, role, owner)
 
   def of[A](request: OreRequest[A], user: User)(
-      implicit db: JdbcBackend#DatabaseDef,
-      ec: ExecutionContext,
+      implicit ec: ExecutionContext,
       service: ModelService
   ): Future[UserData] =
     for {
       isOrga                              <- user.toMaybeOrganization.isDefined
       projectCount                        <- user.projects.size
       (globalRoles, userPerms, orgaPerms) <- perms(request.currentUser)
-      orgas                               <- db.run(queryRoles(user).result)
+      orgas                               <- service.runDBIO(queryRoles(user).result)
     } yield UserData(request.headerData, user, isOrga, projectCount, orgas, globalRoles, userPerms, orgaPerms)
 
   def perms(currentUser: Option[User])(
@@ -82,12 +80,12 @@ object UserData {
       (
         user.trustIn(GlobalScope),
         user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value,
-        user.globalRoles.all,
+        user.globalRoles.allFromParent(user),
       ).mapN { (userTrust, orgTrust, globalRoles) =>
-        val userPerms = user.can.asMap(userTrust, globalRoles)(ViewActivity, ReviewFlags, ReviewProjects)
-        val orgaPerms = user.can.asMap(orgTrust, Some(globalRoles))(EditSettings)
+        val userPerms = user.can.asMap(userTrust, globalRoles.toSet)(ViewActivity, ReviewFlags, ReviewProjects)
+        val orgaPerms = user.can.asMap(orgTrust, Some(globalRoles.toSet))(EditSettings)
 
-        (globalRoles.map(_.toRole), userPerms, orgaPerms)
+        (globalRoles.map(_.toRole).toSet, userPerms, orgaPerms)
       }
     }
   }

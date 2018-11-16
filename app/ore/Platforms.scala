@@ -3,7 +3,10 @@ package ore
 import scala.collection.immutable
 import scala.concurrent.Future
 
-import db.{ModelService, ObjectId, ObjectReference}
+import db.DbRef
+import db.ObjId
+import db.ModelService
+import models.project.Version
 import models.project.{TagColor, VersionTag}
 import ore.project.Dependency
 
@@ -24,9 +27,8 @@ sealed abstract class Platform(
     val url: String
 ) extends IntEnumEntry {
 
-  def createGhostTag(versionId: ObjectReference, version: String): VersionTag =
-    VersionTag(ObjectId.Uninitialized, versionId, name, version, tagColor)
-
+  def createGhostTag(versionId: DbRef[Version], version: String): VersionTag =
+    VersionTag(ObjId.Uninitialized(), versionId, name, version, tagColor)
 }
 object Platform extends IntEnum[Platform] {
 
@@ -90,7 +92,7 @@ object Platform extends IntEnum[Platform] {
       .toSeq
   }
 
-  def ghostTags(versionId: ObjectReference, dependencies: Seq[Dependency]): Seq[VersionTag] = {
+  def ghostTags(versionId: DbRef[Version], dependencies: Seq[Dependency]): Seq[VersionTag] = {
     Platform.values
       .filter(p => dependencies.map(_.pluginId).contains(p.dependencyId))
       .groupBy(_.platformCategory)
@@ -99,9 +101,9 @@ object Platform extends IntEnum[Platform] {
       .toSeq
   }
 
-  def createPlatformTags(versionId: ObjectReference, dependencies: Seq[Dependency])(
+  def createPlatformTags(versionId: DbRef[Version], dependencies: Seq[Dependency])(
       implicit service: ModelService
-  ): Future[Seq[VersionTag]] = service.bulkInsert(ghostTags(versionId, dependencies), classOf[VersionTag])
+  ): Future[Seq[VersionTag]] = service.bulkInsert(ghostTags(versionId, dependencies))
 
 }
 

@@ -56,7 +56,7 @@ class Channels @Inject()(forms: OreForms)(
         channel <- TableQuery[ChannelTable] if channel.projectId === request.project.id.value
       } yield (channel, TableQuery[VersionTable].filter(_.channelId === channel.id).length)
 
-      db.run(query.result).map(listWithVersionCount => Ok(views.list(request.data, listWithVersionCount)))
+      service.runDBIO(query.result).map(listWithVersionCount => Ok(views.list(request.data, listWithVersionCount)))
   }
 
   /**

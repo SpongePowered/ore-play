@@ -4,11 +4,13 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.schema.DbRoleTable
-import db.{Model, ObjectId, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
 import ore.permission.role.{Role, RoleCategory, Trust}
 
+import slick.lifted.TableQuery
+
 case class DbRole(
-    id: ObjectId,
+    id: ObjId[DbRole],
     name: String,
     category: RoleCategory,
     trust: Trust,
@@ -24,6 +26,8 @@ case class DbRole(
   override type T = DbRoleTable
 
   def toRole: Role = Role.withValue(name)
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = copy(id = id)
+}
+object DbRole {
+  implicit val query: ModelQuery[DbRole] =
+    ModelQuery.from[DbRole](TableQuery[DbRoleTable], (obj, id, _) => obj.copy(id = id))
 }

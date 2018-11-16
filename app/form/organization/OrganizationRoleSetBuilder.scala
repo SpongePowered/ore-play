@@ -1,6 +1,7 @@
 package form.organization
 
-import db.ObjectReference
+import db.DbRef
+import models.user.User
 import models.user.role.OrganizationUserRole
 
 /**
@@ -11,6 +12,6 @@ import models.user.role.OrganizationUserRole
   */
 case class OrganizationRoleSetBuilder(
     name: String,
-    users: List[ObjectReference],
+    users: List[DbRef[User]],
     roles: List[String]
 ) extends TOrganizationRoleSetBuilder

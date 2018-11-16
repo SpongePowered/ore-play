@@ -1,9 +1,10 @@
 package db.impl.table
 
-import db.ObjectReference
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
+import db.{DbRef, Model}
 import models.statistic.StatEntry
+import models.user.User
 
 import com.github.tminglei.slickpg.InetString
 
@@ -14,11 +15,11 @@ import com.github.tminglei.slickpg.InetString
   * @param name         Table name
   * @param modelIdName  Column name of model ID field
   */
-abstract class StatTable[M <: StatEntry[_]](tag: Tag, name: String, modelIdName: String)
+abstract class StatTable[S <: Model, M <: StatEntry[S]](tag: Tag, name: String, modelIdName: String)
     extends ModelTable[M](tag, name) {
 
   /** The model ID of the statistic subject */
-  def modelId = column[ObjectReference](modelIdName)
+  def modelId = column[DbRef[S]](modelIdName)
 
   /** Client address */
   def address = column[InetString]("address")
@@ -27,6 +28,6 @@ abstract class StatTable[M <: StatEntry[_]](tag: Tag, name: String, modelIdName:
   def cookie = column[String]("cookie")
 
   /** User ID if applicable */
-  def userId = column[ObjectReference]("user_id")
+  def userId = column[DbRef[User]]("user_id")
 
 }

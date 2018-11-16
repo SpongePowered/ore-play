@@ -2,7 +2,7 @@ package ore.permission.role
 
 import scala.collection.immutable
 
-import db.ObjectId
+import db.ObjId
 import models.user.role.DbRole
 import ore.Color
 import ore.Color._
@@ -21,7 +21,7 @@ sealed abstract case class Role(
 ) extends StringEnumEntry {
 
   def toDbRole: DbRole = DbRole(
-    id = ObjectId(roleId.toLong),
+    id = ObjId(roleId.toLong),
     name = value,
     category = category,
     trust = trust,

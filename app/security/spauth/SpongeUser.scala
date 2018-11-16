@@ -5,7 +5,8 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 
-import db.ObjectReference
+import db.DbRef
+import models.user.User
 import ore.permission.role.Role
 
 /**
@@ -19,7 +20,7 @@ import ore.permission.role.Role
   * @param addGroups Groups
   */
 case class SpongeUser(
-    id: ObjectReference,
+    id: DbRef[User],
     username: String,
     email: String,
     avatarUrl: Option[String],
@@ -35,7 +36,7 @@ case class SpongeUser(
 object SpongeUser {
   implicit val spongeUserReads: Reads[SpongeUser] =
     (JsPath \ "id")
-      .read[Long]
+      .read[DbRef[User]]
       .and((JsPath \ "username").read[String])
       .and((JsPath \ "email").read[String])
       .and((JsPath \ "avatar_url").readNullable[String])

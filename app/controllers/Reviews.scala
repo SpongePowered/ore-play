@@ -7,16 +7,17 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
+import play.api.libs.json.JsObject
 import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{NotificationTable, OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, ModelService, ObjId, ObjectTimestamp}
 import form.OreForms
 import models.admin.{Message, Review}
-import models.project.{Project, Version}
+import models.project.{Project, ReviewState, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.permission.ReviewProjects
 import ore.permission.role.{Role, Trust}
@@ -63,12 +64,12 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
         val review = new Review(
-          ObjectId.Uninitialized,
+          ObjId.Uninitialized(),
           ObjectTimestamp(Timestamp.from(Instant.now())),
           version.id.value,
           request.user.id.value,
           None,
-          ""
+          JsObject.empty
         )
         this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
       }.merge
@@ -83,7 +84,7 @@ final class Reviews @Inject()(forms: OreForms)(
         _ <- EitherT.right[Result](
           service.update(
             version.copy(
-              isReviewed = false,
+              reviewState = ReviewState.Unreviewed,
               approvedAt = None,
               reviewerId = None
             )
@@ -132,10 +133,10 @@ final class Reviews @Inject()(forms: OreForms)(
   }
 
   private def queryNotificationUsers(
-      projectId: Rep[ObjectReference],
-      userId: Rep[ObjectReference],
+      projectId: Rep[DbRef[Project]],
+      userId: Rep[DbRef[User]],
       noRole: Rep[Option[Role]]
-  ): Query[(Rep[ObjectReference], Rep[Option[Role]]), (ObjectReference, Option[Role]), Seq] = {
+  ): Query[(Rep[DbRef[User]], Rep[Option[Role]]), (DbRef[User], Option[Role]), Seq] = {
     // Query Orga Members
     val q1 = for {
       org     <- TableQuery[OrganizationTable] if org.id === projectId
@@ -156,7 +157,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
     val futUsers =
-      service.doAction(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
+      service.runDBIO(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
         list
           .filter {
             case (_, Some(level)) => level.trust.level >= Trust.Lifted.level
@@ -178,7 +179,7 @@ final class Reviews @Inject()(forms: OreForms)(
         }
       }
       .map(TableQuery[NotificationTable] ++= _)
-      .flatMap(service.doAction) // Batch insert all notifications
+      .flatMap(service.runDBIO) // Batch insert all notifications
   }
 
   def takeoverReview(author: String, slug: String, versionString: String): Action[String] = {
@@ -203,12 +204,12 @@ final class Reviews @Inject()(forms: OreForms)(
               closeOldReview,
               this.service.insert(
                 Review(
-                  ObjectId.Uninitialized,
+                  ObjId.Uninitialized(),
                   ObjectTimestamp(Timestamp.from(Instant.now())),
                   version.id.value,
                   request.user.id.value,
                   None,
-                  ""
+                  JsObject.empty
                 )
               )
             ).tupled
@@ -218,7 +219,7 @@ final class Reviews @Inject()(forms: OreForms)(
       }
   }
 
-  def editReview(author: String, slug: String, versionString: String, reviewId: ObjectReference): Action[String] = {
+  def editReview(author: String, slug: String, versionString: String, reviewId: DbRef[Review]): Action[String] = {
     Authenticated
       .andThen(PermissionAction(ReviewProjects))
       .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
@@ -238,7 +239,7 @@ final class Reviews @Inject()(forms: OreForms)(
           recentReview <- version.mostRecentUnfinishedReview.toRight(Ok("Review"))
           currentUser  <- users.current.toRight(Ok("Review"))
           _ <- {
-            if (recentReview.userId == currentUser.userId) {
+            if (recentReview.userId == currentUser.id.value) {
               EitherT.right[Result](recentReview.addMessage(Message(request.body.trim)))
             } else EitherT.rightT[Future, Result](0)
           }
@@ -246,20 +247,30 @@ final class Reviews @Inject()(forms: OreForms)(
     }
   }
 
-  def shouldReviewToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
+  def backlogToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
+        oldState <- EitherT.cond[Future](
+          Seq(ReviewState.Backlog, ReviewState.Unreviewed).contains(version.reviewState),
+          version.reviewState,
+          BadRequest("Invalid state for toggle backlog")
+        )
+        newState = oldState match {
+          case ReviewState.Unreviewed => ReviewState.Backlog
+          case ReviewState.Backlog    => ReviewState.Unreviewed
+          case _                      => oldState
+        }
         _ <- EitherT.liftF(
           UserActionLogger.log(
             request,
-            LoggedAction.VersionNonReviewChanged,
+            LoggedAction.VersionReviewStateChanged,
             version.id.value,
-            s"In review queue: ${version.isNonReviewed}",
-            s"In review queue: ${!version.isNonReviewed}"
+            newState.toString,
+            oldState.toString,
           )
         )
-        _ <- EitherT.liftF(service.update(version.copy(isNonReviewed = !version.isNonReviewed)))
+        _ <- EitherT.liftF(service.update(version.copy(reviewState = newState)))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }

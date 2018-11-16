@@ -3,8 +3,10 @@ package models.user
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
+import db.impl.OrePostgresDriver.api._
 import db.impl.schema.OrganizationTable
-import db.{Model, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.model.common.Named
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
 import ore.permission.role.Role
@@ -12,6 +14,7 @@ import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
+import util.syntax._
 
 import cats.data.OptionT
 
@@ -26,12 +29,11 @@ import cats.data.OptionT
   * @param ownerId        The ID of the [[User]] that owns this organization
   */
 case class Organization(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Organization] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     username: String,
-    ownerId: ObjectReference
+    ownerId: DbRef[User]
 ) extends Model
-    with UserOwned
     with Named
     with Visitable
     with Joinable[OrganizationMember, Organization] {
@@ -80,13 +82,15 @@ case class Organization(
   def toUser(implicit ec: ExecutionContext, users: UserBase, auth: SpongeAuthApi): OptionT[Future, User] =
     users.withName(this.username)
 
-  override val name: String                                            = this.username
-  override def url: String                                             = this.username
-  override val userId: ObjectReference                                 = this.ownerId
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(createdAt = theTime)
-
+  override val name: String = this.username
+  override def url: String  = this.username
 }
 
 object Organization {
   implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
+
+  implicit val query: ModelQuery[Organization] =
+    ModelQuery.from[Organization](TableQuery[OrganizationTable], (obj, _, time) => obj.copy(createdAt = time))
+
+  implicit val isUserOwned: UserOwned[Organization] = (a: Organization) => a.ownerId
 }

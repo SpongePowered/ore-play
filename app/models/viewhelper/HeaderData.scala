@@ -6,8 +6,8 @@ import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
-import db.{ModelService, ObjectReference}
-import models.project.Visibility
+import db.{DbRef, ModelService}
+import models.project.{ReviewState, Visibility}
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -16,7 +16,6 @@ import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
 import org.slf4j.MDC
-import slick.jdbc.JdbcBackend
 import slick.lifted.TableQuery
 
 /**
@@ -37,7 +36,7 @@ case class HeaderData(
 
   def hasUser: Boolean = currentUser.isDefined
 
-  def isCurrentUser(userId: ObjectReference): Boolean = currentUser.map(_.id.value).contains(userId)
+  def isCurrentUser(userId: DbRef[User]): Boolean = currentUser.map(_.id.value).contains(userId)
 
   def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
 }
@@ -65,8 +64,7 @@ object HeaderData {
   def cacheKey(user: User) = s"""user${user.id.value}"""
 
   def of[A](request: Request[A])(
-      implicit db: JdbcBackend#DatabaseDef,
-      ec: ExecutionContext,
+      implicit ec: ExecutionContext,
       service: ModelService
   ): Future[HeaderData] =
     OptionT
@@ -75,13 +73,13 @@ object HeaderData {
       .semiflatMap(getHeaderData)
       .getOrElse(unAuthenticated)
 
-  private def getSessionUser(token: String)(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef) = {
+  private def getSessionUser(token: String)(implicit ec: ExecutionContext, service: ModelService) = {
     val query = for {
       s <- TableQuery[SessionTable] if s.token === token
       u <- TableQuery[UserTable] if s.username === u.name
     } yield (s, u)
 
-    OptionT(db.run(query.result.headOption)).collect {
+    OptionT(service.runDBIO(query.result.headOption)).collect {
       case (session, user) if !session.hasExpired => user
     }
   }
@@ -92,13 +90,13 @@ object HeaderData {
       .exists
 
   private def reviewQueue: Rep[Boolean] =
-    TableQuery[VersionTable].filter(v => v.isReviewed === false).exists
+    TableQuery[VersionTable].filter(v => v.reviewStatus === (ReviewState.Unreviewed: ReviewState)).exists
 
   private val flagQueue: Rep[Boolean] = TableQuery[FlagTable].filter(_.isResolved === false).exists
 
   private def getHeaderData(
       user: User
-  )(implicit ec: ExecutionContext, db: JdbcBackend#DatabaseDef, service: ModelService) = {
+  )(implicit ec: ExecutionContext, service: ModelService) = {
 
     MDC.put("currentUserId", user.id.toString)
     MDC.put("currentUserName", user.name)
@@ -113,7 +111,7 @@ object HeaderData {
         )
       )
 
-      db.run(query.result.head).map {
+      service.runDBIO(query.result.head).map {
         case (unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>
           HeaderData(
             Some(user),
@@ -129,5 +127,7 @@ object HeaderData {
   }
 
   def perms(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Map[Permission, Boolean]] =
-    user.trustIn(GlobalScope).map2(user.globalRoles.all)(user.can.asMap(_, _)(globalPerms: _*))
+    user
+      .trustIn(GlobalScope)
+      .map2(user.globalRoles.allFromParent(user))((t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*))
 }

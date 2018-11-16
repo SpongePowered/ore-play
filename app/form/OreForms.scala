@@ -13,12 +13,13 @@ import play.api.data.{FieldMapping, Form, FormError, Mapping}
 
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.OrePostgresDriver.api._
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
 import models.api.ProjectApiKey
 import models.project.Page._
 import models.project.{Channel, Page}
+import models.user.Organization
 import models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
@@ -72,7 +73,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * @param allowedIds number that are allowed as ownerId
     * @return Constraint
     */
-  def ownerIdInList(allowedIds: Seq[ObjectReference]): Constraint[Option[ObjectReference]] =
+  def ownerIdInList[A](allowedIds: Seq[DbRef[A]]): Constraint[Option[DbRef[A]]] =
     Constraint("constraints.check") { ownerId =>
       val errors =
         if (ownerId.isDefined && !allowedIds.contains(ownerId.get)) Seq(ValidationError("error.plugin"))
@@ -84,7 +85,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   /**
     * Submits settings changes for a Project.
     */
-  def ProjectSave(organisationUserCanUploadTo: Seq[ObjectReference]) =
+  def ProjectSave(organisationUserCanUploadTo: Seq[DbRef[Organization]]) =
     Form(
       mapping(
         "category"     -> text,
@@ -258,7 +259,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     })
 
   def evilAwaitpProjectApiKey(key: Long)(implicit ec: ExecutionContext): Option[ProjectApiKey] = {
-    val projectApiKeys = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+    val projectApiKeys = this.service.access[ProjectApiKey]()
     // TODO remvove await
     this.service.await(projectApiKeys.get(key).value).getOrElse(None)
   }

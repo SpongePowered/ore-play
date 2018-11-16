@@ -1,21 +1,27 @@
 package models.api
 
 import db.impl.schema.ProjectApiKeyTable
-import db.{Model, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import models.project.Project
 import ore.project.ProjectOwned
 import ore.rest.ProjectApiKeyType
 
+import slick.lifted.TableQuery
+
 case class ProjectApiKey(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[ProjectApiKey] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
+    projectId: DbRef[Project],
     keyType: ProjectApiKeyType,
     value: String
-) extends Model
-    with ProjectOwned {
+) extends Model {
 
   override type T = ProjectApiKeyTable
   override type M = ProjectApiKey
+}
+object ProjectApiKey {
+  implicit val query: ModelQuery[ProjectApiKey] =
+    ModelQuery.from[ProjectApiKey](TableQuery[ProjectApiKeyTable], _.copy(_, _))
 
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): ProjectApiKey = this.copy(id = id, createdAt = theTime)
+  implicit val isProjectOwned: ProjectOwned[ProjectApiKey] = (a: ProjectApiKey) => a.projectId
 }

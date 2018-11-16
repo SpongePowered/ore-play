@@ -10,7 +10,7 @@
 @import views.html.projects.{list => projectList}
 @import views.html.utils.userAvatar
 @import models.querymodels.ProjectListEntry
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry], starred: Seq[(Project, Version)],
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry], starred: Seq[(Project, Option[Version])],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
@@ -27,7 +27,7 @@
         @projectList(
             models = models,
             page = page,
-            pageSize = config.users.get[Int]("project-page-size"),
+            pageSize = config.ore.users.projectPageSize,
             call = page => routes.Users.showProjects(u.user.name, Some(page))
         )
         </div>
@@ -111,12 +111,14 @@
                                                class="pull-left">
                                                 @star.ownerName/<strong>@star.name</strong>
                                             </a>
-                                            <div class="pull-right">
-                                                <span class="minor">@rv.versionString</span>
-                                                @defining(star.category) { category =>
-                                                    <i title="@category.title" class="fa fa-fw @category.icon"></i>
-                                                }
-                                            </div>
+                                            @rv.map { recommended =>
+                                                <div class="pull-right">
+                                                    <span class="minor">@recommended.versionString</span>
+                                                    @defining(star.category) { category =>
+                                                        <i title="@category.title" class="fa fa-fw @category.icon"></i>
+                                                    }
+                                                </div>
+                                            }
                                         </td>
                                     </tr>
                                 }

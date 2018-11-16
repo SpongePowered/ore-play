@@ -11,22 +11,22 @@ sealed trait DbInitialized[A] {
   }
 }
 
-sealed trait ObjectId extends DbInitialized[ObjectReference]
-object ObjectId {
-  case object Uninitialized extends ObjectId {
+sealed trait ObjId[A] extends DbInitialized[DbRef[A]]
+object ObjId {
+  case class Uninitialized[A]() extends ObjId[A] {
     override def value: Nothing                  = sys.error("Tried to access uninitialized ObjectId")
     override def unsafeToOption: Option[Nothing] = None
   }
 
-  private case class RealObjectId(value: ObjectReference) extends ObjectId {
-    override def unsafeToOption: Option[ObjectReference] = Some(value)
+  private case class RealObjId[A](value: DbRef[A]) extends ObjId[A] {
+    override def unsafeToOption: Option[DbRef[A]] = Some(value)
   }
 
-  def apply(id: ObjectReference): ObjectId = RealObjectId(id)
+  def apply[A](id: DbRef[A]): ObjId[A] = RealObjId(id)
 
-  def unsafeFromOption(option: Option[ObjectReference]): ObjectId = option match {
-    case Some(id) => ObjectId(id)
-    case None     => Uninitialized
+  def unsafeFromOption[A](option: Option[DbRef[A]]): ObjId[A] = option match {
+    case Some(id) => ObjId(id)
+    case None     => Uninitialized()
   }
 }
 

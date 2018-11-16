@@ -1,7 +1,8 @@
 package form.organization
 
-import db.ObjectReference
+import db.DbRef
 import form.RoleSetBuilder
+import models.user.User
 import models.user.role.OrganizationUserRole
 import ore.permission.role.Role
 
@@ -10,7 +11,6 @@ import ore.permission.role.Role
   */
 trait TOrganizationRoleSetBuilder extends RoleSetBuilder[OrganizationUserRole] {
 
-  override def newRole(userId: ObjectReference, role: Role): OrganizationUserRole =
+  override def newRole(userId: DbRef[User], role: Role): OrganizationUserRole =
     new OrganizationUserRole(userId, -1L, role) //orgId set elsewhere
-
 }

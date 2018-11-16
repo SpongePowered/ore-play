@@ -8,7 +8,7 @@ import slick.jdbc.JdbcProfile
 
 abstract class OreDBOs(driver: JdbcProfile, env: OreEnv, config: OreConfig) extends ModelService(driver) {
 
-  val Users         = new UserBase()(this, this.config)
-  val Projects      = new ProjectBase()(this, this.env, this.config)
-  val Organizations = new OrganizationBase()(this, this.config)
+  val userBase         = new UserBase()(this, this.config)
+  val projectBase      = new ProjectBase()(this, this.env, this.config)
+  val organizationBase = new OrganizationBase()(this, this.config)
 }

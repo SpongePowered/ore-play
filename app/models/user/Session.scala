@@ -5,11 +5,13 @@ import java.sql.Timestamp
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
+import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{Expirable, Model, ObjectId, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
+import slick.lifted.TableQuery
 
 /**
   * Represents a persistant [[User]] session.
@@ -21,7 +23,7 @@ import cats.data.OptionT
   * @param token      Unique token
   */
 case class Session(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Session] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     expiration: Timestamp,
     username: String,
@@ -40,7 +42,8 @@ case class Session(
     */
   def user(implicit users: UserBase, ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] =
     users.withName(this.username)
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Model = this.copy(id = id, createdAt = theTime)
-
+}
+object Session {
+  implicit val query: ModelQuery[Session] =
+    ModelQuery.from[Session](TableQuery[SessionTable], _.copy(_, _))
 }

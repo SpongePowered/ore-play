@@ -7,6 +7,8 @@ import db.ModelService
 import models.user.User
 import models.user.role.UserRoleModel
 
+import cats.instances.future._
+import cats.syntax.all._
 import enumeratum.values._
 
 /**
@@ -34,9 +36,7 @@ object InviteFilter extends IntEnum[InviteFilter] {
         implicit ec =>
           implicit service =>
             user =>
-              user.projectRoles
-                .filterNot(_.isAccepted)
-                .flatMap(q1 => user.organizationRoles.filterNot(_.isAccepted).map(q1 ++ _))
+              user.projectRoles.filterNot(_.isAccepted).map2(user.organizationRoles.filterNot(_.isAccepted))(_ ++ _)
       )
 
   case object Projects

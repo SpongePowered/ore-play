@@ -2,10 +2,11 @@ package ore.project
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import models.project.Project
+import models.user.User
 import models.user.role.ProjectUserRole
-import ore.user.Member
+import ore.user.{Member, UserOwned}
 
 /**
   * Represents a member of a [[Project]].
@@ -13,10 +14,10 @@ import ore.user.Member
   * @param project  Project this Member is a part of
   * @param userId   Member user ID
   */
-class ProjectMember(val project: Project, val userId: ObjectReference) extends Member[ProjectUserRole] {
+class ProjectMember(val project: Project, val userId: DbRef[User]) extends Member[ProjectUserRole] {
 
   override def roles(implicit ec: ExecutionContext, service: ModelService): Future[Set[ProjectUserRole]] =
-    this.user.flatMap(user => this.project.memberships.getRoles(project, user))
+    UserOwned[ProjectMember].user(this).flatMap(user => this.project.memberships.getRoles(project, user))
 
   /**
     * Returns the Member's top role.
@@ -25,4 +26,7 @@ class ProjectMember(val project: Project, val userId: ObjectReference) extends M
     */
   override def headRole(implicit ec: ExecutionContext, service: ModelService): Future[ProjectUserRole] =
     this.roles.map(_.maxBy(_.role.trust))
+}
+object ProjectMember {
+  implicit val isUserOwned: UserOwned[ProjectMember] = (a: ProjectMember) => a.userId
 }

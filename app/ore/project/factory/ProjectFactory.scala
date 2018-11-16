@@ -25,6 +25,7 @@ import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
 import util.StringUtils._
+import util.syntax._
 
 import akka.actor.ActorSystem
 import cats.data.{EitherT, NonEmptyList}
@@ -51,7 +52,7 @@ trait ProjectFactory {
   implicit def forums: OreDiscourseApi
   implicit def env: OreEnv = this.fileManager.env
 
-  var isPgpEnabled: Boolean = this.config.security.get[Boolean]("requirePgp")
+  var isPgpEnabled: Boolean = this.config.security.requirePgp
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -124,7 +125,7 @@ trait ProjectFactory {
           } yield {
             version match {
               case Right(v) =>
-                if (modelExists && this.config.projects.get[Boolean]("file-validate"))
+                if (modelExists && this.config.ore.projects.fileValidate)
                   Left("error.version.duplicate")
                 else {
                   v.cache()
@@ -335,8 +336,8 @@ trait ProjectFactory {
     checkNotNull(color, "null color", "")
     for {
       channelCount <- project.channels.size
-      _ = checkState(channelCount < this.config.projects.get[Int]("max-channels"), "channel limit reached", "")
-      channel <- this.service.access[Channel](classOf[Channel]).add(new Channel(name, color, project.id.value))
+      _ = checkState(channelCount < this.config.ore.projects.maxChannels, "channel limit reached", "")
+      channel <- this.service.access[Channel]().add(new Channel(name, color, project.id.value))
     } yield channel
   }
 
@@ -356,7 +357,7 @@ trait ProjectFactory {
     for {
       // Create channel if not exists
       (channel, exists) <- (getOrCreateChannel(pending, project), pendingVersion.exists).tupled
-      _ = if (exists && this.config.projects.get[Boolean]("file-validate"))
+      _ = if (exists && this.config.ore.projects.fileValidate)
         throw new IllegalArgumentException("Version already exists.")
       // Create version
       newVersion <- {
@@ -364,7 +365,6 @@ trait ProjectFactory {
           versionString = pendingVersion.versionString,
           dependencyIds = pendingVersion.dependencyIds,
           description = pendingVersion.description,
-          assets = pendingVersion.assets,
           projectId = project.id.value,
           channelId = channel.id.value,
           fileSize = pendingVersion.fileSize,
@@ -373,7 +373,7 @@ trait ProjectFactory {
           fileName = pendingVersion.fileName,
           signatureFileName = pendingVersion.signatureFileName
         )
-        this.service.access[Version](classOf[Version]).add(newVersion)
+        this.service.access[Version]().add(newVersion)
       }
       tags <- addTags(pending, newVersion)
       // Notify watchers

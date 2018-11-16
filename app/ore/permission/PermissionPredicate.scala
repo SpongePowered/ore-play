@@ -42,7 +42,7 @@ case class PermissionPredicate(user: User) {
       }
 
     def in[A: HasScope](subject: A)(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
-      user.trustIn(subject).map2(user.globalRoles.all)(withTrustAndGlobalRoles)
+      user.trustIn(subject).map2(user.globalRoles.allFromParent(user))((t, r) => withTrustAndGlobalRoles(t, r.toSet))
 
     def in[A: HasScope](subject: Option[A])(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
       subject match {

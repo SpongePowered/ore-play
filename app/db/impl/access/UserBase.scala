@@ -8,7 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
-import db.{ModelBase, ModelService, ObjectId, ObjectTimestamp}
+import db.{ModelBase, ModelService, ObjId, ObjectTimestamp}
 import models.user.{Session, User}
 import ore.OreConfig
 import ore.permission.Permission
@@ -22,8 +22,6 @@ import cats.instances.future._
   * Represents a central location for all Users.
   */
 class UserBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[User] {
-
-  override val modelClass: Class[User] = classOf[User]
 
   implicit val self: UserBase = this
 
@@ -72,7 +70,14 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     *
     * @return     Found or new User
     */
-  def getOrCreate(user: User)(implicit ec: ExecutionContext): Future[User] = user.schema(this.service).getOrInsert(user)
+  def getOrCreate(user: User)(implicit ec: ExecutionContext): Future[User] = {
+    def like = this.find(_.name.toLowerCase === user.name.toLowerCase)
+
+    like.value.flatMap {
+      case Some(u) => Future.successful(u)
+      case None    => service.insert(user)
+    }
+  }
 
   /**
     * Creates a new [[Session]] for the specified [[User]].
@@ -82,11 +87,11 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return     Newly created session
     */
   def createSession(user: User)(implicit ec: ExecutionContext): Future[Session] = {
-    val maxAge     = this.config.play.get[Int]("http.session.maxAge")
-    val expiration = new Timestamp(new Date().getTime + maxAge * 1000L)
+    val maxAge     = this.config.play.sessionMaxAge
+    val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
     val token      = UUID.randomUUID().toString
-    val session    = Session(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, expiration, user.name, token)
-    this.service.access[Session](classOf[Session]).add(session)
+    val session    = Session(ObjId.Uninitialized(), ObjectTimestamp.Uninitialized, expiration, user.name, token)
+    this.service.access[Session]().add(session)
   }
 
   /**
@@ -97,9 +102,9 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return       Session if found and has not expired
     */
   private def getSession(token: String)(implicit ec: ExecutionContext): OptionT[Future, Session] =
-    this.service.access[Session](classOf[Session]).find(_.token === token).subflatMap { session =>
+    this.service.access[Session]().find(_.token === token).subflatMap { session =>
       if (session.hasExpired) {
-        session.remove()
+        service.delete(session)
         None
       } else Some(session)
     }
@@ -121,7 +126,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
 object UserBase {
   def apply()(implicit userBase: UserBase): UserBase = userBase
 
-  implicit def fromService(implicit service: ModelService): UserBase = service.getModelBase(classOf[UserBase])
+  implicit def fromService(implicit service: ModelService): UserBase = service.userBase
 
   trait UserOrdering
   object UserOrdering {

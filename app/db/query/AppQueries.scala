@@ -1,8 +1,10 @@
 package db.query
 
-import db.ObjectReference
+import db.DbRef
 import models.admin.LoggedActionViewModel
+import models.project.{Page, Project, Version}
 import models.querymodels._
+import models.user.User
 import ore.project.{Category, ProjectSortingStrategy}
 
 import cats.syntax.all._
@@ -14,7 +16,7 @@ object AppQueries extends DoobieOreProtocol {
   //implicit val logger: LogHandler = createLogger("AppQueries")
 
   def getHomeProjects(
-      currentUserId: ObjectReference,
+      currentUserId: DbRef[User],
       canSeeHidden: Boolean,
       platformNames: List[String],
       categories: List[Category],
@@ -97,7 +99,7 @@ object AppQueries extends DoobieOreProtocol {
           |  ORDER BY sq.project_name DESC, sq.version_string DESC""".stripMargin.query[UnsortedQueueEntry]
   }
 
-  def flags(userId: Long): Query0[ShownFlag] = {
+  def flags(userId: DbRef[User]): Query0[ShownFlag] = {
     sql"""|SELECT pf.id                                     AS flag_id,
           |       pf.reason                                 AS flag_reason,
           |       pf.comment                                AS flag_comment,
@@ -168,13 +170,13 @@ object AppQueries extends DoobieOreProtocol {
 
   def getLog(
       oPage: Option[Int],
-      userFilter: Option[ObjectReference],
-      projectFilter: Option[ObjectReference],
-      versionFilter: Option[ObjectReference],
-      pageFilter: Option[ObjectReference],
+      userFilter: Option[DbRef[User]],
+      projectFilter: Option[DbRef[Project]],
+      versionFilter: Option[DbRef[Version]],
+      pageFilter: Option[DbRef[Page]],
       actionFilter: Option[Int],
-      subjectFilter: Option[ObjectReference]
-  ): Query0[LoggedActionViewModel] = {
+      subjectFilter: Option[DbRef[_]]
+  ): Query0[LoggedActionViewModel[Any]] = {
     val pageSize = 50
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
@@ -188,7 +190,7 @@ object AppQueries extends DoobieOreProtocol {
       subjectFilter.map(id => fr"la.filter_subject = $id")
     ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
 
-    frags.query[LoggedActionViewModel]
+    frags.query[LoggedActionViewModel[Any]]
   }
 
   //TODO: Only latest changes

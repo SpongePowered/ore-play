@@ -25,8 +25,8 @@ object ScopedOrganizationData {
     currentUser.fold(Future.successful(noScope)) { user =>
       user
         .trustIn(orga)
-        .map2(user.globalRoles.all)(
-          (trust, globalRoles) => ScopedOrganizationData(user.can.asMap(trust, globalRoles)(EditSettings))
+        .map2(user.globalRoles.allFromParent(user))(
+          (trust, globalRoles) => ScopedOrganizationData(user.can.asMap(trust, globalRoles.toSet)(EditSettings))
         )
     }
 

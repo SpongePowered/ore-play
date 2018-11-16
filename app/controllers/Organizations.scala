@@ -9,14 +9,16 @@ import play.api.i18n.MessagesApi
 import play.api.mvc.{Action, AnyContent}
 
 import controllers.sugar.Bakery
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
+import models.user.role.OrganizationUserRole
 import ore.permission.EditSettings
 import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.syntax._
 import views.{html => views}
 
 import cats.data.OptionT
@@ -41,7 +43,7 @@ class Organizations @Inject()(forms: OreForms)(
   private def EditOrganizationAction(organization: String) =
     AuthedOrganizationAction(organization, requireUnlock = true).andThen(OrganizationPermissionAction(EditSettings))
 
-  private val createLimit: Int = this.config.orgs.get[Int]("createLimit")
+  private val createLimit: Int = this.config.ore.orgs.createLimit
 
   /**
     * Shows the creation panel for Organizations.
@@ -75,7 +77,7 @@ class Organizations @Inject()(forms: OreForms)(
           Future.successful(BadRequest)
         else if (user.isLocked)
           Future.successful(Redirect(failCall).withError("error.user.locked"))
-        else if (!this.config.orgs.get[Boolean]("enabled"))
+        else if (!this.config.ore.orgs.enabled)
           Future.successful(Redirect(failCall).withError("error.org.disabled"))
         else {
           val formData = request.body
@@ -97,7 +99,7 @@ class Organizations @Inject()(forms: OreForms)(
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: ObjectReference, status: String): Action[AnyContent] =
+  def setInviteStatus(id: DbRef[OrganizationUserRole], status: String): Action[AnyContent] =
     Authenticated.async { implicit request =>
       request.user.organizationRoles
         .get(id)

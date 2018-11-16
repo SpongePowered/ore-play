@@ -9,8 +9,9 @@ import play.twirl.api.Html
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
-import db.impl.schema.{PageSchema, PageTable}
-import db.{Model, ModelFilter, ModelService, Named, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.model.common.Named
+import db.impl.schema.PageTable
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
@@ -31,6 +32,7 @@ import com.vladsch.flexmark.html.renderer._
 import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.options.MutableDataSet
+import slick.lifted.TableQuery
 
 /**
   * Represents a documentation page within a project.
@@ -45,21 +47,19 @@ import com.vladsch.flexmark.util.options.MutableDataSet
   * @param isDeletable  True if can be deleted by the user
   */
 case class Page(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Page] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
-    parentId: Option[ObjectReference],
+    projectId: DbRef[Project],
+    parentId: Option[DbRef[Page]],
     name: String,
     slug: String,
     isDeletable: Boolean = true,
     contents: String
 ) extends Model
-    with ProjectOwned
     with Named {
 
   override type M = Page
   override type T = PageTable
-  override type S = PageSchema
 
   import models.project.Page._
 
@@ -68,11 +68,11 @@ case class Page(
   checkNotNull(this.contents, "contents cannot be null", "")
 
   def this(
-      projectId: ObjectReference,
+      projectId: DbRef[Project],
       name: String,
       content: String,
       isDeletable: Boolean,
-      parentId: Option[ObjectReference]
+      parentId: Option[DbRef[Page]]
   ) = {
     this(
       projectId = projectId,
@@ -104,7 +104,7 @@ case class Page(
     else {
       for {
         updated <- service.update(newPage)
-        project <- this.project
+        project <- ProjectOwned[Page].project(this)
         // Contents were updated, update on forums
         _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
         else Future.successful(false)
@@ -138,7 +138,7 @@ case class Page(
     for {
       parent  <- OptionT.fromOption[Future](parentId)
       project <- parentProject
-      page    <- project.pages.find(ModelFilter[Page](_.id === parent).fn)
+      page    <- project.pages.find(_.id === parent)
     } yield page
 
   /**
@@ -154,17 +154,18 @@ case class Page(
     * @return Page's children
     */
   def children(implicit service: ModelService): ModelAccess[Page] =
-    service.access[Page](classOf[Page], ModelFilter[Page](page => {
-      page.parentId.isDefined && page.parentId.get === this.id.value
-    }))
+    service.access(page => page.parentId.isDefined && page.parentId.get === this.id.value)
 
   def url(implicit project: Project, parentPage: Option[Page]): String =
     project.url + "/pages/" + this.fullSlug(parentPage)
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Page = this.copy(id = id, createdAt = theTime)
 }
 
 object Page {
+
+  implicit val query: ModelQuery[Page] =
+    ModelQuery.from[Page](TableQuery[PageTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[Page] = (a: Page) => a.projectId
 
   private object ExternalLinkResolver {
 
@@ -200,7 +201,7 @@ object Page {
             controllers.routes.Application.linkOut(urlString).toString
           }
         } else {
-          val trustedUrlHosts = this.config.app.get[Seq[String]]("trustedUrlHosts")
+          val trustedUrlHosts = this.config.app.trustedUrlHosts
           val checkSubdomain = (trusted: String) =>
             trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1))
           if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) {
@@ -271,27 +272,27 @@ object Page {
   /**
     * The name of each Project's homepage.
     */
-  def homeName(implicit config: OreConfig): String = config.pages.get[String]("home.name")
+  def homeName(implicit config: OreConfig): String = config.ore.pages.homeName
 
   /**
     * The template body for the Home page.
     */
-  def homeMessage(implicit config: OreConfig): String = config.pages.get[String]("home.message")
+  def homeMessage(implicit config: OreConfig): String = config.ore.pages.homeMessage
 
   /**
     * The minimum amount of characters a page may have.
     */
-  def minLength(implicit config: OreConfig): Int = config.pages.get[Int]("min-len")
+  def minLength(implicit config: OreConfig): Int = config.ore.pages.minLen
 
   /**
     * The maximum amount of characters the home page may have.
     */
-  def maxLength(implicit config: OreConfig): Int = config.pages.get[Int]("max-len")
+  def maxLength(implicit config: OreConfig): Int = config.ore.pages.maxLen
 
   /**
     * The maximum amount of characters a page may have.
     */
-  def maxLengthPage(implicit config: OreConfig): Int = config.pages.get[Int]("page.max-len")
+  def maxLengthPage(implicit config: OreConfig): Int = config.ore.pages.pageMaxLen
 
   /**
     * Returns a template for new Pages.

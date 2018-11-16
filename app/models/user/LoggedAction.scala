@@ -5,54 +5,61 @@ import scala.concurrent.Future
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 
 import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
+import slick.lifted.TableQuery
 
-case class LoggedActionModel(
-    id: ObjectId = ObjectId.Uninitialized,
+case class LoggedActionModel[Ctx](
+    id: ObjId[LoggedActionModel[Ctx]] = ObjId.Uninitialized[LoggedActionModel[Ctx]](),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    userId: ObjectReference,
+    userId: DbRef[User],
     address: InetString,
-    action: LoggedAction,
-    actionContext: LoggedActionContext,
-    actionContextId: ObjectReference,
+    action: LoggedAction[Ctx],
+    actionContext: LoggedActionContext[Ctx],
+    actionContextId: DbRef[Ctx],
     newState: String,
     oldState: String
-) extends Model
-    with UserOwned {
+) extends Model {
 
-  override type T = LoggedActionTable
-  override type M = LoggedActionModel
+  override type T = LoggedActionTable[Ctx]
+  override type M = LoggedActionModel[Ctx]
+}
+object LoggedActionModel {
+  implicit def query[Ctx]: ModelQuery[LoggedActionModel[Ctx]] =
+    ModelQuery.from[LoggedActionModel[Ctx]](
+      TableQuery[LoggedActionTable[Ctx]],
+      (obj, _, time) => obj.copy(createdAt = time)
+    )
 
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): LoggedActionModel = this.copy(createdAt = theTime)
+  implicit val isUserOwned: UserOwned[LoggedActionModel[_]] = (a: LoggedActionModel[_]) => a.userId
 }
 
-sealed abstract class LoggedActionContext(val value: Int) extends IntEnumEntry
+sealed abstract class LoggedActionContext[Ctx](val value: Int) extends IntEnumEntry
 
-object LoggedActionContext extends IntEnum[LoggedActionContext] {
+object LoggedActionContext extends IntEnum[LoggedActionContext[_]] {
 
-  case object Project      extends LoggedActionContext(0)
-  case object Version      extends LoggedActionContext(1)
-  case object ProjectPage  extends LoggedActionContext(2)
-  case object User         extends LoggedActionContext(3)
-  case object Organization extends LoggedActionContext(4)
+  case object Project      extends LoggedActionContext[models.project.Project](0)
+  case object Version      extends LoggedActionContext[models.project.Version](1)
+  case object ProjectPage  extends LoggedActionContext[models.project.Page](2)
+  case object User         extends LoggedActionContext[models.user.User](3)
+  case object Organization extends LoggedActionContext[models.user.Organization](4)
 
-  val values: immutable.IndexedSeq[LoggedActionContext] = findValues
+  val values: immutable.IndexedSeq[LoggedActionContext[_]] = findValues
 
 }
 
-sealed abstract class LoggedAction(
+sealed abstract class LoggedAction[Ctx](
     val value: Int,
     val name: String,
-    val context: LoggedActionContext,
+    val context: LoggedActionContext[Ctx],
     val description: String
 ) extends IntEnumEntry
 
-case object LoggedAction extends IntEnum[LoggedAction] {
+case object LoggedAction extends IntEnum[LoggedAction[_]] {
 
   case object ProjectVisibilityChange
       extends LoggedAction(
@@ -92,8 +99,6 @@ case object LoggedAction extends IntEnum[LoggedAction] {
       extends LoggedAction(8, "VersionDeleted", LoggedActionContext.Version, "The version was deleted")
   case object VersionUploaded
       extends LoggedAction(9, "VersionUploaded", LoggedActionContext.Version, "A new version was uploaded")
-  case object VersionApproved
-      extends LoggedAction(10, "VersionApproved", LoggedActionContext.Version, "The version was approved")
   case object VersionAsRecommended
       extends LoggedAction(
         11,
@@ -108,12 +113,12 @@ case object LoggedAction extends IntEnum[LoggedAction] {
         LoggedActionContext.Version,
         "The version description was edited"
       )
-  case object VersionNonReviewChanged
+  case object VersionReviewStateChanged
       extends LoggedAction(
         17,
-        "VersionNonReviewChanged",
+        "VersionReviewStateChanged",
         LoggedActionContext.Version,
-        "If the review queue skip was changed"
+        "If the review state changed"
       )
 
   case object UserTaglineChanged
@@ -122,23 +127,23 @@ case object LoggedAction extends IntEnum[LoggedAction] {
       extends LoggedAction(15, "UserPgpKeySaved", LoggedActionContext.User, "The user saved a PGP Public Key")
   case object UserPgpKeyRemoved
       extends LoggedAction(16, "UserPgpKeyRemoved", LoggedActionContext.User, "The user removed a PGP Public Key")
-  val values: immutable.IndexedSeq[LoggedAction] = findValues
+  val values: immutable.IndexedSeq[LoggedAction[_]] = findValues
 }
 
 object UserActionLogger {
 
-  def log(
+  def log[Ctx](
       request: AuthRequest[_],
-      action: LoggedAction,
-      actionContextId: ObjectReference,
+      action: LoggedAction[Ctx],
+      actionContextId: DbRef[Ctx],
       newState: String,
       oldState: String
-  )(implicit service: ModelService): Future[LoggedActionModel] =
+  )(implicit service: ModelService): Future[LoggedActionModel[Ctx]] =
     service.insert(
       LoggedActionModel(
-        ObjectId.Uninitialized,
+        ObjId.Uninitialized[LoggedActionModel[Ctx]](),
         ObjectTimestamp.Uninitialized,
-        request.user.userId,
+        request.user.id.value,
         InetString(StatTracker.remoteAddress(request)),
         action,
         action.context,

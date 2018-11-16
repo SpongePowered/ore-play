@@ -14,10 +14,10 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.{ProjectTableMain, VersionTable}
 import db.query.UserQueries
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
-import models.user.{LoggedAction, SignOn, User, UserActionLogger}
+import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.permission.ReviewProjects
 import ore.permission.role.Role
@@ -53,7 +53,7 @@ class Users @Inject()(
     service: ModelService
 ) extends OreBaseController {
 
-  private val baseUrl = this.config.app.get[String]("baseUrl")
+  private val baseUrl = this.config.app.baseUrl
 
   /**
     * Redirect to auth page for SSO authentication.
@@ -79,8 +79,11 @@ class Users @Inject()(
         this.config.checkDebug()
         users.getOrCreate(this.fakeUser) *>
           this.fakeUser.globalRoles
-            .contains(Role.OreAdmin.toDbRole)
-            .ifM(ifTrue = Future.unit, ifFalse = this.fakeUser.globalRoles.add(Role.OreAdmin.toDbRole).void) *>
+            .contains(this.fakeUser, Role.OreAdmin.toDbRole)
+            .ifM(
+              ifTrue = Future.unit,
+              ifFalse = this.fakeUser.globalRoles.addAssoc(this.fakeUser, Role.OreAdmin.toDbRole).void
+            ) *>
           this.redirectBack(returnPath.getOrElse(request.path), this.fakeUser)
       } else if (sso.isEmpty || sig.isEmpty) {
         val nonce = SingleSignOnConsumer.nonce
@@ -94,9 +97,10 @@ class Users @Inject()(
             case (fromSponge, sponge) =>
               // Complete authentication
               for {
-                user   <- users.getOrCreate(fromSponge)
-                _      <- user.globalRoles.removeAll()
-                _      <- sponge.newGlobalRoles.fold(Future.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.add))
+                user <- users.getOrCreate(fromSponge)
+                _    <- service.runDBIO(user.globalRoles.allQueryFromParent(user).delete)
+                _ <- sponge.newGlobalRoles
+                  .fold(Future.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.addAssoc(user, _)))
                 result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
               } yield result
           }
@@ -125,7 +129,7 @@ class Users @Inject()(
       Redirect(ShowHome).withError("error.noLogin")
 
   private def redirectBack(url: String, user: User) =
-    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.get[Int]("http.session.maxAge"))
+    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
 
   /**
     * Clears the current session.
@@ -133,7 +137,7 @@ class Users @Inject()(
     * @return Home page
     */
   def logOut() = Action { implicit request =>
-    Redirect(config.security.get[String]("api.url") + "/accounts/logout/")
+    Redirect(config.security.api.url + "/accounts/logout/")
       .clearingSession()
       .flashing("noRedirect" -> "true")
   }
@@ -146,7 +150,7 @@ class Users @Inject()(
     * @return           View of user projects page
     */
   def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.async { implicit request =>
-    val pageSize = this.config.users.get[Int]("project-page-size")
+    val pageSize = this.config.ore.users.projectPageSize
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
 
@@ -156,7 +160,7 @@ class Users @Inject()(
         for {
           // TODO include orga projects?
           (projects, starred, orga, userData) <- (
-            runDbProgram(
+            service.runDbCon(
               UserQueries.getProjects(username, ProjectSortingStrategy.MostStars, pageSize, offset).to[Vector]
             ),
             user.starred(),
@@ -164,7 +168,7 @@ class Users @Inject()(
             getUserData(request, username).value,
           ).tupled
           (starredRv, orgaData, scopedOrgaData) <- (
-            Future.sequence(starred.map(_.recommendedVersion)),
+            Future.sequence(starred.map(_.recommendedVersion.value)),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).tupled
@@ -192,7 +196,7 @@ class Users @Inject()(
     */
   def saveTagline(username: String): Action[String] =
     UserAction(username).asyncEitherT(parse.form(forms.UserTagline)) { implicit request =>
-      val maxLen = this.config.users.get[Int]("max-tagline-len")
+      val maxLen = this.config.ore.users.maxTaglineLen
 
       for {
         user <- users.withName(username).toRight(NotFound)
@@ -293,7 +297,7 @@ class Users @Inject()(
     val ordering = sort.getOrElse(UserOrdering.Projects)
     val p        = page.getOrElse(1)
 
-    runDbProgram(UserQueries.getAuthors(p, ordering).to[Vector]).map { u =>
+    service.runDbCon(UserQueries.getAuthors(p, ordering).to[Vector]).map { u =>
       Ok(views.users.authors(u, ordering, p))
     }
   }
@@ -306,7 +310,7 @@ class Users @Inject()(
       val ordering = sort.getOrElse(UserOrdering.Role)
       val p        = page.getOrElse(1)
 
-      runDbProgram(UserQueries.getStaff(p, ordering).to[Vector]).map { u =>
+      service.runDbCon(UserQueries.getStaff(p, ordering).to[Vector]).map { u =>
         Ok(views.users.staff(u, ordering, p))
       }
     }
@@ -345,7 +349,7 @@ class Users @Inject()(
     * @param id Notification ID
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
-  def markNotificationRead(id: ObjectReference): Action[AnyContent] = Authenticated.async { implicit request =>
+  def markNotificationRead(id: DbRef[Notification]): Action[AnyContent] = Authenticated.async { implicit request =>
     request.user.notifications
       .get(id)
       .semiflatMap(notification => service.update(notification.copy(isRead = true)).as(Ok))
@@ -359,7 +363,7 @@ class Users @Inject()(
     * @param id Prompt ID
     * @return   Ok if successful
     */
-  def markPromptRead(id: ObjectReference): Action[AnyContent] = Authenticated.async { implicit request =>
+  def markPromptRead(id: DbRef[Prompt]): Action[AnyContent] = Authenticated.async { implicit request =>
     Prompt.values.find(_.value == id) match {
       case None         => Future.successful(BadRequest)
       case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)

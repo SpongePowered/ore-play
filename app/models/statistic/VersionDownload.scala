@@ -5,14 +5,16 @@ import scala.concurrent.{ExecutionContext, Future}
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.VersionDownloadsTable
-import db.{ObjectId, ObjectReference, ObjectTimestamp}
+import db.{DbRef, ModelQuery, ObjId, ObjectTimestamp}
 import models.project.Version
+import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
 import cats.instances.future._
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
+import slick.lifted.TableQuery
 
 /**
   * Represents a unique download on a Project Version.
@@ -25,22 +27,22 @@ import com.google.common.base.Preconditions._
   * @param userId     User ID
   */
 case class VersionDownload(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[VersionDownload] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    modelId: ObjectReference,
+    modelId: DbRef[Version],
     address: InetString,
     cookie: String,
-    userId: Option[ObjectReference] = None
+    userId: Option[DbRef[User]] = None
 ) extends StatEntry[Version] {
 
   override type M = VersionDownload
   override type T = VersionDownloadsTable
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): VersionDownload =
-    this.copy(id = id, createdAt = theTime)
 }
 
 object VersionDownload {
+
+  implicit val query: ModelQuery[VersionDownload] =
+    ModelQuery.from[VersionDownload](TableQuery[VersionDownloadsTable], _.copy(_, _))
 
   /**
     * Creates a new VersionDownload to be (or not be) recorded from an incoming

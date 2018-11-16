@@ -15,9 +15,10 @@ import controllers.sugar.Bakery
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectApiKeyTable
-import db.{ModelService, ObjectReference}
+import db.{DbRef, ModelService}
 import form.OreForms
 import models.api.ProjectApiKey
+import models.project.Project
 import models.user.{LoggedAction, UserActionLogger}
 import ore.permission.role.Role
 import ore.permission.{EditApiKeys, ReviewProjects}
@@ -29,6 +30,7 @@ import ore.{OreConfig, OreEnv}
 import security.CryptoUtils
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.StatusZ
+import _root_.util.syntax._
 
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
@@ -58,7 +60,7 @@ final class ApiController @Inject()(
     with OreWrites {
 
   val files                                      = new ProjectFiles(this.env)
-  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey](classOf[ProjectApiKey])
+  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey]()
   val Logger                                     = play.api.Logger("SSO")
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)
@@ -140,7 +142,7 @@ final class ApiController @Inject()(
           val res = for {
             key <- forms.ProjectApiKeyRevoke.bindOptionT[Future]
             if key.projectId == request.data.project.id.value
-            _ <- OptionT.liftF(key.remove())
+            _ <- OptionT.liftF(service.delete(key))
             _ <- OptionT.liftF(
               UserActionLogger.log(
                 request.request,
@@ -236,7 +238,7 @@ final class ApiController @Inject()(
             )
             .flatMap { formData =>
               val apiKeyTable = TableQuery[ProjectApiKeyTable]
-              def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[ObjectReference]) = {
+              def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[DbRef[Project]]) = {
                 val query = for {
                   k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
                 } yield {
@@ -248,7 +250,7 @@ final class ApiController @Inject()(
               val compiled = Compiled(queryApiKey _)
 
               val apiKeyExists: Future[Boolean] =
-                this.service.doAction(compiled((Deployment, formData.apiKey, project.id.value)).result)
+                this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id.value)).result)
 
               EitherT
                 .liftF(apiKeyExists)
@@ -373,8 +375,8 @@ final class ApiController @Inject()(
   def showStatusZ = Action(Ok(this.status.json))
 
   def syncSso(): Action[AnyContent] = Action.async { implicit request =>
-    val confApiKey = this.config.security.get[String]("sso.apikey")
-    val confSecret = this.config.security.get[String]("sso.secret")
+    val confApiKey = this.config.security.sso.apikey
+    val confSecret = this.config.security.sso.secret
 
     Logger.debug("Sync Request received")
 
@@ -405,7 +407,10 @@ final class ApiController @Inject()(
               }
 
               val updateRoles = globalRoles.fold(Future.unit) { roles =>
-                user.globalRoles.removeAll() *> roles.map(_.toDbRole).traverse(user.globalRoles.add).void
+                user.globalRoles.deleteAllFromParent(user) *> roles
+                  .map(_.toDbRole)
+                  .traverse(user.globalRoles.addAssoc(user, _))
+                  .void
               }
 
               service.update(

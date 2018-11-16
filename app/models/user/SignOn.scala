@@ -1,7 +1,9 @@
 package models.user
 
 import db.impl.schema.SignOnTable
-import db.{Model, ObjectId, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
+
+import slick.lifted.TableQuery
 
 /**
   * Represents a sign-on instance for a user.
@@ -12,7 +14,7 @@ import db.{Model, ObjectId, ObjectTimestamp}
   * @param isCompleted  True if sign on was completed
   */
 case class SignOn(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[SignOn] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
     nonce: String,
     isCompleted: Boolean = false
@@ -20,6 +22,8 @@ case class SignOn(
 
   override type M = SignOn
   override type T = SignOnTable
-
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): SignOn = this.copy(id = id, createdAt = theTime)
+}
+object SignOn {
+  implicit val query: ModelQuery[SignOn] =
+    ModelQuery.from[SignOn](TableQuery[SignOnTable], _.copy(_, _))
 }

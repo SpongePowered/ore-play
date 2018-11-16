@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import db.impl.access.UserBase
 import db.impl.table.StatTable
-import db.{Model, ObjectReference}
+import db.{DbRef, Model}
 import models.user.User
 
 import cats.data.OptionT
@@ -18,12 +18,12 @@ import com.google.common.base.Preconditions._
 abstract class StatEntry[Subject <: Model] extends Model { self =>
 
   override type M <: StatEntry[Subject] { type M = self.M }
-  override type T <: StatTable[M]
+  override type T <: StatTable[Subject, M]
 
   /**
     * ID of model the stat is on
     */
-  def modelId: ObjectReference
+  def modelId: DbRef[Subject]
 
   /**
     * Client address
@@ -38,7 +38,7 @@ abstract class StatEntry[Subject <: Model] extends Model { self =>
   /**
     * User ID
     */
-  def userId: Option[ObjectReference]
+  def userId: Option[DbRef[User]]
 
   checkNotNull(address, "client address cannot be null", "")
   checkNotNull(cookie, "browser cookie cannot be null", "")

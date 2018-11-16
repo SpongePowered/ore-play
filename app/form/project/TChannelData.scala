@@ -42,7 +42,7 @@ trait TChannelData {
   )(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, String, Channel] = {
     EitherT
       .liftF(project.channels.all)
-      .ensure("A project may only have up to five channels.")(_.size <= config.projects.get[Int]("max-channels"))
+      .ensure("A project may only have up to five channels.")(_.size <= config.ore.projects.maxChannels)
       .ensure("A channel with that name already exists.")(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)))
       .ensure("A channel with that color already exists.")(_.forall(_.color != this.color))
       .semiflatMap(_ => this.factory.createChannel(project, this.channelName, this.color))

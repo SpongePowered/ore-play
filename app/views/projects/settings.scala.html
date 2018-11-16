@@ -69,7 +69,7 @@
                         )
 
                         <!-- Description -->
-                        @defining(config.projects.get[Int]("max-desc-len")) { maxLength =>
+                        @defining(config.ore.projects.maxDescLen) { maxLength =>
                             <div class="setting">
                                 <div class="setting-description">
                                     <h4>Description</h4>
@@ -155,7 +155,7 @@
                             <div class="setting-content">
                                 <input form="rename" id="name" name="name" class="form-control" type="text"
                                        value="@p.project.name"
-                                       maxlength="@config.projects.get[Int]("max-name-len")">
+                                       maxlength="@config.ore.projects.maxNameLen">
                                 <button id="btn-rename" data-toggle="modal" data-target="#modal-rename"
                                         class="btn btn-warning" disabled>
                                     @messages("project.rename")

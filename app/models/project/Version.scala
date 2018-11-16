@@ -11,8 +11,8 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
-import db.impl.schema.{ReviewTable, VersionSchema, VersionTable}
-import db.{Model, ModelService, ObjectId, ObjectReference, ObjectTimestamp}
+import db.impl.schema.VersionTable
+import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -24,6 +24,7 @@ import cats.data.OptionT
 import cats.instances.future._
 import cats.syntax.all._
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+import slick.lifted.TableQuery
 
 /**
   * Represents a single version of a Project.
@@ -34,32 +35,28 @@ import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
   * @param dependencyIds    List of plugin dependencies with the plugin ID and
   *                         version separated by a ':'
   * @param description     User description of version
-  * @param assets           Path to assets directory within plugin
   * @param projectId        ID of project this version belongs to
   * @param _channelId        ID of channel this version belongs to
   */
 case class Version(
-    id: ObjectId = ObjectId.Uninitialized,
+    id: ObjId[Version] = ObjId.Uninitialized(),
     createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    projectId: ObjectReference,
+    projectId: DbRef[Project],
     versionString: String,
     dependencyIds: List[String] = List(),
-    assets: Option[String] = None,
-    channelId: ObjectReference,
+    channelId: DbRef[Channel],
     fileSize: Long,
     hash: String,
-    authorId: ObjectReference,
+    authorId: DbRef[User],
     description: Option[String] = None,
     downloadCount: Long = 0,
-    isReviewed: Boolean = false,
-    reviewerId: Option[ObjectReference] = None,
+    reviewState: ReviewState = ReviewState.Unreviewed,
+    reviewerId: Option[DbRef[User]] = None,
     approvedAt: Option[Timestamp] = None,
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
-    isNonReviewed: Boolean = false
 ) extends Model
-    with ProjectOwned
     with Describable
     with Downloadable
     with Hideable {
@@ -69,7 +66,6 @@ case class Version(
 
   override type M                     = Version
   override type T                     = VersionTable
-  override type S                     = VersionSchema
   override type ModelVisibilityChange = VersionVisibilityChange
 
   /**
@@ -86,7 +82,7 @@ case class Version(
     */
   def channel(implicit ec: ExecutionContext, service: ModelService): Future[Channel] =
     service
-      .access[Channel](classOf[Channel])
+      .access[Channel]()
       .get(this.channelId)
       .getOrElse(throw new NoSuchElementException("None of Option"))
 
@@ -123,7 +119,7 @@ case class Version(
     OptionT.fromOption[Future](this.reviewerId).flatMap(userBase.get)
 
   def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[VersionTag]] =
-    service.access(classOf[VersionTag]).filter(_.versionId === this.id.value).map(_.toList)
+    service.access[VersionTag]().filter(_.versionId === this.id.value).map(_.toList)
 
   def isSpongePlugin(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
     tags.map(_.map(_.name).contains("Sponge"))
@@ -158,9 +154,9 @@ case class Version(
   }
 
   override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
-    this.schema.getChildren[VersionVisibilityChange](classOf[VersionVisibilityChange], this)
+    service.access(_.versionId === id.value)
 
-  override def setVisibility(visibility: Visibility, comment: String, creator: ObjectReference)(
+  override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
       implicit ec: ExecutionContext,
       service: ModelService
   ): Future[(Version, VersionVisibilityChange)] = {
@@ -176,10 +172,10 @@ case class Version(
       .cata((), _ => ())
 
     val createNewChange = service
-      .access(classOf[VersionVisibilityChange])
+      .access[VersionVisibilityChange]()
       .add(
         VersionVisibilityChange(
-          ObjectId.Uninitialized,
+          ObjId.Uninitialized(),
           ObjectTimestamp(Timestamp.from(Instant.now())),
           Some(creator),
           this.id.value,
@@ -205,7 +201,7 @@ case class Version(
     * @return Recorded downloads
     */
   def downloadEntries(implicit service: ModelService): ModelAccess[VersionDownload] =
-    this.schema.getChildren[VersionDownload](classOf[VersionDownload], this)
+    service.access(_.modelId === id.value)
 
   /**
     * Returns a human readable file size for this Version.
@@ -222,34 +218,45 @@ case class Version(
     * @return True if exists
     */
   def exists(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = {
+    def hashExists = {
+      val baseQuery = for {
+        v <- TableQuery[VersionTable]
+        if v.projectId === projectId
+        if v.hash === hash
+      } yield v.id
+
+      service.runDBIO((baseQuery.length > 0).result)
+    }
+
     if (this.projectId == -1) Future.successful(false)
     else
       for {
-        hashExists <- this.schema.hashExists(this.projectId, this.hash)
-        project    <- this.project
+        hashExists <- hashExists
+        project    <- ProjectOwned[Version].project(this)
         pExists    <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
       } yield hashExists && pExists
   }
 
-  override def copyWith(id: ObjectId, theTime: ObjectTimestamp): Version = this.copy(id = id, createdAt = theTime)
+  def reviewEntries(implicit service: ModelService): ModelAccess[Review] = service.access(_.versionId === id.value)
 
-  def byCreationDate(first: Review, second: Review): Boolean =
-    first.createdAt.value.getTime < second.createdAt.value.getTime
-  def reviewEntries(implicit service: ModelService): ModelAccess[Review] =
-    this.schema.getChildren[Review](classOf[Review], this)
-  def unfinishedReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] =
-    reviewEntries.all.map(_.toSeq.filter(_.endedAt.isEmpty).sortWith(byCreationDate))
+  def unfinishedReviews(implicit service: ModelService): Future[Seq[Review]] =
+    reviewEntries.sorted(_.createdAt, _.endedAt.?.isEmpty)
+
   def mostRecentUnfinishedReview(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
     OptionT(unfinishedReviews.map(_.headOption))
-  def mostRecentReviews(implicit ec: ExecutionContext, service: ModelService): Future[Seq[Review]] =
-    reviewEntries.toSeq.map(_.sortWith(byCreationDate))
-  def reviewById(id: ObjectReference)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
-    reviewEntries.find(equalsLong[ReviewTable](_.id, id))
-  def equalsLong[A <: Table[_]](int1: A => Rep[Long], int2: Long): A => Rep[Boolean] = int1(_) === int2
 
+  def mostRecentReviews(implicit service: ModelService): Future[Seq[Review]] = reviewEntries.sorted(_.createdAt)
+
+  def reviewById(id: DbRef[Review])(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
+    reviewEntries.find(_.id === id)
 }
 
 object Version {
+
+  implicit val query: ModelQuery[Version] =
+    ModelQuery.from[Version](TableQuery[VersionTable], _.copy(_, _))
+
+  implicit val isProjectOwned: ProjectOwned[Version] = (a: Version) => a.projectId
 
   /**
     * A helper class for easily building new Versions.
@@ -261,8 +268,8 @@ object Version {
     private var versionString: String       = _
     private var dependencyIds: List[String] = List()
     private var description: String         = _
-    private var projectId: ObjectReference  = -1
-    private var authorId: ObjectReference   = -1
+    private var projectId: DbRef[Project]   = -1L
+    private var authorId: DbRef[User]       = -1L
     private var fileSize: Long              = -1
     private var hash: String                = _
     private var fileName: String            = _
@@ -284,7 +291,7 @@ object Version {
       this
     }
 
-    def projectId(projectId: ObjectReference): Builder = {
+    def projectId(projectId: DbRef[Project]): Builder = {
       this.projectId = projectId
       this
     }
@@ -299,7 +306,7 @@ object Version {
       this
     }
 
-    def authorId(authorId: ObjectReference): Builder = {
+    def authorId(authorId: DbRef[User]): Builder = {
       this.authorId = authorId
       this
     }

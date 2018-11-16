@@ -1,12 +1,12 @@
 package models.querymodels
 
-import db.ObjectReference
-import models.project.Visibility
+import db.DbRef
+import models.project.{Flag, Visibility}
 import ore.permission.role.{Role, Trust}
 import ore.project.FlagReason
 
 case class ShownFlag(
-    flagId: ObjectReference,
+    flagId: DbRef[Flag],
     flagReason: FlagReason,
     flagComment: String,
     reporter: String,

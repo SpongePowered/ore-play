@@ -7,7 +7,6 @@ import scala.concurrent.duration._
 
 import play.api.db.slick.DatabaseConfigProvider
 
-import db.ModelRegistry
 import db.impl.OrePostgresDriver
 import ore.{OreConfig, OreEnv}
 
@@ -28,14 +27,13 @@ class OreModelService @Inject()(
     env: OreEnv,
     config: OreConfig,
     db: DatabaseConfigProvider
-) extends OreModelConfig(OrePostgresDriver, env, config) {
+) extends OreDBOs(OrePostgresDriver, env, config) {
 
   val Logger = play.api.Logger("Database")
 
   // Implement ModelService
-  override lazy val registry: ModelRegistry  = new ModelRegistry {}
-  override lazy val DB                       = db.get[JdbcProfile]
-  override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
+  lazy val DB                                = db.get[JdbcProfile]
+  override lazy val DefaultTimeout: Duration = this.config.app.dbDefaultTimeout
 
   implicit lazy val xa: Transactor.Aux[IO, JdbcDataSource] = Transactor[IO, JdbcDataSource](
     DB.db.source,
@@ -44,52 +42,17 @@ class OreModelService @Inject()(
     Strategy.default
   )
 
-  override def runConIO[R](program: ConnectionIO[R]): Future[R] = program.transact(xa).unsafeToFuture()
+  override def runDBIO[R](action: driver.api.DBIO[R]): Future[R] = DB.db.run(action)
 
-  import registry.{registerModelBase, registerSchema}
+  override def runDbCon[R](program: ConnectionIO[R]): Future[R] = program.transact(xa).unsafeToFuture()
 
   override def start(): Unit = {
     val time = System.currentTimeMillis()
 
-    // Initialize database access objects
-    registerModelBase(Users)
-    registerModelBase(Projects)
-    registerModelBase(Organizations)
-
-    // Register model schemas
-    registerSchema(UserSchema)
-    registerSchema(SessionSchema)
-    registerSchema(SignOnSchema)
-    registerSchema(ProjectRolesSchema)
-    registerSchema(ProjectSchema)
-    registerSchema(ProjectSettingsSchema)
-    registerSchema(ProjectLogSchema)
-    registerSchema(ProjectLogEntrySchema)
-    registerSchema(FlagSchema)
-    registerSchema(ViewSchema)
-    registerSchema(ReviewSchema)
-    registerSchema(VersionSchema)
-    registerSchema(VersionTagSchema)
-    registerSchema(DownloadWarningSchema)
-    registerSchema(UnsafeDownloadSchema)
-    registerSchema(DownloadSchema)
-    registerSchema(ChannelSchema)
-    registerSchema(PageSchema)
-    registerSchema(NotificationSchema)
-    registerSchema(OrganizationSchema)
-    registerSchema(OrganizationRoleSchema)
-    registerSchema(ProjectApiKeySchema)
-    registerSchema(UserActionLogSchema)
-    registerSchema(ProjectVisibilityChangeSchema)
-    registerSchema(VersionVisibilityChangeSchema)
-    registerSchema(DbRoleSchema)
-
     Logger.info(
-      "Database initialized:\n" +
-        s"Initialization time: ${System.currentTimeMillis() - time}ms\n" +
-        s"Default timeout: ${DefaultTimeout.toString}\n" +
-        s"Registered DBOs: ${this.registry.modelBases.size}\n" +
-        s"Registered Schemas: ${this.registry.modelSchemas.size}"
+      s"""|Database initialized:
+          |Initialization time: ${System.currentTimeMillis() - time}ms
+          |Default timeout: ${DefaultTimeout.toString}""".stripMargin
     )
   }
 }
