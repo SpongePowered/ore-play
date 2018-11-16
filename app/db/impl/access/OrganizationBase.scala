@@ -44,7 +44,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
     // that name. We will give the organization a dummy email for continuity.
     // By default we use "<org>@ore.spongepowered.org".
     Logger.debug("Creating on SpongeAuth...")
-    val dummyEmail   = name + '@' + this.config.orgs.get[String]("dummyEmailDomain")
+    val dummyEmail   = name + '@' + this.config.ore.orgs.dummyEmailDomain
     val spongeResult = auth.createDummyUser(name, dummyEmail)
 
     // Check for error

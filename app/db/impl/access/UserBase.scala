@@ -82,8 +82,8 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return     Newly created session
     */
   def createSession(user: User)(implicit ec: ExecutionContext): Future[Session] = {
-    val maxAge     = this.config.play.get[Int]("http.session.maxAge")
-    val expiration = new Timestamp(new Date().getTime + maxAge * 1000L)
+    val maxAge     = this.config.play.sessionMaxAge
+    val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
     val token      = UUID.randomUUID().toString
     val session    = Session(ObjectId.Uninitialized, ObjectTimestamp.Uninitialized, expiration, user.name, token)
     this.service.access[Session](classOf[Session]).add(session)

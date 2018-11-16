@@ -42,7 +42,7 @@ class Organizations @Inject()(forms: OreForms)(
   private def EditOrganizationAction(organization: String) =
     AuthedOrganizationAction(organization, requireUnlock = true).andThen(OrganizationPermissionAction(EditSettings))
 
-  private val createLimit: Int = this.config.orgs.get[Int]("createLimit")
+  private val createLimit: Int = this.config.ore.orgs.createLimit
 
   /**
     * Shows the creation panel for Organizations.
@@ -76,7 +76,7 @@ class Organizations @Inject()(forms: OreForms)(
           Future.successful(BadRequest)
         else if (user.isLocked)
           Future.successful(Redirect(failCall).withError("error.user.locked"))
-        else if (!this.config.orgs.get[Boolean]("enabled"))
+        else if (!this.config.ore.orgs.enabled)
           Future.successful(Redirect(failCall).withError("error.org.disabled"))
         else {
           val formData = request.body

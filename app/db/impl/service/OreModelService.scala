@@ -30,7 +30,7 @@ class OreModelService @Inject()(
   // Implement ModelService
   override lazy val registry: ModelRegistry  = new ModelRegistry {}
   override lazy val DB                       = db.get[JdbcProfile]
-  override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
+  override lazy val DefaultTimeout: Duration = this.config.app.dbDefaultTimeout
 
   import registry.{registerModelBase, registerSchema}
 

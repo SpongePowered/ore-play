@@ -112,7 +112,7 @@ final class Application @Inject()(forms: OreForms)(
     val categoryList: Seq[Category] = categories.fold(Category.fromString(""))(s => Category.fromString(s)).toSeq
     val q                           = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
 
-    val pageSize = this.config.projects.get[Int]("init-load")
+    val pageSize = this.config.ore.projects.initLoad
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
 
@@ -277,7 +277,7 @@ final class Application @Inject()(forms: OreForms)(
         noTopicProject    <- projectTable if noTopicProject.topicId.isEmpty || noTopicProject.postId.?.isEmpty
         dirtyTopicProject <- projectTable if dirtyTopicProject.isTopicDirty
         staleProject      <- projectTable
-        if staleProject.lastUpdated > new Timestamp(new Date().getTime - this.config.projects.get[Int]("staleAge"))
+        if staleProject.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis)
         notPublicProject <- projectTable if notPublicProject.visibility =!= (Visibility.Public: Visibility)
       } yield (noTopicProject, dirtyTopicProject, staleProject, notPublicProject)
 

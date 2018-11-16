@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import play.api.Configuration
+import ore.OreConfig
 
 import akka.actor.{ActorSystem, Scheduler}
 import com.sun.net.ssl.internal.ssl.Provider
@@ -111,20 +111,20 @@ trait Mailer extends Runnable {
 }
 
 @Singleton
-final class SpongeMailer @Inject()(config: Configuration, actorSystem: ActorSystem)(implicit ec: ExecutionContext)
+final class SpongeMailer @Inject()(config: OreConfig, actorSystem: ActorSystem)(implicit ec: ExecutionContext)
     extends Mailer {
 
-  private val conf = config.get[Configuration]("mail")
+  private val conf = config.mail
 
-  override val username: String                = this.conf.get[String]("username")
-  override val email: InternetAddress          = InternetAddress.parse(this.conf.get[String]("email"))(0)
-  override val password: String                = this.conf.get[String]("password")
-  override val smtpHost: String                = this.conf.get[String]("smtp.host")
-  override val smtpPort: Int                   = this.conf.get[Int]("smtp.port")
-  override val transportProtocol: String       = this.conf.get[String]("transport.protocol")
-  override val interval: FiniteDuration        = this.conf.get[FiniteDuration]("interval")
+  override val username: String                = this.conf.username
+  override val email: InternetAddress          = InternetAddress.parse(this.conf.email)(0)
+  override val password: String                = this.conf.password
+  override val smtpHost: String                = this.conf.smtpHost
+  override val smtpPort: Int                   = this.conf.smtpPort
+  override val transportProtocol: String       = this.conf.transportProtocol
+  override val interval: FiniteDuration        = this.conf.interval
   override val scheduler: Scheduler            = this.actorSystem.scheduler
-  override val properties: Map[String, String] = this.conf.get[Map[String, String]]("properties")
+  override val properties: Map[String, String] = this.conf.properties
 
   start()
 

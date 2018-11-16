@@ -6,7 +6,7 @@
 application {
     baseUrl             =   "http://localhost:9000"
     baseUrl             =   ${?BASE_URL}
-    db.default-timeout  =   10
+    db.default-timeout  =   10s
     uploadsDir = "uploads"
     uploadsDir = ${?UPLOADS_DIR}
 
@@ -39,7 +39,7 @@ play {
     http {
         secret.key                       =   "changeme"
         secret.key                       =   ${?APPLICATION_SECRET}
-        session.maxAge                   =   2419200 # 4 weeks
+        session.maxAge                   =   28d # 4 weeks
         parser.maxDiskBuffer             =   20MB
         parser.maxMemoryBuffer           =   1000000
     }
@@ -77,9 +77,6 @@ security {
 ore {
     debug       =  false
     debug-level =  3
-    # Used in /admin/seed route. Run "gradle build" in OreTestPlugin before using that route
-    test-plugin = "OreTestPlugin/build/libs/ore-test-plugin-dev-SNAPSHOT.jar"
-    caching = true
 
     channels {
         max-name-len = 15
@@ -94,7 +91,6 @@ ore {
         min-len = 15
         max-len = 32000
         page.max-len = 75000
-        name.max-len = 255
     }
 
     projects {
@@ -105,11 +101,9 @@ ore {
         init-version-load = 10
         max-desc-len = 120
         file-validate = true
-        tmp-file-save = false
-        icon-size = 200
-        staleAge = 2419200
-        check-interval = 300000ms                  // 1 hour (millis)
-        draft-expire = 86400000                  // 1 day (millis)
+        staleAge = 28d
+        check-interval = 1h
+        draft-expire = 1d
     }
 
     users {
@@ -121,14 +115,12 @@ ore {
 
     orgs {
         enabled = true
-        passwordLength = 60
         dummyEmailDomain = "ore.spongepowered.org"
-        groupId = 64
         createLimit = 5
     }
 
     queue {
-        max-review-time = 86400000                  // 1 day (millis)
+        max-review-time = 1d
     }
 }
 
@@ -143,7 +135,6 @@ mail {
     smtp.host          =   ${?ORE_SMTP_HOST}
     smtp.port          =   465
     smtp.port          =   ${?ORE_SMTP_PORT}
-    confirm.maxAge     =   600000                      // 10 minutes (millis)
     transport.protocol =   "smtps"                     // The outgoing transport protocol
     interval           =   30s                      // 30 seconds (millis)
 

@@ -374,8 +374,8 @@ final class ApiController @Inject()(
   def showStatusZ = Action(Ok(this.status.json))
 
   def syncSso(): Action[AnyContent] = Action.async { implicit request =>
-    val confApiKey = this.config.security.get[String]("sso.apikey")
-    val confSecret = this.config.security.get[String]("sso.secret")
+    val confApiKey = this.config.security.sso.apikey
+    val confSecret = this.config.security.sso.secret
 
     Logger.debug("Sync Request received")
 

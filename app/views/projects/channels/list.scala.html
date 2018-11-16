@@ -90,7 +90,7 @@
                             <i class="fa fa-arrow-left"></i>
                         </a>
                         <a href="#" id="channel-new" class="pull-right btn btn-primary"
-                           @if(channels.size >= config.projects.get[Int]("max-channels")) {
+                           @if(channels.size >= config.ore.projects.maxChannels) {
                                disabled data-toggle="tooltip" data-placement="left"
                                title="@messages("channel.edit.maxReached")"
                            } else {
