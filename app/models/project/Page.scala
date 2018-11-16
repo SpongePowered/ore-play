@@ -201,7 +201,7 @@ object Page {
             controllers.routes.Application.linkOut(urlString).toString
           }
         } else {
-          val trustedUrlHosts = this.config.app.get[Seq[String]]("trustedUrlHosts")
+          val trustedUrlHosts = this.config.app.trustedUrlHosts
           val checkSubdomain = (trusted: String) =>
             trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1))
           if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) {
@@ -272,27 +272,27 @@ object Page {
   /**
     * The name of each Project's homepage.
     */
-  def homeName(implicit config: OreConfig): String = config.pages.get[String]("home.name")
+  def homeName(implicit config: OreConfig): String = config.ore.pages.homeName
 
   /**
     * The template body for the Home page.
     */
-  def homeMessage(implicit config: OreConfig): String = config.pages.get[String]("home.message")
+  def homeMessage(implicit config: OreConfig): String = config.ore.pages.homeMessage
 
   /**
     * The minimum amount of characters a page may have.
     */
-  def minLength(implicit config: OreConfig): Int = config.pages.get[Int]("min-len")
+  def minLength(implicit config: OreConfig): Int = config.ore.pages.minLen
 
   /**
     * The maximum amount of characters the home page may have.
     */
-  def maxLength(implicit config: OreConfig): Int = config.pages.get[Int]("max-len")
+  def maxLength(implicit config: OreConfig): Int = config.ore.pages.maxLen
 
   /**
     * The maximum amount of characters a page may have.
     */
-  def maxLengthPage(implicit config: OreConfig): Int = config.pages.get[Int]("page.max-len")
+  def maxLengthPage(implicit config: OreConfig): Int = config.ore.pages.pageMaxLen
 
   /**
     * Returns a template for new Pages.

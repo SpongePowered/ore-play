@@ -1,5 +1,5 @@
 @import controllers.sugar.Requests.OreRequest
-@import models.project.Visibility
+@import models.project.{ReviewState, Visibility}
 @import models.viewhelper.{ScopedProjectData, VersionData}
 @import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
 @import ore.{OreConfig, Platform}
@@ -45,7 +45,7 @@
                             <div class="clearfix"></div>
                         }
 
-                        @if(v.v.isReviewed) {
+                        @if(v.v.reviewState.isChecked) {
                             <div>
                                 @if(request.headerData.globalPerm(ReviewProjects)) {
                                     @v.approvedBy.zip(v.v.approvedAt).map { t =>
@@ -54,8 +54,13 @@
                                         </i>
                                     }
                                 }
-                                <i data-toggle="tooltip" data-placement="left" title="@messages("version.approved")"
-                                   class="fa fa-lg fa-check-circle-o"></i>
+                                @if(v.v.reviewState == ReviewState.PartiallyReviewed) {
+                                    <i data-toggle="tooltip" data-placement="left" title="@messages("version.approvedPartial")"
+                                        class="fa fa-lg fa-check-circle-o"></i>
+                                } else {
+                                    <i data-toggle="tooltip" data-placement="left" title="@messages("version.approved")"
+                                        class="fa fa-lg fa-check-circle-o"></i>
+                                }
                             </div>
                         }
                     </div>
@@ -76,7 +81,7 @@
                             }
 
                             @if(request.headerData.globalPerm(ReviewProjects)) {
-                                @if(v.v.isReviewed) {
+                                @if(v.v.reviewState.isChecked) {
                                     <a href="@v.fullSlug/reviews" class="btn btn-info">@messages("review.log")</a>
                                 } else {
                                     <a href="@v.fullSlug/reviews" class="btn btn-success">
@@ -117,7 +122,7 @@
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-right">
                                     <li><a href="@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)">@messages("general.download")</a></li>
-                                    <li><a href="#" class="copy-url" data-clipboard-text="@config.app.get[String]("baseUrl")@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)">Copy URL</a></li>
+                                    <li><a href="#" class="copy-url" data-clipboard-text="@config.app.baseUrl@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)">Copy URL</a></li>
                                 </ul>
                             </div>
 
@@ -152,11 +157,11 @@
         <div class="row version-description">
             <div id="description" class="col-md-8">
                 <div class="row">
-                    @if(!v.v.isReviewed) {
+                    @if(!v.v.reviewState.isChecked) {
                         <div class="col-md-12">
                             <div class="alert-review alert alert-info" role="alert">
                                 <i class="fa fa-info-circle"></i>
-                                This project is under review and may not be safe for downloading.
+                                @messages("project.download.warn")
                             </div>
                         </div>
                     }

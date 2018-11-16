@@ -1,6 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.admin.Review
-@import models.project.{Project, Version}
+@import models.project.{Project, ReviewState, Version}
 @import ore.OreConfig
 @import security.NonceFilter._
 @import util.StringUtils._
@@ -26,10 +26,10 @@
                     </a>
                     released this version on @prettifyDate(version.createdAt.value)
                 </p>
-                @if(!version.isReviewed) {
+                @if(!version.reviewState.isChecked) {
                     <div class="pull-right">
                         <span class="btn-group-sm">
-                            <a href="#" class="btn btn-info btn-skip-review">@if(!version.isNonReviewed) { Remove from queue } else { Add to queue }</a>
+                            <a href="#" class="btn btn-info btn-skip-review">@if(version.reviewState != ReviewState.Backlog) { Remove from queue } else { Add to queue }</a>
                             <a href="@projectRoutes.show(project.ownerName, project.slug)" class="btn btn-info">Project Page</a>
                             <a href="@versionRoutes.downloadJar(project.ownerName, project.slug, version.versionString, None)" class="btn btn-info">Download File</a>
                         </span>
@@ -38,6 +38,7 @@
                                 @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
                                     <button class="btn btn-review-stop btn-danger"><i class="fa fa-times-circle-o"></i> @messages("review.stop")</button>
                                     <button class="btn btn-review-approve btn-success"><i class="fa fa-thumbs-up"></i> @messages("user.queue.approve")</button>
+                                    <button class="btn btn-review-approve-partial btn-success"><i class="fa fa-thumbs-up"></i> @messages("user.queue.approvePartial")</button>
                                 } else {
                                     <button class="btn btn-review-takeover btn-danger"><i class="fa fa-clipboard"></i> @messages("review.takeover")</button>
                                 }

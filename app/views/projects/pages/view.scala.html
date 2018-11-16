@@ -74,7 +74,7 @@ Documentation page within Project overview.
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <h3 class="pull-left panel-title">@messages("page.plural")</h3>
-                            @if(canEditPages && pageCount < config.projects.get[Int]("max-pages")) {
+                            @if(canEditPages && pageCount < config.ore.projects.maxPages) {
                                 <button data-toggle="modal" data-target="#new-page" title="New"
                                         class="new-page btn yellow btn-xs pull-right">
                                     <i class="fa fa-plus"></i>

@@ -1,6 +1,7 @@
 package ore.user
 
 import scala.language.{higherKinds, implicitConversions}
+
 import scala.concurrent.{ExecutionContext, Future}
 
 import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}

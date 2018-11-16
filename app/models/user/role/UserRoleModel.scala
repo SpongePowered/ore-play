@@ -5,7 +5,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import db.impl.table.common.RoleTable
 import db.{Model, ModelService}
 import ore.Visitable
-import ore.permission.role.{UserRole, Role}
+import ore.permission.role.{Role, UserRole}
 
 /**
   * Represents a [[UserRole]] in something like a [[models.project.Project]] or

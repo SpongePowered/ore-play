@@ -99,8 +99,6 @@ case object LoggedAction extends IntEnum[LoggedAction[_]] {
       extends LoggedAction(8, "VersionDeleted", LoggedActionContext.Version, "The version was deleted")
   case object VersionUploaded
       extends LoggedAction(9, "VersionUploaded", LoggedActionContext.Version, "A new version was uploaded")
-  case object VersionApproved
-      extends LoggedAction(10, "VersionApproved", LoggedActionContext.Version, "The version was approved")
   case object VersionAsRecommended
       extends LoggedAction(
         11,
@@ -115,12 +113,12 @@ case object LoggedAction extends IntEnum[LoggedAction[_]] {
         LoggedActionContext.Version,
         "The version description was edited"
       )
-  case object VersionNonReviewChanged
+  case object VersionReviewStateChanged
       extends LoggedAction(
         17,
-        "VersionNonReviewChanged",
+        "VersionReviewStateChanged",
         LoggedActionContext.Version,
-        "If the review queue skip was changed"
+        "If the review state changed"
       )
 
   case object UserTaglineChanged

@@ -7,7 +7,7 @@ import play.api.mvc.Request
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
 import db.{DbRef, ModelService}
-import models.project.Visibility
+import models.project.{ReviewState, Visibility}
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
@@ -90,7 +90,7 @@ object HeaderData {
       .exists
 
   private def reviewQueue: Rep[Boolean] =
-    TableQuery[VersionTable].filter(v => v.isReviewed === false).exists
+    TableQuery[VersionTable].filter(v => v.reviewStatus === (ReviewState.Unreviewed: ReviewState)).exists
 
   private val flagQueue: Rep[Boolean] = TableQuery[FlagTable].filter(_.isResolved === false).exists
 

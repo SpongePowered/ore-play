@@ -86,6 +86,23 @@ $(function() {
         });
     });
 
+    $('.btn-review-approve-partial').click(function() {
+        var icon = $(this).find('i').removeClass('fa-thumbs-up').addClass('fa-spinner fa-spin');
+        $.ajax({
+            type: 'post',
+            url: '/' + versionPath + '/reviews/approve',
+            data: { csrfToken: csrf }
+        });
+        $.ajax({
+            type: 'post',
+            url: '/' + versionPath + '/approvePartial',
+            data: { csrfToken: csrf },
+            success: function() {
+                location.reload();
+            }
+        });
+    });
+
     $('.btn-review-takeover').click(function () {
         var modal = $('#modal-review-takeover');
         modal.modal().show();

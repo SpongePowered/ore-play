@@ -35,7 +35,6 @@ import slick.lifted.TableQuery
   * @param dependencyIds    List of plugin dependencies with the plugin ID and
   *                         version separated by a ':'
   * @param description     User description of version
-  * @param assets           Path to assets directory within plugin
   * @param projectId        ID of project this version belongs to
   * @param _channelId        ID of channel this version belongs to
   */
@@ -45,20 +44,18 @@ case class Version(
     projectId: DbRef[Project],
     versionString: String,
     dependencyIds: List[String] = List(),
-    assets: Option[String] = None,
     channelId: DbRef[Channel],
     fileSize: Long,
     hash: String,
     authorId: DbRef[User],
     description: Option[String] = None,
     downloadCount: Long = 0,
-    isReviewed: Boolean = false,
+    reviewState: ReviewState = ReviewState.Unreviewed,
     reviewerId: Option[DbRef[User]] = None,
     approvedAt: Option[Timestamp] = None,
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
-    isNonReviewed: Boolean = false
 ) extends Model
     with Describable
     with Downloadable

@@ -34,7 +34,7 @@ case class Review(
     versionId: DbRef[Version],
     userId: DbRef[User],
     endedAt: Option[Timestamp],
-    message: String
+    message: JsValue
 ) extends Model {
 
   /** Self referential type */
@@ -48,15 +48,10 @@ case class Review(
     */
   def addMessage(message: Message)(implicit ec: ExecutionContext, service: ModelService): Future[Review] = {
     val messages = decodeMessages :+ message
-    val js       = Json.toJson(messages)
     service.update(
       copy(
-        message = Json.stringify(
-          JsObject(
-            Seq(
-              "messages" -> js
-            )
-          )
+        message = JsObject(
+          Seq("messages" -> Json.toJson(messages))
         )
       )
     )
@@ -66,14 +61,8 @@ case class Review(
     * Get all messages
     * @return
     */
-  def decodeMessages: Seq[Message] = {
-    if (message.startsWith("{") && message.endsWith("}")) {
-      val messages: JsValue = Json.parse(message)
-      (messages \ "messages").as[Seq[Message]]
-    } else {
-      Seq()
-    }
-  }
+  def decodeMessages: Seq[Message] =
+    (message \ "messages").asOpt[Seq[Message]].getOrElse(Nil)
 }
 
 /**

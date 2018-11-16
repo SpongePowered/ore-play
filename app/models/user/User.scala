@@ -86,7 +86,7 @@ case class User(
     */
   def isPgpPubKeyReady(implicit config: OreConfig, service: ModelService): Boolean =
     this.pgpPubKey.isDefined && this.lastPgpPubKeyUpdate.forall { lastUpdate =>
-      val cooldown = config.security.get[Long]("keyChangeCooldown")
+      val cooldown = config.security.keyChangeCooldown
       val minTime  = new Timestamp(lastUpdate.getTime + cooldown)
       minTime.before(service.theTime)
     }
@@ -401,7 +401,7 @@ object User {
     AssociationQuery.from[UserGlobalRolesTable, User, DbRole](TableQuery[UserGlobalRolesTable])(_.userId, _.roleId)
 
   def avatarUrl(name: String)(implicit config: OreConfig): String =
-    config.security.get[String]("api.avatarUrl").format(name)
+    config.security.api.avatarUrl.format(name)
 
   /**
     * Create a new [[User]] from the specified [[SpongeUser]].

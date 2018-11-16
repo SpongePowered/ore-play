@@ -10,11 +10,11 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
 
-import play.api.Configuration
 import play.api.http.Status
 import play.api.i18n.Lang
 import play.api.libs.ws.WSClient
 
+import ore.OreConfig
 import security.CryptoUtils
 
 import akka.http.scaladsl.model.Uri
@@ -164,14 +164,14 @@ object SingleSignOnConsumer {
   def nonce: String = new BigInteger(130, Random).toString(32)
 }
 
-class SpongeSingleSignOnConsumer @Inject()(val ws: WSClient, config: Configuration) extends SingleSignOnConsumer {
+class SpongeSingleSignOnConsumer @Inject()(val ws: WSClient, config: OreConfig) extends SingleSignOnConsumer {
 
-  private val conf = this.config.get[Configuration]("security")
+  private val conf = this.config.security.sso
 
-  override val loginUrl: String        = this.conf.get[String]("sso.loginUrl")
-  override val signupUrl: String       = this.conf.get[String]("sso.signupUrl")
-  override val verifyUrl: String       = this.conf.get[String]("sso.verifyUrl")
-  override val secret: String          = this.conf.get[String]("sso.secret")
-  override val timeout: FiniteDuration = this.conf.get[FiniteDuration]("sso.timeout")
+  override val loginUrl: String        = conf.loginUrl
+  override val signupUrl: String       = conf.signupUrl
+  override val verifyUrl: String       = conf.verifyUrl
+  override val secret: String          = conf.secret
+  override val timeout: FiniteDuration = conf.timeout
 
 }

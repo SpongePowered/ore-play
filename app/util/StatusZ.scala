@@ -2,13 +2,14 @@ package util
 
 import javax.inject.Inject
 
-import play.api.Configuration
 import play.api.libs.json.{JsObject, Json}
+
+import ore.OreConfig
 
 /**
   * Contains status information about the application.
   */
-final class StatusZ @Inject()(config: Configuration) {
+final class StatusZ @Inject()(config: OreConfig) {
 
   val BuildNum  = "BUILD_NUMBER"
   val GitBranch = "GIT_BRANCH"
@@ -30,11 +31,8 @@ final class StatusZ @Inject()(config: Configuration) {
     JobName   -> env(JobName),
     BuildTag  -> env(BuildTag),
     SpongeEnv -> env(SpongeEnv),
-    Service   -> string("sponge.service", "unknown")
+    Service   -> config.sponge.service
   )
-
-  private def string(key: String, default: String): String =
-    this.config.getOptional[String](key).getOrElse(default) // Weird stuff
 
   private def env(key: String) = sys.env.getOrElse(key, "unknown")
 

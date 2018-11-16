@@ -58,7 +58,7 @@ trait OreRestfulApi extends OreWrites {
     val cats: Option[Seq[Category]] = categories.map(Category.fromString).map(_.toSeq)
     val ordering                    = sort.map(ProjectSortingStrategies.withId(_).get).getOrElse(ProjectSortingStrategies.Default)
 
-    val maxLoad = this.config.projects.get[Int]("init-load")
+    val maxLoad = this.config.ore.projects.initLoad
     val lim     = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
     def filteredProjects(offset: Option[Int], lim: Int) = {
@@ -173,7 +173,8 @@ trait OreRestfulApi extends OreWrites {
       "channel"       -> toJson(c),
       "fileSize"      -> v.fileSize,
       "md5"           -> v.hash,
-      "staffApproved" -> v.isReviewed,
+      "staffApproved" -> v.reviewState.isChecked,
+      "reviewState"   -> v.reviewState.toString,
       "href"          -> ('/' + v.url(p)),
       "tags"          -> tags.map(toJson(_)),
       "downloads"     -> v.downloadCount
@@ -251,7 +252,7 @@ trait OreRestfulApi extends OreWrites {
       .filter { case (p, _, _, _, _) => p.pluginId.toLowerCase === pluginId.toLowerCase }
       .sortBy { case (_, v, _, _, _) => v.createdAt.desc }
 
-    val maxLoad = this.config.projects.get[Int]("init-version-load")
+    val maxLoad = this.config.ore.projects.initVersionLoad
     val lim     = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
     val limited = filtered.drop(offset.getOrElse(0)).take(lim)

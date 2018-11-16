@@ -2,7 +2,7 @@ package db.impl
 
 import play.api.i18n.Lang
 
-import models.project.{TagColor, Visibility}
+import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
 import ore.permission.role.{Role, RoleCategory, Trust}
@@ -28,7 +28,7 @@ trait OrePostgresDriver
     with PgAggFuncSupport
     with PgWindowFuncSupport
     with PgNetSupport
-    with PgJsonSupport
+    with PgPlayJsonSupport
     with PgEnumSupport
     with SlickValueEnumSupport {
 
@@ -36,7 +36,7 @@ trait OrePostgresDriver
 
   def pgjson = "jsonb"
 
-  object OreDriver extends API with ArrayImplicits with NetImplicits {
+  object OreDriver extends API with ArrayImplicits with NetImplicits with JsonImplicits {
     implicit val colorTypeMapper: BaseColumnType[Color]           = mappedColumnTypeForValueEnum(Color)
     implicit val tagColorTypeMapper: BaseColumnType[TagColor]     = mappedColumnTypeForValueEnum(TagColor)
     implicit val roleTypeTypeMapper: BaseColumnType[Role]         = mappedColumnTypeForValueEnum(Role)
@@ -53,7 +53,8 @@ trait OrePostgresDriver
       mappedColumnTypeForValueEnum(LoggedAction).asInstanceOf[BaseColumnType[LoggedAction[Ctx]]]
     implicit def loggedActionContextMapper[Ctx]: BaseColumnType[LoggedActionContext[Ctx]] =
       mappedColumnTypeForValueEnum(LoggedActionContext).asInstanceOf[BaseColumnType[LoggedActionContext[Ctx]]]
-    implicit val trustTypeMapper: BaseColumnType[Trust] = mappedColumnTypeForValueEnum(Trust)
+    implicit val trustTypeMapper: BaseColumnType[Trust]             = mappedColumnTypeForValueEnum(Trust)
+    implicit val reviewStateTypeMapper: BaseColumnType[ReviewState] = mappedColumnTypeForValueEnum(ReviewState)
 
     implicit val langTypeMapper: BaseColumnType[Lang] =
       MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)

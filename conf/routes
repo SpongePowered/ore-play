@@ -165,7 +165,8 @@ POST    /:author/:slug/channels/:channel/delete                     @controllers
 
 GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug, channels: Option[String])
 
-POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version)
+POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version, partial: Boolean = false)
+POST    /:author/:slug/versions/:version/approvePartial             @controllers.project.Versions.approve(author, slug, version, partial: Boolean = true)
 POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)
 POST    /:author/:slug/versions/:version/restore                    @controllers.project.Versions.restore(author, slug, version)
 POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
@@ -201,7 +202,7 @@ POST    /:author/:slug/versions/:version/reviews/takeover           @controllers
 POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers.Reviews.addMessage(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: DbRef[Review])
 POST    /:author/:slug/versions/:version/reviews/reopen             @controllers.Reviews.reopenReview(author, slug, version)
-POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers.Reviews.shouldReviewToggle(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers.Reviews.backlogToggle(author, slug, version)
 
 # ---------- Other ----------
 

@@ -33,7 +33,7 @@ class OreModelService @Inject()(
 
   // Implement ModelService
   lazy val DB                                = db.get[JdbcProfile]
-  override lazy val DefaultTimeout: Duration = this.config.app.get[Int]("db.default-timeout").seconds
+  override lazy val DefaultTimeout: Duration = this.config.app.dbDefaultTimeout
 
   implicit lazy val xa: Transactor.Aux[IO, JdbcDataSource] = Transactor[IO, JdbcDataSource](
     DB.db.source,
