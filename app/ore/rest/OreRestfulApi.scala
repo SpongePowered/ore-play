@@ -174,6 +174,7 @@ trait OreRestfulApi extends OreWrites {
       "fileSize"      -> v.fileSize,
       "md5"           -> v.hash,
       "staffApproved" -> v.reviewState.isChecked,
+      "reviewState"   -> v.reviewState.toString,
       "href"          -> ('/' + v.url(p)),
       "tags"          -> tags.map(toJson(_)),
       "downloads"     -> v.downloadCount

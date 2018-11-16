@@ -171,8 +171,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               request.request,
               LoggedAction.VersionReviewStateChanged,
               version.id.value,
+              newState.toString,
               version.reviewState.toString,
-              newState.toString
             )
           )
         } yield Redirect(self.show(author, slug, versionString))
