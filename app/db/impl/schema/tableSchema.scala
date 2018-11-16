@@ -3,6 +3,7 @@ package db.impl.schema
 import java.sql.Timestamp
 
 import play.api.i18n.Lang
+import play.api.libs.json.JsValue
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.StatTable
@@ -60,7 +61,7 @@ trait ProjectTable
   def postId               = column[Int]("post_id")
   def isTopicDirty         = column[Boolean]("is_topic_dirty")
   def lastUpdated          = column[Timestamp]("last_updated")
-  def notes                = column[String]("notes")
+  def notes                = column[JsValue]("notes")
 
   override def * = {
     val convertedUnapply = convertUnapply(Project.unapply)
@@ -224,7 +225,6 @@ class VersionTable(tag: Tag)
 
   def versionString     = column[String]("version_string")
   def dependencies      = column[List[String]]("dependencies")
-  def assets            = column[String]("assets")
   def projectId         = column[ObjectReference]("project_id")
   def channelId         = column[ObjectReference]("channel_id")
   def fileSize          = column[Long]("file_size")
@@ -244,7 +244,6 @@ class VersionTable(tag: Tag)
       projectId,
       versionString,
       dependencies,
-      assets.?,
       channelId,
       fileSize,
       hash,
@@ -484,7 +483,7 @@ class ReviewTable(tag: Tag) extends ModelTable[Review](tag, "project_version_rev
   def versionId = column[ObjectReference]("version_id")
   def userId    = column[ObjectReference]("user_id")
   def endedAt   = column[Timestamp]("ended_at")
-  def comment   = column[String]("comment")
+  def comment   = column[JsValue]("comment")
 
   override def * = {
     val convertedUnapply = convertUnapply(Review.unapply)

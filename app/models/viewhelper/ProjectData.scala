@@ -116,7 +116,7 @@ object ProjectData {
       flagResolvedFut,
       lastVisibilityChangeFut,
       lastVisibilityChangeUserFut,
-      project.recommendedVersion
+      project.recommendedVersion.value
     ).mapN {
       case (
           settings,
@@ -147,7 +147,7 @@ object ProjectData {
           noteCount,
           lastVisibilityChange,
           lastVisibilityChangeUser,
-          Some(recommendedVersion)
+          recommendedVersion
         )
     }
   }

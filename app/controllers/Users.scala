@@ -52,7 +52,7 @@ class Users @Inject()(
     service: ModelService
 ) extends OreBaseController {
 
-  private val baseUrl = this.config.app.get[String]("baseUrl")
+  private val baseUrl = this.config.app.baseUrl
 
   /**
     * Redirect to auth page for SSO authentication.
@@ -124,7 +124,7 @@ class Users @Inject()(
       Redirect(ShowHome).withError("error.noLogin")
 
   private def redirectBack(url: String, user: User) =
-    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.get[Int]("http.session.maxAge"))
+    Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
 
   /**
     * Clears the current session.
@@ -132,7 +132,7 @@ class Users @Inject()(
     * @return Home page
     */
   def logOut() = Action { implicit request =>
-    Redirect(config.security.get[String]("api.url") + "/accounts/logout/")
+    Redirect(config.security.api.url + "/accounts/logout/")
       .clearingSession()
       .flashing("noRedirect" -> "true")
   }
@@ -145,7 +145,7 @@ class Users @Inject()(
     * @return           View of user projects page
     */
   def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.async { implicit request =>
-    val pageSize = this.config.users.get[Int]("project-page-size")
+    val pageSize = this.config.ore.users.projectPageSize
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
     users
@@ -161,7 +161,7 @@ class Users @Inject()(
           (tagsSeq, userData, starredRv, orgaData, scopedOrgaData) <- (
             Future.sequence(projectSeq.map(_._2.tags)),
             getUserData(request, username).value,
-            Future.sequence(starred.map(_.recommendedVersion)),
+            Future.sequence(starred.map(_.recommendedVersion.value)),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).tupled
@@ -203,7 +203,7 @@ class Users @Inject()(
     */
   def saveTagline(username: String): Action[String] =
     UserAction(username).asyncEitherT(parse.form(forms.UserTagline)) { implicit request =>
-      val maxLen = this.config.users.get[Int]("max-tagline-len")
+      val maxLen = this.config.ore.users.maxTaglineLen
 
       for {
         user <- users.withName(username).toRight(NotFound)

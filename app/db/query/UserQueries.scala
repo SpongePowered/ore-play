@@ -30,7 +30,7 @@ object UserQueries extends DoobieOreProtocol {
       implicit config: OreConfig
   ): Query0[(String, Option[Timestamp], Timestamp, Option[Role], Option[Role], Long)] = {
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
-    val pageSize        = config.users.get[Long]("author-page-size")
+    val pageSize        = config.ore.users.authorPageSize
     val offset          = (page - 1) * pageSize
 
     val fragments =
@@ -65,7 +65,7 @@ object UserQueries extends DoobieOreProtocol {
       implicit config: OreConfig
   ): Query0[(String, Role, Option[Timestamp], Timestamp)] = {
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
-    val pageSize        = config.users.get[Long]("author-page-size")
+    val pageSize        = config.ore.users.authorPageSize
     val offset          = (page - 1) * pageSize
 
     val fragments =

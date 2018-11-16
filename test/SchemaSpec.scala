@@ -62,7 +62,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Version") {
-    check(sql"""|SELECT id, created_at, project_id, version_string, dependencies, assets, channel_id, file_size, hash,
+    check(sql"""|SELECT id, created_at, project_id, version_string, dependencies, channel_id, file_size, hash,
                 |author_id, description, downloads, review_state, reviewer_id, approved_at, visibility, file_name,
                 |signature_file_name FROM project_versions
        """.stripMargin.query[Version])
