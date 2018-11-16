@@ -407,7 +407,7 @@ final class ApiController @Inject()(
               }
 
               val updateRoles = globalRoles.fold(Future.unit) { roles =>
-                service.runDBIO(user.globalRoles.allQueryFromParent(user).delete) *> roles
+                user.globalRoles.deleteAllFromParent(user) *> roles
                   .map(_.toDbRole)
                   .traverse(user.globalRoles.addAssoc(user, _))
                   .void

@@ -20,6 +20,10 @@ trait ModelAssociationAccess[Assoc <: AssociativeTable[P, C], P <: Model { type 
 
   def contains(parent: P, child: C): F[Boolean]
 
+  def deleteAllFromParent(parent: P): F[Unit]
+
+  def deleteAllFromChild(child: C): F[Unit]
+
   def allQueryFromParent(parent: P): Query[C#T, C, Seq]
 
   def allFromParent(parent: P): F[Seq[C]]
@@ -57,6 +61,12 @@ class ModelAssociationAccessImpl[
       .filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === child.id.value)
       .length > 0).result
   )
+
+  override def deleteAllFromParent(parent: P): Future[Unit] =
+    service.runDBIO(query.baseQuery.filter(query.parentRef(_) === parent.id.value).delete).void
+
+  override def deleteAllFromChild(child: C): Future[Unit] =
+    service.runDBIO(query.baseQuery.filter(query.childRef(_) === child.id.value).delete).void
 
   override def allQueryFromParent(parent: P): Query[C#T, C, Seq] =
     for {
