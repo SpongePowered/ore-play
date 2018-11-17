@@ -63,7 +63,7 @@ resolvers ++= Seq(
   "Akka Snapshot Repository".at("http://repo.akka.io/snapshots/")
 )
 
-lazy val doobieVersion = "0.5.3"
+lazy val doobieVersion = "0.6.0"
 
 libraryDependencies ++= Seq(ehcache, ws, guice)
 
