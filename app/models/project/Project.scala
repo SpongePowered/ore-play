@@ -366,8 +366,8 @@ case class Project(
     def like =
       service.find[Page] { p =>
         p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && page.parentId.fold(
-          true: Rep[Boolean]
-        )(parentId => (p.parentId === parentId).getOrElse(true: Rep[Boolean]))
+          p.parentId.isEmpty
+        )(parentId => (p.parentId === parentId).getOrElse(false: Rep[Boolean]))
       }
 
     like.value.flatMap {

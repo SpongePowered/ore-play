@@ -116,21 +116,18 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     */
   def showEditor(author: String, slug: String, pageName: String): Action[AnyContent] =
     PageEditAction(author, slug).async { implicit request =>
-      val parts = pageName.split("/")
-
       for {
-        (name, parentId) <- if (parts.size != 2) Future.successful((parts(0), None))
-        else request.project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.value).value.tupleLeft(parts(1))
-        (p, pages) <- (
-          request.project.pages
-            .find(equalsIgnoreCase(_.slug, name))
-            .getOrElseF(request.project.getOrCreatePage(name, parentId)),
+        (optP, pages) <- (
+          withPage(request.data.project, pageName).value,
           projects.queryProjectPages(request.project)
         ).tupled
       } yield {
-        val pageCount  = pages.size + pages.map(_._2.size).sum
-        val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
-        Ok(views.view(request.data, request.scoped, pages, p, parentPage, pageCount, editorOpen = true))
+        optP.fold(notFound) {
+          case (p, _) =>
+            val pageCount  = pages.size + pages.map(_._2.size).sum
+            val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
+            Ok(views.view(request.data, request.scoped, pages, p, parentPage, pageCount, editorOpen = true))
+        }
       }
     }
 
