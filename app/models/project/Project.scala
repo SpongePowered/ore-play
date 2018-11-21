@@ -365,8 +365,9 @@ case class Project(
   private def getOrInsert(page: Page)(implicit service: ModelService, ec: ExecutionContext): Future[Page] = {
     def like =
       service.find[Page] { p =>
-        p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && page.parentId.isDefined && page.parentId
-          .fold(true: Rep[Boolean])(parentId => (p.parentId === parentId).getOrElse(true: Rep[Boolean]))
+        p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && page.parentId.fold(
+          true: Rep[Boolean]
+        )(parentId => (p.parentId === parentId).getOrElse(true: Rep[Boolean]))
       }
 
     like.value.flatMap {
