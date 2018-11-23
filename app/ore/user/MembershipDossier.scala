@@ -2,8 +2,6 @@ package ore.user
 
 import scala.language.{higherKinds, implicitConversions}
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
@@ -17,7 +15,7 @@ import ore.permission.role.Trust
 import ore.project.ProjectMember
 import util.syntax._
 
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 
 /**
@@ -109,15 +107,14 @@ object MembershipDossier {
       RoleType0 <: UserRoleModel { type M = RoleType0 }: ModelQuery,
       MembersTable <: AssociativeTable[User, M0]
   ](childFilter: (RoleType0#T, M0) => Rep[Boolean])(
-      implicit ec: ExecutionContext,
-      service: ModelService,
+      implicit service: ModelService,
       assocQuery: AssociationQuery[MembersTable, User, M0],
       roleUserOwned: UserOwned[RoleType0]
-  ) extends MembershipDossier[Future, M0] {
+  ) extends MembershipDossier[IO, M0] {
 
     type RoleType = RoleType0
 
-    private def association: ModelAssociationAccess[MembersTable, User, M0, Future] =
+    private def association: ModelAssociationAccess[MembersTable, User, M0, IO] =
       new ModelAssociationAccessImpl
 
     private def addMember(model: M0, user: User) =
@@ -128,58 +125,56 @@ object MembershipDossier {
     def roleAccess: ModelAccess[RoleType] =
       service.access[RoleType]()
 
-    def members(model: M0): Future[Set[MemberType]] =
+    def members(model: M0): IO[Set[MemberType]] =
       association
         .allFromChild(model)
         .map(_.map(user => newMember(model, user.id.value)).toSet)
 
-    def addRole(model: M0, role: RoleType): Future[RoleType] = {
+    def addRole(model: M0, role: RoleType): IO[RoleType] = {
       for {
         user   <- role.user
         exists <- roles(model).exists(_.userId === user.id.value)
-        _      <- if (!exists) addMember(model, user) else Future.successful(user)
+        _      <- if (!exists) addMember(model, user) else IO.pure(user)
         ret    <- roleAccess.add(role)
       } yield ret
     }
 
-    def getRoles(model: M0, user: User): Future[Set[RoleType]] =
+    def getRoles(model: M0, user: User): IO[Set[RoleType]] =
       roles(model).filter(_.userId === user.id.value).map(_.toSet)
 
-    def removeRole(model: M0, role: RoleType): Future[Unit] = {
+    def removeRole(model: M0, role: RoleType): IO[Unit] = {
       for {
         _      <- roleAccess.remove(role)
         user   <- role.user
         exists <- roles(model).exists(_.userId === user.id.value)
-        _      <- if (!exists) removeMember(model, user) else Future.successful(0)
+        _      <- if (!exists) removeMember(model, user) else IO.pure(0)
       } yield ()
     }
 
-    def removeMember(model: M0, user: User): Future[Unit] =
+    def removeMember(model: M0, user: User): IO[Unit] =
       clearRoles(model, user) *> association.removeAssoc(user, model)
   }
 
   implicit def project(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Aux[Future, Project, ProjectUserRole, ProjectMember] =
+      implicit service: ModelService
+  ): Aux[IO, Project, ProjectUserRole, ProjectMember] =
     new AbstractMembershipDossier[Project, ProjectUserRole, ProjectMembersTable](_.projectId === _.id.value) {
       override type MemberType = ProjectMember
 
       override def newMember(model: Project, userId: DbRef[User]): ProjectMember = new ProjectMember(model, userId)
 
-      override def getTrust(model: Project, user: User): Future[Trust] =
+      override def getTrust(model: Project, user: User): IO[Trust] =
         service
           .runDBIO(Project.roleForTrustQuery((model.id.value, user.id.value)).result)
           .map(l => if (l.isEmpty) Trust.Default else l.map(_.trust).max)
 
-      override def clearRoles(model: Project, user: User): Future[Int] =
+      override def clearRoles(model: Project, user: User): IO[Int] =
         this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.projectId === model.id.value))
     }
 
   implicit def organization(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Aux[Future, Organization, OrganizationUserRole, OrganizationMember] =
+      implicit service: ModelService
+  ): Aux[IO, Organization, OrganizationUserRole, OrganizationMember] =
     new AbstractMembershipDossier[Organization, OrganizationUserRole, OrganizationMembersTable](
       _.organizationId === _.id.value
     ) {
@@ -188,10 +183,10 @@ object MembershipDossier {
       override def newMember(model: Organization, userId: DbRef[User]): OrganizationMember =
         new OrganizationMember(model, userId)
 
-      override def getTrust(model: Organization, user: User): Future[Trust] =
+      override def getTrust(model: Organization, user: User): IO[Trust] =
         Organization.getTrust(user.id.value, model.id.value)
 
-      override def clearRoles(model: Organization, user: User): Future[Int] =
+      override def clearRoles(model: Organization, user: User): IO[Int] =
         this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.organizationId === model.id.value))
     }
 

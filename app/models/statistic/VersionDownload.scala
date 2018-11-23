@@ -1,7 +1,5 @@
 package models.statistic
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.VersionDownloadsTable
@@ -11,7 +9,7 @@ import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
-import cats.instances.future._
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
@@ -53,11 +51,10 @@ object VersionDownload {
     * @return         New VersionDownload
     */
   def bindFromRequest(version: Version)(
-      implicit ec: ExecutionContext,
-      request: ProjectRequest[_],
+      implicit request: ProjectRequest[_],
       users: UserBase,
       auth: SpongeAuthApi
-  ): Future[VersionDownload] = {
+  ): IO[VersionDownload] = {
     checkArgument(version.isDefined, "undefined version", "")
     users.current.map(_.id.value).value.map { userId =>
       VersionDownload(

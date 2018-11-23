@@ -1,7 +1,5 @@
 package models.viewhelper
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
@@ -13,7 +11,7 @@ import ore.permission._
 import ore.permission.scope.GlobalScope
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 import org.slf4j.MDC
 import slick.lifted.TableQuery
@@ -64,16 +62,15 @@ object HeaderData {
   def cacheKey(user: User) = s"""user${user.id.value}"""
 
   def of[A](request: Request[A])(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[HeaderData] =
+      implicit service: ModelService
+  ): IO[HeaderData] =
     OptionT
-      .fromOption[Future](request.cookies.get("_oretoken"))
+      .fromOption[IO](request.cookies.get("_oretoken"))
       .flatMap(cookie => getSessionUser(cookie.value))
       .semiflatMap(getHeaderData)
       .getOrElse(unAuthenticated)
 
-  private def getSessionUser(token: String)(implicit ec: ExecutionContext, service: ModelService) = {
+  private def getSessionUser(token: String)(implicit service: ModelService) = {
     val query = for {
       s <- TableQuery[SessionTable] if s.token === token
       u <- TableQuery[UserTable] if s.username === u.name
@@ -96,7 +93,7 @@ object HeaderData {
 
   private def getHeaderData(
       user: User
-  )(implicit ec: ExecutionContext, service: ModelService) = {
+  )(implicit service: ModelService) = {
 
     MDC.put("currentUserId", user.id.toString)
     MDC.put("currentUserName", user.name)
@@ -126,7 +123,7 @@ object HeaderData {
     }
   }
 
-  def perms(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Map[Permission, Boolean]] =
+  def perms(user: User)(implicit service: ModelService): IO[Map[Permission, Boolean]] =
     user
       .trustIn(GlobalScope)
       .map2(user.globalRoles.allFromParent(user))((t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*))

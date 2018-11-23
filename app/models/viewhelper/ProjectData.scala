@@ -1,7 +1,5 @@
 package models.viewhelper
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.twirl.api.Html
 
 import controllers.sugar.Requests.OreRequest
@@ -19,7 +17,7 @@ import ore.project.ProjectMember
 import ore.project.factory.PendingProject
 import util.syntax._
 
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.instances.option._
 import cats.syntax.all._
 import slick.lifted.TableQuery
@@ -89,18 +87,17 @@ object ProjectData {
   }
 
   def of[A](project: Project)(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[ProjectData] = {
-    val flagsFut     = project.flags.all
-    val flagUsersFut = flagsFut.flatMap(flags => Future.traverse(flags)(_.user))
-    val flagResolvedFut =
-      flagsFut.flatMap(flags => Future.traverse(flags)(_.resolvedBy.flatTraverse(UserBase().get(_).value)))
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[ProjectData] = {
+    import cats.instances.vector._
+    val flagsF        = project.flags.all.map(_.toVector)
+    val flagUsersF    = flagsF.flatMap(flags => flags.parTraverse(_.user))
+    val flagResolvedF = flagsF.flatMap(flags => flags.parTraverse(_.resolvedBy.flatTraverse(UserBase().get(_).value)))
 
-    val lastVisibilityChangeFut = project.lastVisibilityChange.value
-    val lastVisibilityChangeUserFut = lastVisibilityChangeFut.flatMap { lastVisibilityChange =>
-      if (lastVisibilityChange.isEmpty) Future.successful("Unknown")
-      else lastVisibilityChange.get.created.fold("Unknown")(_.name)
+    val lastVisibilityChangeF = project.lastVisibilityChange.value
+    val lastVisibilityChangeUserF = lastVisibilityChangeF.flatMap { lastVisibilityChange =>
+      lastVisibilityChange.fold(IO.pure("Unknown"))(_.created.fold("Unknown")(_.name))
     }
 
     (
@@ -109,13 +106,13 @@ object ProjectData {
       project.versions.count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
       project.logger.flatMap(_.entries.size),
-      flagsFut,
-      flagUsersFut,
-      flagResolvedFut,
-      lastVisibilityChangeFut,
-      lastVisibilityChangeUserFut,
+      flagsF,
+      flagUsersF,
+      flagResolvedF,
+      lastVisibilityChangeF,
+      lastVisibilityChangeUserF,
       project.recommendedVersion.value
-    ).mapN {
+    ).parMapN {
       case (
           settings,
           projectOwner,
@@ -141,7 +138,7 @@ object ProjectData {
           settings,
           members.sortBy(_._1.role.trust).reverse,
           logSize,
-          flagData.toSeq,
+          flagData,
           noteCount,
           lastVisibilityChange,
           lastVisibilityChangeUser,
@@ -152,7 +149,7 @@ object ProjectData {
 
   def members(
       project: Project
-  )(implicit service: ModelService): Future[Seq[(ProjectUserRole, User)]] = {
+  )(implicit service: ModelService): IO[Seq[(ProjectUserRole, User)]] = {
     val query = for {
       r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
       u <- TableQuery[UserTable] if r.userId === u.id

@@ -1,6 +1,6 @@
 package ore.project.factory
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
@@ -8,6 +8,9 @@ import db.impl.access.ProjectBase
 import models.project._
 import ore.project.io.PluginFile
 import ore.{Cacheable, Color, Platform}
+
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 
 /**
   * Represents a pending version to be created later.
@@ -30,19 +33,12 @@ case class PendingVersion(
     override val cacheApi: SyncCacheApi
 ) extends Cacheable {
 
-  def complete()(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[VersionTag])] = {
-    free()
-    this.factory.createVersion(this)
-  }
+  def complete()(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] =
+    free() *> this.factory.createVersion(this)
 
-  def cancel()(implicit ec: ExecutionContext): Future[Project] = {
-    free()
-    this.plugin.delete()
-    if (this.underlying.isDefined)
-      this.projects.deleteVersion(this.underlying)
-    else
-      Future.successful(project)
-  }
+  def cancel()(implicit cs: ContextShift[IO]): IO[Project] =
+    free() *> IO(this.plugin.delete()) *> (if (this.underlying.isDefined) this.projects.deleteVersion(this.underlying)
+                                           else IO.pure(project))
 
   override def key: String = this.project.url + '/' + this.underlying.versionString
 

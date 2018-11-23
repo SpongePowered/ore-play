@@ -1,7 +1,6 @@
 package models.user
 
 import scala.collection.immutable
-import scala.concurrent.Future
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
@@ -9,6 +8,7 @@ import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
 import slick.lifted.TableQuery
@@ -138,7 +138,7 @@ object UserActionLogger {
       actionContextId: DbRef[Ctx],
       newState: String,
       oldState: String
-  )(implicit service: ModelService): Future[LoggedActionModel[Ctx]] =
+  )(implicit service: ModelService): IO[LoggedActionModel[Ctx]] =
     service.insert(
       LoggedActionModel(
         ObjId.Uninitialized[LoggedActionModel[Ctx]](),

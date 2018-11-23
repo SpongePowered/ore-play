@@ -2,8 +2,6 @@ package models.project
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.mvc.Cookie
 
 import controllers.sugar.Bakery
@@ -13,7 +11,7 @@ import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.DownloadWarning.COOKIE
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
@@ -50,8 +48,8 @@ case class DownloadWarning(
     *
     * @return Download
     */
-  def download(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, UnsafeDownload] =
-    OptionT.fromOption[Future](downloadId).flatMap(service.access[UnsafeDownload]().get)
+  def download(implicit service: ModelService): OptionT[IO, UnsafeDownload] =
+    OptionT.fromOption[IO](downloadId).flatMap(service.access[UnsafeDownload]().get)
 
   /**
     * Creates a cookie that should be given to the client.

@@ -1,10 +1,8 @@
 package db.impl.access
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.{DbRef, ModelBase, ModelService, ObjId}
-import models.user.{Notification, Organization, User}
 import models.user.role.OrganizationUserRole
+import models.user.{Notification, Organization, User}
 import ore.OreConfig
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
@@ -13,7 +11,8 @@ import util.StringUtils
 import util.syntax._
 
 import cats.data.{EitherT, NonEmptyList, OptionT}
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 
 class OrganizationBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[Organization] {
 
@@ -31,7 +30,8 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole]
-  )(implicit ec: ExecutionContext, auth: SpongeAuthApi): EitherT[Future, String, Organization] = {
+  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO]): EitherT[IO, String, Organization] = {
+    import cats.instances.vector._
     Logger.debug("Creating Organization...")
     Logger.debug("Name     : " + name)
     Logger.debug("Owner ID : " + ownerId)
@@ -81,7 +81,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
             // Invite the User members that the owner selected during creation.
             Logger.debug("Inviting members...")
 
-            Future.sequence(members.map { role =>
+            members.toVector.parTraverse { role =>
               // TODO remove role.user db access we really only need the userid we already have for notifications
               org.memberships.addRole(org, role.copy(organizationId = org.id.value)).flatMap(_ => role.user).flatMap {
                 user =>
@@ -94,7 +94,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
                     )
                   )
               }
-            })
+            }
           }
         } yield {
           Logger.debug("<SUCCESS> " + org)
@@ -109,7 +109,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
     * @param name Organization name
     * @return     Organization with name if exists, None otherwise
     */
-  def withName(name: String)(implicit ec: ExecutionContext): OptionT[Future, Organization] =
+  def withName(name: String): OptionT[IO, Organization] =
     this.find(StringUtils.equalsIgnoreCase(_.name, name))
 
 }

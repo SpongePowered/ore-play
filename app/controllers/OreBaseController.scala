@@ -2,7 +2,7 @@ package controllers
 
 import scala.language.higherKinds
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.I18nSupport
@@ -21,7 +21,7 @@ import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 
 import cats.data.EitherT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 
 /**
   * Represents a Secured base Controller for this application.
@@ -40,9 +40,10 @@ abstract class OreBaseController(
 
   override val signOns: ModelAccess[SignOn] = this.service.access[SignOn]()
 
-  override def notFound(implicit request: OreRequest[_]) = NotFound(views.html.errors.notFound())
+  override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
 
   implicit def ec: ExecutionContext
+  implicit def cs: ContextShift[IO] = IO.contextShift(ec)
 
   /**
     * Gets a project with the specified author and slug, or returns a notFound.
@@ -52,7 +53,7 @@ abstract class OreBaseController(
     * @param request  Incoming request
     * @return         NotFound or project
     */
-  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[Future, Result, Project] =
+  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[IO, Result, Project] =
     projects.withSlug(author, slug).toRight(notFound)
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
@@ -71,7 +72,7 @@ abstract class OreBaseController(
     */
   def getVersion(project: Project, versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[Future, Result, Version] =
+  ): EitherT[IO, Result, Version] =
     project.versions
       .find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
       .toRight(notFound)
@@ -88,7 +89,7 @@ abstract class OreBaseController(
     */
   def getProjectVersion(author: String, slug: String, versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[Future, Result, Version] =
+  ): EitherT[IO, Result, Version] =
     for {
       project <- getProject(author, slug)
       version <- getVersion(project, versionString)

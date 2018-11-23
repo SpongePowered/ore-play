@@ -33,7 +33,7 @@ GET     /api/projects/:pluginId/versions                            @controllers
 GET     /api/projects/:pluginId/versions/:name                      @controllers.ApiController.showVersion(version = "v1", pluginId, name)
 POST    /api/projects/:pluginId/versions/:name                      @controllers.ApiController.deployVersion(version = "v1", pluginId, name)
 
-GET     /api/projects/:pluginId/pages                               @controllers.ApiController.listPages(version = "v1", pluginId, parentId: Option[Int])
+GET     /api/projects/:pluginId/pages                               @controllers.ApiController.listPages(version = "v1", pluginId, parentId: Option[DbRef[Page]])
 
 GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
 GET     /api/projects/:pluginId/versions/recommended/signature      @controllers.project.Versions.downloadRecommendedSignatureById(pluginId)
@@ -51,7 +51,7 @@ GET     /api/:version/projects/:pluginId/versionsAll                @controllers
 GET     /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.showVersion(version, pluginId, name)
 POST    /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.deployVersion(version, pluginId, name)
 
-GET     /api/:version/projects/:pluginId/pages                      @controllers.ApiController.listPages(version, pluginId, parentId: Option[Int])
+GET     /api/:version/projects/:pluginId/pages                      @controllers.ApiController.listPages(version, pluginId, parentId: Option[DbRef[Page]])
 
 GET     /api/:version/users                                         @controllers.ApiController.listUsers(version, limit: Option[Int], offset: Option[Int])
 GET     /api/:version/users/:user                                   @controllers.ApiController.showUser(version, user)

@@ -4,8 +4,8 @@ import java.nio.file.Files._
 import java.nio.file.StandardCopyOption
 import javax.inject.Inject
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import scala.util.matching.Regex
 
@@ -29,7 +29,7 @@ import util.syntax._
 
 import akka.actor.ActorSystem
 import cats.data.{EitherT, NonEmptyList}
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.instances.option._
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
@@ -107,20 +107,21 @@ trait ProjectFactory {
   }
 
   def processSubsequentPluginUpload(uploadData: PluginUpload, owner: User, project: Project)(
-      implicit ec: ExecutionContext,
-      messages: Messages
-  ): EitherT[Future, String, PendingVersion] = {
+      implicit messages: Messages,
+      cs: ContextShift[IO]
+  ): EitherT[IO, String, PendingVersion] = {
     this.processPluginUpload(uploadData, owner) match {
       case Right(plugin) if !plugin.data.flatMap(_.id).contains(project.pluginId) =>
         EitherT.leftT("error.version.invalidPluginId")
       case Right(plugin) =>
         EitherT(
           for {
-            (channels, settings) <- (project.channels.all, project.settings).tupled
-            version = this.startVersion(plugin, project, settings, channels.head.name)
+            t <- (project.channels.all, project.settings).parTupled
+            (channels, settings) = t
+            version              = this.startVersion(plugin, project, settings, channels.head.name)
             modelExists <- version match {
               case Right(v) => v.underlying.exists
-              case Left(_)  => Future.successful(false)
+              case Left(_)  => IO.pure(false)
             }
           } yield {
             version match {
@@ -136,7 +137,7 @@ trait ProjectFactory {
 
           }
         )
-      case Left(errorMessage) => EitherT.leftT[Future, PendingVersion](errorMessage)
+      case Left(errorMessage) => EitherT.leftT[IO, PendingVersion](errorMessage)
     }
 
   }
@@ -273,17 +274,19 @@ trait ProjectFactory {
     * @return New Project
     * @throws         IllegalArgumentException if the project already exists
     */
-  def createProject(pending: PendingProject)(implicit ec: ExecutionContext): Future[Project] = {
+  def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[Project] = {
+    import cats.instances.vector._
     val project = pending.underlying
 
     for {
-      (exists, available) <- (
+      t <- (
         this.projects.exists(project),
         this.projects.isNamespaceAvailable(project.ownerName, project.slug)
-      ).tupled
-      _ = checkArgument(!exists, "project already exists", "")
-      _ = checkArgument(available, "slug not available", "")
-      _ = checkArgument(this.config.isValidProjectName(pending.underlying.name), "invalid name", "")
+      ).parTupled
+      (exists, available) = t
+      _                   = checkArgument(!exists, "project already exists", "")
+      _                   = checkArgument(available, "slug not available", "")
+      _                   = checkArgument(this.config.isValidProjectName(pending.underlying.name), "invalid name", "")
       // Create the project and it's settings
       newProject <- this.projects.add(pending.underlying)
       _          <- newProject.updateSettings(pending.settings)
@@ -298,7 +301,7 @@ trait ProjectFactory {
           newProject,
           new ProjectUserRole(ownerId, Role.ProjectOwner, projectId, accepted = true, visible = true)
         )
-        val addOtherRoles = Future.traverse(pending.roles) { role =>
+        val addOtherRoles = pending.roles.toVector.parTraverse { role =>
           role.user.flatMap { user =>
             dossier.addRole(newProject, role.copy(projectId = projectId)) *>
               user.sendNotification(
@@ -326,9 +329,7 @@ trait ProjectFactory {
     * @param color   Channel color
     * @return New channel
     */
-  def createChannel(project: Project, name: String, color: Color)(
-      implicit ec: ExecutionContext
-  ): Future[Channel] = {
+  def createChannel(project: Project, name: String, color: Color): IO[Channel] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     checkNotNull(name, "null name", "")
@@ -349,14 +350,15 @@ trait ProjectFactory {
     */
   def createVersion(
       pending: PendingVersion
-  )(implicit ec: ExecutionContext): Future[(Version, Channel, Seq[VersionTag])] = {
+  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] = {
     val project = pending.project
 
     val pendingVersion = pending.underlying
 
     for {
       // Create channel if not exists
-      (channel, exists) <- (getOrCreateChannel(pending, project), pendingVersion.exists).tupled
+      t <- (getOrCreateChannel(pending, project), pendingVersion.exists).parTupled
+      (channel, exists) = t
       _ = if (exists && this.config.ore.projects.fileValidate)
         throw new IllegalArgumentException("Version already exists.")
       // Create version
@@ -378,29 +380,26 @@ trait ProjectFactory {
       tags <- addTags(pending, newVersion)
       // Notify watchers
       _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
-      _ <- Future.fromTry(uploadPlugin(project, pending.plugin, newVersion))
+      _ <- IO.fromEither(uploadPlugin(project, pending.plugin, newVersion).toEither)
       _ <- if (project.topicId.isDefined && pending.createForumPost)
         this.forums.postVersionRelease(project, newVersion, newVersion.description).void
       else
-        Future.unit
+        IO.unit
     } yield (newVersion, channel, tags)
   }
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Version)(
-      implicit ec: ExecutionContext
-  ): Future[Seq[VersionTag]] =
-    for {
-      (metadataTags, dependencyTags) <- (
-        addMetadataTags(pendingVersion.plugin.data, newVersion),
-        addDependencyTags(newVersion)
-      ).tupled
-    } yield metadataTags ++ dependencyTags
+      implicit cs: ContextShift[IO]
+  ): IO[Seq[VersionTag]] =
+    (
+      addMetadataTags(pendingVersion.plugin.data, newVersion),
+      addDependencyTags(newVersion)
+    ).parMapN(_ ++ _)
 
-  private def addMetadataTags(pluginFileData: Option[PluginFileData], version: Version)(
-      implicit ec: ExecutionContext
-  ): Future[Seq[VersionTag]] = pluginFileData.traverse(_.createTags(version.id.value)).map(_.toList.flatten)
+  private def addMetadataTags(pluginFileData: Option[PluginFileData], version: Version): IO[Seq[VersionTag]] =
+    pluginFileData.traverse(_.createTags(version.id.value)).map(_.toList.flatten)
 
-  private def addDependencyTags(version: Version): Future[Seq[VersionTag]] =
+  private def addDependencyTags(version: Version): IO[Seq[VersionTag]] =
     Platform
       .createPlatformTags(
         version.id.value,
@@ -408,7 +407,7 @@ trait ProjectFactory {
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
       )
 
-  private def getOrCreateChannel(pending: PendingVersion, project: Project)(implicit ec: ExecutionContext) =
+  private def getOrCreateChannel(pending: PendingVersion, project: Project) =
     project.channels
       .find(equalsIgnoreCase(_.name, pending.channelName))
       .getOrElseF(createChannel(project, pending.channelName, pending.channelColor))

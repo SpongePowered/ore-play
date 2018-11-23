@@ -1,7 +1,5 @@
 package models.admin
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
@@ -9,7 +7,7 @@ import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.Project
 import ore.project.ProjectOwned
 
-import cats.instances.future._
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -41,7 +39,7 @@ case class ProjectLog(
     * @param message  Message to log
     * @return         New entry
     */
-  def err(message: String)(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLogEntry] = Defined {
+  def err(message: String)(implicit service: ModelService): IO[ProjectLogEntry] = Defined {
     val tag = "error"
     entries
       .find(e => e.message === message && e.tag === tag)

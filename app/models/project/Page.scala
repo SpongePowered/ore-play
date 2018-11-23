@@ -2,8 +2,6 @@ package models.project
 
 import java.net.{URI, URISyntaxException}
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.twirl.api.Html
 
 import db.access.ModelAccess
@@ -18,7 +16,7 @@ import ore.project.ProjectOwned
 import util.StringUtils._
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import com.google.common.base.Preconditions._
 import com.vladsch.flexmark.ast.{MailLink, Node}
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
@@ -92,7 +90,7 @@ case class Page(
     */
   def updateContentsWithForum(
       contents: String
-  )(implicit ec: ExecutionContext, service: ModelService, config: OreConfig, forums: OreDiscourseApi): Future[Page] = {
+  )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi): IO[Page] = {
     checkNotNull(contents, "null contents", "")
     checkArgument(
       (this.isHome && contents.length <= maxLength) || contents.length <= maxLengthPage,
@@ -100,14 +98,14 @@ case class Page(
       ""
     )
     val newPage = copy(contents = contents)
-    if (!isDefined) Future.successful(newPage)
+    if (!isDefined) IO.pure(newPage)
     else {
       for {
         updated <- service.update(newPage)
         project <- ProjectOwned[Page].project(this)
         // Contents were updated, update on forums
         _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
-        else Future.successful(false)
+        else IO.pure(false)
       } yield updated
     }
   }
@@ -131,12 +129,12 @@ case class Page(
     *
     * @return Optional Project
     */
-  def parentProject(implicit ec: ExecutionContext, projectBase: ProjectBase): OptionT[Future, Project] =
+  def parentProject(implicit projectBase: ProjectBase): OptionT[IO, Project] =
     projectBase.get(projectId)
 
-  def parentPage(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Page] =
+  def parentPage(implicit service: ModelService): OptionT[IO, Page] =
     for {
-      parent  <- OptionT.fromOption[Future](parentId)
+      parent  <- OptionT.fromOption[IO](parentId)
       project <- parentProject
       page    <- project.pages.find(_.id === parent)
     } yield page

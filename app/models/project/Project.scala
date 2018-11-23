@@ -3,8 +3,6 @@ package models.project
 import java.sql.Timestamp
 import java.time.Instant
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.i18n.Messages
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -38,7 +36,7 @@ import _root_.util.StringUtils._
 import _root_.util.syntax._
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import slick.lifted
@@ -107,10 +105,9 @@ case class Project(
     * Contains all information for [[User]] memberships.
     */
   override def memberships(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): MembershipDossier.Aux[Future, Project, ProjectUserRole, ProjectMember] =
-    MembershipDossier[Future, Project]
+      implicit service: ModelService
+  ): MembershipDossier.Aux[IO, Project, ProjectUserRole, ProjectMember] =
+    MembershipDossier[IO, Project]
 
   def isOwner(user: User): Boolean = user.id.value == ownerId
 
@@ -123,20 +120,20 @@ case class Project(
 
   override def transferOwner(
       member: ProjectMember
-  )(implicit ex: ExecutionContext, service: ModelService): Future[Project] = {
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Project] = {
     // Down-grade current owner to "Developer"
+    import cats.instances.vector._
     for {
-      (owner, user)           <- this.owner.user.zip(member.user)
-      (ownerRoles, userRoles) <- this.memberships.getRoles(this, owner).zip(this.memberships.getRoles(this, user))
-      setOwner                <- this.setOwner(user)
-      _ <- Future.sequence(
-        ownerRoles
-          .filter(_.role == Role.ProjectOwner)
-          .map(role => service.update(role.copy(role = Role.ProjectDeveloper)))
-      )
-      _ <- Future.sequence(
-        userRoles.map(role => service.update(role.copy(role = Role.ProjectOwner)))
-      )
+      t1 <- (this.owner.user, member.user).parTupled
+      (owner, user) = t1
+      t2 <- (this.memberships.getRoles(this, owner), this.memberships.getRoles(this, user)).parTupled
+      (ownerRoles, userRoles) = t2
+      setOwner <- this.setOwner(user)
+      _ <- ownerRoles
+        .filter(_.role == Role.ProjectOwner)
+        .toVector
+        .parTraverse(role => service.update(role.copy(role = Role.ProjectDeveloper)))
+      _ <- userRoles.toVector.parTraverse(role => service.update(role.copy(role = Role.ProjectOwner)))
     } yield setOwner
   }
 
@@ -145,7 +142,7 @@ case class Project(
     *
     * @param user User that owns project
     */
-  def setOwner(user: User)(implicit ec: ExecutionContext, service: ModelService): Future[Project] = {
+  def setOwner(user: User)(implicit service: ModelService): IO[Project] = {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     service.update(
@@ -162,9 +159,8 @@ case class Project(
     * @return Users watching project
     */
   def watchers(
-      implicit service: ModelService,
-      ec: ExecutionContext
-  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, Future] =
+      implicit service: ModelService
+  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, IO] =
     new ModelAssociationAccessImpl
 
   def namespace: String = this.ownerName + '/' + this.slug
@@ -181,7 +177,7 @@ case class Project(
     *
     * @return Project settings
     */
-  def settings(implicit ec: ExecutionContext, service: ModelService): Future[ProjectSettings] =
+  def settings(implicit service: ModelService): IO[ProjectSettings] =
     service
       .access[ProjectSettings]()
       .find(_.projectId === this.id.value)
@@ -195,7 +191,7 @@ case class Project(
     */
   def updateSettings(
       settings: ProjectSettings
-  )(implicit ec: ExecutionContext, service: ModelService): Future[ProjectSettings] = Defined {
+  )(implicit service: ModelService): IO[ProjectSettings] = Defined {
     checkNotNull(settings, "null settings", "")
     val newSettings = settings.copy(projectId = this.id.value)
     if (settings.isDefined) service.update(newSettings)
@@ -208,9 +204,9 @@ case class Project(
     * @param visibility True if visible
     */
   def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[(Project, ProjectVisibilityChange)] = {
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[(Project, ProjectVisibilityChange)] = {
     val updateOldChange = lastVisibilityChange
       .semiflatMap { vc =>
         service.update(
@@ -243,7 +239,7 @@ case class Project(
       )
     )
 
-    updateOldChange *> (updateProject, createNewChange).tupled
+    updateOldChange *> (updateProject, createNewChange).parTupled
   }
 
   /**
@@ -259,9 +255,8 @@ case class Project(
     * @return Users who have starred this project
     */
   def stars(
-      implicit service: ModelService,
-      ec: ExecutionContext
-  ): ModelAssociationAccess[ProjectStarsTable, User, Project, Future] = new ModelAssociationAccessImpl
+      implicit service: ModelService
+  ): ModelAssociationAccess[ProjectStarsTable, User, Project, IO] = new ModelAssociationAccessImpl
 
   /**
     * Sets the "starred" state of this Project for the specified User.
@@ -272,7 +267,7 @@ case class Project(
   def setStarredBy(
       user: User,
       starred: Boolean
-  )(implicit ec: ExecutionContext, service: ModelService): Future[Project] = Defined {
+  )(implicit service: ModelService): IO[Project] = Defined {
     checkNotNull(user, "null user", "")
     checkArgument(user.isDefined, "undefined user", "")
     for {
@@ -280,10 +275,10 @@ case class Project(
       res <- if (starred) {
         if (!contains) {
           this.stars.addAssoc(user, this) *> service.update(copy(starCount = starCount + 1))
-        } else Future.successful(this)
+        } else IO.pure(this)
       } else if (contains) {
         this.stars.removeAssoc(user, this) *> service.update(copy(starCount = starCount - 1))
-      } else Future.successful(this)
+      } else IO.pure(this)
     } yield res
   }
 
@@ -297,15 +292,15 @@ case class Project(
   /**
     * Adds a view to this Project.
     */
-  def addView(implicit ec: ExecutionContext, service: ModelService): Future[Project] =
+  def addView(implicit service: ModelService): IO[Project] =
     service.update(copy(viewCount = viewCount + 1))
 
   /**
     * Increments this Project's downloadc count by one.
     *
-    * @return Future result
+    * @return IO result
     */
-  def addDownload(implicit ec: ExecutionContext, service: ModelService): Future[Project] =
+  def addDownload(implicit service: ModelService): IO[Project] =
     service.update(copy(downloadCount = downloadCount + 1))
 
   /**
@@ -322,9 +317,8 @@ case class Project(
     * @param reason Reason for flagging
     */
   def flagFor(user: User, reason: FlagReason, comment: String)(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[Flag] = Defined {
+      implicit service: ModelService
+  ): IO[Flag] = Defined {
     checkNotNull(user, "null user", "")
     checkNotNull(reason, "null reason", "")
     checkArgument(user.isDefined, "undefined user", "")
@@ -352,8 +346,8 @@ case class Project(
     *
     * @return Recommended version
     */
-  def recommendedVersion(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Version] =
-    OptionT.fromOption[Future](recommendedVersionId).flatMap(versions.get)
+  def recommendedVersion(implicit service: ModelService): OptionT[IO, Version] =
+    OptionT.fromOption[IO](recommendedVersionId).flatMap(versions.get)
 
   /**
     * Returns the pages in this Project.
@@ -362,7 +356,7 @@ case class Project(
     */
   def pages(implicit service: ModelService): ModelAccess[Page] = service.access(_.projectId === id.value)
 
-  private def getOrInsert(page: Page)(implicit service: ModelService, ec: ExecutionContext): Future[Page] = {
+  private def getOrInsert(page: Page)(implicit service: ModelService): IO[Page] = {
     def like =
       service.find[Page] { p =>
         p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && page.parentId.fold(
@@ -371,7 +365,7 @@ case class Project(
       }
 
     like.value.flatMap {
-      case Some(u) => Future.successful(u)
+      case Some(u) => IO.pure(u)
       case None    => service.insert(page)
     }
   }
@@ -381,9 +375,9 @@ case class Project(
     *
     * @return Project home page
     */
-  def homePage(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Page = Defined {
+  def homePage(implicit service: ModelService, config: OreConfig): IO[Page] = Defined {
     val page = new Page(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), false, None)
-    service.await(getOrInsert(page)).get
+    getOrInsert(page)
   }
 
   /**
@@ -392,7 +386,7 @@ case class Project(
     * @param name   Page name
     * @return       True if exists
     */
-  def pageExists(name: String)(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
+  def pageExists(name: String)(implicit service: ModelService): IO[Boolean] =
     this.pages.exists(_.name === name)
 
   /**
@@ -405,7 +399,7 @@ case class Project(
       name: String,
       parentId: Option[DbRef[Page]],
       content: Option[String] = None
-  )(implicit ec: ExecutionContext, config: OreConfig, service: ModelService): Future[Page] = Defined {
+  )(implicit config: OreConfig, service: ModelService): IO[Page] = Defined {
     checkNotNull(name, "null name", "")
     val c = content match {
       case None => Page.template(name, Page.homeMessage)
@@ -423,10 +417,10 @@ case class Project(
     *
     * @return Root pages of project
     */
-  def rootPages(implicit service: ModelService): Future[Seq[Page]] =
+  def rootPages(implicit service: ModelService): IO[Seq[Page]] =
     service.access[Page]().sorted(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
 
-  def logger(implicit ec: ExecutionContext, service: ModelService): Future[ProjectLog] = {
+  def logger(implicit service: ModelService): IO[ProjectLog] = {
     val loggers = service.access[ProjectLog]()
     loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog(projectId = this.id.value)))
   }
@@ -436,7 +430,7 @@ case class Project(
   /**
     * Add new note
     */
-  def addNote(message: Note)(implicit ec: ExecutionContext, service: ModelService): Future[Project] = {
+  def addNote(message: Note)(implicit service: ModelService): IO[Project] = {
     val messages = decodeNotes :+ message
     service.update(
       copy(

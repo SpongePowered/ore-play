@@ -3,8 +3,6 @@ package ore
 import java.util.UUID
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.mvc.{RequestHeader, Result}
 
 import controllers.sugar.Bakery
@@ -19,7 +17,7 @@ import ore.StatTracker.COOKIE_NAME
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 
 /**
@@ -33,20 +31,20 @@ trait StatTracker {
 
   private def record[S <: Model, M0 <: StatEntry[S] { type M = M0 }: ModelQuery](
       entry: M0
-  )(setUserId: (M0, DbRef[User]) => M0)(implicit ec: ExecutionContext): Future[Boolean] = {
+  )(setUserId: (M0, DbRef[User]) => M0): IO[Boolean] = {
     like[S, M0](entry).value.flatMap {
       case None => service.insert(entry).as(true)
       case Some(existingEntry) =>
         val effect = if (existingEntry.userId.isEmpty && entry.userId.isDefined) {
           service.update(setUserId(existingEntry, entry.userId.get)).void
-        } else Future.unit
+        } else IO.unit
         effect.as(false)
     }
   }
 
   private def like[S <: Model, M <: StatEntry[S]: ModelQuery](
       entry: M
-  )(implicit ec: ExecutionContext): OptionT[Future, M] = {
+  ): OptionT[IO, M] = {
     val baseFilter = ModelFilter[M](_.modelId === entry.modelId)
     val filter     = ModelFilter[M](e => e.address === entry.address || e.cookie === entry.cookie)
 
@@ -61,14 +59,13 @@ trait StatTracker {
     */
   def projectViewed(f: => Result)(
       implicit projectRequest: ProjectRequest[_],
-      ec: ExecutionContext,
       auth: SpongeAuthApi
-  ): Future[Result] = {
+  ): IO[Result] = {
     ProjectView.bindFromRequest.flatMap { statEntry =>
       record[Project, ProjectView](statEntry)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => projectRequest.data.project.addView
-          case false => Future.unit
+          case false => IO.unit
         }
         .as(f.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
@@ -82,18 +79,18 @@ trait StatTracker {
     * @param version Version to check downloads for
     * @param request Request to download the version
     */
-  def versionDownloaded(version: Version)(f: => Result)(
+  def versionDownloaded(version: Version)(f: IO[Result])(
       implicit request: ProjectRequest[_],
-      ec: ExecutionContext,
       auth: SpongeAuthApi
-  ): Future[Result] = {
+  ): IO[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
       record[Version, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => version.addDownload *> request.data.project.addDownload
-          case false => Future.unit
+          case false => IO.unit
         }
-        .as(f.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
+        .productR(f)
+        .map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
   }
 

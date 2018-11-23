@@ -1,6 +1,6 @@
 package ore.project.factory
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
@@ -12,7 +12,7 @@ import models.user.role.ProjectUserRole
 import ore.project.io.PluginFile
 import ore.{Cacheable, OreConfig}
 
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 
 /**
@@ -35,9 +35,9 @@ case class PendingProject(
 )(implicit service: ModelService, val config: OreConfig)
     extends Cacheable {
 
-  def complete()(implicit ec: ExecutionContext): Future[(Project, Version)] = {
-    free()
+  def complete()(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Project, Version)] = {
     for {
+      _          <- free()
       newProject <- this.factory.createProject(this)
       newVersion <- {
         this.pendingVersion.project = newProject
@@ -47,13 +47,9 @@ case class PendingProject(
     } yield (updatedProject, newVersion._1)
   }
 
-  def cancel()(implicit ec: ExecutionContext, forums: OreDiscourseApi): Future[Unit] = {
-    free()
-    this.file.delete()
-    if (this.underlying.isDefined)
-      this.projects.delete(this.underlying).as(())
-    else Future.unit
-  }
+  def cancel()(implicit forums: OreDiscourseApi): IO[Unit] =
+    free() *> IO(this.file.delete()) *> (if (this.underlying.isDefined) this.projects.delete(this.underlying).void
+                                         else IO.unit)
 
   override def key: String = this.underlying.ownerName + '/' + this.underlying.slug
 
@@ -63,7 +59,7 @@ object PendingProject {
     val result = project.factory.startVersion(project.file, project.underlying, project.settings, project.channelName)
     result match {
       case Right(version) =>
-        version.cache()
+        version.cache().unsafeRunSync()
         version
       // TODO: not this crap
       case Left(errorMessage) => throw new IllegalArgumentException(errorMessage)

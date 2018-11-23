@@ -14,6 +14,7 @@ import models.project.{Project, Visibility}
 import ore.OreConfig
 
 import akka.actor.ActorSystem
+import cats.effect.{ContextShift, IO}
 
 /**
   * Task that is responsible for publishing New projects
@@ -24,9 +25,16 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
     service: ModelService
 ) extends Runnable {
 
+  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+
   val Logger                   = play.api.Logger("ProjectTask")
   val interval: FiniteDuration = this.config.ore.projects.checkInterval
   val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
+
+  private val dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
+  private val newFilter       = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
+  private val createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
+  private val newProjects     = service.filter[Project](newFilter && createdAtFilter)
 
   /**
     * Starts the task.
@@ -39,17 +47,10 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   /**
     * Task runner
     */
-  def run(): Unit = {
-    val dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
-    val newFilter       = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
-    val createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
-    val future          = service.filter[Project](newFilter && createdAtFilter)
-
-    future.foreach { projects =>
-      projects.foreach { project =>
-        Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-        project.setVisibility(Visibility.Public, "Changed by task", project.ownerId)
-      }
+  def run(): Unit = newProjects.unsafeToFuture().foreach { projects =>
+    projects.foreach { project =>
+      Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
+      project.setVisibility(Visibility.Public, "Changed by task", project.ownerId)
     }
   }
 }

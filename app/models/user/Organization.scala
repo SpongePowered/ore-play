@@ -1,7 +1,5 @@
 package models.user
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.Named
@@ -17,6 +15,8 @@ import security.spauth.SpongeAuthApi
 import util.syntax._
 
 import cats.data.OptionT
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 import slick.lifted.{Compiled, Rep, TableQuery}
 
 /**
@@ -46,10 +46,9 @@ case class Organization(
     * Contains all information for [[User]] memberships.
     */
   override def memberships(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): MembershipDossier.Aux[Future, Organization, OrganizationUserRole, OrganizationMember] =
-    MembershipDossier[Future, Organization]
+      implicit service: ModelService
+  ): MembershipDossier.Aux[IO, Organization, OrganizationUserRole, OrganizationMember] =
+    MembershipDossier[IO, Organization]
 
   /**
     * Returns the [[User]] that owns this Organization.
@@ -61,26 +60,30 @@ case class Organization(
 
   override def transferOwner(
       member: OrganizationMember
-  )(implicit ec: ExecutionContext, service: ModelService): Future[Organization] =
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Organization] = {
+    import cats.instances.vector._
     // Down-grade current owner to "Admin"
     for {
-      (owner, memberUser)  <- this.owner.user.zip(member.user)
-      (roles, memberRoles) <- this.memberships.getRoles(this, owner).zip(this.memberships.getRoles(this, memberUser))
-      setOwner             <- service.update(copy(ownerId = memberUser.id.value))
-      _ <- Future.sequence(
-        roles
-          .filter(_.role == Role.OrganizationOwner)
-          .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))
-      )
-      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(role = Role.OrganizationOwner))))
+      t1 <- (owner.user, member.user).parTupled
+      (owner, memberUser) = t1
+      t2 <- (memberships.getRoles(this, owner), memberships.getRoles(this, memberUser)).parTupled
+      (roles, memberRoles) = t2
+      setOwner <- service.update(copy(ownerId = memberUser.id.value))
+      _ <- roles
+        .filter(_.role == Role.OrganizationOwner)
+        .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))
+        .toVector
+        .parSequence
+      _ <- memberRoles.toVector.parTraverse(role => service.update(role.copy(role = Role.OrganizationOwner)))
     } yield setOwner
+  }
 
   /**
     * Returns this Organization as a [[User]].
     *
     * @return This Organization as a User
     */
-  def toUser(implicit ec: ExecutionContext, users: UserBase, auth: SpongeAuthApi): OptionT[Future, User] =
+  def toUser(implicit users: UserBase, auth: SpongeAuthApi): OptionT[IO, User] =
     users.withName(this.username)
 
   override val name: String = this.username
@@ -111,7 +114,7 @@ object Organization {
   def getTrust(
       userId: DbRef[User],
       orgId: DbRef[Organization]
-  )(implicit ex: ExecutionContext, service: ModelService): Future[Trust] =
+  )(implicit service: ModelService): IO[Trust] =
     service
       .runDBIO(Organization.roleForTrustQuery((orgId, userId)).result)
       .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Trust.Default))

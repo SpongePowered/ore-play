@@ -1,15 +1,12 @@
 package ore
 
 import scala.collection.immutable
-import scala.concurrent.Future
 
-import db.DbRef
-import db.ObjId
-import db.ModelService
-import models.project.Version
-import models.project.{TagColor, VersionTag}
+import db.{DbRef, ModelService, ObjId}
+import models.project.{TagColor, Version, VersionTag}
 import ore.project.Dependency
 
+import cats.effect.IO
 import enumeratum.values._
 
 /**
@@ -103,7 +100,7 @@ object Platform extends IntEnum[Platform] {
 
   def createPlatformTags(versionId: DbRef[Version], dependencies: Seq[Dependency])(
       implicit service: ModelService
-  ): Future[Seq[VersionTag]] = service.bulkInsert(ghostTags(versionId, dependencies))
+  ): IO[Seq[VersionTag]] = service.bulkInsert(ghostTags(versionId, dependencies))
 
 }
 

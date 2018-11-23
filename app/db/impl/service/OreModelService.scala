@@ -3,8 +3,8 @@ package db.impl.service
 import java.util.concurrent.Executors
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.inject.ApplicationLifecycle
@@ -68,9 +68,9 @@ class OreModelService @Inject()(
     )
   }
 
-  override def runDBIO[R](action: driver.api.DBIO[R]): Future[R] = DB.db.run(action)
+  override def runDBIO[R](action: driver.api.DBIO[R]): IO[R] = IO.fromFuture(IO(DB.db.run(action)))
 
-  override def runDbCon[R](program: ConnectionIO[R]): Future[R] = program.transact(xa).unsafeToFuture()
+  override def runDbCon[R](program: ConnectionIO[R]): IO[R] = program.transact(xa)
 
   override def start(): Unit = {
     val time = System.currentTimeMillis()

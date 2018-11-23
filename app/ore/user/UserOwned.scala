@@ -2,13 +2,11 @@ package ore.user
 
 import scala.language.implicitConversions
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.DbRef
 import db.impl.access.UserBase
 import models.user.User
 
-import cats.instances.future._
+import cats.effect.IO
 import simulacrum.typeclass
 
 /** Represents anything that has a [[User]]. */
@@ -18,6 +16,6 @@ import simulacrum.typeclass
   def userId(a: A): DbRef[User]
 
   /** Returns the User */
-  def user(a: A)(implicit users: UserBase, ec: ExecutionContext): Future[User] =
+  def user(a: A)(implicit users: UserBase): IO[User] =
     users.get(userId(a)).getOrElse(throw new NoSuchElementException("None on get"))
 }

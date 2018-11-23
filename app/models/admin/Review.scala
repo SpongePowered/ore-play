@@ -2,8 +2,6 @@ package models.admin
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.i18n.Messages
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -16,6 +14,7 @@ import models.user.User
 import ore.OreConfig
 import _root_.util.StringUtils
 
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -46,7 +45,7 @@ case class Review(
   /**
     * Add new message
     */
-  def addMessage(message: Message)(implicit ec: ExecutionContext, service: ModelService): Future[Review] = {
+  def addMessage(message: Message)(implicit service: ModelService): IO[Review] = {
     val messages = decodeMessages :+ message
     service.update(
       copy(

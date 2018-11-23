@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.util.{Base64, Date, UUID}
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.Messages
@@ -18,7 +18,7 @@ import db.impl.schema.ProjectApiKeyTable
 import db.{DbRef, ModelService}
 import form.OreForms
 import models.api.ProjectApiKey
-import models.project.Project
+import models.project.{Page, Project}
 import models.user.{LoggedAction, UserActionLogger}
 import ore.permission.role.Role
 import ore.permission.{EditApiKeys, ReviewProjects}
@@ -34,7 +34,7 @@ import _root_.util.syntax._
 
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
-import cats.instances.future._
+import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.all._
 import slick.lifted.Compiled
@@ -78,10 +78,10 @@ final class ApiController @Inject()(
       q: Option[String],
       limit: Option[Int],
       offset: Option[Int]
-  ): Action[AnyContent] = Action.async {
+  ): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getProjectList(categories, sort, q, limit, offset).map(Ok(_))
-      case _    => Future.successful(NotFound)
+      case _    => IO.pure(NotFound)
     }
   }
 
@@ -92,21 +92,21 @@ final class ApiController @Inject()(
     * @param pluginId   Plugin ID of project
     * @return           Project with Plugin ID
     */
-  def showProject(version: String, pluginId: String): Action[AnyContent] = Action.async {
+  def showProject(version: String, pluginId: String): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getProject(pluginId).map(ApiResult)
-      case _    => Future.successful(NotFound)
+      case _    => IO.pure(NotFound)
     }
   }
 
   def createKey(version: String, pluginId: String): Action[AnyContent] =
-    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(EditApiKeys)).async {
+    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(EditApiKeys)).asyncF {
       implicit request =>
         version match {
           case "v1" =>
             val projectId = request.data.project.id.value
             val res = for {
-              keyType <- forms.ProjectApiKeyCreate.bindOptionT[Future]
+              keyType <- forms.ProjectApiKeyCreate.bindOptionT[IO]
               if keyType == Deployment
               exists <- OptionT
                 .liftF(this.projectApiKeys.exists(k => k.projectId === projectId && k.keyType === keyType))
@@ -131,16 +131,17 @@ final class ApiController @Inject()(
               )
             } yield Created(Json.toJson(pak))
             res.getOrElse(BadRequest)
-          case _ => Future.successful(NotFound)
+          case _ => IO.pure(NotFound)
         }
     }
 
   def revokeKey(version: String, pluginId: String): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(EditApiKeys)).async { implicit request =>
+    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(EditApiKeys)).asyncF { implicit request =>
       version match {
         case "v1" =>
           val res = for {
-            key <- forms.ProjectApiKeyRevoke.bindOptionT[Future]
+            optKey <- forms.ProjectApiKeyRevoke.bindOptionT[IO]
+            key    <- optKey
             if key.projectId == request.data.project.id.value
             _ <- OptionT.liftF(service.delete(key))
             _ <- OptionT.liftF(
@@ -154,7 +155,7 @@ final class ApiController @Inject()(
             )
           } yield Ok
           res.getOrElse(BadRequest)
-        case _ => Future.successful(NotFound)
+        case _ => IO.pure(NotFound)
       }
     }
 
@@ -174,11 +175,11 @@ final class ApiController @Inject()(
       channels: Option[String],
       limit: Option[Int],
       offset: Option[Int]
-  ): Action[AnyContent] = Action.async {
+  ): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" =>
         this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = true).map(Some.apply).map(ApiResult)
-      case _ => Future.successful(NotFound)
+      case _ => IO.pure(NotFound)
     }
   }
 
@@ -199,11 +200,11 @@ final class ApiController @Inject()(
       limit: Option[Int],
       offset: Option[Int]
   ): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(PermissionAction(ReviewProjects)).async {
+    AuthedProjectActionById(pluginId).andThen(PermissionAction(ReviewProjects)).asyncF {
       version match {
         case "v1" =>
           this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)
-        case _ => Future.successful(NotFound)
+        case _ => IO.pure(NotFound)
       }
     }
 
@@ -215,10 +216,10 @@ final class ApiController @Inject()(
     * @param name     Version name
     * @return         JSON view of Version
     */
-  def showVersion(version: String, pluginId: String, name: String): Action[AnyContent] = Action.async {
+  def showVersion(version: String, pluginId: String, name: String): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getVersion(pluginId, name).map(ApiResult)
-      case _    => Future.successful(NotFound)
+      case _    => IO.pure(NotFound)
     }
   }
 
@@ -226,93 +227,97 @@ final class ApiController @Inject()(
     Json.obj("errors" -> Map(key -> List(messages(error))))
 
   def deployVersion(version: String, pluginId: String, name: String): Action[AnyContent] =
-    ProjectAction(pluginId).async { implicit request =>
+    ProjectAction(pluginId).asyncF { implicit request =>
       version match {
         case "v1" =>
           val projectData = request.data
           val project     = projectData.project
 
           forms.VersionDeploy
-            .bindEitherT[Future](
+            .bindEitherT[IO](
               hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))
             )
             .flatMap { formData =>
-              val apiKeyTable = TableQuery[ProjectApiKeyTable]
-              def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[DbRef[Project]]) = {
-                val query = for {
-                  k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
-                } yield {
-                  k.id
+              formData.channel.toRight(BadRequest(Json.obj("errors" -> "Invalid channel"))).map(formData -> _)
+            }
+            .flatMap {
+              case (formData, formChannel) =>
+                val apiKeyTable = TableQuery[ProjectApiKeyTable]
+                def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[DbRef[Project]]) = {
+                  val query = for {
+                    k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
+                  } yield {
+                    k.id
+                  }
+                  query.exists
                 }
-                query.exists
-              }
 
-              val compiled = Compiled(queryApiKey _)
+                val compiled = Compiled(queryApiKey _)
 
-              val apiKeyExists: Future[Boolean] =
-                this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id.value)).result)
+                val apiKeyExists: IO[Boolean] =
+                  this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id.value)).result)
 
-              EitherT
-                .liftF(apiKeyExists)
-                .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(identity)
-                .semiflatMap(_ => project.versions.exists(_.versionString === name))
-                .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists)
-                .semiflatMap(_ => project.owner.user)
-                .semiflatMap(user => user.toMaybeOrganization.semiflatMap(_.owner.user).getOrElse(user))
-                .flatMap { owner =>
-                  val pluginUpload = this.factory
-                    .getUploadError(owner)
-                    .map(err => BadRequest(error("user", err)))
-                    .toLeft(PluginUpload.bindFromRequest())
-                    .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
+                EitherT
+                  .liftF(apiKeyExists)
+                  .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(identity)
+                  .semiflatMap(_ => project.versions.exists(_.versionString === name))
+                  .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists)
+                  .semiflatMap(_ => project.owner.user)
+                  .semiflatMap(user => user.toMaybeOrganization.semiflatMap(_.owner.user).getOrElse(user))
+                  .flatMap { owner =>
+                    val pluginUpload = this.factory
+                      .getUploadError(owner)
+                      .map(err => BadRequest(error("user", err)))
+                      .toLeft(PluginUpload.bindFromRequest())
+                      .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
 
-                  EitherT.fromEither[Future](pluginUpload).flatMap { data =>
-                    //TODO: We should get rid of this try
-                    try {
-                      this.factory
-                        .processSubsequentPluginUpload(data, owner, project)
-                        .leftMap(err => BadRequest(error("upload", err)))
-                    } catch {
-                      case e: InvalidPluginFileException =>
-                        EitherT.leftT[Future, PendingVersion](BadRequest(error("upload", e.getMessage)))
+                    EitherT.fromEither[IO](pluginUpload).flatMap { data =>
+                      //TODO: We should get rid of this try
+                      try {
+                        this.factory
+                          .processSubsequentPluginUpload(data, owner, project)
+                          .leftMap(err => BadRequest(error("upload", err)))
+                      } catch {
+                        case e: InvalidPluginFileException =>
+                          EitherT.leftT[IO, PendingVersion](BadRequest(error("upload", e.getMessage)))
+                      }
                     }
                   }
-                }
-                .semiflatMap { pendingVersion =>
-                  pendingVersion.createForumPost = formData.createForumPost
-                  pendingVersion.channelName = formData.channel.name
-                  formData.changelog.fold(Future.successful(pendingVersion)) { changelog =>
-                    service
-                      .updateIfDefined(pendingVersion.underlying.copy(description = Some(changelog)))
-                      .map(newVersion => pendingVersion.copy(underlying = newVersion))
+                  .semiflatMap { pendingVersion =>
+                    pendingVersion.createForumPost = formData.createForumPost
+                    pendingVersion.channelName = formChannel.name
+                    formData.changelog.fold(IO.pure(pendingVersion)) { changelog =>
+                      service
+                        .updateIfDefined(pendingVersion.underlying.copy(description = Some(changelog)))
+                        .map(newVersion => pendingVersion.copy(underlying = newVersion))
+                    }
                   }
-                }
-                .semiflatMap(_.complete())
-                .semiflatMap {
-                  case (newVersion, channel, tags) =>
-                    val update =
-                      if (formData.recommended)
-                        service.update(
-                          project.copy(
-                            recommendedVersionId = Some(newVersion.id.value),
-                            lastUpdated = new Timestamp(new Date().getTime)
+                  .semiflatMap(_.complete())
+                  .semiflatMap {
+                    case (newVersion, channel, tags) =>
+                      val update =
+                        if (formData.recommended)
+                          service.update(
+                            project.copy(
+                              recommendedVersionId = Some(newVersion.id.value),
+                              lastUpdated = new Timestamp(new Date().getTime)
+                            )
                           )
-                        )
-                      else
-                        service.update(project.copy(lastUpdated = new Timestamp(new Date().getTime)))
+                        else
+                          service.update(project.copy(lastUpdated = new Timestamp(new Date().getTime)))
 
-                    update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
-                }
+                      update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
+                  }
             }
             .merge
-        case _ => Future.successful(NotFound)
+        case _ => IO.pure(NotFound)
       }
     }
 
-  def listPages(version: String, pluginId: String, parentId: Option[Int]): Action[AnyContent] = Action.async {
+  def listPages(version: String, pluginId: String, parentId: Option[DbRef[Page]]): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getPages(pluginId, parentId).value.map(ApiResult)
-      case _    => Future.successful(NotFound)
+      case _    => IO.pure(NotFound)
     }
   }
 
@@ -324,10 +329,10 @@ final class ApiController @Inject()(
     * @param offset   Offset to drop
     * @return         List of users
     */
-  def listUsers(version: String, limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.async {
+  def listUsers(version: String, limit: Option[Int], offset: Option[Int]): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getUserList(limit, offset).map(Ok(_))
-      case _    => Future.successful(NotFound)
+      case _    => IO.pure(NotFound)
     }
   }
 
@@ -338,10 +343,10 @@ final class ApiController @Inject()(
     * @param username   Username of user
     * @return           User with username
     */
-  def showUser(version: String, username: String): Action[AnyContent] = Action.async {
+  def showUser(version: String, username: String): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getUser(username).map(ApiResult)
-      case _    => Future.successful(NotFound)
+      case _    => IO.pure(NotFound)
     }
   }
 
@@ -353,14 +358,14 @@ final class ApiController @Inject()(
     * @param versionName Version of the plugin
     * @return Tags for the version of the plugin
     */
-  def listTags(version: String, plugin: String, versionName: String): Action[AnyContent] = Action.async {
+  def listTags(version: String, plugin: String, versionName: String): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getTags(plugin, versionName).value.map(ApiResult)
-      case _    => Future.successful(NotFound)
+      case _    => IO.pure(NotFound)
     }
   }
 
-  def tagColor(version: String, id: String) = Action {
+  def tagColor(version: String, id: String): Action[AnyContent] = Action {
     version match {
       case "v1" => ApiResult(this.api.getTagColor(id.toInt))
       case _    => NotFound
@@ -372,16 +377,16 @@ final class ApiController @Inject()(
     *
     * @return statusz json
     */
-  def showStatusZ = Action(Ok(this.status.json))
+  def showStatusZ: Action[AnyContent] = Action(Ok(this.status.json))
 
-  def syncSso(): Action[AnyContent] = Action.async { implicit request =>
+  def syncSso(): Action[AnyContent] = Action.asyncEitherT { implicit request =>
     val confApiKey = this.config.security.sso.apikey
     val confSecret = this.config.security.sso.secret
 
     Logger.debug("Sync Request received")
 
     forms.SyncSso
-      .bindEitherT[Future](hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
+      .bindEitherT[IO](hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson)))
       .ensure(BadRequest("API Key not valid"))(_._3 == confApiKey) //_3 is apiKey
       .ensure(BadRequest("Signature not matched"))(
         { case (ssoStr, sig, _) => CryptoUtils.hmac_sha256(confSecret, ssoStr.getBytes("UTF-8")) == sig }
@@ -406,7 +411,7 @@ final class ApiController @Inject()(
                 else groups.split(",").flatMap(Role.withValueOpt).toList
               }
 
-              val updateRoles = globalRoles.fold(Future.unit) { roles =>
+              val updateRoles = globalRoles.fold(IO.unit) { roles =>
                 user.globalRoles.deleteAllFromParent(user) *> roles
                   .map(_.toDbRole)
                   .traverse(user.globalRoles.addAssoc(user, _))
@@ -421,9 +426,8 @@ final class ApiController @Inject()(
                 )
               ) *> updateRoles
             }
-            .getOrElse(Future.unit)
+            .getOrElse(IO.unit)
             .as(Ok(Json.obj("status" -> "success")))
       }
-      .merge
   }
 }

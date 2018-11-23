@@ -3,8 +3,6 @@ package models.project
 import java.sql.Timestamp
 import java.time.Instant
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.twirl.api.Html
 
 import db.access.ModelAccess
@@ -21,7 +19,7 @@ import ore.project.{Dependency, ProjectOwned}
 import util.FileUtils
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 import slick.lifted.TableQuery
@@ -80,7 +78,7 @@ case class Version(
     *
     * @return Channel
     */
-  def channel(implicit ec: ExecutionContext, service: ModelService): Future[Channel] =
+  def channel(implicit service: ModelService): IO[Channel] =
     service
       .access[Channel]()
       .get(this.channelId)
@@ -113,18 +111,18 @@ case class Version(
     */
   def url(implicit project: Project): String = project.url + "/versions/" + this.versionString
 
-  def author(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] = userBase.get(this.authorId)
+  def author(implicit userBase: UserBase): OptionT[IO, User] = userBase.get(this.authorId)
 
-  def reviewer(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =
-    OptionT.fromOption[Future](this.reviewerId).flatMap(userBase.get)
+  def reviewer(implicit userBase: UserBase): OptionT[IO, User] =
+    OptionT.fromOption[IO](this.reviewerId).flatMap(userBase.get)
 
-  def tags(implicit ec: ExecutionContext, service: ModelService): Future[List[VersionTag]] =
+  def tags(implicit service: ModelService): IO[List[VersionTag]] =
     service.access[VersionTag]().filter(_.versionId === this.id.value).map(_.toList)
 
-  def isSpongePlugin(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
+  def isSpongePlugin(implicit service: ModelService): IO[Boolean] =
     tags.map(_.map(_.name).contains("Sponge"))
 
-  def isForgeMod(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] =
+  def isForgeMod(implicit service: ModelService): IO[Boolean] =
     tags.map(_.map(_.name).contains("Forge"))
 
   /**
@@ -149,7 +147,7 @@ case class Version(
   /**
     * Adds a download to the amount of unique downloads this Version has.
     */
-  def addDownload(implicit ec: ExecutionContext, service: ModelService): Future[Version] = Defined {
+  def addDownload(implicit service: ModelService): IO[Version] = Defined {
     service.update(copy(downloadCount = downloadCount + 1))
   }
 
@@ -157,9 +155,9 @@ case class Version(
     service.access(_.versionId === id.value)
 
   override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[(Version, VersionVisibilityChange)] = {
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[(Version, VersionVisibilityChange)] = {
     val updateOldChange = lastVisibilityChange
       .semiflatMap { vc =>
         service.update(
@@ -192,7 +190,7 @@ case class Version(
       )
     )
 
-    updateOldChange *> (updateVersion, createNewChange).tupled
+    updateOldChange *> (updateVersion, createNewChange).parTupled
   }
 
   /**
@@ -217,7 +215,7 @@ case class Version(
     *
     * @return True if exists
     */
-  def exists(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = {
+  def exists(implicit service: ModelService): IO[Boolean] = {
     def hashExists = {
       val baseQuery = for {
         v <- TableQuery[VersionTable]
@@ -228,7 +226,7 @@ case class Version(
       service.runDBIO((baseQuery.length > 0).result)
     }
 
-    if (this.projectId == -1) Future.successful(false)
+    if (this.projectId == -1) IO.pure(false)
     else
       for {
         hashExists <- hashExists
@@ -239,15 +237,15 @@ case class Version(
 
   def reviewEntries(implicit service: ModelService): ModelAccess[Review] = service.access(_.versionId === id.value)
 
-  def unfinishedReviews(implicit service: ModelService): Future[Seq[Review]] =
+  def unfinishedReviews(implicit service: ModelService): IO[Seq[Review]] =
     reviewEntries.sorted(_.createdAt, _.endedAt.?.isEmpty)
 
-  def mostRecentUnfinishedReview(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
+  def mostRecentUnfinishedReview(implicit service: ModelService): OptionT[IO, Review] =
     OptionT(unfinishedReviews.map(_.headOption))
 
-  def mostRecentReviews(implicit service: ModelService): Future[Seq[Review]] = reviewEntries.sorted(_.createdAt)
+  def mostRecentReviews(implicit service: ModelService): IO[Seq[Review]] = reviewEntries.sorted(_.createdAt)
 
-  def reviewById(id: DbRef[Review])(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Review] =
+  def reviewById(id: DbRef[Review])(implicit service: ModelService): OptionT[IO, Review] =
     reviewEntries.find(_.id === id)
 }
 

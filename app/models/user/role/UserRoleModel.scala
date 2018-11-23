@@ -1,11 +1,11 @@
 package models.user.role
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.table.common.RoleTable
 import db.{Model, ModelService}
 import ore.Visitable
 import ore.permission.role.{Role, UserRole}
+
+import cats.effect.IO
 
 /**
   * Represents a [[UserRole]] in something like a [[models.project.Project]] or
@@ -31,5 +31,5 @@ abstract class UserRoleModel extends Model with UserRole { self =>
     *
     * @return Subject of Role
     */
-  def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable]
+  def subject(implicit service: ModelService): IO[Visitable]
 }

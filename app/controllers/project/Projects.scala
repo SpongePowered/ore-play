@@ -4,7 +4,7 @@ import java.nio.file.{Files, Path}
 import javax.inject.Inject
 
 import scala.collection.JavaConverters._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
@@ -32,12 +32,12 @@ import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import _root_.util.syntax._
 import _root_.util.StringUtils._
+import _root_.util.syntax._
 import views.html.{projects => views}
 
 import cats.data.{EitherT, OptionT}
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 
 /**
@@ -68,10 +68,11 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     *
     * @return Create project view
     */
-  def showCreator(): Action[AnyContent] = UserLock().async { implicit request =>
+  def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
+    import cats.instances.vector._
     for {
       orgas      <- request.user.organizations.allFromParent(request.user)
-      createOrga <- Future.traverse(orgas)(request.user.can(CreateProject).in(_))
+      createOrga <- orgas.toVector.parTraverse(request.user.can(CreateProject).in(_))
     } yield {
       val createdOrgas = orgas.zip(createOrga).collect {
         case (orga, true) => orga
@@ -120,13 +121,15 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return Create project view
     */
-  def showCreatorWithMeta(author: String, slug: String): Action[AnyContent] = UserLock().async { implicit request =>
+  def showCreatorWithMeta(author: String, slug: String): Action[AnyContent] = UserLock().asyncF { implicit request =>
     this.factory.getPendingProject(author, slug) match {
-      case None => Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
+      case None => IO.pure(Redirect(self.showCreator()).withError("error.project.timeout"))
       case Some(pending) =>
+        import cats.instances.vector._
         for {
-          (orgas, owner) <- (request.user.organizations.allFromParent(request.user), pending.underlying.owner.user).tupled
-          createOrga     <- Future.traverse(orgas)(owner.can(CreateProject).in(_))
+          t <- (request.user.organizations.allFromParent(request.user), pending.underlying.owner.user).parTupled
+          (orgas, owner) = t
+          createOrga <- orgas.toVector.parTraverse(owner.can(CreateProject).in(_))
         } yield {
           val createdOrgas = orgas.zip(createOrga).collect {
             case (orga, true) => orga
@@ -143,17 +146,18 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug     Project slug
     * @return         View of members config
     */
-  def showInvitationForm(author: String, slug: String): Action[AnyContent] = UserLock().async { implicit request =>
+  def showInvitationForm(author: String, slug: String): Action[AnyContent] = UserLock().asyncF { implicit request =>
     orgasUserCanUploadTo(request.user).flatMap { organisationUserCanUploadTo =>
       this.factory.getPendingProject(author, slug) match {
         case None =>
-          Future.successful(Redirect(self.showCreator()).withError("error.project.timeout"))
+          IO.pure(Redirect(self.showCreator()).withError("error.project.timeout"))
         case Some(pendingProject) =>
+          import cats.instances.list._
           this.forms
             .ProjectSave(organisationUserCanUploadTo.toSeq)
             .bindFromRequest()
             .fold(
-              FormErrorLocalized(self.showCreator()).andThen(Future.successful),
+              FormErrorLocalized(self.showCreator()).andThen(IO.pure),
               formData => {
                 pendingProject.settings.save(pendingProject.underlying, formData).flatMap {
                   case (newProject, newSettings) =>
@@ -171,10 +175,10 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
                     val authors = newPending.file.data.get.authors.toList
                     (
-                      Future.traverse(authors.filter(_ != currentUser.name))(users.withName(_).value),
+                      authors.filter(_ != currentUser.name).parTraverse(users.withName(_).value),
                       this.forums.countUsers(authors),
                       newPending.underlying.owner.user
-                    ).mapN { (users, registered, owner) =>
+                    ).parMapN { (users, registered, owner) =>
                       Ok(views.invite(owner, newPending, users.flatten, registered))
                     }
                 }
@@ -184,10 +188,11 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
   }
 
-  private def orgasUserCanUploadTo(user: User): Future[Set[DbRef[Organization]]] = {
+  private def orgasUserCanUploadTo(user: User): IO[Set[DbRef[Organization]]] = {
+    import cats.instances.vector._
     for {
       all       <- user.organizations.allFromParent(user)
-      canCreate <- Future.traverse(all)(org => user.can(CreateProject).in(org).tupleLeft(org.id.value))
+      canCreate <- all.toVector.parTraverse(org => user.can(CreateProject).in(org).tupleLeft(org.id.value))
     } yield {
       // Filter by can Create Project
       val others = canCreate.collect {
@@ -227,13 +232,13 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return View of project
     */
-  def show(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).async { implicit request =>
-    projects.queryProjectPages(request.project).flatMap { pages =>
-      val pageCount = pages.size + pages.map(_._2.size).sum
-      this.stats.projectViewed(
-        Ok(views.pages.view(request.data, request.scoped, pages, request.project.homePage, None, pageCount))
-      )
-    }
+  def show(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF { implicit request =>
+    for {
+      t <- (projects.queryProjectPages(request.project), request.project.homePage).parTupled
+      (pages, homePage) = t
+      pageCount         = pages.size + pages.map(_._2.size).sum
+      res <- stats.projectViewed(Ok(views.pages.view(request.data, request.scoped, pages, homePage, None, pageCount)))
+    } yield res
   }
 
   /**
@@ -242,7 +247,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param pluginId Project pluginId
     * @return Redirect to project page.
     */
-  def showProjectById(pluginId: String): Action[AnyContent] = OreAction.async { implicit request =>
+  def showProjectById(pluginId: String): Action[AnyContent] = OreAction.asyncF { implicit request =>
     projects.withPluginId(pluginId).fold(notFound) { project =>
       Redirect(self.show(project.ownerName, project.slug))
     }
@@ -255,7 +260,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return View of project
     */
-  def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).async {
+  def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
     implicit request =>
       this.stats.projectViewed(Ok(views.discuss(request.data, request.scoped)))
   }
@@ -268,18 +273,18 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return       View of discussion with new post
     */
   def postDiscussionReply(author: String, slug: String): Action[DiscussionReplyForm] =
-    AuthedProjectAction(author, slug).async(
+    AuthedProjectAction(author, slug).asyncF(
       parse.form(forms.ProjectReply, onErrors = FormError(self.showDiscussion(author, slug)))
     ) { implicit request =>
       val formData = request.body
       if (request.project.topicId.isEmpty)
-        Future.successful(BadRequest)
+        IO.pure(BadRequest)
       else {
         // Do forum post and display errors to user if any
         for {
           poster <- {
             OptionT
-              .fromOption[Future](formData.poster)
+              .fromOption[IO](formData.poster)
               .flatMap(posterName => users.requestPermission(request.user, posterName, PostAsOrganization))
               .getOrElse(request.user)
           }
@@ -324,14 +329,14 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug Project slug
     * @return Project icon
     */
-  def showIcon(author: String, slug: String): Action[AnyContent] = Action.async { implicit request =>
+  def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF { implicit request =>
     // TODO maybe instead of redirect cache this on ore?
     projects
       .withSlug(author, slug)
       .semiflatMap { project =>
         projects.fileManager.getIconPath(project) match {
           case None           => project.owner.user.map(user => Redirect(user.avatarUrl))
-          case Some(iconPath) => Future.successful(showImage(iconPath))
+          case Some(iconPath) => IO.pure(showImage(iconPath))
         }
       }
       .getOrElse(NotFound)
@@ -347,7 +352,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return       View of project
     */
   def flag(author: String, slug: String): Action[FlagForm] =
-    AuthedProjectAction(author, slug).async(
+    AuthedProjectAction(author, slug).asyncF(
       parse.form(forms.ProjectFlag, onErrors = FormErrorLocalized(ShowProject(author, slug)))
     ) { implicit request =>
       val user     = request.user
@@ -356,7 +361,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
       user.hasUnresolvedFlagFor(project).flatMap {
         // One flag per project, per user at a time
-        case true => Future.successful(BadRequest)
+        case true => IO.pure(BadRequest)
         case false =>
           project
             .flagFor(user, formData.reason, formData.comment)
@@ -382,7 +387,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return         Ok
     */
   def setWatching(author: String, slug: String, watching: Boolean): Action[AnyContent] =
-    AuthedProjectAction(author, slug).async { implicit request =>
+    AuthedProjectAction(author, slug).asyncF { implicit request =>
       request.user.setWatching(request.project, watching).as(Ok)
     }
 
@@ -395,11 +400,11 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Result code
     */
   def setStarred(author: String, slug: String, starred: Boolean): Action[AnyContent] =
-    AuthedProjectAction(author, slug).async { implicit request =>
+    AuthedProjectAction(author, slug).asyncF { implicit request =>
       if (request.project.ownerId != request.user.id.value)
         request.data.project.setStarredBy(request.user, starred).as(Ok)
       else
-        Future.successful(BadRequest)
+        IO.pure(BadRequest)
     }
 
   /**
@@ -409,7 +414,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: DbRef[ProjectUserRole], status: String): Action[AnyContent] = Authenticated.async {
+  def setInviteStatus(id: DbRef[ProjectUserRole], status: String): Action[AnyContent] = Authenticated.asyncF {
     implicit request =>
       val user = request.user
       user.projectRoles
@@ -419,7 +424,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             case STATUS_DECLINE  => role.project.flatMap(MembershipDossier.project.removeRole(_, role)).as(Ok)
             case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
             case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
-            case _               => Future.successful(BadRequest)
+            case _               => IO.pure(BadRequest)
           }
         }
         .getOrElse(NotFound)
@@ -434,7 +439,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
   def setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String): Action[AnyContent] =
-    Authenticated.async { implicit request =>
+    Authenticated.asyncF { implicit request =>
       val user = request.user
       val res = for {
         orga       <- organizations.withName(behalf)
@@ -443,12 +448,12 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         scopedData <- OptionT.liftF(ScopedOrganizationData.of(Some(user), orga))
         if scopedData.permissions.getOrElse(EditSettings, false)
         project <- OptionT.liftF(role.project)
-        res <- OptionT.liftF[Future, Status] {
+        res <- OptionT.liftF[IO, Status] {
           status match {
             case STATUS_DECLINE  => project.memberships.removeRole(project, role).as(Ok)
             case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
             case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
-            case _               => Future.successful(BadRequest)
+            case _               => IO.pure(BadRequest)
           }
         }
       } yield res
@@ -463,7 +468,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return Project manager
     */
-  def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).async {
+  def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       request.project.apiKeys
         .find(_.keyType === (ProjectApiKeyType.Deployment: ProjectApiKeyType))
@@ -536,7 +541,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     */
   def removeMember(author: String, slug: String): Action[String] =
-    SettingsEditAction(author, slug).async(parse.form(forms.ProjectMemberRemove)) { implicit request =>
+    SettingsEditAction(author, slug).asyncF(parse.form(forms.ProjectMemberRemove)) { implicit request =>
       users
         .withName(request.body)
         .semiflatMap { user =>
@@ -564,7 +569,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return View of project
     */
-  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).async {
+  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       orgasUserCanUploadTo(request.user).flatMap { organisationUserCanUploadTo =>
         val data = request.data
@@ -572,7 +577,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           .ProjectSave(organisationUserCanUploadTo.toSeq)
           .bindFromRequest()
           .fold(
-            FormErrorLocalized(self.showSettings(author, slug)).andThen(Future.successful),
+            FormErrorLocalized(self.showSettings(author, slug)).andThen(IO.pure),
             formData => {
               data.settings
                 .save(data.project, formData)
@@ -607,9 +612,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       for {
         available <- EitherT.right[Result](projects.isNamespaceAvailable(author, slugify(newName)))
         _ <- EitherT
-          .cond[Future](available, (), Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
+          .cond[IO](available, (), Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
         _ <- EitherT.right[Result](projects.rename(project, newName))
-        _ <- EitherT.liftF {
+        _ <- EitherT.right[Result] {
           UserActionLogger.log(
             request.request,
             LoggedAction.ProjectRenamed,
@@ -632,7 +637,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def setVisible(author: String, slug: String, visibility: Int): Action[AnyContent] = {
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(HideProjects))
-      .async { implicit request =>
+      .asyncF { implicit request =>
         val newVisibility = Visibility.withValue(visibility)
         request.user.can(newVisibility.permission).in(GlobalScope).flatMap { perm =>
           if (perm) {
@@ -661,7 +666,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               )
               .as(Ok)
           } else {
-            Future.successful(Unauthorized)
+            IO.pure(Unauthorized)
           }
         }
       }
@@ -673,7 +678,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug     Project slug
     * @return         Redirect home
     */
-  def publish(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).async {
+  def publish(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       val effects =
         if (request.data.visibility == Visibility.New)
@@ -689,7 +694,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               )
             )
             .void
-        else Future.unit
+        else IO.unit
 
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
   }
@@ -700,7 +705,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug     Project slug
     * @return         Redirect home
     */
-  def sendForApproval(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).async {
+  def sendForApproval(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       val effects = if (request.data.visibility == Visibility.NeedsChanges) {
         request.project
@@ -715,12 +720,12 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             )
           )
           .void
-      } else Future.unit
+      } else IO.unit
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
   }
 
   def showLog(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ViewLogs)).andThen(ProjectAction(author, slug)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(ViewLogs)).andThen(ProjectAction(author, slug)).asyncF { implicit request =>
       for {
         logger <- request.project.logger
         logs   <- logger.entries.all
@@ -736,9 +741,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def delete(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(HardRemoveProject)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(HardRemoveProject)).asyncF { implicit request =>
       getProject(author, slug).semiflatMap { project =>
-        val deletePost = if (project.topicId.isDefined) this.forums.deleteProjectTopic(project) else Future.unit
+        val deletePost = if (project.topicId.isDefined) this.forums.deleteProjectTopic(project) else IO.unit
 
         val effects = deletePost *>
           projects.delete(project) *>
@@ -757,7 +762,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def softDelete(author: String, slug: String): Action[String] =
-    SettingsEditAction(author, slug).async(parse.form(forms.NeedsChanges)) { implicit request =>
+    SettingsEditAction(author, slug).asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
       val oldProject = request.project
       val comment    = request.body.trim
       oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id.value).flatMap {
@@ -795,12 +800,13 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     */
   def showNotes(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewFlags)).async { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](ReviewFlags)).asyncEitherT { implicit request =>
       getProject(author, slug).semiflatMap { project =>
-        Future.traverse(project.decodeNotes)(note => users.get(note.user).value.tupleLeft(note)).map { notes =>
+        import cats.instances.vector._
+        project.decodeNotes.toVector.parTraverse(note => users.get(note.user).value.tupleLeft(note)).map { notes =>
           Ok(views.admin.notes(project, notes))
         }
-      }.merge
+      }
     }
   }
 

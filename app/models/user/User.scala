@@ -2,8 +2,6 @@ package models.user
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.i18n.Lang
 import play.api.mvc.Request
 
@@ -26,7 +24,7 @@ import util.StringUtils._
 import util.syntax._
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
@@ -103,9 +101,8 @@ case class User(
     * @return Roles the user has.
     */
   def globalRoles(
-      implicit service: ModelService,
-      ec: ExecutionContext
-  ): ModelAssociationAccess[UserGlobalRolesTable, User, DbRole, Future] =
+      implicit service: ModelService
+  ): ModelAssociationAccess[UserGlobalRolesTable, User, DbRole, IO] =
     new ModelAssociationAccessImpl[UserGlobalRolesTable, User, DbRole]
 
   /**
@@ -113,7 +110,7 @@ case class User(
     *
     * @return Highest level donor type
     */
-  def donorType(implicit service: ModelService, ec: ExecutionContext): OptionT[Future, DonorRole] =
+  def donorType(implicit service: ModelService): OptionT[IO, DonorRole] =
     OptionT(
       service.runDBIO(this.globalRoles.allQueryFromParent(this).filter(_.rank.?.isDefined).result).map { seq =>
         seq
@@ -128,7 +125,7 @@ case class User(
     if (roles.isEmpty) Trust.Default
     else roles.map(_.trust).max
 
-  private def globalTrust(implicit service: ModelService, ec: ExecutionContext) = {
+  private def globalTrust(implicit service: ModelService) = {
     val q = for {
       ur <- TableQuery[UserGlobalRolesTable] if ur.userId === id.value
       r  <- TableQuery[DbRoleTable] if ur.roleId === r.id
@@ -137,7 +134,7 @@ case class User(
     service.runDBIO(Query(q.max).result.head).map(_.getOrElse(Trust.Default))
   }
 
-  def trustIn[A: HasScope](a: A)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
+  def trustIn[A: HasScope](a: A)(implicit service: ModelService): IO[Trust] =
     trustIn(a.scope)
 
   /**
@@ -145,7 +142,7 @@ case class User(
     *
     * @return Highest level of trust
     */
-  def trustIn(scope: Scope = GlobalScope)(implicit ec: ExecutionContext, service: ModelService): Future[Trust] =
+  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Trust] =
     Defined {
       scope match {
         case GlobalScope => globalTrust
@@ -189,7 +186,7 @@ case class User(
     *
     * @return Projects user has starred
     */
-  def starred()(implicit service: ModelService): Future[Seq[Project]] = Defined {
+  def starred()(implicit service: ModelService): IO[Seq[Project]] = Defined {
     val filter = Visibility.isPublicFilter[Project]
 
     val baseQuery = for {
@@ -208,14 +205,13 @@ case class User(
     */
   def isCurrent(
       implicit request: Request[_],
-      ec: ExecutionContext,
       service: ModelService,
       auth: SpongeAuthApi
-  ): Future[Boolean] = {
+  ): IO[Boolean] = {
     checkNotNull(request, "null request", "")
     UserBase().current
       .semiflatMap { user =>
-        if (user == this) Future.successful(true)
+        if (user == this) IO.pure(true)
         else this.toMaybeOrganization.semiflatMap(_.owner.user).exists(_ == user)
       }
       .exists(identity)
@@ -248,7 +244,7 @@ case class User(
     * @param name Name of project
     * @return Owned project, if any, None otherwise
     */
-  def getProject(name: String)(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Project] =
+  def getProject(name: String)(implicit service: ModelService): OptionT[IO, Project] =
     this.projects.find(equalsIgnoreCase(_.name, name))
 
   /**
@@ -272,9 +268,8 @@ case class User(
     * @return Organizations user belongs to
     */
   def organizations(
-      implicit service: ModelService,
-      ec: ExecutionContext
-  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization, Future] = new ModelAssociationAccessImpl
+      implicit service: ModelService
+  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization, IO] = new ModelAssociationAccessImpl
 
   /**
     * Returns a [[ModelAccess]] of [[OrganizationUserRole]]s.
@@ -289,7 +284,7 @@ case class User(
     *
     * @return Organization
     */
-  def toMaybeOrganization(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Organization] =
+  def toMaybeOrganization(implicit service: ModelService): OptionT[IO, Organization] =
     Defined {
       OrganizationBase().get(this.id.value)
     }
@@ -300,9 +295,8 @@ case class User(
     * @return Projects user is watching
     */
   def watching(
-      implicit service: ModelService,
-      ec: ExecutionContext
-  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, Future] =
+      implicit service: ModelService
+  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, IO] =
     new ModelAssociationAccessImpl
 
   /**
@@ -314,13 +308,13 @@ case class User(
   def setWatching(
       project: Project,
       watching: Boolean
-  )(implicit ec: ExecutionContext, service: ModelService): Future[Unit] = {
+  )(implicit service: ModelService): IO[Unit] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     val contains = this.watching.contains(project, this)
     contains.flatMap {
-      case true  => if (!watching) this.watching.removeAssoc(project, this) else Future.unit
-      case false => if (watching) this.watching.addAssoc(project, this) else Future.unit
+      case true  => if (!watching) this.watching.removeAssoc(project, this) else IO.unit
+      case false => if (watching) this.watching.addAssoc(project, this) else IO.unit
     }
   }
 
@@ -338,7 +332,7 @@ case class User(
     * @param project Project to check
     * @return True if has pending flag on Project
     */
-  def hasUnresolvedFlagFor(project: Project)(implicit ec: ExecutionContext, service: ModelService): Future[Boolean] = {
+  def hasUnresolvedFlagFor(project: Project)(implicit service: ModelService): IO[Boolean] = {
     checkNotNull(project, "null project", "")
     checkArgument(project.isDefined, "undefined project", "")
     this.flags.exists(f => f.projectId === project.id.value && !f.isResolved)
@@ -359,7 +353,7 @@ case class User(
     */
   def sendNotification(
       notification: Notification
-  )(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Future[Notification] = {
+  )(implicit service: ModelService, config: OreConfig): IO[Notification] = {
     checkNotNull(notification, "null notification", "")
     config.debug("Sending notification: " + notification, -1)
     service.access[Notification]().add(notification.copy(userId = this.id.value))
@@ -370,7 +364,7 @@ case class User(
     *
     * @param prompt Prompt to mark as read
     */
-  def markPromptAsRead(prompt: Prompt)(implicit ec: ExecutionContext, service: ModelService): Future[User] = {
+  def markPromptAsRead(prompt: Prompt)(implicit service: ModelService): IO[User] = {
     checkNotNull(prompt, "null prompt", "")
     service.update(
       copy(

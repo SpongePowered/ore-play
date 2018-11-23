@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.Instant
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.libs.json.JsObject
@@ -27,7 +27,7 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
 
 import cats.data.{EitherT, NonEmptyList}
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 import slick.lifted.{Rep, TableQuery}
 
@@ -48,11 +48,12 @@ final class Reviews @Inject()(forms: OreForms)(
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(ReviewProjects)).andThen(ProjectAction(author, slug)).asyncEitherT {
       implicit request =>
+        import cats.instances.vector._
         for {
           version <- getVersion(request.project, versionString)
           reviews <- EitherT.right[Result](version.mostRecentReviews)
           rv <- EitherT.right[Result](
-            Future.traverse(reviews)(r => users.get(r.userId).map(_.name).value.tupleLeft(r))
+            reviews.toVector.parTraverse(r => users.get(r.userId).map(_.name).value.tupleLeft(r))
           )
         } yield {
           val unfinished = reviews.filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
@@ -61,7 +62,7 @@ final class Reviews @Inject()(forms: OreForms)(
     }
 
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
         val review = new Review(
           ObjId.Uninitialized(),
@@ -126,7 +127,7 @@ final class Reviews @Inject()(forms: OreForms)(
             service.update(review.copy(endedAt = Some(Timestamp.from(Instant.now())))),
             // send notification that review happened
             sendReviewNotification(project, version, request.user)
-          ).tupled
+          ).parTupled
         )
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
@@ -155,7 +156,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private lazy val notificationUsersQuery = Compiled(queryNotificationUsers _)
 
-  private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
+  private def sendReviewNotification(project: Project, version: Version, requestUser: User): IO[Unit] = {
     val futUsers =
       service.runDBIO(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
         list
@@ -180,6 +181,7 @@ final class Reviews @Inject()(forms: OreForms)(
       }
       .map(TableQuery[NotificationTable] ++= _)
       .flatMap(service.runDBIO) // Batch insert all notifications
+      .void
   }
 
   def takeoverReview(author: String, slug: String, versionString: String): Action[String] = {
@@ -195,7 +197,7 @@ final class Reviews @Inject()(forms: OreForms)(
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
                   service.update(oldreview.copy(endedAt = Some(Timestamp.from(Instant.now())))),
-                ).tupled.void
+                ).parTupled.void
               }
               .getOrElse(())
 
@@ -212,7 +214,7 @@ final class Reviews @Inject()(forms: OreForms)(
                   JsObject.empty
                 )
               )
-            ).tupled
+            ).parTupled
             EitherT.right[Result](result)
           }
         } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
@@ -226,7 +228,7 @@ final class Reviews @Inject()(forms: OreForms)(
         for {
           version <- getProjectVersion(author, slug, versionString)
           review  <- version.reviewById(reviewId).toRight(notFound)
-          _       <- EitherT.liftF(review.addMessage(Message(request.body.trim)))
+          _       <- EitherT.right[Result](review.addMessage(Message(request.body.trim)))
         } yield Ok("Review" + review)
       }
   }
@@ -241,7 +243,7 @@ final class Reviews @Inject()(forms: OreForms)(
           _ <- {
             if (recentReview.userId == currentUser.id.value) {
               EitherT.right[Result](recentReview.addMessage(Message(request.body.trim)))
-            } else EitherT.rightT[Future, Result](0)
+            } else EitherT.rightT[IO, Result](0)
           }
         } yield Ok("Review")
     }
@@ -251,7 +253,7 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        oldState <- EitherT.cond[Future](
+        oldState <- EitherT.cond[IO](
           Seq(ReviewState.Backlog, ReviewState.Unreviewed).contains(version.reviewState),
           version.reviewState,
           BadRequest("Invalid state for toggle backlog")
@@ -261,7 +263,7 @@ final class Reviews @Inject()(forms: OreForms)(
           case ReviewState.Backlog    => ReviewState.Unreviewed
           case _                      => oldState
         }
-        _ <- EitherT.liftF(
+        _ <- EitherT.right[Result](
           UserActionLogger.log(
             request,
             LoggedAction.VersionReviewStateChanged,
@@ -270,7 +272,7 @@ final class Reviews @Inject()(forms: OreForms)(
             oldState.toString,
           )
         )
-        _ <- EitherT.liftF(service.update(version.copy(reviewState = newState)))
+        _ <- EitherT.right[Result](service.update(version.copy(reviewState = newState)))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }

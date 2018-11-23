@@ -1,7 +1,5 @@
 package models.statistic
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.ProjectViewsTable
@@ -11,7 +9,7 @@ import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
-import cats.instances.future._
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery
 
@@ -51,11 +49,10 @@ object ProjectView {
     * @return         New ProjectView
     */
   def bindFromRequest(
-      implicit ec: ExecutionContext,
-      users: UserBase,
+      implicit users: UserBase,
       auth: SpongeAuthApi,
       request: ProjectRequest[_]
-  ): Future[ProjectView] = {
+  ): IO[ProjectView] = {
     users.current.map(_.id.value).value.map { userId =>
       ProjectView(
         modelId = request.data.project.id.value,

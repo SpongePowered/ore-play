@@ -3,8 +3,6 @@ package ore.rest
 import java.lang.Math._
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
@@ -28,7 +26,8 @@ import ore.permission.role.Role
 import ore.project.{Category, ProjectSortingStrategies}
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 
 /**
   * The Ore API
@@ -54,7 +53,7 @@ trait OreRestfulApi extends OreWrites {
       q: Option[String],
       limit: Option[Int],
       offset: Option[Int]
-  )(implicit ec: ExecutionContext): Future[JsValue] = {
+  ): IO[JsValue] = {
     val cats: Option[Seq[Category]] = categories.map(Category.fromString).map(_.toSeq)
     val ordering                    = sort.map(ProjectSortingStrategies.withId(_).get).getOrElse(ProjectSortingStrategies.Default)
 
@@ -122,7 +121,7 @@ trait OreRestfulApi extends OreWrites {
 
   private def writeProjects(
       projects: Seq[(Project, Version, Channel)]
-  )(implicit ec: ExecutionContext): Future[Seq[(Project, JsObject)]] = {
+  ): IO[Seq[(Project, JsObject)]] = {
     val projectIds = projects.map(_._1.id.value)
     val versionIds = projects.map(_._2.id.value)
 
@@ -212,7 +211,7 @@ trait OreRestfulApi extends OreWrites {
     * @param pluginId Project plugin ID
     * @return Json value of project if found, None otherwise
     */
-  def getProject(pluginId: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
+  def getProject(pluginId: String): IO[Option[JsValue]] = {
     val query = queryProjectRV.filter {
       case (p, _, _) => p.pluginId === pluginId
     }
@@ -239,7 +238,7 @@ trait OreRestfulApi extends OreWrites {
       limit: Option[Int],
       offset: Option[Int],
       onlyPublic: Boolean
-  )(implicit ec: ExecutionContext): Future[JsValue] = {
+  ): IO[JsValue] = {
     val filtered = channels
       .map { chan =>
         queryVersions(onlyPublic).filter {
@@ -276,7 +275,7 @@ trait OreRestfulApi extends OreWrites {
     * @param name     Version name
     * @return         JSON version if found, None otherwise
     */
-  def getVersion(pluginId: String, name: String)(implicit ec: ExecutionContext): Future[Option[JsValue]] = {
+  def getVersion(pluginId: String, name: String): IO[Option[JsValue]] = {
 
     val filtered = queryVersions().filter {
       case (p, v, _, _, _) =>
@@ -314,8 +313,8 @@ trait OreRestfulApi extends OreWrites {
     */
   def getPages(
       pluginId: String,
-      parentId: Option[Int]
-  )(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, JsValue] = {
+      parentId: Option[DbRef[Page]]
+  )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).semiflatMap { project =>
       for {
         pages <- project.pages.sorted(_.name)
@@ -355,14 +354,15 @@ trait OreRestfulApi extends OreWrites {
   def getUserList(
       limit: Option[Int],
       offset: Option[Int]
-  )(implicit service: ModelService, ec: ExecutionContext): Future[JsValue] =
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[JsValue] =
     for {
       users        <- service.runDBIO(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(25)).result)
       writtenUsers <- writeUsers(users)
     } yield toJson(writtenUsers)
 
-  def writeUsers(userList: Seq[User])(implicit service: ModelService, ec: ExecutionContext): Future[Seq[JsObject]] = {
+  def writeUsers(userList: Seq[User])(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[JsObject]] = {
     implicit def config: OreConfig = this.config
+    import cats.instances.vector._
 
     val query = queryProjectRV.filter {
       case (p, _, _) => p.userId.inSetBind(userList.map(_.id.value)) // query all projects with given users
@@ -372,7 +372,7 @@ trait OreRestfulApi extends OreWrites {
       allProjects     <- service.runDBIO(query.result)
       stars           <- service.runDBIO(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
       jsonProjects    <- writeProjects(allProjects)
-      userGlobalRoles <- Future.traverse(userList)(u => u.globalRoles.allFromParent(u))
+      userGlobalRoles <- userList.toVector.parTraverse(u => u.globalRoles.allFromParent(u))
     } yield {
       val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
       userList.zip(userGlobalRoles).map {
@@ -396,7 +396,7 @@ trait OreRestfulApi extends OreWrites {
     * @param username Username of User
     * @return         JSON user if found, None otherwise
     */
-  def getUser(username: String)(implicit service: ModelService, ec: ExecutionContext): Future[Option[JsValue]] = {
+  def getUser(username: String)(implicit service: ModelService, cs: ContextShift[IO]): IO[Option[JsValue]] = {
     val queryOneUser = TableQuery[UserTable].filter {
       _.name.toLowerCase === username.toLowerCase
     }
@@ -417,7 +417,7 @@ trait OreRestfulApi extends OreWrites {
   def getTags(
       pluginId: String,
       version: String
-  )(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, JsValue] = {
+  )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).flatMap { project =>
       project.versions
         .find(

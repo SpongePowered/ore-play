@@ -3,14 +3,13 @@ package models.project
 import java.sql.Timestamp
 import java.time.Instant
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.schema.FlagTable
 import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.User
 import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned
 
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -57,7 +56,7 @@ case class Flag(
   def markResolved(
       resolved: Boolean,
       user: Option[User]
-  )(implicit ec: ExecutionContext, service: ModelService): Future[Flag] = Defined {
+  )(implicit service: ModelService): IO[Flag] = Defined {
     val (at, by) =
       if (resolved)
         (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1L)): Option[DbRef[User]])

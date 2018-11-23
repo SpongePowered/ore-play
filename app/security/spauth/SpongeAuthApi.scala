@@ -4,7 +4,6 @@ import java.util.concurrent.TimeoutException
 import javax.inject.Inject
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.libs.json.Reads._
 import play.api.libs.json._
@@ -14,7 +13,8 @@ import ore.OreConfig
 import _root_.util.WSUtils.parseJson
 
 import cats.data.{EitherT, OptionT}
-import cats.instances.future._
+import cats.effect.IO
+import cats.syntax.all._
 import com.google.common.base.Preconditions._
 
 /**
@@ -39,15 +39,14 @@ trait SpongeAuthApi {
     * @param email    Email
     * @return         Newly created user
     */
-  def createDummyUser(username: String, email: String)(
-      implicit ec: ExecutionContext
-  ): EitherT[Future, String, SpongeUser] = doCreateUser(username, email, None)
+  def createDummyUser(username: String, email: String): EitherT[IO, String, SpongeUser] =
+    doCreateUser(username, email, None)
 
   private def doCreateUser(
       username: String,
       email: String,
       password: Option[String],
-  )(implicit ec: ExecutionContext): EitherT[Future, String, SpongeUser] = {
+  ): EitherT[IO, String, SpongeUser] = {
     checkNotNull(username, "null username", "")
     checkNotNull(email, "null email", "")
     val params = Map(
@@ -59,7 +58,7 @@ trait SpongeAuthApi {
     )
 
     val withPassword = password.fold(params)(pass => params + ("password" -> Seq(pass)))
-    readUser(this.ws.url(route("/api/users")).withRequestTimeout(timeout).post(withPassword))
+    readUser(IO.fromFuture(IO(this.ws.url(route("/api/users")).withRequestTimeout(timeout).post(withPassword))))
   }
 
   /**
@@ -68,15 +67,13 @@ trait SpongeAuthApi {
     * @param username Username to lookup
     * @return         User with username
     */
-  def getUser(username: String)(implicit ec: ExecutionContext): OptionT[Future, SpongeUser] = {
+  def getUser(username: String): OptionT[IO, SpongeUser] = {
     checkNotNull(username, "null username", "")
     val url = route("/api/users/" + username) + s"?apiKey=$apiKey"
-    readUser(this.ws.url(url).withRequestTimeout(timeout).get()).toOption
+    readUser(IO.fromFuture(IO(this.ws.url(url).withRequestTimeout(timeout).get()))).toOption
   }
 
-  private def readUser(response: Future[WSResponse])(
-      implicit ec: ExecutionContext
-  ): EitherT[Future, String, SpongeUser] = {
+  private def readUser(response: IO[WSResponse]): EitherT[IO, String, SpongeUser] = {
     EitherT(
       OptionT(response.map(parseJson(_, Logger)))
         .map { json =>
@@ -87,7 +84,7 @@ trait SpongeAuthApi {
             Right(obj.as[SpongeUser])
         }
         .getOrElse(Left("error.spongeauth.auth"))
-        .recover {
+        .handleError {
           case _: TimeoutException =>
             Left("error.spongeauth.auth")
           case e =>

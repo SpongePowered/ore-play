@@ -1,7 +1,5 @@
 package models.user.role
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.schema.OrganizationRoleTable
 import db.{DbRef, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.{Organization, User}
@@ -10,6 +8,7 @@ import ore.organization.OrganizationOwned
 import ore.permission.role.Role
 import ore.user.UserOwned
 
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -37,7 +36,7 @@ case class OrganizationUserRole(
   def this(userId: DbRef[User], organizationId: DbRef[Organization], roleType: Role) =
     this(id = ObjId.Uninitialized(), userId = userId, organizationId = organizationId, role = roleType)
 
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+  override def subject(implicit service: ModelService): IO[Visitable] =
     OrganizationOwned[OrganizationUserRole].organization(this)
 }
 object OrganizationUserRole {

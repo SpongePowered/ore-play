@@ -1,7 +1,5 @@
 package models.user
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
 import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
@@ -9,7 +7,7 @@ import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
 import cats.data.{NonEmptyList => NEL}
-import cats.instances.future._
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -43,7 +41,7 @@ case class Notification(
     *
     * @return User from which this originated from
     */
-  def origin(implicit ec: ExecutionContext, userBase: UserBase): Future[User] =
+  def origin(implicit userBase: UserBase): IO[User] =
     userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None"))
 }
 object Notification {

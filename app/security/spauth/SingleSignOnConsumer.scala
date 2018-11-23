@@ -7,7 +7,6 @@ import java.util.Base64
 import javax.inject.Inject
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
 
 import play.api.http.Status
@@ -19,7 +18,7 @@ import security.CryptoUtils
 
 import akka.http.scaladsl.model.Uri
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
 
 /**
@@ -32,7 +31,7 @@ trait SingleSignOnConsumer {
   def signupUrl: String
   def verifyUrl: String
   def secret: String
-  def timeout: Duration
+  def timeout: FiniteDuration
 
   val CharEncoding = "UTF-8"
   val Algo         = "HmacSHA256"
@@ -44,10 +43,8 @@ trait SingleSignOnConsumer {
     *
     * @return True if available
     */
-  def isAvailable(implicit ec: ExecutionContext): Boolean =
-    Await.result(this.ws.url(this.loginUrl).get().map(_.status == Status.OK).recover {
-      case _: Exception => false
-    }, this.timeout)
+  def isAvailable(implicit timer: Timer[IO], cs: ContextShift[IO]): IO[Boolean] =
+    IO.fromFuture(IO(this.ws.url(this.loginUrl).get())).map(_.status == Status.OK).timeoutTo(timeout, IO.pure(false))
 
   /**
     * Returns the login URL with a generated SSO payload to the SSO instance.
@@ -111,14 +108,14 @@ trait SingleSignOnConsumer {
     * @return               [[SpongeUser]] if successful
     */
   def authenticate(payload: String, sig: String)(
-      isNonceValid: String => Future[Boolean]
-  )(implicit ec: ExecutionContext): OptionT[Future, SpongeUser] = {
+      isNonceValid: String => IO[Boolean]
+  ): OptionT[IO, SpongeUser] = {
     Logger.debug("Authenticating SSO payload...")
     Logger.debug(payload)
     Logger.debug("Signed with : " + sig)
     if (generateSignature(payload) != sig) {
       Logger.debug("<FAILURE> Could not verify payload against signature.")
-      return OptionT.none[Future, SpongeUser]
+      return OptionT.none[IO, SpongeUser]
     }
 
     // decode payload
@@ -144,7 +141,7 @@ trait SingleSignOnConsumer {
     }
 
     OptionT
-      .fromOption[Future](info)
+      .fromOption[IO](info)
       .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user) }
       .subflatMap {
         case (false, _) =>

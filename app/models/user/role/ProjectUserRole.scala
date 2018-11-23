@@ -1,7 +1,5 @@
 package models.user.role
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.schema.ProjectRoleTable
 import db.{DbRef, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.Project
@@ -12,6 +10,7 @@ import ore.permission.scope.ProjectScope
 import ore.project.ProjectOwned
 import ore.user.UserOwned
 
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -52,7 +51,7 @@ case class ProjectUserRole(
     isAccepted = accepted
   )
 
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+  override def subject(implicit service: ModelService): IO[Visitable] =
     ProjectOwned[ProjectUserRole].project(this)
 }
 object ProjectUserRole {

@@ -4,8 +4,6 @@ import java.nio.file.Files._
 import java.sql.Timestamp
 import java.time.Instant
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
@@ -20,7 +18,7 @@ import ore.user.notification.NotificationType
 import util.StringUtils._
 
 import cats.data.NonEmptyList
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -60,9 +58,10 @@ case class ProjectSettings(
   //noinspection ComparingUnrelatedTypes
   def save(project: Project, formData: ProjectSettingsForm)(
       implicit fileManager: ProjectFiles,
-      ec: ExecutionContext,
-      service: ModelService
-  ): Future[(Project, ProjectSettings)] = {
+      service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[(Project, ProjectSettings)] = {
+    import cats.instances.vector._
     Logger.debug("Saving project settings")
     Logger.debug(formData.toString)
 
@@ -93,7 +92,7 @@ case class ProjectSettings(
       )
     )
 
-    val modelUpdates = updateProject.zip(updateSettings)
+    val modelUpdates = (updateProject, updateSettings).parTupled
 
     modelUpdates.flatMap { t =>
       // Update icon
@@ -111,8 +110,10 @@ case class ProjectSettings(
       if (project.isDefined) {
         // Add new roles
         val dossier = project.memberships
-        Future
-          .traverse(formData.build()) { role =>
+        formData
+          .build()
+          .toVector
+          .parTraverse { role =>
             dossier.addRole(project, role.copy(projectId = project.id.value))
           }
           .flatMap { roles =>
@@ -150,7 +151,7 @@ case class ProjectSettings(
               }
               .flatMap(updates => service.runDBIO(DBIO.sequence(updates)).as(t))
           }
-      } else Future.successful(t)
+      } else IO.pure(t)
     }
   }
 

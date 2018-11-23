@@ -2,8 +2,6 @@ package models.user
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.access.UserBase
 import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
@@ -11,6 +9,7 @@ import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -40,7 +39,7 @@ case class Session(
     * @param users UserBase instance
     * @return User session belongs to
     */
-  def user(implicit users: UserBase, ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] =
+  def user(implicit users: UserBase, auth: SpongeAuthApi): OptionT[IO, User] =
     users.withName(this.username)
 }
 object Session {

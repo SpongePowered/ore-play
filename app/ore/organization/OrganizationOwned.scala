@@ -2,13 +2,11 @@ package ore.organization
 
 import scala.language.implicitConversions
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.DbRef
 import db.impl.access.OrganizationBase
 import models.user.Organization
 
-import cats.instances.future._
+import cats.effect.IO
 import simulacrum.typeclass
 
 /**
@@ -20,6 +18,6 @@ import simulacrum.typeclass
   def organizationId(a: A): DbRef[Organization]
 
   /** Returns the Organization */
-  def organization(a: A)(implicit organizations: OrganizationBase, ec: ExecutionContext): Future[Organization] =
+  def organization(a: A)(implicit organizations: OrganizationBase): IO[Organization] =
     organizations.get(organizationId(a)).getOrElse(throw new NoSuchElementException("Get on None"))
 }

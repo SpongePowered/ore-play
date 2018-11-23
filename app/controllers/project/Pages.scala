@@ -3,7 +3,7 @@ package controllers.project
 import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.libs.json.JsValue
@@ -26,7 +26,7 @@ import util.StringUtils._
 import views.html.projects.{pages => views}
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 
 /**
@@ -67,8 +67,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     * @param page
     * @return Tuple: Optional Page, true if using legacy fallback
     */
-  def withPage(project: Project, page: String): OptionT[Future, (Page, Boolean)] = {
-    //TODO: Can the return type here be changed to OptionT[Future (Page, Boolean)]?
+  def withPage(project: Project, page: String): OptionT[IO, (Page, Boolean)] = {
     val parts = page.split("/").map(page => UriEncoding.decodePathSegment(page, StandardCharsets.UTF_8))
 
     if (parts.length == 2) {
@@ -89,7 +88,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     * @param page   Page name
     * @return View of page
     */
-  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).async {
+  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
     implicit request =>
       withPage(request.project, page)
         .semiflatMap {
@@ -115,19 +114,18 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     * @return Page editor
     */
   def showEditor(author: String, slug: String, pageName: String): Action[AnyContent] =
-    PageEditAction(author, slug).async { implicit request =>
-      for {
-        (optP, pages) <- (
-          withPage(request.data.project, pageName).value,
-          projects.queryProjectPages(request.project)
-        ).tupled
-      } yield {
-        optP.fold(notFound) {
-          case (p, _) =>
-            val pageCount  = pages.size + pages.map(_._2.size).sum
-            val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
-            Ok(views.view(request.data, request.scoped, pages, p, parentPage, pageCount, editorOpen = true))
-        }
+    PageEditAction(author, slug).asyncF { implicit request =>
+      (
+        withPage(request.data.project, pageName).value,
+        projects.queryProjectPages(request.project)
+      ).parMapN {
+        case (optP, pages) =>
+          optP.fold(notFound) {
+            case (p, _) =>
+              val pageCount  = pages.size + pages.map(_._2.size).sum
+              val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
+              Ok(views.view(request.data, request.scoped, pages, p, parentPage, pageCount, editorOpen = true))
+          }
       }
     }
 
@@ -149,7 +147,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     * @return Project home
     */
   def save(author: String, slug: String, page: String): Action[PageSaveForm] =
-    PageEditAction(author, slug).async(parse.form(forms.PageEdit, onErrors = FormError(self.show(author, slug, page)))) {
+    PageEditAction(author, slug).asyncF(parse.form(forms.PageEdit, onErrors = FormError(self.show(author, slug, page)))) {
       implicit request =>
         val pageData = request.body
         val content  = pageData.content
@@ -161,10 +159,10 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
           if (parentId.isDefined && !rootPages
                 .filter(_.name != Page.homeName)
                 .exists(p => parentId.contains(p.id.value))) {
-            Future.successful(BadRequest("Invalid parent ID."))
+            IO.pure(BadRequest("Invalid parent ID."))
           } else {
             if (page == Page.homeName && (!content.exists(_.length >= Page.minLength))) {
-              Future.successful(Redirect(self.show(author, slug, page)).withError("error.minLength"))
+              IO.pure(Redirect(self.show(author, slug, page)).withError("error.minLength"))
             } else {
               val parts = page.split("/")
 
@@ -180,7 +178,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
 
               created
                 .flatMap { createdPage =>
-                  content.fold(Future.successful(createdPage)) { newPage =>
+                  content.fold(IO.pure(createdPage)) { newPage =>
                     val oldPage = createdPage.contents
                     UserActionLogger.log(
                       request.request,
@@ -206,10 +204,10 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     * @return Redirect to Project homepage
     */
   def delete(author: String, slug: String, page: String): Action[AnyContent] =
-    PageEditAction(author, slug).async { request =>
+    PageEditAction(author, slug).asyncF { request =>
       withPage(request.project, page).value.flatMap { optionPage =>
         optionPage
-          .fold(Future.unit)(t => service.delete(t._1).void)
+          .fold(IO.unit)(t => service.delete(t._1).void)
           .as(Redirect(routes.Projects.show(author, slug)))
       }
     }
