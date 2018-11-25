@@ -7,6 +7,7 @@ import ore.{Color, OreConfig}
 
 import cats.data.{EitherT, NonEmptyList => NEL}
 import cats.effect.IO
+import cats.syntax.all._
 
 /**
   * Represents submitted [[Channel]] data.
@@ -78,8 +79,7 @@ trait TChannelData {
             )
           )
 
-          //TODO: Replace this with void once IntelliJ understands it
-          EitherT.right[NEL[String]](effect).map(_ => ())
+          EitherT.right[NEL[String]](effect.void)
       }
     }
   }

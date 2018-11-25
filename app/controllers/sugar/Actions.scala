@@ -71,24 +71,25 @@ trait Actions extends Calls with ActionHelpers {
     */
   def PermissionAction[R[_] <: ScopedRequest[_]](
       p: Permission
-  )(implicit ec: ExecutionContext, hasScope: HasScope[R[_]]): ActionRefiner[R, R] = new ActionRefiner[R, R] {
-    def executionContext: ExecutionContext = ec
+  )(implicit ec: ExecutionContext, cs: ContextShift[IO], hasScope: HasScope[R[_]]): ActionRefiner[R, R] =
+    new ActionRefiner[R, R] {
+      def executionContext: ExecutionContext = ec
 
-    private def log(success: Boolean, request: R[_]): Unit = {
-      val lang = if (success) "GRANTED" else "DENIED"
-      PermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")
-    }
+      private def log(success: Boolean, request: R[_]): Unit = {
+        val lang = if (success) "GRANTED" else "DENIED"
+        PermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")
+      }
 
-    def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
-      implicit val r: R[A] = request
+      def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
+        implicit val r: R[A] = request
 
-      request.user.can(p).in(request).unsafeToFuture().flatMap { perm =>
-        log(success = perm, request)
-        if (!perm) onUnauthorized.map(Left.apply)
-        else Future.successful(Right(request))
+        request.user.can(p).in(request).unsafeToFuture().flatMap { perm =>
+          log(success = perm, request)
+          if (!perm) onUnauthorized.map(Left.apply)
+          else Future.successful(Right(request))
+        }
       }
     }
-  }
 
   /**
     * A PermissionAction that uses an AuthedProjectRequest for the
@@ -98,7 +99,8 @@ trait Actions extends Calls with ActionHelpers {
     * @return An [[ProjectRequest]]
     */
   def ProjectPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthedProjectRequest, AuthedProjectRequest] = PermissionAction[AuthedProjectRequest](p)
 
   /**
@@ -109,7 +111,8 @@ trait Actions extends Calls with ActionHelpers {
     * @return [[OrganizationRequest]]
     */
   def OrganizationPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthedOrganizationRequest, AuthedOrganizationRequest] =
     PermissionAction[AuthedOrganizationRequest](p)
 
@@ -198,7 +201,7 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def userAction(username: String)(implicit ec: ExecutionContext): ActionFilter[AuthRequest] =
+  def userAction(username: String)(implicit ec: ExecutionContext, cs: ContextShift[IO]): ActionFilter[AuthRequest] =
     new ActionFilter[AuthRequest] {
       def executionContext: ExecutionContext = ec
 
@@ -214,7 +217,8 @@ trait Actions extends Calls with ActionHelpers {
     }
 
   def oreAction(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionTransformer[Request, OreRequest] = new ActionTransformer[Request, OreRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -231,7 +235,8 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   def authAction(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[Request, AuthRequest] = new ActionRefiner[Request, AuthRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -242,9 +247,9 @@ trait Actions extends Calls with ActionHelpers {
 
   private def maybeAuthRequest[A](
       request: Request[A],
-      futUser: OptionT[IO, User]
-  ): Future[Either[Result, AuthRequest[A]]] =
-    futUser
+      userF: OptionT[IO, User]
+  )(implicit cs: ContextShift[IO]): Future[Either[Result, AuthRequest[A]]] =
+    userF
       .semiflatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
       .toRight(IO.fromFuture(IO(onUnauthorized(request))))
       .leftSemiflatMap(identity)
@@ -319,7 +324,7 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: Project, user: User) = {
+  private def canEditAndNeedChangeOrApproval(project: Project, user: User)(implicit cs: ContextShift[IO]) = {
     if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
       user.can(EditPages).in(project)
     } else {

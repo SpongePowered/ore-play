@@ -21,11 +21,11 @@ trait Cacheable {
   /**
     * Caches this.
     */
-  def cache(): IO[Unit] = IO(this.cacheApi.set(this.key, this))
+  def cache: IO[Unit] = IO(this.cacheApi.set(this.key, this))
 
   /**
     * Removes this from the Cache.
     */
-  def free(): IO[Unit] = IO(this.cacheApi.remove(this.key))
+  def free: IO[Unit] = IO(this.cacheApi.remove(this.key))
 
 }

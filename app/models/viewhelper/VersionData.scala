@@ -37,9 +37,9 @@ object VersionData {
       cs: ContextShift[IO]
   ): IO[VersionData] = {
     import cats.instances.list._
-    val depsFut = version.dependencies.parTraverse(dep => dep.project.value.tupleLeft(dep))
+    val depsF = version.dependencies.parTraverse(dep => dep.project.value.tupleLeft(dep))
 
-    (version.channel, version.reviewer.map(_.name).value, depsFut).parMapN {
+    (version.channel, version.reviewer.map(_.name).value, depsF).parMapN {
       case (channel, approvedBy, deps) =>
         VersionData(request.data, version, channel, approvedBy, deps)
     }

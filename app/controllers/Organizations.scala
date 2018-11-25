@@ -149,8 +149,7 @@ class Organizations @Inject()(forms: OreForms)(
     * @return             Redirect to Organization page
     */
   def updateMembers(organization: String): Action[OrganizationMembersUpdate] =
-    EditOrganizationAction(organization)(parse.form(forms.OrganizationUpdateMembers)) { implicit request =>
-      request.body.saveTo(request.data.orga)
-      Redirect(ShowUser(organization))
+    EditOrganizationAction(organization)(parse.form(forms.OrganizationUpdateMembers)).asyncF { implicit request =>
+      request.body.saveTo(request.data.orga).as(Redirect(ShowUser(organization)))
     }
 }

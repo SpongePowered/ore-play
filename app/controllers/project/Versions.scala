@@ -235,7 +235,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return Version create page (with meta)
     */
-  def upload(author: String, slug: String): Action[AnyContent] = VersionUploadAction(author, slug).asyncF {
+  def upload(author: String, slug: String): Action[AnyContent] = VersionUploadAction(author, slug).asyncEitherT {
     implicit request =>
       val call = self.showCreator(author, slug)
       val user = request.user
@@ -259,13 +259,16 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               EitherT.leftT[IO, PendingVersion](Redirect(call).withErrors(Option(e.getMessage).toList))
           }
         }
-        .map { pendingVersion =>
-          pendingVersion.copy(underlying = pendingVersion.underlying.copy(authorId = user.id.value)).cache()
-          Redirect(
-            self.showCreatorWithMeta(request.data.project.ownerName, slug, pendingVersion.underlying.versionString)
-          )
+        .semiflatMap { pendingVersion =>
+          pendingVersion
+            .copy(underlying = pendingVersion.underlying.copy(authorId = user.id.value))
+            .cache
+            .as(
+              Redirect(
+                self.showCreatorWithMeta(request.data.project.ownerName, slug, pendingVersion.underlying.versionString)
+              )
+            )
         }
-        .merge
   }
 
   /**
@@ -354,11 +357,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                           _ =>
                             // Update description
                             val newPendingVersion = versionData.content.fold(pendingVersion) { content =>
-                              val updated = pendingVersion.copy(
+                              pendingVersion.copy(
                                 underlying = pendingVersion.underlying.copy(description = Some(content.trim))
                               )
-                              updated.cache()
-                              updated
                             }
 
                             newPendingVersion.complete
@@ -436,8 +437,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Versions page
     */
   def delete(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](HardRemoveVersion)).asyncF(parse.form(forms.NeedsChanges)) {
-      implicit request =>
+    Authenticated
+      .andThen(PermissionAction[AuthRequest](HardRemoveVersion))
+      .asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
         val comment = request.body
         getProjectVersion(author, slug, versionString)
           .semiflatMap(version => projects.deleteVersion(version).as(version))
@@ -452,8 +454,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               )
           }
           .map(_ => Redirect(self.showList(author, slug, None)))
-          .merge
-    }
+      }
   }
 
   /**
@@ -464,7 +465,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def softDelete(author: String, slug: String, versionString: String): Action[String] =
-    VersionEditAction(author, slug).asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
+    VersionEditAction(author, slug).asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
       val comment = request.body
       getVersion(request.project, versionString)
         .semiflatMap(version => projects.prepareDeleteVersion(version).as(version))
@@ -476,7 +477,6 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             .log(request.request, LoggedAction.VersionDeleted, version.id.value, s"SoftDelete: $comment", "")
         }
         .map(_ => Redirect(self.showList(author, slug, None)))
-        .merge
     }
 
   /**
@@ -487,7 +487,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def restore(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncF(parse.form(forms.NeedsChanges)) {
+    Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncEitherT(parse.form(forms.NeedsChanges)) {
       implicit request =>
         val comment = request.body
         getProjectVersion(author, slug, versionString)
@@ -496,7 +496,6 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id.value, s"Restore: $comment", "")
           }
           .map(_ => Redirect(self.showList(author, slug, None)))
-          .merge
     }
   }
 
@@ -524,9 +523,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Sent file
     */
   def download(author: String, slug: String, versionString: String, token: Option[String]): Action[AnyContent] =
-    ProjectAction(author, slug).asyncF { implicit request =>
+    ProjectAction(author, slug).asyncEitherT { implicit request =>
       val project = request.project
-      getVersion(project, versionString).semiflatMap(sendVersion(project, _, token)).merge
+      getVersion(project, versionString).semiflatMap(sendVersion(project, _, token))
     }
 
   private def sendVersion(project: Project, version: Version, token: Option[String])(

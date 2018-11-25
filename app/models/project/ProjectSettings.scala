@@ -7,7 +7,7 @@ import java.time.Instant
 import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{NotificationTable, ProjectRoleTable, ProjectSettingsTable, UserTable}
+import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
 import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
@@ -127,22 +127,22 @@ case class ProjectSettings(
               )
             }
 
-            service.runDBIO(TableQuery[NotificationTable] ++= notifications) // Bulk insert Notifications
+            service.bulkInsert(notifications)
           }
-          .flatMap { _ =>
+          .productR {
             // Update existing roles
             val usersTable = TableQuery[UserTable]
             // Select member userIds
             service
               .runDBIO(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
               .map { userIds =>
-                userIds.zip(
-                  formData.roleUps.map { role =>
-                    Role.projectRoles
-                      .find(_.value.equals(role))
-                      .getOrElse(throw new RuntimeException("supplied invalid role type"))
-                  }
-                )
+                val roles = formData.roleUps.map { role =>
+                  Role.projectRoles
+                    .find(_.value == role)
+                    .getOrElse(throw new RuntimeException("supplied invalid role type"))
+                }
+
+                userIds.zip(roles)
               }
               .map {
                 _.map {

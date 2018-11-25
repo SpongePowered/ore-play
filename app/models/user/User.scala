@@ -23,8 +23,9 @@ import security.spauth.{SpongeAuthApi, SpongeUser}
 import util.StringUtils._
 import util.syntax._
 
+import cats.Parallel
 import cats.data.OptionT
-import cats.effect.IO
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
@@ -134,7 +135,7 @@ case class User(
     service.runDBIO(Query(q.max).result.head).map(_.getOrElse(Trust.Default))
   }
 
-  def trustIn[A: HasScope](a: A)(implicit service: ModelService): IO[Trust] =
+  def trustIn[A: HasScope](a: A)(implicit service: ModelService, cs: ContextShift[IO]): IO[Trust] =
     trustIn(a.scope)
 
   /**
@@ -142,7 +143,7 @@ case class User(
     *
     * @return Highest level of trust
     */
-  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Trust] =
+  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService, cs: ContextShift[IO]): IO[Trust] =
     Defined {
       scope match {
         case GlobalScope => globalTrust
@@ -173,9 +174,9 @@ case class User(
               }
             }
 
-          projectTrust.map2(globalTrust)(_ max _)
+          Parallel.parMap2(projectTrust, globalTrust)(_ max _)
         case OrganizationScope(organizationId) =>
-          Organization.getTrust(id.value, organizationId).map2(globalTrust)(_ max _)
+          Parallel.parMap2(Organization.getTrust(id.value, organizationId), globalTrust)(_ max _)
         case _ =>
           throw new RuntimeException("unknown scope: " + scope)
       }

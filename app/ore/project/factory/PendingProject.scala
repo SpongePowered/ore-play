@@ -37,7 +37,7 @@ case class PendingProject(
 
   def complete()(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Project, Version)] = {
     for {
-      _          <- free()
+      _          <- free
       newProject <- this.factory.createProject(this)
       newVersion <- {
         this.pendingVersion.project = newProject
@@ -48,8 +48,8 @@ case class PendingProject(
   }
 
   def cancel()(implicit forums: OreDiscourseApi): IO[Unit] =
-    free() *> IO(this.file.delete()) *> (if (this.underlying.isDefined) this.projects.delete(this.underlying).void
-                                         else IO.unit)
+    free *> IO(this.file.delete()) *> (if (this.underlying.isDefined) this.projects.delete(this.underlying).void
+                                       else IO.unit)
 
   override def key: String = this.underlying.ownerName + '/' + this.underlying.slug
 
@@ -59,7 +59,7 @@ object PendingProject {
     val result = project.factory.startVersion(project.file, project.underlying, project.settings, project.channelName)
     result match {
       case Right(version) =>
-        version.cache().unsafeRunSync()
+        version.cache.unsafeRunSync()
         version
       // TODO: not this crap
       case Left(errorMessage) => throw new IllegalArgumentException(errorMessage)

@@ -10,9 +10,9 @@ import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
 
+import cats.Parallel
 import cats.data.OptionT
-import cats.effect.IO
-import cats.syntax.all._
+import cats.effect.{ContextShift, IO}
 import org.slf4j.MDC
 import slick.lifted.TableQuery
 
@@ -62,7 +62,8 @@ object HeaderData {
   def cacheKey(user: User) = s"""user${user.id.value}"""
 
   def of[A](request: Request[A])(
-      implicit service: ModelService
+      implicit service: ModelService,
+      cs: ContextShift[IO]
   ): IO[HeaderData] =
     OptionT
       .fromOption[IO](request.cookies.get("_oretoken"))
@@ -93,7 +94,7 @@ object HeaderData {
 
   private def getHeaderData(
       user: User
-  )(implicit service: ModelService) = {
+  )(implicit service: ModelService, cs: ContextShift[IO]) = {
 
     MDC.put("currentUserId", user.id.toString)
     MDC.put("currentUserName", user.name)
@@ -123,8 +124,8 @@ object HeaderData {
     }
   }
 
-  def perms(user: User)(implicit service: ModelService): IO[Map[Permission, Boolean]] =
-    user
-      .trustIn(GlobalScope)
-      .map2(user.globalRoles.allFromParent(user))((t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*))
+  def perms(user: User)(implicit service: ModelService, cs: ContextShift[IO]): IO[Map[Permission, Boolean]] =
+    Parallel.parMap2(user.trustIn(GlobalScope), user.globalRoles.allFromParent(user))(
+      (t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*)
+    )
 }

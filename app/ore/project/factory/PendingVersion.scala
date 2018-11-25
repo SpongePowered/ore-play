@@ -34,11 +34,11 @@ case class PendingVersion(
 ) extends Cacheable {
 
   def complete()(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] =
-    free() *> this.factory.createVersion(this)
+    free *> this.factory.createVersion(this)
 
   def cancel()(implicit cs: ContextShift[IO]): IO[Project] =
-    free() *> IO(this.plugin.delete()) *> (if (this.underlying.isDefined) this.projects.deleteVersion(this.underlying)
-                                           else IO.pure(project))
+    free *> IO(this.plugin.delete()) *> (if (this.underlying.isDefined) this.projects.deleteVersion(this.underlying)
+                                         else IO.pure(project))
 
   override def key: String = this.project.url + '/' + this.underlying.versionString
 

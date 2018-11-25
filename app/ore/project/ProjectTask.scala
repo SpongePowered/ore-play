@@ -50,7 +50,7 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   def run(): Unit = newProjects.unsafeToFuture().foreach { projects =>
     projects.foreach { project =>
       Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-      project.setVisibility(Visibility.Public, "Changed by task", project.ownerId)
+      project.setVisibility(Visibility.Public, "Changed by task", project.ownerId).unsafeRunAsyncAndForget()
     }
   }
 }

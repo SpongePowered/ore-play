@@ -31,10 +31,7 @@ trait RoleSetBuilder[M <: UserRoleModel] {
     *
     * @return Result set
     */
-  def build(): Set[M] =
-    (for ((userId, i) <- this.users.zipWithIndex) yield {
-      newRole(userId, Role.withValue(roles(i)))
-    }).toSet
+  def build(): Set[M] = users.zip(roles).map { case (userId, role) => newRole(userId, Role.withValue(role)) }.toSet
 
   /**
     * Creates a new role for the specified user ID and role type.

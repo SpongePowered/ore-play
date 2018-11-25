@@ -272,12 +272,9 @@ case class Project(
     checkArgument(user.isDefined, "undefined user", "")
     for {
       contains <- this.stars.contains(user, this)
-      res <- if (starred) {
-        if (!contains) {
-          this.stars.addAssoc(user, this) *> service.update(copy(starCount = starCount + 1))
-        } else IO.pure(this)
-      } else if (contains) {
-        this.stars.removeAssoc(user, this) *> service.update(copy(starCount = starCount - 1))
+      res <- if (starred != contains) {
+        if (contains) stars.removeAssoc(user, this) *> service.update(copy(starCount = starCount - 1))
+        else stars.addAssoc(user, this) *> service.update(copy(starCount = starCount + 1))
       } else IO.pure(this)
     } yield res
   }

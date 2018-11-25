@@ -17,7 +17,7 @@ import ore.StatTracker.COOKIE_NAME
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
-import cats.effect.IO
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 
 /**
@@ -81,16 +81,16 @@ trait StatTracker {
     */
   def versionDownloaded(version: Version)(f: IO[Result])(
       implicit request: ProjectRequest[_],
-      auth: SpongeAuthApi
+      auth: SpongeAuthApi,
+      cs: ContextShift[IO]
   ): IO[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
-      record[Version, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id)))
-        .flatMap {
-          case true  => version.addDownload *> request.data.project.addDownload
-          case false => IO.unit
-        }
-        .productR(f)
-        .map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
+      val recordDownload = record[Version, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id))).flatMap {
+        case true  => version.addDownload *> request.data.project.addDownload
+        case false => IO.unit
+      }
+
+      recordDownload &> f.map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
   }
 

@@ -6,8 +6,8 @@ import db.ModelService
 import models.user.User
 import models.user.role.UserRoleModel
 
-import cats.effect.IO
-import cats.syntax.all._
+import cats.Parallel
+import cats.effect.{ContextShift, IO}
 import enumeratum.values._
 
 /**
@@ -17,10 +17,10 @@ sealed abstract class InviteFilter(
     val value: Int,
     val name: String,
     val title: String,
-    val filter: ModelService => User => IO[Seq[UserRoleModel]]
+    val filter: ContextShift[IO] => ModelService => User => IO[Seq[UserRoleModel]]
 ) extends IntEnumEntry {
-  def apply(user: User)(implicit service: ModelService): IO[Seq[UserRoleModel]] =
-    filter(service)(user)
+  def apply(user: User)(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[UserRoleModel]] =
+    filter(cs)(service)(user)
 }
 
 object InviteFilter extends IntEnum[InviteFilter] {
@@ -32,8 +32,13 @@ object InviteFilter extends IntEnum[InviteFilter] {
         0,
         "all",
         "notification.invite.all",
-        implicit service =>
-          user => user.projectRoles.filterNot(_.isAccepted).map2(user.organizationRoles.filterNot(_.isAccepted))(_ ++ _)
+        implicit cs =>
+          implicit service =>
+            user =>
+              Parallel.parMap2(
+                user.projectRoles.filterNot(_.isAccepted),
+                user.organizationRoles.filterNot(_.isAccepted)
+              )(_ ++ _)
       )
 
   case object Projects
@@ -41,7 +46,7 @@ object InviteFilter extends IntEnum[InviteFilter] {
         1,
         "projects",
         "notification.invite.projects",
-        implicit service => user => user.projectRoles.filterNot(_.isAccepted)
+        _ => implicit service => user => user.projectRoles.filterNot(_.isAccepted)
       )
 
   case object Organizations
@@ -49,6 +54,6 @@ object InviteFilter extends IntEnum[InviteFilter] {
         2,
         "organizations",
         "notification.invite.organizations",
-        implicit service => user => user.organizationRoles.filterNot(_.isAccepted)
+        _ => implicit service => user => user.organizationRoles.filterNot(_.isAccepted)
       )
 }

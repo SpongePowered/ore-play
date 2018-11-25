@@ -86,29 +86,28 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     *
     * @return Result
     */
-  def upload(): Action[AnyContent] = UserLock() { implicit request =>
+  def upload(): Action[AnyContent] = UserLock().asyncF { implicit request =>
     val user = request.user
     this.factory.getUploadError(user) match {
-      case Some(error) => Redirect(self.showCreator()).withError(error)
+      case Some(error) => IO.pure(Redirect(self.showCreator()).withError(error))
       case None =>
         PluginUpload.bindFromRequest() match {
           case None =>
-            Redirect(self.showCreator()).withError("error.noFile")
+            IO.pure(Redirect(self.showCreator()).withError("error.noFile"))
           case Some(uploadData) =>
             try {
               val plugin = this.factory.processPluginUpload(uploadData, user)
               plugin match {
                 case Right(pluginFile) =>
                   val project = this.factory.startProject(pluginFile)
-                  project.cache()
-                  val model = project.underlying
-                  Redirect(self.showCreatorWithMeta(model.ownerName, model.slug))
+                  val model   = project.underlying
+                  project.cache.as(Redirect(self.showCreatorWithMeta(model.ownerName, model.slug)))
                 case Left(errorMessage) =>
-                  Redirect(self.showCreator()).withError(errorMessage)
+                  IO.pure(Redirect(self.showCreator()).withError(errorMessage))
               }
             } catch {
               case e: InvalidPluginFileException =>
-                Redirect(self.showCreator()).withErrors(Option(e.getMessage).toList)
+                IO.pure(Redirect(self.showCreator()).withErrors(Option(e.getMessage).toList))
             }
         }
     }
@@ -165,20 +164,14 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                       underlying = newProject,
                       settings = newSettings
                     )
-                    newPending.cache()
-
-                    val version   = newPending.pendingVersion
-                    val namespace = newProject.namespace
-                    this.cache.set(namespace, newPending)
-                    this.cache.set(namespace + '/' + version.underlying.versionString, version)
-                    implicit val currentUser: User = request.user
 
                     val authors = newPending.file.data.get.authors.toList
                     (
-                      authors.filter(_ != currentUser.name).parTraverse(users.withName(_).value),
+                      newPending.cache *> newPending.pendingVersion.cache,
+                      authors.filter(_ != request.user.name).parTraverse(users.withName(_).value),
                       this.forums.countUsers(authors),
                       newPending.underlying.owner.user
-                    ).parMapN { (users, registered, owner) =>
+                    ).parMapN { (_, users, registered, owner) =>
                       Ok(views.invite(owner, newPending, users.flatten, registered))
                     }
                 }
@@ -212,15 +205,16 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Redirection to project page if successful
     */
   def showFirstVersionCreator(author: String, slug: String): Action[ProjectRoleSetBuilder] =
-    UserLock()(parse.form(forms.ProjectMemberRoles)) { implicit request =>
+    UserLock()(parse.form(forms.ProjectMemberRoles)).asyncF { implicit request =>
       this.factory
         .getPendingProject(author, slug)
-        .toRight(Redirect(self.showCreator()).withError("error.project.timeout"))
+        .toRight(IO.pure(Redirect(self.showCreator()).withError("error.project.timeout")))
         .map { pendingProject =>
-          val newPending = pendingProject.copy(roles = request.body.build())
-          newPending.cache()
+          val newPending     = pendingProject.copy(roles = request.body.build())
           val pendingVersion = newPending.pendingVersion
-          Redirect(routes.Versions.showCreatorWithMeta(author, slug, pendingVersion.underlying.versionString))
+          newPending.cache.as(
+            Redirect(routes.Versions.showCreatorWithMeta(author, slug, pendingVersion.underlying.versionString))
+          )
         }
         .merge
     }
@@ -484,9 +478,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return       Ok or redirection if no file
     */
   def uploadIcon(author: String, slug: String): Action[MultipartFormData[TemporaryFile]] =
-    SettingsEditAction(author, slug)(parse.multipartFormData) { implicit request =>
+    SettingsEditAction(author, slug)(parse.multipartFormData).asyncF { implicit request =>
       request.body.file("icon") match {
-        case None => Redirect(self.showSettings(author, slug)).withError("error.noFile")
+        case None => IO.pure(Redirect(self.showSettings(author, slug)).withError("error.noFile"))
         case Some(tmpFile) =>
           val data       = request.data
           val pendingDir = projects.fileManager.getPendingIconDir(data.project.ownerName, data.project.name)
@@ -494,9 +488,8 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             Files.createDirectories(pendingDir)
           Files.list(pendingDir).iterator().asScala.foreach(Files.delete)
           tmpFile.ref.moveTo(pendingDir.resolve(tmpFile.filename).toFile, replace = true)
-          UserActionLogger
-            .log(request.request, LoggedAction.ProjectIconChanged, data.project.id.value, "", "") //todo data
-          Ok
+          //todo data
+          UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.value, "", "").as(Ok)
       }
     }
 
@@ -507,15 +500,15 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return       Ok
     */
-  def resetIcon(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug) {
+  def resetIcon(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       val project     = request.project
       val fileManager = projects.fileManager
       fileManager.getIconPath(project).foreach(Files.delete)
       fileManager.getPendingIconPath(project).foreach(Files.delete)
-      UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id.value, "", "") //todo data
+      //todo data
       Files.delete(fileManager.getPendingIconDir(project.ownerName, project.name))
-      Ok
+      UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id.value, "", "").as(Ok)
   }
 
   /**
@@ -641,30 +634,29 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         val newVisibility = Visibility.withValue(visibility)
         request.user.can(newVisibility.permission).in(GlobalScope).flatMap { perm =>
           if (perm) {
-            if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
-              this.forums.changeTopicVisibility(request.project, isVisible = false)
-            } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
-              this.forums.changeTopicVisibility(request.project, isVisible = true)
-            }
+            val forumVisbility =
+              if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
+                this.forums.changeTopicVisibility(request.project, isVisible = false).void
+              } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
+                this.forums.changeTopicVisibility(request.project, isVisible = true).void
+              } else IO.unit
 
-            val change = if (newVisibility.showModal) {
+            val projectVisibility = if (newVisibility.showModal) {
               val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
               request.project.setVisibility(newVisibility, comment, request.user.id.value)
             } else {
               request.project.setVisibility(newVisibility, "", request.user.id.value)
             }
 
-            change
-              .productR(
-                UserActionLogger.log(
-                  request.request,
-                  LoggedAction.ProjectVisibilityChange,
-                  request.project.id.value,
-                  newVisibility.nameKey,
-                  Visibility.NeedsChanges.nameKey
-                )
-              )
-              .as(Ok)
+            val log = UserActionLogger.log(
+              request.request,
+              LoggedAction.ProjectVisibilityChange,
+              request.project.id.value,
+              newVisibility.nameKey,
+              Visibility.NeedsChanges.nameKey
+            )
+
+            (forumVisbility, projectVisibility).parTupled.productR(log).as(Ok)
           } else {
             IO.pure(Unauthorized)
           }
@@ -681,20 +673,18 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def publish(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       val effects =
-        if (request.data.visibility == Visibility.New)
-          request.project
-            .setVisibility(Visibility.Public, "", request.user.id.value)
-            .productR(
-              UserActionLogger.log(
-                request.request,
-                LoggedAction.ProjectVisibilityChange,
-                request.project.id.value,
-                Visibility.Public.nameKey,
-                Visibility.New.nameKey
-              )
-            )
-            .void
-        else IO.unit
+        if (request.data.visibility == Visibility.New) {
+          val visibility = request.project.setVisibility(Visibility.Public, "", request.user.id.value)
+          val log = UserActionLogger.log(
+            request.request,
+            LoggedAction.ProjectVisibilityChange,
+            request.project.id.value,
+            Visibility.Public.nameKey,
+            Visibility.New.nameKey
+          )
+
+          visibility *> log.void
+        } else IO.unit
 
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
   }
@@ -708,18 +698,16 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def sendForApproval(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       val effects = if (request.data.visibility == Visibility.NeedsChanges) {
-        request.project
-          .setVisibility(Visibility.NeedsApproval, "", request.user.id.value)
-          .productR(
-            UserActionLogger.log(
-              request.request,
-              LoggedAction.ProjectVisibilityChange,
-              request.project.id.value,
-              Visibility.NeedsApproval.nameKey,
-              Visibility.NeedsChanges.nameKey
-            )
-          )
-          .void
+        val visibility = request.project.setVisibility(Visibility.NeedsApproval, "", request.user.id.value)
+        val log = UserActionLogger.log(
+          request.request,
+          LoggedAction.ProjectVisibilityChange,
+          request.project.id.value,
+          Visibility.NeedsApproval.nameKey,
+          Visibility.NeedsChanges.nameKey
+        )
+
+        visibility *> log.void
       } else IO.unit
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
   }
@@ -765,21 +753,20 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     SettingsEditAction(author, slug).asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
       val oldProject = request.project
       val comment    = request.body.trim
-      oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id.value).flatMap {
-        case (newProject, _) =>
-          this.forums
-            .changeTopicVisibility(oldProject, isVisible = false)
-            .productR(
-              UserActionLogger.log(
-                request.request,
-                LoggedAction.ProjectVisibilityChange,
-                oldProject.id.value,
-                newProject.visibility.nameKey,
-                oldProject.visibility.nameKey
-              )
-            )
-            .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", oldProject.name)))
-      }
+
+      val oreVisibility   = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id.value)
+      val forumVisibility = this.forums.changeTopicVisibility(oldProject, isVisible = false)
+      val log = UserActionLogger.log(
+        request.request,
+        LoggedAction.ProjectVisibilityChange,
+        oldProject.id.value,
+        Visibility.SoftDelete.nameKey,
+        oldProject.visibility.nameKey
+      )
+
+      (oreVisibility, forumVisibility).parTupled
+        .productR(log)
+        .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", oldProject.name)))
     }
 
   /**

@@ -13,7 +13,7 @@ import play.api.mvc.{Action, AnyContent, Result}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{NotificationTable, OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
+import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
 import db.{DbRef, ModelService, ObjId, ObjectTimestamp}
 import form.OreForms
 import models.admin.{Message, Review}
@@ -62,7 +62,7 @@ final class Reviews @Inject()(forms: OreForms)(
     }
 
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
+    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
         val review = new Review(
           ObjId.Uninitialized(),
@@ -73,7 +73,7 @@ final class Reviews @Inject()(forms: OreForms)(
           JsObject.empty
         )
         this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
-      }.merge
+      }
     }
   }
 
@@ -157,17 +157,15 @@ final class Reviews @Inject()(forms: OreForms)(
   private lazy val notificationUsersQuery = Compiled(queryNotificationUsers _)
 
   private def sendReviewNotification(project: Project, version: Version, requestUser: User): IO[Unit] = {
-    val futUsers =
+    val usersF =
       service.runDBIO(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
-        list
-          .filter {
-            case (_, Some(level)) => level.trust.level >= Trust.Lifted.level
-            case (_, None)        => true
-          }
-          .map(_._1)
+        list.collect {
+          case (res, Some(level)) if level.trust >= Trust.Lifted => res
+          case (res, None)                                       => res
+        }
       }
 
-    futUsers
+    usersF
       .map { users =>
         users.map { userId =>
           Notification(
@@ -179,8 +177,7 @@ final class Reviews @Inject()(forms: OreForms)(
           )
         }
       }
-      .map(TableQuery[NotificationTable] ++= _)
-      .flatMap(service.runDBIO) // Batch insert all notifications
+      .flatMap(service.bulkInsert(_))
       .void
   }
 

@@ -41,6 +41,7 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.syntax._
 import views.{html => views}
 
+import cats.Parallel
 import cats.data.OptionT
 import cats.effect.IO
 import cats.instances.vector._
@@ -229,11 +230,12 @@ final class Application @Inject()(forms: OreForms)(
     for {
       seq <- service.runDBIO(query.result)
       perms <- seq.map(_._2).toVector.parTraverse { project =>
-        request.user
-          .trustIn(project)
-          .map2(request.user.globalRoles.allFromParent(request.user)) { (t, r) =>
-            request.user.can.asMap(t, r.toSet)(Visibility.values.map(_.permission): _*)
-          }
+        Parallel.parMap2(
+          request.user.trustIn(project),
+          request.user.globalRoles.allFromParent(request.user)
+        ) { (t, r) =>
+          request.user.can.asMap(t, r.toSet)(Visibility.values.map(_.permission): _*)
+        }
       }
     } yield {
       val data = seq.zip(perms).map {
@@ -334,8 +336,7 @@ final class Application @Inject()(forms: OreForms)(
             }
           }
 
-          val activities = reviews.map2(flags)(_ ++ _).map(_.sortWith(sortActivities))
-
+          val activities = Parallel.parMap2(reviews, flags)(_ ++ _).map(_.sortWith(sortActivities))
           activities.map(a => Ok(views.users.admin.activity(u, a)))
         }
         .getOrElse(NotFound)

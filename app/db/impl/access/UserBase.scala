@@ -14,7 +14,7 @@ import security.spauth.SpongeAuthApi
 import util.StringUtils._
 
 import cats.data.OptionT
-import cats.effect.IO
+import cats.effect.{ContextShift, IO}
 
 /**
   * Represents a central location for all Users.
@@ -46,7 +46,8 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return the requested user
     */
   def requestPermission(user: User, name: String, perm: Permission)(
-      implicit auth: SpongeAuthApi
+      implicit auth: SpongeAuthApi,
+      cs: ContextShift[IO]
   ): OptionT[IO, User] = {
     this.withName(name).flatMap { toCheck =>
       if (user == toCheck) OptionT.pure[IO](user) // Same user

@@ -6,7 +6,6 @@ import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
-import scala.util.Try
 import scala.util.matching.Regex
 
 import play.api.cache.SyncCacheApi
@@ -123,19 +122,13 @@ trait ProjectFactory {
               case Right(v) => v.underlying.exists
               case Left(_)  => IO.pure(false)
             }
-          } yield {
-            version match {
-              case Right(v) =>
-                if (modelExists && this.config.ore.projects.fileValidate)
-                  Left("error.version.duplicate")
-                else {
-                  v.cache()
-                  Right(v)
-                }
-              case Left(m) => Left(m)
+            res <- version match {
+              case Right(_) if modelExists && this.config.ore.projects.fileValidate =>
+                IO.pure(Left("error.version.duplicate"))
+              case Right(v) => v.cache.as(Right(v))
+              case Left(m)  => IO.pure(Left(m))
             }
-
-          }
+          } yield res
         )
       case Left(errorMessage) => EitherT.leftT[IO, PendingVersion](errorMessage)
     }
@@ -359,8 +352,9 @@ trait ProjectFactory {
       // Create channel if not exists
       t <- (getOrCreateChannel(pending, project), pendingVersion.exists).parTupled
       (channel, exists) = t
-      _ = if (exists && this.config.ore.projects.fileValidate)
-        throw new IllegalArgumentException("Version already exists.")
+      _ <- if (exists && this.config.ore.projects.fileValidate)
+        IO.raiseError(new IllegalArgumentException("Version already exists."))
+      else IO.unit
       // Create version
       newVersion <- {
         val newVersion = Version(
@@ -380,11 +374,10 @@ trait ProjectFactory {
       tags <- addTags(pending, newVersion)
       // Notify watchers
       _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
-      _ <- IO.fromEither(uploadPlugin(project, pending.plugin, newVersion).toEither)
+      _ <- uploadPlugin(project, pending.plugin, newVersion)
       _ <- if (project.topicId.isDefined && pending.createForumPost)
         this.forums.postVersionRelease(project, newVersion, newVersion.description).void
-      else
-        IO.unit
+      else IO.unit
     } yield (newVersion, channel, tags)
   }
 
@@ -412,7 +405,7 @@ trait ProjectFactory {
       .find(equalsIgnoreCase(_.name, pending.channelName))
       .getOrElseF(createChannel(project, pending.channelName, pending.channelColor))
 
-  private def uploadPlugin(project: Project, plugin: PluginFile, version: Version): Try[Unit] = Try {
+  private def uploadPlugin(project: Project, plugin: PluginFile, version: Version): IO[Unit] = IO {
     val oldPath    = plugin.path
     val oldSigPath = plugin.signaturePath
 
