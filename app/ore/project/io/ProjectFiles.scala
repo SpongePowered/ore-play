@@ -12,6 +12,9 @@ import play.api.Logger
 import models.project.Project
 import ore.OreEnv
 
+import cats.effect.{IO, Resource}
+import cats.syntax.all._
+
 /**
   * Handles file management of Projects.
   */
@@ -106,18 +109,15 @@ class ProjectFiles(val env: OreEnv) {
 
   private def findFirstFile(dir: Path): Option[Path] = {
     if (exists(dir)) {
-      var stream: java.util.stream.Stream[Path] = null
-      try {
-        stream = list(dir)
-        stream.iterator.asScala.filterNot(isDirectory(_)).toStream.headOption
-      } catch {
-        case e: IOException =>
-          Logger.error("an error occurred while searching a directory", e)
-          None
-      } finally {
-        if (stream != null)
-          stream.close()
-      }
+      Resource
+        .fromAutoCloseable(IO(list(dir)))
+        .use { stream =>
+          IO.pure(stream.iterator.asScala.filterNot(isDirectory(_)).toStream.headOption)
+        }
+        .recoverWith {
+          case e: IOException => IO(Logger.error("an error occurred while searching a directory", e)).as(None)
+        }
+        .unsafeRunSync()
     } else
       None
   }

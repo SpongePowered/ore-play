@@ -1,10 +1,13 @@
 package controllers.project
 
 import java.nio.file.{Files, Path}
+import java.security.MessageDigest
+import java.util.Base64
 import javax.inject.Inject
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
@@ -327,16 +330,22 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     // TODO maybe instead of redirect cache this on ore?
     projects
       .withSlug(author, slug)
-      .semiflatMap { project =>
+      .map { project =>
         projects.fileManager.getIconPath(project) match {
-          case None           => project.owner.user.map(user => Redirect(user.avatarUrl))
-          case Some(iconPath) => IO.pure(showImage(iconPath))
+          case None           => Redirect(User.avatarUrl(project.ownerName))
+          case Some(iconPath) => showImage(iconPath)
         }
       }
       .getOrElse(NotFound)
   }
 
-  private def showImage(path: Path) = Ok(Files.readAllBytes(path)).as("image/jpeg")
+  private def showImage(path: Path) = {
+    val lastModified     = Files.getLastModifiedTime(path).toString.getBytes("UTF-8")
+    val lastModifiedHash = MessageDigest.getInstance("MD5").digest(lastModified)
+    val hashString       = Base64.getEncoder.encodeToString(lastModifiedHash)
+    Ok.sendPath(path)
+      .withHeaders(ETAG -> s""""$hashString"""", CACHE_CONTROL -> s"max-age=${1.hour.toSeconds.toString}")
+  }
 
   /**
     * Submits a flag on the specified project for further review.
