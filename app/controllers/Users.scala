@@ -59,7 +59,7 @@ class Users @Inject()(
     *
     * @return Logged in page
     */
-  def signUp(): Action[AnyContent] = Action.asyncF { implicit request =>
+  def signUp(): Action[AnyContent] = Action.asyncF {
     val nonce = SingleSignOnConsumer.nonce
     this.signOns.add(SignOn(nonce = nonce)) *> redirectToSso(this.sso.getSignupUrl(this.baseUrl + "/login", nonce))
   }
@@ -114,7 +114,7 @@ class Users @Inject()(
     * @param returnPath Verified action to perform
     * @return           Redirect to verification
     */
-  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF { implicit request =>
+  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
     val nonce = SingleSignOnConsumer.nonce
     this.signOns
       .add(SignOn(nonce = nonce)) *> redirectToSso(
@@ -135,7 +135,7 @@ class Users @Inject()(
     *
     * @return Home page
     */
-  def logOut(): Action[AnyContent] = Action { implicit request =>
+  def logOut(): Action[AnyContent] = Action {
     Redirect(config.security.api.url + "/accounts/logout/")
       .clearingSession()
       .flashing("noRedirect" -> "true")

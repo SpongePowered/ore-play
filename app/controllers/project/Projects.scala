@@ -326,7 +326,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug Project slug
     * @return Project icon
     */
-  def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF { implicit request =>
+  def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF {
     // TODO maybe instead of redirect cache this on ore?
     projects
       .withSlug(author, slug)

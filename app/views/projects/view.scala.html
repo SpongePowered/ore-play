@@ -131,7 +131,7 @@ Base template for Project overview.
                     @if(!noButtons) {
                         <div class="pull-right project-controls">
 
-                            @flash.get("reported").map { r =>
+                            @flash.get("reported").map { _ =>
                                 <span class="flag-msg">
                                     <i class="fa fa-thumbs-up"></i> Flag submitted for review
                                 </span>

@@ -121,9 +121,7 @@ class Organizations @Inject()(forms: OreForms)(
     * @return             Json response with errors if any
     */
   def updateAvatar(organization: String): Action[AnyContent] = EditOrganizationAction(organization) {
-    implicit request =>
-      // TODO implement me
-      Ok
+    Ok
   }
 
   /**

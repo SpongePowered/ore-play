@@ -25,7 +25,7 @@
 
         @alert("error")
 
-        @flash.get("pgp-updated").map { updated =>
+        @flash.get("pgp-updated").map { _ =>
           <script nonce="@nonce">
               $(function() {
                   $('#modal-pgp-edit').modal('show');
