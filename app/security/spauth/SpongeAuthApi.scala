@@ -13,6 +13,7 @@ import play.api.libs.ws.{WSClient, WSResponse}
 import ore.OreConfig
 import _root_.util.WSUtils.parseJson
 
+import cats.ApplicativeError
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.syntax.all._
@@ -97,23 +98,18 @@ trait SpongeAuthApi {
     )
   }
 
-  private def readChangeAvatarToken(response: IO[WSResponse])(
-      ): EitherT[IO, String, ChangeAvatarToken] = {
-    EitherT(
-      OptionT(response.map(parseJson(_, Logger)))
-        .map { json =>
-          val obj = json.as[JsObject]
-          Right(obj.as[ChangeAvatarToken])
-        }
-        .getOrElse(Left("error"))
-        .recover {
-          case _: TimeoutException =>
-            Left("error.spongeauth.auth")
-          case e =>
-            Logger.error("An unexpected error occured while handling a response", e)
-            Left("error.spongeauth.unexpected")
-        }
-    )
+  private def readChangeAvatarToken(response: IO[WSResponse]): EitherT[IO, String, ChangeAvatarToken] = {
+    val parsed = OptionT(response.map(parseJson(_, Logger)))
+      .map(json => json.as[ChangeAvatarToken])
+      .toRight("Failed to parse json response")
+
+    ApplicativeError[EitherT[IO, String, ?], Throwable].recoverWith(parsed) {
+      case _: TimeoutException =>
+        EitherT.leftT("error.spongeauth.auth")
+      case e =>
+        Logger.error("An unexpected error occured while handling a response", e)
+        EitherT.leftT("error.spongeauth.unexpected")
+    }
   }
 
   private def readUser(response: IO[WSResponse]): EitherT[IO, String, SpongeUser] = {
