@@ -147,7 +147,7 @@ final class SpongeAuth @Inject()(config: OreConfig, override val ws: WSClient) e
 
 }
 
-case class ChangeAvatarToken(signedData: String, targetUsername: String, requestUserId: Int) {}
+case class ChangeAvatarToken(signedData: String, targetUsername: String, requestUserId: Int)
 
 object ChangeAvatarToken {
   implicit val changeAvatarTokenReads: Reads[ChangeAvatarToken] =
