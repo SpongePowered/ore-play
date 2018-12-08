@@ -104,7 +104,7 @@ libraryDependencies ++= Seq(
   "com.vladsch.flexmark"       % "flexmark-ext-typographic"       % flexmarkVersion,
   "com.vladsch.flexmark"       % "flexmark-ext-wikilink"          % flexmarkVersion,
   "org.webjars.npm"            % "jquery"                         % "2.2.4",
-  "org.webjars"                % "font-awesome"                   % "5.3.1",
+  "org.webjars"                % "font-awesome"                   % "5.5.0",
   "org.webjars.npm"            % "filesize"                       % "3.6.1",
   "org.webjars.npm"            % "moment"                         % "2.23.0",
   "org.webjars.npm"            % "clipboard"                      % "2.0.4",
