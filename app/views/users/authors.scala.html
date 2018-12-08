@@ -82,13 +82,13 @@
                             <td>
                                 @if(authors.size >= pageSize) {
                                     <a href="@routes.Users.showAuthors(Some(ordering), Some(page + 1))" class="btn btn-default">
-                                        <i class="fa fa-arrow-right"></i>
+                                        <i class="fas fa-arrow-right"></i>
                                     </a>
                                 }
 
                                 @if(page > 1) {
                                     <a href="@routes.Users.showAuthors(Some(ordering), Some(page - 1))" class="btn btn-default">
-                                        <i class="fa fa-arrow-left"></i>
+                                        <i class="fas fa-arrow-left"></i>
                                     </a>
                                 }
                             </td>

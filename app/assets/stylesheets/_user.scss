@@ -1,6 +1,5 @@
 @import 'pallette';
 @import 'utils';
-@import 'lib/font-awesome/scss/font-awesome';
 
 // user page
 
@@ -233,10 +232,7 @@ textarea[name="pgp-pub-key"] {
     td:not(:first-child) { cursor: pointer; }
     td:hover:not(:first-child) { background-color: #222; }
     .user-sort { background-color: #292929; }
-    .o-chevron-up { @extend .fa-chevron-up; }
-    .o-chevron-down { @extend .fa-chevron-down; }
     .o {
-      @extend .fa;
       float: right;
     }
   }

@@ -25,6 +25,7 @@ this.
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("highlight/styles/default.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("bootstrap/css/bootstrap.min.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("stylesheets/main.css")" />
+        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/font-awesome/css/svg-with-js.css")"/>
 
         <!-- See https://goo.gl/OOhYW5 -->
         <link rel="manifest" href="@routes.Assets.versioned("manifest/manifest.json")">
@@ -33,6 +34,7 @@ this.
         <meta name="theme-color" content="#333">
 
         @if(scripts) {
+            <script defer type="text/javascript" src="@routes.Assets.versioned("lib/font-awesome/js/all.min.js")" data-auto-add-css="false" data-auto-replace-svg="nest"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
         }
     </head>

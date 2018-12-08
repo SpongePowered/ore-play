@@ -1,14 +1,7 @@
 @import 'pallette';
-@import 'lib/font-awesome/scss/font-awesome';
-
-$fa-font-path: "../lib/font-awesome/fonts";
 
 .push-down {
   margin-top: 10px;
-}
-
-.icon-save {
-  @extend .fa-save
 }
 
 .fa {

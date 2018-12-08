@@ -1,8 +1,6 @@
 @import 'utils';
-@import 'lib/font-awesome/scss/font-awesome';
 
 .reply-box {
-  .icon-save { @extend .fa-reply }
   .page-rendered, .page-edit textarea {
     min-height: 200px;
   }

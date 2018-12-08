@@ -40,7 +40,7 @@
                             <div>
                                 <i data-toggle="tooltip" data-placement="left"
                                    title="@messages("version.recommended")"
-                                   class="recommended fa fa-diamond pull-right"></i>
+                                   class="recommended far fa-gem pull-right"></i>
                             </div>
                             <div class="clearfix"></div>
                         }
@@ -56,10 +56,10 @@
                                 }
                                 @if(v.v.reviewState == ReviewState.PartiallyReviewed) {
                                     <i data-toggle="tooltip" data-placement="left" title="@messages("version.approvedPartial")"
-                                        class="fa fa-lg fa-check-circle-o"></i>
+                                        class="fas fa-lg fa-check-circle-o"></i>
                                 } else {
                                     <i data-toggle="tooltip" data-placement="left" title="@messages("version.approved")"
-                                        class="fa fa-lg fa-check-circle-o"></i>
+                                        class="fas fa-lg fa-check-circle-o"></i>
                                 }
                             </div>
                         }
@@ -75,7 +75,7 @@
                                     v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
                                     @CSRF.formField
                                     <button type="submit" class="btn btn-info">
-                                        <i class="fa fa-diamond"></i> Set recommended
+                                        <i class="fas fa-diamond"></i> Set recommended
                                     </button>
                                 }
                             }
@@ -85,7 +85,7 @@
                                     <a href="@v.fullSlug/reviews" class="btn btn-info">@messages("review.log")</a>
                                 } else {
                                     <a href="@v.fullSlug/reviews" class="btn btn-success">
-                                        <i class="fa fa-thumps-up"></i> @messages("review.start")
+                                        <i class="fas fa-play"></i> @messages("review.start")
                                     </a>
                                 }
                             }
@@ -93,18 +93,18 @@
                             @if(v.v.visibility == Visibility.SoftDelete) {
                                 <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                 title="@messages("version.delete.alreadyDeleted")">
-                                    <i class="fa fa-trash"></i> @messages("general.delete")
+                                    <i class="fas fa-trash"></i> @messages("general.delete")
                                 </a>
                             } else {
                                 @if(sp.perms(UploadVersions)) {
                                     @if(v.p.publicVersions == 1) {
                                         <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                         title="@messages("version.delete.cannotLast")">
-                                            <i class="fa fa-trash"></i> @messages("general.delete")
+                                            <i class="fas fa-trash"></i> @messages("general.delete")
                                         </a>
                                     } else {
                                         <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#modal-delete">
-                                            <i class="fa fa-trash"></i> @messages("general.delete")
+                                            <i class="fas fa-trash"></i> @messages("general.delete")
                                         </button>
                                     }
                                 }
@@ -114,7 +114,7 @@
                                 <a href="@versionRoutes.download(v.p.project.ownerName, v.p.project.slug, v.v.versionString, None)"
                                 title="@messages("project.download.recommend")" data-toggle="tooltip"
                                 data-placement="bottom" class="btn btn-primary">
-                                    <i class="fa fa-download"></i> @messages("general.download")
+                                    <i class="fas fa-download"></i> @messages("general.download")
                                 </a>
                                 <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="caret"></span>
@@ -160,7 +160,7 @@
                     @if(!v.v.reviewState.isChecked) {
                         <div class="col-md-12">
                             <div class="alert-review alert alert-info" role="alert">
-                                <i class="fa fa-info-circle"></i>
+                                <i class="fas fa-info-circle"></i>
                                 @messages("project.download.warn")
                             </div>
                         </div>
@@ -210,7 +210,7 @@
                                     } else {
                                         <div class="minor">
                                             @depend.pluginId
-                                            <i class="fa fa-question-circle"
+                                            <i class="fas fa-question-circle"
                                                title="@messages("version.dependency.notOnOre")"
                                                data-toggle="tooltip" data-placement="right"></i>
                                         </div>

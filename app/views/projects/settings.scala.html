@@ -49,7 +49,7 @@
                                         </div>
                                         <div class="modal-footer">
                                             <button class="btn btn-default" data-dismiss="modal">@messages("general.close")</button>
-                                            <button class="btn btn-visibility-comment-submit btn-primary"><i class="fa fa-pencil"></i> Submit</button>
+                                            <button class="btn btn-visibility-comment-submit btn-primary"><i class="fas fa-pencil-alt"></i> Submit</button>
                                         </div>
                                     </div>
                                 </div>
@@ -108,7 +108,7 @@
                                         <div class="btn-group pull-right">
                                             <button class="btn btn-default btn-reset">Reset</button>
                                             <button class="btn btn-info btn-upload pull-right" disabled>
-                                                <i class="fa fa-upload"></i> Upload
+                                                <i class="fas fa-upload"></i> Upload
                                             </button>
                                         </div>
                                     </div>
@@ -122,7 +122,7 @@
                                 <h4>@messages("project.settings.deployKey")</h4>
                                 <p>
                                     @messages("project.settings.deployKey.info")
-                                    <a href="#"><i class="fa fa-question-circle"></i></a>
+                                    <a href="#"><i class="fas fa-question-circle"></i></a>
                                 </p>
                                 @deploymentKey.map { key =>
                                     <input class="form-control input-key" type="text" value="@key.value" readonly />
@@ -133,12 +133,12 @@
                             <div class="setting-content">
                                 @deploymentKey.map { key =>
                                   <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id.value">
-                                      <i class="fa fa-spinner fa-spin" style="display: none;"></i>
+                                      <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
                                       @messages("project.settings.revokeKey")
                                   </button>
                                 }.getOrElse {
                                     <button class="btn btn-info btn-block btn-key-gen">
-                                        <i class="fa fa-spinner fa-spin" style="display: none;"></i>
+                                        <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
                                         @messages("project.settings.genKey")
                                     </button>
                                 }
@@ -199,7 +199,7 @@
                             @CSRF.formField
                             <input type="hidden" id="update-icon" name="update-icon" value="false" />
                             <button type="submit" name="save" class="btn btn-success btn-spinner" data-icon="fa-check">
-                                <i class="fa fa-check"></i> Save changes
+                                <i class="fas fa-check"></i> Save changes
                             </button>
                         }
                     </div>

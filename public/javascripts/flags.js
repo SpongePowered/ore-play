@@ -40,6 +40,7 @@ $(function() {
         var listItem = $(this).closest('li');
         var flagId = listItem.data('flag-id');
         var spinner = addSpinner($(this).find('i').removeClass('fa-check'));
+
         $.ajax({
             url: '/admin/flags/' + flagId + '/resolve/true',
             complete: function() { removeSpinner(spinner.addClass('fa-check')); },

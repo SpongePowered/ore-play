@@ -87,7 +87,7 @@
                         </table>
                         <a href="@versionRoutes.showList(p.project.ownerName, p.project.slug, None)"
                            class="pull-left btn btn-default">
-                            <i class="fa fa-arrow-left"></i>
+                            <i class="fas fa-arrow-left"></i>
                         </a>
                         <a href="#" id="channel-new" class="pull-right btn btn-primary"
                            @if(channels.size >= config.ore.projects.maxChannels) {
@@ -97,7 +97,7 @@
                                data-toggle="modal" data-target="#channel-settings"
                            }
                         >
-                            <i class="fa fa-plus"></i>
+                            <i class="fas fa-plus"></i>
                         </a>
                         @projects.channels.helper.modalManage()
                     </div>

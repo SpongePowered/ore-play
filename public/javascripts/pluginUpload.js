@@ -30,7 +30,7 @@ function getAlert() {
 function clearIcon(e) {
     return e.removeClass('fa-spinner')
         .removeClass('fa-spin')
-        .removeClass('fa-pencil')
+        .removeClass('fa-pencil-alt')
         .removeClass('fa-upload');
 }
 
@@ -70,7 +70,7 @@ function failureSig(message) {
     failure(message);
     var alert = getAlert();
     var control = alert.find('.file-upload');
-    clearIcon(control.find('i')).addClass('fa-pencil');
+    clearIcon(control.find('i')).addClass('fa-pencil-alt');
 }
 
 function reset() {
@@ -79,7 +79,7 @@ function reset() {
 
     var control = alert.find('.file-upload');
     control.find('button').removeClass('btn-danger').addClass('btn-success').prop('disabled', false);
-    clearIcon(control.find('i')).addClass('fa-pencil');
+    clearIcon(control.find('i')).addClass('fa-pencil-alt');
 
     var bs = alert.find('.alert');
     bs.removeClass('alert-danger').addClass('alert-info');
@@ -139,7 +139,7 @@ $(function() {
         var alertInner = alert.find('.alert');
         var button = alert.find('button');
         var icon = button.find('i');
-        icon.removeClass('fa-pencil').addClass('fa-spinner fa-spin');
+        icon.removeClass('fa-pencil-alt').addClass('fa-spinner fa-spin');
         setTimeout(function() {
             if (!fileName)
                 return;

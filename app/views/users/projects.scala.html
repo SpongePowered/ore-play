@@ -70,7 +70,7 @@
                     <table class="table panel-body">
                         <tbody>
                         @if(u.orgas.isEmpty) {
-                            <tr><td><i class="minor"><i class="fa fa-star"></i> @messages("user.noOrganizations", u.user.name)</i></td></tr>
+                            <tr><td><i class="minor"><i class="fas fa-star"></i> @messages("user.noOrganizations", u.user.name)</i></td></tr>
                         } else {
                             @u.orgas.map { case (organization, user, role, _) =>
                             <tr>
@@ -96,7 +96,7 @@
 
                 <div class="panel-stars panel panel-default">
                     <div class="panel-heading">
-                        <h3 class="panel-title"><i class="fa fa-star"></i> @messages("project.starred")</h3>
+                        <h3 class="panel-title"><i class="fas fa-star"></i> @messages("project.starred")</h3>
                     </div>
                     <table class="table panel-body">
                         <tbody>
@@ -114,7 +114,7 @@
                                                 <div class="pull-right">
                                                     <span class="minor">@recommended.versionString</span>
                                                     @defining(star.category) { category =>
-                                                        <i title="@category.title" class="fa fa-fw @category.icon"></i>
+                                                        <i title="@category.title" class="fas fa-fw @category.icon"></i>
                                                     }
                                                 </div>
                                             }

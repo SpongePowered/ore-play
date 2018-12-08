@@ -14,13 +14,13 @@
 @if(enabled) {
     <!-- Edit -->
     <button type="button" class="btn btn-sm btn-edit btn-page btn-default" title="@messages("general.edit")">
-        <i class="fa fa-edit"></i> @messages("general.edit")
+        <i class="fas fa-edit"></i> @messages("general.edit")
     </button>
 
     <!-- Preview -->
     <div class="btn-edit-container btn-preview-container" title="@messages("general.preview")">
         <button type="button" class="btn btn-sm btn-preview btn-page btn-default">
-            <i class="fa fa-eye"></i>
+            <i class="fas fa-eye"></i>
         </button>
     </div>
 
@@ -28,7 +28,7 @@
     @if(savable) {
         <div class="btn-edit-container btn-save-container" title="@messages("general.save")">
             <button form="form-editor-save" type="submit" class="btn btn-sm btn-save btn-page btn-default">
-                <i class="fa fa-save"></i>
+                <i class="fas fa-save"></i>
             </button>
         </div>
     }
@@ -37,7 +37,7 @@
     @if(cancellable) {
         <div class="btn-edit-container btn-cancel-container" title="@messages("general.cancel")">
             <button type="button" class="btn btn-sm btn-cancel btn-page btn-default">
-                <i class="fa fa-times"></i>
+                <i class="fas fa-times"></i>
             </button>
         </div>
     }
@@ -47,7 +47,7 @@
         <div class="btn-edit-container btn-delete-container" title="@messages("general.delete")">
             <button type="button" class="btn btn-sm btn-page-delete btn-page btn-default"
             data-toggle="modal" data-target="#modal-page-delete">
-                <i class="fa fa-trash"></i>
+                <i class="fas fa-trash"></i>
             </button>
         </div>
 

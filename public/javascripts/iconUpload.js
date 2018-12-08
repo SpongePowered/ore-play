@@ -38,7 +38,7 @@ $(function() {
     var input = form.find('input[type="file"]');
 
     function updateButton() {
-        btn.prop('disabled', input[0].files.length == 0);
+        btn.prop('disabled', input[0].files.length === 0);
     }
 
     input.on('change', function() { updateButton(); });
@@ -49,7 +49,7 @@ $(function() {
     // Upload button
     btn.click(function(e) {
         e.preventDefault();
-        var icon = btn.find('i').removeClass('fa-upload').addClass('fa-spinner fa-spin');
+        $(this).find('svg').toggleClass('fa-spinner fa-spin').toggleClass('fa-upload');
         $.ajax({
             url: url,
             type: 'post',
@@ -57,11 +57,9 @@ $(function() {
             cache: false,
             contentType: false,
             processData: false,
-            complete: function() {
-                preview.css('background-image', 'url(' + url + '/pending' + ')');
-                icon.removeClass('fa-spinner fa-spin').addClass('fa-upload');
-            },
             success: function() {
+                preview.css('background-image', 'url(' + url + '/pending' + ')');
+                btn.find('svg').toggleClass('fas fa-spinner fa-spin').toggleClass('fa-upload');
                 $('#update-icon').val('true');
                 input.val('');
                 updateButton();

@@ -102,7 +102,7 @@ sorted according to different criteria.
                 @if(query.isDefined) {
                     <li class="list-group-item minor search-header">
                         <span class="pull-left">Showing results for: <i>@query</i></span>
-                        <i class="fa fa-times pull-right dismiss"></i>
+                        <i class="fas fa-times pull-right dismiss"></i>
                         <div class="clearfix"></div>
                     </li>
                 }
@@ -136,7 +136,7 @@ sorted according to different criteria.
                                 None, None, None, None,
                                 platformCategory.map(_.name),
                                 platform.map(_.name))">
-                                <i class="category-reset fa fa-times"></i>
+                                <i class="category-reset fas fa-times"></i>
                             </a>
                         }
                     </div>
@@ -145,7 +145,7 @@ sorted according to different criteria.
                         <tbody>
                         @for(category <- Category.visible) {
                             <tr data-id="@category.value" @if(visibleCategories.isDefined && visibleCategories.get.contains(category)) { class="selected"} >
-                                <td><i class="fa @category.icon"></i></td>
+                                <td><i class="fas @category.icon"></i></td>
                                 <td>
                                     <strong>@category.title</strong>
                                 </td>

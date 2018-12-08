@@ -18,7 +18,7 @@ object Category extends IntEnum[Category] {
   case object AdminTools extends Category(0, "Admin Tools", "fa-server")
   case object Chat       extends Category(1, "Chat", "fa-comment")
   case object DevTools   extends Category(2, "Developer Tools", "fa-wrench")
-  case object Econ       extends Category(3, "Economy", "fa-money")
+  case object Econ       extends Category(3, "Economy", "fa-money-bill-alt")
   case object Gameplay   extends Category(4, "Gameplay", "fa-puzzle-piece")
   case object Games      extends Category(5, "Games", "fa-gamepad")
   case object Protect    extends Category(6, "Protection", "fa-lock")

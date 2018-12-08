@@ -32,7 +32,7 @@ function bindKeyGen(e) {
 
 function bindKeyRevoke(e) {
     e.click(function() {
-        var spinner = $(this).find('.fa-spinner').show();
+        var spinner = $(this).find('.spinner').show();
         var $this = $(this);
         $.ajax({
             url: '/api/projects/' + pluginId + '/keys/revoke',

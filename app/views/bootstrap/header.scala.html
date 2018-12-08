@@ -25,31 +25,31 @@ The main header displayed on each layout.
             <div id="sp-logo-menu">
                 <ul id="sp-logo-dropdown">
                     <li><a href="https://www.spongepowered.org">
-                        <i class="fa-fw fa fa-home"></i>@messages("general.home")
+                        <i class="fa-fw fas fa-home"></i>@messages("general.home")
                     </a></li>
                     <li><a href="https://forums.spongepowered.org">
-                        <i class="fa-fw fa fa-comments"></i>@messages("general.forums")
+                        <i class="fa-fw fas fa-comments"></i>@messages("general.forums")
                     </a></li>
                     <li><a href="https://github.com/SpongePowered">
-                        <i class="fa-fw fa fa-code"></i>@messages("general.code")
+                        <i class="fa-fw fas fa-code"></i>@messages("general.code")
                     </a></li>
                     <li><a href="https://docs.spongepowered.org">
-                        <i class="fa-fw fa fa-book"></i>@messages("general.docs")
+                        <i class="fa-fw fas fa-book"></i>@messages("general.docs")
                     </a></li>
                     <li><a href="https://jd.spongepowered.org">
-                        <i class="fa-fw fa fa-graduation-cap"></i>@messages("general.javadocs")
+                        <i class="fa-fw fas fa-graduation-cap"></i>@messages("general.javadocs")
                     </a></li>
                     <li><a href="https://forums.spongepowered.org/c/plugins/plugin-releases">
-                        <i class="fa-fw fa fa-plug"></i>@messages("general.plugins")
+                        <i class="fa-fw fas fa-plug"></i>@messages("general.plugins")
                     </a></li>
                     <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None, None)">
                         <img src="https://spongepowered.org/assets/img/icons/ore.svg" alt="" class="fa-fw fa ore-nav">@messages("general.appName") <sup>Beta</sup>
                     </a></li>
                     <li><a href="https://www.spongepowered.org/downloads">
-                        <i class="fa-fw fa fa-download"></i>@messages("general.getsponge")
+                        <i class="fa-fw fas fa-download"></i>@messages("general.getsponge")
                     </a></li>
                     <li><a href="https://www.spongepowered.org/chat">
-                        <i class="fa-fw fa fa-comment"></i>@messages("general.irc")
+                        <i class="fa-fw fas fa-comment"></i>@messages("general.irc")
                     </a></li>
                 </ul>
             </div>
@@ -62,30 +62,30 @@ The main header displayed on each layout.
 
                 <li class="dropdown nav-icon new-controls">
                     <a href="#" class="drop-down-toggle" data-toggle="dropdown">
-                        <i class="icon fa fa-plus"></i>
+                        <i class="icon fas fa-plus"></i>
                         <span class="caret"></span>
                     </a>
                     <ul class="user-dropdown dropdown-menu" aria-label="Create new&hellip;">
                         <li>
                             <a href="@projectRoutes.Projects.showCreator()">
                                 <span class="pull-left">@messages("project.create")</span>
-                                <i class="pull-right fa fa-book"></i>
+                                <i class="pull-right fas fa-book"></i>
                             </a>
                             <a href="@routes.Organizations.showCreator()">
                                 <span class="pull-left">@messages("org.create")</span>
-                                <i class="pull-right fa fa-users"></i>
+                                <i class="pull-right fas fa-users"></i>
                             </a>
                         </li>
                     </ul>
                 </li>
 
                 <li class="nav-icon authors-icon" @tooltip(messages("project.viewAuthors"))>
-                    <i class="icon fa fa-users"></i>
+                    <i class="icon fas fa-users"></i>
                 </li>
 
                 @if(request.headerData.globalPerm(ReviewProjects)) {
                     <li class="nav-icon staff-icon" @tooltip(messages("project.viewStaff"))>
-                        <i class="icon fa fa-user-md"></i>
+                        <i class="icon fas fa-user-tie"></i>
                     </li>
                 }
 
@@ -102,7 +102,7 @@ The main header displayed on each layout.
                         <li>
                             <a href="@routes.Users.showProjects(cu.name, None)">
                                 <span class="pull-left">@cu.name</span>
-                                <i class="pull-right fa fa-user"></i>
+                                <i class="pull-right fas fa-user"></i>
                             </a>
                         </li>
 
@@ -114,7 +114,7 @@ The main header displayed on each layout.
                                         <span class="unread"></span>
                                     }
                                 </span>
-                                <i class="pull-right fa fa-bell"></i>
+                                <i class="pull-right fas fa-bell"></i>
                             </a>
                         </li>
 
@@ -127,7 +127,7 @@ The main header displayed on each layout.
                                             <span class="unread"></span>
                                         }
                                     </span>
-                                    <i class="pull-right fa fa-flag"></i>
+                                    <i class="pull-right fas fa-flag"></i>
                                 </a>
                             </li>
                         }
@@ -141,7 +141,7 @@ The main header displayed on each layout.
                                             <span class="unread"></span>
                                         }
                                     </span>
-                                    <i class="pull-right fa fa-thumbs-up"></i>
+                                    <i class="pull-right fas fa-thumbs-up"></i>
                                 </a>
                             </li>
                         }
@@ -155,7 +155,7 @@ The main header displayed on each layout.
                                             <span class="unread"></span>
                                         }
                                     </span>
-                                    <i class="pull-right fa fa-thumbs-up"></i>
+                                    <i class="pull-right far fa-thumbs-up"></i>
                                 </a>
                             </li>
                         }
@@ -166,7 +166,7 @@ The main header displayed on each layout.
                                     <span class="pull-left">
                                         @messages("user.stats")
                                     </span>
-                                    <i class="pull-right fa fa-area-chart"></i>
+                                    <i class="pull-right fas fa-chart-area"></i>
                                 </a>
                             </li>
                         }
@@ -177,7 +177,7 @@ The main header displayed on each layout.
                                     <span class="pull-left">
                                     @messages("admin.health.title")
                                     </span>
-                                    <i class="pull-right fa fa-heartbeat"></i>
+                                    <i class="pull-right fas fa-heartbeat"></i>
                                 </a>
                             </li>
                         }
@@ -188,7 +188,7 @@ The main header displayed on each layout.
                                     <span class="pull-left">
                                     @messages("admin.log.title")
                                     </span>
-                                    <i class="pull-right fa fa-list"></i>
+                                    <i class="pull-right fas fa-list"></i>
                                 </a>
                             </li>
                         }
@@ -197,7 +197,7 @@ The main header displayed on each layout.
                         <li>
                             <a href="@routes.Users.logOut()">
                                 <span class="pull-left">@messages("general.signout")</span>
-                                <i class="pull-right fa fa-sign-out"></i>
+                                <i class="pull-right fas fa-sign-out-alt"></i>
                             </a>
                         </li>
                     </ul>
