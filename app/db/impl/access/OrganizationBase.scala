@@ -65,7 +65,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
         // Organization global role signifies that this User is an Organization
         // and should be treated as such.
         for {
-          userOrg <- org.toUser.getOrElse(throw new IllegalStateException("User not created"))
+          userOrg <- org.toUser.getOrElseF(IO.raiseError(new IllegalStateException("User not created")))
           _       <- userOrg.globalRoles.addAssoc(userOrg, Role.Organization.toDbRole)
           _ <- // Add the owner
           org.memberships.addRole(

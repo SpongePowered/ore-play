@@ -42,7 +42,7 @@ case class Notification(
     * @return User from which this originated from
     */
   def origin(implicit userBase: UserBase): IO[User] =
-    userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None"))
+    userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 }
 object Notification {
   implicit val query: ModelQuery[Notification] =

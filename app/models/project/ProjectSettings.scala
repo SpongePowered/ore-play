@@ -135,14 +135,15 @@ case class ProjectSettings(
             // Select member userIds
             service
               .runDBIO(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
-              .map { userIds =>
-                val roles = formData.roleUps.map { role =>
+              .flatMap { userIds =>
+                import cats.instances.list._
+                val roles = formData.roleUps.traverse { role =>
                   Role.projectRoles
                     .find(_.value == role)
-                    .getOrElse(throw new RuntimeException("supplied invalid role type"))
+                    .fold(IO.raiseError[Role](new RuntimeException("supplied invalid role type")))(IO.pure)
                 }
 
-                userIds.zip(roles)
+                roles.map(xs => userIds.zip(xs))
               }
               .map {
                 _.map {

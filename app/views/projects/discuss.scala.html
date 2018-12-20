@@ -8,7 +8,7 @@ Discussion page within Project overview.
 @import views.html.utils
 
 @import org.spongepowered.play.discourse.DiscourseApi
-@(p: ProjectData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, forums: DiscourseApi, config: OreConfig)
+@(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -31,7 +31,7 @@ Discussion page within Project overview.
                     <div class="reply-box">
                         @utils.alert("error")
 
-                        @if(forums.isAvailable) {
+                        @if(forumsAvailable) {
                               @if(sp.canPostAsOwnerOrga) {
                                   <div class="pull-right push-down">
                                       <i class="minor">@messages("project.discuss.postAs")</i>

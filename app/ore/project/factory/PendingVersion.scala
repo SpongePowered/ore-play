@@ -6,7 +6,7 @@ import play.api.cache.SyncCacheApi
 
 import db.impl.access.ProjectBase
 import models.project._
-import ore.project.io.PluginFile
+import ore.project.io.PluginFileWithData
 import ore.{Cacheable, Color, Platform}
 
 import cats.effect.{ContextShift, IO}
@@ -28,7 +28,7 @@ case class PendingVersion(
     var channelName: String,
     var channelColor: Color,
     underlying: Version,
-    plugin: PluginFile,
+    plugin: PluginFileWithData,
     var createForumPost: Boolean,
     override val cacheApi: SyncCacheApi
 ) extends Cacheable {
@@ -37,8 +37,8 @@ case class PendingVersion(
     free *> this.factory.createVersion(this)
 
   def cancel()(implicit cs: ContextShift[IO]): IO[Project] =
-    free *> IO(this.plugin.delete()) *> (if (this.underlying.isDefined) this.projects.deleteVersion(this.underlying)
-                                         else IO.pure(project))
+    free *> this.plugin.delete *> (if (this.underlying.isDefined) this.projects.deleteVersion(this.underlying)
+                                   else IO.pure(project))
 
   override def key: String = this.project.url + '/' + this.underlying.versionString
 

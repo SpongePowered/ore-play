@@ -14,12 +14,13 @@ import util.syntax._
 
 import akka.actor.Scheduler
 import cats.data.EitherT
-import cats.effect.{ContextShift, IO}
+import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
 import com.fasterxml.jackson.core.JsonParseException
 import com.google.common.base.Preconditions.checkArgument
 import org.slf4j.MDC
 import org.spongepowered.play.discourse.DiscourseApi
+import org.spongepowered.play.discourse.model.DiscoursePost
 
 /**
   * An implementation of [[DiscourseApi]] suited to Ore's needs.
@@ -28,7 +29,7 @@ import org.spongepowered.play.discourse.DiscourseApi
   * singleton, otherwise countless threads will be spawned from this object's
   * [[RecoveryTask]].
   */
-trait OreDiscourseApi extends DiscourseApi {
+abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) extends DiscourseApiF[IO] {
 
   def isEnabled: Boolean
 
@@ -59,10 +60,10 @@ trait OreDiscourseApi extends DiscourseApi {
   def start(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Unit = {
     if (!this.isEnabled) {
       Logger.info("Discourse API initialized in disabled mode.")
-      return
+    } else {
+      new RecoveryTask(this.scheduler, this.retryRate, this).start()
+      Logger.info("Discourse API initialized.")
     }
-    new RecoveryTask(this.scheduler, this.retryRate, this).start()
-    Logger.info("Discourse API initialized.")
   }
 
   /**
@@ -75,56 +76,54 @@ trait OreDiscourseApi extends DiscourseApi {
       project: Project
   )(implicit service: ModelService, config: OreConfig): IO[Project] = {
     if (!this.isEnabled)
-      return IO.pure(project)
-    checkArgument(project.isDefined, "undefined project", "")
-    val title = Templates.projectTitle(project)
+      IO.pure(project)
+    else {
+      checkArgument(project.isDefined, "undefined project", "")
+      val title = Templates.projectTitle(project)
 
-    val createTopicF = (content: String) =>
-      IO.fromFuture(
-        IO(
-          createTopic(poster = project.ownerName, title = title, content = content, categoryId = Some(categoryDefault))
+      val createTopicProgram = (content: String) =>
+        createTopicF(poster = project.ownerName, title = title, content = content, categoryId = Some(categoryDefault))
+
+      def sanityCheck(check: Boolean, msg: => String) = if (!check) IO.raiseError(new Exception(msg)) else IO.unit
+
+      val res = for {
+        content <- EitherT.right[(List[String], String)](Templates.projectTopic(project))
+        topic   <- createTopicProgram(content).leftMap((_, content))
+        // Topic created!
+        // Catch some unexpected cases (should never happen)
+        _ <- EitherT.right[(List[String], String)](sanityCheck(topic.isTopic, "project post isn't topic?"))
+        _ <- EitherT.right[(List[String], String)](
+          sanityCheck(topic.username == project.ownerName, "project post user isn't owner?")
         )
-    )
+        _ = Logger.debug(s"""|New project topic:
+                             |Project: ${project.url}
+                             |Topic ID: ${topic.topicId}
+                             |Post ID: ${topic.postId}""".stripMargin)
+        project <- EitherT.right[(List[String], String)](
+          service.update(project.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
+        )
+      } yield project
 
-    def sanityCheck(check: Boolean, msg: => String) = if (!check) IO.raiseError(new Exception(msg)) else IO.unit
-
-    val res = for {
-      content <- EitherT.right[(List[String], String)](Templates.projectTopic(project))
-      topic   <- EitherT(createTopicF(content)).leftMap((_, content))
-      // Topic created!
-      // Catch some unexpected cases (should never happen)
-      _ <- EitherT.right[(List[String], String)](sanityCheck(topic.isTopic, "project post isn't topic?"))
-      _ <- EitherT.right[(List[String], String)](
-        sanityCheck(topic.username == project.ownerName, "project post user isn't owner?")
-      )
-      _ = Logger.debug(s"""|New project topic:
-                           |Project: ${project.url}
-                           |Topic ID: ${topic.topicId}
-                           |Post ID: ${topic.postId}""".stripMargin)
-      project <- EitherT.right[(List[String], String)](
-        service.update(project.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
-      )
-    } yield project
-
-    res
-      .leftSemiflatMap {
-        case (errors, content) =>
-          // Request went through but Discourse responded with errors
-          // Don't schedule a retry because this will just keep happening
-          val message =
-            s"""|Request to create project topic was successful but Discourse responded with errors:
-                |Project: ${project.url}
-                |Title: $title
-                |Content: $content
-                |Errors: ${errors.mkString(", ")}""".stripMargin
-          Logger.warn(message)
-          project.logger.flatMap(_.err(message)).as(project)
-      }
-      .merge
-      .onError {
-        case e =>
-          IO(Logger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...", e))
-      }
+      res
+        .leftSemiflatMap {
+          case (errors, content) =>
+            // Request went through but Discourse responded with errors
+            // Don't schedule a retry because this will just keep happening
+            val message =
+              s"""|Request to create project topic was successful but Discourse responded with errors:
+                  |Project: ${project.url}
+                  |Title: $title
+                  |Content: $content
+                  |Errors: ${errors.mkString(", ")}""".stripMargin
+            Logger.warn(message)
+            project.logger.flatMap(_.err(message)).as(project)
+        }
+        .merge
+        .onError {
+          case e =>
+            IO(Logger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...", e))
+        }
+    }
   }
 
   /**
@@ -137,61 +136,56 @@ trait OreDiscourseApi extends DiscourseApi {
       project: Project
   )(implicit service: ModelService, config: OreConfig): IO[Boolean] = {
     if (!this.isEnabled)
-      return IO.pure(true)
-    checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(project.topicId.isDefined, "undefined topic id", "")
-    checkArgument(project.postId.isDefined, "undefined post id", "")
+      IO.pure(true)
+    else {
+      checkArgument(project.isDefined, "undefined project", "")
+      checkArgument(project.topicId.isDefined, "undefined topic id", "")
+      checkArgument(project.postId.isDefined, "undefined post id", "")
 
-    val topicId   = project.topicId
-    val postId    = project.postId
-    val title     = Templates.projectTitle(project)
-    val ownerName = project.ownerName
+      val topicId   = project.topicId
+      val postId    = project.postId
+      val title     = Templates.projectTitle(project)
+      val ownerName = project.ownerName
 
-    def logErrorsAs(errors: List[String], as: Boolean): IO[Boolean] = {
-      val message =
-        s"""|Request to update project topic was successful but Discourse responded with errors:
-            |Project: ${project.url}
-            |Topic ID: $topicId
-            |Title: $title
-            |Errors: ${errors.toString}""".stripMargin
-      Logger.warn(message)
-      project.logger.flatMap(_.err(message)).as(as)
-    }
+      def logErrorsAs(errors: List[String], as: Boolean): IO[Boolean] = {
+        val message =
+          s"""|Request to update project topic was successful but Discourse responded with errors:
+              |Project: ${project.url}
+              |Topic ID: $topicId
+              |Title: $title
+              |Errors: ${errors.toString}""".stripMargin
+        Logger.warn(message)
+        project.logger.flatMap(_.err(message)).as(as)
+      }
 
-    val updateTopicF = IO
-      .fromFuture(
-        IO(updateTopic(username = ownerName, topicId = topicId.get, title = Some(title), categoryId = None))
-      )
-      .map(xs => Either.cond(xs.isEmpty, (), xs))
+      val updateTopicProgram =
+        updateTopicF(username = ownerName, topicId = topicId.get, title = Some(title), categoryId = None)
 
-    val updatePostF = (content: String) =>
-      IO.fromFuture(IO(updatePost(username = ownerName, postId = postId.get, content = content)))
-        .map(xs => Either.cond(xs.isEmpty, (), xs))
+      val updatePostProgram = (content: String) =>
+        updatePostF(username = ownerName, postId = postId.get, content = content)
 
-    val res = for {
-      // Set flag so that if we are interrupted we will remember to do it later
-      _       <- EitherT.right[Boolean](service.update(project.copy(isTopicDirty = true)))
-      content <- EitherT.right[Boolean](Templates.projectTopic(project))
-      _       <- EitherT(updateTopicF).leftSemiflatMap(logErrorsAs(_, as = false))
-      _       <- EitherT(updatePostF(content)).leftSemiflatMap(logErrorsAs(_, as = false))
-      _ = Logger.debug(s"Project topic updated for ${project.url}.")
-      _ <- EitherT.right[Boolean](service.update(project.copy(isTopicDirty = false)))
-    } yield true
+      val res = for {
+        // Set flag so that if we are interrupted we will remember to do it later
+        _       <- EitherT.right[Boolean](service.update(project.copy(isTopicDirty = true)))
+        content <- EitherT.right[Boolean](Templates.projectTopic(project))
+        _       <- updateTopicProgram.leftSemiflatMap(logErrorsAs(_, as = false))
+        _       <- updatePostProgram(content).leftSemiflatMap(logErrorsAs(_, as = false))
+        _ = Logger.debug(s"Project topic updated for ${project.url}.")
+        _ <- EitherT.right[Boolean](service.update(project.copy(isTopicDirty = false)))
+      } yield true
 
-    res.merge.onError {
-      case e =>
-        IO {
-          MDC.put("username", ownerName)
-          MDC.put("topicId", topicId.get.toString)
-          MDC.put("title", title)
-          e match {
-            case runtimeException: RuntimeException =>
-              if (runtimeException.getCause.isInstanceOf[JsonParseException]) {
-                MDC.put("jsonException", runtimeException.getCause.getMessage)
-              }
-            case _ =>
+      res.merge.onError {
+        case e =>
+          IO {
+            MDC.put("username", ownerName)
+            MDC.put("topicId", topicId.get.toString)
+            MDC.put("title", title)
+            e.getCause match {
+              case cause: JsonParseException => MDC.put("jsonException", cause.getMessage)
+              case _                         =>
+            }
           }
-        }
+      }
     }
   }
 
@@ -203,16 +197,17 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param content  Post content
     * @return         List of errors Discourse returns
     */
-  def postDiscussionReply(project: Project, user: User, content: String): IO[List[String]] = {
+  def postDiscussionReply(project: Project, user: User, content: String): EitherT[IO, List[String], DiscoursePost] = {
     if (!this.isEnabled) {
       Logger.warn("Tried to post discussion with API disabled?") // Shouldn't be reachable
-      return IO.pure(Nil)
+      EitherT.leftT[IO, DiscoursePost](Nil: List[String])
+    } else {
+      checkArgument(project.topicId.isDefined, "undefined topic id", "")
+      EitherT(
+        createPostF(username = user.name, topicId = project.topicId.get, content = content).value
+          .orElse(IO.pure(Left(List("Could not connect to forums, please try again later."))))
+      )
     }
-    checkArgument(project.topicId.isDefined, "undefined topic id", "")
-    // It's OK if Discourse responds with errors here, we will just show them to the user
-    IO.fromFuture(IO(createPost(username = user.name, topicId = project.topicId.get, content = content)))
-      .map(_.left.toOption.getOrElse(List.empty))
-      .orElse(IO.pure(List("Could not connect to forums, please try again later.")))
   }
 
   /**
@@ -225,39 +220,38 @@ trait OreDiscourseApi extends DiscourseApi {
   def postVersionRelease(project: Project, version: Version, content: Option[String])(
       implicit service: ModelService,
       cs: ContextShift[IO]
-  ): IO[List[String]] = {
+  ): EitherT[IO, List[String], DiscoursePost] = {
     import cats.instances.list._
     if (!this.isEnabled)
-      return IO.pure(Nil)
-    checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(version.isDefined, "undefined version", "")
-    checkArgument(version.projectId == project.id.value, "invalid version project pair", "")
-    project.owner.user.flatMap { user =>
-      postDiscussionReply(project, user, content = Templates.versionRelease(project, version, content)).flatMap {
-        case Nil    => IO.pure(Nil)
-        case errors => project.logger.flatMap(logger => errors.parTraverse(logger.err)).as(errors)
+      EitherT.leftT[IO, DiscoursePost](Nil: List[String])
+    else {
+      checkArgument(project.isDefined, "undefined project", "")
+      checkArgument(version.isDefined, "undefined version", "")
+      checkArgument(version.projectId == project.id.value, "invalid version project pair", "")
+      EitherT.liftF(project.owner.user).flatMap { user =>
+        postDiscussionReply(project, user, content = Templates.versionRelease(project, version, content))
+          .leftSemiflatMap(errors => project.logger.flatMap(logger => errors.parTraverse(logger.err)).as(errors))
       }
     }
   }
 
-  def changeTopicVisibility(project: Project, isVisible: Boolean): IO[Boolean] = {
+  def changeTopicVisibility(project: Project, isVisible: Boolean): IO[Unit] = {
     if (!this.isEnabled)
-      return IO.pure(true)
+      IO.pure(())
+    else {
+      checkArgument(project.isDefined, "undefined project", "")
+      checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
-    checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(project.topicId.isDefined, "undefined topic id", "")
-
-    IO.fromFuture(
-        IO(updateTopic(admin, project.topicId.get, None, Some(if (isVisible) categoryDefault else categoryDeleted)))
-      )
-      .map {
-        case Nil =>
-          Logger.debug(s"Successfully updated topic category for project: ${project.url}.")
-          true
-        case list =>
-          Logger.warn(s"Couldn't hide topic for project: ${project.url}. Message: " + list.mkString(" | "))
-          false
-      }
+      updateTopicF(admin, project.topicId.get, None, Some(if (isVisible) categoryDefault else categoryDeleted))
+        .fold(
+          errors =>
+            IO.raiseError(
+              new Exception(s"Couldn't hide topic for project: ${project.url}. Message: " + errors.mkString(" | "))
+          ),
+          _ => IO.unit
+        )
+        .flatten
+    }
   }
 
   /**
@@ -266,27 +260,18 @@ trait OreDiscourseApi extends DiscourseApi {
     * @param project  Project to delete topic for
     * @return         True if deleted
     */
-  def deleteProjectTopic(project: Project)(implicit service: ModelService): IO[Boolean] = {
+  def deleteProjectTopic(project: Project)(implicit service: ModelService): IO[Project] = {
     if (!this.isEnabled)
-      return IO.pure(true)
-    checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(project.topicId.isDefined, "undefined topic id", "")
+      IO.pure(project)
+    else {
+      checkArgument(project.isDefined, "undefined project", "")
+      checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
-    def logFailure(): Unit = Logger.warn(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")
+      def logFailure(): Unit = Logger.warn(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")
 
-    IO.fromFuture(IO(deleteTopic(admin, project.topicId.get)))
-      .flatMap {
-        case false =>
-          logFailure()
-          IO.pure(false)
-        case true =>
-          Logger.debug(s"Successfully deleted project topic for: ${project.url}.")
-          service.update(project.copy(topicId = None, postId = None)).as(true)
-      }
-      .orElse {
-        logFailure()
-        IO.pure(false)
-      }
+      val deleteForums = deleteTopicF(admin, project.topicId.get).onError { case _ => IO(logFailure()) }
+      deleteForums *> service.update(project.copy(topicId = None, postId = None))
+    }
   }
 
   /**
@@ -300,8 +285,7 @@ trait OreDiscourseApi extends DiscourseApi {
     import cats.instances.list._
     if (!this.isEnabled)
       IO.pure(0)
-    else
-      users.parTraverse(u => IO.fromFuture(IO(userExists(u))).orElse(IO.pure(false))).map(_.count(_ == true))
+    else users.parTraverse(u => userExistsF(u).orElse(IO.pure(false))).map(_.count(_ == true))
   }
 
   /**

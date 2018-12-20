@@ -129,7 +129,7 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
       filter: M0#T => Rep[Boolean] = All,
       limit: Int = -1,
       offset: Int = -1
-  ): IO[Seq[M0]] = service.sorted[M0](ordering, baseFilter && filter, limit, offset)
+  ): IO[Seq[M0]] = service.collect[M0](baseFilter && filter, Some(ordering), limit, offset)
 
   /**
     * Filters this set by the given function.

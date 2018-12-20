@@ -83,7 +83,7 @@ case class Project(
     postId: Option[Int] = None,
     isTopicDirty: Boolean = false,
     visibility: Visibility = Public,
-    lastUpdated: Timestamp = null,
+    lastUpdated: Timestamp = Timestamp.from(Instant.now()),
     notes: JsValue = JsObject.empty
 ) extends Model
     with Downloadable
@@ -181,7 +181,7 @@ case class Project(
     service
       .access[ProjectSettings]()
       .find(_.projectId === this.id.value)
-      .getOrElse(throw new NoSuchElementException("Get on None"))
+      .getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 
   /**
     * Sets this [[Project]]'s [[ProjectSettings]].
@@ -497,11 +497,13 @@ object Project {
     */
   case class Builder(service: ModelService) {
 
+    // scalafix:off
     private var pluginId: String       = _
     private var ownerName: String      = _
     private var ownerId: DbRef[User]   = -1L
     private var name: String           = _
     private var visibility: Visibility = _
+    // scalafix:on
 
     def pluginId(pluginId: String): Builder = {
       this.pluginId = pluginId

@@ -115,42 +115,42 @@ trait SingleSignOnConsumer {
     Logger.debug("Signed with : " + sig)
     if (generateSignature(payload) != sig) {
       Logger.debug("<FAILURE> Could not verify payload against signature.")
-      return OptionT.none[IO, SpongeUser]
-    }
+      OptionT.none[IO, SpongeUser]
+    } else {
+      // decode payload
+      val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
+      Logger.debug("Decoded payload:")
+      Logger.debug(query.toString())
 
-    // decode payload
-    val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
-    Logger.debug("Decoded payload:")
-    Logger.debug(query.toString())
-
-    // extract info
-    val info = for {
-      nonce      <- query.get("nonce")
-      externalId <- query.get("external_id").flatMap(s => Try(s.toLong).toOption)
-      username   <- query.get("username")
-      email      <- query.get("email")
-    } yield {
-      nonce -> SpongeUser(
-        externalId,
-        username,
-        email,
-        query.get("avatar_url"),
-        query.get("language").flatMap(Lang.get),
-        query.get("add_groups")
-      )
-    }
-
-    OptionT
-      .fromOption[IO](info)
-      .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user) }
-      .subflatMap {
-        case (false, _) =>
-          Logger.debug("<FAILURE> Invalid nonce.")
-          None
-        case (true, user) =>
-          Logger.debug("<SUCCESS> " + user)
-          Some(user)
+      // extract info
+      val info = for {
+        nonce      <- query.get("nonce")
+        externalId <- query.get("external_id").flatMap(s => Try(s.toLong).toOption)
+        username   <- query.get("username")
+        email      <- query.get("email")
+      } yield {
+        nonce -> SpongeUser(
+          externalId,
+          username,
+          email,
+          query.get("avatar_url"),
+          query.get("language").flatMap(Lang.get),
+          query.get("add_groups")
+        )
       }
+
+      OptionT
+        .fromOption[IO](info)
+        .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user) }
+        .subflatMap {
+          case (false, _) =>
+            Logger.debug("<FAILURE> Invalid nonce.")
+            None
+          case (true, user) =>
+            Logger.debug("<SUCCESS> " + user)
+            Some(user)
+        }
+    }
   }
 }
 

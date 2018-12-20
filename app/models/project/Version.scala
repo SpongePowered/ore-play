@@ -82,19 +82,7 @@ case class Version(
     service
       .access[Channel]()
       .get(this.channelId)
-      .getOrElse(throw new NoSuchElementException("None of Option"))
-
-  /**
-    * Returns the channel this version belongs to from the specified collection
-    * of channels if present.
-    *
-    * @param channels   Channels to search
-    * @return           Channel if present, None otherwise
-    */
-  def findChannelFrom(channels: Seq[Channel]): Option[Channel] = Defined {
-    if (channels == null) None
-    else channels.find(_.id.value == this.channelId)
-  }
+      .getOrElse(throw new NoSuchElementException("None of Option")) // scalafix:ok
 
   /**
     * Returns this Version's markdown description in HTML.
@@ -263,6 +251,7 @@ object Version {
     */
   case class Builder(service: ModelService) {
 
+    // scalafix:off
     private var versionString: String       = _
     private var dependencyIds: List[String] = List()
     private var description: String         = _
@@ -273,6 +262,7 @@ object Version {
     private var fileName: String            = _
     private var signatureFileName: String   = _
     private var visibility: Visibility      = Visibility.Public
+    // scalafix:on
 
     def versionString(versionString: String): Builder = {
       this.versionString = versionString

@@ -9,7 +9,7 @@ import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
 import models.project.{Project, ProjectSettings, Version}
 import models.user.role.ProjectUserRole
-import ore.project.io.PluginFile
+import ore.project.io.PluginFileWithData
 import ore.{Cacheable, OreConfig}
 
 import cats.effect.{ContextShift, IO}
@@ -26,7 +26,7 @@ case class PendingProject(
     projects: ProjectBase,
     factory: ProjectFactory,
     underlying: Project,
-    file: PluginFile,
+    file: PluginFileWithData,
     channelName: String,
     settings: ProjectSettings = ProjectSettings(),
     var pendingVersion: PendingVersion,
@@ -48,8 +48,8 @@ case class PendingProject(
   }
 
   def cancel()(implicit forums: OreDiscourseApi): IO[Unit] =
-    free *> IO(this.file.delete()) *> (if (this.underlying.isDefined) this.projects.delete(this.underlying).void
-                                       else IO.unit)
+    free *> this.file.delete *> (if (this.underlying.isDefined) this.projects.delete(this.underlying).void
+                                 else IO.unit)
 
   override def key: String = this.underlying.ownerName + '/' + this.underlying.slug
 

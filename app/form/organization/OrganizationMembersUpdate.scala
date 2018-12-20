@@ -34,6 +34,7 @@ case class OrganizationMembersUpdate(
   ): IO[Unit] = {
     import cats.instances.option._
     import cats.instances.vector._
+    import cats.instances.list._
     if (!organization.isDefined)
       throw new RuntimeException("tried to update members on undefined organization")
 
@@ -63,20 +64,23 @@ case class OrganizationMembersUpdate(
       .members(organization)
       .flatMap(members => members.toVector.parTraverse(mem => mem.user.tupleRight(mem)))
 
-    val updateExisting = orgUsersF.flatMap { orgUsers =>
-      val userMemRole = userUps.zip(roleUps).map {
-        case (user, role) =>
-          val roleType = Role.organizationRoles
-            .find(_.title == role)
-            .getOrElse(throw new Exception("supplied invalid role type"))
-          orgUsers.find(_._1.name.equalsIgnoreCase(user.trim)).tupleRight(roleType)
-      }
+    val roleObjUpsF = roleUps.traverse { role =>
+      Role.organizationRoles
+        .find(_.title == role)
+        .fold(IO.raiseError[Role](new Exception("supplied invalid role type")))(IO.pure)
+    }
 
-      userMemRole.toVector.parTraverse_ {
-        case Some(((_, mem), role)) =>
-          mem.headRole.flatMap(headRole => service.update(headRole.copy(role = role)))
-        case None => IO.unit
-      }
+    val updateExisting = (roleObjUpsF, orgUsersF).tupled.flatMap {
+      case (roleObjUps, orgUsers) =>
+        val userMemRole = userUps.zip(roleObjUps).map {
+          case (user, roleType) => orgUsers.find(_._1.name.equalsIgnoreCase(user.trim)).tupleRight(roleType)
+        }
+
+        userMemRole.toVector.parTraverse_ {
+          case Some(((_, mem), role)) =>
+            mem.headRole.flatMap(headRole => service.update(headRole.copy(role = role)))
+          case None => IO.unit
+        }
     }
 
     addRoles *> updateExisting

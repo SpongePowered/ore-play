@@ -585,13 +585,13 @@ final class Application @Inject()(forms: OreForms)(
           service
             .collect[Project](
               _.visibility === (Visibility.NeedsApproval: Visibility),
-              ProjectSortingStrategies.Default.fn,
+              Some(ProjectSortingStrategies.Default.fn),
             )
             .map(_.toVector),
           service
             .collect[Project](
               _.visibility === (Visibility.NeedsChanges: Visibility),
-              ProjectSortingStrategies.Default.fn,
+              Some(ProjectSortingStrategies.Default.fn),
             )
             .map(_.toVector)
         ).parTupled

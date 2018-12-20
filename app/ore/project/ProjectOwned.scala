@@ -19,5 +19,5 @@ import simulacrum.typeclass
 
   /** Returns the Project */
   def project(a: A)(implicit projects: ProjectBase): IO[Project] =
-    projects.get(projectId(a)).getOrElse(throw new NoSuchElementException("Get on None"))
+    projects.get(projectId(a)).getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 }
