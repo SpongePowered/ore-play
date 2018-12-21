@@ -113,7 +113,7 @@ final class ApiController @Inject()(
               if !exists
               pak <- OptionT.liftF(
                 this.projectApiKeys.add(
-                  ProjectApiKey(
+                  ProjectApiKey.partial(
                     projectId = projectId,
                     keyType = keyType,
                     value = UUID.randomUUID().toString.replace("-", "")
@@ -283,16 +283,14 @@ final class ApiController @Inject()(
                       }
                     }
                   }
-                  .semiflatMap { pendingVersion =>
-                    pendingVersion.createForumPost = formData.createForumPost
-                    pendingVersion.channelName = formChannel.name
-                    formData.changelog.fold(IO.pure(pendingVersion)) { changelog =>
-                      service
-                        .updateIfDefined(pendingVersion.underlying.copy(description = Some(changelog)))
-                        .map(newVersion => pendingVersion.copy(underlying = newVersion))
-                    }
+                  .map { pendingVersion =>
+                    pendingVersion.copy(
+                      createForumPost = formData.createForumPost,
+                      channelName = formChannel.name,
+                      description = formData.changelog
+                    )
                   }
-                  .semiflatMap(_.complete())
+                  .semiflatMap(_.complete(project, factory))
                   .semiflatMap {
                     case (newVersion, channel, tags) =>
                       val update =

@@ -4,7 +4,7 @@ import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 
@@ -14,8 +14,8 @@ import enumeratum.values.{IntEnum, IntEnumEntry}
 import slick.lifted.TableQuery
 
 case class LoggedActionModel[Ctx](
-    id: ObjId[LoggedActionModel[Ctx]] = ObjId.Uninitialized[LoggedActionModel[Ctx]](),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[LoggedActionModel[Ctx]],
+    createdAt: ObjectTimestamp,
     userId: DbRef[User],
     address: InetString,
     action: LoggedAction[Ctx],
@@ -29,6 +29,19 @@ case class LoggedActionModel[Ctx](
   override type M = LoggedActionModel[Ctx]
 }
 object LoggedActionModel {
+
+  def partial[Ctx](
+      userId: DbRef[User],
+      address: InetString,
+      action: LoggedAction[Ctx],
+      actionContext: LoggedActionContext[Ctx],
+      actionContextId: DbRef[Ctx],
+      newState: String,
+      oldState: String
+  ): InsertFunc[LoggedActionModel[Ctx]] =
+    (id, time) =>
+      LoggedActionModel(id, time, userId, address, action, actionContext, actionContextId, newState, oldState)
+
   implicit def query[Ctx]: ModelQuery[LoggedActionModel[Ctx]] =
     ModelQuery.from[LoggedActionModel[Ctx]](
       TableQuery[LoggedActionTable[Ctx]],
@@ -140,9 +153,7 @@ object UserActionLogger {
       oldState: String
   )(implicit service: ModelService): IO[LoggedActionModel[Ctx]] =
     service.insert(
-      LoggedActionModel(
-        ObjId.Uninitialized[LoggedActionModel[Ctx]](),
-        ObjectTimestamp.Uninitialized,
+      LoggedActionModel.partial(
         request.user.id.value,
         InetString(StatTracker.remoteAddress(request)),
         action,

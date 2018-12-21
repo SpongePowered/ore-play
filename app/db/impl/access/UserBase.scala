@@ -6,7 +6,7 @@ import java.util.{Date, UUID}
 import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
-import db.{ModelBase, ModelService, ObjId, ObjectTimestamp}
+import db.{InsertFunc, ModelBase, ModelService}
 import models.user.{Session, User}
 import ore.OreConfig
 import ore.permission.Permission
@@ -14,6 +14,7 @@ import security.spauth.SpongeAuthApi
 import util.StringUtils._
 
 import cats.data.OptionT
+import cats.syntax.all._
 import cats.effect.{ContextShift, IO}
 
 /**
@@ -33,7 +34,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     */
   def withName(username: String)(implicit auth: SpongeAuthApi): OptionT[IO, User] =
     this.find(equalsIgnoreCase(_.name, username)).orElse {
-      auth.getUser(username).map(User.fromSponge).semiflatMap(getOrCreate)
+      auth.getUser(username).map(User.partialFromSponge).semiflatMap(this.add)
     }
 
   /**
@@ -68,12 +69,12 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     *
     * @return     Found or new User
     */
-  def getOrCreate(user: User): IO[User] = {
-    def like = this.find(_.name.toLowerCase === user.name.toLowerCase)
+  def getOrCreate(username: String, user: InsertFunc[User], ifInsert: User => IO[Unit] = _ => IO.unit): IO[User] = {
+    def like = this.find(_.name.toLowerCase === username.toLowerCase)
 
     like.value.flatMap {
       case Some(u) => IO.pure(u)
-      case None    => service.insert(user)
+      case None    => service.insert(user).flatTap(ifInsert)
     }
   }
 
@@ -88,7 +89,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     val maxAge     = this.config.play.sessionMaxAge
     val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
     val token      = UUID.randomUUID().toString
-    val session    = Session(ObjId.Uninitialized(), ObjectTimestamp.Uninitialized, expiration, user.name, token)
+    val session    = Session.partial(expiration, user.name, token)
     this.service.access[Session]().add(session)
   }
 

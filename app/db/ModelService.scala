@@ -86,8 +86,8 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M <: Model](model: M)(implicit query: ModelQuery[M]): IO[M] = {
-    val toInsert = query.copyWith(model)(ObjId.Uninitialized(), ObjectTimestamp(theTime))
+  def insert[M <: Model](model: InsertFunc[M])(implicit query: ModelQuery[M]): IO[M] = {
+    val toInsert = model(ObjId.UnsafeUninitialized(), ObjectTimestamp(theTime))
     val models   = newAction
     runDBIO {
       models.returning(models.map(_.id)).into {
@@ -102,9 +102,9 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param models  Models to create
     * @return       Newly created models
     */
-  def bulkInsert[M <: Model](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[M]] =
+  def bulkInsert[M <: Model](models: Seq[InsertFunc[M]])(implicit query: ModelQuery[M]): IO[Seq[M]] =
     if (models.nonEmpty) {
-      val toInsert = models.map(query.copyWith(_)(ObjId.Uninitialized(), ObjectTimestamp(theTime)))
+      val toInsert = models.map(_(ObjId.UnsafeUninitialized(), ObjectTimestamp(theTime)))
       val action   = newAction[M]
       runDBIO {
         action
@@ -115,9 +115,6 @@ abstract class ModelService(val driver: JdbcProfile) {
 
   def update[M0 <: Model { type M = M0 }: ModelQuery](model: M0): IO[M0] =
     runDBIO(newAction.filter(IdFilter(model.id.value)).update(model)).as(model)
-
-  def updateIfDefined[M0 <: Model { type M = M0 }: ModelQuery](model: M0): IO[M0] =
-    if (model.isDefined) update(model) else IO.pure(model)
 
   /**
     * Sets a column in a [[ModelTable]].

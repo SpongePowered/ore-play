@@ -5,7 +5,7 @@ import java.sql.Timestamp
 import db.impl.access.UserBase
 import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
 
 import cats.data.OptionT
@@ -22,8 +22,8 @@ import slick.lifted.TableQuery
   * @param token      Unique token
   */
 case class Session(
-    id: ObjId[Session] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Session],
+    createdAt: ObjectTimestamp,
     expiration: Timestamp,
     username: String,
     token: String
@@ -43,6 +43,13 @@ case class Session(
     users.withName(this.username)
 }
 object Session {
+
+  def partial(
+      expiration: Timestamp,
+      username: String,
+      token: String
+  ): InsertFunc[Session] = (id, time) => Session(id, time, expiration, username, token)
+
   implicit val query: ModelQuery[Session] =
     ModelQuery.from[Session](TableQuery[SessionTable], _.copy(_, _))
 }

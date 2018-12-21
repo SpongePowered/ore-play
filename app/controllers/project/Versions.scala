@@ -223,8 +223,20 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def showCreator(author: String, slug: String): Action[AnyContent] =
     VersionUploadAction(author, slug).asyncF { implicit request =>
       request.project.channels.all.map { channels =>
-        val data = request.data
-        Ok(views.create(data, data.settings.forumSync, None, Some(channels.toSeq), showFileControls = true))
+        val project = request.project
+        Ok(
+          views.create(
+            project.name,
+            project.slug,
+            project.ownerName,
+            project.description,
+            isProjectPending = false,
+            forumSync = request.data.settings.forumSync,
+            None,
+            Some(channels.toSeq),
+            showFileControls = true
+          )
+        )
       }
     }
 
@@ -261,11 +273,11 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         }
         .semiflatMap { pendingVersion =>
           pendingVersion
-            .copy(underlying = pendingVersion.underlying.copy(authorId = user.id.value))
+            .copy(authorId = user.id.value)
             .cache
             .as(
               Redirect(
-                self.showCreatorWithMeta(request.data.project.ownerName, slug, pendingVersion.underlying.versionString)
+                self.showCreatorWithMeta(request.data.project.ownerName, slug, pendingVersion.versionString)
               )
             )
         }
@@ -287,17 +299,29 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .flatMap(pendingVersion => pendingOrReal(author, slug).map(pendingVersion -> _))
         .semiflatMap {
           case (pendingVersion, Left(pending)) =>
-            IO.pure((None, ProjectData.of(request, pending), pendingVersion))
+            val projectData =
+              (pending.name, pending.slug, pending.ownerName, pending.description, true, pending.settings.forumSync)
+            IO.pure((None, projectData, pendingVersion))
           case (pendingVersion, Right(real)) =>
-            (real.channels.toSeq, ProjectData.of(real))
-              .parMapN((channels, data) => (Some(channels), data, pendingVersion))
+            val projectData = real.settings.map { settings =>
+              (real.name, real.slug, real.ownerName, real.description, false, settings.forumSync)
+            }
+            (real.channels.toSeq, projectData).parMapN((channels, data) => (Some(channels), data, pendingVersion))
         }
         .map {
-          case (channels, data, pendingVersion) =>
+          case (
+              channels,
+              (projectName, projectSlug, ownerName, projectDescription, isPending, forumSync),
+              pendingVersion
+              ) =>
             Ok(
               views.create(
-                data,
-                data.settings.forumSync,
+                projectName,
+                projectSlug,
+                ownerName,
+                projectDescription,
+                isPending,
+                forumSync,
                 Some(pendingVersion),
                 channels,
                 showFileControls = channels.isDefined
@@ -339,9 +363,12 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             versionData => {
               // Channel is valid
 
-              pendingVersion.channelName = versionData.channelName.trim
-              pendingVersion.channelColor = versionData.color
-              pendingVersion.createForumPost = versionData.forumPost
+              val newPendingVersion = pendingVersion.copy(
+                channelName = versionData.channelName.trim,
+                channelColor = versionData.color,
+                createForumPost = versionData.forumPost,
+                description = versionData.content
+              )
 
               // Check for pending project
               this.factory.getPendingProject(author, slug) match {
@@ -350,19 +377,13 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                   getProject(author, slug).flatMap {
                     project =>
                       project.channels
-                        .find(equalsIgnoreCase(_.name, pendingVersion.channelName))
+                        .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))
                         .toRight(versionData.addTo(project))
                         .leftFlatMap(identity)
                         .semiflatMap {
                           _ =>
-                            // Update description
-                            val newPendingVersion = versionData.content.fold(pendingVersion) { content =>
-                              pendingVersion.copy(
-                                underlying = pendingVersion.underlying.copy(description = Some(content.trim))
-                              )
-                            }
-
-                            newPendingVersion.complete
+                            newPendingVersion
+                              .complete(project, factory)
                               .map(_._1)
                               .flatTap { newVersion =>
                                 if (versionData.recommended)
@@ -400,7 +421,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                   }.merge
                 case Some(pendingProject) =>
                   // Found a pending project, create it with first version
-                  pendingProject.complete
+                  pendingProject
+                    .complete(factory)
                     .flatTap { created =>
                       UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id.value, "created", "null")
                     }
@@ -417,7 +439,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     if (unstable) {
       service
         .insert(
-          VersionTag(
+          VersionTag.partial(
             versionId = version.id.value,
             name = "Unstable",
             data = "",
@@ -621,7 +643,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           }
           // create warning
           val addWarning = this.warnings.add(
-            DownloadWarning(
+            DownloadWarning.partial(
               expiration = expiration,
               token = token,
               versionId = version.id.value,
@@ -736,7 +758,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         for {
           user <- users.current.value
           unsafeDownload <- downloads.add(
-            UnsafeDownload(userId = user.map(_.id.value), address = addr, downloadType = dlType)
+            UnsafeDownload.partial(userId = user.map(_.id.value), address = addr, downloadType = dlType)
           )
           _ <- service.update(warn.copy(isConfirmed = true, downloadId = Some(unsafeDownload.id.value)))
         } yield unsafeDownload

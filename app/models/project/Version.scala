@@ -10,7 +10,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -37,21 +37,21 @@ import slick.lifted.TableQuery
   * @param _channelId        ID of channel this version belongs to
   */
 case class Version(
-    id: ObjId[Version] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Version],
+    createdAt: ObjectTimestamp,
     projectId: DbRef[Project],
     versionString: String,
-    dependencyIds: List[String] = List(),
+    dependencyIds: List[String],
     channelId: DbRef[Channel],
     fileSize: Long,
     hash: String,
     authorId: DbRef[User],
-    description: Option[String] = None,
-    downloadCount: Long = 0,
-    reviewState: ReviewState = ReviewState.Unreviewed,
-    reviewerId: Option[DbRef[User]] = None,
-    approvedAt: Option[Timestamp] = None,
-    visibility: Visibility = Visibility.Public,
+    description: Option[String],
+    downloadCount: Long,
+    reviewState: ReviewState,
+    reviewerId: Option[DbRef[User]],
+    approvedAt: Option[Timestamp],
+    visibility: Visibility,
     fileName: String,
     signatureFileName: String,
 ) extends Model
@@ -91,10 +91,9 @@ case class Version(
     * @param channels   Channels to search
     * @return           Channel if present, None otherwise
     */
-  def findChannelFrom(channels: Seq[Channel]): Option[Channel] = Defined {
+  def findChannelFrom(channels: Seq[Channel]): Option[Channel] =
     if (channels == null) None
     else channels.find(_.id.value == this.channelId)
-  }
 
   /**
     * Returns this Version's markdown description in HTML.
@@ -147,9 +146,8 @@ case class Version(
   /**
     * Adds a download to the amount of unique downloads this Version has.
     */
-  def addDownload(implicit service: ModelService): IO[Version] = Defined {
+  def addDownload(implicit service: ModelService): IO[Version] =
     service.update(copy(downloadCount = downloadCount + 1))
-  }
 
   override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
     service.access(_.versionId === id.value)
@@ -172,9 +170,7 @@ case class Version(
     val createNewChange = service
       .access[VersionVisibilityChange]()
       .add(
-        VersionVisibilityChange(
-          ObjId.Uninitialized(),
-          ObjectTimestamp(Timestamp.from(Instant.now())),
+        VersionVisibilityChange.partial(
           Some(creator),
           this.id.value,
           comment,
@@ -208,33 +204,6 @@ case class Version(
     */
   def humanFileSize: String = FileUtils.formatFileSize(this.fileSize)
 
-  /**
-    * Returns true if a project ID is defined on this Model, there is no
-    * matching hash in the Project, and there is no duplicate version with
-    * the same name in the Project.
-    *
-    * @return True if exists
-    */
-  def exists(implicit service: ModelService): IO[Boolean] = {
-    def hashExists = {
-      val baseQuery = for {
-        v <- TableQuery[VersionTable]
-        if v.projectId === projectId
-        if v.hash === hash
-      } yield v.id
-
-      service.runDBIO((baseQuery.length > 0).result)
-    }
-
-    if (this.projectId == -1) IO.pure(false)
-    else
-      for {
-        hashExists <- hashExists
-        project    <- ProjectOwned[Version].project(this)
-        pExists    <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
-      } yield hashExists && pExists
-  }
-
   def reviewEntries(implicit service: ModelService): ModelAccess[Review] = service.access(_.versionId === id.value)
 
   def unfinishedReviews(implicit service: ModelService): IO[Seq[Review]] =
@@ -251,96 +220,46 @@ case class Version(
 
 object Version {
 
+  def partial(
+      projectId: DbRef[Project],
+      versionString: String,
+      dependencyIds: List[String] = List(),
+      channelId: DbRef[Channel],
+      fileSize: Long,
+      hash: String,
+      authorId: DbRef[User],
+      description: Option[String] = None,
+      downloadCount: Long = 0,
+      reviewState: ReviewState = ReviewState.Unreviewed,
+      reviewerId: Option[DbRef[User]] = None,
+      approvedAt: Option[Timestamp] = None,
+      visibility: Visibility = Visibility.Public,
+      fileName: String,
+      signatureFileName: String,
+  ): InsertFunc[Version] =
+    (id, time) =>
+      Version(
+        id,
+        time,
+        projectId,
+        versionString,
+        dependencyIds,
+        channelId,
+        fileSize,
+        hash,
+        authorId,
+        description,
+        downloadCount,
+        reviewState,
+        reviewerId,
+        approvedAt,
+        visibility,
+        fileName,
+        signatureFileName
+    )
+
   implicit val query: ModelQuery[Version] =
     ModelQuery.from[Version](TableQuery[VersionTable], _.copy(_, _))
 
   implicit val isProjectOwned: ProjectOwned[Version] = (a: Version) => a.projectId
-
-  /**
-    * A helper class for easily building new Versions.
-    *
-    * @param service ModelService to process with
-    */
-  case class Builder(service: ModelService) {
-
-    private var versionString: String       = _
-    private var dependencyIds: List[String] = List()
-    private var description: String         = _
-    private var projectId: DbRef[Project]   = -1L
-    private var authorId: DbRef[User]       = -1L
-    private var fileSize: Long              = -1
-    private var hash: String                = _
-    private var fileName: String            = _
-    private var signatureFileName: String   = _
-    private var visibility: Visibility      = Visibility.Public
-
-    def versionString(versionString: String): Builder = {
-      this.versionString = versionString
-      this
-    }
-
-    def dependencyIds(dependencyIds: List[String]): Builder = {
-      this.dependencyIds = dependencyIds
-      this
-    }
-
-    def description(description: String): Builder = {
-      this.description = description
-      this
-    }
-
-    def projectId(projectId: DbRef[Project]): Builder = {
-      this.projectId = projectId
-      this
-    }
-
-    def fileSize(fileSize: Long): Builder = {
-      this.fileSize = fileSize
-      this
-    }
-
-    def hash(hash: String): Builder = {
-      this.hash = hash
-      this
-    }
-
-    def authorId(authorId: DbRef[User]): Builder = {
-      this.authorId = authorId
-      this
-    }
-
-    def fileName(fileName: String): Builder = {
-      this.fileName = fileName
-      this
-    }
-
-    def signatureFileName(signatureFileName: String): Builder = {
-      this.signatureFileName = signatureFileName
-      this
-    }
-
-    def visibility(visibility: Visibility): Builder = {
-      this.visibility = visibility
-      this
-    }
-
-    def build(): Version = {
-      checkArgument(this.fileSize != -1, "invalid file size", "")
-      Version(
-        versionString = checkNotNull(this.versionString, "name null", ""),
-        dependencyIds = this.dependencyIds,
-        description = Option(this.description),
-        projectId = this.projectId,
-        fileSize = this.fileSize,
-        hash = checkNotNull(this.hash, "hash null", ""),
-        authorId = checkNotNull(this.authorId, "author id null", ""),
-        fileName = checkNotNull(this.fileName, "file name null", ""),
-        visibility = visibility,
-        signatureFileName = checkNotNull(this.signatureFileName, "signature file name null", ""),
-        channelId = -1L
-      )
-    }
-
-  }
-
 }

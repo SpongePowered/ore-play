@@ -11,7 +11,7 @@ import scala.util.matching.Regex
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
-import db.ModelService
+import db.{DbRef, ModelService}
 import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
 import models.project._
@@ -24,7 +24,6 @@ import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
 import util.StringUtils._
-import util.syntax._
 
 import akka.actor.ActorSystem
 import cats.data.{EitherT, NonEmptyList}
@@ -117,9 +116,16 @@ trait ProjectFactory {
           for {
             t <- (project.channels.all, project.settings).parTupled
             (channels, settings) = t
-            version              = this.startVersion(plugin, project, settings, channels.head.name)
+            version = this.startVersion(
+              plugin,
+              project.pluginId,
+              project.id.unsafeToOption,
+              project.url,
+              settings.forumSync,
+              channels.head.name
+            )
             modelExists <- version match {
-              case Right(v) => v.underlying.exists
+              case Right(v) => v.exists
               case Left(_)  => IO.pure(false)
             }
             res <- version match {
@@ -132,7 +138,6 @@ trait ProjectFactory {
         )
       case Left(errorMessage) => EitherT.leftT[IO, PendingVersion](errorMessage)
     }
-
   }
 
   /**
@@ -163,28 +168,23 @@ trait ProjectFactory {
   def startProject(plugin: PluginFile): PendingProject = {
     val metaData = checkMeta(plugin)
     val owner    = plugin.user
+    val name     = metaData.get[String]("name").getOrElse("name not found")
 
     // Start a new pending project
-    val project = Project
-      .Builder(this.service)
-      .pluginId(metaData.id.get)
-      .ownerName(owner.name)
-      .ownerId(owner.id.value)
-      .name(metaData.get[String]("name").getOrElse("name not found"))
-      .visibility(Visibility.New)
-      .build()
-
     val pendingProject = PendingProject(
-      projects = this.projects,
-      factory = this,
-      underlying = project,
+      pluginId = metaData.id.get,
+      ownerName = owner.name,
+      ownerId = owner.id.value,
+      name = name,
+      slug = slugify(name),
+      visibility = Visibility.New,
       file = plugin,
       channelName = this.config.getSuggestedNameForVersion(metaData.version.get),
       pendingVersion = null,
       cacheApi = this.cacheApi
     )
     //TODO: Remove cyclic dependency between PendingProject and PendingVersion
-    pendingProject.pendingVersion = PendingProject.createPendingVersion(pendingProject)
+    pendingProject.pendingVersion = PendingProject.createPendingVersion(this, pendingProject)
     pendingProject
   }
 
@@ -197,39 +197,35 @@ trait ProjectFactory {
     */
   def startVersion(
       plugin: PluginFile,
-      project: Project,
-      settings: ProjectSettings,
+      pluginId: String,
+      projectId: Option[DbRef[Project]],
+      projectUrl: String,
+      forumSync: Boolean,
       channelName: String
   ): Either[String, PendingVersion] = {
     val metaData = checkMeta(plugin)
-    if (!metaData.id.contains(project.pluginId))
+    if (!metaData.id.contains(pluginId))
       return Left("error.plugin.invalidPluginId")
 
     // Create new pending version
     val path = plugin.path
-    val version = Version
-      .Builder(this.service)
-      .versionString(metaData.version.get)
-      .dependencyIds(metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList)
-      .description(metaData.get[String]("description").getOrElse(""))
-      .projectId(project.id.unsafeToOption.getOrElse(-1L)) // Version might be for an uncreated project
-      .fileSize(path.toFile.length)
-      .hash(plugin.md5)
-      .fileName(path.getFileName.toString)
-      .signatureFileName(plugin.signaturePath.getFileName.toString)
-      .authorId(plugin.user.id.value)
-      .build()
 
     Right(
       PendingVersion(
-        projects = this.projects,
-        factory = this,
-        project = project,
+        versionString = metaData.version.get,
+        dependencyIds = metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList,
+        description = metaData.get[String]("description"),
+        projectId = projectId,
+        fileSize = path.toFile.length,
+        hash = plugin.md5,
+        fileName = path.getFileName.toString,
+        signatureFileName = plugin.signaturePath.getFileName.toString,
+        authorId = plugin.user.id.value,
+        projectUrl = projectUrl,
         channelName = channelName,
         channelColor = this.config.defaultChannelColor,
-        underlying = version,
         plugin = plugin,
-        createForumPost = settings.forumSync,
+        createForumPost = forumSync,
         cacheApi = cacheApi
       )
     )
@@ -269,20 +265,19 @@ trait ProjectFactory {
     */
   def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[Project] = {
     import cats.instances.vector._
-    val project = pending.underlying
 
     for {
       t <- (
-        this.projects.exists(project),
-        this.projects.isNamespaceAvailable(project.ownerName, project.slug)
+        this.projects.exists(pending.ownerName, pending.name),
+        this.projects.isNamespaceAvailable(pending.ownerName, pending.slug)
       ).parTupled
       (exists, available) = t
       _                   = checkArgument(!exists, "project already exists", "")
       _                   = checkArgument(available, "slug not available", "")
-      _                   = checkArgument(this.config.isValidProjectName(pending.underlying.name), "invalid name", "")
+      _                   = checkArgument(this.config.isValidProjectName(pending.name), "invalid name", "")
       // Create the project and it's settings
-      newProject <- this.projects.add(pending.underlying)
-      _          <- newProject.updateSettings(pending.settings)
+      newProject <- this.projects.add(pending.asFunc)
+      _          <- service.insert(pending.settings.asFunc(newProject.id.value))
       _ <- {
         // Invite members
         val dossier   = newProject.memberships
@@ -292,20 +287,19 @@ trait ProjectFactory {
 
         val addRole = dossier.addRole(
           newProject,
-          new ProjectUserRole(ownerId, Role.ProjectOwner, projectId, accepted = true, visible = true)
+          ownerId,
+          ProjectUserRole.Partial(ownerId, projectId, Role.ProjectOwner, isAccepted = true).asFunc
         )
         val addOtherRoles = pending.roles.toVector.parTraverse { role =>
-          role.user.flatMap { user =>
-            dossier.addRole(newProject, role.copy(projectId = projectId)) *>
-              user.sendNotification(
-                Notification(
-                  userId = user.id.value,
-                  originId = ownerId,
-                  notificationType = NotificationType.ProjectInvite,
-                  messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
-                )
+          dossier.addRole(newProject, role.userId, role.copy(projectId = projectId).asFunc) *>
+            service.insert(
+              Notification.partial(
+                userId = role.userId,
+                originId = ownerId,
+                notificationType = NotificationType.ProjectInvite,
+                messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, newProject.name)
               )
-          }
+            )
         }
 
         addRole *> addOtherRoles
@@ -324,14 +318,13 @@ trait ProjectFactory {
     */
   def createChannel(project: Project, name: String, color: Color): IO[Channel] = {
     checkNotNull(project, "null project", "")
-    checkArgument(project.isDefined, "undefined project", "")
     checkNotNull(name, "null name", "")
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
     checkNotNull(color, "null color", "")
     for {
       channelCount <- project.channels.size
       _ = checkState(channelCount < this.config.ore.projects.maxChannels, "channel limit reached", "")
-      channel <- this.service.access[Channel]().add(new Channel(name, color, project.id.value))
+      channel <- this.service.access[Channel]().add(Channel.partial(project.id.value, name, color))
     } yield channel
   }
 
@@ -342,33 +335,20 @@ trait ProjectFactory {
     * @return New version
     */
   def createVersion(
+      project: Project,
       pending: PendingVersion
   )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] = {
-    val project = pending.project
-
-    val pendingVersion = pending.underlying
 
     for {
       // Create channel if not exists
-      t <- (getOrCreateChannel(pending, project), pendingVersion.exists).parTupled
+      t <- (getOrCreateChannel(pending, project), pending.exists).parTupled
       (channel, exists) = t
       _ <- if (exists && this.config.ore.projects.fileValidate)
         IO.raiseError(new IllegalArgumentException("Version already exists."))
       else IO.unit
       // Create version
       newVersion <- {
-        val newVersion = Version(
-          versionString = pendingVersion.versionString,
-          dependencyIds = pendingVersion.dependencyIds,
-          description = pendingVersion.description,
-          projectId = project.id.value,
-          channelId = channel.id.value,
-          fileSize = pendingVersion.fileSize,
-          hash = pendingVersion.hash,
-          authorId = pendingVersion.authorId,
-          fileName = pendingVersion.fileName,
-          signatureFileName = pendingVersion.signatureFileName
-        )
+        val newVersion = pending.asFunc(project.id.value, channel.id.value)
         this.service.access[Version]().add(newVersion)
       }
       tags <- addTags(pending, newVersion)

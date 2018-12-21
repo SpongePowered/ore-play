@@ -1,7 +1,7 @@
 package models.user.role
 
 import db.impl.schema.OrganizationRoleTable
-import db.{DbRef, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.{Organization, User}
 import ore.Visitable
 import ore.organization.OrganizationOwned
@@ -22,24 +22,32 @@ import slick.lifted.TableQuery
   * @param isAccepted    True if has been accepted
   */
 case class OrganizationUserRole(
-    id: ObjId[OrganizationUserRole] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[OrganizationUserRole],
+    createdAt: ObjectTimestamp,
     userId: DbRef[User],
     organizationId: DbRef[Organization],
     role: Role,
-    isAccepted: Boolean = false
+    isAccepted: Boolean
 ) extends UserRoleModel {
 
   override type M = OrganizationUserRole
   override type T = OrganizationRoleTable
 
-  def this(userId: DbRef[User], organizationId: DbRef[Organization], roleType: Role) =
-    this(id = ObjId.Uninitialized(), userId = userId, organizationId = organizationId, role = roleType)
-
   override def subject(implicit service: ModelService): IO[Visitable] =
     OrganizationOwned[OrganizationUserRole].organization(this)
 }
 object OrganizationUserRole {
+  case class Partial(
+      userId: DbRef[User],
+      organizationId: DbRef[Organization],
+      role: Role,
+      isAccepted: Boolean = false
+  ) {
+
+    def asFunc: InsertFunc[OrganizationUserRole] =
+      (id, time) => OrganizationUserRole(id, time, userId, organizationId, role, isAccepted)
+  }
+
   implicit val query: ModelQuery[OrganizationUserRole] =
     ModelQuery.from[OrganizationUserRole](TableQuery[OrganizationRoleTable], _.copy(_, _))
 

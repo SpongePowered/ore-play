@@ -29,13 +29,10 @@ case class OrganizationMembersUpdate(
 
   def saveTo(organization: Organization)(
       implicit service: ModelService,
-      config: OreConfig,
       cs: ContextShift[IO]
   ): IO[Unit] = {
     import cats.instances.option._
     import cats.instances.vector._
-    if (!organization.isDefined)
-      throw new RuntimeException("tried to update members on undefined organization")
 
     // Add new roles
     val dossier = organization.memberships
@@ -44,17 +41,15 @@ case class OrganizationMembersUpdate(
       .build()
       .toVector
       .parTraverse_ { role =>
-        val addRole = dossier.addRole(organization, role.copy(organizationId = orgId))
-        val sendNotif = role.user.flatMap { user =>
-          user.sendNotification(
-            Notification(
-              userId = user.id.value,
-              originId = orgId,
-              notificationType = NotificationType.OrganizationInvite,
-              messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, organization.name)
-            )
+        val addRole = dossier.addRole(organization, role.userId, role.copy(organizationId = orgId).asFunc)
+        val sendNotif = service.insert(
+          Notification.partial(
+            userId = role.userId,
+            originId = orgId,
+            notificationType = NotificationType.OrganizationInvite,
+            messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, organization.name)
           )
-        }
+        )
 
         addRole *> sendNotif
       }

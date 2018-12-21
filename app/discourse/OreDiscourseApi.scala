@@ -76,7 +76,6 @@ trait OreDiscourseApi extends DiscourseApi {
   )(implicit service: ModelService, config: OreConfig): IO[Project] = {
     if (!this.isEnabled)
       return IO.pure(project)
-    checkArgument(project.isDefined, "undefined project", "")
     val title = Templates.projectTitle(project)
 
     val createTopicF = (content: String) =>
@@ -138,7 +137,6 @@ trait OreDiscourseApi extends DiscourseApi {
   )(implicit service: ModelService, config: OreConfig): IO[Boolean] = {
     if (!this.isEnabled)
       return IO.pure(true)
-    checkArgument(project.isDefined, "undefined project", "")
     checkArgument(project.topicId.isDefined, "undefined topic id", "")
     checkArgument(project.postId.isDefined, "undefined post id", "")
 
@@ -229,8 +227,6 @@ trait OreDiscourseApi extends DiscourseApi {
     import cats.instances.list._
     if (!this.isEnabled)
       return IO.pure(Nil)
-    checkArgument(project.isDefined, "undefined project", "")
-    checkArgument(version.isDefined, "undefined version", "")
     checkArgument(version.projectId == project.id.value, "invalid version project pair", "")
     project.owner.user.flatMap { user =>
       postDiscussionReply(project, user, content = Templates.versionRelease(project, version, content)).flatMap {
@@ -244,7 +240,6 @@ trait OreDiscourseApi extends DiscourseApi {
     if (!this.isEnabled)
       return IO.pure(true)
 
-    checkArgument(project.isDefined, "undefined project", "")
     checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
     IO.fromFuture(
@@ -269,7 +264,6 @@ trait OreDiscourseApi extends DiscourseApi {
   def deleteProjectTopic(project: Project)(implicit service: ModelService): IO[Boolean] = {
     if (!this.isEnabled)
       return IO.pure(true)
-    checkArgument(project.isDefined, "undefined project", "")
     checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
     def logFailure(): Unit = Logger.warn(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")

@@ -13,7 +13,7 @@ sealed trait DbInitialized[A] {
 
 sealed trait ObjId[A] extends DbInitialized[DbRef[A]]
 object ObjId {
-  case class Uninitialized[A]() extends ObjId[A] {
+  private[db] case class UnsafeUninitialized[A]() extends ObjId[A] {
     override def value: Nothing                  = sys.error("Tried to access uninitialized ObjectId")
     override def unsafeToOption: Option[Nothing] = None
   }
@@ -26,13 +26,13 @@ object ObjId {
 
   def unsafeFromOption[A](option: Option[DbRef[A]]): ObjId[A] = option match {
     case Some(id) => ObjId(id)
-    case None     => Uninitialized()
+    case None     => UnsafeUninitialized()
   }
 }
 
 sealed trait ObjectTimestamp extends DbInitialized[Timestamp]
 object ObjectTimestamp {
-  case object Uninitialized extends ObjectTimestamp {
+  private[db] case object UnsafeUninitialized extends ObjectTimestamp {
     override def value: Nothing                  = sys.error("Tried to access uninitialized ObjectTimestamp")
     override def unsafeToOption: Option[Nothing] = None
   }
@@ -44,7 +44,7 @@ object ObjectTimestamp {
   def apply(timestamp: Timestamp): ObjectTimestamp = RealObjectTimestamp(timestamp)
 
   def unsafeFromOption(option: Option[Timestamp]): ObjectTimestamp = option match {
-    case Some(id) => ObjectTimestamp(id)
-    case None     => Uninitialized
+    case Some(time) => ObjectTimestamp(time)
+    case None       => UnsafeUninitialized
   }
 }

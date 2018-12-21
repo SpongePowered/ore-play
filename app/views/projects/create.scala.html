@@ -11,6 +11,10 @@ Page used for uploading and creating new projects.
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
+@import db.ObjId
+@import db.ObjectTimestamp
+@import java.sql.Timestamp
+@import java.time.Instant
 @(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -32,7 +36,7 @@ Page used for uploading and creating new projects.
 
         @if(pending.isDefined) {
             @* Display plugin metadata *@
-            @defining(pending.get.underlying) { project: Project =>
+            @defining(pending.get) { project: PendingProject =>
                 <div class="plugin-meta">
                     <i class="minor">mcmod.info</i>
 
@@ -65,8 +69,8 @@ Page used for uploading and creating new projects.
                                 <td colspan="2"><strong>Platform</strong></td>
                                 <td>
                                     <div class="pull-right" id="upload-platform-tags">
-                                    @for(t <- pending.get.pendingVersion.dependenciesAsGhostTags) {
-                                        @projects.tag(t)
+                                    @for(t <- project.pendingVersion.dependenciesAsGhostTags) {
+                                        @projects.tag(t(ObjId(0L), ObjectTimestamp(Timestamp.from(Instant.now()))))
                                     }
                                     </div>
                                 </td>
@@ -74,7 +78,7 @@ Page used for uploading and creating new projects.
                             <tr>
                                 <td colspan="2">
                                     <label for="description">Description</label>
-                                    @defining(pending.get.pendingVersion.underlying.description) { description =>
+                                    @defining(project.pendingVersion.description) { description =>
                                         <input form="continue" class="form-control" type="text" id="description"
                                                name="description"
                                                maxlength="@config.ore.projects.maxDescLen"
@@ -119,7 +123,7 @@ Page used for uploading and creating new projects.
 
             @* Continue to next step *@
             @if(pending.isDefined) {
-                @defining(pending.get.underlying) { project =>
+                @defining(pending.get) { project =>
                     @form(action = projectRoutes.showInvitationForm(project.ownerName, project.slug),
                         'id -> "continue", 'class -> "pull-right") {
                         @CSRF.formField

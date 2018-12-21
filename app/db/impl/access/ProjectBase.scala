@@ -94,11 +94,10 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   /**
     * Returns true if the specified project exists.
     *
-    * @param project  Project to check
-    * @return         True if exists
+    * @return True if exists
     */
-  def exists(project: Project): IO[Boolean] =
-    this.withName(project.ownerName, project.name).isDefined
+  def exists(owner: String, name: String): IO[Boolean] =
+    withName(owner, name).isDefined
 
   /**
     * Saves any pending icon that has been uploaded for the specified [[Project]].

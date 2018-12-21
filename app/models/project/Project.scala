@@ -19,7 +19,7 @@ import db.impl.schema.{
   ProjectTableMain,
   ProjectWatchersTable
 }
-import db.{AssociationQuery, DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{AssociationQuery, DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public
@@ -66,25 +66,25 @@ import slick.lifted.{Rep, TableQuery}
   * @param notes                  JSON notes
   */
 case class Project(
-    id: ObjId[Project] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Project],
+    createdAt: ObjectTimestamp,
     pluginId: String,
     ownerName: String,
     ownerId: DbRef[User],
     name: String,
     slug: String,
-    recommendedVersionId: Option[DbRef[Version]] = None,
-    category: Category = Category.Undefined,
-    description: Option[String] = None,
-    starCount: Long = 0,
-    viewCount: Long = 0,
-    downloadCount: Long = 0,
-    topicId: Option[Int] = None,
-    postId: Option[Int] = None,
-    isTopicDirty: Boolean = false,
-    visibility: Visibility = Public,
-    lastUpdated: Timestamp = null,
-    notes: JsValue = JsObject.empty
+    recommendedVersionId: Option[DbRef[Version]],
+    category: Category,
+    description: Option[String],
+    starCount: Long,
+    viewCount: Long,
+    downloadCount: Long,
+    topicId: Option[Int],
+    postId: Option[Int],
+    isTopicDirty: Boolean,
+    visibility: Visibility,
+    lastUpdated: Timestamp,
+    notes: JsValue
 ) extends Model
     with Downloadable
     with Named
@@ -92,10 +92,6 @@ case class Project(
     with Hideable
     with Joinable[ProjectMember, Project]
     with Visitable {
-
-  def this(pluginId: String, name: String, owner: String, ownerId: DbRef[User]) = {
-    this(pluginId = pluginId, name = compact(name), slug = slugify(name), ownerName = owner, ownerId = ownerId)
-  }
 
   override type M                     = Project
   override type T                     = ProjectTable
@@ -144,7 +140,6 @@ case class Project(
     */
   def setOwner(user: User)(implicit service: ModelService): IO[Project] = {
     checkNotNull(user, "null user", "")
-    checkArgument(user.isDefined, "undefined user", "")
     service.update(
       copy(
         ownerId = user.id.value,
@@ -184,21 +179,6 @@ case class Project(
       .getOrElse(throw new NoSuchElementException("Get on None"))
 
   /**
-    * Sets this [[Project]]'s [[ProjectSettings]].
-    *
-    * @param settings Project settings
-    * @return         Newly created settings instance
-    */
-  def updateSettings(
-      settings: ProjectSettings
-  )(implicit service: ModelService): IO[ProjectSettings] = Defined {
-    checkNotNull(settings, "null settings", "")
-    val newSettings = settings.copy(projectId = this.id.value)
-    if (settings.isDefined) service.update(newSettings)
-    else service.insert(newSettings)
-  }
-
-  /**
     * Sets whether this project is visible.
     *
     * @param visibility True if visible
@@ -221,9 +201,7 @@ case class Project(
     val createNewChange = service
       .access[ProjectVisibilityChange]()
       .add(
-        ProjectVisibilityChange(
-          ObjId.Uninitialized(),
-          ObjectTimestamp(Timestamp.from(Instant.now())),
+        ProjectVisibilityChange.partial(
           Some(creator),
           this.id.value,
           comment,
@@ -267,9 +245,8 @@ case class Project(
   def setStarredBy(
       user: User,
       starred: Boolean
-  )(implicit service: ModelService): IO[Project] = Defined {
+  )(implicit service: ModelService): IO[Project] = {
     checkNotNull(user, "null user", "")
-    checkArgument(user.isDefined, "undefined user", "")
     for {
       contains <- this.stars.contains(user, this)
       res <- if (starred != contains) {
@@ -315,13 +292,12 @@ case class Project(
     */
   def flagFor(user: User, reason: FlagReason, comment: String)(
       implicit service: ModelService
-  ): IO[Flag] = Defined {
+  ): IO[Flag] = {
     checkNotNull(user, "null user", "")
     checkNotNull(reason, "null reason", "")
-    checkArgument(user.isDefined, "undefined user", "")
     val userId = user.id.value
     checkArgument(userId != this.ownerId, "cannot flag own project", "")
-    service.access[Flag]().add(new Flag(this.id.value, user.id.value, reason, comment))
+    service.access[Flag]().add(Flag.partial(this.id.value, user.id.value, reason, comment))
   }
 
   /**
@@ -353,10 +329,12 @@ case class Project(
     */
   def pages(implicit service: ModelService): ModelAccess[Page] = service.access(_.projectId === id.value)
 
-  private def getOrInsert(page: Page)(implicit service: ModelService): IO[Page] = {
+  private def getOrInsert(name: String, parentId: Option[DbRef[Page]])(
+      page: InsertFunc[Page]
+  )(implicit service: ModelService): IO[Page] = {
     def like =
       service.find[Page] { p =>
-        p.projectId === page.projectId && p.name.toLowerCase === page.name.toLowerCase && page.parentId.fold(
+        p.projectId === this.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
           p.parentId.isEmpty
         )(parentId => (p.parentId === parentId).getOrElse(false: Rep[Boolean]))
       }
@@ -372,9 +350,10 @@ case class Project(
     *
     * @return Project home page
     */
-  def homePage(implicit service: ModelService, config: OreConfig): IO[Page] = Defined {
-    val page = new Page(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), false, None)
-    getOrInsert(page)
+  def homePage(implicit service: ModelService, config: OreConfig): IO[Page] = {
+    val page =
+      Page.partial(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), isDeletable = false, None)
+    getOrInsert(Page.homeName, None)(page)
   }
 
   /**
@@ -396,7 +375,7 @@ case class Project(
       name: String,
       parentId: Option[DbRef[Page]],
       content: Option[String] = None
-  )(implicit config: OreConfig, service: ModelService): IO[Page] = Defined {
+  )(implicit config: OreConfig, service: ModelService): IO[Page] = {
     checkNotNull(name, "null name", "")
     val c = content match {
       case None => Page.template(name, Page.homeMessage)
@@ -405,8 +384,8 @@ case class Project(
         checkArgument(text.length <= Page.maxLengthPage, "contents too long", "")
         text
     }
-    val page = new Page(this.id.value, name, c, true, parentId)
-    getOrInsert(page)
+    val page = Page.partial(this.id.value, name, c, isDeletable = true, parentId)
+    getOrInsert(name, parentId)(page)
   }
 
   /**
@@ -419,7 +398,7 @@ case class Project(
 
   def logger(implicit service: ModelService): IO[ProjectLog] = {
     val loggers = service.access[ProjectLog]()
-    loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog(projectId = this.id.value)))
+    loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog.partial(id.value)))
   }
 
   def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] = service.access(_.projectId === id.value)
@@ -469,6 +448,48 @@ object Note {
 
 object Project {
 
+  def partial(
+      pluginId: String,
+      ownerName: String,
+      ownerId: DbRef[User],
+      name: String,
+      slug: String,
+      recommendedVersionId: Option[DbRef[Version]] = None,
+      category: Category = Category.Undefined,
+      description: Option[String] = None,
+      starCount: Long = 0,
+      viewCount: Long = 0,
+      downloadCount: Long = 0,
+      topicId: Option[Int] = None,
+      postId: Option[Int] = None,
+      isTopicDirty: Boolean = false,
+      visibility: Visibility = Public,
+      lastUpdated: Timestamp = null,
+      notes: JsValue = JsObject.empty
+  ): InsertFunc[Project] =
+    (id, time) =>
+      Project(
+        id,
+        time,
+        pluginId,
+        ownerName,
+        ownerId,
+        compact(name),
+        slugify(slug),
+        recommendedVersionId,
+        category,
+        description,
+        starCount,
+        viewCount,
+        downloadCount,
+        topicId,
+        postId,
+        isTopicDirty,
+        visibility,
+        lastUpdated,
+        notes
+    )
+
   implicit val query: ModelQuery[Project] =
     ModelQuery.from[Project](
       TableQuery[ProjectTableMain],
@@ -489,60 +510,4 @@ object Project {
   }
 
   lazy val roleForTrustQuery = lifted.Compiled(queryRoleForTrust _)
-
-  /**
-    * Helper class for easily building new Projects.
-    *
-    * @param service ModelService to process with
-    */
-  case class Builder(service: ModelService) {
-
-    private var pluginId: String       = _
-    private var ownerName: String      = _
-    private var ownerId: DbRef[User]   = -1L
-    private var name: String           = _
-    private var visibility: Visibility = _
-
-    def pluginId(pluginId: String): Builder = {
-      this.pluginId = pluginId
-      this
-    }
-
-    def ownerName(ownerName: String): Builder = {
-      this.ownerName = ownerName
-      this
-    }
-
-    def ownerId(ownerId: DbRef[User]): Builder = {
-      this.ownerId = ownerId
-      this
-    }
-
-    def name(name: String): Builder = {
-      this.name = name
-      this
-    }
-
-    def visibility(visibility: Visibility): Builder = {
-      this.visibility = visibility
-      this
-    }
-
-    def build(): Project = {
-      checkNotNull(this.pluginId, "plugin id null", "")
-      checkNotNull(this.ownerName, "owner name null", "")
-      checkNotNull(this.name, "name null", "")
-      checkArgument(this.ownerId != -1, "invalid owner id", "")
-      Project(
-        pluginId = this.pluginId,
-        ownerName = this.ownerName,
-        ownerId = this.ownerId,
-        name = this.name,
-        slug = slugify(this.name),
-        visibility = this.visibility
-      )
-    }
-
-  }
-
 }

@@ -2,7 +2,7 @@ package ore
 
 import scala.collection.immutable
 
-import db.{DbRef, ModelService, ObjId}
+import db.{DbRef, InsertFunc, ModelService}
 import models.project.{TagColor, Version, VersionTag}
 import ore.project.Dependency
 
@@ -24,8 +24,8 @@ sealed abstract class Platform(
     val url: String
 ) extends IntEnumEntry {
 
-  def createGhostTag(versionId: DbRef[Version], version: String): VersionTag =
-    VersionTag(ObjId.Uninitialized(), versionId, name, version, tagColor)
+  def createGhostTag(versionId: DbRef[Version], version: String): InsertFunc[VersionTag] =
+    VersionTag.partial(versionId, name, version, tagColor)
 }
 object Platform extends IntEnum[Platform] {
 
@@ -89,7 +89,7 @@ object Platform extends IntEnum[Platform] {
       .toSeq
   }
 
-  def ghostTags(versionId: DbRef[Version], dependencies: Seq[Dependency]): Seq[VersionTag] = {
+  def ghostTags(versionId: DbRef[Version], dependencies: Seq[Dependency]): Seq[InsertFunc[VersionTag]] = {
     Platform.values
       .filter(p => dependencies.map(_.pluginId).contains(p.dependencyId))
       .groupBy(_.platformCategory)

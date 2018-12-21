@@ -4,7 +4,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.Named
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Role, Trust}
@@ -30,8 +30,8 @@ import slick.lifted.{Compiled, Rep, TableQuery}
   * @param ownerId        The ID of the [[User]] that owns this organization
   */
 case class Organization(
-    id: ObjId[Organization] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Organization],
+    createdAt: ObjectTimestamp,
     username: String,
     ownerId: DbRef[User]
 ) extends Model
@@ -91,6 +91,10 @@ case class Organization(
 }
 
 object Organization {
+
+  def partial(id: ObjId[Organization], username: String, ownerId: DbRef[User]): InsertFunc[Organization] =
+    (_, time) => Organization(id, time, username, ownerId)
+
   implicit val query: ModelQuery[Organization] =
     ModelQuery.from[Organization](TableQuery[OrganizationTable], (obj, _, time) => obj.copy(createdAt = time))
 

@@ -10,7 +10,7 @@ import ore.permission.role.Role
   *
   * @tparam M RoleModel type
   */
-trait RoleSetBuilder[M <: UserRoleModel] {
+trait RoleSetBuilder[M] {
 
   /**
     * Returns the user IDs to use in building the set.

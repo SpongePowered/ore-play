@@ -2,7 +2,7 @@ package db.access
 
 import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
-import db.{DbRef, Model, ModelQuery, ModelService}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService}
 
 import cats.data.OptionT
 import cats.effect.IO
@@ -82,7 +82,7 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param model Model to add
     * @return New model
     */
-  def add(model: M0): IO[M0] = service.insert(model)
+  def add(model: InsertFunc[M0]): IO[M0] = service.insert(model)
 
   /**
     * Updates an existing model.

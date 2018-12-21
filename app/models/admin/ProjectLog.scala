@@ -3,7 +3,7 @@ package models.admin
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{InsertFunc, DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.Project
 import ore.project.ProjectOwned
 
@@ -18,8 +18,8 @@ import slick.lifted.TableQuery
   * @param projectId  ID of project log is for
   */
 case class ProjectLog(
-    id: ObjId[ProjectLog] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[ProjectLog],
+    createdAt: ObjectTimestamp,
     projectId: DbRef[Project]
 ) extends Model {
 
@@ -39,7 +39,7 @@ case class ProjectLog(
     * @param message  Message to log
     * @return         New entry
     */
-  def err(message: String)(implicit service: ModelService): IO[ProjectLogEntry] = Defined {
+  def err(message: String)(implicit service: ModelService): IO[ProjectLogEntry] = {
     val tag = "error"
     entries
       .find(e => e.message === message && e.tag === tag)
@@ -52,12 +52,15 @@ case class ProjectLog(
         )
       }
       .getOrElseF {
-        entries
-          .add(ProjectLogEntry(logId = this.id.value, tag = tag, message = message, lastOccurrence = service.theTime))
+        entries.add(
+          ProjectLogEntry.partial(id.value, tag, message, lastOccurrence = service.theTime)
+        )
       }
   }
 }
 object ProjectLog {
+  def partial(projectId: DbRef[Project]): InsertFunc[ProjectLog] = (id, time) => ProjectLog(id, time, projectId)
+
   implicit val query: ModelQuery[ProjectLog] =
     ModelQuery.from[ProjectLog](TableQuery[ProjectLogTable], _.copy(_, _))
 

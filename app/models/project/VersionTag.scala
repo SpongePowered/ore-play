@@ -7,13 +7,13 @@ import scala.collection.immutable
 
 import db.impl.model.common.Named
 import db.impl.schema.VersionTagTable
-import db.{Model, ModelQuery, ObjId, DbRef, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 
 import enumeratum.values._
 import slick.lifted.TableQuery
 
 case class VersionTag(
-    id: ObjId[VersionTag] = ObjId.Uninitialized(),
+    id: ObjId[VersionTag],
     versionId: DbRef[Version],
     name: String,
     data: String,
@@ -27,6 +27,13 @@ case class VersionTag(
   override type T = VersionTagTable
 }
 object VersionTag {
+  def partial(
+      versionId: DbRef[Version],
+      name: String,
+      data: String,
+      color: TagColor
+  ): InsertFunc[VersionTag] = (id, _) => VersionTag(id, versionId, name, data, color)
+
   implicit val query: ModelQuery[VersionTag] =
     ModelQuery.from[VersionTag](TableQuery[VersionTagTable], (obj, id, _) => obj.copy(id))
 }

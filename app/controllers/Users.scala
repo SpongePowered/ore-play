@@ -61,7 +61,9 @@ class Users @Inject()(
     */
   def signUp(): Action[AnyContent] = Action.asyncF {
     val nonce = SingleSignOnConsumer.nonce
-    this.signOns.add(SignOn(nonce = nonce)) *> redirectToSso(this.sso.getSignupUrl(this.baseUrl + "/login", nonce))
+    this.signOns.add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+      this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
+    )
   }
 
   /**
@@ -76,27 +78,28 @@ class Users @Inject()(
       if (this.fakeUser.isEnabled) {
         // Log in as fake user (debug only)
         this.config.checkDebug()
-        users.getOrCreate(this.fakeUser) *>
-          this.fakeUser.globalRoles
-            .contains(this.fakeUser, Role.OreAdmin.toDbRole)
-            .ifM(
-              ifTrue = IO.unit,
-              ifFalse = this.fakeUser.globalRoles.addAssoc(this.fakeUser, Role.OreAdmin.toDbRole).void
-            ) *>
-          this.redirectBack(returnPath.getOrElse(request.path), this.fakeUser)
+        users
+          .getOrCreate(
+            this.fakeUser.username,
+            this.fakeUser,
+            ifInsert = fakeUser => fakeUser.globalRoles.addAssoc(fakeUser, Role.OreAdmin.toDbRole).void
+          )
+          .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
         val nonce = SingleSignOnConsumer.nonce
-        this.signOns.add(SignOn(nonce = nonce)) *> redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce))
+        this.signOns.add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+          this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
+        )
       } else {
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
           .authenticate(sso.get, sig.get)(isNonceValid)
-          .map(sponge => User.fromSponge(sponge) -> sponge)
+          .map(sponge => User.partialFromSponge(sponge) -> sponge)
           .semiflatMap {
             case (fromSponge, sponge) =>
               // Complete authentication
               for {
-                user <- users.getOrCreate(fromSponge)
+                user <- users.getOrCreate(sponge.username, fromSponge)
                 _    <- user.globalRoles.deleteAllFromParent(user)
                 _ <- sponge.newGlobalRoles
                   .fold(IO.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.addAssoc(user, _)))
@@ -117,7 +120,7 @@ class Users @Inject()(
   def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
     val nonce = SingleSignOnConsumer.nonce
     this.signOns
-      .add(SignOn(nonce = nonce)) *> redirectToSso(
+      .add(SignOn.partial(nonce = nonce)) *> redirectToSso(
       this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
     )
   }

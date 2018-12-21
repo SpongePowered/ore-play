@@ -21,12 +21,11 @@ import cats.data.NonEmptyList
   */
 case class NotifyWatchersTask(version: Version, project: Project)(
     implicit ec: ExecutionContext,
-    service: ModelService,
-    config: OreConfig
+    service: ModelService
 ) extends Runnable {
 
   private val notification = (userId: DbRef[User]) =>
-    Notification(
+    Notification.partial(
       userId = userId,
       originId = project.ownerId,
       notificationType = NotificationType.NewProjectVersion,
@@ -40,5 +39,5 @@ case class NotifyWatchersTask(version: Version, project: Project)(
   def run(): Unit =
     watchingUsers
       .unsafeToFuture()
-      .foreach(_.foreach(watcher => watcher.sendNotification(notification(watcher.id.value))))
+      .foreach(_.foreach(watcher => service.insert(notification(watcher.id.value))))
 }

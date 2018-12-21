@@ -9,7 +9,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 import db.impl.model.common.Named
 import db.impl.schema.PageTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
@@ -45,13 +45,13 @@ import slick.lifted.TableQuery
   * @param isDeletable  True if can be deleted by the user
   */
 case class Page(
-    id: ObjId[Page] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Page],
+    createdAt: ObjectTimestamp,
     projectId: DbRef[Project],
     parentId: Option[DbRef[Page]],
     name: String,
     slug: String,
-    isDeletable: Boolean = true,
+    isDeletable: Boolean,
     contents: String
 ) extends Model
     with Named {
@@ -64,23 +64,6 @@ case class Page(
   checkNotNull(this.name, "name cannot be null", "")
   checkNotNull(this.slug, "slug cannot be null", "")
   checkNotNull(this.contents, "contents cannot be null", "")
-
-  def this(
-      projectId: DbRef[Project],
-      name: String,
-      content: String,
-      isDeletable: Boolean,
-      parentId: Option[DbRef[Page]]
-  ) = {
-    this(
-      projectId = projectId,
-      name = compact(name),
-      slug = slugify(name),
-      contents = content.trim,
-      isDeletable = isDeletable,
-      parentId = parentId
-    )
-  }
 
   /**
     * Sets the Markdown contents of this Page and updates the associated forum
@@ -98,16 +81,13 @@ case class Page(
       ""
     )
     val newPage = copy(contents = contents)
-    if (!isDefined) IO.pure(newPage)
-    else {
-      for {
-        updated <- service.update(newPage)
-        project <- ProjectOwned[Page].project(this)
-        // Contents were updated, update on forums
-        _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
-        else IO.pure(false)
-      } yield updated
-    }
+    for {
+      updated <- service.update(newPage)
+      project <- ProjectOwned[Page].project(this)
+      // Contents were updated, update on forums
+      _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
+      else IO.pure(false)
+    } yield updated
   }
 
   /**
@@ -159,6 +139,30 @@ case class Page(
 }
 
 object Page {
+
+  def partial(
+      projectId: DbRef[Project],
+      parentId: Option[DbRef[Page]],
+      name: String,
+      slug: String,
+      isDeletable: Boolean = true,
+      contents: String
+  ): InsertFunc[Page] = (id, time) => Page(id, time, projectId, parentId, name, slug, isDeletable, contents)
+
+  def partial(
+      projectId: DbRef[Project],
+      name: String,
+      content: String,
+      isDeletable: Boolean,
+      parentId: Option[DbRef[Page]]
+  ): InsertFunc[Page] = partial(
+    projectId = projectId,
+    name = compact(name),
+    slug = slugify(name),
+    contents = content.trim,
+    isDeletable = isDeletable,
+    parentId = parentId
+  )
 
   implicit val query: ModelQuery[Page] =
     ModelQuery.from[Page](TableQuery[PageTable], _.copy(_, _))

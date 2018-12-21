@@ -41,18 +41,18 @@ import slick.lifted.TableQuery
   * @param tagline      The user configured "tagline" displayed on the user page.
   */
 case class User(
-    id: ObjId[User] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
-    fullName: Option[String] = None,
-    name: String = null,
-    email: Option[String] = None,
-    tagline: Option[String] = None,
-    joinDate: Option[Timestamp] = None,
-    readPrompts: List[Prompt] = List(),
-    pgpPubKey: Option[String] = None,
-    lastPgpPubKeyUpdate: Option[Timestamp] = None,
-    isLocked: Boolean = false,
-    lang: Option[Lang] = None
+    id: ObjId[User],
+    createdAt: ObjectTimestamp,
+    fullName: Option[String],
+    name: String,
+    email: Option[String],
+    tagline: Option[String],
+    joinDate: Option[Timestamp],
+    readPrompts: List[Prompt],
+    pgpPubKey: Option[String],
+    lastPgpPubKeyUpdate: Option[Timestamp],
+    isLocked: Boolean,
+    lang: Option[Lang]
 ) extends Model
     with Named {
 
@@ -143,51 +143,50 @@ case class User(
     *
     * @return Highest level of trust
     */
-  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService, cs: ContextShift[IO]): IO[Trust] =
-    Defined {
-      scope match {
-        case GlobalScope => globalTrust
-        case ProjectScope(projectId) =>
-          val projectRoles = service.runDBIO(Project.roleForTrustQuery((projectId, this.id.value)).result)
+  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService, cs: ContextShift[IO]): IO[Trust] = {
+    scope match {
+      case GlobalScope => globalTrust
+      case ProjectScope(projectId) =>
+        val projectRoles = service.runDBIO(Project.roleForTrustQuery((projectId, this.id.value)).result)
 
-          val projectTrust = projectRoles
-            .map(biggestRoleTpe)
-            .flatMap { userTrust =>
-              val projectsTable = TableQuery[ProjectTableMain]
-              val orgaTable     = TableQuery[OrganizationTable]
-              val memberTable   = TableQuery[OrganizationMembersTable]
-              val roleTable     = TableQuery[OrganizationRoleTable]
+        val projectTrust = projectRoles
+          .map(biggestRoleTpe)
+          .flatMap { userTrust =>
+            val projectsTable = TableQuery[ProjectTableMain]
+            val orgaTable     = TableQuery[OrganizationTable]
+            val memberTable   = TableQuery[OrganizationMembersTable]
+            val roleTable     = TableQuery[OrganizationRoleTable]
 
-              val query = for {
-                p <- projectsTable if projectId.bind === p.id
-                o <- orgaTable if p.userId === o.id
-                m <- memberTable if m.organizationId === o.id && m.userId === id.value.bind
-                r <- roleTable if id.value.bind === r.userId && r.organizationId === o.id
-              } yield r.roleType
+            val query = for {
+              p <- projectsTable if projectId.bind === p.id
+              o <- orgaTable if p.userId === o.id
+              m <- memberTable if m.organizationId === o.id && m.userId === id.value.bind
+              r <- roleTable if id.value.bind === r.userId && r.organizationId === o.id
+            } yield r.roleType
 
-              service.runDBIO(query.to[Set].result).map { roleTypes =>
-                if (roleTypes.contains(Role.OrganizationAdmin) || roleTypes.contains(Role.OrganizationOwner)) {
-                  biggestRoleTpe(roleTypes)
-                } else {
-                  userTrust
-                }
+            service.runDBIO(query.to[Set].result).map { roleTypes =>
+              if (roleTypes.contains(Role.OrganizationAdmin) || roleTypes.contains(Role.OrganizationOwner)) {
+                biggestRoleTpe(roleTypes)
+              } else {
+                userTrust
               }
             }
+          }
 
-          Parallel.parMap2(projectTrust, globalTrust)(_ max _)
-        case OrganizationScope(organizationId) =>
-          Parallel.parMap2(Organization.getTrust(id.value, organizationId), globalTrust)(_ max _)
-        case _ =>
-          throw new RuntimeException("unknown scope: " + scope)
-      }
+        Parallel.parMap2(projectTrust, globalTrust)(_ max _)
+      case OrganizationScope(organizationId) =>
+        Parallel.parMap2(Organization.getTrust(id.value, organizationId), globalTrust)(_ max _)
+      case _ =>
+        throw new RuntimeException("unknown scope: " + scope)
     }
+  }
 
   /**
     * Returns the Projects that this User has starred.
     *
     * @return Projects user has starred
     */
-  def starred()(implicit service: ModelService): IO[Seq[Project]] = Defined {
+  def starred()(implicit service: ModelService): IO[Seq[Project]] = {
     val filter = Visibility.isPublicFilter[Project]
 
     val baseQuery = for {
@@ -216,20 +215,6 @@ case class User(
         else this.toMaybeOrganization.semiflatMap(_.owner.user).exists(_ == user)
       }
       .exists(identity)
-  }
-
-  /**
-    * Copy this User with the information SpongeUser provides.
-    *
-    * @param user Sponge User
-    */
-  def copyFromSponge(user: SpongeUser): User = {
-    copy(
-      id = ObjId(user.id),
-      name = user.username,
-      email = Some(user.email),
-      lang = user.lang
-    )
   }
 
   /**
@@ -286,9 +271,7 @@ case class User(
     * @return Organization
     */
   def toMaybeOrganization(implicit service: ModelService): OptionT[IO, Organization] =
-    Defined {
-      OrganizationBase().get(this.id.value)
-    }
+    OrganizationBase().get(this.id.value)
 
   /**
     * Returns the [[Project]]s that this User is watching.
@@ -311,7 +294,6 @@ case class User(
       watching: Boolean
   )(implicit service: ModelService): IO[Unit] = {
     checkNotNull(project, "null project", "")
-    checkArgument(project.isDefined, "undefined project", "")
     val contains = this.watching.contains(project, this)
     contains.flatMap {
       case true  => if (!watching) this.watching.removeAssoc(project, this) else IO.unit
@@ -335,7 +317,6 @@ case class User(
     */
   def hasUnresolvedFlagFor(project: Project)(implicit service: ModelService): IO[Boolean] = {
     checkNotNull(project, "null project", "")
-    checkArgument(project.isDefined, "undefined project", "")
     this.flags.exists(f => f.projectId === project.id.value && !f.isResolved)
   }
 
@@ -345,20 +326,6 @@ case class User(
     * @return User notifications
     */
   def notifications(implicit service: ModelService): ModelAccess[Notification] = service.access(_.userId === id.value)
-
-  /**
-    * Sends a [[Notification]] to this user.
-    *
-    * @param notification Notification to send
-    * @return Future result
-    */
-  def sendNotification(
-      notification: Notification
-  )(implicit service: ModelService, config: OreConfig): IO[Notification] = {
-    checkNotNull(notification, "null notification", "")
-    config.debug("Sending notification: " + notification, -1)
-    service.access[Notification]().add(notification.copy(userId = this.id.value))
-  }
 
   /**
     * Marks a [[Prompt]] as read by this User.
@@ -376,6 +343,57 @@ case class User(
 }
 
 object User {
+
+  /**
+    * Copy this User with the information SpongeUser provides.
+    *
+    * @param user Sponge User
+    */
+  def partialFromSponge(user: SpongeUser): InsertFunc[User] =
+    (_, time) =>
+      User(
+        id = ObjId(user.id),
+        createdAt = time,
+        fullName = None,
+        name = user.username,
+        email = Some(user.email),
+        lang = user.lang,
+        tagline = None,
+        joinDate = None,
+        readPrompts = Nil,
+        pgpPubKey = None,
+        lastPgpPubKeyUpdate = None,
+        isLocked = false
+    )
+
+  def partial(
+      id: ObjId[User],
+      fullName: Option[String] = None,
+      name: String = null,
+      email: Option[String] = None,
+      tagline: Option[String] = None,
+      joinDate: Option[Timestamp] = None,
+      readPrompts: List[Prompt] = List(),
+      pgpPubKey: Option[String] = None,
+      lastPgpPubKeyUpdate: Option[Timestamp] = None,
+      isLocked: Boolean = false,
+      lang: Option[Lang] = None
+  ): InsertFunc[User] =
+    (_, time) =>
+      User(
+        id,
+        time,
+        fullName,
+        name,
+        email,
+        tagline,
+        joinDate,
+        readPrompts,
+        pgpPubKey,
+        lastPgpPubKeyUpdate,
+        isLocked,
+        lang
+    )
 
   implicit val query: ModelQuery[User] =
     ModelQuery.from[User](TableQuery[UserTable], (obj, _, time) => obj.copy(createdAt = time))
@@ -397,13 +415,4 @@ object User {
 
   def avatarUrl(name: String)(implicit config: OreConfig): String =
     config.security.api.avatarUrl.format(name)
-
-  /**
-    * Create a new [[User]] from the specified [[SpongeUser]].
-    *
-    * @param toConvert User to convert
-    * @return Ore user
-    */
-  def fromSponge(toConvert: SpongeUser): User =
-    User().copyFromSponge(toConvert)
 }

@@ -11,7 +11,7 @@ import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
 import db.{DbRef, Model, ModelFilter, ModelQuery, ModelService}
 import models.project.{Project, Version}
-import models.statistic.{ProjectView, StatEntry, VersionDownload}
+import models.statistic.{PartialStatEntry, ProjectView, StatEntry, VersionDownload}
 import models.user.User
 import ore.StatTracker.COOKIE_NAME
 import security.spauth.SpongeAuthApi
@@ -29,11 +29,11 @@ trait StatTracker {
 
   def bakery: Bakery
 
-  private def record[S <: Model, M0 <: StatEntry[S] { type M = M0 }: ModelQuery](
-      entry: M0
+  private def record[S <: Model, MP <: PartialStatEntry[S, M0], M0 <: StatEntry[S] { type M = M0 }: ModelQuery](
+      entry: MP
   )(setUserId: (M0, DbRef[User]) => M0): IO[Boolean] = {
-    like[S, M0](entry).value.flatMap {
-      case None => service.insert(entry).as(true)
+    like[S, MP, M0](entry).value.flatMap {
+      case None => service.insert(entry.asFunc).as(true)
       case Some(existingEntry) =>
         val effect = if (existingEntry.userId.isEmpty && entry.userId.isDefined) {
           service.update(setUserId(existingEntry, entry.userId.get)).void
@@ -42,8 +42,8 @@ trait StatTracker {
     }
   }
 
-  private def like[S <: Model, M <: StatEntry[S]: ModelQuery](
-      entry: M
+  private def like[S <: Model, MP <: PartialStatEntry[S, M], M <: StatEntry[S]: ModelQuery](
+      entry: MP
   ): OptionT[IO, M] = {
     val baseFilter = ModelFilter[M](_.modelId === entry.modelId)
     val filter     = ModelFilter[M](e => e.address === entry.address || e.cookie === entry.cookie)
@@ -62,7 +62,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): IO[Result] = {
     ProjectView.bindFromRequest.flatMap { statEntry =>
-      record[Project, ProjectView](statEntry)((m, id) => m.copy(userId = Some(id)))
+      record[Project, ProjectView.Partial, ProjectView](statEntry)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => projectRequest.data.project.addView
           case false => IO.unit
@@ -85,10 +85,12 @@ trait StatTracker {
       cs: ContextShift[IO]
   ): IO[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
-      val recordDownload = record[Version, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id))).flatMap {
-        case true  => version.addDownload *> request.data.project.addDownload
-        case false => IO.unit
-      }
+      val recordDownload =
+        record[Version, VersionDownload.Partial, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id)))
+          .flatMap {
+            case true  => version.addDownload *> request.data.project.addDownload
+            case false => IO.unit
+          }
 
       recordDownload &> f.map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }

@@ -8,7 +8,7 @@ import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -28,8 +28,8 @@ import slick.lifted.TableQuery
   * @param message      Message of why it ended
   */
 case class Review(
-    id: ObjId[Review] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Review],
+    createdAt: ObjectTimestamp,
     versionId: DbRef[Version],
     userId: DbRef[User],
     endedAt: Option[Timestamp],
@@ -89,6 +89,13 @@ object Message {
 }
 
 object Review {
+  def partial(
+      versionId: DbRef[Version],
+      userId: DbRef[User],
+      endedAt: Option[Timestamp],
+      message: JsValue
+  ): InsertFunc[Review] = (id, time) => Review(id, time, versionId, userId, endedAt, message)
+
   def ordering: Ordering[(Review, _)] =
     // TODO make simple + check order
     Ordering.by(_._1.createdAt.value.getTime)

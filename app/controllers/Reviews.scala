@@ -14,7 +14,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{DbRef, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, ModelService}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, ReviewState, Version}
@@ -64,9 +64,7 @@ final class Reviews @Inject()(forms: OreForms)(
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
-        val review = new Review(
-          ObjId.Uninitialized(),
-          ObjectTimestamp(Timestamp.from(Instant.now())),
+        val review = Review.partial(
           version.id.value,
           request.user.id.value,
           None,
@@ -168,9 +166,8 @@ final class Reviews @Inject()(forms: OreForms)(
     usersF
       .map { users =>
         users.map { userId =>
-          Notification(
+          Notification.partial(
             userId = userId,
-            createdAt = ObjectTimestamp(Timestamp.from(Instant.now())),
             originId = requestUser.id.value,
             notificationType = NotificationType.VersionReviewed,
             messageArgs = NonEmptyList.of("notification.project.reviewed", project.slug, version.versionString)
@@ -202,9 +199,7 @@ final class Reviews @Inject()(forms: OreForms)(
             val result = (
               closeOldReview,
               this.service.insert(
-                Review(
-                  ObjId.Uninitialized(),
-                  ObjectTimestamp(Timestamp.from(Instant.now())),
+                Review.partial(
                   version.id.value,
                   request.user.id.value,
                   None,

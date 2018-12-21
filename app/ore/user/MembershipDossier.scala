@@ -6,7 +6,7 @@ import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImp
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
 import db.table.AssociativeTable
-import db.{AssociationQuery, DbRef, Model, ModelQuery, ModelService}
+import db.{AssociationQuery, DbRef, InsertFunc, Model, ModelQuery, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 import models.user.{Organization, User}
@@ -57,7 +57,7 @@ trait MembershipDossier[F[_], M <: Model] {
     *
     * @param role Role to add
     */
-  def addRole(model: M, role: RoleType): F[RoleType]
+  def addRole(model: M, userId: DbRef[User], role: InsertFunc[RoleType]): F[RoleType]
 
   /**
     * Returns all roles for the specified [[User]].
@@ -130,9 +130,9 @@ object MembershipDossier {
         .allFromChild(model)
         .map(_.map(user => newMember(model, user.id.value)).toSet)
 
-    def addRole(model: M0, role: RoleType): IO[RoleType] = {
+    def addRole(model: M0, userId: DbRef[User], role: InsertFunc[RoleType]): IO[RoleType] = {
       for {
-        user   <- role.user
+        user   <- service.get[User](userId).getOrElseF(IO.raiseError(new Exception("Get on none")))
         exists <- roles(model).exists(_.userId === user.id.value)
         _      <- if (!exists) addMember(model, user) else IO.pure(user)
         ret    <- roleAccess.add(role)

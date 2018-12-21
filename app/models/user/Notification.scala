@@ -2,7 +2,7 @@ package models.user
 
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
-import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
@@ -23,14 +23,14 @@ import slick.lifted.TableQuery
   * @param isRead             True if notification has been read
   */
 case class Notification(
-    id: ObjId[Notification] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Notification],
+    createdAt: ObjectTimestamp,
     userId: DbRef[User],
     originId: DbRef[User],
     notificationType: NotificationType,
     messageArgs: NEL[String],
-    action: Option[String] = None,
-    isRead: Boolean = false
+    action: Option[String],
+    isRead: Boolean
 ) extends Model {
 
   override type M = Notification
@@ -45,6 +45,16 @@ case class Notification(
     userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None"))
 }
 object Notification {
+  def partial(
+      userId: DbRef[User],
+      originId: DbRef[User],
+      notificationType: NotificationType,
+      messageArgs: NEL[String],
+      action: Option[String] = None,
+      isRead: Boolean = false
+  ): InsertFunc[Notification] =
+    (id, time) => Notification(id, time, userId, originId, notificationType, messageArgs, action, isRead)
+
   implicit val query: ModelQuery[Notification] =
     ModelQuery.from[Notification](TableQuery[NotificationTable], _.copy(_, _))
 

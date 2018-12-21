@@ -105,7 +105,18 @@ class ProjectFiles(val env: OreEnv) {
     * @return Pending icon path
     */
   def getPendingIconPath(project: Project): Option[Path] =
-    findFirstFile(getPendingIconDir(project.ownerName, project.name))
+    getPendingIconPath(project.ownerName, project.name)
+
+  /**
+    * Returns the directory to a custom [[Project]] icon that has not yet been
+    * saved.
+    *
+    * @param ownerName Owner of the project to get icon for
+    * @param name Name of the project to get icon for
+    * @return Pending icon path
+    */
+  def getPendingIconPath(ownerName: String, name: String): Option[Path] =
+    findFirstFile(getPendingIconDir(ownerName, name))
 
   private def findFirstFile(dir: Path): Option[Path] = {
     if (exists(dir)) {

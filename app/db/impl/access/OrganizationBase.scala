@@ -8,7 +8,6 @@ import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
 import util.StringUtils
-import util.syntax._
 
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.{ContextShift, IO}
@@ -29,7 +28,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
   def create(
       name: String,
       ownerId: DbRef[User],
-      members: Set[OrganizationUserRole]
+      members: Set[OrganizationUserRole.Partial]
   )(implicit auth: SpongeAuthApi, cs: ContextShift[IO]): EitherT[IO, String, Organization] = {
     import cats.instances.vector._
     Logger.debug("Creating Organization...")
@@ -57,7 +56,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
         // reference to the Sponge user ID, the organization's username and a
         // reference to the User owner of the organization.
         Logger.info("Creating on Ore...")
-        this.add(Organization(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
+        this.add(Organization.partial(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
       }
       .semiflatMap { org =>
         // Every organization model has a regular User companion. Organizations
@@ -70,12 +69,15 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
           _ <- // Add the owner
           org.memberships.addRole(
             org,
-            OrganizationUserRole(
-              userId = ownerId,
-              organizationId = org.id.value,
-              role = Role.OrganizationOwner,
-              isAccepted = true
-            )
+            ownerId,
+            OrganizationUserRole
+              .Partial(
+                userId = ownerId,
+                organizationId = org.id.value,
+                role = Role.OrganizationOwner,
+                isAccepted = true
+              )
+              .asFunc
           )
           _ <- {
             // Invite the User members that the owner selected during creation.
@@ -83,16 +85,15 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
 
             members.toVector.parTraverse { role =>
               // TODO remove role.user db access we really only need the userid we already have for notifications
-              org.memberships.addRole(org, role.copy(organizationId = org.id.value)).flatMap(_ => role.user).flatMap {
-                user =>
-                  user.sendNotification(
-                    Notification(
-                      userId = user.id.value,
-                      originId = org.id.value,
-                      notificationType = NotificationType.OrganizationInvite,
-                      messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
-                    )
+              org.memberships.addRole(org, role.userId, role.copy(organizationId = org.id.value).asFunc).flatMap { _ =>
+                service.insert(
+                  Notification.partial(
+                    userId = role.userId,
+                    originId = org.id.value,
+                    notificationType = NotificationType.OrganizationInvite,
+                    messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
                   )
+                )
               }
             }
           }

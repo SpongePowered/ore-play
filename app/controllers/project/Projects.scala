@@ -103,8 +103,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               plugin match {
                 case Right(pluginFile) =>
                   val project = this.factory.startProject(pluginFile)
-                  val model   = project.underlying
-                  project.cache.as(Redirect(self.showCreatorWithMeta(model.ownerName, model.slug)))
+                  project.cache.as(Redirect(self.showCreatorWithMeta(project.ownerName, project.slug)))
                 case Left(errorMessage) =>
                   IO.pure(Redirect(self.showCreator()).withError(errorMessage))
               }
@@ -129,7 +128,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       case Some(pending) =>
         import cats.instances.vector._
         for {
-          t <- (request.user.organizations.allFromParent(request.user), pending.underlying.owner.user).parTupled
+          t <- (request.user.organizations.allFromParent(request.user), pending.owner).parTupled
           (orgas, owner) = t
           createOrga <- orgas.toVector.parTraverse(owner.can(CreateProject).in(_))
         } yield {
@@ -161,19 +160,16 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             .fold(
               FormErrorLocalized(self.showCreator()).andThen(IO.pure),
               formData => {
-                pendingProject.settings.save(pendingProject.underlying, formData).flatMap {
+                pendingProject.settings.save(pendingProject, formData).flatMap {
                   case (newProject, newSettings) =>
-                    val newPending = pendingProject.copy(
-                      underlying = newProject,
-                      settings = newSettings
-                    )
+                    val newPending = newProject.copy(settings = newSettings)
 
                     val authors = newPending.file.data.get.authors.toList
                     (
                       newPending.cache *> newPending.pendingVersion.cache,
                       authors.filter(_ != request.user.name).parTraverse(users.withName(_).value),
                       this.forums.countUsers(authors),
-                      newPending.underlying.owner.user
+                      newPending.owner
                     ).parMapN { (_, users, registered, owner) =>
                       Ok(views.invite(owner, newPending, users.flatten, registered))
                     }
@@ -216,7 +212,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           val newPending     = pendingProject.copy(roles = request.body.build())
           val pendingVersion = newPending.pendingVersion
           newPending.cache.as(
-            Redirect(routes.Versions.showCreatorWithMeta(author, slug, pendingVersion.underlying.versionString))
+            Redirect(routes.Versions.showCreatorWithMeta(author, slug, pendingVersion.versionString))
           )
         }
         .merge

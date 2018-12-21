@@ -5,7 +5,7 @@ import java.io.BufferedReader
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
-import db.{DbRef, ModelService, ObjId}
+import db.{DbRef, InsertFunc, ModelService}
 import models.project.{TagColor, Version, VersionTag}
 import ore.project.Dependency
 
@@ -56,14 +56,13 @@ class PluginFileData(data: Seq[DataValue[_]]) {
       dataValues.exists(_.isInstanceOf[StringDataValue])
 
   def createTags(versionId: DbRef[Version])(implicit service: ModelService): IO[Seq[VersionTag]] = {
-    val buffer = new ArrayBuffer[VersionTag]
+    val buffer = new ArrayBuffer[InsertFunc[VersionTag]]
 
     if (containsMixins) {
-      val mixinTag = VersionTag(ObjId.Uninitialized(), versionId, "Mixin", "", TagColor.Mixin)
+      val mixinTag = VersionTag.partial(versionId, "Mixin", "", TagColor.Mixin)
       buffer += mixinTag
     }
 
-    println("PluginFileData#getGhostTags: " + buffer)
     service.bulkInsert(buffer)
   }
 
