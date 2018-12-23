@@ -68,12 +68,12 @@ The main header displayed on each layout.
                     <ul class="user-dropdown dropdown-menu" aria-label="Create new&hellip;">
                         <li>
                             <a href="@projectRoutes.Projects.showCreator()">
-                                <span class="pull-left">@messages("project.create")</span>
-                                <i class="pull-right fas fa-book"></i>
+                                <i class="fas fa-book fa-fw mr-1"></i>
+                                <span>@messages("project.create")</span>
                             </a>
                             <a href="@routes.Organizations.showCreator()">
-                                <span class="pull-left">@messages("org.create")</span>
-                                <i class="pull-right fas fa-users"></i>
+                                <i class="fas fa-users fa-fw mr-1"></i>
+                                <span>@messages("org.create")</span>
                             </a>
                         </li>
                     </ul>
@@ -101,33 +101,33 @@ The main header displayed on each layout.
                     <ul class="user-dropdown dropdown-menu" aria-label="@messages("aria.dropdown.menu", 1)">
                         <li>
                             <a href="@routes.Users.showProjects(cu.name, None)">
-                                <span class="pull-left">@cu.name</span>
-                                <i class="pull-right fas fa-user"></i>
+                                <i class="fas fa-user mr-1"></i>
+                                <span>@cu.name</span>
                             </a>
                         </li>
 
                         <li>
                             <a href="@routes.Users.showNotifications(None, None)">
-                                <span class="pull-left">
+                                <i class="fas fa-bell mr-1"></i>
+                                <span>
                                     @messages("notification.plural")
                                     @if(request.headerData.hasUnreadNotifications) {
                                         <span class="unread"></span>
                                     }
                                 </span>
-                                <i class="pull-right fas fa-bell"></i>
                             </a>
                         </li>
 
                         @if(request.headerData.globalPerm(ReviewFlags)) {
                             <li>
                                 <a href="@routes.Application.showFlags()">
-                                    <span class="flags pull-left">
+                                    <i class="fas fa-flag mr-1"></i>
+                                    <span>
                                         @messages("project.flag.plural")
                                         @if(request.headerData.unresolvedFlags) {
                                             <span class="unread"></span>
                                         }
                                     </span>
-                                    <i class="pull-right fas fa-flag"></i>
                                 </a>
                             </li>
                         }
@@ -135,13 +135,13 @@ The main header displayed on each layout.
                         @if(request.headerData.globalPerm(ReviewVisibility)) {
                             <li>
                                 <a href="@routes.Application.showProjectVisibility()">
-                                    <span class="flags pull-left">
+                                    <i class="fas fa-thumbs-up mr-1"></i>
+                                    <span>
                                         Project approvals
                                         @if(request.headerData.hasProjectApprovals) {
                                             <span class="unread"></span>
                                         }
                                     </span>
-                                    <i class="pull-right fas fa-thumbs-up"></i>
                                 </a>
                             </li>
                         }
@@ -149,13 +149,13 @@ The main header displayed on each layout.
                         @if(request.headerData.globalPerm(ReviewProjects)) {
                             <li>
                                 <a href="@routes.Application.showQueue()">
-                                    <span class="pull-left">
+                                    <i class="far fa-thumbs-up mr-1"></i>
+                                    <span>
                                         @messages("user.queue")
                                         @if(request.headerData.hasReviewQueue) {
                                             <span class="unread"></span>
                                         }
                                     </span>
-                                    <i class="pull-right far fa-thumbs-up"></i>
                                 </a>
                             </li>
                         }
@@ -163,10 +163,10 @@ The main header displayed on each layout.
                         @if(request.headerData.globalPerm(ViewStats)) {
                             <li>
                                 <a href="@routes.Application.showStats()">
-                                    <span class="pull-left">
+                                    <i class="fas fa-chart-area mr-1"></i>
+                                    <span>
                                         @messages("user.stats")
                                     </span>
-                                    <i class="pull-right fas fa-chart-area"></i>
                                 </a>
                             </li>
                         }
@@ -174,10 +174,10 @@ The main header displayed on each layout.
                         @if(request.headerData.globalPerm(ViewHealth)) {
                             <li>
                                 <a href="@routes.Application.showHealth()">
-                                    <span class="pull-left">
+                                    <i class="fas fa-heartbeat mr-1"></i>
+                                    <span>
                                     @messages("admin.health.title")
                                     </span>
-                                    <i class="pull-right fas fa-heartbeat"></i>
                                 </a>
                             </li>
                         }
@@ -185,10 +185,10 @@ The main header displayed on each layout.
                         @if(request.headerData.globalPerm(ViewLogs)) {
                             <li>
                                 <a href="@routes.Application.showLog(None, None, None, None, None, None, None)">
-                                    <span class="pull-left">
+                                    <i class="fas fa-list mr-1"></i>
+                                    <span>
                                     @messages("admin.log.title")
                                     </span>
-                                    <i class="pull-right fas fa-list"></i>
                                 </a>
                             </li>
                         }
@@ -196,8 +196,8 @@ The main header displayed on each layout.
                         <li role="separator" class="divider"></li>
                         <li>
                             <a href="@routes.Users.logOut()">
-                                <span class="pull-left">@messages("general.signout")</span>
-                                <i class="pull-right fas fa-sign-out-alt"></i>
+                                <i class="fas fa-sign-out-alt mr-1"></i>
+                                <span>@messages("general.signout")</span>
                             </a>
                         </li>
                     </ul>
