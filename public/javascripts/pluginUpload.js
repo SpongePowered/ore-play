@@ -40,7 +40,7 @@ function failure(message) {
 
     var bs = alert.find('.alert');
     bs.removeClass('alert-info').addClass('alert-danger');
-    var noticeIcon = bs.find('i');
+    var noticeIcon = bs.find('[data-fa-i2svg]');
     noticeIcon.removeClass('fa-file-archive-o').addClass('fa-exclamation-circle').tooltip({
         placement: 'left',
         title: message
@@ -63,7 +63,7 @@ function failurePlugin(message) {
     var alert = getAlert();
     var control = alert.find('.file-upload');
     control.find('button').removeClass('btn-success').addClass('btn-danger').prop('disabled', true);
-    clearIcon(control.find('i')).addClass('fa-times');
+    clearIcon(control.find('[data-fa-i2svg]')).addClass('fa-times');
 }
 
 function failureSig(message) {
@@ -138,7 +138,7 @@ $(function() {
         var alert = getAlert();
         var alertInner = alert.find('.alert');
         var button = alert.find('button');
-        var icon = button.find('i');
+        var icon = button.find('[data-fa-i2svg]');
         icon.removeClass('fa-pencil-alt').addClass('fa-spinner fa-spin');
         setTimeout(function() {
             if (!fileName)

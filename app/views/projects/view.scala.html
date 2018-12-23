@@ -154,7 +154,7 @@ Base template for Project overview.
                                     </button>
 
                                     <button class="btn btn-watch btn-default @if(sp.watching) { watching }">
-                                        <i class="fas fa-eye"></i>
+                                        <i class="fas @if(sp.watching) { fa-eye-slash } else { fa-eye }"></i>
                                         <span class="watch-status">@if(sp.watching) { Unwatch } else { Watch }</span>
                                     </button>
                                 } else {

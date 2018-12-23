@@ -44,14 +44,14 @@ function initUserSearch(callback) {
     search.find('.btn-search').click(function() {
         var input = $(this).closest('.user-search').find('input');
         var username = input.val().trim();
-        var icon = $(this).find('i').removeClass('fa-search').addClass('fa-spinner fa-spin');
+        var icon = toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-search'));
         $.ajax({
             url: '/api/users/' + username,
             dataType: 'json',
 
             complete: function() {
                 input.val('');
-                icon.removeClass('fa-spinner fa-spin').addClass('fa-search').prop('disabled', true);
+                toggleSpinner(icon.toggleClass('fa-search').prop('disabled', true))
             },
 
             error: function() {

@@ -78,7 +78,7 @@ function loadStars(increment) {
                             +   '<a href="' + href + '">' + projectData.owner + '/<strong>' + slug + '</strong></a>'
                             +   '<div class="pull-right">'
                             +     '<span class="minor">' + projectData.recommended.name + '</span> '
-                            +     '<i title="' + category.title + '" class="fa fa-fw ' + category.icon + '"></i>'
+                            +     '<i title="' + category.title + '" class="fas fa-fw ' + category.icon + '"></i>'
                             +   '</div>'
                             + '</td>';
 

@@ -160,7 +160,7 @@ function loadVersions(increment, scrollTop) {
                 if(version.author != null) {
                     var authorContainer = $("<div>");
                     authorContainer.addClass("author");
-                    authorContainer.append("<i class='fa fa-key'></i>");
+                    authorContainer.append("<i class='fas fa-key'></i>");
 
                     var author = $("<span>");
                     author.text(version.author);
@@ -173,7 +173,7 @@ function loadVersions(increment, scrollTop) {
                 }
 
                 var downloadContainer = $("<div>");
-                downloadContainer.append("<i class='fa fa-download'></i>");
+                downloadContainer.append("<i class='fas fa-download'></i>");
                 var downloads = $("<span>");
                 downloads.text(version.downloads + " Downloads");
                 downloadContainer.append(downloads);
@@ -190,7 +190,7 @@ function loadVersions(increment, scrollTop) {
                 downloadLink.addClass("download-link");
                 downloadLink.attr('href', version.href +  '/download/');
 
-                downloadLink.append("<i class='fa fa-2x fa-download'></i>");
+                downloadLink.append("<i class='fas fa-2x fa-download'></i>");
 
                 if(version.reviewState !== "Reviewed") {
                     var text;

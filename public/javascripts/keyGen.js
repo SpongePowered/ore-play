@@ -6,7 +6,7 @@ var KEY_TYPE_DEPLOYMENT = 0;
 
 function bindKeyGen(e) {
     e.click(function() {
-        var spinner = $(this).find('.fa-spinner').show();
+        var spinner = $(this).find('.spinner').toggle();
         var $this = $(this);
         $.ajax({
             url: '/api/projects/' + pluginId + '/keys/new',
@@ -19,12 +19,13 @@ function bindKeyGen(e) {
                 $this.removeClass('btn-key-gen btn-info')
                     .addClass('btn-key-revoke btn-danger')
                     .data('key-id', key.id)
-                    .text(keyRevokeText)
                     .off('click');
+                $this.find('.text').text(keyRevokeText);
+
                 bindKeyRevoke($this);
             },
             complete: function() {
-                spinner.hide();
+                e.find('.spinner').toggle();
             }
         })
     });
@@ -32,7 +33,7 @@ function bindKeyGen(e) {
 
 function bindKeyRevoke(e) {
     e.click(function() {
-        var spinner = $(this).find('.spinner').show();
+        var spinner = $(this).find('.spinner').toggle();
         var $this = $(this);
         $.ajax({
             url: '/api/projects/' + pluginId + '/keys/revoke',
@@ -42,12 +43,12 @@ function bindKeyRevoke(e) {
                 $('.input-key').val('');
                 $this.removeClass('btn-key-revoke btn-danger')
                     .addClass('btn-key-gen btn-info')
-                    .text(keyGenText)
                     .off('click');
+                $this.find('.text').text(keyGenText);
                 bindKeyGen($this);
             },
             complete: function() {
-                spinner.hide();
+                e.find('.spinner').toggle();
             }
         })
     });

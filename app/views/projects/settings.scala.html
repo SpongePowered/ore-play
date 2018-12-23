@@ -134,12 +134,12 @@
                                 @deploymentKey.map { key =>
                                   <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id.value">
                                       <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
-                                      @messages("project.settings.revokeKey")
+                                      <span class="text">@messages("project.settings.revokeKey")</span>
                                   </button>
                                 }.getOrElse {
                                     <button class="btn btn-info btn-block btn-key-gen">
                                         <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
-                                        @messages("project.settings.genKey")
+                                        <span class="text">@messages("project.settings.genKey")</span>
                                     </button>
                                 }
                             </div>

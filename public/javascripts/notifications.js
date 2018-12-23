@@ -23,13 +23,13 @@
 
 function markRead(notification) {
     var btn = notification.find('.btn-mark-read');
-    btn.removeClass('btn-mark-read fa-check').addClass('fa-spinner fa-spin');
+    toggleSpinner(btn.toggleClass('btn-mark-read fa-check'))
     $.ajax({
         type: 'post',
         url: '/notifications/read/' + notification.data('id'),
         data: { csrfToken: csrf },
         complete: function() {
-            btn.removeClass('fa-spinner fa-spin').addClass('btn-mark-read fa-check');
+            toggleSpinner(notification.find('.btn-mark-read').addClass('btn-mark-read fa-check'));
         },
         success: function() {
             notification.fadeOut('slow', function() {

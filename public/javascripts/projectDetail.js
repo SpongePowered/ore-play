@@ -134,7 +134,7 @@ function initBtnEdit() {
             var raw = editor.find('textarea').val();
             editor.hide();
             preview.show();
-            var icon = $(this).find('i').removeClass('fa-eye').addClass('fa-spinner fa-spin');
+            var icon = toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-eye'));
 
             $.ajax({
                 type: 'post',
@@ -142,7 +142,7 @@ function initBtnEdit() {
                 data: JSON.stringify({ raw: raw }),
                 contentType: 'application/json',
                 dataType: 'html',
-                complete: function() { icon.removeClass('fa-spinner fa-spin').addClass('fa-eye'); },
+                complete: function() {toggleSpinner($('.btn-preview').find('[data-fa-i2svg]').toggleClass('fa-eye')) },
                 success: function(cooked) { preview.html(cooked); }
             });
 
@@ -152,7 +152,7 @@ function initBtnEdit() {
 
         else if ($(this).hasClass('btn-save')) {
             // add spinner
-            $(this).find('i').removeClass('icon-save').addClass('fa-spinner fa-spin');
+            toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-save'));
         }
     });
 
@@ -236,6 +236,11 @@ $(function() {
             $(this).addClass('watching');
         }
 
+        $(this)
+            .find('[data-fa-i2svg]')
+            .toggleClass('fa-eye')
+            .toggleClass('fa-eye-slash');
+
         $.ajax({
             type: 'post',
             url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/watch/' + !watching,
@@ -254,11 +259,10 @@ $(function() {
             data: { csrfToken: csrf }
         });
 
-        var icon = $('#icon-star');
         if (increment > 0) {
-            icon.removeClass('fa-star-o').addClass('fa-star');
+            $(this).find('[data-fa-i2svg]').attr('data-prefix', 'fas');
         } else {
-            icon.removeClass('fa-star').addClass('fa-star-o');
+            $(this).find('[data-fa-i2svg]').attr('data-prefix', 'far');
         }
 
         increment *= -1;

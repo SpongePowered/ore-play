@@ -28,7 +28,7 @@ function bindExpand(e) {
                 }
                 $this.removeClass('page-expand')
                     .addClass('page-collapse')
-                    .find('i')
+                    .find('[data-fa-i2svg]')
                     .removeClass('fa-plus-square-o')
                     .addClass('fa-minus-square-o');
                 $this.off('click');
@@ -44,7 +44,7 @@ function bindCollapse(e) {
         $('.page-children[data-page-id="' + pageId + '"]').remove();
         $(this).removeClass('page-collapse')
             .addClass('page-expand')
-            .find('i')
+            .find('[data-fa-i2svg]')
             .removeClass('fa-minus-square-o')
             .addClass('fa-plus-square-o');
         $(this).off('click');
