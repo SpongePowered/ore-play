@@ -76,14 +76,12 @@ object PGPPublicKeyInfo {
                 Logger.debug("Master: " + isMaster)
                 Logger.debug("Expiration: " + expirationDate.getOrElse("None"))
 
-                Logger.debug("Users:")
-                val firstUser = key.getUserIDs.next()
-
-                if (isMaster) {
+                val firstUser = key.getUserIDs.asScala.toStream.headOption
+                firstUser.filter(_ => isMaster).map { firstUser =>
                   val emailIndexStart = firstUser.indexOf('<')
                   val emailIndexEnd   = firstUser.indexOf('>')
                   if (emailIndexStart == -1 || emailIndexEnd == -1)
-                    Some(Left("invalid user format?"))
+                    Left("invalid user format?")
                   else {
                     val userName = firstUser.substring(0, emailIndexStart).trim()
                     val email    = firstUser.substring(emailIndexStart + 1, emailIndexEnd)
@@ -92,10 +90,11 @@ object PGPPublicKeyInfo {
                     Logger.debug("Email: " + email)
 
                     if (isRevoked)
-                      Some(Left("Key is revoked?"))
-                    else Some(Right(PGPPublicKeyInfo(raw, userName, email, hexId, createdAt, expirationDate)))
+                      Left("Key is revoked?")
+                    else
+                      Right(PGPPublicKeyInfo(raw, userName, email, hexId, createdAt, expirationDate))
                   }
-                } else None
+                }
             }
         }
 

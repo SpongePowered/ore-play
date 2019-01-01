@@ -155,10 +155,12 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                       underlying = newProject,
                       settings = newSettings
                     )
+                    newPending.pendingVersion.project = newPending.underlying
 
                     val authors = newPending.file.data.authors.toList
                     (
-                      newPending.cache *> newPending.pendingVersion.cache,
+                      pendingProject.free *> newPending.cache *>
+                        pendingProject.pendingVersion.free *> newPending.pendingVersion.cache,
                       authors.filter(_ != request.user.name).parTraverse(users.withName(_).value),
                       this.forums.countUsers(authors),
                       newPending.underlying.owner.user
