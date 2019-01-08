@@ -178,12 +178,16 @@ object ProjectSettings {
       } yield u.name
 
       val updateProject = service.runDBIO(queryOwnerName.result).map { ownerName =>
-        project.copy(
+        val newProj = project.copy(
           category = Category.values.find(_.title == formData.categoryName).get,
           description = noneIfEmpty(formData.description),
           ownerId = formData.ownerId.getOrElse(project.ownerId),
           ownerName = ownerName.head
         )(project.config)
+
+        newProj.pendingVersion = newProj.pendingVersion.copy(projectUrl = newProj.key)
+
+        newProj
       }
 
       val updatedSettings = copy(

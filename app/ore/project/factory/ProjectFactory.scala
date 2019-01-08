@@ -112,7 +112,7 @@ trait ProjectFactory {
         for {
           t <- (project.channels.all, project.settings).parTupled
           (channels, settings) = t
-          version              = this.startVersion(
+          version = this.startVersion(
             plugin,
             project.pluginId,
             project.id.unsafeToOption,
