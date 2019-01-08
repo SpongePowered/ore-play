@@ -12,7 +12,7 @@ import models.project.{Project, ProjectSettings, Version, Visibility}
 import models.user.User
 import models.user.role.ProjectUserRole
 import ore.project.Category
-import ore.project.io.PluginFile
+import ore.project.io.PluginFileWithData
 import ore.{Cacheable, OreConfig}
 
 import cats.effect.{ContextShift, IO}
@@ -28,7 +28,7 @@ case class PendingProject(
     name: String,
     slug: String,
     visibility: Visibility,
-    file: PluginFile,
+    file: PluginFileWithData,
     channelName: String,
     description: Option[String] = None,
     category: Category = Category.Undefined,

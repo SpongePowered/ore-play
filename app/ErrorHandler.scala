@@ -26,10 +26,10 @@ class ErrorHandler @Inject()(
     implicit val requestImpl: RequestHeader = request
 
     Future.successful {
-      if (exception.cause.isInstanceOf[TimeoutException])
-        GatewayTimeout(views.html.errors.timeout())
-      else
-        InternalServerError(views.html.errors.error())
+      exception.cause match {
+        case _: TimeoutException => GatewayTimeout(views.html.errors.timeout())
+        case _                   => InternalServerError(views.html.errors.error())
+      }
     }
   }
 

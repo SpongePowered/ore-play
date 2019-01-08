@@ -46,12 +46,12 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
 
     toCreateProjects.unsafeToFuture().foreach { toCreate =>
       Logger.debug(s"Creating ${toCreate.size} topics...")
-      toCreate.foreach(this.api.createProjectTopic)
+      toCreate.foreach(this.api.createProjectTopic(_).unsafeToFuture())
     }
 
     dirtyTopicProjects.unsafeToFuture().foreach { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} topics...")
-      toUpdate.foreach(this.api.updateProjectTopic)
+      toUpdate.foreach(this.api.updateProjectTopic(_).unsafeToFuture())
     }
 
     Logger.debug("Done")

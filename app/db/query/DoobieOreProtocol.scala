@@ -60,9 +60,9 @@ trait DoobieOreProtocol {
   implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType] = enumeratumMeta(ProjectApiKeyType)
   implicit val visibilityMeta: Meta[Visibility]              = enumeratumMeta(Visibility)
   implicit def loggedActionMeta[Ctx]: Meta[LoggedAction[Ctx]] =
-    enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]]
+    enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]] // scalafix:ok
   implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
-    enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]]
+    enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]] // scalafix:ok
   implicit val trustMeta: Meta[Trust]             = enumeratumMeta(Trust)
   implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
 

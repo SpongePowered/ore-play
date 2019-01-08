@@ -19,9 +19,11 @@ object FileUtils {
     * @return The formatted string
     */
   def formatFileSize(size: Long): String = {
-    if (size < 1024) return s"$size B"
-    val z = (63 - numberOfLeadingZeros(size)) / 10
-    f"${size.toDouble / (1L << (z * 10))}%.1f ${" KMGTPE".charAt(z)}%sB"
+    if (size < 1024) s"$size B"
+    else {
+      val z = (63 - numberOfLeadingZeros(size)) / 10
+      f"${size.toDouble / (1L << (z * 10))}%.1f ${" KMGTPE".charAt(z)}%sB"
+    }
   }
 
   /**

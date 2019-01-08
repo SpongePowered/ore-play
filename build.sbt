@@ -41,10 +41,12 @@ scalacOptions ++= Seq(
   "-Ywarn-unused:locals",
   "-Ywarn-unused:patvars",
   "-Ywarn-unused:privates",
-  "-Ywarn-value-discard"
+  "-Ywarn-value-discard",
+  "-Yrangepos"
 )
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
 addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
+addCompilerPlugin(scalafixSemanticdb("4.1.0"))
 
 routesGenerator := InjectedRoutesGenerator
 routesImport ++= Seq(

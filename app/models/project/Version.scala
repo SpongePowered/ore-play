@@ -82,18 +82,7 @@ case class Version(
     service
       .access[Channel]()
       .get(this.channelId)
-      .getOrElse(throw new NoSuchElementException("None of Option"))
-
-  /**
-    * Returns the channel this version belongs to from the specified collection
-    * of channels if present.
-    *
-    * @param channels   Channels to search
-    * @return           Channel if present, None otherwise
-    */
-  def findChannelFrom(channels: Seq[Channel]): Option[Channel] =
-    if (channels == null) None
-    else channels.find(_.id.value == this.channelId)
+      .getOrElse(throw new NoSuchElementException("None of Option")) // scalafix:ok
 
   /**
     * Returns this Version's markdown description in HTML.

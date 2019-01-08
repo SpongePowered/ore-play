@@ -22,8 +22,8 @@ import models.project.{Page, Project}
 import models.user.{LoggedAction, UserActionLogger}
 import ore.permission.role.Role
 import ore.permission.{EditApiKeys, ReviewProjects}
-import ore.project.factory.{PendingVersion, ProjectFactory}
-import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
+import ore.project.factory.ProjectFactory
+import ore.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType._
 import ore.rest.{OreRestfulApi, OreWrites, ProjectApiKeyType}
 import ore.{OreConfig, OreEnv}
@@ -272,15 +272,9 @@ final class ApiController @Inject()(
                       .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
 
                     EitherT.fromEither[IO](pluginUpload).flatMap { data =>
-                      //TODO: We should get rid of this try
-                      try {
-                        this.factory
-                          .processSubsequentPluginUpload(data, owner, project)
-                          .leftMap(err => BadRequest(error("upload", err)))
-                      } catch {
-                        case e: InvalidPluginFileException =>
-                          EitherT.leftT[IO, PendingVersion](BadRequest(error("upload", e.getMessage)))
-                      }
+                      this.factory
+                        .processSubsequentPluginUpload(data, owner, project)
+                        .leftMap(err => BadRequest(error("upload", err)))
                     }
                   }
                   .map { pendingVersion =>

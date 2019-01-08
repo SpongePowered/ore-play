@@ -101,11 +101,11 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return       Session if found and has not expired
     */
   private def getSession(token: String): OptionT[IO, Session] =
-    this.service.access[Session]().find(_.token === token).subflatMap { session =>
-      if (session.hasExpired) {
-        service.delete(session)
-        None
-      } else Some(session)
+    this.service.find[Session](_.token === token).flatMap { session =>
+      if (session.hasExpired)
+        OptionT(service.delete(session).as(None: Option[Session]))
+      else
+        OptionT.some[IO](session)
     }
 
   /**

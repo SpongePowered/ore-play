@@ -10,7 +10,7 @@ import db.impl.OrePostgresDriver.api._
 import models.project._
 import models.user.User
 import ore.project.Dependency
-import ore.project.io.PluginFile
+import ore.project.io.PluginFileWithData
 import ore.{Cacheable, Color, Platform}
 
 import cats.effect.{ContextShift, IO}
@@ -37,7 +37,7 @@ case class PendingVersion(
     projectUrl: String,
     channelName: String,
     channelColor: Color,
-    plugin: PluginFile,
+    plugin: PluginFileWithData,
     createForumPost: Boolean,
     cacheApi: SyncCacheApi
 ) extends Cacheable {

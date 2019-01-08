@@ -26,9 +26,9 @@ import models.project._
 import models.user.{LoggedAction, UserActionLogger}
 import models.viewhelper.{ProjectData, VersionData}
 import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
-import ore.project.factory.{PendingProject, PendingVersion, ProjectFactory}
+import ore.project.factory.{PendingProject, ProjectFactory}
 import ore.project.io.DownloadType._
-import ore.project.io.{DownloadType, InvalidPluginFileException, PluginFile, PluginUpload}
+import ore.project.io.{DownloadType, PluginFile, PluginUpload}
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.StringUtils._
@@ -36,7 +36,7 @@ import util.syntax._
 import views.html.projects.{versions => views}
 
 import cats.data.{EitherT, OptionT}
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
 
@@ -261,15 +261,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       EitherT
         .fromEither[IO](uploadData)
         .flatMap { data =>
-          //TODO: We should get rid of this try
-          try {
-            this.factory
-              .processSubsequentPluginUpload(data, user, request.data.project)
-              .leftMap(err => Redirect(call).withError(err))
-          } catch {
-            case e: InvalidPluginFileException =>
-              EitherT.leftT[IO, PendingVersion](Redirect(call).withErrors(Option(e.getMessage).toList))
-          }
+          this.factory
+            .processSubsequentPluginUpload(data, user, request.data.project)
+            .leftMap(err => Redirect(call).withError(err))
         }
         .semiflatMap { pendingVersion =>
           pendingVersion
@@ -575,21 +569,22 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       implicit req: ProjectRequest[_]
   ): IO[Boolean] = {
     if (version.reviewState == ReviewState.Reviewed)
-      return IO.pure(true)
-
-    // check for confirmation
-    OptionT
-      .fromOption[IO](req.cookies.get(DownloadWarning.COOKIE + "_" + version.id.value).map(_.value).orElse(token))
-      .flatMap { tkn =>
-        this.warnings.find { warn =>
-          (warn.token === tkn) &&
-          (warn.versionId === version.id.value) &&
-          (warn.address === InetString(StatTracker.remoteAddress)) &&
-          warn.isConfirmed
+      IO.pure(true)
+    else {
+      // check for confirmation
+      OptionT
+        .fromOption[IO](req.cookies.get(DownloadWarning.COOKIE + "_" + version.id.value).map(_.value).orElse(token))
+        .flatMap { tkn =>
+          this.warnings.find { warn =>
+            (warn.token === tkn) &&
+            (warn.versionId === version.id.value) &&
+            (warn.address === InetString(StatTracker.remoteAddress)) &&
+            warn.isConfirmed
+          }
         }
-      }
-      .semiflatMap(warn => if (warn.hasExpired) service.delete(warn).as(false) else IO.pure(true))
-      .exists(identity)
+        .semiflatMap(warn => if (warn.hasExpired) service.delete(warn).as(false) else IO.pure(true))
+        .exists(identity)
+    }
   }
 
   private def _sendVersion(project: Project, version: Version)(implicit req: ProjectRequest[_]): IO[Result] =
@@ -825,10 +820,14 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 val jarName    = fileName.substring(0, fileName.lastIndexOf('.')) + ".jar"
                 val jarPath    = this.fileManager.env.tmp.resolve(project.ownerName).resolve(jarName)
 
-                Resource
-                  .fromAutoCloseable(IO(pluginFile.newJarStream))
+                pluginFile.newJarStream
                   .use { jarIn =>
-                    IO(copy(jarIn, jarPath, StandardCopyOption.REPLACE_EXISTING)).void
+                    jarIn
+                      .fold(
+                        e => IO.raiseError(new Exception(e)),
+                        is => IO(copy(is, jarPath, StandardCopyOption.REPLACE_EXISTING))
+                      )
+                      .void
                   }
                   .onError {
                     case e => IO(Logger.error("an error occurred while trying to send a plugin", e))

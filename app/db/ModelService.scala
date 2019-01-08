@@ -65,7 +65,7 @@ abstract class ModelService(val driver: JdbcProfile) {
   /**
     * Runs the specified db program on the DB.
     *
-    * @param action   Action to run
+    * @param program  Action to run
     * @return         Result
     */
   def runDbCon[R](program: ConnectionIO[R]): IO[R]
@@ -195,14 +195,17 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def collect[M <: Model: ModelQuery](
       filter: M#T => Rep[Boolean] = All,
-      sort: M#T => ColumnOrdered[_] = null,
+      sort: Option[M#T => ColumnOrdered[_]] = None,
       limit: Int = -1,
       offset: Int = -1
   ): IO[Seq[M]] = {
-    var query = newAction.filter(filter)
-    if (sort != null) query = query.sortBy(sort)
-    if (offset > -1) query = query.drop(offset)
-    if (limit > -1) query = query.take(limit)
+    type Q = Query[M#T, M, Seq]
+    val addSort   = (query: Q) => sort.fold(query)(sort => query.sortBy(sort))
+    val addOffset = (query: Q) => if (offset > -1) query.drop(offset) else query
+    val addLimit  = (query: Q) => if (limit > -1) query.take(limit) else query
+
+    val query = Seq(addSort, addOffset, addLimit).foldLeft(newAction.filter(filter))((q, f) => f(q))
+
     runDBIO(query.result)
   }
 
@@ -219,21 +222,5 @@ abstract class ModelService(val driver: JdbcProfile) {
       filter: M#T => Rep[Boolean],
       limit: Int = -1,
       offset: Int = -1
-  ): IO[Seq[M]] = collect(filter, null.asInstanceOf[M#T => ColumnOrdered[_]], limit, offset)
-
-  /**
-    * Sorts the models by the specified ColumnOrdered.
-    *
-    * @param sort       Ordering
-    * @param limit      Amount to take
-    * @param offset     Amount to drop
-    * @tparam M         Model
-    * @return           Sorted models
-    */
-  def sorted[M <: Model: ModelQuery](
-      sort: M#T => ColumnOrdered[_],
-      filter: M#T => Rep[Boolean] = All,
-      limit: Int = -1,
-      offset: Int = -1
-  ): IO[Seq[M]] = collect(filter, sort, limit, offset)
+  ): IO[Seq[M]] = collect(filter, limit = limit, offset = offset)
 }

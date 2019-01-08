@@ -241,7 +241,7 @@ final class OreConfig @Inject()(config: Configuration) {
   /** Asserts that the application is in debug mode. */
   def checkDebug(): Unit =
     if (!isDebug)
-      throw new UnsupportedOperationException("this function is supported in debug mode only")
+      throw new UnsupportedOperationException("this function is supported in debug mode only") // scalafix:ok
 
 }
 

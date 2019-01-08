@@ -29,7 +29,7 @@ import models.viewhelper.ScopedOrganizationData
 import ore.permission._
 import ore.permission.scope.GlobalScope
 import ore.project.factory.ProjectFactory
-import ore.project.io.{InvalidPluginFileException, PluginUpload, ProjectFiles}
+import ore.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType
 import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
@@ -89,30 +89,18 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     *
     * @return Result
     */
-  def upload(): Action[AnyContent] = UserLock().asyncF { implicit request =>
+  def upload(): Action[AnyContent] = UserLock().asyncEitherT { implicit request =>
     val user = request.user
-    this.factory.getUploadError(user) match {
-      case Some(error) => IO.pure(Redirect(self.showCreator()).withError(error))
-      case None =>
-        PluginUpload.bindFromRequest() match {
-          case None =>
-            IO.pure(Redirect(self.showCreator()).withError("error.noFile"))
-          case Some(uploadData) =>
-            try {
-              val plugin = this.factory.processPluginUpload(uploadData, user)
-              plugin match {
-                case Right(pluginFile) =>
-                  val project = this.factory.startProject(pluginFile)
-                  project.cache.as(Redirect(self.showCreatorWithMeta(project.ownerName, project.slug)))
-                case Left(errorMessage) =>
-                  IO.pure(Redirect(self.showCreator()).withError(errorMessage))
-              }
-            } catch {
-              case e: InvalidPluginFileException =>
-                IO.pure(Redirect(self.showCreator()).withErrors(Option(e.getMessage).toList))
-            }
-        }
-    }
+
+    val res = for {
+      _          <- EitherT.fromOption[IO](factory.getUploadError(user), ()).swap
+      uploadData <- EitherT.fromOption[IO](PluginUpload.bindFromRequest(), "error.noFile")
+      pluginFile <- factory.processPluginUpload(uploadData, user)
+      project = factory.startProject(pluginFile)
+      _ <- EitherT.right[String](project.cache)
+    } yield Redirect(self.showCreatorWithMeta(project.ownerName, project.slug))
+
+    res.leftMap(Redirect(self.showCreator()).withError(_))
   }
 
   /**
@@ -164,9 +152,10 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                   case (newProject, newSettings) =>
                     val newPending = newProject.copy(settings = newSettings)
 
-                    val authors = newPending.file.data.get.authors.toList
+                    val authors = newPending.file.data.authors.toList
                     (
-                      newPending.cache *> newPending.pendingVersion.cache,
+                      pendingProject.free *> newPending.cache *>
+                        pendingProject.pendingVersion.free *> newPending.pendingVersion.cache,
                       authors.filter(_ != request.user.name).parTraverse(users.withName(_).value),
                       this.forums.countUsers(authors),
                       newPending.owner
@@ -255,7 +244,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
     implicit request =>
-      this.stats.projectViewed(Ok(views.discuss(request.data, request.scoped)))
+      forums.isAvailableF.flatMap { isAvailable =>
+        this.stats.projectViewed(Ok(views.discuss(request.data, request.scoped, isAvailable)))
+      }
   }
 
   /**
@@ -281,7 +272,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               .flatMap(posterName => users.requestPermission(request.user, posterName, PostAsOrganization))
               .getOrElse(request.user)
           }
-          errors <- this.forums.postDiscussionReply(request.project, poster, formData.content)
+          errors <- this.forums.postDiscussionReply(request.project, poster, formData.content).swap.getOrElse(Nil)
         } yield Redirect(self.showDiscussion(author, slug)).withErrors(errors)
       }
     }

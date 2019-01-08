@@ -4,10 +4,11 @@ import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.file.Files._
 import java.nio.file.{Files, Path}
 
-import scala.util.Try
+import scala.collection.JavaConverters._
 
 import play.api.Logger
 
+import cats.effect.{Resource, SyncIO}
 import com.google.common.base.Preconditions._
 import org.bouncycastle.openpgp._
 import org.bouncycastle.openpgp.jcajce.{JcaPGPObjectFactory, JcaPGPPublicKeyRingCollection}
@@ -25,69 +26,65 @@ class PGPVerifier {
     * signature [[InputStream]] and public key [[InputStream]].
     *
     * @param doc Document bytes
-    * @param sigIn Signature input stream
-    * @param keyIn Public key input stream
+    * @param sigInF Signature input stream
+    * @param keyInF Public key input stream
     * @return True if verified, false otherwise
     */
-  def verifyDetachedSignature(doc: Array[Byte], sigIn: InputStream, keyIn: InputStream): Boolean = {
+  def verifyDetachedSignature(doc: Array[Byte], sigInF: SyncIO[InputStream], keyInF: SyncIO[InputStream]): Boolean = {
     Logger.debug("Processing signature...")
-    var result = false
-    try {
-      val in                        = PGPUtil.getDecoderStream(sigIn)
-      val factory                   = new JcaPGPObjectFactory(in)
-      var sigList: PGPSignatureList = null
+    import cats.syntax.all._
 
-      def getNextObject = Try(factory.nextObject()).toOption.orNull
+    val r: Resource[SyncIO, (InputStream, InputStream)] = for {
+      sigIn <- Resource.fromAutoCloseable(sigInF)
+      keyIn <- Resource.fromAutoCloseable(keyInF)
+    } yield (sigIn, keyIn)
 
-      var currentObject = getNextObject
-      if (currentObject == null) {
-        Logger.debug("<VERIFICATION FAILED> No PGP data found.")
-        return false
-      }
+    val run = r
+      .use {
+        case (sigIn, keyIn) =>
+          val optSigList = new JcaPGPObjectFactory(PGPUtil.getDecoderStream(sigIn))
+            .iterator()
+            .asScala
+            .collectFirst {
+              case signatureList: PGPSignatureList =>
+                val empty = signatureList.isEmpty
 
-      while (currentObject != null) {
-        currentObject match {
-          case signatureList: PGPSignatureList =>
-            if (signatureList.isEmpty) {
-              Logger.debug("<VERIFICATION FAILED> Empty signature list.")
-              return false
+                if (empty) {
+                  Logger.debug("<VERIFICATION FAILED> Empty signature list.")
+                  None
+                } else {
+                  Some(signatureList)
+                }
             }
-            sigList = signatureList
-          case e =>
-            Logger.debug("Unknown packet : " + e.getClass)
-        }
-        Logger.debug("Processed packet : " + currentObject.toString)
-        currentObject = getNextObject
+            .flatten
+
+          val ret = optSigList.fold {
+            Logger.debug("<VERIFICATION FAILED> No signature found.")
+            false
+          } { sigList =>
+            val sig    = sigList.get(0)
+            val pubKey = new JcaPGPPublicKeyRingCollection(keyIn).getPublicKey(sig.getKeyID)
+            if (pubKey == null) { // scalafix:ok
+              Logger.debug("<VERIFICATION FAILED> Invalid signature for public key.")
+              false
+            } else {
+              sig.init(new JcaPGPContentVerifierBuilderProvider().setProvider("BC"), pubKey)
+              sig.update(doc)
+              val result = sig.verify()
+              Logger.debug(if (result) "<VERIFICATION COMPLETE>" else "<VERIFICATION FAILED>")
+              result
+            }
+          }
+
+          SyncIO.pure(ret)
+      }
+      .recover {
+        case e: Exception =>
+          Logger.error("<VERIFICATION FAILED> An error occurred while verifying a signature.", e)
+          false
       }
 
-      if (sigList == null) {
-        Logger.debug("<VERIFICATION FAILED> No signature found.")
-        return false
-      }
-
-      val sig      = sigList.get(0)
-      val keyRings = new JcaPGPPublicKeyRingCollection(keyIn)
-      val pubKey   = keyRings.getPublicKey(sig.getKeyID)
-      if (pubKey == null) {
-        Logger.debug("<VERIFICATION FAILED> Invalid signature for public key.")
-        return false
-      }
-
-      sig.init(new JcaPGPContentVerifierBuilderProvider().setProvider("BC"), pubKey)
-      sig.update(doc)
-      result = sig.verify()
-    } catch {
-      case e: Exception =>
-        Logger.error("<VERIFICATION FAILED> An error occurred while verifying a signature.", e)
-        result = false
-    } finally {
-      sigIn.close()
-      keyIn.close()
-    }
-
-    Logger.debug(if (result) "<VERIFICATION COMPLETE>" else "<VERIFICATION FAILED>")
-
-    result
+    run.unsafeRunSync()
   }
 
   /**
@@ -104,7 +101,7 @@ class PGPVerifier {
     checkNotNull(key, "key is null", "")
     checkArgument(exists(docPath), "doc does not exist", "")
     checkArgument(exists(sigPath), "sig does not exist", "")
-    val keyStream = PGPUtil.getDecoderStream(new ByteArrayInputStream(key.getBytes))
-    verifyDetachedSignature(Files.readAllBytes(docPath), newInputStream(sigPath), keyStream)
+    val keyStream = SyncIO(PGPUtil.getDecoderStream(new ByteArrayInputStream(key.getBytes)))
+    verifyDetachedSignature(Files.readAllBytes(docPath), SyncIO(newInputStream(sigPath)), keyStream)
   }
 }

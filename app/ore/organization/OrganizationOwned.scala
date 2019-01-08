@@ -19,5 +19,5 @@ import simulacrum.typeclass
 
   /** Returns the Organization */
   def organization(a: A)(implicit organizations: OrganizationBase): IO[Organization] =
-    organizations.get(organizationId(a)).getOrElse(throw new NoSuchElementException("Get on None"))
+    organizations.get(organizationId(a)).getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 }

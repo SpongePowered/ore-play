@@ -62,18 +62,17 @@ case class ProjectSettings(
     import cats.instances.vector._
     Logger.debug("Saving project settings")
     Logger.debug(formData.toString)
+    val newOwnerId = formData.ownerId.getOrElse(project.ownerId)
 
-    val queryOwnerName = for {
-      u <- TableQuery[UserTable] if formData.ownerId.getOrElse(project.ownerId).bind === u.id
-    } yield u.name
+    val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
 
-    val updateProject = service.runDBIO(queryOwnerName.result).flatMap { ownerName =>
+    val updateProject = service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
       service.update(
         project.copy(
           category = Category.values.find(_.title == formData.categoryName).get,
           description = noneIfEmpty(formData.description),
-          ownerId = formData.ownerId.getOrElse(project.ownerId),
-          ownerName = ownerName.head
+          ownerId = newOwnerId,
+          ownerName = ownerName
         )
       )
     }
@@ -128,14 +127,15 @@ case class ProjectSettings(
           // Select member userIds
           service
             .runDBIO(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
-            .map { userIds =>
-              val roles = formData.roleUps.map { role =>
+            .flatMap { userIds =>
+              import cats.instances.list._
+              val roles = formData.roleUps.traverse { role =>
                 Role.projectRoles
                   .find(_.value == role)
-                  .getOrElse(throw new RuntimeException("supplied invalid role type"))
+                  .fold(IO.raiseError[Role](new RuntimeException("supplied invalid role type")))(IO.pure)
               }
 
-              userIds.zip(roles)
+              roles.map(xs => userIds.zip(xs))
             }
             .map {
               _.map {
@@ -148,9 +148,7 @@ case class ProjectSettings(
   }
 
   private def memberShipUpdate(userId: Rep[DbRef[User]]) =
-    for {
-      m <- TableQuery[ProjectRoleTable] if m.userId === userId
-    } yield m.roleType
+    TableQuery[ProjectRoleTable].filter(_.userId === userId).map(_.roleType)
 
   private lazy val updateMemberShip = Compiled(memberShipUpdate _)
 }

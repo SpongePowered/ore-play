@@ -76,7 +76,7 @@ case class User(
     *
     * @return Public key information
     */
-  def pgpPubKeyInfo: Option[PGPPublicKeyInfo] = this.pgpPubKey.flatMap(PGPPublicKeyInfo.decode)
+  def pgpPubKeyInfo: Option[PGPPublicKeyInfo] = this.pgpPubKey.flatMap(PGPPublicKeyInfo.decode(_).toOption)
 
   /**
     * Returns true if this user's PGP Public Key is ready for use.
@@ -176,8 +176,6 @@ case class User(
         Parallel.parMap2(projectTrust, globalTrust)(_ max _)
       case OrganizationScope(organizationId) =>
         Parallel.parMap2(Organization.getTrust(id.value, organizationId), globalTrust)(_ max _)
-      case _ =>
-        throw new RuntimeException("unknown scope: " + scope)
     }
   }
 
@@ -369,7 +367,7 @@ object User {
   def partial(
       id: ObjId[User],
       fullName: Option[String] = None,
-      name: String = null,
+      name: String = "",
       email: Option[String] = None,
       tagline: Option[String] = None,
       joinDate: Option[Timestamp] = None,

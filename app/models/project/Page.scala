@@ -14,6 +14,7 @@ import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
 import util.StringUtils._
+import java.util
 
 import cats.data.OptionT
 import cats.effect.IO
@@ -171,21 +172,22 @@ object Page {
 
   private object ExternalLinkResolver {
 
+    // scalafix:off
     class Factory(config: OreConfig) extends LinkResolverFactory {
-      override def getAfterDependents: Null = null
+      override def getAfterDependents: util.Set[Class[_ <: LinkResolverFactory]] = null
 
-      override def getBeforeDependents: Null = null
+      override def getBeforeDependents: util.Set[Class[_ <: LinkResolverFactory]] = null
 
-      override def affectsGlobalScope() = false
+      override def affectsGlobalScope(): Boolean = false
 
       override def create(context: LinkResolverContext) = new ExternalLinkResolver(this.config)
     }
-
+    // scalafix:on
   }
 
   private class ExternalLinkResolver(config: OreConfig) extends LinkResolver {
     override def resolveLink(node: Node, context: LinkResolverContext, link: ResolvedLink): ResolvedLink = {
-      if (link.getLinkType == LinkType.IMAGE || node.isInstanceOf[MailLink]) {
+      if (link.getLinkType == LinkType.IMAGE || node.isInstanceOf[MailLink]) { //scalafix:ok
         link
       } else {
         link.withStatus(LinkStatus.VALID).withUrl(wrapExternal(link.getUrl))
@@ -196,7 +198,7 @@ object Page {
       try {
         val uri  = new URI(urlString)
         val host = uri.getHost
-        if (uri.getScheme != null && host == null) {
+        if (uri.getScheme != null && host == null) { // scalafix:ok
           if (uri.getScheme == "mailto") {
             urlString
           } else {
@@ -206,7 +208,7 @@ object Page {
           val trustedUrlHosts = this.config.app.trustedUrlHosts
           val checkSubdomain = (trusted: String) =>
             trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1))
-          if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) {
+          if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) { // scalafix:ok
             urlString
           } else {
             controllers.routes.Application.linkOut(urlString).toString
@@ -218,7 +220,8 @@ object Page {
     }
   }
 
-  private var linkResolver: Option[LinkResolverFactory] = None
+  //TODO: Move this to it's own class and make it a val
+  private var linkResolver: Option[LinkResolverFactory] = None // scalafix:ok
 
   private lazy val (markdownParser, htmlRenderer) = {
     val options = new MutableDataSet()

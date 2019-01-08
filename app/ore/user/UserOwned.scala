@@ -17,5 +17,5 @@ import simulacrum.typeclass
 
   /** Returns the User */
   def user(a: A)(implicit users: UserBase): IO[User] =
-    users.get(userId(a)).getOrElse(throw new NoSuchElementException("None on get"))
+    users.get(userId(a)).getOrElse(throw new NoSuchElementException("None on get")) // scalafix:ok
 }

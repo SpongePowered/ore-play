@@ -52,7 +52,7 @@ trait Mailer extends Runnable {
   val suppressLogger = false
   val Logger         = play.api.Logger("Mailer")
 
-  private var session: Session = _
+  private var session: Session = _ // scalafix:ok
 
   private def log(msg: String): Unit = if (!this.suppressLogger) Logger.debug(msg)
 

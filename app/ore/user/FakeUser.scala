@@ -34,7 +34,8 @@ final class FakeUser @Inject()(config: OreConfig) {
         email = conf.email,
         joinDate = Some(new Timestamp(new Date().getTime)),
       )
-    else null
+    else sys.error("Tried to use disabled fake user")
+
 }
 
 object FakeUser { implicit def unwrap(fake: FakeUser): InsertFunc[User] = fake.user }

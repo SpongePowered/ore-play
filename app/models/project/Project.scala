@@ -176,7 +176,7 @@ case class Project(
     service
       .access[ProjectSettings]()
       .find(_.projectId === this.id.value)
-      .getOrElse(throw new NoSuchElementException("Get on None"))
+      .getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 
   /**
     * Sets whether this project is visible.
@@ -464,7 +464,7 @@ object Project {
       postId: Option[Int] = None,
       isTopicDirty: Boolean = false,
       visibility: Visibility = Public,
-      lastUpdated: Timestamp = null,
+      lastUpdated: Timestamp = Timestamp.from(Instant.now()),
       notes: JsValue = JsObject.empty
   ): InsertFunc[Project] =
     (id, time) =>
