@@ -11,7 +11,7 @@
 @(authors: Seq[(String, Option[Timestamp], Timestamp, Option[Role], Option[Role], Long)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @pageSize = @{ config.ore.users.authorPageSize }
-@direction = @{ if (ordering.startsWith("-")) "o-chevron-down" else "o-chevron-up" }
+@direction = @{ if (ordering.startsWith("-")) "chevron-down" else "chevron-up" }
 
 @isActiveSort(td: String) = @{
     var sort = ordering
@@ -32,19 +32,19 @@
                         <td></td>
                         <td @if(isActiveSort(UserOrdering.UserName)) { class="user-sort" } data-list="authors" >
                             Username
-                            @if(isActiveSort(UserOrdering.UserName)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.UserName)) { <i class="o fas fa-@direction"></i> }
                         </td>
                         <td @if(isActiveSort(UserOrdering.Role)) { class="user-sort" } data-list="authors" >
                             Roles
-                            @if(isActiveSort(UserOrdering.Role)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.Role)) { <i class="o fas fa-@direction"></i> }
                         </td>
                         <td @if(isActiveSort(UserOrdering.JoinDate)) { class="user-sort" } data-list="authors" >
                             Joined
-                            @if(isActiveSort(UserOrdering.JoinDate)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.JoinDate)) { <i class="o fas fa-@direction"></i> }
                         </td>
                         <td @if(isActiveSort(UserOrdering.Projects)) { class="user-sort" } data-list="authors" >
                             Projects
-                            @if(isActiveSort(UserOrdering.Projects)) { <i class="o @direction"></i> }
+                            @if(isActiveSort(UserOrdering.Projects)) { <i class="o fas fa-@direction"></i> }
                         </td>
                     </tr>
                 </thead>

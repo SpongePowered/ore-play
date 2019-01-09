@@ -29,8 +29,8 @@ function bindExpand(e) {
                 $this.removeClass('page-expand')
                     .addClass('page-collapse')
                     .find('[data-fa-i2svg]')
-                    .removeClass('fa-plus-square-o')
-                    .addClass('fa-minus-square-o');
+                    .removeClass('fa-plus-square')
+                    .addClass('fa-minus-square');
                 $this.off('click');
                 bindCollapse($this);
             }
@@ -45,8 +45,8 @@ function bindCollapse(e) {
         $(this).removeClass('page-collapse')
             .addClass('page-expand')
             .find('[data-fa-i2svg]')
-            .removeClass('fa-minus-square-o')
-            .addClass('fa-plus-square-o');
+            .removeClass('fa-minus-square')
+            .addClass('fa-plus-square');
         $(this).off('click');
         bindExpand($(this));
     });
