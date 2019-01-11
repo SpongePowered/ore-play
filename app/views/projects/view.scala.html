@@ -137,15 +137,14 @@ Base template for Project overview.
                                 </span>
                             }
 
-                            @if(request.hasUser && !p.project.isDeleted) {
+                            @if(!p.project.isDeleted) {
+                                @if(request.currentUser.exists(u => !p.project.isOwner(u))) {
+                                    <script nonce="@nonce">
+                                            var projectOwner = "@p.project.ownerName";
+                                            var projectSlug = "@p.project.slug";
+                                            var alreadyStarred = @sp.starred;
+                                    </script>
 
-                                <script nonce="@nonce">
-                                    var projectOwner = "@p.project.ownerName";
-                                    var projectSlug = "@p.project.slug";
-                                    var alreadyStarred = @sp.starred;
-                                </script>
-
-                                @if(!p.project.isOwner(request.currentUser.get)) {
                                     <button class="btn btn-default btn-star">
                                         <i id="icon-star" @if(sp.starred) {
                                             class="fa fa-star"
@@ -153,16 +152,16 @@ Base template for Project overview.
                                             class="fa fa-star-o" }></i>
                                         <span class="starred"> @p.project.starCount</span>
                                     </button>
+
+                                    <button class="btn btn-watch btn-default @if(sp.watching) { watching }">
+                                        <i class="fa fa-eye"></i>
+                                        <span class="watch-status">@if(sp.watching) { Unwatch } else { Watch }</span>
+                                    </button>
                                 } else {
                                     <span class="minor stars-static">
                                         <i class="fa fa-star"></i> @p.project.starCount
                                     </span>
                                 }
-
-                                <button class="btn btn-watch btn-default @if(sp.watching) { watching }">
-                                    <i class="fa fa-eye"></i>
-                                    <span class="watch-status">@if(sp.watching) { Unwatch } else { Watch }</span>
-                                </button>
                             }
 
                             <!-- Flag button -->

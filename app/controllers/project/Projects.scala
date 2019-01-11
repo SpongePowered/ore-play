@@ -381,6 +381,19 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       request.user.setWatching(request.project, watching).as(Ok)
     }
 
+  def stargazers(author: String, slug: String, page: Option[Int]): Action[AnyContent] =
+    ProjectAction(author, slug).asyncF { implicit request =>
+      val pageSize = this.config.ore.projects.stargazersPageSize
+      val pageNum  = math.max(page.getOrElse(1), 1)
+      val offset   = (pageNum - 1) * pageSize
+
+      val query =
+        request.project.stars.allQueryFromChild(request.project).drop(offset).take(pageSize).sortBy(_.name).result
+      service.runDBIO(query).map { users =>
+        Ok(views.stargazers(request.data, request.scoped, users, pageNum, pageSize))
+      }
+    }
+
   /**
     * Sets the "starred" status of a Project for the current user.
     *
