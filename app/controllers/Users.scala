@@ -89,7 +89,7 @@ class Users @Inject()(
         val nonce = SingleSignOnConsumer.nonce
         this.signOns.add(SignOn.partial(nonce = nonce)) *> redirectToSso(
           this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
-        )
+        ).map(_.flashing("url" -> returnPath.getOrElse(request.path)))
       } else {
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
