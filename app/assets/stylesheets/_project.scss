@@ -236,3 +236,18 @@
 .input-key {
   cursor: text !important;
 }
+
+.stargazers {
+  .media, .extra-divider {
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 15px;
+  }
+
+  .extra-divider {
+    margin-bottom: 15px;
+  }
+
+  .next-back {
+    margin-top: 15px;
+  }
+}
