@@ -91,6 +91,7 @@ error.org.createLimit           =   You may only create up to {0} organizations!
 error.org.cannotCreate          =   Unable to create an organization at this time.
 error.org.cannotUpdateAvatar    =   Unable to update avatar at this time.
 error.version.invalidPluginId   =   The uploaded plugin ID must match your project's plugin ID.
+error.version.illegalVersion    =   The name of this version is not allowed.
 error.version.duplicate         =   Found a duplicate file in project. Plugin files may only be uploaded once.
 error.version.noDependency.sponge = This project is marked as a Sponge plugin but your uploaded file contains no dependency to Sponge. Please add a dependency to spongeapi and re-upload.
 error.version.noDependency.forge = This project is marked as a Forge mod but your uploaded file contains no dependency to Forge. Please add a dependency to forge and re-upload.

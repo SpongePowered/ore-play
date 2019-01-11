@@ -108,6 +108,7 @@ trait ProjectFactory {
     this
       .processPluginUpload(uploadData, owner)
       .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
+      .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
       .flatMapF { plugin =>
         for {
           t <- (project.channels.all, project.settings).parTupled
