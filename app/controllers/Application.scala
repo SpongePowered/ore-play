@@ -114,7 +114,7 @@ final class Application @Inject()(forms: OreForms)(
     val q                           = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
 
     val pageSize = this.config.ore.projects.initLoad
-    val pageNum  = math.min(page.getOrElse(1), 1)
+    val pageNum  = math.max(page.getOrElse(1), 1)
     val offset   = (pageNum - 1) * pageSize
 
     val versionIdsOnPlatform =
