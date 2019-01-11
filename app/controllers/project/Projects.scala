@@ -381,7 +381,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       request.user.setWatching(request.project, watching).as(Ok)
     }
 
-  def stargazers(author: String, slug: String, page: Option[Int]): Action[AnyContent] =
+  def showStargazers(author: String, slug: String, page: Option[Int]): Action[AnyContent] =
     ProjectAction(author, slug).asyncF { implicit request =>
       val pageSize = this.config.ore.projects.stargazersPageSize
       val pageNum  = math.max(page.getOrElse(1), 1)

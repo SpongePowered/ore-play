@@ -43,10 +43,10 @@
             <div class="col-xs-12">
                 <div class="pull-right next-back">
                     @if(page > 1) {
-                        <a href="@routes.Projects.stargazers(p.project.ownerName, p.project.name, Some(page - 1))" class="btn btn-default"><i class="fa fa-arrow-left"></i></a>
+                        <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.name, Some(page - 1))" class="btn btn-default"><i class="fa fa-arrow-left"></i></a>
                     }
                     @if(p.project.starCount > pageSize * page) {
-                        <a href="@routes.Projects.stargazers(p.project.ownerName, p.project.name, Some(page + 1))" class="btn btn-default"><i class="fa fa-arrow-right"></i></a>
+                        <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.name, Some(page + 1))" class="btn btn-default"><i class="fa fa-arrow-right"></i></a>
                     }
                 </div>
             </div>
