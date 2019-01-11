@@ -15,7 +15,7 @@ import play.api.libs.ws.WSClient
 
 import ore.OreConfig
 import security.CryptoUtils
-import util.OreMDCCtx
+import util.OreMDC
 
 import akka.http.scaladsl.model.Uri
 import cats.data.OptionT
@@ -39,7 +39,7 @@ trait SingleSignOnConsumer {
   val Algo         = "HmacSHA256"
 
   private val Logger    = scalalogging.Logger("SSO")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Returns a future result of whether SSO is available.
@@ -112,7 +112,7 @@ trait SingleSignOnConsumer {
     */
   def authenticate(payload: String, sig: String)(
       isNonceValid: String => IO[Boolean]
-  )(implicit mdc: OreMDCCtx): OptionT[IO, SpongeUser] = {
+  )(implicit mdc: OreMDC): OptionT[IO, SpongeUser] = {
     MDCLogger.debug("Authenticating SSO payload...")
     MDCLogger.debug(payload)
     MDCLogger.debug("Signed with : " + sig)

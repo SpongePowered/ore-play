@@ -23,7 +23,7 @@ import ore.project.io._
 import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
-import util.OreMDCCtx
+import util.OreMDC
 import util.StringUtils._
 
 import akka.actor.ActorSystem
@@ -62,7 +62,7 @@ trait ProjectFactory {
     */
   def processPluginUpload(uploadData: PluginUpload, owner: User)(
       implicit messages: Messages,
-      mdc: OreMDCCtx
+      mdc: OreMDC
   ): EitherT[IO, String, PluginFileWithData] = {
     val pluginFileName    = uploadData.pluginFileName
     val signatureFileName = uploadData.signatureFileName
@@ -106,7 +106,7 @@ trait ProjectFactory {
   def processSubsequentPluginUpload(uploadData: PluginUpload, owner: User, project: Project)(
       implicit messages: Messages,
       cs: ContextShift[IO],
-      mdc: OreMDCCtx
+      mdc: OreMDC
   ): EitherT[IO, String, PendingVersion] =
     this
       .processPluginUpload(uploadData, owner)

@@ -9,18 +9,18 @@ import models.user.{Organization, User}
 import com.typesafe.scalalogging.CanLog
 import org.slf4j.MDC
 
-sealed trait OreMDCCtx
-object OreMDCCtx {
-  case object NoMDCCtx                             extends OreMDCCtx
-  case class RequestMDCCtx(request: OreRequest[_]) extends OreMDCCtx
+sealed trait OreMDC
+object OreMDC {
+  case object NoMDC                             extends OreMDC
+  case class RequestMDC(request: OreRequest[_]) extends OreMDC
 
   object Implicits {
-    implicit val noCtx: OreMDCCtx = NoMDCCtx
+    implicit val noCtx: OreMDC = NoMDC
   }
 
-  implicit def oreRequestToCtx[A <: OreRequest[_]](implicit request: A): OreMDCCtx = RequestMDCCtx(request)
+  implicit def oreRequestToCtx[A <: OreRequest[_]](implicit request: A): OreMDC = RequestMDC(request)
 
-  implicit val canLogOreMDCCtx: CanLog[OreMDCCtx] = new CanLog[OreMDCCtx] {
+  implicit val canLogOreMDCCtx: CanLog[OreMDC] = new CanLog[OreMDC] {
 
     def putUser(user: User): Unit = {
       MDC.put("currentUserId", user.id.value.toString)
@@ -37,9 +37,9 @@ object OreMDCCtx {
       MDC.put("currentOrgaName", orga.name)
     }
 
-    override def logMessage(originalMsg: String, a: OreMDCCtx): String = {
+    override def logMessage(originalMsg: String, a: OreMDC): String = {
       a match {
-        case RequestMDCCtx(req) =>
+        case RequestMDC(req) =>
           //I'd prefer to do these with one match, but for some reason Scala doesn't let me
           req match {
             case req: ScopedRequest[_] => putUser(req.user)
@@ -56,13 +56,13 @@ object OreMDCCtx {
             case _                           =>
           }
 
-        case NoMDCCtx =>
+        case NoMDC =>
       }
 
       originalMsg
     }
 
-    override def afterLog(a: OreMDCCtx): Unit = {
+    override def afterLog(a: OreMDC): Unit = {
       MDC.remove("currentUserId")
       MDC.remove("currentUserName")
       MDC.remove("currentProjectId")

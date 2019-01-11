@@ -20,7 +20,7 @@ import ore.permission.scope._
 import ore.user.Prompt
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.{SpongeAuthApi, SpongeUser}
-import util.OreMDCCtx
+import util.OreMDC
 import util.StringUtils._
 import util.syntax._
 
@@ -206,7 +206,7 @@ case class User(
       implicit request: Request[_],
       service: ModelService,
       auth: SpongeAuthApi,
-      mdc: OreMDCCtx
+      mdc: OreMDC
   ): IO[Boolean] = {
     checkNotNull(request, "null request", "")
     UserBase().current

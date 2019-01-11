@@ -5,7 +5,7 @@ import java.util.Date
 
 import scala.collection.JavaConverters._
 
-import util.OreMDCCtx
+import util.OreMDC
 
 import cats.effect.{Resource, SyncIO}
 import com.typesafe.scalalogging
@@ -35,8 +35,8 @@ case class PGPPublicKeyInfo(
 object PGPPublicKeyInfo {
 
   val Logger = scalalogging.Logger("PGP")
-  val MDCLogger: LoggerTakingImplicit[OreMDCCtx] =
-    scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
+  val MDCLogger: LoggerTakingImplicit[OreMDC] =
+    scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Decodes a raw string into a [[PGPPublicKeyInfo]]. This method looks for

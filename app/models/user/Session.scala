@@ -7,7 +7,7 @@ import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
 import db.{InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
-import util.OreMDCCtx
+import util.OreMDC
 
 import cats.data.OptionT
 import cats.effect.IO
@@ -40,7 +40,7 @@ case class Session(
     * @param users UserBase instance
     * @return User session belongs to
     */
-  def user(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDCCtx): OptionT[IO, User] =
+  def user(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
     users.withName(this.username)
 }
 object Session {

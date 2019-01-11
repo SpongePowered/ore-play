@@ -6,7 +6,7 @@ import java.nio.file.{Files, Path}
 
 import scala.collection.JavaConverters._
 
-import util.OreMDCCtx
+import util.OreMDC
 
 import cats.effect.{Resource, SyncIO}
 import com.google.common.base.Preconditions._
@@ -31,7 +31,7 @@ class PGPVerifier {
     * @return True if verified, false otherwise
     */
   def verifyDetachedSignature(doc: Array[Byte], sigInF: SyncIO[InputStream], keyInF: SyncIO[InputStream])(
-      implicit mdc: OreMDCCtx
+      implicit mdc: OreMDC
   ): Boolean = {
     MDCLogger.debug("Processing signature...")
     import cats.syntax.all._
@@ -98,7 +98,7 @@ class PGPVerifier {
     * @param key      Public key content
     * @return         True if verified, false otherwise
     */
-  def verifyDetachedSignature(docPath: Path, sigPath: Path, key: String)(implicit mdc: OreMDCCtx): Boolean = {
+  def verifyDetachedSignature(docPath: Path, sigPath: Path, key: String)(implicit mdc: OreMDC): Boolean = {
     checkNotNull(docPath, "docPath is null", "")
     checkNotNull(key, "key is null", "")
     checkArgument(exists(docPath), "doc does not exist", "")

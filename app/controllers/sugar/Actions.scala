@@ -22,7 +22,7 @@ import models.viewhelper._
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.{IOUtils, OreMDCCtx}
+import util.{IOUtils, OreMDC}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
@@ -45,14 +45,14 @@ trait Actions extends Calls with ActionHelpers {
   def organizations: OrganizationBase = OrganizationBase()
 
   private val PermsLogger    = scalalogging.Logger("Permissions")
-  private val MDCPermsLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](PermsLogger.underlying)
+  private val MDCPermsLogger = scalalogging.Logger.takingImplicit[OreMDC](PermsLogger.underlying)
 
   val AuthTokenName = "_oretoken"
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
   def onUnauthorized(implicit request: Request[_]): Future[Result] = {
     val noRedirect = request.flash.get("noRedirect")
-    import OreMDCCtx.Implicits.noCtx
+    import OreMDC.Implicits.noCtx
     users.current.isEmpty
       .map { currentUserEmpty =>
         if (noRedirect.isEmpty && currentUserEmpty)
@@ -80,7 +80,7 @@ trait Actions extends Calls with ActionHelpers {
       private def log(success: Boolean, request: R[_]): Unit = {
         val lang = if (success) "GRANTED" else "DENIED"
         MDCPermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")(
-          OreMDCCtx.RequestMDCCtx(request)
+          OreMDC.RequestMDC(request)
         )
       }
 
@@ -193,7 +193,7 @@ trait Actions extends Calls with ActionHelpers {
       val auth = for {
         ssoSome <- OptionT.fromOption[IO](sso)
         sigSome <- OptionT.fromOption[IO](sig)
-        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)(OreMDCCtx.RequestMDCCtx(request))
+        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)(OreMDC.RequestMDC(request))
       } yield res
 
       auth
@@ -211,7 +211,7 @@ trait Actions extends Calls with ActionHelpers {
 
       def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
         users
-          .requestPermission(request.user, username, EditSettings)(auth, cs, OreMDCCtx.RequestMDCCtx(request))
+          .requestPermission(request.user, username, EditSettings)(auth, cs, OreMDC.RequestMDC(request))
           .transform {
             case None    => Some(Unauthorized) // No Permission
             case Some(_) => None // Permission granted => No Filter
@@ -245,7 +245,7 @@ trait Actions extends Calls with ActionHelpers {
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: Request[A]): Future[Either[Result, AuthRequest[A]]] =
-      maybeAuthRequest(request, users.current(request, auth, OreMDCCtx.NoMDCCtx))
+      maybeAuthRequest(request, users.current(request, auth, OreMDC.NoMDC))
 
   }
 
@@ -417,6 +417,6 @@ trait Actions extends Calls with ActionHelpers {
     organizations.withName(organization)
 
   def getUserData(request: OreRequest[_], userName: String)(implicit cs: ContextShift[IO]): OptionT[IO, UserData] =
-    users.withName(userName)(auth, OreMDCCtx.RequestMDCCtx(request)).semiflatMap(UserData.of(request, _))
+    users.withName(userName)(auth, OreMDC.RequestMDC(request)).semiflatMap(UserData.of(request, _))
 
 }

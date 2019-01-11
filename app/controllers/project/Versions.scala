@@ -31,7 +31,7 @@ import ore.project.io.DownloadType._
 import ore.project.io.{DownloadType, PluginFile, PluginUpload}
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.OreMDCCtx
+import util.OreMDC
 import util.StringUtils._
 import util.syntax._
 import views.html.projects.{versions => views}
@@ -725,7 +725,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   private def confirmDownload0(versionId: DbRef[Version], downloadType: Option[Int], token: String)(
       implicit requestHeader: Request[_],
-      mdc: OreMDCCtx
+      mdc: OreMDC
   ): OptionT[IO, UnsafeDownload] = {
     val addr = InetString(StatTracker.remoteAddress)
     val dlType = downloadType

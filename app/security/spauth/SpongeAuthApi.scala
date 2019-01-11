@@ -11,7 +11,7 @@ import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
 
 import ore.OreConfig
-import _root_.util.OreMDCCtx
+import _root_.util.OreMDC
 import _root_.util.WSUtils.parseJson
 
 import cats.ApplicativeError
@@ -35,7 +35,7 @@ trait SpongeAuthApi {
   val timeout: Duration = 10.seconds
 
   private val Logger    = scalalogging.Logger("SpongeAuth")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Creates a "dummy" user that cannot log in and has no password.
@@ -44,14 +44,14 @@ trait SpongeAuthApi {
     * @param email    Email
     * @return         Newly created user
     */
-  def createDummyUser(username: String, email: String)(implicit mdc: OreMDCCtx): EitherT[IO, String, SpongeUser] =
+  def createDummyUser(username: String, email: String)(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] =
     doCreateUser(username, email, None)
 
   private def doCreateUser(
       username: String,
       email: String,
       password: Option[String],
-  )(implicit mdc: OreMDCCtx): EitherT[IO, String, SpongeUser] = {
+  )(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] = {
     checkNotNull(username, "null username", "")
     checkNotNull(email, "null email", "")
     val params = Map(
@@ -72,7 +72,7 @@ trait SpongeAuthApi {
     * @param username Username to lookup
     * @return         User with username
     */
-  def getUser(username: String)(implicit mdc: OreMDCCtx): OptionT[IO, SpongeUser] = {
+  def getUser(username: String)(implicit mdc: OreMDC): OptionT[IO, SpongeUser] = {
     checkNotNull(username, "null username", "")
     val url = route("/api/users/" + username) + s"?apiKey=$apiKey"
     readUser(IO.fromFuture(IO(this.ws.url(url).withRequestTimeout(timeout).get()))).toOption
@@ -87,7 +87,7 @@ trait SpongeAuthApi {
   def getChangeAvatarToken(
       requester: String,
       organization: String
-  )(implicit mdc: OreMDCCtx): EitherT[IO, String, ChangeAvatarToken] = {
+  )(implicit mdc: OreMDC): EitherT[IO, String, ChangeAvatarToken] = {
     val params = Map(
       "api-key"          -> Seq(this.apiKey),
       "request_username" -> Seq(requester),
@@ -103,7 +103,7 @@ trait SpongeAuthApi {
 
   private def readChangeAvatarToken(
       response: IO[WSResponse]
-  )(implicit mdc: OreMDCCtx): EitherT[IO, String, ChangeAvatarToken] = {
+  )(implicit mdc: OreMDC): EitherT[IO, String, ChangeAvatarToken] = {
     val parsed = OptionT(response.map(parseJson(_, MDCLogger)))
       .map(json => json.as[ChangeAvatarToken])
       .toRight("Failed to parse json response")
@@ -117,7 +117,7 @@ trait SpongeAuthApi {
     }
   }
 
-  private def readUser(response: IO[WSResponse])(implicit mdc: OreMDCCtx): EitherT[IO, String, SpongeUser] = {
+  private def readUser(response: IO[WSResponse])(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] = {
     EitherT(
       OptionT(response.map(parseJson(_, MDCLogger)))
         .map { json =>

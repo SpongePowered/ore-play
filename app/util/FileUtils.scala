@@ -10,7 +10,7 @@ import com.typesafe.scalalogging
 object FileUtils {
 
   private val Logger    = scalalogging.Logger("FileUtils")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Formats the number of bytes into a human readable file size
@@ -34,7 +34,7 @@ object FileUtils {
     *
     * @param dir The directory to delete
     */
-  def deleteDirectory(dir: Path)(implicit mdc: OreMDCCtx): Unit = {
+  def deleteDirectory(dir: Path)(implicit mdc: OreMDC): Unit = {
     if (Files.exists(dir)) {
       Files.walkFileTree(dir, new DeleteFileVisitor)
       ()
@@ -48,7 +48,7 @@ object FileUtils {
     *
     * @param dir The directory to clean
     */
-  def cleanDirectory(dir: Path)(implicit mdc: OreMDCCtx): Unit = {
+  def cleanDirectory(dir: Path)(implicit mdc: OreMDC): Unit = {
     if (Files.exists(dir)) {
       Files.walkFileTree(dir, new CleanFileVisitor(dir))
       ()
@@ -61,7 +61,7 @@ object FileUtils {
     * Represents a [[java.nio.file.FileVisitor]] which will recursively delete a directory
     * with all its contents.
     */
-  private class DeleteFileVisitor(implicit mdc: OreMDCCtx) extends SimpleFileVisitor[Path] {
+  private class DeleteFileVisitor(implicit mdc: OreMDC) extends SimpleFileVisitor[Path] {
 
     override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
       if (Files.exists(file)) {
@@ -89,7 +89,7 @@ object FileUtils {
     *
     * @param dir The directory to clean
     */
-  private class CleanFileVisitor(private val dir: Path)(implicit mdc: OreMDCCtx) extends DeleteFileVisitor {
+  private class CleanFileVisitor(private val dir: Path)(implicit mdc: OreMDC) extends DeleteFileVisitor {
 
     override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
       if (dir != this.dir) {

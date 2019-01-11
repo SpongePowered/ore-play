@@ -12,7 +12,7 @@ import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
-import util.OreMDCCtx
+import util.OreMDC
 import util.syntax._
 
 import cats.data.OptionT
@@ -84,7 +84,7 @@ case class Organization(
     *
     * @return This Organization as a User
     */
-  def toUser(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDCCtx): OptionT[IO, User] =
+  def toUser(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
     users.withName(this.username)
 
   override val name: String = this.username

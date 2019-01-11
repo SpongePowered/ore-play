@@ -7,7 +7,7 @@ import ore.OreConfig
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
-import util.{OreMDCCtx, StringUtils}
+import util.{OreMDC, StringUtils}
 
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.{ContextShift, IO}
@@ -17,7 +17,7 @@ import com.typesafe.scalalogging
 class OrganizationBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[Organization] {
 
   private val Logger    = scalalogging.Logger("Organizations")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Creates a new [[Organization]]. This method creates a new user on the
@@ -31,7 +31,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole.Partial]
-  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDCCtx): EitherT[IO, String, Organization] = {
+  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, String, Organization] = {
     import cats.instances.vector._
     MDCLogger.debug("Creating Organization...")
     MDCLogger.debug("Name     : " + name)
