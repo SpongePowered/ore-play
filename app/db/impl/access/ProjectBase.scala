@@ -12,9 +12,9 @@ import discourse.OreDiscourseApi
 import models.project.{Channel, Page, Project, Version, Visibility}
 import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
-import util.FileUtils
 import util.StringUtils._
 import util.syntax._
+import util.{FileUtils, OreMDCCtx}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
@@ -106,7 +106,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     *
     * @param project Project to save icon for
     */
-  def savePendingIcon(project: Project): Unit = {
+  def savePendingIcon(project: Project)(implicit mdc: OreMDCCtx): Unit = {
     this.fileManager.getPendingIconPath(project).foreach { iconPath =>
       val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
       if (notExists(iconDir))
@@ -193,7 +193,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   /**
     * Irreversibly deletes this version.
     */
-  def deleteVersion(version: Version)(implicit cs: ContextShift[IO]): IO[Project] = {
+  def deleteVersion(version: Version)(implicit cs: ContextShift[IO], mdc: OreMDCCtx): IO[Project] = {
     for {
       proj       <- prepareDeleteVersion(version)
       channel    <- version.channel
@@ -213,7 +213,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     *
     * @param project Project to delete
     */
-  def delete(project: Project)(implicit forums: OreDiscourseApi): IO[Int] = {
+  def delete(project: Project)(implicit forums: OreDiscourseApi, mdc: OreMDCCtx): IO[Int] = {
     FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
     val eff =
       if (project.topicId.isDefined)

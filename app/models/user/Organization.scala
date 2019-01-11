@@ -4,7 +4,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.Named
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db._
 import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
 import ore.permission.role.{Role, Trust}
@@ -12,6 +12,7 @@ import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
+import util.OreMDCCtx
 import util.syntax._
 
 import cats.data.OptionT
@@ -83,7 +84,7 @@ case class Organization(
     *
     * @return This Organization as a User
     */
-  def toUser(implicit users: UserBase, auth: SpongeAuthApi): OptionT[IO, User] =
+  def toUser(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDCCtx): OptionT[IO, User] =
     users.withName(this.username)
 
   override val name: String = this.username

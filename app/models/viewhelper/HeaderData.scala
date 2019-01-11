@@ -13,7 +13,6 @@ import ore.permission.scope.GlobalScope
 import cats.Parallel
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
-import org.slf4j.MDC
 import slick.lifted.TableQuery
 
 /**
@@ -95,10 +94,6 @@ object HeaderData {
   private def getHeaderData(
       user: User
   )(implicit service: ModelService, cs: ContextShift[IO]) = {
-
-    MDC.put("currentUserId", user.id.toString)
-    MDC.put("currentUserName", user.name)
-
     perms(user).flatMap { perms =>
       val query = Query.apply(
         (

@@ -11,11 +11,12 @@ import models.user.{Session, User}
 import ore.OreConfig
 import ore.permission.Permission
 import security.spauth.SpongeAuthApi
+import util.OreMDCCtx
 import util.StringUtils._
 
 import cats.data.OptionT
-import cats.syntax.all._
 import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 
 /**
   * Represents a central location for all Users.
@@ -32,7 +33,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @param username Username of user
     * @return User if found, None otherwise
     */
-  def withName(username: String)(implicit auth: SpongeAuthApi): OptionT[IO, User] =
+  def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDCCtx): OptionT[IO, User] =
     this.find(equalsIgnoreCase(_.name, username)).orElse {
       auth.getUser(username).map(User.partialFromSponge).semiflatMap(this.add)
     }
@@ -48,7 +49,8 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     */
   def requestPermission(user: User, name: String, perm: Permission)(
       implicit auth: SpongeAuthApi,
-      cs: ContextShift[IO]
+      cs: ContextShift[IO],
+      mdc: OreMDCCtx
   ): OptionT[IO, User] = {
     this.withName(name).flatMap { toCheck =>
       if (user == toCheck) OptionT.pure[IO](user) // Same user
@@ -114,7 +116,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @param session  Current session
     * @return         Authenticated user, if any, None otherwise
     */
-  def current(implicit session: Request[_], authApi: SpongeAuthApi): OptionT[IO, User] =
+  def current(implicit session: Request[_], authApi: SpongeAuthApi, mdc: OreMDCCtx): OptionT[IO, User] =
     OptionT
       .fromOption[IO](session.cookies.get("_oretoken"))
       .flatMap(cookie => getSession(cookie.value))

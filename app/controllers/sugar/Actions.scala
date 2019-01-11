@@ -22,12 +22,12 @@ import models.viewhelper._
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.IOUtils
+import util.{IOUtils, OreMDCCtx}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
-import org.slf4j.MDC
+import com.typesafe.scalalogging
 
 /**
   * A set of actions used by Ore.
@@ -44,13 +44,15 @@ trait Actions extends Calls with ActionHelpers {
   def projects: ProjectBase           = ProjectBase()
   def organizations: OrganizationBase = OrganizationBase()
 
-  val PermsLogger = play.api.Logger("Permissions")
+  private val PermsLogger    = scalalogging.Logger("Permissions")
+  private val MDCPermsLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](PermsLogger.underlying)
 
   val AuthTokenName = "_oretoken"
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
   def onUnauthorized(implicit request: Request[_]): Future[Result] = {
     val noRedirect = request.flash.get("noRedirect")
+    import OreMDCCtx.Implicits.noCtx
     users.current.isEmpty
       .map { currentUserEmpty =>
         if (noRedirect.isEmpty && currentUserEmpty)
@@ -77,7 +79,9 @@ trait Actions extends Calls with ActionHelpers {
 
       private def log(success: Boolean, request: R[_]): Unit = {
         val lang = if (success) "GRANTED" else "DENIED"
-        PermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")
+        MDCPermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")(
+          OreMDCCtx.RequestMDCCtx(request)
+        )
       }
 
       def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
@@ -189,7 +193,7 @@ trait Actions extends Calls with ActionHelpers {
       val auth = for {
         ssoSome <- OptionT.fromOption[IO](sso)
         sigSome <- OptionT.fromOption[IO](sig)
-        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)
+        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)(OreMDCCtx.RequestMDCCtx(request))
       } yield res
 
       auth
@@ -207,7 +211,7 @@ trait Actions extends Calls with ActionHelpers {
 
       def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
         users
-          .requestPermission(request.user, username, EditSettings)
+          .requestPermission(request.user, username, EditSettings)(auth, cs, OreMDCCtx.RequestMDCCtx(request))
           .transform {
             case None    => Some(Unauthorized) // No Permission
             case Some(_) => None // Permission granted => No Filter
@@ -241,7 +245,7 @@ trait Actions extends Calls with ActionHelpers {
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: Request[A]): Future[Either[Result, AuthRequest[A]]] =
-      maybeAuthRequest(request, users.current(request, auth))
+      maybeAuthRequest(request, users.current(request, auth, OreMDCCtx.NoMDCCtx))
 
   }
 
@@ -284,11 +288,7 @@ trait Actions extends Calls with ActionHelpers {
       .flatMap(processProject(_, request.headerData.currentUser))
       .semiflatMap { p =>
         toProjectRequest(p) {
-          case (data, scoped) =>
-            MDC.put("currentProjectId", data.project.id.toString)
-            MDC.put("currentProjectSlug", data.project.slug)
-
-            new ProjectRequest[A](data, scoped, r.headerData, r)
+          case (data, scoped) => new ProjectRequest[A](data, scoped, r.headerData, r)
         }
       }
       .toRight(notFound)
@@ -411,17 +411,12 @@ trait Actions extends Calls with ActionHelpers {
   private def toOrgaRequest[T](orga: Organization)(f: (OrganizationData, ScopedOrganizationData) => T)(
       implicit request: OreRequest[_],
       cs: ContextShift[IO]
-  ) = {
-    MDC.put("currentOrgaId", orga.id.toString)
-    MDC.put("currentOrgaName", orga.name)
-
-    (OrganizationData.of(orga), ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
-  }
+  ) = (OrganizationData.of(orga), ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
 
   def getOrga(organization: String): OptionT[IO, Organization] =
     organizations.withName(organization)
 
   def getUserData(request: OreRequest[_], userName: String)(implicit cs: ContextShift[IO]): OptionT[IO, UserData] =
-    users.withName(userName).semiflatMap(UserData.of(request, _))
+    users.withName(userName)(auth, OreMDCCtx.RequestMDCCtx(request)).semiflatMap(UserData.of(request, _))
 
 }

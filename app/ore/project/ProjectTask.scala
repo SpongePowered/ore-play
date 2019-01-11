@@ -15,6 +15,7 @@ import ore.OreConfig
 
 import akka.actor.ActorSystem
 import cats.effect.{ContextShift, IO}
+import com.typesafe.scalalogging
 
 /**
   * Task that is responsible for publishing New projects
@@ -27,7 +28,8 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  val Logger                   = play.api.Logger("ProjectTask")
+  private val Logger = scalalogging.Logger("ProjectTask")
+
   val interval: FiniteDuration = this.config.ore.projects.checkInterval
   val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
 

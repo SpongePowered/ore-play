@@ -13,6 +13,7 @@ import db.impl.OrePostgresDriver
 import ore.{OreConfig, OreEnv}
 
 import cats.effect.{ContextShift, IO}
+import com.typesafe.scalalogging
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
@@ -33,7 +34,7 @@ class OreModelService @Inject()(
 )(implicit ec: ExecutionContext)
     extends OreDBOs(OrePostgresDriver, env, config) {
 
-  val Logger = play.api.Logger("Database")
+  private val Logger = scalalogging.Logger("Database")
 
   // Implement ModelService
   lazy val DB                                = db.get[JdbcProfile]

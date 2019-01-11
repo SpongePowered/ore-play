@@ -25,6 +25,7 @@ import ore.user.notification.{InviteFilter, NotificationFilter}
 import ore.user.{FakeUser, Prompt}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.OreMDCCtx
 import views.{html => views}
 
 import cats.data.EitherT
@@ -93,7 +94,7 @@ class Users @Inject()(
       } else {
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
-          .authenticate(sso.get, sig.get)(isNonceValid)
+          .authenticate(sso.get, sig.get)(isNonceValid)(OreMDCCtx.NoMDCCtx)
           .map(sponge => User.partialFromSponge(sponge) -> sponge)
           .semiflatMap {
             case (fromSponge, sponge) =>

@@ -7,15 +7,17 @@ import ore.OreConfig
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
-import util.StringUtils
+import util.{OreMDCCtx, StringUtils}
 
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 class OrganizationBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[Organization] {
 
-  val Logger = play.api.Logger("Organizations")
+  private val Logger    = scalalogging.Logger("Organizations")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
 
   /**
     * Creates a new [[Organization]]. This method creates a new user on the
@@ -29,33 +31,33 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole.Partial]
-  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO]): EitherT[IO, String, Organization] = {
+  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDCCtx): EitherT[IO, String, Organization] = {
     import cats.instances.vector._
-    Logger.debug("Creating Organization...")
-    Logger.debug("Name     : " + name)
-    Logger.debug("Owner ID : " + ownerId)
-    Logger.debug("Members  : " + members.size)
+    MDCLogger.debug("Creating Organization...")
+    MDCLogger.debug("Name     : " + name)
+    MDCLogger.debug("Owner ID : " + ownerId)
+    MDCLogger.debug("Members  : " + members.size)
 
     // Create the organization as a User on SpongeAuth. This will reserve the
     // name so that no new users or organizations can create an account with
     // that name. We will give the organization a dummy email for continuity.
     // By default we use "<org>@ore.spongepowered.org".
-    Logger.debug("Creating on SpongeAuth...")
+    MDCLogger.debug("Creating on SpongeAuth...")
     val dummyEmail   = name + '@' + this.config.ore.orgs.dummyEmailDomain
     val spongeResult = auth.createDummyUser(name, dummyEmail)
 
     // Check for error
     spongeResult
       .leftMap { err =>
-        Logger.debug("<FAILURE> " + err)
+        MDCLogger.debug("<FAILURE> " + err)
         err
       }
       .semiflatMap { spongeUser =>
-        Logger.debug("<SUCCESS> " + spongeUser)
+        MDCLogger.debug("<SUCCESS> " + spongeUser)
         // Next we will create the Organization on Ore itself. This contains a
         // reference to the Sponge user ID, the organization's username and a
         // reference to the User owner of the organization.
-        Logger.info("Creating on Ore...")
+        MDCLogger.info("Creating on Ore...")
         this.add(Organization.partial(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
       }
       .semiflatMap { org =>
@@ -81,7 +83,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
           )
           _ <- {
             // Invite the User members that the owner selected during creation.
-            Logger.debug("Inviting members...")
+            MDCLogger.debug("Inviting members...")
 
             members.toVector.parTraverse { role =>
               // TODO remove role.user db access we really only need the userid we already have for notifications
@@ -98,7 +100,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
             }
           }
         } yield {
-          Logger.debug("<SUCCESS> " + org)
+          MDCLogger.debug("<SUCCESS> " + org)
           org
         }
       }

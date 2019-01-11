@@ -8,6 +8,7 @@ import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectTask
 
+import com.typesafe.scalalogging
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 /**
@@ -21,7 +22,7 @@ abstract class Bootstrap(
     ec: ExecutionContext
 ) {
 
-  val Logger = play.api.Logger("Bootstrap")
+  private val Logger = scalalogging.Logger("Bootstrap")
 
   Logger.info("Initializing Ore...")
   val time: Long = System.currentTimeMillis()

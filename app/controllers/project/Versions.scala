@@ -24,13 +24,14 @@ import db.{DbRef, ModelService}
 import form.OreForms
 import models.project._
 import models.user.{LoggedAction, UserActionLogger}
-import models.viewhelper.{ProjectData, VersionData}
+import models.viewhelper.VersionData
 import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
 import ore.project.factory.{PendingProject, ProjectFactory}
 import ore.project.io.DownloadType._
 import ore.project.io.{DownloadType, PluginFile, PluginUpload}
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.OreMDCCtx
 import util.StringUtils._
 import util.syntax._
 import views.html.projects.{versions => views}
@@ -723,7 +724,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * Confirms the download and prepares the unsafe download.
     */
   private def confirmDownload0(versionId: DbRef[Version], downloadType: Option[Int], token: String)(
-      implicit requestHeader: Request[_]
+      implicit requestHeader: Request[_],
+      mdc: OreMDCCtx
   ): OptionT[IO, UnsafeDownload] = {
     val addr = InetString(StatTracker.remoteAddress)
     val dlType = downloadType

@@ -15,11 +15,13 @@ import play.api.libs.ws.WSClient
 
 import ore.OreConfig
 import security.CryptoUtils
+import util.OreMDCCtx
 
 import akka.http.scaladsl.model.Uri
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Manages authentication to Sponge services.
@@ -36,7 +38,8 @@ trait SingleSignOnConsumer {
   val CharEncoding = "UTF-8"
   val Algo         = "HmacSHA256"
 
-  val Logger = play.api.Logger("SSO")
+  private val Logger    = scalalogging.Logger("SSO")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
 
   /**
     * Returns a future result of whether SSO is available.
@@ -109,18 +112,18 @@ trait SingleSignOnConsumer {
     */
   def authenticate(payload: String, sig: String)(
       isNonceValid: String => IO[Boolean]
-  ): OptionT[IO, SpongeUser] = {
-    Logger.debug("Authenticating SSO payload...")
-    Logger.debug(payload)
-    Logger.debug("Signed with : " + sig)
+  )(implicit mdc: OreMDCCtx): OptionT[IO, SpongeUser] = {
+    MDCLogger.debug("Authenticating SSO payload...")
+    MDCLogger.debug(payload)
+    MDCLogger.debug("Signed with : " + sig)
     if (generateSignature(payload) != sig) {
-      Logger.debug("<FAILURE> Could not verify payload against signature.")
+      MDCLogger.debug("<FAILURE> Could not verify payload against signature.")
       OptionT.none[IO, SpongeUser]
     } else {
       // decode payload
       val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
-      Logger.debug("Decoded payload:")
-      Logger.debug(query.toString())
+      MDCLogger.debug("Decoded payload:")
+      MDCLogger.debug(query.toString())
 
       // extract info
       val info = for {
@@ -144,10 +147,10 @@ trait SingleSignOnConsumer {
         .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user) }
         .subflatMap {
           case (false, _) =>
-            Logger.debug("<FAILURE> Invalid nonce.")
+            MDCLogger.debug("<FAILURE> Invalid nonce.")
             None
           case (true, user) =>
-            Logger.debug("<SUCCESS> " + user)
+            MDCLogger.debug("<SUCCESS> " + user)
             Some(user)
         }
     }

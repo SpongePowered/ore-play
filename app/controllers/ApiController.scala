@@ -37,6 +37,7 @@ import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.all._
+import com.typesafe.scalalogging
 import slick.lifted.Compiled
 
 /**
@@ -61,7 +62,8 @@ final class ApiController @Inject()(
 
   val files                                      = new ProjectFiles(this.env)
   val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey]()
-  val Logger                                     = play.api.Logger("SSO")
+
+  private val Logger = scalalogging.Logger("SSO")
 
   private def ApiResult(json: Option[JsValue]): Result = json.map(Ok(_)).getOrElse(NotFound)
 

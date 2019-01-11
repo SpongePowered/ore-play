@@ -5,9 +5,13 @@ import java.util.Date
 
 import scala.collection.JavaConverters._
 
+import util.OreMDCCtx
+
 import cats.effect.{Resource, SyncIO}
-import org.bouncycastle.openpgp.{PGPException, PGPUtil}
+import com.typesafe.scalalogging
+import com.typesafe.scalalogging.LoggerTakingImplicit
 import org.bouncycastle.openpgp.jcajce.JcaPGPPublicKeyRingCollection
+import org.bouncycastle.openpgp.{PGPException, PGPUtil}
 
 /**
   * Represents data that is decoded from a submitted PGP Public Key and is to
@@ -30,7 +34,9 @@ case class PGPPublicKeyInfo(
 
 object PGPPublicKeyInfo {
 
-  val Logger = play.api.Logger("PGP")
+  val Logger = scalalogging.Logger("PGP")
+  val MDCLogger: LoggerTakingImplicit[OreMDCCtx] =
+    scalalogging.Logger.takingImplicit[OreMDCCtx](Logger.underlying)
 
   /**
     * Decodes a raw string into a [[PGPPublicKeyInfo]]. This method looks for

@@ -2,13 +2,14 @@ package util
 
 import scala.util.{Failure, Success, Try}
 
-import play.api.Logger
 import play.api.libs.json.JsValue
 import play.api.libs.ws.WSResponse
 
+import com.typesafe.scalalogging.LoggerTakingImplicit
+
 object WSUtils {
 
-  def parseJson(response: WSResponse, log: Logger): Option[JsValue] = {
+  def parseJson[A](response: WSResponse, log: LoggerTakingImplicit[A])(implicit a: A): Option[JsValue] = {
     if (response.status < 200 || response.status >= 300)
       None
     else

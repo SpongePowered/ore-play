@@ -16,9 +16,8 @@ import akka.actor.Scheduler
 import cats.data.EitherT
 import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
-import com.fasterxml.jackson.core.JsonParseException
 import com.google.common.base.Preconditions.checkArgument
-import org.slf4j.MDC
+import com.typesafe.scalalogging
 import org.spongepowered.play.discourse.DiscourseApi
 import org.spongepowered.play.discourse.model.DiscoursePost
 
@@ -54,6 +53,8 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
   /** The base URL for this instance */
   def baseUrl: String
 
+  private val MDCLogger = scalalogging.Logger.takingImplicit[DiscourseMDC](Logger.logger)
+
   /**
     * Initializes and starts this API instance.
     */
@@ -80,6 +81,8 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     else {
       val title = Templates.projectTitle(project)
 
+      implicit val mdc: DiscourseMDC = DiscourseMDC(project.ownerName, None, title)
+
       val createTopicProgram = (content: String) =>
         createTopicF(poster = project.ownerName, title = title, content = content, categoryId = Some(categoryDefault))
 
@@ -94,10 +97,10 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
         _ <- EitherT.right[(List[String], String)](
           sanityCheck(topic.username == project.ownerName, "project post user isn't owner?")
         )
-        _ = Logger.debug(s"""|New project topic:
-                             |Project: ${project.url}
-                             |Topic ID: ${topic.topicId}
-                             |Post ID: ${topic.postId}""".stripMargin)
+        _ = MDCLogger.debug(s"""|New project topic:
+                                |Project: ${project.url}
+                                |Topic ID: ${topic.topicId}
+                                |Post ID: ${topic.postId}""".stripMargin)
         project <- EitherT.right[(List[String], String)](
           service.update(project.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
         )
@@ -114,13 +117,13 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
                   |Title: $title
                   |Content: $content
                   |Errors: ${errors.mkString(", ")}""".stripMargin
-            Logger.warn(message)
+            MDCLogger.warn(message)
             project.logger.flatMap(_.err(message)).as(project)
         }
         .merge
         .onError {
           case e =>
-            IO(Logger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...", e))
+            IO(MDCLogger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...", e))
         }
     }
   }
@@ -145,6 +148,8 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
       val title     = Templates.projectTitle(project)
       val ownerName = project.ownerName
 
+      implicit val mdc: DiscourseMDC = DiscourseMDC(ownerName, topicId, title)
+
       def logErrorsAs(errors: List[String], as: Boolean): IO[Boolean] = {
         val message =
           s"""|Request to update project topic was successful but Discourse responded with errors:
@@ -152,7 +157,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
               |Topic ID: $topicId
               |Title: $title
               |Errors: ${errors.toString}""".stripMargin
-        Logger.warn(message)
+        MDCLogger.warn(message)
         project.logger.flatMap(_.err(message)).as(as)
       }
 
@@ -168,22 +173,11 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
         content <- EitherT.right[Boolean](Templates.projectTopic(project))
         _       <- updateTopicProgram.leftSemiflatMap(logErrorsAs(_, as = false))
         _       <- updatePostProgram(content).leftSemiflatMap(logErrorsAs(_, as = false))
-        _ = Logger.debug(s"Project topic updated for ${project.url}.")
+        _ = MDCLogger.debug(s"Project topic updated for ${project.url}.")
         _ <- EitherT.right[Boolean](service.update(project.copy(isTopicDirty = false)))
       } yield true
 
-      res.merge.onError {
-        case e =>
-          IO {
-            MDC.put("username", ownerName)
-            MDC.put("topicId", topicId.get.toString)
-            MDC.put("title", title)
-            e.getCause match {
-              case cause: JsonParseException => MDC.put("jsonException", cause.getMessage)
-              case _                         =>
-            }
-          }
-      }
+      res.merge
     }
   }
 
