@@ -31,10 +31,10 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   val interval: FiniteDuration = this.config.ore.projects.checkInterval
   val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
 
-  private val dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
+  private def dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
   private val newFilter       = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
-  private val createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
-  private val newProjects     = service.filter[Project](newFilter && createdAtFilter)
+  private def createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
+  private def newProjects     = service.filter[Project](newFilter && createdAtFilter)
 
   /**
     * Starts the task.
