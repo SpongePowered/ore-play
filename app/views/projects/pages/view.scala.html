@@ -62,7 +62,7 @@ Documentation page within Project overview.
                         <p>@messages("project.category.info", p.project.category.title)</p>
                         <p>@messages("project.publishDate", prettifyDate(p.project.createdAt.value))</p>
                         <p>@p.project.viewCount views</p>
-                        <p>@p.project.starCount <a href="@routes.Projects.stargazers(p.project.ownerName, p.project.slug, None)">stars</a></p>
+                        <p>@p.project.starCount <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.slug, None)">stars</a></p>
                         <p>@NumberFormat.getInstance.format(p.project.downloadCount) total downloads</p>
                         @p.settings.licenseName.map { licenseName =>
                             <p>
