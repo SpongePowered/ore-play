@@ -134,13 +134,13 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       _ = checkArgument(isAvailable, "slug not available", "")
       res <- {
         this.fileManager.renameProject(project.ownerName, project.name, newName)
-        service.update(project.copy(name = newName, slug = newSlug))
+        val renameModel = service.update(project.copy(name = newName, slug = newSlug))
 
         // Project's name alter's the topic title, update it
         if (project.topicId.isDefined && forums.isEnabled)
-          forums.updateProjectTopic(project)
+          forums.updateProjectTopic(project) <* renameModel
         else
-          IO.pure(false)
+          renameModel.as(false)
       }
     } yield res
   }
