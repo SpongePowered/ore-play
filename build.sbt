@@ -68,10 +68,10 @@ lazy val doobieVersion = "0.6.0"
 
 libraryDependencies ++= Seq(ehcache, ws, guice)
 
-lazy val flexmarkVersion     = "0.34.58"
+lazy val flexmarkVersion     = "0.40.4"
 lazy val bouncycastleVersion = "1.60"
 lazy val playSlickVersion    = "3.0.3"
-lazy val slickPgVersion      = "0.16.3"
+lazy val slickPgVersion      = "0.17.0"
 
 libraryDependencies ++= Seq(
   "org.spongepowered"          % "play-discourse"                 % "3.0.2",
@@ -83,7 +83,7 @@ libraryDependencies ++= Seq(
   "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
   "com.fasterxml.jackson.core" % "jackson-databind"               % "2.8.11.3",
   "com.typesafe.scala-logging" %% "scala-logging"                 % "3.9.2",
-  "io.sentry"                  % "sentry-logback"                 % "1.7.15",
+  "io.sentry"                  % "sentry-logback"                 % "1.7.16",
   "org.bouncycastle"           % "bcprov-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"           % "bcpkix-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"           % "bcpg-jdk15on"                   % bouncycastleVersion,
@@ -106,8 +106,8 @@ libraryDependencies ++= Seq(
   "org.webjars.npm"            % "jquery"                         % "2.2.4",
   "org.webjars.npm"            % "font-awesome"                   % "4.7.0",
   "org.webjars.npm"            % "filesize"                       % "3.6.1",
-  "org.webjars.npm"            % "moment"                         % "2.22.2",
-  "org.webjars.npm"            % "clipboard"                      % "2.0.1",
+  "org.webjars.npm"            % "moment"                         % "2.23.0",
+  "org.webjars.npm"            % "clipboard"                      % "2.0.4",
   "org.webjars.npm"            % "chart.js"                       % "2.7.3"
 )
 
