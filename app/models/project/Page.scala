@@ -9,7 +9,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 import db.impl.model.common.Named
 import db.impl.schema.PageTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db._
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
@@ -19,7 +19,7 @@ import java.util
 import cats.data.OptionT
 import cats.effect.IO
 import com.google.common.base.Preconditions._
-import com.vladsch.flexmark.ast.{MailLink, Node}
+import com.vladsch.flexmark.ast.MailLink
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -30,6 +30,7 @@ import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.html.renderer._
 import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
 import com.vladsch.flexmark.parser.Parser
+import com.vladsch.flexmark.util.ast.Node
 import com.vladsch.flexmark.util.options.MutableDataSet
 import slick.lifted.TableQuery
 
