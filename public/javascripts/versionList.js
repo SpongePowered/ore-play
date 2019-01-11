@@ -133,7 +133,7 @@ function loadVersions(increment, scrollTop) {
                 infoOne.addClass("information-one");
 
                 var createdContainer = $("<div>");
-                createdContainer.append("<i class='fa fa-calendar'></i>");
+                createdContainer.append("<i class='fas fa-calendar'></i>");
 
                 var created = $("<span>");
                 created.text(moment(version.createdAt).format("MMM D, YYYY"));
@@ -143,7 +143,7 @@ function loadVersions(increment, scrollTop) {
 
 
                 var sizeContainer = $("<div>");
-                sizeContainer.append("<i class='fa fa-file-o'></i>");
+                sizeContainer.append("<i class='far fa-file'></i>");
 
                 var size = $("<span>");
                 size.text(filesize(version.fileSize));
@@ -210,10 +210,10 @@ function loadVersions(increment, scrollTop) {
                     warning.attr("data-placement", "bottom");
 
                     if(version.reviewState === "PartiallyReviewed") {
-                        warning.addClass("fa fa-check");
+                        warning.addClass("fas fa-check");
                     }
                     else {
-                        warning.addClass("fa fa-exclamation-circle");
+                        warning.addClass("fas fa-exclamation-circle");
                     }
 
                     downloadLink.append(warning);

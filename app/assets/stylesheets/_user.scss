@@ -41,13 +41,13 @@
 }
 
 .username {
-  i {
-    font-size: 14px;
+  svg {
+    font-size: 0.6em;
     font-weight: normal;
     padding: 3px;
   }
 
-  .action-lock-account:hover, .action-pgp:hover, .user-settings i:hover {
+  .action-lock-account:hover, .action-pgp:hover, .user-settings svg:hover {
     background-color: gray;
     -webkit-transition: all 0.5s ease;
     -moz-transition: all 0.5s ease;
@@ -56,7 +56,7 @@
     transition: all 0.5s ease;
   }
 
-  i { cursor: pointer; }
+  svg { cursor: pointer; }
   .user-settings { color: #333; }
 }
 

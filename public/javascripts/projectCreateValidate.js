@@ -35,14 +35,14 @@ function tooltip(selector, title) {
 function success(selector, then) {
     // Simulate loading :P
     setTimeout(function() {
-        toggleSpinner(selector);
+        toggleSpinner($(selector));
         $(selector).addClass('fa-check-circle');
         then();
     }, 500);
 }
 
 function failed(selector, message) {
-    toggleSpinner(selector);
+    toggleSpinner($(selector));
     $(selector).addClass('fa-times-circle');
     tooltip(selector, message);
 }
