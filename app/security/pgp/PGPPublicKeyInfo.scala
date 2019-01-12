@@ -1,10 +1,17 @@
 package security.pgp
 
-import java.io.{ByteArrayInputStream, IOException, InputStream}
+import java.io.ByteArrayInputStream
 import java.util.Date
 
+import scala.collection.JavaConverters._
+
+import util.OreMDC
+
+import cats.effect.{Resource, SyncIO}
+import com.typesafe.scalalogging
+import com.typesafe.scalalogging.LoggerTakingImplicit
 import org.bouncycastle.openpgp.jcajce.JcaPGPPublicKeyRingCollection
-import org.bouncycastle.openpgp.{PGPException, PGPSignature, PGPUtil}
+import org.bouncycastle.openpgp.{PGPException, PGPUtil}
 
 /**
   * Represents data that is decoded from a submitted PGP Public Key and is to
@@ -27,7 +34,9 @@ case class PGPPublicKeyInfo(
 
 object PGPPublicKeyInfo {
 
-  val Logger = play.api.Logger("PGP")
+  val Logger = scalalogging.Logger("PGP")
+  val MDCLogger: LoggerTakingImplicit[OreMDC] =
+    scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Decodes a raw string into a [[PGPPublicKeyInfo]]. This method looks for
@@ -37,93 +46,74 @@ object PGPPublicKeyInfo {
     * @param raw Raw key string
     * @return [[PGPPublicKeyInfo]] instance
     */
-  def decode(raw: String): Option[PGPPublicKeyInfo] = {
+  def decode(raw: String): Either[String, PGPPublicKeyInfo] = {
+    import cats.instances.vector._
+    import cats.syntax.all._
     Logger.debug(s"Decoding public key:\n$raw\n")
-    var in: InputStream = null
-    try {
-      in = PGPUtil.getDecoderStream(new ByteArrayInputStream(raw.getBytes))
-      val keyRings                    = new JcaPGPPublicKeyRingCollection(in)
-      val keyRingIter                 = keyRings.iterator()
-      var keyRingNum                  = 0
-      var masterKey: PGPPublicKeyInfo = null
-      while (keyRingIter.hasNext) {
-        keyRingNum += 1
-        Logger.debug("Key ring: " + keyRingNum)
-        val keyRing = keyRingIter.next()
-        val keyIter = keyRing.iterator()
-        var keyNum  = 0
-        while (keyIter.hasNext) {
-          keyNum += 1
-          val key          = keyIter.next()
-          val hexId        = java.lang.Long.toHexString(key.getKeyID)
-          val createdAt    = key.getCreationTime
-          val isRevoked    = key.hasRevocation
-          val isEncryption = key.isEncryptionKey
-          val isMaster     = key.isMasterKey
-          val validSeconds = key.getValidSeconds
-          val expirationDate =
-            if (validSeconds != 0)
-              Some(new Date(createdAt.getTime + validSeconds * 1000))
-            else
-              None
 
-          Logger.debug("Key: " + keyNum)
-          Logger.debug("ID: " + hexId)
-          Logger.debug("Created at: " + createdAt)
-          Logger.debug("Revoked: " + isRevoked)
-          Logger.debug("Encryption: " + isEncryption)
-          Logger.debug("Master: " + isMaster)
-          Logger.debug("Expiration: " + expirationDate.getOrElse("None"))
+    Resource
+      .fromAutoCloseable(SyncIO(PGPUtil.getDecoderStream(new ByteArrayInputStream(raw.getBytes))))
+      .use { in =>
+        val keyRings    = new JcaPGPPublicKeyRingCollection(in)
+        val keyRingIter = keyRings.iterator().asScala.zipWithIndex
+        val res = keyRingIter.toVector.flatMap {
+          case (keyRing, keyRingNum) =>
+            Logger.debug(s"Key ring: $keyRingNum")
+            val keyIter = keyRing.iterator().asScala.zipWithIndex
+            keyIter.toVector.mapFilter {
+              case (key, keyNum) =>
+                val hexId        = java.lang.Long.toHexString(key.getKeyID)
+                val createdAt    = key.getCreationTime
+                val isRevoked    = key.hasRevocation
+                val isEncryption = key.isEncryptionKey
+                val isMaster     = key.isMasterKey
+                val validSeconds = key.getValidSeconds
+                val expirationDate =
+                  if (validSeconds != 0)
+                    Some(new Date(createdAt.getTime + validSeconds * 1000))
+                  else
+                    None
 
-          Logger.debug("Users:")
-          val userIter          = key.getUserIDs
-          var firstUser: String = null
-          var userNum           = 0
-          while (userIter.hasNext) {
-            val user = userIter.next()
-            Logger.debug("\t" + user)
-            if (userNum == 0)
-              firstUser = user.toString
-            userNum += 1
-          }
+                Logger.debug("Key: " + keyNum)
+                Logger.debug("ID: " + hexId)
+                Logger.debug("Created at: " + createdAt)
+                Logger.debug("Revoked: " + isRevoked)
+                Logger.debug("Encryption: " + isEncryption)
+                Logger.debug("Master: " + isMaster)
+                Logger.debug("Expiration: " + expirationDate.getOrElse("None"))
 
-          Logger.debug("Signatures:")
-          val sigIter = key.getSignatures
-          while (sigIter.hasNext) {
-            val sig: PGPSignature = sigIter.next().asInstanceOf[PGPSignature]
-            Logger.debug("\tCreated at: " + sig.getCreationTime)
-            Logger.debug("\tCertification: " + sig.isCertification)
-          }
+                val firstUser = key.getUserIDs.asScala.toStream.headOption
+                firstUser.filter(_ => isMaster).map { firstUser =>
+                  val emailIndexStart = firstUser.indexOf('<')
+                  val emailIndexEnd   = firstUser.indexOf('>')
+                  if (emailIndexStart == -1 || emailIndexEnd == -1)
+                    Left("invalid user format?")
+                  else {
+                    val userName = firstUser.substring(0, emailIndexStart).trim()
+                    val email    = firstUser.substring(emailIndexStart + 1, emailIndexEnd)
 
-          if (isMaster) {
-            val emailIndexStart = firstUser.indexOf('<')
-            val emailIndexEnd   = firstUser.indexOf('>')
-            if (emailIndexStart == -1 || emailIndexEnd == -1)
-              throw new IllegalStateException("invalid user format?")
-            val userName = firstUser.substring(0, emailIndexStart).trim()
-            val email    = firstUser.substring(emailIndexStart + 1, emailIndexEnd)
+                    Logger.debug("User name: " + userName)
+                    Logger.debug("Email: " + email)
 
-            Logger.debug("User name: " + userName)
-            Logger.debug("Email: " + email)
+                    if (isRevoked)
+                      Left("Key is revoked?")
+                    else
+                      Right(PGPPublicKeyInfo(raw, userName, email, hexId, createdAt, expirationDate))
+                  }
+                }
+            }
+        }
 
-            if (isRevoked)
-              throw new IllegalStateException("Key is revoked?")
-
-            masterKey = PGPPublicKeyInfo(raw, userName, email, hexId, createdAt, expirationDate)
-          }
+        res match {
+          case Vector()      => SyncIO.pure(Left("No master key found"))
+          case Vector(ret)   => SyncIO.pure(ret)
+          case Vector(_ @_*) => SyncIO.pure(Left("Multiple master keys found"))
         }
       }
-
-      if (masterKey == null)
-        throw new IllegalStateException("No master key found")
-      Some(masterKey)
-    } catch {
-      case _: IOException | _: PGPException =>
-        None
-    } finally {
-      if (in != null)
-        in.close()
-    }
+      .recover {
+        case e: PGPException => Left(e.getMessage)
+      }
+      .unsafeRunSync()
   }
 
 }

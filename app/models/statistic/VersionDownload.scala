@@ -1,19 +1,16 @@
 package models.statistic
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.VersionDownloadsTable
-import db.{DbRef, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, ModelQuery, ObjId, ObjectTimestamp}
 import models.project.Version
 import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
-import cats.instances.future._
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
-import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
 
 /**
@@ -27,12 +24,12 @@ import slick.lifted.TableQuery
   * @param userId     User ID
   */
 case class VersionDownload(
-    id: ObjId[VersionDownload] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[VersionDownload],
+    createdAt: ObjectTimestamp,
     modelId: DbRef[Version],
     address: InetString,
     cookie: String,
-    userId: Option[DbRef[User]] = None
+    userId: Option[DbRef[User]]
 ) extends StatEntry[Version] {
 
   override type M = VersionDownload
@@ -40,6 +37,17 @@ case class VersionDownload(
 }
 
 object VersionDownload {
+
+  case class Partial(
+      modelId: DbRef[Version],
+      address: InetString,
+      cookie: String,
+      userId: Option[DbRef[User]] = None
+  ) extends PartialStatEntry[Version, VersionDownload] {
+
+    override def asFunc: InsertFunc[VersionDownload] =
+      (id, time) => VersionDownload(id, time, modelId, address, cookie, userId)
+  }
 
   implicit val query: ModelQuery[VersionDownload] =
     ModelQuery.from[VersionDownload](TableQuery[VersionDownloadsTable], _.copy(_, _))
@@ -53,14 +61,12 @@ object VersionDownload {
     * @return         New VersionDownload
     */
   def bindFromRequest(version: Version)(
-      implicit ec: ExecutionContext,
-      request: ProjectRequest[_],
+      implicit request: ProjectRequest[_],
       users: UserBase,
       auth: SpongeAuthApi
-  ): Future[VersionDownload] = {
-    checkArgument(version.isDefined, "undefined version", "")
+  ): IO[Partial] = {
     users.current.map(_.id.value).value.map { userId =>
-      VersionDownload(
+      VersionDownload.Partial(
         modelId = version.id.value,
         address = InetString(remoteAddress),
         cookie = currentCookie,

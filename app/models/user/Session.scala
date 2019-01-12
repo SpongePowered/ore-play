@@ -2,15 +2,15 @@ package models.user
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.access.UserBase
 import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 import security.spauth.SpongeAuthApi
+import util.OreMDC
 
 import cats.data.OptionT
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -23,8 +23,8 @@ import slick.lifted.TableQuery
   * @param token      Unique token
   */
 case class Session(
-    id: ObjId[Session] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Session],
+    createdAt: ObjectTimestamp,
     expiration: Timestamp,
     username: String,
     token: String
@@ -40,10 +40,17 @@ case class Session(
     * @param users UserBase instance
     * @return User session belongs to
     */
-  def user(implicit users: UserBase, ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] =
+  def user(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
     users.withName(this.username)
 }
 object Session {
+
+  def partial(
+      expiration: Timestamp,
+      username: String,
+      token: String
+  ): InsertFunc[Session] = (id, time) => Session(id, time, expiration, username, token)
+
   implicit val query: ModelQuery[Session] =
     ModelQuery.from[Session](TableQuery[SessionTable], _.copy(_, _))
 }

@@ -4,7 +4,7 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.ChannelTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
@@ -24,20 +24,17 @@ import slick.lifted.TableQuery
   * @param projectId    ID of project this channel belongs to
   */
 case class Channel(
-    id: ObjId[Channel] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Channel],
+    createdAt: ObjectTimestamp,
     projectId: DbRef[Project],
     name: String,
     color: Color,
-    isNonReviewed: Boolean = false
+    isNonReviewed: Boolean
 ) extends Model
     with Named {
 
   override type T = ChannelTable
   override type M = Channel
-
-  def this(name: String, color: Color, projectId: DbRef[Project]) =
-    this(id = ObjId.Uninitialized(), name = name, color = color, projectId = projectId)
 
   def isReviewed: Boolean = !isNonReviewed
 
@@ -50,6 +47,12 @@ case class Channel(
 }
 
 object Channel {
+  def partial(
+      projectId: DbRef[Project],
+      name: String,
+      color: Color,
+      isNonReviewed: Boolean = false
+  ): InsertFunc[Channel] = (id, time) => Channel(id, time, projectId, name, color, isNonReviewed)
 
   implicit val channelsAreOrdered: Ordering[Channel] = (x: Channel, y: Channel) => x.name.compare(y.name)
 

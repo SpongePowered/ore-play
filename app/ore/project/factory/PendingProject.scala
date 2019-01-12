@@ -1,69 +1,88 @@
 package ore.project.factory
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.sql.Timestamp
+import java.time.Instant
+
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
-import db.ModelService
-import db.impl.access.ProjectBase
-import discourse.OreDiscourseApi
-import models.project.{Project, ProjectSettings, Version}
+import db.{DbRef, InsertFunc, ModelService}
+import models.project.{Project, ProjectSettings, Version, Visibility}
+import models.user.User
 import models.user.role.ProjectUserRole
-import ore.project.io.PluginFile
+import ore.project.Category
+import ore.project.io.PluginFileWithData
 import ore.{Cacheable, OreConfig}
 
-import cats.instances.future._
-import cats.syntax.all._
+import cats.effect.{ContextShift, IO}
 
 /**
   * Represents a Project with an uploaded plugin that has not yet been
   * created.
-  *
-  * @param underlying  Pending project
-  * @param file     Uploaded plugin
   */
 case class PendingProject(
-    projects: ProjectBase,
-    factory: ProjectFactory,
-    underlying: Project,
-    file: PluginFile,
+    pluginId: String,
+    ownerName: String,
+    ownerId: DbRef[User],
+    name: String,
+    slug: String,
+    visibility: Visibility,
+    file: PluginFileWithData,
     channelName: String,
-    settings: ProjectSettings = ProjectSettings(),
+    description: Option[String] = None,
+    category: Category = Category.Undefined,
+    settings: ProjectSettings.Partial = ProjectSettings.Partial(),
     var pendingVersion: PendingVersion,
-    roles: Set[ProjectUserRole] = Set(),
+    roles: Set[ProjectUserRole.Partial] = Set(),
     cacheApi: SyncCacheApi
-)(implicit service: ModelService, val config: OreConfig)
+)(implicit val config: OreConfig)
     extends Cacheable {
 
-  def complete()(implicit ec: ExecutionContext): Future[(Project, Version)] = {
-    free()
+  def complete(factory: ProjectFactory)(
+      implicit service: ModelService,
+      ec: ExecutionContext,
+      cs: ContextShift[IO]
+  ): IO[(Project, Version)] =
     for {
-      newProject <- this.factory.createProject(this)
-      newVersion <- {
-        this.pendingVersion.project = newProject
-        this.factory.createVersion(this.pendingVersion)
-      }
+      _              <- free
+      newProject     <- factory.createProject(this)
+      newVersion     <- factory.createVersion(newProject, this.pendingVersion)
       updatedProject <- service.update(newProject.copy(recommendedVersionId = Some(newVersion._1.id.value)))
     } yield (updatedProject, newVersion._1)
-  }
 
-  def cancel()(implicit ec: ExecutionContext, forums: OreDiscourseApi): Future[Unit] = {
-    free()
-    this.file.delete()
-    if (this.underlying.isDefined)
-      this.projects.delete(this.underlying).as(())
-    else Future.unit
-  }
+  def owner(implicit service: ModelService): IO[User] =
+    service.get[User](ownerId).getOrElse(sys.error("No owner for pending project"))
 
-  override def key: String = this.underlying.ownerName + '/' + this.underlying.slug
+  def asFunc: InsertFunc[Project] =
+    Project.partial(
+      pluginId,
+      ownerName,
+      ownerId,
+      name,
+      slug,
+      visibility = visibility,
+      lastUpdated = Timestamp.from(Instant.now()),
+      description = description,
+      category = category
+    )
+
+  override def key: String = ownerName + '/' + slug
 
 }
 object PendingProject {
-  def createPendingVersion(project: PendingProject): PendingVersion = {
-    val result = project.factory.startVersion(project.file, project.underlying, project.settings, project.channelName)
+  def createPendingVersion(factory: ProjectFactory, project: PendingProject): PendingVersion = {
+    val result = factory.startVersion(
+      project.file,
+      project.pluginId,
+      None,
+      project.key,
+      project.settings.forumSync,
+      project.channelName
+    )
     result match {
       case Right(version) =>
-        version.cache()
+        version.cache.unsafeRunSync()
         version
       // TODO: not this crap
       case Left(errorMessage) => throw new IllegalArgumentException(errorMessage)

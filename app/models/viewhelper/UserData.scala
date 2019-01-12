@@ -1,7 +1,5 @@
 package models.viewhelper
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.mvc.Call
 
 import controllers.routes
@@ -15,7 +13,7 @@ import ore.permission._
 import ore.permission.role.Role
 import ore.permission.scope.GlobalScope
 
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.instances.option._
 import cats.syntax.all._
 import slick.lifted.TableQuery
@@ -60,33 +58,30 @@ object UserData {
     } yield (org, orgUser, role, owner)
 
   def of[A](request: OreRequest[A], user: User)(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[UserData] =
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[UserData] =
     for {
-      isOrga                              <- user.toMaybeOrganization.isDefined
-      projectCount                        <- user.projects.size
-      (globalRoles, userPerms, orgaPerms) <- perms(request.currentUser)
-      orgas                               <- service.runDBIO(queryRoles(user).result)
+      isOrga       <- user.toMaybeOrganization.isDefined
+      projectCount <- user.projects.size
+      t            <- perms(user)
+      (globalRoles, userPerms, orgaPerms) = t
+      orgas <- service.runDBIO(queryRoles(user).result)
     } yield UserData(request.headerData, user, isOrga, projectCount, orgas, globalRoles, userPerms, orgaPerms)
 
-  def perms(currentUser: Option[User])(
-      implicit ec: ExecutionContext,
+  def perms(user: User)(
+      implicit cs: ContextShift[IO],
       service: ModelService
-  ): Future[(Set[Role], Map[Permission, Boolean], Map[Permission, Boolean])] = {
-    currentUser.fold(
-      Future.successful((Set.empty[Role], Map.empty[Permission, Boolean], Map.empty[Permission, Boolean]))
-    ) { user =>
-      (
-        user.trustIn(GlobalScope),
-        user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value,
-        user.globalRoles.allFromParent(user),
-      ).mapN { (userTrust, orgTrust, globalRoles) =>
-        val userPerms = user.can.asMap(userTrust, globalRoles.toSet)(ViewActivity, ReviewFlags, ReviewProjects)
-        val orgaPerms = user.can.asMap(orgTrust, Some(globalRoles.toSet))(EditSettings)
+  ): IO[(Set[Role], Map[Permission, Boolean], Map[Permission, Boolean])] = {
+    (
+      user.trustIn(GlobalScope),
+      user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value,
+      user.globalRoles.allFromParent(user),
+    ).parMapN { (userTrust, orgTrust, globalRoles) =>
+      val userPerms = user.can.asMap(userTrust, globalRoles.toSet)(ViewActivity, ReviewFlags, ReviewProjects)
+      val orgaPerms = user.can.asMap(orgTrust, Some(globalRoles.toSet))(EditSettings)
 
-        (globalRoles.map(_.toRole).toSet, userPerms, orgaPerms)
-      }
+      (globalRoles.map(_.toRole).toSet, userPerms, orgaPerms)
     }
   }
 }

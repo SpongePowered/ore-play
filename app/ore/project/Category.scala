@@ -25,7 +25,7 @@ object Category extends IntEnum[Category] {
   case object Rp         extends Category(7, "Role Playing", "fa-magic")
   case object WorldMgmt  extends Category(8, "World Management", "fa-globe")
   case object Misc       extends Category(9, "Miscellaneous", "fa-asterisk")
-  case object Undefined  extends Category(10, "Undefined", null, isVisible = false)
+  case object Undefined  extends Category(10, "Undefined", "", isVisible = false)
 
   /**
     * Returns the visible Categories.

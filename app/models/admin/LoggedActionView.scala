@@ -20,8 +20,8 @@ case class LoggedProjectPage(ppId: Option[DbRef[Page]], ppSlug: Option[String])
 case class LoggedSubject(sId: Option[DbRef[_]], sName: Option[String])
 
 case class LoggedActionViewModel[Ctx](
-    id: ObjId[LoggedActionViewModel[Ctx]] = ObjId.Uninitialized[LoggedActionViewModel[Ctx]](),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[LoggedActionViewModel[Ctx]],
+    createdAt: ObjectTimestamp,
     userId: DbRef[User],
     address: InetString,
     action: LoggedAction[Ctx],

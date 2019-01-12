@@ -1,14 +1,12 @@
 package models.viewhelper
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.ModelService
 import models.project.{Project, Visibility}
 import models.user.User
 import ore.permission._
 import util.syntax._
 
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 
 /**
@@ -21,7 +19,7 @@ object ScopedProjectData {
   def of(
       currentUser: Option[User],
       project: Project
-  )(implicit ec: ExecutionContext, service: ModelService): Future[ScopedProjectData] = {
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[ScopedProjectData] = {
     currentUser
       .map { user =>
         (
@@ -33,7 +31,7 @@ object ScopedProjectData {
           project.watchers.contains(project, user),
           user.trustIn(project),
           user.globalRoles.allFromParent(user)
-        ).mapN {
+        ).parMapN {
           case (
               canPostAsOwnerOrga,
               uProjectFlags,
@@ -48,7 +46,7 @@ object ScopedProjectData {
             ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, permMap)
         }
       }
-      .getOrElse(Future.successful(noScope))
+      .getOrElse(IO.pure(noScope))
   }
 
   val noScope = ScopedProjectData()

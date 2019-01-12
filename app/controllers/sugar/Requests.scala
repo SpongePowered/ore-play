@@ -15,18 +15,18 @@ object Requests {
   /**
     * Base Request for Ore that holds all data needed for rendering the header
     */
-  trait OreRequest[A] extends WrappedRequest[A] {
+  sealed trait OreRequest[A] extends WrappedRequest[A] {
     def headerData: HeaderData
     def currentUser: Option[User] = headerData.currentUser
     def hasUser: Boolean          = headerData.currentUser.isDefined
   }
 
-  class SimpleOreRequest[A](val headerData: HeaderData, val request: Request[A])
+  final class SimpleOreRequest[A](val headerData: HeaderData, val request: Request[A])
       extends WrappedRequest[A](request)
       with OreRequest[A]
 
   /** Represents a Request with a [[User]] and subject */
-  sealed trait ScopedRequest[A] extends WrappedRequest[A] {
+  sealed trait ScopedRequest[A] extends OreRequest[A] {
     type Subject
     def user: User
     def subject: Subject
@@ -35,7 +35,7 @@ object Requests {
     type Aux[A, Subject0] = ScopedRequest[A] { type Subject = Subject0 }
   }
 
-  trait UserScopedRequest[A] extends ScopedRequest[A] {
+  sealed trait UserScopedRequest[A] extends ScopedRequest[A] {
     type Subject = User
     def subject: User = user
   }
@@ -49,7 +49,7 @@ object Requests {
     * @param user     Authenticated user
     * @param request  Request to wrap
     */
-  class AuthRequest[A](val user: User, val headerData: HeaderData, request: Request[A])
+  final class AuthRequest[A](val user: User, val headerData: HeaderData, request: Request[A])
       extends WrappedRequest[A](request)
       with OreRequest[A]
       with UserScopedRequest[A]
@@ -61,7 +61,7 @@ object Requests {
     * @param scoped scoped Project data to hold
     * @param request Request to wrap
     */
-  class ProjectRequest[A](
+  sealed class ProjectRequest[A](
       val data: ProjectData,
       val scoped: ScopedProjectData,
       val headerData: HeaderData,
@@ -79,7 +79,7 @@ object Requests {
     * @param scoped scoped Project data to hold
     * @param request An [[AuthRequest]]
     */
-  case class AuthedProjectRequest[A](
+  final case class AuthedProjectRequest[A](
       override val data: ProjectData,
       override val scoped: ScopedProjectData,
       override val headerData: HeaderData,
@@ -103,7 +103,7 @@ object Requests {
     * @param scoped scoped Organization data to hold
     * @param request      Request to wrap
     */
-  class OrganizationRequest[A](
+  sealed class OrganizationRequest[A](
       val data: OrganizationData,
       val scoped: ScopedOrganizationData,
       val headerData: HeaderData,
@@ -118,7 +118,7 @@ object Requests {
     * @param scoped scoped Organization data to hold
     * @param request      Request to wrap
     */
-  case class AuthedOrganizationRequest[A](
+  final case class AuthedOrganizationRequest[A](
       override val data: OrganizationData,
       override val scoped: ScopedOrganizationData,
       override val headerData: HeaderData,

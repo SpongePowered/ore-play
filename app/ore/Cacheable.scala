@@ -2,6 +2,8 @@ package ore
 
 import play.api.cache.SyncCacheApi
 
+import cats.effect.IO
+
 /**
   * Represents something that can be added to the Cache.
   */
@@ -19,11 +21,11 @@ trait Cacheable {
   /**
     * Caches this.
     */
-  def cache(): Unit = this.cacheApi.set(this.key, this)
+  def cache: IO[Unit] = IO(this.cacheApi.set(this.key, this))
 
   /**
     * Removes this from the Cache.
     */
-  def free(): Unit = this.cacheApi.remove(this.key)
+  def free: IO[Unit] = IO(this.cacheApi.remove(this.key))
 
 }

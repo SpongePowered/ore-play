@@ -2,7 +2,7 @@ package controllers.project
 
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, AnyContent}
@@ -20,7 +20,7 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
 
 import cats.data.EitherT
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -50,7 +50,7 @@ class Channels @Inject()(forms: OreForms)(
     * @param slug   Project slug
     * @return View of channels
     */
-  def showList(author: String, slug: String): Action[AnyContent] = ChannelEditAction(author, slug).async {
+  def showList(author: String, slug: String): Action[AnyContent] = ChannelEditAction(author, slug).asyncF {
     implicit request =>
       val query = for {
         channel <- TableQuery[ChannelTable] if channel.projectId === request.project.id.value
@@ -105,14 +105,15 @@ class Channels @Inject()(forms: OreForms)(
     */
   def delete(author: String, slug: String, channelName: String): Action[AnyContent] =
     ChannelEditAction(author, slug).asyncEitherT { implicit request =>
+      import cats.instances.vector._
       EitherT
         .right[Status](request.project.channels.all)
         .ensure(Redirect(self.showList(author, slug)).withError("error.channel.last"))(_.size != 1)
         .flatMap { channels =>
           EitherT
-            .fromEither[Future](channels.find(_.name == channelName).toRight(NotFound))
+            .fromEither[IO](channels.find(_.name == channelName).toRight(NotFound))
             .semiflatMap { channel =>
-              (channel.versions.isEmpty, Future.traverse(channels.toSeq)(_.versions.nonEmpty).map(_.count(identity))).tupled
+              (channel.versions.isEmpty, channels.toVector.parTraverse(_.versions.nonEmpty).map(_.count(identity))).parTupled
                 .tupleRight(channel)
             }
             .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastNonEmpty"))(

@@ -5,7 +5,7 @@ import java.time.Instant
 import java.util.Date
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
@@ -33,8 +33,9 @@ import util.syntax._
 import views.{html => views}
 
 import cats.Order
+import cats.Parallel
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import cats.instances.vector._
 import cats.syntax.all._
 
@@ -59,7 +60,7 @@ final class Application @Inject()(forms: OreForms)(
     *
     * @return External link page
     */
-  def linkOut(remoteUrl: String) = OreAction { implicit request =>
+  def linkOut(remoteUrl: String): Action[AnyContent] = OreAction { implicit request =>
     Ok(views.linkout(remoteUrl))
   }
 
@@ -75,7 +76,7 @@ final class Application @Inject()(forms: OreForms)(
       page: Option[Int],
       platformCategory: Option[String],
       platform: Option[String]
-  ): Action[AnyContent] = OreAction.async { implicit request =>
+  ): Action[AnyContent] = OreAction.asyncF { implicit request =>
     // Get categories and sorting strategy
 
     val canHideProjects = request.headerData.globalPerm(HideProjects)
@@ -93,7 +94,7 @@ final class Application @Inject()(forms: OreForms)(
     val q            = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
 
     val pageSize = this.config.ore.projects.initLoad
-    val pageNum  = page.getOrElse(1)
+    val pageNum  = math.max(page.getOrElse(1), 1)
     val offset   = (pageNum - 1) * pageSize
 
     service
@@ -115,7 +116,7 @@ final class Application @Inject()(forms: OreForms)(
     * @return View of unreviewed versions.
     */
   def showQueue(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
       // TODO: Pages
       service.runDbCon(AppQueries.getQueue.to[Vector]).map { queueEntries =>
         val (started, notStarted) = queueEntries.partitionEither(_.sort)
@@ -128,7 +129,7 @@ final class Application @Inject()(forms: OreForms)(
     *
     * @return Flag overview
     */
-  def showFlags(): Action[AnyContent] = FlagAction.async { implicit request =>
+  def showFlags(): Action[AnyContent] = FlagAction.asyncF { implicit request =>
     service.runDbCon(AppQueries.flags(request.user.id.value).to[Vector]).map { flagSeq =>
       val flagsWithPerms = flagSeq.map { shownFlag =>
         val perms = request.user.can.asMap(shownFlag.requesterTrust, shownFlag.requesterRoles.map(_.toDbRole).toSet)(
@@ -148,7 +149,7 @@ final class Application @Inject()(forms: OreForms)(
     * @return         Ok
     */
   def setFlagResolved(flagId: DbRef[Flag], resolved: Boolean): Action[AnyContent] =
-    FlagAction.async { implicit request =>
+    FlagAction.asyncF { implicit request =>
       this.service
         .access[Flag]()
         .get(flagId)
@@ -169,26 +170,22 @@ final class Application @Inject()(forms: OreForms)(
         .getOrElse(NotFound)
     }
 
-  def showHealth(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ViewHealth)).async {
+  def showHealth(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ViewHealth)).asyncF {
     implicit request =>
       implicit val timestampOrder: Order[Timestamp] = Order.from[Timestamp](_.compareTo(_))
 
       (
         service.runDbCon(AppQueries.getUnhealtyProjects.to[Vector]),
         projects.missingFile.flatMap { versions =>
-          Future.traverse(versions)(v => v.project.tupleLeft(v))
+          versions.toVector.parTraverse(v => v.project.tupleLeft(v))
         }
-      ).mapN { (unhealthyProjects, missingFileProjects) =>
-        val noTopicProjects    = unhealthyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)
-        val topicDirtyProjects = unhealthyProjects.filter(_.isTopicDirty)
-        val staleProjects = unhealthyProjects
-          .filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
-        val notPublicProjects = unhealthyProjects.filter(_.visibility != Visibility.Public)
-
-        Ok(
-          views.users.admin
-            .health(noTopicProjects, topicDirtyProjects, staleProjects, notPublicProjects, missingFileProjects)
-        )
+      ).parMapN { (unhealtyProjects, missingFileProjects) =>
+        val noTopicProjects    = unhealtyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)
+        val topicDirtyProjects = unhealtyProjects.filter(_.isTopicDirty)
+        val staleProjects = unhealtyProjects
+          .filter(_.lastUpdated > new Timestamp(new Date().getTime - config.ore.projects.staleAge.toMillis))
+        val notPublic = unhealtyProjects.filter(_.visibility != Visibility.Public)
+        Ok(views.users.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
       }
   }
 
@@ -198,13 +195,13 @@ final class Application @Inject()(forms: OreForms)(
     * @param path Path with trailing slash
     * @return     Redirect to proper route
     */
-  def removeTrail(path: String) = Action(MovedPermanently(s"/$path"))
+  def removeTrail(path: String): Action[AnyContent] = Action(MovedPermanently(s"/$path"))
 
   /**
     * Show the activities page for a user
     */
   def showActivities(user: String): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
       val dbProgram = for {
         reviewActibity <- AppQueries.getReviewActivity(user).to[Vector]
         flagActivity   <- AppQueries.getFlagActivity(user).to[Vector]
@@ -244,7 +241,7 @@ final class Application @Inject()(forms: OreForms)(
     * @return
     */
   def showStats(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](ViewStats)).async { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](ViewStats)).asyncF { implicit request =>
       service.runDbCon(AppQueries.getStats(0, 10).to[List]).map { stats =>
         Ok(views.users.admin.stats(stats))
       }
@@ -258,7 +255,7 @@ final class Application @Inject()(forms: OreForms)(
       pageFilter: Option[DbRef[Page]],
       actionFilter: Option[Int],
       subjectFilter: Option[DbRef[_]]
-  ): Action[AnyContent] = Authenticated.andThen(PermissionAction(ViewLogs)).async { implicit request =>
+  ): Action[AnyContent] = Authenticated.andThen(PermissionAction(ViewLogs)).asyncF { implicit request =>
     val pageSize = 50
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
@@ -271,7 +268,7 @@ final class Application @Inject()(forms: OreForms)(
       ),
       service.access[LoggedActionModel[Any]]().size,
       request.currentUser.get.can(ViewIp).in(GlobalScope)
-    ).mapN { (actions, size, canViewIP) =>
+    ).parMapN { (actions, size, canViewIP) =>
       Ok(
         views.users.admin.log(
           actions,
@@ -294,33 +291,35 @@ final class Application @Inject()(forms: OreForms)(
   def UserAdminAction: ActionBuilder[AuthRequest, AnyContent] =
     Authenticated.andThen(PermissionAction(UserAdmin))
 
-  def userAdmin(user: String): Action[AnyContent] = UserAdminAction.async { implicit request =>
+  def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncF { implicit request =>
     users
       .withName(user)
       .semiflatMap { u =>
         for {
           isOrga <- u.toMaybeOrganization.isDefined
-          (projectRoles, orga) <- {
+          t1 <- {
             if (isOrga)
-              (Future.successful(Seq.empty), getOrga(user).value).tupled
+              (IO.pure(Nil), getOrga(user).value).tupled
             else
-              (u.projectRoles.all, Future.successful(None)).tupled
+              (u.projectRoles.all, IO.pure(None)).tupled
           }
-          (userData, projects, orgaData) <- (
+          (projectRoles, orga) = t1
+          t2 <- (
             getUserData(request, user).value,
-            Future.sequence(projectRoles.map(_.project)),
+            projectRoles.toVector.parTraverse(_.project),
             OrganizationData.of(orga).value
-          ).tupled
+          ).parTupled
+          (userData, projects, orgaData) = t2
         } yield {
           val pr = projects.zip(projectRoles)
-          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.toSeq))
+          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr))
         }
       }
       .getOrElse(notFound)
   }
 
   def updateUser(userName: String): Action[(String, String, String)] =
-    UserAdminAction.async(parse.form(forms.UserAdminUpdate)) { implicit request =>
+    UserAdminAction.asyncF(parse.form(forms.UserAdminUpdate)) { implicit request =>
       users
         .withName(userName)
         .map { user =>
@@ -334,9 +333,9 @@ final class Application @Inject()(forms: OreForms)(
               modelAccess: ModelAccess[M0],
               allowedCategory: RoleCategory,
               ownerType: Role,
-              transferOwner: M0 => Future[M0],
-              setRoleType: (M0, Role) => Future[M0],
-              setAccepted: (M0, Boolean) => Future[M0]
+              transferOwner: M0 => IO[M0],
+              setRoleType: (M0, Role) => IO[M0],
+              setAccepted: (M0, Boolean) => IO[M0]
           ) = {
             val id = (json \ "id").as[DbRef[M0]]
             action match {
@@ -349,7 +348,7 @@ final class Application @Inject()(forms: OreForms)(
                   else if (roleType.category == allowedCategory && roleType.isAssignable)
                     setRoleType(role, roleType).as(Ok)
                   else
-                    Future.successful(BadRequest)
+                    IO.pure(BadRequest)
                 }
               case "setAccepted" =>
                 modelAccess
@@ -402,7 +401,7 @@ final class Application @Inject()(forms: OreForms)(
                   (r, accepted) => user.projectRoles.update(r.copy(isAccepted = accepted))
                 )
               }
-            case _ => OptionT.none[Future, Status]
+            case _ => OptionT.none[IO, Status]
           }
         }
         .semiflatMap(_.getOrElse(BadRequest))
@@ -410,12 +409,12 @@ final class Application @Inject()(forms: OreForms)(
     }
 
   def showProjectVisibility(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewVisibility)).async { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](ReviewVisibility)).asyncF { implicit request =>
       (
         service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),
         service.runDbCon(AppQueries.getVisibilityWaitingProject.to[Vector])
       ).mapN { (needsApproval, waitingProject) =>
-          val getRoles = Future.traverse(needsApproval) { project =>
+          val getRoles = needsApproval.traverse { project =>
             val perms = Visibility.values.map(_.permission)
 
             request.user.trustIn(project).map2(request.user.globalRoles.allFromParent(request.user)) { (t, r) =>

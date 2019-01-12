@@ -191,3 +191,9 @@ build
 # Hydra
 project/hydra.sbt
 .hydra/
+
+# Bloop
+.bloop/
+
+# Metals
+.metals/

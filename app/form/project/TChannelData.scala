@@ -1,14 +1,13 @@
 package form.project
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.ModelService
 import models.project.{Channel, Project}
 import ore.project.factory.ProjectFactory
 import ore.{Color, OreConfig}
 
 import cats.data.{EitherT, NonEmptyList => NEL}
-import cats.instances.future._
+import cats.effect.IO
+import cats.syntax.all._
 
 /**
   * Represents submitted [[Channel]] data.
@@ -39,7 +38,7 @@ trait TChannelData {
     */
   def addTo(
       project: Project
-  )(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, String, Channel] = {
+  )(implicit service: ModelService): EitherT[IO, String, Channel] = {
     EitherT
       .liftF(project.channels.all)
       .ensure("A project may only have up to five channels.")(_.size <= config.ore.projects.maxChannels)
@@ -59,7 +58,7 @@ trait TChannelData {
   def saveTo(
       project: Project,
       oldName: String
-  )(implicit ec: ExecutionContext, service: ModelService): EitherT[Future, NEL[String], Unit] = {
+  )(implicit service: ModelService): EitherT[IO, NEL[String], Unit] = {
     EitherT.liftF(project.channels.all).flatMap { allChannels =>
       val (channelChangeSet, channels) = allChannels.partition(_.name.equalsIgnoreCase(oldName))
       val channel                      = channelChangeSet.toSeq.head
@@ -70,7 +69,7 @@ trait TChannelData {
       val e3 = if (nonReviewed && channels.count(_.isReviewed) < 1) List("error.channel.minOneReviewed") else Nil
 
       NEL.fromList(e1 ::: e2 ::: e3) match {
-        case Some(errors) => EitherT.leftT[Future, Unit](errors)
+        case Some(errors) => EitherT.leftT[IO, Unit](errors)
         case None =>
           val effect = service.update(
             channel.copy(
@@ -80,8 +79,7 @@ trait TChannelData {
             )
           )
 
-          //TODO: Replace this with void once IntelliJ understands it
-          EitherT.right[NEL[String]](effect).map(_ => ())
+          EitherT.right[NEL[String]](effect.void)
       }
     }
   }

@@ -22,12 +22,12 @@ import models.viewhelper._
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.FutureUtils
+import util.{IOUtils, OreMDC}
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
-import org.slf4j.MDC
+import com.typesafe.scalalogging
 
 /**
   * A set of actions used by Ore.
@@ -44,19 +44,23 @@ trait Actions extends Calls with ActionHelpers {
   def projects: ProjectBase           = ProjectBase()
   def organizations: OrganizationBase = OrganizationBase()
 
-  val PermsLogger = play.api.Logger("Permissions")
+  private val PermsLogger    = scalalogging.Logger("Permissions")
+  private val MDCPermsLogger = scalalogging.Logger.takingImplicit[OreMDC](PermsLogger.underlying)
 
   val AuthTokenName = "_oretoken"
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
-  def onUnauthorized(implicit request: Request[_], ec: ExecutionContext): Future[Result] = {
+  def onUnauthorized(implicit request: Request[_]): Future[Result] = {
     val noRedirect = request.flash.get("noRedirect")
-    users.current.isEmpty.map { currentUserEmpty =>
-      if (noRedirect.isEmpty && currentUserEmpty)
-        Redirect(routes.Users.logIn(None, None, Some(request.path)))
-      else
-        Redirect(ShowHome)
-    }
+    import OreMDC.Implicits.noCtx
+    users.current.isEmpty
+      .map { currentUserEmpty =>
+        if (noRedirect.isEmpty && currentUserEmpty)
+          Redirect(routes.Users.logIn(None, None, Some(request.path)))
+        else
+          Redirect(ShowHome)
+      }
+      .unsafeToFuture()
   }
 
   /**
@@ -69,24 +73,27 @@ trait Actions extends Calls with ActionHelpers {
     */
   def PermissionAction[R[_] <: ScopedRequest[_]](
       p: Permission
-  )(implicit ec: ExecutionContext, hasScope: HasScope[R[_]]): ActionRefiner[R, R] = new ActionRefiner[R, R] {
-    def executionContext: ExecutionContext = ec
+  )(implicit ec: ExecutionContext, cs: ContextShift[IO], hasScope: HasScope[R[_]]): ActionRefiner[R, R] =
+    new ActionRefiner[R, R] {
+      def executionContext: ExecutionContext = ec
 
-    private def log(success: Boolean, request: R[_]): Unit = {
-      val lang = if (success) "GRANTED" else "DENIED"
-      PermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")
-    }
+      private def log(success: Boolean, request: R[_]): Unit = {
+        val lang = if (success) "GRANTED" else "DENIED"
+        MDCPermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")(
+          OreMDC.RequestMDC(request)
+        )
+      }
 
-    def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
-      implicit val r: R[A] = request
+      def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
+        implicit val r: R[A] = request
 
-      request.user.can(p).in(request).flatMap { perm =>
-        log(success = perm, request)
-        if (!perm) onUnauthorized.map(Left.apply)
-        else Future.successful(Right(request))
+        request.user.can(p).in(request).unsafeToFuture().flatMap { perm =>
+          log(success = perm, request)
+          if (!perm) onUnauthorized.map(Left.apply)
+          else Future.successful(Right(request))
+        }
       }
     }
-  }
 
   /**
     * A PermissionAction that uses an AuthedProjectRequest for the
@@ -96,7 +103,8 @@ trait Actions extends Calls with ActionHelpers {
     * @return An [[ProjectRequest]]
     */
   def ProjectPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthedProjectRequest, AuthedProjectRequest] = PermissionAction[AuthedProjectRequest](p)
 
   /**
@@ -107,7 +115,8 @@ trait Actions extends Calls with ActionHelpers {
     * @return [[OrganizationRequest]]
     */
   def OrganizationPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthedOrganizationRequest, AuthedOrganizationRequest] =
     PermissionAction[AuthedOrganizationRequest](p)
 
@@ -120,7 +129,7 @@ trait Actions extends Calls with ActionHelpers {
       * @param maxAge Maximum session age
       * @return Result with token
       */
-    def authenticatedAs(user: User, maxAge: Int = -1)(implicit ec: ExecutionContext): Future[Result] = {
+    def authenticatedAs(user: User, maxAge: Int = -1): IO[Result] = {
       val session = users.createSession(user)
       val age     = if (maxAge == -1) None else Some(maxAge)
       session.map { s =>
@@ -144,12 +153,12 @@ trait Actions extends Calls with ActionHelpers {
     * @param nonce Nonce to check
     * @return True if valid
     */
-  def isNonceValid(nonce: String)(implicit ec: ExecutionContext): Future[Boolean] =
+  def isNonceValid(nonce: String): IO[Boolean] =
     this.signOns
       .find(_.nonce === nonce)
       .semiflatMap { signOn =>
         if (signOn.isCompleted || new Date().getTime - signOn.createdAt.value.getTime > 600000)
-          Future.successful(false)
+          IO.pure(false)
         else {
           service.update(signOn.copy(isCompleted = true)).as(true)
         }
@@ -182,67 +191,78 @@ trait Actions extends Calls with ActionHelpers {
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = {
       val auth = for {
-        ssoSome <- OptionT.fromOption[Future](sso)
-        sigSome <- OptionT.fromOption[Future](sig)
-        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)
+        ssoSome <- OptionT.fromOption[IO](sso)
+        sigSome <- OptionT.fromOption[IO](sig)
+        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)(OreMDC.RequestMDC(request))
       } yield res
 
-      auth.cata(
-        Some(Unauthorized),
-        spongeUser => if (spongeUser.id == request.user.id.value) None else Some(Unauthorized)
-      )
+      auth
+        .cata(
+          Some(Unauthorized),
+          spongeUser => if (spongeUser.id == request.user.id.value) None else Some(Unauthorized)
+        )
+        .unsafeToFuture()
     }
   }
 
-  def userAction(username: String)(implicit ec: ExecutionContext): ActionFilter[AuthRequest] =
+  def userAction(username: String)(implicit ec: ExecutionContext, cs: ContextShift[IO]): ActionFilter[AuthRequest] =
     new ActionFilter[AuthRequest] {
       def executionContext: ExecutionContext = ec
 
       def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
         users
-          .requestPermission(request.user, username, EditSettings)
+          .requestPermission(request.user, username, EditSettings)(auth, cs, OreMDC.RequestMDC(request))
           .transform {
             case None    => Some(Unauthorized) // No Permission
             case Some(_) => None // Permission granted => No Filter
           }
           .value
+          .unsafeToFuture()
     }
 
   def oreAction(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionTransformer[Request, OreRequest] = new ActionTransformer[Request, OreRequest] {
     def executionContext: ExecutionContext = ec
 
     def transform[A](request: Request[A]): Future[OreRequest[A]] = {
-      HeaderData.of(request).map { data =>
-        val requestWithLang =
-          data.currentUser.flatMap(_.lang).fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
-        new SimpleOreRequest(data, requestWithLang)
-      }
+      HeaderData
+        .of(request)
+        .map { data =>
+          val requestWithLang =
+            data.currentUser.flatMap(_.lang).fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
+          new SimpleOreRequest(data, requestWithLang)
+        }
+        .unsafeToFuture()
     }
   }
 
   def authAction(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[Request, AuthRequest] = new ActionRefiner[Request, AuthRequest] {
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: Request[A]): Future[Either[Result, AuthRequest[A]]] =
-      maybeAuthRequest(request, users.current(request, ec, auth))
+      maybeAuthRequest(request, users.current(request, auth, OreMDC.NoMDC))
 
   }
 
-  private def maybeAuthRequest[A](request: Request[A], futUser: OptionT[Future, User])(
-      implicit ec: ExecutionContext
-  ): Future[Either[Result, AuthRequest[A]]] =
-    futUser
+  private def maybeAuthRequest[A](
+      request: Request[A],
+      userF: OptionT[IO, User]
+  )(implicit cs: ContextShift[IO]): Future[Either[Result, AuthRequest[A]]] =
+    userF
       .semiflatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
-      .toRight(onUnauthorized(request, ec))
+      .toRight(IO.fromFuture(IO(onUnauthorized(request))))
       .leftSemiflatMap(identity)
       .value
+      .unsafeToFuture()
 
   def projectAction(author: String, slug: String)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[OreRequest, ProjectRequest] = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -251,7 +271,8 @@ trait Actions extends Calls with ActionHelpers {
   }
 
   def projectAction(pluginId: String)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[OreRequest, ProjectRequest] = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -259,45 +280,42 @@ trait Actions extends Calls with ActionHelpers {
       maybeProjectRequest(request, projects.withPluginId(pluginId))
   }
 
-  private def maybeProjectRequest[A](r: OreRequest[A], project: OptionT[Future, Project])(
-      implicit ec: ExecutionContext
+  private def maybeProjectRequest[A](r: OreRequest[A], project: OptionT[IO, Project])(
+      implicit cs: ContextShift[IO]
   ): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request: OreRequest[A] = r
     project
       .flatMap(processProject(_, request.headerData.currentUser))
       .semiflatMap { p =>
         toProjectRequest(p) {
-          case (data, scoped) =>
-            MDC.put("currentProjectId", data.project.id.toString)
-            MDC.put("currentProjectSlug", data.project.slug)
-
-            new ProjectRequest[A](data, scoped, r.headerData, r)
+          case (data, scoped) => new ProjectRequest[A](data, scoped, r.headerData, r)
         }
       }
       .toRight(notFound)
       .value
+      .unsafeToFuture()
   }
 
   private def toProjectRequest[T](project: Project)(f: (ProjectData, ScopedProjectData) => T)(
       implicit
       request: OreRequest[_],
-      ec: ExecutionContext
+      cs: ContextShift[IO]
   ) =
-    (ProjectData.of(project), ScopedProjectData.of(request.headerData.currentUser, project)).mapN(f)
+    (ProjectData.of(project), ScopedProjectData.of(request.headerData.currentUser, project)).parMapN(f)
 
   private def processProject(project: Project, user: Option[User])(
-      implicit ec: ExecutionContext
-  ): OptionT[Future, Project] = {
+      implicit cs: ContextShift[IO]
+  ): OptionT[IO, Project] = {
     if (project.visibility == Visibility.Public || project.visibility == Visibility.New) {
-      OptionT.pure[Future](project)
+      OptionT.pure[IO](project)
     } else {
       OptionT
-        .fromOption[Future](user)
+        .fromOption[IO](user)
         .semiflatMap { user =>
           val check1 = canEditAndNeedChangeOrApproval(project, user)
           val check2 = user.can(HideProjects).in(GlobalScope)
 
-          FutureUtils.raceBoolean(check1, check2)
+          IOUtils.raceBoolean(check1, check2)
         }
         .subflatMap {
           case true  => Some(project)
@@ -306,16 +324,17 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: Project, user: User)(implicit ec: ExecutionContext) = {
+  private def canEditAndNeedChangeOrApproval(project: Project, user: User)(implicit cs: ContextShift[IO]) = {
     if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
       user.can(EditPages).in(project)
     } else {
-      Future.successful(false)
+      IO.pure(false)
     }
   }
 
-  def authedProjectActionImpl(project: OptionT[Future, Project])(
-      implicit ec: ExecutionContext
+  def authedProjectActionImpl(project: OptionT[IO, Project])(
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
 
     def executionContext: ExecutionContext = ec
@@ -332,19 +351,23 @@ trait Actions extends Calls with ActionHelpers {
         }
         .toRight(notFound)
         .value
+        .unsafeToFuture()
     }
   }
 
   def authedProjectAction(author: String, slug: String)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withSlug(author, slug))
 
   def authedProjectActionById(pluginId: String)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withPluginId(pluginId))
 
   def organizationAction(organization: String)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[OreRequest, OrganizationRequest] = new ActionRefiner[OreRequest, OrganizationRequest] {
 
     def executionContext: ExecutionContext = ec
@@ -359,11 +382,13 @@ trait Actions extends Calls with ActionHelpers {
         }
         .toRight(notFound)
         .value
+        .unsafeToFuture()
     }
   }
 
   def authedOrganizationAction(organization: String)(
-      implicit ec: ExecutionContext
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
   ): ActionRefiner[AuthRequest, AuthedOrganizationRequest] = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -378,28 +403,20 @@ trait Actions extends Calls with ActionHelpers {
         }
         .toRight(notFound)
         .value
+        .unsafeToFuture()
     }
 
   }
 
   private def toOrgaRequest[T](orga: Organization)(f: (OrganizationData, ScopedOrganizationData) => T)(
       implicit request: OreRequest[_],
-      ec: ExecutionContext
-  ) = {
-    MDC.put("currentOrgaId", orga.id.toString)
-    MDC.put("currentOrgaName", orga.name)
+      cs: ContextShift[IO]
+  ) = (OrganizationData.of(orga), ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
 
-    (OrganizationData.of(orga), ScopedOrganizationData.of(request.headerData.currentUser, orga)).mapN(f)
-  }
-
-  def getOrga(organization: String)(
-      implicit ec: ExecutionContext,
-  ): OptionT[Future, Organization] =
+  def getOrga(organization: String): OptionT[IO, Organization] =
     organizations.withName(organization)
 
-  def getUserData(request: OreRequest[_], userName: String)(
-      implicit ec: ExecutionContext
-  ): OptionT[Future, UserData] =
-    users.withName(userName).semiflatMap(UserData.of(request, _))
+  def getUserData(request: OreRequest[_], userName: String)(implicit cs: ContextShift[IO]): OptionT[IO, UserData] =
+    users.withName(userName)(auth, OreMDC.RequestMDC(request)).semiflatMap(UserData.of(request, _))
 
 }

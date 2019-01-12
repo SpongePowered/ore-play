@@ -1,9 +1,7 @@
 package models.user.role
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.schema.ProjectRoleTable
-import db.{DbRef, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.Project
 import models.user.User
 import ore.Visitable
@@ -12,6 +10,7 @@ import ore.permission.scope.ProjectScope
 import ore.project.ProjectOwned
 import ore.user.UserOwned
 
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -26,8 +25,8 @@ import slick.lifted.TableQuery
   * @param projectId  ID of project this role belongs to
   */
 case class ProjectUserRole(
-    id: ObjId[ProjectUserRole] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[ProjectUserRole],
+    createdAt: ObjectTimestamp,
     userId: DbRef[User],
     projectId: DbRef[Project],
     role: Role,
@@ -37,25 +36,21 @@ case class ProjectUserRole(
   override type M = ProjectUserRole
   override type T = ProjectRoleTable
 
-  def this(
-      userId: DbRef[User],
-      roleType: Role,
-      projectId: DbRef[Project],
-      accepted: Boolean,
-      visible: Boolean
-  ) = this(
-    id = ObjId.Uninitialized(),
-    createdAt = ObjectTimestamp.Uninitialized,
-    userId = userId,
-    role = roleType,
-    projectId = projectId,
-    isAccepted = accepted
-  )
-
-  override def subject(implicit ec: ExecutionContext, service: ModelService): Future[Visitable] =
+  override def subject(implicit service: ModelService): IO[Visitable] =
     ProjectOwned[ProjectUserRole].project(this)
 }
 object ProjectUserRole {
+  case class Partial(
+      userId: DbRef[User],
+      projectId: DbRef[Project],
+      role: Role,
+      isAccepted: Boolean = false
+  ) {
+
+    def asFunc: InsertFunc[ProjectUserRole] =
+      (id, time) => ProjectUserRole(id, time, userId, projectId, role, isAccepted)
+  }
+
   implicit val query: ModelQuery[ProjectUserRole] =
     ModelQuery.from[ProjectUserRole](TableQuery[ProjectRoleTable], _.copy(_, _))
 

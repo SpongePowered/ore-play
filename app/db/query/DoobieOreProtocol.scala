@@ -1,4 +1,5 @@
 package db.query
+
 import java.net.InetAddress
 import java.sql.Timestamp
 
@@ -69,26 +70,26 @@ trait DoobieOreProtocol {
   }
 
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
-    Meta[Long].xmap(ObjId.apply[A], _.value)
-  implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].xmap(ObjectTimestamp.apply, _.value)
+    Meta[Long].timap(ObjId.apply[A])(_.value)
+  implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].timap(ObjectTimestamp.apply)(_.value)
 
-  implicit val jsonMeta: Meta[JsValue] = Meta
+  implicit val jsonMeta: Meta[JsValue] = Meta.Advanced
     .other[PGobject]("jsonb")
-    .xmap[JsValue](
-      o => Option(o).map(a => Json.parse(a.getValue)).orNull,
-      a =>
-        Option(a).map { a =>
-          val o = new PGobject
-          o.setType("jsonb")
-          o.setValue(a.toString())
-          o
-        }.orNull
-    )
+    .timap[JsValue] { o =>
+      Option(o).map(a => Json.parse(a.getValue)).orNull
+    } { a =>
+      Option(a).map { a =>
+        val o = new PGobject
+        o.setType("jsonb")
+        o.setValue(a.toString())
+        o
+      }.orNull
+    }
 
   def enumeratumMeta[V: TypeTag, E <: ValueEnumEntry[V]: TypeTag](
       enum: ValueEnum[V, E]
   )(implicit meta: Meta[V]): Meta[E] =
-    meta.xmap[E](enum.withValue, _.value)
+    meta.timap[E](enum.withValue)(_.value)
 
   implicit val colorMeta: Meta[Color]                        = enumeratumMeta(Color)
   implicit val tagColorMeta: Meta[TagColor]                  = enumeratumMeta(TagColor)
@@ -101,15 +102,15 @@ trait DoobieOreProtocol {
   implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType] = enumeratumMeta(ProjectApiKeyType)
   implicit val visibilityMeta: Meta[Visibility]              = enumeratumMeta(Visibility)
   implicit def loggedActionMeta[Ctx]: Meta[LoggedAction[Ctx]] =
-    enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]]
+    enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]] // scalafix:ok
   implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
-    enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]]
+    enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]] // scalafix:ok
   implicit val trustMeta: Meta[Trust]             = enumeratumMeta(Trust)
   implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
 
-  implicit val langMeta: Meta[Lang] = Meta[String].xmap(Lang.apply, _.toLocale.toLanguageTag)
+  implicit val langMeta: Meta[Lang] = Meta[String].timap(Lang.apply)(_.toLocale.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =
-    Meta[InetAddress].xmap(address => InetString(address.toString), str => InetAddress.getByName(str.value))
+    Meta[InetAddress].timap(address => InetString(address.toString))(str => InetAddress.getByName(str.value))
 
   implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumString[RoleCategory](
     name = "ROLE_CATEGORY",
@@ -125,21 +126,30 @@ trait DoobieOreProtocol {
     }
   )
 
+  def metaFromGetPut[A](implicit get: Get[A], put: Put[A]): Meta[A] = new Meta(get, put)
+
   implicit val promptArrayMeta: Meta[List[Prompt]] =
-    Meta[List[Int]].xmap(_.map(Prompt.withValue), _.map(_.value))
+    metaFromGetPut[List[Int]].timap(_.map(Prompt.withValue))(_.map(_.value))
   implicit val roleTypeArrayMeta: Meta[List[Role]] =
-    Meta[List[String]].xmap(_.map(Role.withValue), _.map(_.value))
+    metaFromGetPut[List[String]].timap(_.map(Role.withValue))(_.map(_.value))
 
   implicit val tagColorArrayMeta: Meta[List[TagColor]] =
-    Meta[List[Int]].xmap(_.map(TagColor.withValue), _.map(_.value))
+    Meta[Array[Int]].timap(_.toList.map(TagColor.withValue))(_.map(_.value).toArray)
 
   implicit def unsafeNelMeta[A](implicit listMeta: Meta[List[A]], typeTag: TypeTag[NEL[A]]): Meta[NEL[A]] =
-    listMeta.xmap(NEL.fromListUnsafe, _.toList)
+    listMeta.timap(NEL.fromListUnsafe)(_.toList)
 
-  implicit val viewTagListComposite: Composite[List[ViewTag]] =
-    Composite[(List[String], List[String], List[TagColor])].imap(
-      { case (name, data, color) => name.zip(data).zip(color).map(t => ViewTag(t._1._1, t._1._2, t._2)) }
-    )(_.flatMap(ViewTag.unapply).unzip3)
+  implicit def unsafeNelGet[A](implicit listGet: Get[List[A]], typeTag: TypeTag[NEL[A]]): Get[NEL[A]] =
+    listGet.tmap(NEL.fromListUnsafe)
 
+  implicit def unsafeNelPut[A](implicit listPut: Put[List[A]], typeTag: TypeTag[NEL[A]]): Put[NEL[A]] =
+    listPut.tcontramap(_.toList)
+
+  implicit val viewTagListRead: Read[List[ViewTag]] = Read[(List[String], List[String], List[TagColor])].map {
+    case (name, data, color) => name.zip(data).zip(color).map(t => ViewTag(t._1._1, t._1._2, t._2))
+  }
+
+  implicit val viewTagListWrite: Write[List[ViewTag]] =
+    Write[(List[String], List[String], List[TagColor])].contramap(_.flatMap(ViewTag.unapply).unzip3)
 }
 object DoobieOreProtocol extends DoobieOreProtocol

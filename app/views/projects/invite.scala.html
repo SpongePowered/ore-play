@@ -29,16 +29,16 @@
 
         <!-- Submission form -->
         @form(action = projectRoutes.Projects.showFirstVersionCreator(
-            pending.underlying.ownerName,
-            pending.underlying.slug),
+            pending.ownerName,
+            pending.slug),
             'id -> "form-continue") {
 
             @CSRF.formField
 
             <div class="btn-group pull-right">
                 <a href="@projectRoutes.Projects.showCreatorWithMeta(
-                    pending.underlying.ownerName,
-                    pending.underlying.slug)"
+                    pending.ownerName,
+                    pending.slug)"
                    title="Back" class="pull-left btn btn-default">
                     <i class="fa fa-arrow-left"></i>
                 </a>

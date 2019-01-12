@@ -3,7 +3,6 @@ package form
 import java.net.{MalformedURLException, URL}
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 import play.api.data.Forms._
@@ -24,6 +23,9 @@ import models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyType
+
+import cats.data.OptionT
+import cats.effect.IO
 
 /**
   * Collection of forms used in this application.
@@ -204,13 +206,16 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     */
   lazy val UserTagline = Form(single("tagline" -> text))
 
+  lazy val keyConstraint: Constraint[PGPPublicKeySubmission] =
+    Constraint(_.validateKey().fold(e => Invalid(e), _ => Valid))
+
   /**
     * Submits a PGP public key update.
     */
   lazy val UserPgpPubKey = Form(
     mapping(
       "pgp-pub-key" -> text
-    )(PGPPublicKeySubmission.apply)(PGPPublicKeySubmission.unapply).verifying("error.invalidKey", _.validateKey())
+    )(PGPPublicKeySubmission.apply)(PGPPublicKeySubmission.unapply).verifying(keyConstraint)
   )
 
   /**
@@ -245,45 +250,39 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
 
   lazy val ProjectApiKeyCreate = Form(single("key-type" -> projectApiKeyType))
 
-  def required(key: String) = Seq(FormError(key, "error.required", Nil))
+  def required(key: String): Seq[FormError] = Seq(FormError(key, "error.required", Nil))
 
-  def projectApiKey(implicit ec: ExecutionContext): FieldMapping[ProjectApiKey] =
-    of[ProjectApiKey](new Formatter[ProjectApiKey] {
-      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], ProjectApiKey] =
+  def projectApiKey: FieldMapping[OptionT[IO, ProjectApiKey]] =
+    of[OptionT[IO, ProjectApiKey]](new Formatter[OptionT[IO, ProjectApiKey]] {
+      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, ProjectApiKey]] =
         data
           .get(key)
-          .flatMap(id => Try(id.toLong).toOption.flatMap(evilAwaitpProjectApiKey(_)))
+          .flatMap(id => Try(id.toLong).toOption)
+          .map(service.access[ProjectApiKey]().get(_))
           .toRight(required(key))
 
-      def unbind(key: String, value: ProjectApiKey): Map[String, String] = Map(key -> value.id.value.toString)
+      def unbind(key: String, value: OptionT[IO, ProjectApiKey]): Map[String, String] =
+        value.value.unsafeRunSync().map(_.id.value.toString).map(key -> _).toMap
     })
 
-  def evilAwaitpProjectApiKey(key: Long)(implicit ec: ExecutionContext): Option[ProjectApiKey] = {
-    val projectApiKeys = this.service.access[ProjectApiKey]()
-    // TODO remvove await
-    this.service.await(projectApiKeys.get(key).value).getOrElse(None)
-  }
+  def ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))
 
-  def ProjectApiKeyRevoke(implicit ec: ExecutionContext) = Form(single("id" -> projectApiKey))
-
-  def channel(implicit request: ProjectRequest[_], ec: ExecutionContext): FieldMapping[Channel] =
-    of[Channel](new Formatter[Channel] {
-      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], Channel] =
+  def channel(implicit request: ProjectRequest[_]): FieldMapping[OptionT[IO, Channel]] =
+    of[OptionT[IO, Channel]](new Formatter[OptionT[IO, Channel]] {
+      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, Channel]] =
         data
           .get(key)
-          .flatMap(evilAwaitChannel(_))
+          .map(channelOptF(_))
           .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
 
-      def unbind(key: String, value: Channel) = Map(key -> value.name.toLowerCase)
+      def unbind(key: String, value: OptionT[IO, Channel]): Map[String, String] =
+        value.value.unsafeRunSync().map(key -> _.name.toLowerCase).toMap
     })
 
-  def evilAwaitChannel(c: String)(implicit request: ProjectRequest[_], ec: ExecutionContext): Option[Channel] = {
-    val value = request.data.project.channels.find(_.name.toLowerCase === c.toLowerCase)
-    // TODO remvove await
-    this.service.await(value.value).getOrElse(None)
-  }
+  def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[IO, Channel] =
+    request.data.project.channels.find(_.name.toLowerCase === c.toLowerCase)
 
-  def VersionDeploy(implicit request: ProjectRequest[_], ec: ExecutionContext) =
+  def VersionDeploy(implicit request: ProjectRequest[_]) =
     Form(
       mapping(
         "apiKey"      -> nonEmptyText,

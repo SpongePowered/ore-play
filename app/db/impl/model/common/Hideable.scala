@@ -1,7 +1,5 @@
 package db.impl.model.common
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.VisibilityColumn
@@ -10,6 +8,7 @@ import models.project.Visibility
 import models.user.User
 
 import cats.data.OptionT
+import cats.effect.{ContextShift, IO}
 
 /**
   * Represents a [[Model]] that has a toggleable visibility.
@@ -35,25 +34,24 @@ trait Hideable extends Model { self =>
     * @param visibility True if visible
     */
   def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[(M, ModelVisibilityChange)]
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[(M, ModelVisibilityChange)]
 
   /**
     * Get VisibilityChanges
     */
   def visibilityChanges(implicit service: ModelService): ModelAccess[ModelVisibilityChange]
 
-  def visibilityChangesByDate(implicit service: ModelService): Future[Seq[ModelVisibilityChange]] =
+  def visibilityChangesByDate(implicit service: ModelService): IO[Seq[ModelVisibilityChange]] =
     visibilityChanges.sorted(_.createdAt)
 
   def lastVisibilityChange(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): OptionT[Future, ModelVisibilityChange] =
+      implicit service: ModelService
+  ): OptionT[IO, ModelVisibilityChange] =
     OptionT(visibilityChanges.sorted(_.createdAt, _.resolvedAt.?.isEmpty, limit = 1).map(_.headOption))
 
-  def lastChangeRequest(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, ModelVisibilityChange] =
+  def lastChangeRequest(implicit service: ModelService): OptionT[IO, ModelVisibilityChange] =
     OptionT(
       visibilityChanges
         .sorted(_.createdAt.desc, _.visibility === (Visibility.NeedsChanges: Visibility), limit = 1)

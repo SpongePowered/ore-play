@@ -21,23 +21,23 @@ import cats.data.NonEmptyList
   */
 case class NotifyWatchersTask(version: Version, project: Project)(
     implicit ec: ExecutionContext,
-    service: ModelService,
-    config: OreConfig
+    service: ModelService
 ) extends Runnable {
 
-  def run(): Unit = {
-    val notification = (userId: DbRef[User]) =>
-      Notification(
-        userId = userId,
-        originId = project.ownerId,
-        notificationType = NotificationType.NewProjectVersion,
-        messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
-        action = Some(version.url(project))
-    )
+  private val notification = (userId: DbRef[User]) =>
+    Notification.partial(
+      userId = userId,
+      originId = project.ownerId,
+      notificationType = NotificationType.NewProjectVersion,
+      messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
+      action = Some(version.url(project))
+  )
 
-    service.runDBIO(project.watchers.allQueryFromParent(project).filter(_.id =!= version.authorId).result).foreach {
-      watchers =>
-        watchers.foreach(watcher => watcher.sendNotification(notification(watcher.id.value)))
-    }
-  }
+  private val watchingUsers =
+    service.runDBIO(project.watchers.allQueryFromParent(project).filter(_.id =!= version.authorId).result)
+
+  def run(): Unit =
+    watchingUsers
+      .unsafeToFuture()
+      .foreach(_.foreach(watcher => service.insert(notification(watcher.id.value))))
 }

@@ -17,7 +17,8 @@ package object schema {
     val g = fg._2
     new MappedProjection[R, U](
       shapedValue.shape.toNode(shapedValue.value),
-      MappedScalaType.Mapper(g.andThen(_.get).asInstanceOf[Any => Any], f.asInstanceOf[Any => Any], None),
+      MappedScalaType
+        .Mapper(g.andThen(_.get).asInstanceOf[Any => Any], f.asInstanceOf[Any => Any], None), // scalafix:ok
       implicitly[ClassTag[R]]
     )
   }

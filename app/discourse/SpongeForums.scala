@@ -3,6 +3,7 @@ package discourse
 import java.nio.file.Path
 import javax.inject.{Inject, Singleton}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import play.api.libs.ws.WSClient
@@ -11,6 +12,7 @@ import db.ModelService
 import ore.{OreConfig, OreEnv}
 
 import akka.actor.{ActorSystem, Scheduler}
+import cats.effect.IO
 
 /**
   * [[OreDiscourseApi]] implementation.
@@ -23,7 +25,8 @@ class SpongeForums @Inject()(
     val bootstrapService: ModelService,
     val bootstrapConfig: OreConfig,
     override val ws: WSClient
-) extends OreDiscourseApi {
+)(implicit ec: ExecutionContext)
+    extends OreDiscourseApi()(IO.contextShift(ec), IO.timer(ec)) {
 
   private val conf = this.config.forums
   private val api  = conf.api

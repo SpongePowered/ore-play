@@ -2,18 +2,16 @@ package models.project
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.mvc.Cookie
 
 import controllers.sugar.Bakery
 import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.DownloadWarning.COOKIE
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
@@ -31,13 +29,13 @@ import slick.lifted.TableQuery
   * @param downloadId  Download ID
   */
 case class DownloadWarning(
-    id: ObjId[DownloadWarning] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[DownloadWarning],
+    createdAt: ObjectTimestamp,
     expiration: Timestamp,
     token: String,
     versionId: DbRef[Version],
     address: InetString,
-    isConfirmed: Boolean = false,
+    isConfirmed: Boolean,
     downloadId: Option[DbRef[UnsafeDownload]]
 ) extends Model
     with Expirable {
@@ -50,8 +48,8 @@ case class DownloadWarning(
     *
     * @return Download
     */
-  def download(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, UnsafeDownload] =
-    OptionT.fromOption[Future](downloadId).flatMap(service.access[UnsafeDownload]().get)
+  def download(implicit service: ModelService): OptionT[IO, UnsafeDownload] =
+    OptionT.fromOption[IO](downloadId).flatMap(service.access[UnsafeDownload]().get)
 
   /**
     * Creates a cookie that should be given to the client.
@@ -65,6 +63,15 @@ case class DownloadWarning(
 }
 
 object DownloadWarning {
+  def partial(
+      expiration: Timestamp,
+      token: String,
+      versionId: DbRef[Version],
+      address: InetString,
+      isConfirmed: Boolean = false,
+      downloadId: Option[DbRef[UnsafeDownload]]
+  ): InsertFunc[DownloadWarning] =
+    (id, time) => DownloadWarning(id, time, expiration, token, versionId, address, isConfirmed, downloadId)
 
   implicit val query: ModelQuery[DownloadWarning] =
     ModelQuery.from[DownloadWarning](TableQuery[DownloadWarningsTable], _.copy(_, _))

@@ -1,15 +1,13 @@
 package models.user
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
-import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
 import cats.data.{NonEmptyList => NEL}
-import cats.instances.future._
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -25,14 +23,14 @@ import slick.lifted.TableQuery
   * @param isRead             True if notification has been read
   */
 case class Notification(
-    id: ObjId[Notification] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Notification],
+    createdAt: ObjectTimestamp,
     userId: DbRef[User],
     originId: DbRef[User],
     notificationType: NotificationType,
     messageArgs: NEL[String],
-    action: Option[String] = None,
-    isRead: Boolean = false
+    action: Option[String],
+    isRead: Boolean
 ) extends Model {
 
   override type M = Notification
@@ -43,10 +41,20 @@ case class Notification(
     *
     * @return User from which this originated from
     */
-  def origin(implicit ec: ExecutionContext, userBase: UserBase): Future[User] =
-    userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None"))
+  def origin(implicit userBase: UserBase): IO[User] =
+    userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 }
 object Notification {
+  def partial(
+      userId: DbRef[User],
+      originId: DbRef[User],
+      notificationType: NotificationType,
+      messageArgs: NEL[String],
+      action: Option[String] = None,
+      isRead: Boolean = false
+  ): InsertFunc[Notification] =
+    (id, time) => Notification(id, time, userId, originId, notificationType, messageArgs, action, isRead)
+
   implicit val query: ModelQuery[Notification] =
     ModelQuery.from[Notification](TableQuery[NotificationTable], _.copy(_, _))
 

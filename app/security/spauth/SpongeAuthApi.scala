@@ -4,18 +4,22 @@ import java.util.concurrent.TimeoutException
 import javax.inject.Inject
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
 
+import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
 
 import ore.OreConfig
+import _root_.util.OreMDC
 import _root_.util.WSUtils.parseJson
 
+import cats.ApplicativeError
 import cats.data.{EitherT, OptionT}
-import cats.instances.future._
+import cats.effect.IO
+import cats.syntax.all._
 import com.google.common.base.Preconditions._
+import com.typesafe.scalalogging
 
 /**
   * Interfaces with the SpongeAuth Web API
@@ -30,7 +34,8 @@ trait SpongeAuthApi {
   def ws: WSClient
   val timeout: Duration = 10.seconds
 
-  val Logger = play.api.Logger("SpongeAuth")
+  private val Logger    = scalalogging.Logger("SpongeAuth")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Creates a "dummy" user that cannot log in and has no password.
@@ -39,15 +44,14 @@ trait SpongeAuthApi {
     * @param email    Email
     * @return         Newly created user
     */
-  def createDummyUser(username: String, email: String)(
-      implicit ec: ExecutionContext
-  ): EitherT[Future, String, SpongeUser] = doCreateUser(username, email, None)
+  def createDummyUser(username: String, email: String)(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] =
+    doCreateUser(username, email, None)
 
   private def doCreateUser(
       username: String,
       email: String,
       password: Option[String],
-  )(implicit ec: ExecutionContext): EitherT[Future, String, SpongeUser] = {
+  )(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] = {
     checkNotNull(username, "null username", "")
     checkNotNull(email, "null email", "")
     val params = Map(
@@ -59,7 +63,7 @@ trait SpongeAuthApi {
     )
 
     val withPassword = password.fold(params)(pass => params + ("password" -> Seq(pass)))
-    readUser(this.ws.url(route("/api/users")).withRequestTimeout(timeout).post(withPassword))
+    readUser(IO.fromFuture(IO(this.ws.url(route("/api/users")).withRequestTimeout(timeout).post(withPassword))))
   }
 
   /**
@@ -68,17 +72,54 @@ trait SpongeAuthApi {
     * @param username Username to lookup
     * @return         User with username
     */
-  def getUser(username: String)(implicit ec: ExecutionContext): OptionT[Future, SpongeUser] = {
+  def getUser(username: String)(implicit mdc: OreMDC): OptionT[IO, SpongeUser] = {
     checkNotNull(username, "null username", "")
     val url = route("/api/users/" + username) + s"?apiKey=$apiKey"
-    readUser(this.ws.url(url).withRequestTimeout(timeout).get()).toOption
+    readUser(IO.fromFuture(IO(this.ws.url(url).withRequestTimeout(timeout).get()))).toOption
   }
 
-  private def readUser(response: Future[WSResponse])(
-      implicit ec: ExecutionContext
-  ): EitherT[Future, String, SpongeUser] = {
+  /**
+    * Returns the signed_data that can be used to construct the change-avatar
+    * @param username
+    * @param ec
+    * @return
+    */
+  def getChangeAvatarToken(
+      requester: String,
+      organization: String
+  )(implicit mdc: OreMDC): EitherT[IO, String, ChangeAvatarToken] = {
+    val params = Map(
+      "api-key"          -> Seq(this.apiKey),
+      "request_username" -> Seq(requester),
+    )
+    readChangeAvatarToken(
+      IO.fromFuture(
+        IO(
+          this.ws.url(route(s"/api/users/$organization/change-avatar-token/")).withRequestTimeout(timeout).post(params)
+        )
+      )
+    )
+  }
+
+  private def readChangeAvatarToken(
+      response: IO[WSResponse]
+  )(implicit mdc: OreMDC): EitherT[IO, String, ChangeAvatarToken] = {
+    val parsed = OptionT(response.map(parseJson(_, MDCLogger)))
+      .map(json => json.as[ChangeAvatarToken])
+      .toRight("Failed to parse json response")
+
+    ApplicativeError[EitherT[IO, String, ?], Throwable].recoverWith(parsed) {
+      case _: TimeoutException =>
+        EitherT.leftT("error.spongeauth.auth")
+      case e =>
+        MDCLogger.error("An unexpected error occured while handling a response", e)
+        EitherT.leftT("error.spongeauth.unexpected")
+    }
+  }
+
+  private def readUser(response: IO[WSResponse])(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] = {
     EitherT(
-      OptionT(response.map(parseJson(_, Logger)))
+      OptionT(response.map(parseJson(_, MDCLogger)))
         .map { json =>
           val obj = json.as[JsObject]
           if (obj.keys.contains("error"))
@@ -87,11 +128,11 @@ trait SpongeAuthApi {
             Right(obj.as[SpongeUser])
         }
         .getOrElse(Left("error.spongeauth.auth"))
-        .recover {
+        .handleError {
           case _: TimeoutException =>
             Left("error.spongeauth.auth")
           case e =>
-            Logger.error("An unexpected error occured while handling a response", e)
+            MDCLogger.error("An unexpected error occured while handling a response", e)
             Left("error.spongeauth.unexpected")
         }
     )
@@ -109,4 +150,14 @@ final class SpongeAuth @Inject()(config: OreConfig, override val ws: WSClient) e
   override val apiKey: String          = conf.key
   override val timeout: FiniteDuration = conf.timeout
 
+}
+
+case class ChangeAvatarToken(signedData: String, targetUsername: String, requestUserId: Int)
+
+object ChangeAvatarToken {
+  implicit val changeAvatarTokenReads: Reads[ChangeAvatarToken] =
+    (JsPath \ "signed_data")
+      .read[String]
+      .and((JsPath \ "raw_data" \ "target_username").read[String])
+      .and((JsPath \ "raw_data" \ "request_user_id").read[Int])(ChangeAvatarToken.apply _)
 }

@@ -3,20 +3,20 @@ package db.impl.access
 import java.sql.Timestamp
 import java.util.{Date, UUID}
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
-import db.{ModelBase, ModelService, ObjId, ObjectTimestamp}
+import db.{InsertFunc, ModelBase, ModelService}
 import models.user.{Session, User}
 import ore.OreConfig
 import ore.permission.Permission
 import security.spauth.SpongeAuthApi
+import util.OreMDC
 import util.StringUtils._
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 
 /**
   * Represents a central location for all Users.
@@ -33,9 +33,9 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @param username Username of user
     * @return User if found, None otherwise
     */
-  def withName(username: String)(implicit ec: ExecutionContext, auth: SpongeAuthApi): OptionT[Future, User] =
+  def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
     this.find(equalsIgnoreCase(_.name, username)).orElse {
-      auth.getUser(username).map(User.fromSponge).semiflatMap(getOrCreate)
+      auth.getUser(username).map(User.partialFromSponge).semiflatMap(this.add)
     }
 
   /**
@@ -48,14 +48,15 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return the requested user
     */
   def requestPermission(user: User, name: String, perm: Permission)(
-      implicit ec: ExecutionContext,
-      auth: SpongeAuthApi
-  ): OptionT[Future, User] = {
+      implicit auth: SpongeAuthApi,
+      cs: ContextShift[IO],
+      mdc: OreMDC
+  ): OptionT[IO, User] = {
     this.withName(name).flatMap { toCheck =>
-      if (user == toCheck) OptionT.pure[Future](user) // Same user
+      if (user == toCheck) OptionT.pure[IO](user) // Same user
       else
         toCheck.toMaybeOrganization.flatMap { orga =>
-          OptionT.liftF(user.can(perm) in orga).collect {
+          OptionT.liftF(user.can(perm).in(orga)).collect {
             case true => toCheck // Has Orga perm
           }
         }
@@ -70,12 +71,12 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     *
     * @return     Found or new User
     */
-  def getOrCreate(user: User)(implicit ec: ExecutionContext): Future[User] = {
-    def like = this.find(_.name.toLowerCase === user.name.toLowerCase)
+  def getOrCreate(username: String, user: InsertFunc[User], ifInsert: User => IO[Unit] = _ => IO.unit): IO[User] = {
+    def like = this.find(_.name.toLowerCase === username.toLowerCase)
 
     like.value.flatMap {
-      case Some(u) => Future.successful(u)
-      case None    => service.insert(user)
+      case Some(u) => IO.pure(u)
+      case None    => service.insert(user).flatTap(ifInsert)
     }
   }
 
@@ -86,11 +87,11 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     *
     * @return     Newly created session
     */
-  def createSession(user: User)(implicit ec: ExecutionContext): Future[Session] = {
+  def createSession(user: User): IO[Session] = {
     val maxAge     = this.config.play.sessionMaxAge
     val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
     val token      = UUID.randomUUID().toString
-    val session    = Session(ObjId.Uninitialized(), ObjectTimestamp.Uninitialized, expiration, user.name, token)
+    val session    = Session.partial(expiration, user.name, token)
     this.service.access[Session]().add(session)
   }
 
@@ -101,12 +102,12 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @param token  Token of session
     * @return       Session if found and has not expired
     */
-  private def getSession(token: String)(implicit ec: ExecutionContext): OptionT[Future, Session] =
-    this.service.access[Session]().find(_.token === token).subflatMap { session =>
-      if (session.hasExpired) {
-        service.delete(session)
-        None
-      } else Some(session)
+  private def getSession(token: String): OptionT[IO, Session] =
+    this.service.find[Session](_.token === token).flatMap { session =>
+      if (session.hasExpired)
+        OptionT(service.delete(session).as(None: Option[Session]))
+      else
+        OptionT.some[IO](session)
     }
 
   /**
@@ -115,9 +116,9 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @param session  Current session
     * @return         Authenticated user, if any, None otherwise
     */
-  def current(implicit session: Request[_], ec: ExecutionContext, authApi: SpongeAuthApi): OptionT[Future, User] =
+  def current(implicit session: Request[_], authApi: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
     OptionT
-      .fromOption[Future](session.cookies.get("_oretoken"))
+      .fromOption[IO](session.cookies.get("_oretoken"))
       .flatMap(cookie => getSession(cookie.value))
       .flatMap(_.user)
 

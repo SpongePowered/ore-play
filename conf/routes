@@ -33,7 +33,7 @@ GET     /api/projects/:pluginId/versions                            @controllers
 GET     /api/projects/:pluginId/versions/:name                      @controllers.ApiController.showVersion(version = "v1", pluginId, name)
 POST    /api/projects/:pluginId/versions/:name                      @controllers.ApiController.deployVersion(version = "v1", pluginId, name)
 
-GET     /api/projects/:pluginId/pages                               @controllers.ApiController.listPages(version = "v1", pluginId, parentId: Option[Int])
+GET     /api/projects/:pluginId/pages                               @controllers.ApiController.listPages(version = "v1", pluginId, parentId: Option[DbRef[Page]])
 
 GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
 GET     /api/projects/:pluginId/versions/recommended/signature      @controllers.project.Versions.downloadRecommendedSignatureById(pluginId)
@@ -51,7 +51,7 @@ GET     /api/:version/projects/:pluginId/versionsAll                @controllers
 GET     /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.showVersion(version, pluginId, name)
 POST    /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.deployVersion(version, pluginId, name)
 
-GET     /api/:version/projects/:pluginId/pages                      @controllers.ApiController.listPages(version, pluginId, parentId: Option[Int])
+GET     /api/:version/projects/:pluginId/pages                      @controllers.ApiController.listPages(version, pluginId, parentId: Option[DbRef[Page]])
 
 GET     /api/:version/users                                         @controllers.ApiController.listUsers(version, limit: Option[Int], offset: Option[Int])
 GET     /api/:version/users/:user                                   @controllers.ApiController.showUser(version, user)
@@ -90,7 +90,7 @@ POST    /organizations/new                                          @controllers
 
 POST    /organizations/invite/:id/:status                           @controllers.Organizations.setInviteStatus(id: DbRef[OrganizationUserRole], status)
 
-POST    /organizations/:organization/settings/avatar                @controllers.Organizations.updateAvatar(organization)
+GET     /organizations/:organization/settings/avatar                @controllers.Organizations.updateAvatar(organization)
 POST    /organizations/:organization/settings/members               @controllers.Organizations.updateMembers(organization)
 POST    /organizations/:organization/settings/members/remove        @controllers.Organizations.removeMember(organization)
 
@@ -112,7 +112,8 @@ GET     /:user/settings/pgp/delete                                  @controllers
 
 POST    /:author/:slug                                              @controllers.project.Projects.showFirstVersionCreator(author, slug)
 GET     /:author/:slug                                              @controllers.project.Projects.show(author, slug)
-POST    /:author/:slug/star/:starred                                @controllers.project.Projects.setStarred(author, slug, starred: Boolean)
+GET     /:author/:slug/stars                                        @controllers.project.Projects.showStargazers(author, slug, page: Option[Int])
+POST    /:author/:slug/stars/:starred                               @controllers.project.Projects.setStarred(author, slug, starred: Boolean)
 POST    /:author/:slug/flag                                         @controllers.project.Projects.flag(author, slug)
 POST    /:author/:slug/visible/:visibility                          @controllers.project.Projects.setVisible(author, slug, visibility: Int)
 POST    /:author/:slug/watch/:watching                              @controllers.project.Projects.setWatching(author, slug, watching: Boolean)

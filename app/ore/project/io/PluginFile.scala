@@ -2,61 +2,25 @@ package ore.project.io
 
 import java.io._
 import java.nio.file.{Files, Path}
-import java.util.jar.{JarEntry, JarFile, JarInputStream}
+import java.util.jar.{JarFile, JarInputStream}
 import java.util.zip.{ZipEntry, ZipFile}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
-import scala.util.control.Breaks._
 
 import play.api.i18n.Messages
 
 import models.user.User
 import ore.user.UserOwned
 
-import com.google.common.base.Preconditions._
-import org.apache.commons.codec.digest.DigestUtils
+import cats.data.EitherT
+import cats.effect.{IO, Resource}
 
 /**
   * Represents an uploaded plugin file.
   *
-  * @param _path Path to uploaded file
+  * @param path Path to uploaded file
   */
-class PluginFile(private var _path: Path, val signaturePath: Path, val user: User) {
-
-  private var _data: Option[PluginFileData] = None
-
-  /**
-    * Returns the actual file path associated with this plugin.
-    *
-    * @return Path of plugin file
-    */
-  def path: Path = {
-    checkNotNull(this._path, "file is deleted", "")
-    this._path
-  }
-
-  /**
-    * Deletes the File at this PluginFile's Path
-    */
-  def delete(): Unit = {
-    Files.delete(this._path)
-    this._path = null
-  }
-
-  /**
-    * Returns the loaded PluginMetadata, if any.
-    *
-    * @return PluginMetadata if present, None otherwise
-    */
-  def data: Option[PluginFileData] = this._data
-
-  /**
-    * Returns an MD5 hash of this PluginFile.
-    *
-    * @return MD5 hash
-    */
-  lazy val md5: String = DigestUtils.md5Hex(Files.newInputStream(this.path))
+class PluginFile(val path: Path, val signaturePath: Path, val user: User) {
 
   /**
     * Reads the temporary file's plugin meta file and returns the result.
@@ -65,65 +29,62 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     *
     * @return Plugin metadata or an error message
     */
-  @throws[InvalidPluginFileException]
-  def loadMeta()(implicit messages: Messages): Either[String, PluginFileData] = {
+  def loadMeta(implicit messages: Messages): EitherT[IO, String, PluginFileWithData] = {
     val fileNames = PluginFileData.fileNames
 
-    var jarIn: JarInputStream = null
-    try {
-      // Find plugin JAR
-      jarIn = new JarInputStream(newJarStream)
-
-      val data = new ArrayBuffer[DataValue[_]]()
-
-      // Find plugin meta file
-      var entry: JarEntry = jarIn.getNextJarEntry
-      while (entry != null) {
-        if (fileNames.contains(entry.getName)) {
-          data ++= PluginFileData.getData(entry.getName, new BufferedReader(new InputStreamReader(jarIn)))
-        }
-        entry = jarIn.getNextJarEntry
-      }
-
-      // Mainfest file isn't read in the jar stream for whatever reason
-      // so we need to use the java API
-      if (fileNames.contains(JarFile.MANIFEST_NAME)) {
-        val manifest = jarIn.getManifest
-        if (manifest != null) {
-          val manifestLines = new BufferedReader(
-            new StringReader(
-              jarIn.getManifest.getMainAttributes.asScala
-                .map(p => p._1.toString + ": " + p._2.toString)
-                .mkString("\n")
-            )
-          )
-
-          data ++= PluginFileData.getData(JarFile.MANIFEST_NAME, manifestLines)
+    val res = newJarStream
+      .flatMap { in =>
+        val jarIn = IO(in.map(new JarInputStream(_)))
+        Resource.make(jarIn) {
+          case Right(is) => IO(is.close())
+          case _         => IO.unit
         }
       }
+      .use { eJarIn =>
+        IO {
+          eJarIn.map { jarIn =>
+            val fileDataSeq = Iterator
+              .continually(jarIn.getNextJarEntry)
+              .takeWhile(_ != null) // scalafix:ok
+              .filter(entry => fileNames.contains(entry.getName))
+              .flatMap(entry => PluginFileData.getData(entry.getName, new BufferedReader(new InputStreamReader(jarIn))))
+              .toVector
 
-      // This won't be called if a plugin uses mixins but doesn't
-      // have a mcmod.info, but the check below will catch that
-      if (data.isEmpty)
-        return Left(messages("error.plugin.metaNotFound"))
+            // Mainfest file isn't read in the jar stream for whatever reason
+            // so we need to use the java API
+            val manifestDataSeq = if (fileNames.contains(JarFile.MANIFEST_NAME)) {
+              Option(jarIn.getManifest)
+                .map { manifest =>
+                  val manifestLines = new BufferedReader(
+                    new StringReader(
+                      manifest.getMainAttributes.asScala
+                        .map(p => p._1.toString + ": " + p._2.toString)
+                        .mkString("\n")
+                    )
+                  )
 
-      val fileData = new PluginFileData(data)
+                  PluginFileData.getData(JarFile.MANIFEST_NAME, manifestLines)
+                }
+                .getOrElse(Nil)
+            } else Nil
 
-      this._data = Some(fileData)
-      if (!fileData.isValidPlugin) {
-        return Left(messages("error.plugin.incomplete", "id or version"))
+            val data = fileDataSeq ++ manifestDataSeq
+
+            // This won't be called if a plugin uses mixins but doesn't
+            // have a mcmod.info, but the check below will catch that
+            if (data.isEmpty)
+              Left(messages("error.plugin.metaNotFound"))
+            else {
+              val fileData = new PluginFileData(data)
+
+              if (!fileData.isValidPlugin) Left(messages("error.plugin.incomplete", "id or version"))
+              else Right(new PluginFileWithData(path, signaturePath, user, fileData))
+            }
+          }
+        }
       }
 
-      Right(fileData)
-    } catch {
-      case e: Exception =>
-        Left(e.getMessage)
-    } finally {
-      if (jarIn != null)
-        jarIn.close()
-      else
-        return Left(messages("error.plugin.unexpected"))
-    }
+    EitherT(res.map(_.flatMap(identity)))
   }
 
   /**
@@ -131,36 +92,31 @@ class PluginFile(private var _path: Path, val signaturePath: Path, val user: Use
     *
     * @return InputStream of JAR
     */
-  @throws[IOException]
-  def newJarStream(implicit messages: Messages): InputStream = {
+  def newJarStream: Resource[IO, Either[String, InputStream]] = {
     if (this.path.toString.endsWith(".jar"))
-      Files.newInputStream(this.path)
-    else {
-      val zip = new ZipFile(this.path.toFile)
-      zip.getInputStream(findTopLevelJar(zip))
-    }
+      Resource
+        .fromAutoCloseable[IO, InputStream](IO(Files.newInputStream(this.path)))
+        .flatMap(is => Resource.pure(Right(is)))
+    else
+      Resource
+        .fromAutoCloseable(IO(new ZipFile(this.path.toFile)))
+        .flatMap { zip =>
+          val jarIn = IO(findTopLevelJar(zip).map(zip.getInputStream))
+
+          Resource.make(jarIn) {
+            case Right(is) => IO(is.close())
+            case _         => IO.unit
+          }
+        }
   }
 
-  private def findTopLevelJar(zip: ZipFile)(implicit messages: Messages): ZipEntry = {
-    if (this.path.toString.endsWith(".jar"))
-      throw new Exception("Plugin is already JAR")
-
-    var pluginEntry: ZipEntry = null
-    val entries               = zip.entries()
-    breakable {
-      while (entries.hasMoreElements) {
-        val entry = entries.nextElement()
-        val name  = entry.getName
-        if (!entry.isDirectory && name.split("/").length == 1 && name.endsWith(".jar")) {
-          pluginEntry = entry
-          break
-        }
-      }
+  private def findTopLevelJar(zip: ZipFile): Either[String, ZipEntry] = {
+    val pluginEntry = zip.entries().asScala.find { entry =>
+      val name = entry.getName
+      !entry.isDirectory && name.split("/").length == 1 && name.endsWith(".jar")
     }
 
-    if (pluginEntry == null)
-      throw InvalidPluginFileException(messages("error.plugin.jarNotFound"))
-    pluginEntry
+    pluginEntry.toRight("error.plugin.jarNotFound")
   }
 }
 object PluginFile {

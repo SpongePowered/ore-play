@@ -15,6 +15,7 @@ import ore.OreConfig
 
 import akka.actor.{ActorSystem, Scheduler}
 import com.sun.net.ssl.internal.ssl.Provider
+import com.typesafe.scalalogging
 
 /**
   * Handles dispatch of emails to users. Particularly for email verification.
@@ -50,9 +51,9 @@ trait Mailer extends Runnable {
   val queue: ArrayBuffer[Email] = ArrayBuffer.empty
 
   val suppressLogger = false
-  val Logger         = play.api.Logger("Mailer")
+  private val Logger = scalalogging.Logger("Mailer")
 
-  private var session: Session = _
+  private var session: Session = _ // scalafix:ok
 
   private def log(msg: String): Unit = if (!this.suppressLogger) Logger.debug(msg)
 

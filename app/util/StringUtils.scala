@@ -69,7 +69,7 @@ object StringUtils {
     * @return       Formatted string
     */
   def readAndFormatFile(path: Path, params: String*): String =
-    MessageFormat.format(new String(Files.readAllBytes(path)), params.map(_.asInstanceOf[AnyRef]): _*)
+    MessageFormat.format(new String(Files.readAllBytes(path)), params: _*)
 
   /**
     * Formats the specified date into the standard application form time.

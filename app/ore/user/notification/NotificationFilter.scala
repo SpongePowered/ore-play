@@ -1,12 +1,12 @@
 package ore.user.notification
 
 import scala.collection.immutable
-import scala.concurrent.Future
 
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import models.user.Notification
 
+import cats.effect.IO
 import enumeratum.values._
 
 sealed abstract class NotificationFilter(
@@ -17,7 +17,7 @@ sealed abstract class NotificationFilter(
     val filter: Notification#T => Rep[Boolean]
 ) extends IntEnumEntry {
 
-  def apply(notifications: ModelAccess[Notification]): Future[Seq[Notification]] =
+  def apply(notifications: ModelAccess[Notification]): IO[Seq[Notification]] =
     notifications.filter(this.filter)
 }
 

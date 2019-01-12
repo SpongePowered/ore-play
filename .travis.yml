@@ -8,7 +8,7 @@ jdk:
   - openjdk8
 
 scala:
-  - 2.12.6
+  - 2.12.8
 
 services: postgresql
 
@@ -27,6 +27,7 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt
+    - $HOME/.coursier/cache
 
 before_cache:
   # Cleanup the cached directories to avoid unnecessary cache updates

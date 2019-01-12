@@ -1,12 +1,9 @@
 package models.user
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.access.UserBase
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.OrganizationTable
 import db.impl.model.common.Named
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.impl.schema.OrganizationTable
+import db._
 import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
 import ore.permission.role.Role
@@ -14,9 +11,13 @@ import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
 import security.spauth.SpongeAuthApi
+import util.OreMDC
 import util.syntax._
 
 import cats.data.OptionT
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
+import slick.lifted.TableQuery
 
 /**
   * Represents an Ore Organization. An organization is like a [[User]] in the
@@ -29,8 +30,8 @@ import cats.data.OptionT
   * @param ownerId        The ID of the [[User]] that owns this organization
   */
 case class Organization(
-    id: ObjId[Organization] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Organization],
+    createdAt: ObjectTimestamp,
     username: String,
     ownerId: DbRef[User]
 ) extends Model
@@ -45,10 +46,9 @@ case class Organization(
     * Contains all information for [[User]] memberships.
     */
   override def memberships(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): MembershipDossier.Aux[Future, Organization, OrganizationUserRole, OrganizationMember] =
-    MembershipDossier[Future, Organization]
+      implicit service: ModelService
+  ): MembershipDossier.Aux[IO, Organization, OrganizationUserRole, OrganizationMember] =
+    MembershipDossier[IO, Organization]
 
   /**
     * Returns the [[User]] that owns this Organization.
@@ -60,26 +60,30 @@ case class Organization(
 
   override def transferOwner(
       member: OrganizationMember
-  )(implicit ec: ExecutionContext, service: ModelService): Future[Organization] =
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Organization] = {
+    import cats.instances.vector._
     // Down-grade current owner to "Admin"
     for {
-      (owner, memberUser)  <- this.owner.user.zip(member.user)
-      (roles, memberRoles) <- this.memberships.getRoles(this, owner).zip(this.memberships.getRoles(this, memberUser))
-      setOwner             <- service.update(copy(ownerId = memberUser.id.value))
-      _ <- Future.sequence(
-        roles
-          .filter(_.role == Role.OrganizationOwner)
-          .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))
-      )
-      _ <- Future.sequence(memberRoles.map(role => service.update(role.copy(role = Role.OrganizationOwner))))
+      t1 <- (owner.user, member.user).parTupled
+      (owner, memberUser) = t1
+      t2 <- (memberships.getRoles(this, owner), memberships.getRoles(this, memberUser)).parTupled
+      (roles, memberRoles) = t2
+      setOwner <- service.update(copy(ownerId = memberUser.id.value))
+      _ <- roles
+        .filter(_.role == Role.OrganizationOwner)
+        .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))
+        .toVector
+        .parSequence
+      _ <- memberRoles.toVector.parTraverse(role => service.update(role.copy(role = Role.OrganizationOwner)))
     } yield setOwner
+  }
 
   /**
     * Returns this Organization as a [[User]].
     *
     * @return This Organization as a User
     */
-  def toUser(implicit ec: ExecutionContext, users: UserBase, auth: SpongeAuthApi): OptionT[Future, User] =
+  def toUser(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
     users.withName(this.username)
 
   override val name: String = this.username
@@ -88,6 +92,9 @@ case class Organization(
 
 object Organization {
   implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
+
+  def partial(id: ObjId[Organization], username: String, ownerId: DbRef[User]): InsertFunc[Organization] =
+    (_, time) => Organization(id, time, username, ownerId)
 
   implicit val query: ModelQuery[Organization] =
     ModelQuery.from[Organization](TableQuery[OrganizationTable], (obj, _, time) => obj.copy(createdAt = time))

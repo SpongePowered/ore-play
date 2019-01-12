@@ -2,20 +2,19 @@ package models.admin
 
 import java.sql.Timestamp
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.i18n.Messages
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.User
 import ore.OreConfig
 import _root_.util.StringUtils
 
+import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -29,8 +28,8 @@ import slick.lifted.TableQuery
   * @param message      Message of why it ended
   */
 case class Review(
-    id: ObjId[Review] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Review],
+    createdAt: ObjectTimestamp,
     versionId: DbRef[Version],
     userId: DbRef[User],
     endedAt: Option[Timestamp],
@@ -46,7 +45,7 @@ case class Review(
   /**
     * Add new message
     */
-  def addMessage(message: Message)(implicit ec: ExecutionContext, service: ModelService): Future[Review] = {
+  def addMessage(message: Message)(implicit service: ModelService): IO[Review] = {
     val messages = decodeMessages :+ message
     service.update(
       copy(
@@ -90,6 +89,13 @@ object Message {
 }
 
 object Review {
+  def partial(
+      versionId: DbRef[Version],
+      userId: DbRef[User],
+      endedAt: Option[Timestamp],
+      message: JsValue
+  ): InsertFunc[Review] = (id, time) => Review(id, time, versionId, userId, endedAt, message)
+
   def ordering: Ordering[(Review, _)] =
     // TODO make simple + check order
     Ordering.by(_._1.createdAt.value.getTime)

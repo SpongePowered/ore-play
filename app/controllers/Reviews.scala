@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.Instant
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.libs.json.JsObject
@@ -13,8 +13,8 @@ import play.api.mvc.{Action, AnyContent, Result}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{NotificationTable, OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{DbRef, ModelService, ObjId, ObjectTimestamp}
+import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
+import db.{DbRef, ModelService}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, ReviewState, Version}
@@ -27,7 +27,7 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}
 
 import cats.data.{EitherT, NonEmptyList}
-import cats.instances.future._
+import cats.effect.IO
 import cats.syntax.all._
 import slick.lifted.{Rep, TableQuery}
 
@@ -48,11 +48,12 @@ final class Reviews @Inject()(forms: OreForms)(
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(ReviewProjects)).andThen(ProjectAction(author, slug)).asyncEitherT {
       implicit request =>
+        import cats.instances.vector._
         for {
           version <- getVersion(request.project, versionString)
           reviews <- EitherT.right[Result](version.mostRecentReviews)
           rv <- EitherT.right[Result](
-            Future.traverse(reviews)(r => users.get(r.userId).map(_.name).value.tupleLeft(r))
+            reviews.toVector.parTraverse(r => users.get(r.userId).map(_.name).value.tupleLeft(r))
           )
         } yield {
           val unfinished = reviews.filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
@@ -61,18 +62,16 @@ final class Reviews @Inject()(forms: OreForms)(
     }
 
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
-        val review = new Review(
-          ObjId.Uninitialized(),
-          ObjectTimestamp(Timestamp.from(Instant.now())),
+        val review = Review.partial(
           version.id.value,
           request.user.id.value,
           None,
           JsObject.empty
         )
         this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
-      }.merge
+      }
     }
   }
 
@@ -126,7 +125,7 @@ final class Reviews @Inject()(forms: OreForms)(
             service.update(review.copy(endedAt = Some(Timestamp.from(Instant.now())))),
             // send notification that review happened
             sendReviewNotification(project, version, request.user)
-          ).tupled
+          ).parTupled
         )
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
@@ -155,31 +154,28 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private lazy val notificationUsersQuery = Compiled(queryNotificationUsers _)
 
-  private def sendReviewNotification(project: Project, version: Version, requestUser: User): Future[_] = {
-    val futUsers =
+  private def sendReviewNotification(project: Project, version: Version, requestUser: User): IO[Unit] = {
+    val usersF =
       service.runDBIO(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
-        list
-          .filter {
-            case (_, Some(level)) => level.trust.level >= Trust.Lifted.level
-            case (_, None)        => true
-          }
-          .map(_._1)
+        list.collect {
+          case (res, Some(level)) if level.trust >= Trust.Lifted => res
+          case (res, None)                                       => res
+        }
       }
 
-    futUsers
+    usersF
       .map { users =>
         users.map { userId =>
-          Notification(
+          Notification.partial(
             userId = userId,
-            createdAt = ObjectTimestamp(Timestamp.from(Instant.now())),
             originId = requestUser.id.value,
             notificationType = NotificationType.VersionReviewed,
             messageArgs = NonEmptyList.of("notification.project.reviewed", project.slug, version.versionString)
           )
         }
       }
-      .map(TableQuery[NotificationTable] ++= _)
-      .flatMap(service.runDBIO) // Batch insert all notifications
+      .flatMap(service.bulkInsert(_))
+      .void
   }
 
   def takeoverReview(author: String, slug: String, versionString: String): Action[String] = {
@@ -195,7 +191,7 @@ final class Reviews @Inject()(forms: OreForms)(
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
                   service.update(oldreview.copy(endedAt = Some(Timestamp.from(Instant.now())))),
-                ).tupled.void
+                ).parTupled.void
               }
               .getOrElse(())
 
@@ -203,16 +199,14 @@ final class Reviews @Inject()(forms: OreForms)(
             val result = (
               closeOldReview,
               this.service.insert(
-                Review(
-                  ObjId.Uninitialized(),
-                  ObjectTimestamp(Timestamp.from(Instant.now())),
+                Review.partial(
                   version.id.value,
                   request.user.id.value,
                   None,
                   JsObject.empty
                 )
               )
-            ).tupled
+            ).parTupled
             EitherT.right[Result](result)
           }
         } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
@@ -226,7 +220,7 @@ final class Reviews @Inject()(forms: OreForms)(
         for {
           version <- getProjectVersion(author, slug, versionString)
           review  <- version.reviewById(reviewId).toRight(notFound)
-          _       <- EitherT.liftF(review.addMessage(Message(request.body.trim)))
+          _       <- EitherT.right[Result](review.addMessage(Message(request.body.trim)))
         } yield Ok("Review" + review)
       }
   }
@@ -241,7 +235,7 @@ final class Reviews @Inject()(forms: OreForms)(
           _ <- {
             if (recentReview.userId == currentUser.id.value) {
               EitherT.right[Result](recentReview.addMessage(Message(request.body.trim)))
-            } else EitherT.rightT[Future, Result](0)
+            } else EitherT.rightT[IO, Result](0)
           }
         } yield Ok("Review")
     }
@@ -251,7 +245,7 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        oldState <- EitherT.cond[Future](
+        oldState <- EitherT.cond[IO](
           Seq(ReviewState.Backlog, ReviewState.Unreviewed).contains(version.reviewState),
           version.reviewState,
           BadRequest("Invalid state for toggle backlog")
@@ -261,7 +255,7 @@ final class Reviews @Inject()(forms: OreForms)(
           case ReviewState.Backlog    => ReviewState.Unreviewed
           case _                      => oldState
         }
-        _ <- EitherT.liftF(
+        _ <- EitherT.right[Result](
           UserActionLogger.log(
             request,
             LoggedAction.VersionReviewStateChanged,
@@ -270,7 +264,7 @@ final class Reviews @Inject()(forms: OreForms)(
             oldState.toString,
           )
         )
-        _ <- EitherT.liftF(service.update(version.copy(reviewState = newState)))
+        _ <- EitherT.right[Result](service.update(version.copy(reviewState = newState)))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }

@@ -27,6 +27,12 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
 
   val projects = ProjectBase()
 
+  private val topicFilter = ModelFilter[Project](_.topicId.isEmpty)
+  private val dirtyFilter = ModelFilter[Project](_.isTopicDirty)
+
+  private val toCreateProjects   = this.projects.filter(topicFilter && Visibility.isPublicFilter)
+  private val dirtyTopicProjects = this.projects.filter(dirtyFilter && Visibility.isPublicFilter)
+
   /**
     * Starts the recovery task to be run at the specified interval.
     */
@@ -38,17 +44,14 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
   override def run(): Unit = {
     Logger.debug("Running Discourse recovery task...")
 
-    val topicFilter = ModelFilter[Project](_.topicId.isEmpty)
-    val dirtyFilter = ModelFilter[Project](_.isTopicDirty)
-
-    this.projects.filter(topicFilter && Visibility.isPublicFilter).foreach { toCreate =>
+    toCreateProjects.unsafeToFuture().foreach { toCreate =>
       Logger.debug(s"Creating ${toCreate.size} topics...")
-      toCreate.foreach(this.api.createProjectTopic)
+      toCreate.foreach(this.api.createProjectTopic(_).unsafeToFuture())
     }
 
-    this.projects.filter(dirtyFilter && Visibility.isPublicFilter).foreach { toUpdate =>
+    dirtyTopicProjects.unsafeToFuture().foreach { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} topics...")
-      toUpdate.foreach(this.api.updateProjectTopic)
+      toUpdate.foreach(this.api.updateProjectTopic(_).unsafeToFuture())
     }
 
     Logger.debug("Done")

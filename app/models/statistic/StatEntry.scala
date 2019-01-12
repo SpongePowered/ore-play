@@ -1,14 +1,12 @@
 package models.statistic
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.access.UserBase
 import db.impl.table.StatTable
-import db.{DbRef, Model}
+import db.{DbRef, InsertFunc, Model}
 import models.user.User
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import com.google.common.base.Preconditions._
 
@@ -42,12 +40,37 @@ abstract class StatEntry[Subject <: Model] extends Model { self =>
 
   checkNotNull(address, "client address cannot be null", "")
   checkNotNull(cookie, "browser cookie cannot be null", "")
+}
+
+trait PartialStatEntry[Subject <: Model, M <: Model] {
+
+  /**
+    * ID of model the stat is on
+    */
+  def modelId: DbRef[Subject]
+
+  /**
+    * Client address
+    */
+  def address: InetString
+
+  /**
+    * Browser cookie
+    */
+  def cookie: String
+
+  /**
+    * User ID
+    */
+  def userId: Option[DbRef[User]]
 
   /**
     * Returns the User associated with this entry, if any.
     *
     * @return User of entry
     */
-  def user(implicit ec: ExecutionContext, userBase: UserBase): OptionT[Future, User] =
-    OptionT.fromOption[Future](userId).flatMap(userBase.get)
+  def user(implicit userBase: UserBase): OptionT[IO, User] =
+    OptionT.fromOption[IO](userId).flatMap(userBase.get)
+
+  def asFunc: InsertFunc[M]
 }

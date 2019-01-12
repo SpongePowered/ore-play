@@ -2,8 +2,6 @@ package models.project
 
 import java.net.{URI, URISyntaxException}
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import play.twirl.api.Html
 
 import db.access.ModelAccess
@@ -11,16 +9,17 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 import db.impl.model.common.Named
 import db.impl.schema.PageTable
-import db.{DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db._
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
 import util.StringUtils._
+import java.util
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.IO
 import com.google.common.base.Preconditions._
-import com.vladsch.flexmark.ast.{MailLink, Node}
+import com.vladsch.flexmark.ast.MailLink
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -31,6 +30,7 @@ import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.html.renderer._
 import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
 import com.vladsch.flexmark.parser.Parser
+import com.vladsch.flexmark.util.ast.Node
 import com.vladsch.flexmark.util.options.MutableDataSet
 import slick.lifted.TableQuery
 
@@ -47,13 +47,13 @@ import slick.lifted.TableQuery
   * @param isDeletable  True if can be deleted by the user
   */
 case class Page(
-    id: ObjId[Page] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[Page],
+    createdAt: ObjectTimestamp,
     projectId: DbRef[Project],
     parentId: Option[DbRef[Page]],
     name: String,
     slug: String,
-    isDeletable: Boolean = true,
+    isDeletable: Boolean,
     contents: String
 ) extends Model
     with Named {
@@ -67,23 +67,6 @@ case class Page(
   checkNotNull(this.slug, "slug cannot be null", "")
   checkNotNull(this.contents, "contents cannot be null", "")
 
-  def this(
-      projectId: DbRef[Project],
-      name: String,
-      content: String,
-      isDeletable: Boolean,
-      parentId: Option[DbRef[Page]]
-  ) = {
-    this(
-      projectId = projectId,
-      name = compact(name),
-      slug = slugify(name),
-      contents = content.trim,
-      isDeletable = isDeletable,
-      parentId = parentId
-    )
-  }
-
   /**
     * Sets the Markdown contents of this Page and updates the associated forum
     * topic if this is the home page.
@@ -92,7 +75,7 @@ case class Page(
     */
   def updateContentsWithForum(
       contents: String
-  )(implicit ec: ExecutionContext, service: ModelService, config: OreConfig, forums: OreDiscourseApi): Future[Page] = {
+  )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi): IO[Page] = {
     checkNotNull(contents, "null contents", "")
     checkArgument(
       (this.isHome && contents.length <= maxLength) || contents.length <= maxLengthPage,
@@ -100,16 +83,13 @@ case class Page(
       ""
     )
     val newPage = copy(contents = contents)
-    if (!isDefined) Future.successful(newPage)
-    else {
-      for {
-        updated <- service.update(newPage)
-        project <- ProjectOwned[Page].project(this)
-        // Contents were updated, update on forums
-        _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
-        else Future.successful(false)
-      } yield updated
-    }
+    for {
+      updated <- service.update(newPage)
+      project <- ProjectOwned[Page].project(this)
+      // Contents were updated, update on forums
+      _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
+      else IO.pure(false)
+    } yield updated
   }
 
   /**
@@ -131,12 +111,12 @@ case class Page(
     *
     * @return Optional Project
     */
-  def parentProject(implicit ec: ExecutionContext, projectBase: ProjectBase): OptionT[Future, Project] =
+  def parentProject(implicit projectBase: ProjectBase): OptionT[IO, Project] =
     projectBase.get(projectId)
 
-  def parentPage(implicit ec: ExecutionContext, service: ModelService): OptionT[Future, Page] =
+  def parentPage(implicit service: ModelService): OptionT[IO, Page] =
     for {
-      parent  <- OptionT.fromOption[Future](parentId)
+      parent  <- OptionT.fromOption[IO](parentId)
       project <- parentProject
       page    <- project.pages.find(_.id === parent)
     } yield page
@@ -162,6 +142,30 @@ case class Page(
 
 object Page {
 
+  def partial(
+      projectId: DbRef[Project],
+      parentId: Option[DbRef[Page]],
+      name: String,
+      slug: String,
+      isDeletable: Boolean = true,
+      contents: String
+  ): InsertFunc[Page] = (id, time) => Page(id, time, projectId, parentId, name, slug, isDeletable, contents)
+
+  def partial(
+      projectId: DbRef[Project],
+      name: String,
+      content: String,
+      isDeletable: Boolean,
+      parentId: Option[DbRef[Page]]
+  ): InsertFunc[Page] = partial(
+    projectId = projectId,
+    name = compact(name),
+    slug = slugify(name),
+    contents = content.trim,
+    isDeletable = isDeletable,
+    parentId = parentId
+  )
+
   implicit val query: ModelQuery[Page] =
     ModelQuery.from[Page](TableQuery[PageTable], _.copy(_, _))
 
@@ -169,21 +173,22 @@ object Page {
 
   private object ExternalLinkResolver {
 
+    // scalafix:off
     class Factory(config: OreConfig) extends LinkResolverFactory {
-      override def getAfterDependents: Null = null
+      override def getAfterDependents: util.Set[Class[_ <: LinkResolverFactory]] = null
 
-      override def getBeforeDependents: Null = null
+      override def getBeforeDependents: util.Set[Class[_ <: LinkResolverFactory]] = null
 
-      override def affectsGlobalScope() = false
+      override def affectsGlobalScope(): Boolean = false
 
       override def create(context: LinkResolverContext) = new ExternalLinkResolver(this.config)
     }
-
+    // scalafix:on
   }
 
   private class ExternalLinkResolver(config: OreConfig) extends LinkResolver {
     override def resolveLink(node: Node, context: LinkResolverContext, link: ResolvedLink): ResolvedLink = {
-      if (link.getLinkType == LinkType.IMAGE || node.isInstanceOf[MailLink]) {
+      if (link.getLinkType == LinkType.IMAGE || node.isInstanceOf[MailLink]) { //scalafix:ok
         link
       } else {
         link.withStatus(LinkStatus.VALID).withUrl(wrapExternal(link.getUrl))
@@ -194,7 +199,7 @@ object Page {
       try {
         val uri  = new URI(urlString)
         val host = uri.getHost
-        if (uri.getScheme != null && host == null) {
+        if (uri.getScheme != null && host == null) { // scalafix:ok
           if (uri.getScheme == "mailto") {
             urlString
           } else {
@@ -204,7 +209,7 @@ object Page {
           val trustedUrlHosts = this.config.app.trustedUrlHosts
           val checkSubdomain = (trusted: String) =>
             trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1))
-          if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) {
+          if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) { // scalafix:ok
             urlString
           } else {
             controllers.routes.Application.linkOut(urlString).toString
@@ -216,7 +221,8 @@ object Page {
     }
   }
 
-  private var linkResolver: Option[LinkResolverFactory] = None
+  //TODO: Move this to it's own class and make it a val
+  private var linkResolver: Option[LinkResolverFactory] = None // scalafix:ok
 
   private lazy val (markdownParser, htmlRenderer) = {
     val options = new MutableDataSet()

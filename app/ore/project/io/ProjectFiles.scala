@@ -12,6 +12,9 @@ import play.api.Logger
 import models.project.Project
 import ore.OreEnv
 
+import cats.effect.{IO, Resource}
+import cats.syntax.all._
+
 /**
   * Handles file management of Projects.
   */
@@ -102,22 +105,30 @@ class ProjectFiles(val env: OreEnv) {
     * @return Pending icon path
     */
   def getPendingIconPath(project: Project): Option[Path] =
-    findFirstFile(getPendingIconDir(project.ownerName, project.name))
+    getPendingIconPath(project.ownerName, project.name)
+
+  /**
+    * Returns the directory to a custom [[Project]] icon that has not yet been
+    * saved.
+    *
+    * @param ownerName Owner of the project to get icon for
+    * @param name Name of the project to get icon for
+    * @return Pending icon path
+    */
+  def getPendingIconPath(ownerName: String, name: String): Option[Path] =
+    findFirstFile(getPendingIconDir(ownerName, name))
 
   private def findFirstFile(dir: Path): Option[Path] = {
     if (exists(dir)) {
-      var stream: java.util.stream.Stream[Path] = null
-      try {
-        stream = list(dir)
-        stream.iterator.asScala.filterNot(isDirectory(_)).toStream.headOption
-      } catch {
-        case e: IOException =>
-          Logger.error("an error occurred while searching a directory", e)
-          None
-      } finally {
-        if (stream != null)
-          stream.close()
-      }
+      Resource
+        .fromAutoCloseable(IO(list(dir)))
+        .use { stream =>
+          IO.pure(stream.iterator.asScala.filterNot(isDirectory(_)).toStream.headOption)
+        }
+        .recoverWith {
+          case e: IOException => IO(Logger.error("an error occurred while searching a directory", e)).as(None)
+        }
+        .unsafeRunSync()
     } else
       None
   }

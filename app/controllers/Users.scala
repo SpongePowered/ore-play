@@ -2,7 +2,7 @@ package controllers
 
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.Logger
 import play.api.cache.AsyncCacheApi
@@ -10,9 +10,7 @@ import play.api.i18n.MessagesApi
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
-import db.impl.schema.{ProjectTableMain, VersionTable}
 import db.query.UserQueries
 import db.{DbRef, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
@@ -26,10 +24,11 @@ import ore.user.notification.{InviteFilter, NotificationFilter}
 import ore.user.{FakeUser, Prompt}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.OreMDC
 import views.{html => views}
 
 import cats.data.EitherT
-import cats.instances.future._
+import cats.effect.{IO, Timer}
 import cats.instances.list._
 import cats.syntax.all._
 
@@ -60,9 +59,11 @@ class Users @Inject()(
     *
     * @return Logged in page
     */
-  def signUp(): Action[AnyContent] = Action.async { implicit request =>
+  def signUp(): Action[AnyContent] = Action.asyncF {
     val nonce = SingleSignOnConsumer.nonce
-    this.signOns.add(SignOn(nonce = nonce)).as(redirectToSso(this.sso.getSignupUrl(this.baseUrl + "/login", nonce)))
+    this.signOns.add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+      this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
+    )
   }
 
   /**
@@ -72,35 +73,36 @@ class Users @Inject()(
     * @param sig  Incoming signature from auth
     * @return     Logged in home
     */
-  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]): Action[AnyContent] = Action.async {
+  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]): Action[AnyContent] = Action.asyncF {
     implicit request =>
       if (this.fakeUser.isEnabled) {
         // Log in as fake user (debug only)
         this.config.checkDebug()
-        users.getOrCreate(this.fakeUser) *>
-          this.fakeUser.globalRoles
-            .contains(this.fakeUser, Role.OreAdmin.toDbRole)
-            .ifM(
-              ifTrue = Future.unit,
-              ifFalse = this.fakeUser.globalRoles.addAssoc(this.fakeUser, Role.OreAdmin.toDbRole).void
-            ) *>
-          this.redirectBack(returnPath.getOrElse(request.path), this.fakeUser)
+        users
+          .getOrCreate(
+            this.fakeUser.username,
+            this.fakeUser,
+            ifInsert = fakeUser => fakeUser.globalRoles.addAssoc(fakeUser, Role.OreAdmin.toDbRole).void
+          )
+          .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
         val nonce = SingleSignOnConsumer.nonce
-        this.signOns.add(SignOn(nonce = nonce)).as(redirectToSso(this.sso.getLoginUrl(this.baseUrl + "/login", nonce)))
+        this.signOns.add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+          this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
+        ).map(_.flashing("url" -> returnPath.getOrElse(request.path)))
       } else {
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
-          .authenticate(sso.get, sig.get)(isNonceValid)
-          .map(sponge => User.fromSponge(sponge) -> sponge)
+          .authenticate(sso.get, sig.get)(isNonceValid)(OreMDC.NoMDC)
+          .map(sponge => User.partialFromSponge(sponge) -> sponge)
           .semiflatMap {
             case (fromSponge, sponge) =>
               // Complete authentication
               for {
-                user <- users.getOrCreate(fromSponge)
-                _    <- service.runDBIO(user.globalRoles.allQueryFromParent(user).delete)
+                user <- users.getOrCreate(sponge.username, fromSponge)
+                _    <- user.globalRoles.deleteAllFromParent(user)
                 _ <- sponge.newGlobalRoles
-                  .fold(Future.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.addAssoc(user, _)))
+                  .fold(IO.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.addAssoc(user, _)))
                 result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
               } yield result
           }
@@ -115,18 +117,18 @@ class Users @Inject()(
     * @param returnPath Verified action to perform
     * @return           Redirect to verification
     */
-  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.async { implicit request =>
+  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
     val nonce = SingleSignOnConsumer.nonce
     this.signOns
-      .add(SignOn(nonce = nonce))
-      .as(redirectToSso(this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)))
+      .add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+      this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
+    )
   }
 
-  private def redirectToSso(url: String): Result =
-    if (this.sso.isAvailable)
-      Redirect(url)
-    else
-      Redirect(ShowHome).withError("error.noLogin")
+  private def redirectToSso(url: String): IO[Result] = {
+    implicit val timer: Timer[IO] = IO.timer(ec)
+    this.sso.isAvailable.ifM(IO.pure(Redirect(url)), IO.pure(Redirect(ShowHome).withError("error.noLogin")))
+  }
 
   private def redirectBack(url: String, user: User) =
     Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
@@ -136,7 +138,7 @@ class Users @Inject()(
     *
     * @return Home page
     */
-  def logOut() = Action { implicit request =>
+  def logOut(): Action[AnyContent] = Action {
     Redirect(config.security.api.url + "/accounts/logout/")
       .clearingSession()
       .flashing("noRedirect" -> "true")
@@ -149,7 +151,8 @@ class Users @Inject()(
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.async { implicit request =>
+  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
+    import cats.instances.vector._
     val pageSize = this.config.ore.users.projectPageSize
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
@@ -159,19 +162,21 @@ class Users @Inject()(
       .semiflatMap { user =>
         for {
           // TODO include orga projects?
-          (projects, starred, orga, userData) <- (
+          t1 <- (
             service.runDbCon(
               UserQueries.getProjects(username, ProjectSortingStrategy.MostStars, pageSize, offset).to[Vector]
             ),
             user.starred(),
             getOrga(username).value,
-            getUserData(request, username).value,
-          ).tupled
-          (starredRv, orgaData, scopedOrgaData) <- (
-            Future.sequence(starred.map(_.recommendedVersion.value)),
+            getUserData(request, username).value
+          ).parTupled
+          (projects, starred, orga, userData) = t1
+          t2 <- (
+            starred.toVector.parTraverse(_.recommendedVersion.value),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
-          ).tupled
+          ).parTupled
+          (starredRv, orgaData, scopedOrgaData) = t2
         } yield {
           val starredData = starred.zip(starredRv)
           Ok(
@@ -203,7 +208,7 @@ class Users @Inject()(
         res <- {
           val tagline = request.body
           if (tagline.length > maxLen)
-            EitherT.rightT[Future, Result](
+            EitherT.rightT[IO, Result](
               Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen))
             )
           else {
@@ -224,7 +229,7 @@ class Users @Inject()(
     * @return JSON response
     */
   def savePgpPublicKey(username: String): Action[PGPPublicKeySubmission] =
-    UserAction(username).async(parse.form(forms.UserPgpPubKey, onErrors = FormError(ShowUser(username)))) {
+    UserAction(username).asyncF(parse.form(forms.UserPgpPubKey, onErrors = FormError(ShowUser(username)))) {
       implicit request =>
         val keyInfo = request.body.info
         val user    = request.user
@@ -252,11 +257,11 @@ class Users @Inject()(
     * @return Ok if deleted, bad request if didn't exist
     */
   def deletePgpPublicKey(username: String, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
-    VerifiedAction(username, sso, sig).async { implicit request =>
+    VerifiedAction(username, sso, sig).asyncF { implicit request =>
       Logger.debug("Deleting public key for " + username)
       val user = request.user
       if (user.pgpPubKey.isEmpty)
-        Future.successful(BadRequest)
+        IO.pure(BadRequest)
       else {
         val log = UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id.value, "", "")
         val insert = service.update(
@@ -279,7 +284,7 @@ class Users @Inject()(
     * @return         Redirection to user page
     */
   def setLocked(username: String, locked: Boolean, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
-    VerifiedAction(username, sso, sig).async { implicit request =>
+    VerifiedAction(username, sso, sig).asyncF { implicit request =>
       val user = request.user
       if (!locked)
         this.mailer.push(this.emails.create(user, this.emails.AccountUnlocked))
@@ -293,7 +298,7 @@ class Users @Inject()(
     * Shows a list of [[models.user.User]]s that have created a
     * [[models.project.Project]].
     */
-  def showAuthors(sort: Option[String], page: Option[Int]): Action[AnyContent] = OreAction.async { implicit request =>
+  def showAuthors(sort: Option[String], page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
     val ordering = sort.getOrElse(UserOrdering.Projects)
     val p        = page.getOrElse(1)
 
@@ -306,7 +311,7 @@ class Users @Inject()(
     * Shows a list of [[models.user.User]]s that have Ore staff roles.
     */
   def showStaff(sort: Option[String], page: Option[Int]): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewProjects)).async { implicit request =>
+    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
       val ordering = sort.getOrElse(UserOrdering.Role)
       val p        = page.getOrElse(1)
 
@@ -321,7 +326,8 @@ class Users @Inject()(
     * @return Unread notifications
     */
   def showNotifications(notificationFilter: Option[String], inviteFilter: Option[String]): Action[AnyContent] = {
-    Authenticated.async { implicit request =>
+    Authenticated.asyncF { implicit request =>
+      import cats.instances.vector._
       val user = request.user
 
       // Get visible notifications
@@ -333,11 +339,11 @@ class Users @Inject()(
         .flatMap(str => InviteFilter.values.find(_.name.equalsIgnoreCase(str)))
         .getOrElse(InviteFilter.All)
 
-      val notificationsFut =
-        nFilter(user.notifications).flatMap(l => Future.traverse(l)(notif => notif.origin.tupleLeft(notif)))
-      val invitesFut = iFilter(user).flatMap(i => Future.traverse(i)(invite => invite.subject.tupleLeft(invite)))
+      val notificationsF =
+        nFilter(user.notifications).flatMap(l => l.toVector.parTraverse(notif => notif.origin.tupleLeft(notif)))
+      val invitesF = iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject.tupleLeft(invite)))
 
-      (notificationsFut, invitesFut).mapN { (notifications, invites) =>
+      (notificationsF, invitesF).parMapN { (notifications, invites) =>
         Ok(views.users.notifications(notifications, invites, nFilter, iFilter))
       }
     }
@@ -349,7 +355,7 @@ class Users @Inject()(
     * @param id Notification ID
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
-  def markNotificationRead(id: DbRef[Notification]): Action[AnyContent] = Authenticated.async { implicit request =>
+  def markNotificationRead(id: DbRef[Notification]): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     request.user.notifications
       .get(id)
       .semiflatMap(notification => service.update(notification.copy(isRead = true)).as(Ok))
@@ -363,9 +369,9 @@ class Users @Inject()(
     * @param id Prompt ID
     * @return   Ok if successful
     */
-  def markPromptRead(id: DbRef[Prompt]): Action[AnyContent] = Authenticated.async { implicit request =>
+  def markPromptRead(id: DbRef[Prompt]): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     Prompt.values.find(_.value == id) match {
-      case None         => Future.successful(BadRequest)
+      case None         => IO.pure(BadRequest)
       case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)
     }
   }

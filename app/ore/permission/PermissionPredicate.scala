@@ -1,14 +1,13 @@
 package ore.permission
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.ModelService
 import models.user.User
 import models.user.role.DbRole
 import ore.permission.role.{Role, Trust}
 import ore.permission.scope.HasScope
 
-import cats.instances.future._
+import cats.Parallel
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 
 /**
@@ -41,12 +40,14 @@ case class PermissionPredicate(user: User) {
         case _                                => false
       }
 
-    def in[A: HasScope](subject: A)(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
-      user.trustIn(subject).map2(user.globalRoles.allFromParent(user))((t, r) => withTrustAndGlobalRoles(t, r.toSet))
+    def in[A: HasScope](subject: A)(implicit service: ModelService, cs: ContextShift[IO]): IO[Boolean] =
+      Parallel.parMap2(user.trustIn(subject), user.globalRoles.allFromParent(user))(
+        (t, r) => withTrustAndGlobalRoles(t, r.toSet)
+      )
 
-    def in[A: HasScope](subject: Option[A])(implicit service: ModelService, ec: ExecutionContext): Future[Boolean] =
+    def in[A: HasScope](subject: Option[A])(implicit service: ModelService, cs: ContextShift[IO]): IO[Boolean] =
       subject match {
-        case None    => Future.successful(false)
+        case None    => IO.pure(false)
         case Some(s) => this.in(s)
       }
   }

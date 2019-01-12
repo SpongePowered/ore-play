@@ -25,7 +25,7 @@
 
         @alert("error")
 
-        @flash.get("pgp-updated").map { updated =>
+        @flash.get("pgp-updated").map { _ =>
           <script nonce="@nonce">
               $(function() {
                   $('#modal-pgp-edit').modal('show');
@@ -49,15 +49,11 @@
                     @userAvatar(
                         userName = Some(u.user.name),
                         avatarUrl = u.user.avatarUrl,
-                        clazz = "user-avatar-md" + (if (canEditOrgSettings) " organization-avatar" else ""),
-                        href = "#",
-                        attr = if (u.orgaPerm.getOrElse(EditSettings, false)) Map(
-                            "data-toggle" -> "modal",
-                            "data-target" -> "#modal-avatar") else Map())
+                        clazz = "user-avatar-md" + (if (canEditOrgSettings) " organization-avatar" else ""))
 
                     @if(canEditOrgSettings) {
                         <div class="edit-avatar" style="display: none;">
-                            <i class="fa fa-edit"></i> @messages("user.editAvatar")
+                            <a href="@routes.Organizations.updateAvatar(u.user.name)"><i class="fa fa-edit"></i> @messages("user.editAvatar")</a>
                         </div>
 
                         @if(!u.currentUser.get.readPrompts.contains(Prompt.ChangeAvatar)) {
@@ -296,50 +292,6 @@
                     @messages("general.close")
                 </button>
                 <input type="submit" value="@messages("general.save")" class="btn btn-primary" />
-            </div>
-        }
-    }
-
-    @modal("modal-avatar", "label-avatar", "user.editAvatar") {
-        @form(action = routes.Organizations.updateAvatar(u.user.name), 'id -> "form-avatar",
-            'enctype -> "multipart/form-data") {
-            @CSRF.formField
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <span class="error"></span>
-                </div>
-
-                <div class="setting">
-                    <div class="setting-description">
-                        <h4>
-                            <input checked type="radio" name="avatar-method" value="by-url" />
-                            @messages("user.avatar.byUrl")
-                        </h4>
-                    </div>
-                    <input name="avatar-url" type="url" class="form-control" />
-                    <div class="clearfix"></div>
-                </div>
-
-                <div class="setting setting-no-border">
-                    <div class="setting-description">
-                        <h4>
-                            <input type="radio" name="avatar-method" value="by-file" />
-                            @messages("user.avatar.byFile")
-                        </h4>
-                    </div>
-                    <input name="avatar-file" type="file" disabled />
-                    <div class="clearfix"></div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">
-                @messages("general.cancel")
-                </button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fa fa-spinner fa-spin" style="display: none;"></i>
-                    @messages("general.update")
-                </button>
             </div>
         }
     }

@@ -1,7 +1,7 @@
 package models.user
 
 import db.impl.schema.SignOnTable
-import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 
 import slick.lifted.TableQuery
 
@@ -14,16 +14,19 @@ import slick.lifted.TableQuery
   * @param isCompleted  True if sign on was completed
   */
 case class SignOn(
-    id: ObjId[SignOn] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[SignOn],
+    createdAt: ObjectTimestamp,
     nonce: String,
-    isCompleted: Boolean = false
+    isCompleted: Boolean
 ) extends Model {
 
   override type M = SignOn
   override type T = SignOnTable
 }
 object SignOn {
+  def partial(nonce: String, isCompleted: Boolean = false): InsertFunc[SignOn] =
+    (id, time) => SignOn(id, time, nonce, isCompleted)
+
   implicit val query: ModelQuery[SignOn] =
     ModelQuery.from[SignOn](TableQuery[SignOnTable], _.copy(_, _))
 }

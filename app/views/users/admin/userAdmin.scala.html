@@ -68,7 +68,7 @@
                 <div class="row">
                 @if(!user.isOrga) {
                     @panel("Organizations") {
-                        @roleTable[Organization, OrganizationUserRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.name)).toSet, orgRoles) { (org, role) =>
+                        @roleTable[Organization, OrganizationUserRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.name)).toSet, orgRoles) { (org, _) =>
                             <a href="@routes.Application.userAdmin(org.name)">
                             @org.name
                             </a>
@@ -76,7 +76,7 @@
                     }
                 } else {
                     @panel("Members") {
-                        @roleTable[User, OrganizationUserRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, role) =>
+                        @roleTable[User, OrganizationUserRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, _) =>
                             <a href="@routes.Application.userAdmin(user.name)">
                             @user.name
                             </a>
@@ -87,7 +87,7 @@
                 @if(!user.isOrga) {
                     <div class="row">
                     @panel("Projects") {
-                        @roleTable[Project, ProjectUserRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, role) =>
+                        @roleTable[Project, ProjectUserRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, _) =>
                             <a href="@controllers.project.routes.Projects.show(project.ownerName, project.slug)">
                             @project.name
                             </a>

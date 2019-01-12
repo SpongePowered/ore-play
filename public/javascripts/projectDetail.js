@@ -250,7 +250,7 @@ $(function() {
         starred.html(' ' + (parseInt(starred.text()) + increment).toString());
         $.ajax({
             type: 'post',
-            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/star/' + (increment > 0),
+            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/stars/' + (increment > 0),
             data: { csrfToken: csrf }
         });
 

@@ -1,7 +1,7 @@
 package models.api
 
 import db.impl.schema.ProjectApiKeyTable
-import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
 import models.project.Project
 import ore.project.ProjectOwned
 import ore.rest.ProjectApiKeyType
@@ -9,8 +9,8 @@ import ore.rest.ProjectApiKeyType
 import slick.lifted.TableQuery
 
 case class ProjectApiKey(
-    id: ObjId[ProjectApiKey] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[ProjectApiKey],
+    createdAt: ObjectTimestamp,
     projectId: DbRef[Project],
     keyType: ProjectApiKeyType,
     value: String
@@ -20,6 +20,12 @@ case class ProjectApiKey(
   override type M = ProjectApiKey
 }
 object ProjectApiKey {
+  def partial(
+      projectId: DbRef[Project],
+      keyType: ProjectApiKeyType,
+      value: String
+  ): InsertFunc[ProjectApiKey] = (id, time) => ProjectApiKey(id, time, projectId, keyType, value)
+
   implicit val query: ModelQuery[ProjectApiKey] =
     ModelQuery.from[ProjectApiKey](TableQuery[ProjectApiKeyTable], _.copy(_, _))
 

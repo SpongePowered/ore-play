@@ -1,14 +1,12 @@
 package models.viewhelper
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
 import models.project.{Channel, Project, Version}
 import ore.Platform
 import ore.project.Dependency
 
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 
 case class VersionData(
@@ -35,12 +33,13 @@ case class VersionData(
 
 object VersionData {
   def of[A](request: ProjectRequest[A], version: Version)(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[VersionData] = {
-    val depsFut = Future.traverse(version.dependencies)(dep => dep.project.value.tupleLeft(dep))
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[VersionData] = {
+    import cats.instances.list._
+    val depsF = version.dependencies.parTraverse(dep => dep.project.value.tupleLeft(dep))
 
-    (version.channel, version.reviewer.map(_.name).value, depsFut).mapN {
+    (version.channel, version.reviewer.map(_.name).value, depsF).parMapN {
       case (channel, approvedBy, deps) =>
         VersionData(request.data, version, channel, approvedBy, deps)
     }

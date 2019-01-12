@@ -2,13 +2,11 @@ package ore.project
 
 import scala.language.implicitConversions
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.DbRef
 import db.impl.access.ProjectBase
 import models.project.Project
 
-import cats.instances.future._
+import cats.effect.IO
 import simulacrum.typeclass
 
 /**
@@ -20,6 +18,6 @@ import simulacrum.typeclass
   def projectId(a: A): DbRef[Project]
 
   /** Returns the Project */
-  def project(a: A)(implicit projects: ProjectBase, ec: ExecutionContext): Future[Project] =
-    projects.get(projectId(a)).getOrElse(throw new NoSuchElementException("Get on None"))
+  def project(a: A)(implicit projects: ProjectBase): IO[Project] =
+    projects.get(projectId(a)).getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 }

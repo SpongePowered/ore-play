@@ -1,7 +1,5 @@
 package models.viewhelper
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectTableMain}
 import db.{DbRef, ModelService}
@@ -14,7 +12,8 @@ import ore.permission.role.RoleCategory
 import util.syntax._
 
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 case class OrganizationData(
@@ -34,18 +33,20 @@ object OrganizationData {
   def cacheKey(orga: Organization): String = "organization" + orga.id.value
 
   def of[A](orga: Organization)(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): Future[OrganizationData] =
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): IO[OrganizationData] = {
+    import cats.instances.vector._
     for {
       members      <- orga.memberships.members(orga)
-      memberRoles  <- Future.traverse(members)(_.headRole)
-      memberUser   <- Future.traverse(memberRoles)(_.user)
+      memberRoles  <- members.toVector.parTraverse(_.headRole)
+      memberUser   <- memberRoles.parTraverse(_.user)
       projectRoles <- service.runDBIO(queryProjectRoles(orga.id.value).result)
     } yield {
       val members = memberRoles.zip(memberUser)
-      OrganizationData(orga, members.toSeq, projectRoles)
+      OrganizationData(orga, members, projectRoles)
     }
+  }
 
   private def queryProjectRoles(userId: DbRef[User]) =
     for {
@@ -54,7 +55,7 @@ object OrganizationData {
     } yield (role, project)
 
   def of[A](orga: Option[Organization])(
-      implicit ec: ExecutionContext,
-      service: ModelService
-  ): OptionT[Future, OrganizationData] = OptionT.fromOption[Future](orga).semiflatMap(of)
+      implicit service: ModelService,
+      cs: ContextShift[IO]
+  ): OptionT[IO, OrganizationData] = OptionT.fromOption[IO](orga).semiflatMap(of)
 }

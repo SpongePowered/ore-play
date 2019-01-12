@@ -56,7 +56,7 @@ object Role extends StringEnum[Role] {
   object SpongeStaff     extends Role("Sponge_Staff", 6, RoleCategory.Global, Default, "Sponge Staff", Amber)
   object SpongeDev       extends Role("Sponge_Developer", 7, RoleCategory.Global, Default, "Sponge Developer", Green)
   object OreDev          extends Role("Ore_Dev", 8, RoleCategory.Global, Default, "Ore Developer", Orange)
-  object WebDev          extends Role("Web_dev", 9, RoleCategory.Global, Default, "Web Developer", Blue)
+  object WebDev          extends Role("Web_Dev", 9, RoleCategory.Global, Default, "Web Developer", Blue)
   object Documenter      extends Role("Documenter", 10, RoleCategory.Global, Default, "Documenter", Aqua)
   object Support         extends Role("Support", 11, RoleCategory.Global, Default, "Support", Aqua)
   object Contributor     extends Role("Contributor", 12, RoleCategory.Global, Default, "Contributor", Green)

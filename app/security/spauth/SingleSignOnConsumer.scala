@@ -7,7 +7,6 @@ import java.util.Base64
 import javax.inject.Inject
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
 
 import play.api.http.Status
@@ -16,11 +15,13 @@ import play.api.libs.ws.WSClient
 
 import ore.OreConfig
 import security.CryptoUtils
+import util.OreMDC
 
 import akka.http.scaladsl.model.Uri
 import cats.data.OptionT
-import cats.instances.future._
+import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Manages authentication to Sponge services.
@@ -32,22 +33,21 @@ trait SingleSignOnConsumer {
   def signupUrl: String
   def verifyUrl: String
   def secret: String
-  def timeout: Duration
+  def timeout: FiniteDuration
 
   val CharEncoding = "UTF-8"
   val Algo         = "HmacSHA256"
 
-  val Logger = play.api.Logger("SSO")
+  private val Logger    = scalalogging.Logger("SSO")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Returns a future result of whether SSO is available.
     *
     * @return True if available
     */
-  def isAvailable(implicit ec: ExecutionContext): Boolean =
-    Await.result(this.ws.url(this.loginUrl).get().map(_.status == Status.OK).recover {
-      case _: Exception => false
-    }, this.timeout)
+  def isAvailable(implicit timer: Timer[IO], cs: ContextShift[IO]): IO[Boolean] =
+    IO.fromFuture(IO(this.ws.url(this.loginUrl).get())).map(_.status == Status.OK).timeoutTo(timeout, IO.pure(false))
 
   /**
     * Returns the login URL with a generated SSO payload to the SSO instance.
@@ -111,49 +111,49 @@ trait SingleSignOnConsumer {
     * @return               [[SpongeUser]] if successful
     */
   def authenticate(payload: String, sig: String)(
-      isNonceValid: String => Future[Boolean]
-  )(implicit ec: ExecutionContext): OptionT[Future, SpongeUser] = {
-    Logger.debug("Authenticating SSO payload...")
-    Logger.debug(payload)
-    Logger.debug("Signed with : " + sig)
+      isNonceValid: String => IO[Boolean]
+  )(implicit mdc: OreMDC): OptionT[IO, SpongeUser] = {
+    MDCLogger.debug("Authenticating SSO payload...")
+    MDCLogger.debug(payload)
+    MDCLogger.debug("Signed with : " + sig)
     if (generateSignature(payload) != sig) {
-      Logger.debug("<FAILURE> Could not verify payload against signature.")
-      return OptionT.none[Future, SpongeUser]
-    }
+      MDCLogger.debug("<FAILURE> Could not verify payload against signature.")
+      OptionT.none[IO, SpongeUser]
+    } else {
+      // decode payload
+      val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
+      MDCLogger.debug("Decoded payload:")
+      MDCLogger.debug(query.toString())
 
-    // decode payload
-    val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
-    Logger.debug("Decoded payload:")
-    Logger.debug(query.toString())
-
-    // extract info
-    val info = for {
-      nonce      <- query.get("nonce")
-      externalId <- query.get("external_id").flatMap(s => Try(s.toLong).toOption)
-      username   <- query.get("username")
-      email      <- query.get("email")
-    } yield {
-      nonce -> SpongeUser(
-        externalId,
-        username,
-        email,
-        query.get("avatar_url"),
-        query.get("language").flatMap(Lang.get),
-        query.get("add_groups")
-      )
-    }
-
-    OptionT
-      .fromOption[Future](info)
-      .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user) }
-      .subflatMap {
-        case (false, _) =>
-          Logger.debug("<FAILURE> Invalid nonce.")
-          None
-        case (true, user) =>
-          Logger.debug("<SUCCESS> " + user)
-          Some(user)
+      // extract info
+      val info = for {
+        nonce      <- query.get("nonce")
+        externalId <- query.get("external_id").flatMap(s => Try(s.toLong).toOption)
+        username   <- query.get("username")
+        email      <- query.get("email")
+      } yield {
+        nonce -> SpongeUser(
+          externalId,
+          username,
+          email,
+          query.get("avatar_url"),
+          query.get("language").flatMap(Lang.get),
+          query.get("add_groups")
+        )
       }
+
+      OptionT
+        .fromOption[IO](info)
+        .semiflatMap { case (nonce, user) => isNonceValid(nonce).tupleRight(user) }
+        .subflatMap {
+          case (false, _) =>
+            MDCLogger.debug("<FAILURE> Invalid nonce.")
+            None
+          case (true, user) =>
+            MDCLogger.debug("<SUCCESS> " + user)
+            Some(user)
+        }
+    }
   }
 }
 

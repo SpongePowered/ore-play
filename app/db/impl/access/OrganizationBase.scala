@@ -1,23 +1,23 @@
 package db.impl.access
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import db.{DbRef, ModelBase, ModelService, ObjId}
-import models.user.{Notification, Organization, User}
 import models.user.role.OrganizationUserRole
+import models.user.{Notification, Organization, User}
 import ore.OreConfig
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
-import util.StringUtils
-import util.syntax._
+import util.{OreMDC, StringUtils}
 
 import cats.data.{EitherT, NonEmptyList, OptionT}
-import cats.instances.future._
+import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
+import com.typesafe.scalalogging
 
 class OrganizationBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[Organization] {
 
-  val Logger = play.api.Logger("Organizations")
+  private val Logger    = scalalogging.Logger("Organizations")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Creates a new [[Organization]]. This method creates a new user on the
@@ -30,34 +30,35 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
   def create(
       name: String,
       ownerId: DbRef[User],
-      members: Set[OrganizationUserRole]
-  )(implicit ec: ExecutionContext, auth: SpongeAuthApi): EitherT[Future, String, Organization] = {
-    Logger.debug("Creating Organization...")
-    Logger.debug("Name     : " + name)
-    Logger.debug("Owner ID : " + ownerId)
-    Logger.debug("Members  : " + members.size)
+      members: Set[OrganizationUserRole.Partial]
+  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, String, Organization] = {
+    import cats.instances.vector._
+    MDCLogger.debug("Creating Organization...")
+    MDCLogger.debug("Name     : " + name)
+    MDCLogger.debug("Owner ID : " + ownerId)
+    MDCLogger.debug("Members  : " + members.size)
 
     // Create the organization as a User on SpongeAuth. This will reserve the
     // name so that no new users or organizations can create an account with
     // that name. We will give the organization a dummy email for continuity.
     // By default we use "<org>@ore.spongepowered.org".
-    Logger.debug("Creating on SpongeAuth...")
+    MDCLogger.debug("Creating on SpongeAuth...")
     val dummyEmail   = name + '@' + this.config.ore.orgs.dummyEmailDomain
     val spongeResult = auth.createDummyUser(name, dummyEmail)
 
     // Check for error
     spongeResult
       .leftMap { err =>
-        Logger.debug("<FAILURE> " + err)
+        MDCLogger.debug("<FAILURE> " + err)
         err
       }
       .semiflatMap { spongeUser =>
-        Logger.debug("<SUCCESS> " + spongeUser)
+        MDCLogger.debug("<SUCCESS> " + spongeUser)
         // Next we will create the Organization on Ore itself. This contains a
         // reference to the Sponge user ID, the organization's username and a
         // reference to the User owner of the organization.
-        Logger.info("Creating on Ore...")
-        this.add(Organization(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
+        MDCLogger.info("Creating on Ore...")
+        this.add(Organization.partial(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
       }
       .semiflatMap { org =>
         // Every organization model has a regular User companion. Organizations
@@ -65,39 +66,41 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
         // Organization global role signifies that this User is an Organization
         // and should be treated as such.
         for {
-          userOrg <- org.toUser.getOrElse(throw new IllegalStateException("User not created"))
+          userOrg <- org.toUser.getOrElseF(IO.raiseError(new IllegalStateException("User not created")))
           _       <- userOrg.globalRoles.addAssoc(userOrg, Role.Organization.toDbRole)
           _ <- // Add the owner
           org.memberships.addRole(
             org,
-            OrganizationUserRole(
-              userId = ownerId,
-              organizationId = org.id.value,
-              role = Role.OrganizationOwner,
-              isAccepted = true
-            )
+            ownerId,
+            OrganizationUserRole
+              .Partial(
+                userId = ownerId,
+                organizationId = org.id.value,
+                role = Role.OrganizationOwner,
+                isAccepted = true
+              )
+              .asFunc
           )
           _ <- {
             // Invite the User members that the owner selected during creation.
-            Logger.debug("Inviting members...")
+            MDCLogger.debug("Inviting members...")
 
-            Future.sequence(members.map { role =>
+            members.toVector.parTraverse { role =>
               // TODO remove role.user db access we really only need the userid we already have for notifications
-              org.memberships.addRole(org, role.copy(organizationId = org.id.value)).flatMap(_ => role.user).flatMap {
-                user =>
-                  user.sendNotification(
-                    Notification(
-                      userId = user.id.value,
-                      originId = org.id.value,
-                      notificationType = NotificationType.OrganizationInvite,
-                      messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
-                    )
+              org.memberships.addRole(org, role.userId, role.copy(organizationId = org.id.value).asFunc).flatMap { _ =>
+                service.insert(
+                  Notification.partial(
+                    userId = role.userId,
+                    originId = org.id.value,
+                    notificationType = NotificationType.OrganizationInvite,
+                    messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
                   )
+                )
               }
-            })
+            }
           }
         } yield {
-          Logger.debug("<SUCCESS> " + org)
+          MDCLogger.debug("<SUCCESS> " + org)
           org
         }
       }
@@ -109,7 +112,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
     * @param name Organization name
     * @return     Organization with name if exists, None otherwise
     */
-  def withName(name: String)(implicit ec: ExecutionContext): OptionT[Future, Organization] =
+  def withName(name: String): OptionT[IO, Organization] =
     this.find(StringUtils.equalsIgnoreCase(_.name, name))
 
 }

@@ -1,17 +1,15 @@
 package models.statistic
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.ProjectViewsTable
-import db.{DbRef, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, ModelQuery, ObjId, ObjectTimestamp}
 import models.project.Project
 import models.user.User
 import ore.StatTracker._
 import security.spauth.SpongeAuthApi
 
-import cats.instances.future._
+import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery
 
@@ -26,12 +24,12 @@ import slick.lifted.TableQuery
   * @param userId     User ID
   */
 case class ProjectView(
-    id: ObjId[ProjectView] = ObjId.Uninitialized(),
-    createdAt: ObjectTimestamp = ObjectTimestamp.Uninitialized,
+    id: ObjId[ProjectView],
+    createdAt: ObjectTimestamp,
     modelId: DbRef[Project],
     address: InetString,
     cookie: String,
-    userId: Option[DbRef[User]] = None
+    userId: Option[DbRef[User]]
 ) extends StatEntry[Project] {
 
   override type M = ProjectView
@@ -39,6 +37,16 @@ case class ProjectView(
 }
 
 object ProjectView {
+
+  case class Partial(
+      modelId: DbRef[Project],
+      address: InetString,
+      cookie: String,
+      userId: Option[DbRef[User]] = None
+  ) extends PartialStatEntry[Project, ProjectView] {
+
+    def asFunc: InsertFunc[ProjectView] = (id, time) => ProjectView(id, time, modelId, address, cookie, userId)
+  }
 
   implicit val query: ModelQuery[ProjectView] =
     ModelQuery.from[ProjectView](TableQuery[ProjectViewsTable], _.copy(_, _))
@@ -51,13 +59,12 @@ object ProjectView {
     * @return         New ProjectView
     */
   def bindFromRequest(
-      implicit ec: ExecutionContext,
-      users: UserBase,
+      implicit users: UserBase,
       auth: SpongeAuthApi,
       request: ProjectRequest[_]
-  ): Future[ProjectView] = {
+  ): IO[Partial] = {
     users.current.map(_.id.value).value.map { userId =>
-      ProjectView(
+      ProjectView.Partial(
         modelId = request.data.project.id.value,
         address = InetString(remoteAddress),
         cookie = currentCookie,

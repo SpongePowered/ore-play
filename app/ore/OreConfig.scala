@@ -82,6 +82,7 @@ final class OreConfig @Inject()(config: Configuration) {
       val staleAge: FiniteDuration      = raw.get[FiniteDuration]("staleAge")
       val checkInterval: FiniteDuration = raw.get[FiniteDuration]("check-interval")
       val draftExpire: FiniteDuration   = raw.getOptional[FiniteDuration]("draft-expire").getOrElse(1.day)
+      val stargazersPageSize: Int       = raw.get[Int]("stargazers-page-size")
     }
 
     object users extends ConfigCategory {
@@ -241,7 +242,7 @@ final class OreConfig @Inject()(config: Configuration) {
   /** Asserts that the application is in debug mode. */
   def checkDebug(): Unit =
     if (!isDebug)
-      throw new UnsupportedOperationException("this function is supported in debug mode only")
+      throw new UnsupportedOperationException("this function is supported in debug mode only") // scalafix:ok
 
 }
 
