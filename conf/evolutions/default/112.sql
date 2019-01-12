@@ -14,12 +14,13 @@ FROM ((SELECT p.id AS project_id, pm.user_id AS user_id, pr.trust AS trust
               JOIN project_members pm ON p.id = pm.project_id
               JOIN user_project_roles upr ON pm.user_id = upr.user_id AND pm.project_id = upr.project_id
               JOIN roles pr ON upr.role_type = pr.name)
-      UNION (SELECT p.id AS project_id, om.user_id AS user_id, ro.trust AS trust
-             FROM projects p
-                    JOIN organizations o ON p.owner_id = o.id
-                    JOIN organization_members om ON o.id = om.organization_id
-                    JOIN user_organization_roles uor ON o.id = uor.organization_id AND uor.user_id = om.user_id
-                    JOIN roles ro ON uor.role_type = ro.name)) sq
+      UNION
+      (SELECT p.id AS project_id, om.user_id AS user_id, ro.trust AS trust
+       FROM projects p
+              JOIN organizations o ON p.owner_id = o.id
+              JOIN organization_members om ON o.id = om.organization_id
+              JOIN user_organization_roles uor ON o.id = uor.organization_id AND uor.user_id = om.user_id
+              JOIN roles ro ON uor.role_type = ro.name)) sq
 GROUP BY sq.project_id, sq.user_id;
 
 CREATE OR REPLACE VIEW organization_trust AS
@@ -30,8 +31,30 @@ FROM organizations o
        JOIN roles r ON ro.role_type = r.name
 GROUP BY o.id, o.name, om.user_id;
 
+CREATE MATERIALIZED VIEW home_projects AS
+SELECT p.owner_name,
+       p.owner_id,
+       p.slug,
+       p.visibility,
+       p.views,
+       p.downloads,
+       p.stars,
+       p.category,
+       p.description,
+       p.name,
+       p.plugin_id,
+       v.version_string,
+       pvt.name  AS tag_name,
+       pvt.data  AS tag_data,
+       pvt.color AS tag_color
+FROM projects p
+       JOIN project_versions v ON p.recommended_version_id = v.id
+       LEFT JOIN project_version_tags pvt ON v.id = pvt.version_id
+       JOIN users u ON p.owner_id = u.id;
+
 # --- !Downs
 
-DROP VIEW global_trust;
-DROP VIEW project_trust;
+DROP MATERIALIZED VIEW home_projects;
 DROP VIEW organization_trust;
+DROP VIEW project_trust;
+DROP VIEW global_trust;

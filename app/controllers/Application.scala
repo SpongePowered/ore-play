@@ -33,7 +33,6 @@ import util.syntax._
 import views.{html => views}
 
 import cats.Order
-import cats.Parallel
 import cats.data.OptionT
 import cats.effect.IO
 import cats.instances.vector._

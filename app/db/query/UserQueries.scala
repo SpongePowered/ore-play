@@ -125,10 +125,10 @@ object UserQueries extends DoobieOreProtocol {
     fragments.query[(String, Role, Option[Timestamp], Timestamp)]
   }
 
-  def globalTrust(userId: DbRef[User]) =
+  def globalTrust(userId: DbRef[User]): Query0[Trust] =
     sql"""SELECT gt.trust FROM global_trust gt WHERE gt.user_id = $userId""".query[Trust]
 
-  def projectTrust(userId: DbRef[User], projectId: DbRef[Project]) = {
+  def projectTrust(userId: DbRef[User], projectId: DbRef[Project]): Query0[Trust] = {
     sql"""|SELECT greatest(gt.trust, pt.trust)
           |  FROM global_trust gt,
           |       project_trust pt
@@ -137,11 +137,11 @@ object UserQueries extends DoobieOreProtocol {
           |    AND pt.project_id = $projectId""".stripMargin.query[Trust]
   }
 
-  def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]) = {
+  def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] = {
     sql"""|SELECT greatest(gt.trust, pt.trust)
           |  FROM global_trust gt,
           |       organization_trust ot
-          |  WHERE gt.user_id = 
+          |  WHERE gt.user_id = $userId
           |    AND ot.user_id = $userId
           |    AND ot.organization_id = $organizationId""".stripMargin.query[Trust]
   }

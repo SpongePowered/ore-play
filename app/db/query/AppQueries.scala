@@ -25,9 +25,8 @@ object AppQueries extends DoobieOreProtocol {
       offset: Int,
       pageSize: Int
   ): Query0[ProjectListEntry] = {
-
-    val platformFrag =
-      platformNames.toNel.map(Fragments.in(fr"SELECT version_id FROM project_version_tags WHERE lower(name)", _))
+    //TODO: Let the query handle tag search in the future
+    val platformFrag = platformNames.toNel.map(Fragments.in(fr"p.tag_name", _))
     val categoryFrag = categories.toNel.map(Fragments.in(fr"p.category", _))
 
     val fragments =
@@ -40,21 +39,30 @@ object AppQueries extends DoobieOreProtocol {
             |       p.category,
             |       p.description,
             |       p.name,
-            |       v.version_string,
-            |       COALESCE((SELECT array_agg(t.name) AS name FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::VARCHAR(255)[]),
-            |       COALESCE((SELECT array_agg(t.data) AS data FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::VARCHAR(255)[]),
-            |       COALESCE((SELECT array_agg(t.color) AS color FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::INTEGER[])
-            |  FROM projects p
-            |         JOIN project_versions v ON p.recommended_version_id = v.id
-            |         JOIN users u ON p.owner_id = u.id
+            |       p.version_string,
+            |       array_remove(array_agg(p.tag_name), NULL)  AS tag_names,
+            |       array_remove(array_agg(p.tag_data), NULL)  AS tag_datas,
+            |       array_remove(array_agg(p.tag_color), NULL) AS tag_colors
+            |  FROM home_projects p
             |  WHERE ($canSeeHidden OR p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $currentUserId AND p.visibility != 5))
-            |    AND (lower(p.name) LIKE $query
+            |   AND (lower(p.name) LIKE $query
             |           OR lower(p.description) LIKE $query
             |           OR lower(p.owner_name) LIKE $query
+            |           OR lower(concat(p.tag_name, ':', p.tag_data)) LIKE $query
             |           OR lower(p.plugin_id) LIKE $query) """.stripMargin ++
         Fragments.andOpt(platformFrag, categoryFrag) ++
-        fr"ORDER BY" ++ order.fragment ++
-        fr"LIMIT $pageSize OFFSET $offset"
+        fr"""|GROUP BY (p.owner_name,
+             |          p.slug,
+             |          p.visibility,
+             |          p.views,
+             |          p.downloads,
+             |          p.stars,
+             |          p.category,
+             |          p.description,
+             |          p.name,
+             |          p.version_string)""".stripMargin
+    fr"ORDER BY " ++ order.fragment ++
+      fr"LIMIT $pageSize OFFSET $offset"
 
     fragments.query[ProjectListEntry]
   }

@@ -4,6 +4,7 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 
 import db.ModelService
+import db.impl.DbUpdateTask
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectTask
@@ -19,6 +20,7 @@ abstract class Bootstrap(
     forums: OreDiscourseApi,
     config: OreConfig,
     projectTask: ProjectTask,
+    dbUpdateTask: DbUpdateTask,
     ec: ExecutionContext
 ) {
 
@@ -36,6 +38,7 @@ abstract class Bootstrap(
   )
 
   this.projectTask.start()
+  this.dbUpdateTask.start()
 
   if (this.config.security.requirePgp)
     Security.addProvider(new BouncyCastleProvider)
@@ -50,5 +53,6 @@ class BootstrapImpl @Inject()(
     forums: OreDiscourseApi,
     config: OreConfig,
     projectTask: ProjectTask,
+    dbUpdateTask: DbUpdateTask,
     ec: ExecutionContext
-) extends Bootstrap(modelService, forums, config, projectTask, ec)
+) extends Bootstrap(modelService, forums, config, projectTask, dbUpdateTask, ec)

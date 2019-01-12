@@ -53,6 +53,11 @@ final class OreConfig @Inject()(config: Configuration) {
     val debug: Boolean     = raw.get[Boolean]("debug")
     val debugLevel: Int    = raw.get[Int]("debug-level")
 
+    object homepage extends ConfigCategory {
+      val raw: Configuration             = ore.raw.get[Configuration]("homepage")
+      val updateInterval: FiniteDuration = raw.get[FiniteDuration]("update-interval")
+    }
+
     object channels extends ConfigCategory {
       val raw: Configuration  = ore.raw.get[Configuration]("channels")
       val maxNameLen: Int     = raw.get[Int]("max-name-len")
@@ -173,6 +178,7 @@ final class OreConfig @Inject()(config: Configuration) {
   app.fakeUser.load()
   play.load()
   ore.load()
+  ore.homepage.load()
   ore.channels.load()
   ore.pages.load()
   ore.projects.load()
