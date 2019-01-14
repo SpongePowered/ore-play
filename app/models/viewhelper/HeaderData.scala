@@ -58,7 +58,7 @@ object HeaderData {
 
   val unAuthenticated: HeaderData = HeaderData(None, noPerms)
 
-  def cacheKey(user: User) = s"""user${user.id.value}"""
+  def cacheKey(user: User) = s"""user${user.id}"""
 
   def of[A](request: Request[A])(
       implicit service: ModelService,

@@ -1,7 +1,7 @@
 package db.impl.schema
 import java.sql.Timestamp
 
-import db.{DbRef, ObjId, ObjectTimestamp}
+import db.{DbRef, ObjId, ObjTimestamp}
 
 import shapeless.nat._
 import shapeless.ops.hlist._
@@ -12,7 +12,7 @@ class MkTuplePartiallyApplied[A](private val b: Boolean = false) extends AnyVal 
       implicit
       gen: Generic.Aux[A, ARepr],
       at0A: At.Aux[ARepr, _0, ObjId[A]],
-      at1A: At.Aux[ARepr, _1, ObjectTimestamp],
+      at1A: At.Aux[ARepr, _1, ObjTimestamp],
       drop2A: Drop.Aux[ARepr, _2, Rest],
       concatA: Prepend.Aux[Option[DbRef[A]] :: Option[Timestamp] :: HNil, Rest, OutRepr],
       outTupler: Tupler.Aux[OutRepr, Out],
@@ -20,14 +20,14 @@ class MkTuplePartiallyApplied[A](private val b: Boolean = false) extends AnyVal 
       at0Out: At.Aux[OutRepr, _0, Option[DbRef[A]]],
       at1Out: At.Aux[OutRepr, _1, Option[Timestamp]],
       drop2Out: Drop.Aux[OutRepr, _2, Rest],
-      concatOut: Prepend.Aux[ObjId[A] :: ObjectTimestamp :: HNil, Rest, ARepr],
+      concatOut: Prepend.Aux[ObjId[A] :: ObjTimestamp :: HNil, Rest, ARepr],
   ): (Out => A, A => Option[Out]) = {
     identity(outTupler) //Only needed for stuff to compile
 
     val apply: Out => A = out => {
       val repr    = outGen.to(out)
       val id      = ObjId.unsafeFromOption[A](at0Out(repr))
-      val time    = ObjectTimestamp.unsafeFromOption(at1Out(repr))
+      val time    = ObjTimestamp.unsafeFromOption(at1Out(repr))
       val rest    = drop2Out(repr)
       val newRepr = concatOut(id :: time :: HNil, rest)
       gen.from(newRepr)

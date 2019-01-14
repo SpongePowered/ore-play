@@ -6,16 +6,16 @@ import play.twirl.api.Html
 
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.VersionVisibilityChangeTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 import models.project.{Page, Version, Visibility}
 import models.user.User
 import ore.OreConfig
 
 import slick.lifted.TableQuery
 
-case class VersionVisibilityChange(
+case class VersionVisibilityChange private (
     id: ObjId[VersionVisibilityChange],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     createdBy: Option[DbRef[User]],
     versionId: DbRef[Version],
     comment: String,

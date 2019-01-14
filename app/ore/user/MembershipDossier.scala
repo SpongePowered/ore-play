@@ -128,7 +128,7 @@ object MembershipDossier {
     def members(model: M0): IO[Set[MemberType]] =
       association
         .allFromChild(model)
-        .map(_.map(user => newMember(model, user.id.value)).toSet)
+        .map(_.map(user => newMember(model, user.id)).toSet)
 
     def addRole(model: M0, userId: DbRef[User], role: InsertFunc[RoleType]): IO[RoleType] = {
       for {
@@ -165,7 +165,7 @@ object MembershipDossier {
 
       override def getTrust(model: Project, user: User): IO[Trust] =
         service
-          .runDBIO(Project.roleForTrustQuery((model.id.value, user.id.value)).result)
+          .runDBIO(Project.roleForTrustQuery((model.id, user.id)).result)
           .map(l => if (l.isEmpty) Trust.Default else l.map(_.trust).max)
 
       override def clearRoles(model: Project, user: User): IO[Int] =
@@ -184,7 +184,7 @@ object MembershipDossier {
         new OrganizationMember(model, userId)
 
       override def getTrust(model: Organization, user: User): IO[Trust] =
-        Organization.getTrust(user.id.value, model.id.value)
+        Organization.getTrust(user.id, model.id)
 
       override def clearRoles(model: Organization, user: User): IO[Int] =
         this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.organizationId === model.id.value))

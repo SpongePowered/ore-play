@@ -2,7 +2,7 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{DbRef, ObjId, ObjectTimestamp}
+import db.{DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.admin.{LoggedActionViewModel, LoggedProject, LoggedProjectPage, LoggedProjectVersion, LoggedSubject}
@@ -61,7 +61,7 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
       filterAction: Option[Int]
   ) = LoggedActionViewModel[Ctx](
     ObjId.unsafeFromOption(id),
-    ObjectTimestamp.unsafeFromOption(createdAt),
+    ObjTimestamp.unsafeFromOption(createdAt),
     userId,
     address,
     action,

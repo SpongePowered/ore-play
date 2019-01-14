@@ -14,7 +14,7 @@ object ScopedOrganizationData {
 
   val noScope = ScopedOrganizationData()
 
-  def cacheKey(orga: Organization, user: User) = s"""organization${orga.id.value}foruser${user.id.value}"""
+  def cacheKey(orga: Organization, user: User) = s"""organization${orga.id}foruser${user.id}"""
 
   def of[A](currentUser: Option[User], orga: Organization)(
       implicit service: ModelService,

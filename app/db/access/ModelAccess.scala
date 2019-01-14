@@ -66,7 +66,7 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param model Model to look for
     * @return True if contained in set
     */
-  def contains(model: M0): IO[Boolean] = exists(IdFilter(model.id.value))
+  def contains(model: M0): IO[Boolean] = exists(IdFilter(model.id))
 
   /**
     * Returns true if any models match the specified filter.

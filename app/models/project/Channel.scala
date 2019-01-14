@@ -4,7 +4,7 @@ import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.ChannelTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
@@ -23,9 +23,9 @@ import slick.lifted.TableQuery
   * @param color       Color used to represent this Channel
   * @param projectId    ID of project this channel belongs to
   */
-case class Channel(
+case class Channel private (
     id: ObjId[Channel],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     projectId: DbRef[Project],
     name: String,
     color: Color,

@@ -12,15 +12,15 @@ trait ModelQuery[A <: Model] {
     * @param theTime  Timestamp
     * @return         Copy of model
     */
-  def copyWith(model: A)(id: ObjId[A], theTime: ObjectTimestamp): A
+  def copyWith(model: A)(id: ObjId[A], theTime: ObjTimestamp): A
 }
 object ModelQuery {
   def apply[A <: Model](implicit query: ModelQuery[A]): ModelQuery[A] = query
 
-  def from[A <: Model](query: Query[A#T, A, Seq], copy: (A, ObjId[A], ObjectTimestamp) => A): ModelQuery[A] =
+  def from[A <: Model](query: Query[A#T, A, Seq], copy: (A, ObjId[A], ObjTimestamp) => A): ModelQuery[A] =
     new ModelQuery[A] {
       override def baseQuery = query
 
-      override def copyWith(model: A)(id: ObjId[A], theTime: ObjectTimestamp): A = copy(model, id, theTime)
+      override def copyWith(model: A)(id: ObjId[A], theTime: ObjTimestamp): A = copy(model, id, theTime)
     }
 }

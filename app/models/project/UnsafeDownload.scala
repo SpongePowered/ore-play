@@ -1,7 +1,7 @@
 package models.project
 
 import db.impl.schema.UnsafeDownloadsTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 import models.user.User
 import ore.project.io.DownloadType
 
@@ -17,9 +17,9 @@ import slick.lifted.TableQuery
   * @param address      Address of client
   * @param downloadType Type of download
   */
-case class UnsafeDownload(
+case class UnsafeDownload private (
     id: ObjId[UnsafeDownload],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     userId: Option[DbRef[User]],
     address: InetString,
     downloadType: DownloadType

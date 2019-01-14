@@ -5,7 +5,7 @@ import java.sql.Timestamp
 import db.impl.access.UserBase
 import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 import security.spauth.SpongeAuthApi
 import util.OreMDC
 
@@ -22,9 +22,9 @@ import slick.lifted.TableQuery
   * @param username   Username session belongs to
   * @param token      Unique token
   */
-case class Session(
+case class Session private (
     id: ObjId[Session],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     expiration: Timestamp,
     username: String,
     token: String

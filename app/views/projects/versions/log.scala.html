@@ -39,7 +39,7 @@
 							@visibilityChanges.reverse.map { case (entry, createdBy) =>
 							<tr>
 								<td>@entry.visibility</td>
-								<td>@prettifyDateAndTime(entry.createdAt.value)</td>
+								<td>@prettifyDateAndTime(entry.createdAt)</td>
 								<td>@entry.renderComment</td>
 								@if(createdBy.isDefined) {
 									<td>@createdBy.get.name</td>

@@ -157,7 +157,7 @@ trait Actions extends Calls with ActionHelpers {
     this.signOns
       .find(_.nonce === nonce)
       .semiflatMap { signOn =>
-        if (signOn.isCompleted || new Date().getTime - signOn.createdAt.value.getTime > 600000)
+        if (signOn.isCompleted || new Date().getTime - signOn.createdAt.getTime > 600000)
           IO.pure(false)
         else {
           service.update(signOn.copy(isCompleted = true)).as(true)

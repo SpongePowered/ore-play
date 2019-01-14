@@ -23,17 +23,17 @@ object OreMDC {
   implicit val canLogOreMDCCtx: CanLog[OreMDC] = new CanLog[OreMDC] {
 
     def putUser(user: User): Unit = {
-      MDC.put("currentUserId", user.id.value.toString)
+      MDC.put("currentUserId", user.id.toString)
       MDC.put("currentUserName", user.name)
     }
 
     def putProject(project: Project): Unit = {
-      MDC.put("currentProjectId", project.id.value.toString)
+      MDC.put("currentProjectId", project.id.toString)
       MDC.put("currentProjectSlug", project.slug)
     }
 
     def putOrg(orga: Organization): Unit = {
-      MDC.put("currentOrgaId", orga.id.value.toString)
+      MDC.put("currentOrgaId", orga.id.toString)
       MDC.put("currentOrgaName", orga.name)
     }
 

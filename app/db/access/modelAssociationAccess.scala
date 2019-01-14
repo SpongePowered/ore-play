@@ -43,7 +43,7 @@ class ModelAssociationAccessImpl[
 ) extends ModelAssociationAccess[Assoc, P, C, IO] {
 
   def addAssoc(parent: P, child: C): IO[Unit] =
-    service.runDBIO(query.baseQuery += ((parent.id.value, child.id.value))).void
+    service.runDBIO(query.baseQuery += ((parent.id, child.id))).void
 
   def removeAssoc(parent: P, child: C): IO[Unit] =
     service

@@ -82,7 +82,7 @@ class Organizations @Inject()(forms: OreForms)(
         else {
           val formData = request.body
           organizations
-            .create(formData.name, user.id.value, formData.build())
+            .create(formData.name, user.id, formData.build())
             .bimap(
               error => Redirect(failCall).withError(error),
               organization => Redirect(routes.Users.showProjects(organization.name, None))

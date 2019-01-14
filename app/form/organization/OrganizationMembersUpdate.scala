@@ -37,7 +37,7 @@ case class OrganizationMembersUpdate(
 
     // Add new roles
     val dossier = organization.memberships
-    val orgId   = organization.id.value
+    val orgId   = organization.id
     val addRoles = this
       .build()
       .toVector

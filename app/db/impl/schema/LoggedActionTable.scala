@@ -2,7 +2,7 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{DbRef, ObjId, ObjectTimestamp}
+import db.{DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, User}
@@ -32,7 +32,7 @@ class LoggedActionTable[Ctx](tag: Tag) extends ModelTable[LoggedActionModel[Ctx]
   ) =
     LoggedActionModel(
       ObjId.unsafeFromOption(id),
-      ObjectTimestamp.unsafeFromOption(createdAt),
+      ObjTimestamp.unsafeFromOption(createdAt),
       userId,
       address,
       action,

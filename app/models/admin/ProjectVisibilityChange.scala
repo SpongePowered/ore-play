@@ -6,16 +6,16 @@ import play.twirl.api.Html
 
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.ProjectVisibilityChangeTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 import models.project.{Page, Project, Visibility}
 import models.user.User
 import ore.OreConfig
 
 import slick.lifted.TableQuery
 
-case class ProjectVisibilityChange(
+case class ProjectVisibilityChange private (
     id: ObjId[ProjectVisibilityChange],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     createdBy: Option[DbRef[User]],
     projectId: DbRef[Project],
     comment: String,

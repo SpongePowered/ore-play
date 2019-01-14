@@ -1,7 +1,7 @@
 package models.user.role
 
 import db.impl.schema.ProjectRoleTable
-import db.{DbRef, InsertFunc, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.project.Project
 import models.user.User
 import ore.Visitable
@@ -24,13 +24,13 @@ import slick.lifted.TableQuery
   * @param role   Type of role
   * @param projectId  ID of project this role belongs to
   */
-case class ProjectUserRole(
+case class ProjectUserRole private (
     id: ObjId[ProjectUserRole],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     userId: DbRef[User],
     projectId: DbRef[Project],
     role: Role,
-    isAccepted: Boolean = false
+    isAccepted: Boolean
 ) extends UserRoleModel {
 
   override type M = ProjectUserRole

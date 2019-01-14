@@ -100,7 +100,7 @@ final class Application @Inject()(forms: OreForms)(
     // Get categories and sorting strategy
 
     val canHideProjects = request.headerData.globalPerm(HideProjects)
-    val currentUserId   = request.headerData.currentUser.map(_.id.value).getOrElse(-1L)
+    val currentUserId   = request.headerData.currentUser.map(_.id.value)
 
     val ordering = sort.flatMap(ProjectSortingStrategies.withId).getOrElse(ProjectSortingStrategies.Default)
     val pcat     = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
@@ -126,7 +126,8 @@ final class Application @Inject()(forms: OreForms)(
       if canHideProjects.bind ||
         (project.visibility === (Visibility.Public: Visibility)) ||
         (project.visibility === (Visibility.New: Visibility)) ||
-        ((project.userId === currentUserId) && (project.visibility =!= (Visibility.SoftDelete: Visibility)))
+        ((project.userId === currentUserId)
+          .getOrElse(false) && (project.visibility =!= (Visibility.SoftDelete: Visibility)))
       if (if (platformNames.isEmpty) true.bind else project.recommendedVersionId in versionIdsOnPlatform)
       if (if (categoryList.isEmpty) true.bind else project.category.inSetBind(categoryList))
       if (project.name.toLowerCase.like(q)) ||
@@ -184,7 +185,7 @@ final class Application @Inject()(forms: OreForms)(
             }
 
             list.map {
-              case (v, p, c, a, u) => (v, p, c, a, u, reviewData.getOrElse(v.id.value, None))
+              case (v, p, c, a, u) => (v, p, c, a, u, reviewData.getOrElse(v.id, None))
             }
         }
       data.map { list =>

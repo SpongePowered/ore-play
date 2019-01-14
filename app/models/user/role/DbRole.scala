@@ -4,12 +4,12 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.schema.DbRoleTable
-import db.{Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{Model, ModelQuery, ObjId, ObjTimestamp}
 import ore.permission.role.{Role, RoleCategory, Trust}
 
 import slick.lifted.TableQuery
 
-case class DbRole(
+case class DbRole private (
     id: ObjId[DbRole],
     name: String,
     category: RoleCategory,
@@ -20,7 +20,7 @@ case class DbRole(
     rank: Option[Int]
 ) extends Model {
 
-  override val createdAt: ObjectTimestamp = ObjectTimestamp(Timestamp.from(Instant.EPOCH))
+  override val createdAt: ObjTimestamp = ObjTimestamp(Timestamp.from(Instant.EPOCH))
 
   override type M = DbRole
   override type T = DbRoleTable

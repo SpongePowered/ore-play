@@ -1,7 +1,7 @@
 package models.user
 
 import db.impl.schema.SignOnTable
-import db.{InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 
 import slick.lifted.TableQuery
 
@@ -13,9 +13,9 @@ import slick.lifted.TableQuery
   * @param nonce        Nonce used
   * @param isCompleted  True if sign on was completed
   */
-case class SignOn(
+case class SignOn private (
     id: ObjId[SignOn],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     nonce: String,
     isCompleted: Boolean
 ) extends Model {

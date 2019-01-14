@@ -1,7 +1,7 @@
 package models.admin
 
 import db.impl.schema.LoggedActionViewTable
-import db.{DbRef, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, Model, ModelQuery, ObjId, ObjTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, LoggedActionContext, User}
 import ore.user.UserOwned
@@ -21,7 +21,7 @@ case class LoggedSubject(sId: Option[DbRef[_]], sName: Option[String])
 
 case class LoggedActionViewModel[Ctx](
     id: ObjId[LoggedActionViewModel[Ctx]],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     userId: DbRef[User],
     address: InetString,
     action: LoggedAction[Ctx],

@@ -75,7 +75,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
             OrganizationUserRole
               .Partial(
                 userId = ownerId,
-                organizationId = org.id.value,
+                organizationId = org.id,
                 role = Role.OrganizationOwner,
                 isAccepted = true
               )
@@ -87,11 +87,11 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
 
             members.toVector.parTraverse { role =>
               // TODO remove role.user db access we really only need the userid we already have for notifications
-              org.memberships.addRole(org, role.userId, role.copy(organizationId = org.id.value).asFunc).flatMap { _ =>
+              org.memberships.addRole(org, role.userId, role.copy(organizationId = org.id).asFunc).flatMap { _ =>
                 service.insert(
                   Notification.partial(
                     userId = role.userId,
-                    originId = org.id.value,
+                    originId = org.id,
                     notificationType = NotificationType.OrganizationInvite,
                     messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
                   )

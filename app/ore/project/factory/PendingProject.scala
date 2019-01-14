@@ -48,7 +48,7 @@ case class PendingProject(
       _              <- free
       newProject     <- factory.createProject(this)
       newVersion     <- factory.createVersion(newProject, this.pendingVersion)
-      updatedProject <- service.update(newProject.copy(recommendedVersionId = Some(newVersion._1.id.value)))
+      updatedProject <- service.update(newProject.copy(recommendedVersionId = Some(newVersion._1.id)))
     } yield (updatedProject, newVersion._1)
 
   def owner(implicit service: ModelService): IO[User] =

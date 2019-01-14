@@ -60,7 +60,7 @@ Documentation page within Project overview.
 
                     <div class="stats minor">
                         <p>@messages("project.category.info", p.project.category.title)</p>
-                        <p>@messages("project.publishDate", prettifyDate(p.project.createdAt.value))</p>
+                        <p>@messages("project.publishDate", prettifyDate(p.project.createdAt))</p>
                         <p>@p.project.viewCount views</p>
                         <p>@p.project.starCount <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.slug, None)">stars</a></p>
                         <p>@NumberFormat.getInstance.format(p.project.downloadCount) total downloads</p>
@@ -92,12 +92,12 @@ Documentation page within Project overview.
                             @rootPages.filter(_._1.name != Page.homeName).map { case (pg, children) =>
                                 <li class="list-group-item">
                                     @if(children.nonEmpty) {
-                                        @if(!page.parentId.contains(pg.id.value)) {
-                                            <a class="page-expand" data-page-id="@pg.id.value">
+                                        @if(!page.parentId.contains(pg.id)) {
+                                            <a class="page-expand" data-page-id="@pg.id">
                                                 <i class="far fa-plus-square"></i>
                                             </a>
                                         } else {
-                                            <a class="page-collapse" data-page-id="@pg.id.value">
+                                            <a class="page-collapse" data-page-id="@pg.id">
                                                 <i class="far fa-minus-square"></i>
                                             </a>
                                         }

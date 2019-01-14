@@ -4,7 +4,7 @@ import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 
@@ -13,9 +13,9 @@ import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
 import slick.lifted.TableQuery
 
-case class LoggedActionModel[Ctx](
+case class LoggedActionModel[Ctx] private (
     id: ObjId[LoggedActionModel[Ctx]],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     userId: DbRef[User],
     address: InetString,
     action: LoggedAction[Ctx],
@@ -154,7 +154,7 @@ object UserActionLogger {
   )(implicit service: ModelService): IO[LoggedActionModel[Ctx]] =
     service.insert(
       LoggedActionModel.partial(
-        request.user.id.value,
+        request.user.id,
         InetString(StatTracker.remoteAddress(request)),
         action,
         action.context,

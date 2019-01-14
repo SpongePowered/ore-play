@@ -14,7 +14,7 @@ import cats.syntax.all._
   */
 object ScopedProjectData {
 
-  def cacheKey(project: Project, user: User) = s"""project${project.id.value}foruser${user.id.value}"""
+  def cacheKey(project: Project, user: User) = s"""project${project.id}foruser${user.id}"""
 
   def of(
       currentUser: Option[User],

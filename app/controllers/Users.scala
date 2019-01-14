@@ -226,7 +226,7 @@ class Users @Inject()(
             )
           else {
             val log = UserActionLogger
-              .log(request, LoggedAction.UserTaglineChanged, user.id.value, tagline, user.tagline.getOrElse("null"))
+              .log(request, LoggedAction.UserTaglineChanged, user.id, tagline, user.tagline.getOrElse("null"))
             val insert = service.update(user.copy(tagline = Some(tagline)))
             EitherT.right[Result]((log *> insert).as(Redirect(ShowUser(user))))
           }
@@ -249,7 +249,7 @@ class Users @Inject()(
 
         // Send email notification
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
-        val log = UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id.value, "", "")
+        val log = UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id, "", "")
 
         val update = service.update(
           user.copy(
@@ -276,7 +276,7 @@ class Users @Inject()(
       if (user.pgpPubKey.isEmpty)
         IO.pure(BadRequest)
       else {
-        val log = UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id.value, "", "")
+        val log = UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id, "", "")
         val insert = service.update(
           user.copy(
             pgpPubKey = None,

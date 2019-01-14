@@ -46,9 +46,9 @@ import slick.lifted.TableQuery
   * @param contents    Markdown contents
   * @param isDeletable  True if can be deleted by the user
   */
-case class Page(
+case class Page private (
     id: ObjId[Page],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     projectId: DbRef[Project],
     parentId: Option[DbRef[Page]],
     name: String,

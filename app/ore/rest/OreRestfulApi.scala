@@ -108,7 +108,7 @@ trait OreRestfulApi extends OreWrites {
     val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.role))
     members.map {
       case (_, user) =>
-        val roles                      = allRoles(user.id.value)
+        val roles                      = allRoles(user.id)
         val trustOrder: Ordering[Role] = Ordering.by(_.trust)
         obj(
           "userId"   -> user.id.value,
@@ -141,7 +141,7 @@ trait OreRestfulApi extends OreWrites {
             p,
             obj(
               "pluginId"    -> p.pluginId,
-              "createdAt"   -> p.createdAt.value.toString,
+              "createdAt"   -> p.createdAt.toString,
               "name"        -> p.name,
               "owner"       -> p.ownerName,
               "description" -> p.description,
@@ -165,7 +165,7 @@ trait OreRestfulApi extends OreWrites {
     }
     val json = obj(
       "id"            -> v.id.value,
-      "createdAt"     -> v.createdAt.value.toString,
+      "createdAt"     -> v.createdAt.toString,
       "name"          -> v.versionString,
       "dependencies"  -> dependencies,
       "pluginId"      -> p.pluginId,
@@ -379,7 +379,7 @@ trait OreRestfulApi extends OreWrites {
         case (user, globalRoles) =>
           obj(
             "id"        -> user.id.value,
-            "createdAt" -> user.createdAt.value.toString,
+            "createdAt" -> user.createdAt.toString,
             "username"  -> user.name,
             "roles"     -> globalRoles.map(_.title),
             "starred"   -> toJson(stars.getOrElse(user.id.value, Seq.empty)),

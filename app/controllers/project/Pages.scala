@@ -183,7 +183,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
                     UserActionLogger.log(
                       request.request,
                       LoggedAction.ProjectPageEdited,
-                      createdPage.id.value,
+                      createdPage.id,
                       newPage,
                       oldPage
                     ) *> service.update(createdPage.copy(contents = newPage))

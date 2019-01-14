@@ -7,7 +7,7 @@ import play.api.mvc.Cookie
 import controllers.sugar.Bakery
 import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.project.DownloadWarning.COOKIE
 
 import cats.data.OptionT
@@ -28,9 +28,9 @@ import slick.lifted.TableQuery
   * @param address      Address of client who landed on the warning
   * @param downloadId  Download ID
   */
-case class DownloadWarning(
+case class DownloadWarning private (
     id: ObjId[DownloadWarning],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     expiration: Timestamp,
     token: String,
     versionId: DbRef[Version],

@@ -132,7 +132,7 @@
                             </div>
                             <div class="setting-content">
                                 @deploymentKey.map { key =>
-                                  <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id.value">
+                                  <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id">
                                       <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
                                       <span class="text">@messages("project.settings.revokeKey")</span>
                                   </button>

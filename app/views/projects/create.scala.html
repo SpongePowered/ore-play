@@ -12,7 +12,7 @@ Page used for uploading and creating new projects.
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
 @import db.ObjId
-@import db.ObjectTimestamp
+@import db.ObjTimestamp
 @import java.sql.Timestamp
 @import java.time.Instant
 @(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
@@ -57,7 +57,7 @@ Page used for uploading and creating new projects.
                                         <select name="owner" form="continue">
                                             <option value="@project.ownerId" selected>@project.ownerName</option>
                                             @createProjectOrgas.map { organization =>
-                                                <option value="@organization.id.value">@organization.name</option>
+                                                <option value="@organization.id">@organization.name</option>
                                             }
                                         </select>
                                     } else {
@@ -70,7 +70,7 @@ Page used for uploading and creating new projects.
                                 <td>
                                     <div class="pull-right" id="upload-platform-tags">
                                     @for(t <- project.pendingVersion.dependenciesAsGhostTags) {
-                                        @projects.tag(t(ObjId(0L), ObjectTimestamp(Timestamp.from(Instant.now()))))
+                                        @projects.tag(t(ObjId(0L), ObjTimestamp(Timestamp.from(Instant.now()))))
                                     }
                                     </div>
                                 </td>

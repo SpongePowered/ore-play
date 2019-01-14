@@ -30,9 +30,9 @@ import slick.lifted.{Compiled, Rep, TableQuery}
   * @param createdAt      Date of creation
   * @param ownerId        The ID of the [[User]] that owns this organization
   */
-case class Organization(
+case class Organization private (
     id: ObjId[Organization],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     username: String,
     ownerId: DbRef[User]
 ) extends Model
@@ -69,7 +69,7 @@ case class Organization(
       (owner, memberUser) = t1
       t2 <- (memberships.getRoles(this, owner), memberships.getRoles(this, memberUser)).parTupled
       (roles, memberRoles) = t2
-      setOwner <- service.update(copy(ownerId = memberUser.id.value))
+      setOwner <- service.update(copy(ownerId = memberUser.id))
       _ <- roles
         .filter(_.role == Role.OrganizationOwner)
         .map(role => service.update(role.copy(role = Role.OrganizationAdmin)))

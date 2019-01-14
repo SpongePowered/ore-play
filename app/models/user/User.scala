@@ -41,9 +41,9 @@ import slick.lifted.TableQuery
   * @param email        Email
   * @param tagline      The user configured "tagline" displayed on the user page.
   */
-case class User(
+case class User private (
     id: ObjId[User],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     fullName: Option[String],
     name: String,
     email: Option[String],
@@ -148,7 +148,7 @@ case class User(
     scope match {
       case GlobalScope => globalTrust
       case ProjectScope(projectId) =>
-        val projectRoles = service.runDBIO(Project.roleForTrustQuery((projectId, this.id.value)).result)
+        val projectRoles = service.runDBIO(Project.roleForTrustQuery((projectId, this.id)).result)
 
         val projectTrust = projectRoles
           .map(biggestRoleTpe)
@@ -176,7 +176,7 @@ case class User(
 
         Parallel.parMap2(projectTrust, globalTrust)(_ max _)
       case OrganizationScope(organizationId) =>
-        Parallel.parMap2(Organization.getTrust(id.value, organizationId), globalTrust)(_ max _)
+        Parallel.parMap2(Organization.getTrust(id, organizationId), globalTrust)(_ max _)
     }
   }
 

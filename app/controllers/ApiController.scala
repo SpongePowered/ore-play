@@ -150,7 +150,7 @@ final class ApiController @Inject()(
               UserActionLogger.log(
                 request.request,
                 LoggedAction.ProjectSettingsChanged,
-                request.data.project.id.value,
+                request.data.project.id,
                 s"${request.user.name} removed an ApiKey",
                 ""
               )
@@ -257,7 +257,7 @@ final class ApiController @Inject()(
                 val compiled = Compiled(queryApiKey _)
 
                 val apiKeyExists: IO[Boolean] =
-                  this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id.value)).result)
+                  this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id)).result)
 
                 EitherT
                   .liftF(apiKeyExists)
@@ -293,7 +293,7 @@ final class ApiController @Inject()(
                         if (formData.recommended)
                           service.update(
                             project.copy(
-                              recommendedVersionId = Some(newVersion.id.value),
+                              recommendedVersionId = Some(newVersion.id),
                               lastUpdated = new Timestamp(new Date().getTime)
                             )
                           )

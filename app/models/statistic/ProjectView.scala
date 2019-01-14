@@ -3,7 +3,7 @@ package models.statistic
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.ProjectViewsTable
-import db.{DbRef, InsertFunc, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, ModelQuery, ObjId, ObjTimestamp}
 import models.project.Project
 import models.user.User
 import ore.StatTracker._
@@ -23,9 +23,9 @@ import slick.lifted.TableQuery
   * @param cookie     Browser cookie
   * @param userId     User ID
   */
-case class ProjectView(
+case class ProjectView private (
     id: ObjId[ProjectView],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     modelId: DbRef[Project],
     address: InetString,
     cookie: String,
@@ -65,7 +65,7 @@ object ProjectView {
   ): IO[Partial] = {
     users.current.map(_.id.value).value.map { userId =>
       ProjectView.Partial(
-        modelId = request.data.project.id.value,
+        modelId = request.data.project.id,
         address = InetString(remoteAddress),
         cookie = currentCookie,
         userId = userId

@@ -1,16 +1,16 @@
 package models.api
 
 import db.impl.schema.ProjectApiKeyTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 import models.project.Project
 import ore.project.ProjectOwned
 import ore.rest.ProjectApiKeyType
 
 import slick.lifted.TableQuery
 
-case class ProjectApiKey(
+case class ProjectApiKey private (
     id: ObjId[ProjectApiKey],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     projectId: DbRef[Project],
     keyType: ProjectApiKeyType,
     value: String

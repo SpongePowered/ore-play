@@ -67,7 +67,7 @@
                                         Unknown
                                     }
                                     <br>
-                                    @prettifyDateAndTime(version.createdAt.value)
+                                    @prettifyDateAndTime(version.createdAt)
                                 </td>
                                 <td style="text-align: right; max-width: 40px">
                                 @if(unfinishedReview) {
@@ -84,11 +84,11 @@
                                 @if(unfinishedReview) {
                                     @reviewer
                                     <br>
-                                    <span data-ago="@review.createdAt.value.getTime" data-title="started "></span>
+                                    <span data-ago="@review.createdAt.getTime" data-title="started "></span>
                                 } else {
                                     <strike>@reviewer</strike>
                                     <br>
-                                    <span data-ago="@review.createdAt.value.getTime" data-title="abandoned "></span>
+                                    <span data-ago="@review.createdAt.getTime" data-title="abandoned "></span>
                                 }
                                 </td>
                                 <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
@@ -132,7 +132,7 @@
                                 </th>
                             </tr>
                         }
-                        @versions.sortWith(_._2.createdAt.value.getTime < _._2.createdAt.value.getTime).map { case (project, version, channel, author, projectOwner) =>
+                        @versions.sortWith(_._2.createdAt.getTime < _._2.createdAt.getTime).map { case (project, version, channel, author, projectOwner) =>
                             <tr data-version="@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)">
                                 <td>
                                     @userAvatar(Some(projectOwner.name), projectOwner.avatarUrl, clazz = "user-avatar-xs")
@@ -143,7 +143,7 @@
                                     </a>
                                 </td>
                                 <td>
-                                    <span class="faint">@prettifyDate(version.createdAt.value)</span>
+                                    <span class="faint">@prettifyDate(version.createdAt)</span>
                                     <span class="minor">@version.versionString</span>
                                     <span class="channel" style="background-color: @channel.color.hex;">@channel.name</span>
                                 </td>

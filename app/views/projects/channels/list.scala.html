@@ -56,12 +56,12 @@
                                                         id="channel-delete-@channel.id" data-toggle="modal"
                                                         data-target="#modal-delete">
                                                     } else {
-                                                        id="channel-delete-@channel.id.value" data-channel-delete="safe-delete"
-                                                        data-channel-id="@channel.id.value">
+                                                        id="channel-delete-@channel.id" data-channel-delete="safe-delete"
+                                                        data-channel-id="@channel.id">
 
                                                         @form(action = channelRoutes.delete(
                                                             p.project.ownerName, p.project.slug, channel.name),
-                                                            'id -> s"form-delete-${channel.id.value}",
+                                                            'id -> s"form-delete-${channel.id}",
                                                             'class -> "form-channel-delete") {
                                                             @CSRF.formField
                                                         }

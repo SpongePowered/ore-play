@@ -119,7 +119,7 @@ trait ProjectFactory {
           version = this.startVersion(
             plugin,
             project.pluginId,
-            project.id.unsafeToOption,
+            Some(project.id),
             project.url,
             settings.forumSync,
             channels.head.name
@@ -165,7 +165,7 @@ trait ProjectFactory {
     val pendingProject = PendingProject(
       pluginId = metaData.id.get,
       ownerName = owner.name,
-      ownerId = owner.id.value,
+      ownerId = owner.id,
       name = name,
       slug = slugify(name),
       visibility = Visibility.New,
@@ -211,7 +211,7 @@ trait ProjectFactory {
           hash = plugin.md5,
           fileName = path.getFileName.toString,
           signatureFileName = plugin.signaturePath.getFileName.toString,
-          authorId = plugin.user.id.value,
+          authorId = plugin.user.id,
           projectUrl = projectUrl,
           channelName = channelName,
           channelColor = this.config.defaultChannelColor,
@@ -266,13 +266,13 @@ trait ProjectFactory {
       _                   = checkArgument(this.config.isValidProjectName(pending.name), "invalid name", "")
       // Create the project and it's settings
       newProject <- this.projects.add(pending.asFunc)
-      _          <- service.insert(pending.settings.asFunc(newProject.id.value))
+      _          <- service.insert(pending.settings.asFunc(newProject.id))
       _ <- {
         // Invite members
         val dossier   = newProject.memberships
         val owner     = newProject.owner
         val ownerId   = owner.userId
-        val projectId = newProject.id.value
+        val projectId = newProject.id
 
         val addRole = dossier.addRole(
           newProject,
@@ -313,7 +313,7 @@ trait ProjectFactory {
     for {
       channelCount <- project.channels.size
       _ = checkState(channelCount < this.config.ore.projects.maxChannels, "channel limit reached", "")
-      channel <- this.service.access[Channel]().add(Channel.partial(project.id.value, name, color))
+      channel <- this.service.access[Channel]().add(Channel.partial(project.id, name, color))
     } yield channel
   }
 
@@ -337,7 +337,7 @@ trait ProjectFactory {
       else IO.unit
       // Create version
       newVersion <- {
-        val newVersion = pending.asFunc(project.id.value, channel.id.value)
+        val newVersion = pending.asFunc(project.id, channel.id)
         this.service.access[Version]().add(newVersion)
       }
       tags <- addTags(pending, newVersion)
@@ -357,14 +357,14 @@ trait ProjectFactory {
       implicit cs: ContextShift[IO]
   ): IO[Seq[VersionTag]] =
     (
-      pendingVersion.plugin.data.createTags(newVersion.id.value),
+      pendingVersion.plugin.data.createTags(newVersion.id),
       addDependencyTags(newVersion)
     ).parMapN(_ ++ _)
 
   private def addDependencyTags(version: Version): IO[Seq[VersionTag]] =
     Platform
       .createPlatformTags(
-        version.id.value,
+        version.id,
         // filter valid dependency versions
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
       )

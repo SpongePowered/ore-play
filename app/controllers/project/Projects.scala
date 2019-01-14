@@ -180,7 +180,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         case (id, true) => id
       }
 
-      others.toSet + user.id.value // Add self
+      others.toSet + user.id // Add self
     }
   }
 
@@ -359,7 +359,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               UserActionLogger.log(
                 request.request,
                 LoggedAction.ProjectFlagged,
-                project.id.value,
+                project.id,
                 s"Flagged by ${user.name}",
                 s"Not flagged by ${user.name}"
               )
@@ -498,7 +498,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           Files.list(pendingDir).iterator().asScala.foreach(Files.delete)
           tmpFile.ref.moveTo(pendingDir.resolve(tmpFile.filename).toFile, replace = true)
           //todo data
-          UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id.value, "", "").as(Ok)
+          UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id, "", "").as(Ok)
       }
     }
 
@@ -517,7 +517,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       fileManager.getPendingIconPath(project).foreach(Files.delete)
       //todo data
       Files.delete(fileManager.getPendingIconDir(project.ownerName, project.name))
-      UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id.value, "", "").as(Ok)
+      UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id, "", "").as(Ok)
   }
 
   /**
@@ -554,7 +554,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               UserActionLogger.log(
                 request.request,
                 LoggedAction.ProjectMemberRemoved,
-                project.id.value,
+                project.id,
                 s"'${user.name}' is not a member of ${project.ownerName}/${project.name}",
                 s"'${user.name}' is a member of ${project.ownerName}/${project.name}"
               )
@@ -587,7 +587,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                   UserActionLogger.log(
                     request.request,
                     LoggedAction.ProjectSettingsChanged,
-                    request.data.project.id.value,
+                    request.data.project.id,
                     "",
                     ""
                   ) //todo add old new data
@@ -620,7 +620,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           UserActionLogger.log(
             request.request,
             LoggedAction.ProjectRenamed,
-            request.project.id.value,
+            request.project.id,
             s"$author/$newName",
             s"$author/$oldName"
           )
@@ -652,15 +652,15 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
             val projectVisibility = if (newVisibility.showModal) {
               val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-              request.project.setVisibility(newVisibility, comment, request.user.id.value)
+              request.project.setVisibility(newVisibility, comment, request.user.id)
             } else {
-              request.project.setVisibility(newVisibility, "", request.user.id.value)
+              request.project.setVisibility(newVisibility, "", request.user.id)
             }
 
             val log = UserActionLogger.log(
               request.request,
               LoggedAction.ProjectVisibilityChange,
-              request.project.id.value,
+              request.project.id,
               newVisibility.nameKey,
               Visibility.NeedsChanges.nameKey
             )
@@ -683,11 +683,11 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     implicit request =>
       val effects =
         if (request.data.visibility == Visibility.New) {
-          val visibility = request.project.setVisibility(Visibility.Public, "", request.user.id.value)
+          val visibility = request.project.setVisibility(Visibility.Public, "", request.user.id)
           val log = UserActionLogger.log(
             request.request,
             LoggedAction.ProjectVisibilityChange,
-            request.project.id.value,
+            request.project.id,
             Visibility.Public.nameKey,
             Visibility.New.nameKey
           )
@@ -707,11 +707,11 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def sendForApproval(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       val effects = if (request.data.visibility == Visibility.NeedsChanges) {
-        val visibility = request.project.setVisibility(Visibility.NeedsApproval, "", request.user.id.value)
+        val visibility = request.project.setVisibility(Visibility.NeedsApproval, "", request.user.id)
         val log = UserActionLogger.log(
           request.request,
           LoggedAction.ProjectVisibilityChange,
-          request.project.id.value,
+          request.project.id,
           Visibility.NeedsApproval.nameKey,
           Visibility.NeedsChanges.nameKey
         )
@@ -742,7 +742,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       getProject(author, slug).semiflatMap { project =>
         val effects = projects.delete(project) *>
           UserActionLogger
-            .log(request, LoggedAction.ProjectVisibilityChange, project.id.value, "deleted", project.visibility.nameKey)
+            .log(request, LoggedAction.ProjectVisibilityChange, project.id, "deleted", project.visibility.nameKey)
         effects.as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
       }.merge
     }
@@ -760,12 +760,12 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val oldProject = request.project
       val comment    = request.body.trim
 
-      val oreVisibility   = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id.value)
+      val oreVisibility   = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id)
       val forumVisibility = this.forums.changeTopicVisibility(oldProject, isVisible = false)
       val log = UserActionLogger.log(
         request.request,
         LoggedAction.ProjectVisibilityChange,
-        oldProject.id.value,
+        oldProject.id,
         Visibility.SoftDelete.nameKey,
         oldProject.visibility.nameKey
       )
@@ -808,7 +808,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .andThen(PermissionAction[AuthRequest](ReviewProjects))
       .asyncEitherT(parse.form(forms.NoteDescription)) { implicit request =>
         getProject(author, slug)
-          .semiflatMap(_.addNote(Note(request.body.trim, request.user.id.value)))
+          .semiflatMap(_.addNote(Note(request.body.trim, request.user.id)))
           .map(_ => Ok("Review"))
       }
   }

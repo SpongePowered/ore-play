@@ -24,7 +24,7 @@ trait OreWrites {
   implicit val pageWrites: Writes[Page] = (page: Page) =>
     obj(
       "id"        -> page.id.value,
-      "createdAt" -> page.createdAt.value.toString,
+      "createdAt" -> page.createdAt.toString,
       "parentId"  -> page.parentId,
       "name"      -> page.name,
       "slug"      -> page.slug

@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.schema.FlagTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.user.User
 import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned
@@ -22,9 +22,9 @@ import slick.lifted.TableQuery
   * @param reason       Reason for flag
   * @param isResolved   True if has been reviewed and resolved by staff member
   */
-case class Flag(
+case class Flag private (
     id: ObjId[Flag],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     projectId: DbRef[Project],
     userId: DbRef[User],
     reason: FlagReason,
@@ -48,7 +48,7 @@ case class Flag(
   )(implicit service: ModelService): IO[Flag] = {
     val (at, by) =
       if (resolved)
-        (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1L)): Option[DbRef[User]])
+        (Some(Timestamp.from(Instant.now)), user.map(_.id.value): Option[DbRef[User]])
       else
         (None, None)
 

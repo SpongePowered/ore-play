@@ -3,7 +3,7 @@ package models.admin
 import java.sql.Timestamp
 
 import db.impl.schema.ProjectLogEntryTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 
 import slick.lifted.TableQuery
 
@@ -20,7 +20,7 @@ import slick.lifted.TableQuery
   */
 case class ProjectLogEntry(
     id: ObjId[ProjectLogEntry],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     logId: DbRef[ProjectLog],
     tag: String,
     message: String,

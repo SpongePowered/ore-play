@@ -262,7 +262,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
           .toRight(required(key))
 
       def unbind(key: String, value: OptionT[IO, ProjectApiKey]): Map[String, String] =
-        value.value.unsafeRunSync().map(_.id.value.toString).map(key -> _).toMap
+        value.value.unsafeRunSync().map(_.id.toString).map(key -> _).toMap
     })
 
   def ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))

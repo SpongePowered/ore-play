@@ -65,8 +65,8 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
         val review = Review.partial(
-          version.id.value,
-          request.user.id.value,
+          version.id,
+          request.user.id,
           None,
           JsObject.empty
         )
@@ -156,7 +156,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private def sendReviewNotification(project: Project, version: Version, requestUser: User): IO[Unit] = {
     val usersF =
-      service.runDBIO(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
+      service.runDBIO(notificationUsersQuery((project.id, version.authorId, None)).result).map { list =>
         list.collect {
           case (res, Some(level)) if level.trust >= Trust.Lifted => res
           case (res, None)                                       => res
@@ -168,7 +168,7 @@ final class Reviews @Inject()(forms: OreForms)(
         users.map { userId =>
           Notification.partial(
             userId = userId,
-            originId = requestUser.id.value,
+            originId = requestUser.id,
             notificationType = NotificationType.VersionReviewed,
             messageArgs = NonEmptyList.of("notification.project.reviewed", project.slug, version.versionString)
           )
@@ -200,8 +200,8 @@ final class Reviews @Inject()(forms: OreForms)(
               closeOldReview,
               this.service.insert(
                 Review.partial(
-                  version.id.value,
-                  request.user.id.value,
+                  version.id,
+                  request.user.id,
                   None,
                   JsObject.empty
                 )
@@ -259,7 +259,7 @@ final class Reviews @Inject()(forms: OreForms)(
           UserActionLogger.log(
             request,
             LoggedAction.VersionReviewStateChanged,
-            version.id.value,
+            version.id,
             newState.toString,
             oldState.toString,
           )

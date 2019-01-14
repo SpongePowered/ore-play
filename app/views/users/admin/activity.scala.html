@@ -38,7 +38,7 @@
 										  <td>@prettifyDateAndTime(review.endedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
 										  <td>for:
 											  @if(project.isDefined) {
-												  <a href="@controllers.routes.Reviews.showReviews(project.get.ownerName, project.get.slug, review.id.value.toString)">
+												  <a href="@controllers.routes.Reviews.showReviews(project.get.ownerName, project.get.slug, review.id.toString)">
 													  @project.get.ownerName / @project.get.name
 												  </a>
 											  }

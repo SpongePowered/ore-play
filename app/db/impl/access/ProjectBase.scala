@@ -168,7 +168,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
         val newChannel =
           if (channel.isNonReviewed) otherChannels.find(_.isNonReviewed).getOrElse(otherChannels.head)
           else otherChannels.head
-        service.update(version.copy(channelId = newChannel.id.value))
+        service.update(version.copy(channelId = newChannel.id))
       }
       _ <- service.delete(channel)
     } yield ()
@@ -184,7 +184,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       res <- {
         if (rv.contains(version))
           service.update(
-            proj.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id.value))
+            proj.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id))
           )
         else IO.pure(proj)
       }

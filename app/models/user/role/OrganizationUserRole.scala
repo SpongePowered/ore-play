@@ -1,7 +1,7 @@
 package models.user.role
 
 import db.impl.schema.OrganizationRoleTable
-import db.{DbRef, InsertFunc, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.user.{Organization, User}
 import ore.Visitable
 import ore.organization.OrganizationOwned
@@ -21,9 +21,9 @@ import slick.lifted.TableQuery
   * @param role      Type of Role
   * @param isAccepted    True if has been accepted
   */
-case class OrganizationUserRole(
+case class OrganizationUserRole private (
     id: ObjId[OrganizationUserRole],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     userId: DbRef[User],
     organizationId: DbRef[Organization],
     role: Role,

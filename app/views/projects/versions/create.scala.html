@@ -8,7 +8,7 @@
 @import util.StringUtils
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.{alert, editor}
-@import db.ObjectTimestamp
+@import db.ObjTimestamp
 @import db.ObjId
 @import java.sql.Timestamp
 @import java.time.Instant
@@ -114,7 +114,7 @@
                                             <td>
                                                 <div class="pull-right" id="upload-platform-tags">
                                                 @for(t <- version.dependenciesAsGhostTags) {
-                                                    @projects.tag(t(ObjId(0L), ObjectTimestamp(Timestamp.from(Instant.now()))))
+                                                    @projects.tag(t(ObjId(0L), ObjTimestamp(Timestamp.from(Instant.now()))))
                                                 }
                                                 </div>
                                             </td>

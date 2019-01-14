@@ -19,7 +19,7 @@ import db.impl.schema.{
   ProjectTableMain,
   ProjectWatchersTable
 }
-import db.{AssociationQuery, DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{AssociationQuery, DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public
@@ -65,9 +65,9 @@ import slick.lifted.{Rep, TableQuery}
   * @param lastUpdated            Instant of last version release
   * @param notes                  JSON notes
   */
-case class Project(
+case class Project private (
     id: ObjId[Project],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     pluginId: String,
     ownerName: String,
     ownerId: DbRef[User],
@@ -142,7 +142,7 @@ case class Project(
     checkNotNull(user, "null user", "")
     service.update(
       copy(
-        ownerId = user.id.value,
+        ownerId = user.id,
         ownerName = user.name
       )
     )
@@ -203,7 +203,7 @@ case class Project(
       .add(
         ProjectVisibilityChange.partial(
           Some(creator),
-          this.id.value,
+          this.id,
           comment,
           None,
           None,
@@ -297,7 +297,7 @@ case class Project(
     checkNotNull(reason, "null reason", "")
     val userId = user.id.value
     checkArgument(userId != this.ownerId, "cannot flag own project", "")
-    service.access[Flag]().add(Flag.partial(this.id.value, user.id.value, reason, comment))
+    service.access[Flag]().add(Flag.partial(this.id, user.id, reason, comment))
   }
 
   /**
@@ -352,7 +352,7 @@ case class Project(
     */
   def homePage(implicit service: ModelService, config: OreConfig): IO[Page] = {
     val page =
-      Page.partial(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), isDeletable = false, None)
+      Page.partial(this.id, Page.homeName, Page.template(this.name, Page.homeMessage), isDeletable = false, None)
     getOrInsert(Page.homeName, None)(page)
   }
 
@@ -384,7 +384,7 @@ case class Project(
         checkArgument(text.length <= Page.maxLengthPage, "contents too long", "")
         text
     }
-    val page = Page.partial(this.id.value, name, c, isDeletable = true, parentId)
+    val page = Page.partial(this.id, name, c, isDeletable = true, parentId)
     getOrInsert(name, parentId)(page)
   }
 
@@ -398,7 +398,7 @@ case class Project(
 
   def logger(implicit service: ModelService): IO[ProjectLog] = {
     val loggers = service.access[ProjectLog]()
-    loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog.partial(id.value)))
+    loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog.partial(id)))
   }
 
   def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] = service.access(_.projectId === id.value)
@@ -493,7 +493,7 @@ object Project {
   implicit val query: ModelQuery[Project] =
     ModelQuery.from[Project](
       TableQuery[ProjectTableMain],
-      (obj, id, time) => obj.copy(id = id, createdAt = time, lastUpdated = time.value)
+      (obj, id, time) => obj.copy(id = id, createdAt = time, lastUpdated = time)
     )
 
   implicit val assocWatchersQuery: AssociationQuery[ProjectWatchersTable, Project, User] =

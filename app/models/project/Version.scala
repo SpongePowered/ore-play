@@ -10,7 +10,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -36,9 +36,9 @@ import slick.lifted.TableQuery
   * @param projectId        ID of project this version belongs to
   * @param _channelId        ID of channel this version belongs to
   */
-case class Version(
+case class Version private (
     id: ObjId[Version],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     projectId: DbRef[Project],
     versionString: String,
     dependencyIds: List[String],
@@ -161,7 +161,7 @@ case class Version(
       .add(
         VersionVisibilityChange.partial(
           Some(creator),
-          this.id.value,
+          this.id,
           comment,
           None,
           None,

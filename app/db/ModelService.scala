@@ -87,7 +87,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @return       Newly created model
     */
   def insert[M <: Model](model: InsertFunc[M])(implicit query: ModelQuery[M]): IO[M] = {
-    val toInsert = model(ObjId.UnsafeUninitialized(), ObjectTimestamp(theTime))
+    val toInsert = model(new ObjId.UnsafeUninitialized, ObjTimestamp(theTime))
     val models   = newAction
     runDBIO {
       models.returning(models.map(_.id)).into {
@@ -104,7 +104,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def bulkInsert[M <: Model](models: Seq[InsertFunc[M]])(implicit query: ModelQuery[M]): IO[Seq[M]] =
     if (models.nonEmpty) {
-      val toInsert = models.map(_(ObjId.UnsafeUninitialized(), ObjectTimestamp(theTime)))
+      val toInsert = models.map(_(new ObjId.UnsafeUninitialized, ObjTimestamp(theTime)))
       val action   = newAction[M]
       runDBIO {
         action
@@ -114,7 +114,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     } else IO.pure(Nil)
 
   def update[M0 <: Model { type M = M0 }: ModelQuery](model: M0): IO[M0] =
-    runDBIO(newAction.filter(IdFilter(model.id.value)).update(model)).as(model)
+    runDBIO(newAction.filter(IdFilter(model.id)).update(model)).as(model)
 
   /**
     * Sets a column in a [[ModelTable]].
@@ -128,7 +128,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     */
   def set[A, M0 <: Model { type M = M0 }: ModelQuery](model: M0, column: M0#T => Rep[A], value: A)(
       implicit mapper: JdbcType[A]
-  ): IO[Int] = runDBIO(newAction.filter(IdFilter(model.id.value)).map(column(_)).update(value))
+  ): IO[Int] = runDBIO(newAction.filter(IdFilter(model.id)).map(column(_)).update(value))
 
   /**
     * Returns the first model that matches the given predicate.
@@ -153,7 +153,7 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param model Model to delete
     */
   def delete[M0 <: Model { type M = M0 }: ModelQuery](model: M0): IO[Int] =
-    deleteWhere[M0](IdFilter(model.id.value))
+    deleteWhere[M0](IdFilter(model.id))
 
   /**
     * Deletes all the models meeting the specified filter.

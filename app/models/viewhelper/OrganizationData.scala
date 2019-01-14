@@ -30,7 +30,7 @@ case class OrganizationData(
 object OrganizationData {
   val noPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
-  def cacheKey(orga: Organization): String = "organization" + orga.id.value
+  def cacheKey(orga: Organization): String = "organization" + orga.id
 
   def of[A](orga: Organization)(
       implicit service: ModelService,
@@ -41,7 +41,7 @@ object OrganizationData {
       members      <- orga.memberships.members(orga)
       memberRoles  <- members.toVector.parTraverse(_.headRole)
       memberUser   <- memberRoles.parTraverse(_.user)
-      projectRoles <- service.runDBIO(queryProjectRoles(orga.id.value).result)
+      projectRoles <- service.runDBIO(queryProjectRoles(orga.id).result)
     } yield {
       val members = memberRoles.zip(memberUser)
       OrganizationData(orga, members, projectRoles)

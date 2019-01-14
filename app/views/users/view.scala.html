@@ -142,7 +142,7 @@
                     <i class="minor">
                     @messages(
                         "user.memberSince",
-                        u.user.joinDate.map(prettifyDate).getOrElse(prettifyDate(u.user.createdAt.value)))
+                        u.user.joinDate.map(prettifyDate).getOrElse(prettifyDate(u.user.createdAt)))
                     </i><br/>
                     <a href="https://forums.spongepowered.org/users/@u.user.name">
                         @messages("user.viewOnForums") <i class="fas fa-external-link-alt"></i>

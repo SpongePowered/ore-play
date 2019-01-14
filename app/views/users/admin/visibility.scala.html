@@ -35,7 +35,7 @@
                             </li>
                         }
                         @needsApproval.map { case (project, projectPerms, lastChangeRequest, lastChangeRequester, lastVisibilityChange, lastVisibilityChanger) =>
-                            <li data-flag-id="@project.id.value" class="list-group-item">
+                            <li data-flag-id="@project.id" class="list-group-item">
                                 <div class="row">
                                     <div class="col-xs-12 col-md-8">
                                         @if(lastChangeRequest.isDefined) {
@@ -99,7 +99,7 @@
                         }
                         @waitingProjects.map { case (project, lastChangeRequest, _, lastVisibilityChanger) =>
                             @lastChangeRequest.map { lastRequest =>
-                                <li data-flag-id="@project.id.value" class="list-group-item">
+                                <li data-flag-id="@project.id" class="list-group-item">
                                     <div class="row">
                                         <div class="col-xs-12">
                                             <span class="description">

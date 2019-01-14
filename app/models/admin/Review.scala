@@ -8,7 +8,7 @@ import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -27,9 +27,9 @@ import slick.lifted.TableQuery
   * @param endedAt      When the approval process ended
   * @param message      Message of why it ended
   */
-case class Review(
+case class Review private (
     id: ObjId[Review],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     versionId: DbRef[Version],
     userId: DbRef[User],
     endedAt: Option[Timestamp],
@@ -98,11 +98,11 @@ object Review {
 
   def ordering: Ordering[(Review, _)] =
     // TODO make simple + check order
-    Ordering.by(_._1.createdAt.value.getTime)
+    Ordering.by(_._1.createdAt.getTime)
 
   def ordering2: Ordering[Review] =
     // TODO make simple + check order
-    Ordering.by(_.createdAt.value.getTime)
+    Ordering.by(_.createdAt.getTime)
 
   implicit val query: ModelQuery[Review] =
     ModelQuery.from[Review](TableQuery[ReviewTable], _.copy(_, _))

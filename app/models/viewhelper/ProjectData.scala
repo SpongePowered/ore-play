@@ -52,7 +52,7 @@ case class ProjectData(
 
 object ProjectData {
 
-  def cacheKey(project: Project): String = "project" + project.id.value
+  def cacheKey(project: Project): String = "project" + project.id
 
   def of[A](project: Project)(
       implicit service: ModelService,

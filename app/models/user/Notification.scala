@@ -2,7 +2,7 @@ package models.user
 
 import db.impl.access.UserBase
 import db.impl.schema.NotificationTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
@@ -22,9 +22,9 @@ import slick.lifted.TableQuery
   * @param action           Action to perform on click
   * @param isRead             True if notification has been read
   */
-case class Notification(
+case class Notification private (
     id: ObjId[Notification],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     userId: DbRef[User],
     originId: DbRef[User],
     notificationType: NotificationType,

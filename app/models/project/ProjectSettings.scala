@@ -6,7 +6,7 @@ import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
 import ore.permission.role.Role
@@ -33,9 +33,9 @@ import slick.lifted.TableQuery
   * @param licenseName Project license name
   * @param licenseUrl  Project license URL
   */
-case class ProjectSettings(
+case class ProjectSettings private (
     id: ObjId[ProjectSettings],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     projectId: DbRef[Project],
     homepage: Option[String],
     issues: Option[String],
@@ -107,7 +107,7 @@ case class ProjectSettings(
         .build()
         .toVector
         .parTraverse { role =>
-          dossier.addRole(project, role.userId, role.copy(projectId = project.id.value).asFunc)
+          dossier.addRole(project, role.userId, role.copy(projectId = project.id).asFunc)
         }
         .flatMap { roles =>
           val notifications = roles.map { role =>

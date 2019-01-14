@@ -7,7 +7,7 @@ import scala.reflect.runtime.universe.TypeTag
 import play.api.i18n.Lang
 import play.api.libs.json.{JsValue, Json}
 
-import db.{ObjId, ObjectTimestamp}
+import db.{ObjId, ObjTimestamp}
 import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
@@ -29,7 +29,7 @@ trait DoobieOreProtocol {
 
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
     Meta[Long].timap(ObjId.apply[A])(_.value)
-  implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].timap(ObjectTimestamp.apply)(_.value)
+  implicit val objectTimestampMeta: Meta[ObjTimestamp] = Meta[Timestamp].timap(ObjTimestamp.apply)(_.value)
 
   implicit val jsonMeta: Meta[JsValue] = Meta.Advanced
     .other[PGobject]("jsonb")

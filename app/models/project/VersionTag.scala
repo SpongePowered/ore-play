@@ -7,12 +7,12 @@ import scala.collection.immutable
 
 import db.impl.model.common.Named
 import db.impl.schema.VersionTagTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 
 import enumeratum.values._
 import slick.lifted.TableQuery
 
-case class VersionTag(
+case class VersionTag private (
     id: ObjId[VersionTag],
     versionId: DbRef[Version],
     name: String,
@@ -21,7 +21,7 @@ case class VersionTag(
 ) extends Model
     with Named {
 
-  override val createdAt: ObjectTimestamp = ObjectTimestamp(Timestamp.from(Instant.EPOCH))
+  override val createdAt: ObjTimestamp = ObjTimestamp(Timestamp.from(Instant.EPOCH))
 
   override type M = VersionTag
   override type T = VersionTagTable

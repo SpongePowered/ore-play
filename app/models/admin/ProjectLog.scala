@@ -3,7 +3,7 @@ package models.admin
 import db.access.ModelAccess
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
-import db.{InsertFunc, DbRef, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{InsertFunc, DbRef, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.project.Project
 import ore.project.ProjectOwned
 
@@ -17,9 +17,9 @@ import slick.lifted.TableQuery
   * @param createdAt  Instant of creation
   * @param projectId  ID of project log is for
   */
-case class ProjectLog(
+case class ProjectLog private (
     id: ObjId[ProjectLog],
-    createdAt: ObjectTimestamp,
+    createdAt: ObjTimestamp,
     projectId: DbRef[Project]
 ) extends Model {
 
@@ -53,7 +53,7 @@ case class ProjectLog(
       }
       .getOrElseF {
         entries.add(
-          ProjectLogEntry.partial(id.value, tag, message, lastOccurrence = service.theTime)
+          ProjectLogEntry.partial(id, tag, message, lastOccurrence = service.theTime)
         )
       }
   }
