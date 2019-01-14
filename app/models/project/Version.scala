@@ -105,7 +105,7 @@ case class Version private (
     OptionT.fromOption[IO](this.reviewerId).flatMap(userBase.get)
 
   def tags(implicit service: ModelService): IO[List[VersionTag]] =
-    service.access[VersionTag]().filter(_.versionId === this.id.value).map(_.toList)
+    service.access[VersionTag]().filterNow(_.versionId === this.id.value).map(_.toList)
 
   def isSpongePlugin(implicit service: ModelService): IO[Boolean] =
     tags.map(_.map(_.name).contains("Sponge"))
@@ -196,15 +196,15 @@ case class Version private (
   def reviewEntries(implicit service: ModelService): ModelAccess[Review] = service.access(_.versionId === id.value)
 
   def unfinishedReviews(implicit service: ModelService): IO[Seq[Review]] =
-    reviewEntries.sorted(_.createdAt, _.endedAt.?.isEmpty)
+    reviewEntries.sortedNow(_.createdAt, _.endedAt.?.isEmpty)
 
   def mostRecentUnfinishedReview(implicit service: ModelService): OptionT[IO, Review] =
     OptionT(unfinishedReviews.map(_.headOption))
 
-  def mostRecentReviews(implicit service: ModelService): IO[Seq[Review]] = reviewEntries.sorted(_.createdAt)
+  def mostRecentReviews(implicit service: ModelService): IO[Seq[Review]] = reviewEntries.sortedNow(_.createdAt)
 
   def reviewById(id: DbRef[Review])(implicit service: ModelService): OptionT[IO, Review] =
-    reviewEntries.find(_.id === id)
+    reviewEntries.findNow(_.id === id)
 }
 
 object Version {

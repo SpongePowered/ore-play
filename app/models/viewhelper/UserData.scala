@@ -63,7 +63,7 @@ object UserData {
   ): IO[UserData] =
     for {
       isOrga       <- user.toMaybeOrganization.isDefined
-      projectCount <- user.projects.size
+      projectCount <- user.projects.sizeNow
       t            <- perms(user)
       (globalRoles, userPerms, orgaPerms) = t
       orgas <- service.runDBIO(queryRoles(user).result)

@@ -3,17 +3,15 @@ package db.impl.service
 import java.util.concurrent.Executors
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.inject.ApplicationLifecycle
 
-import db.impl.OrePostgresDriver
+import db.impl.OrePostgresDriver.api._
 import ore.{OreConfig, OreEnv}
 
 import cats.effect.{ContextShift, IO}
-import com.typesafe.scalalogging
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
@@ -32,13 +30,10 @@ class OreModelService @Inject()(
     db: DatabaseConfigProvider,
     lifecycle: ApplicationLifecycle
 )(implicit ec: ExecutionContext)
-    extends OreDBOs(OrePostgresDriver, env, config) {
-
-  private val Logger = scalalogging.Logger("Database")
+    extends OreDBOs(env, config) {
 
   // Implement ModelService
-  lazy val DB                                = db.get[JdbcProfile]
-  override lazy val DefaultTimeout: Duration = this.config.app.dbDefaultTimeout
+  lazy val DB = db.get[JdbcProfile]
 
   implicit lazy val xa: Transactor.Aux[IO, JdbcDataSource] = {
     implicit val cs: ContextShift[IO] = IO.contextShift(ec)
@@ -69,17 +64,7 @@ class OreModelService @Inject()(
     )
   }
 
-  override def runDBIO[R](action: driver.api.DBIO[R]): IO[R] = IO.fromFuture(IO(DB.db.run(action)))
+  override def runDBIO[R](action: DBIO[R]): IO[R] = IO.fromFuture(IO(DB.db.run(action)))
 
   override def runDbCon[R](program: ConnectionIO[R]): IO[R] = program.transact(xa)
-
-  override def start(): Unit = {
-    val time = System.currentTimeMillis()
-
-    Logger.info(
-      s"""|Database initialized:
-          |Initialization time: ${System.currentTimeMillis() - time}ms
-          |Default timeout: ${DefaultTimeout.toString}""".stripMargin
-    )
-  }
 }

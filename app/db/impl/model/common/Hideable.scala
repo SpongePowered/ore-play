@@ -44,18 +44,21 @@ trait Hideable extends Model { self =>
   def visibilityChanges(implicit service: ModelService): ModelAccess[ModelVisibilityChange]
 
   def visibilityChangesByDate(implicit service: ModelService): IO[Seq[ModelVisibilityChange]] =
-    visibilityChanges.sorted(_.createdAt)
+    visibilityChanges.sortedNow(_.createdAt)
 
   def lastVisibilityChange(
       implicit service: ModelService
   ): OptionT[IO, ModelVisibilityChange] =
-    OptionT(visibilityChanges.sorted(_.createdAt, _.resolvedAt.?.isEmpty, limit = 1).map(_.headOption))
+    OptionT(service.runDBIO(visibilityChanges.sorted(_.createdAt, _.resolvedAt.?.isEmpty, limit = 1).result.headOption))
 
   def lastChangeRequest(implicit service: ModelService): OptionT[IO, ModelVisibilityChange] =
     OptionT(
-      visibilityChanges
-        .sorted(_.createdAt.desc, _.visibility === (Visibility.NeedsChanges: Visibility), limit = 1)
-        .map(_.headOption)
+      service.runDBIO(
+        visibilityChanges
+          .sorted(_.createdAt.desc, _.visibility === (Visibility.NeedsChanges: Visibility), limit = 1)
+          .result
+          .headOption
+      )
     )
 
 }

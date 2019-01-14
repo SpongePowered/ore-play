@@ -42,7 +42,7 @@ case class ProjectLog private (
   def err(message: String)(implicit service: ModelService): IO[ProjectLogEntry] = {
     val tag = "error"
     entries
-      .find(e => e.message === message && e.tag === tag)
+      .findNow(e => e.message === message && e.tag === tag)
       .semiflatMap { entry =>
         entries.update(
           entry.copy(

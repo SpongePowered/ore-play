@@ -327,13 +327,13 @@ final class Application @Inject()(forms: OreForms)(
           val reviews = service.runDBIO(reviewQuery.take(20).result).flatMap { seq =>
             seq.toVector.parTraverse {
               case (review, version) =>
-                projects.find(_.id === version.projectId).value.tupleLeft(review.asRight[Flag])
+                projects.findNow(_.id === version.projectId).value.tupleLeft(review.asRight[Flag])
             }
           }
 
           val flags = service.runDBIO(flagQuery.result).flatMap { seq =>
             seq.toVector.parTraverse { flag =>
-              projects.find(_.id === flag.projectId).value.tupleLeft(flag.asLeft[Review])
+              projects.findNow(_.id === flag.projectId).value.tupleLeft(flag.asLeft[Review])
             }
           }
 
@@ -437,7 +437,7 @@ final class Application @Inject()(forms: OreForms)(
 
     (
       service.runDBIO(logQuery.result),
-      service.access[LoggedActionModel[Any]]().size,
+      service.access[LoggedActionModel[Any]]().sizeNow,
       request.currentUser.get.can(ViewIp).in(GlobalScope)
     ).parMapN { (actions, size, canViewIP) =>
       Ok(
@@ -472,7 +472,7 @@ final class Application @Inject()(forms: OreForms)(
             if (isOrga)
               (IO.pure(Nil), getOrga(user).value).tupled
             else
-              (u.projectRoles.all, IO.pure(None)).tupled
+              (u.projectRoles.allNow, IO.pure(None)).tupled
           }
           (projectRoles, orga) = t1
           t2 <- (
@@ -584,13 +584,13 @@ final class Application @Inject()(forms: OreForms)(
       for {
         t1 <- (
           service
-            .collect[Project](
+            .collectNow[Project](
               _.visibility === (Visibility.NeedsApproval: Visibility),
               Some(ProjectSortingStrategies.Default.fn),
             )
             .map(_.toVector),
           service
-            .collect[Project](
+            .collectNow[Project](
               _.visibility === (Visibility.NeedsChanges: Visibility),
               Some(ProjectSortingStrategies.Default.fn),
             )

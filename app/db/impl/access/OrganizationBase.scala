@@ -113,7 +113,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
     * @return     Organization with name if exists, None otherwise
     */
   def withName(name: String): OptionT[IO, Organization] =
-    this.find(StringUtils.equalsIgnoreCase(_.name, name))
+    this.findNow(StringUtils.equalsIgnoreCase(_.name, name))
 
 }
 object OrganizationBase {

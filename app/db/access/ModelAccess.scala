@@ -22,7 +22,15 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param id   ID to lookup
     * @return     Model with ID or None if not found
     */
-  def get(id: DbRef[M0]): OptionT[IO, M0] = service.get(id, baseFilter)
+  def get(id: DbRef[M0]): OptionT[IO, M0] = service.getNow(id, baseFilter)
+
+  /**
+    * Returns a query set of Models that have an ID that is in the specified Int set.
+    *
+    * @param ids  ID set
+    * @return     Models in ID set
+    */
+  def in(ids: Set[DbRef[M0]]): Query[M0#T, M0, Set] = service.in(ids, baseFilter).to[Set]
 
   /**
     * Returns a set of Models that have an ID that is in the specified Int set.
@@ -30,35 +38,61 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param ids  ID set
     * @return     Models in ID set
     */
-  def in(ids: Set[DbRef[M0]]): IO[Set[M0]] = service.in(ids, baseFilter).map(_.toSet)
+  def inNow(ids: Set[DbRef[M0]]): IO[Set[M0]] = service.runDBIO(in(ids).result)
+
+  /**
+    * Returns the query equivalent of this access.
+    */
+  def query: Query[M0#T, M0, Seq] = service.filter(baseFilter)
 
   /**
     * Returns all the [[Model]]s in the set.
     *
     * @return All models in set
     */
-  def all: IO[Set[M0]] = service.filter(baseFilter).map(_.toSet)
+  def allNow: IO[Set[M0]] = service.runDBIO(service.filter(baseFilter).to[Set].result)
+
+  /**
+    * Returns a query for the size of this set.
+    *
+    * @return Size of set
+    */
+  def size: Rep[Int] = service.count(this.baseFilter)
 
   /**
     * Returns the size of this set.
     *
     * @return Size of set
     */
-  def size: IO[Int] = service.count(this.baseFilter)
+  def sizeNow: IO[Int] = service.countNow(this.baseFilter)
 
   /**
     * Returns true if this set is empty.
     *
     * @return True if set is empty
     */
-  def isEmpty: IO[Boolean] = size.map(_ == 0)
+  def isEmpty: Rep[Boolean] = size === 0
 
   /**
     * Returns true if this set is not empty.
     *
     * @return True if not empty
     */
-  def nonEmpty: IO[Boolean] = size.map(_ > 0)
+  def nonEmpty: Rep[Boolean] = size > 0
+
+  /**
+    * Returns true if this set is empty and runs the program now.
+    *
+    * @return True if set is empty
+    */
+  def isEmptyNow: IO[Boolean] = service.runDBIO(isEmpty.result)
+
+  /**
+    * Returns true if this set is not empty and runs the program now.
+    *
+    * @return True if not empty
+    */
+  def nonEmptyNow: IO[Boolean] = service.runDBIO(nonEmpty.result)
 
   /**
     * Returns true if this set contains the specified model.
@@ -66,7 +100,15 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param model Model to look for
     * @return True if contained in set
     */
-  def contains(model: M0): IO[Boolean] = exists(IdFilter(model.id))
+  def contains(model: M0): Rep[Boolean] = exists(IdFilter(model.id))
+
+  /**
+    * Returns true if this set contains the specified model and runs this program now.
+    *
+    * @param model Model to look for
+    * @return True if contained in set
+    */
+  def containsNow(model: M0): IO[Boolean] = service.runDBIO(contains(model).result)
 
   /**
     * Returns true if any models match the specified filter.
@@ -74,7 +116,15 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param filter Filter to use
     * @return       True if any model matches
     */
-  def exists(filter: M0#T => Rep[Boolean]): IO[Boolean] = service.count(baseFilter && filter).map(_ > 0)
+  def exists(filter: M0#T => Rep[Boolean]): Rep[Boolean] = service.count(baseFilter && filter) > 0
+
+  /**
+    * Returns true if any models match the specified filter and runs this program now.
+    *
+    * @param filter Filter to use
+    * @return       True if any model matches
+    */
+  def existsNow(filter: M0#T => Rep[Boolean]): IO[Boolean] = service.runDBIO(exists(filter).result)
 
   /**
     * Adds a new model to it's table.
@@ -113,10 +163,18 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param filter Filter to use
     * @return       Model matching filter, if any
     */
-  def find(filter: M0#T => Rep[Boolean]): OptionT[IO, M0] = service.find(baseFilter && filter)
+  def find(filter: M0#T => Rep[Boolean]): Query[M0#T, M0, Seq] = service.find(baseFilter && filter)
 
   /**
-    * Returns a sorted Seq by the specified [[ColumnOrdered]].
+    * Returns the first model matching the specified filter and runs this program now.
+    *
+    * @param filter Filter to use
+    * @return       Model matching filter, if any
+    */
+  def findNow(filter: M0#T => Rep[Boolean]): OptionT[IO, M0] = service.findNow(baseFilter && filter)
+
+  /**
+    * Returns a sorted query by the specified [[ColumnOrdered]].
     *
     * @param ordering Model ordering
     * @param filter   Filter to use
@@ -129,7 +187,34 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
       filter: M0#T => Rep[Boolean] = All,
       limit: Int = -1,
       offset: Int = -1
-  ): IO[Seq[M0]] = service.collect[M0](baseFilter && filter, Some(ordering), limit, offset)
+  ): Query[M0#T, M0, Seq] = service.collect[M0](baseFilter && filter, Some(ordering), limit, offset)
+
+  /**
+    * Returns a sorted Seq by the specified [[ColumnOrdered]].
+    *
+    * @param ordering Model ordering
+    * @param filter   Filter to use
+    * @param limit    Amount to take
+    * @param offset   Amount to drop
+    * @return         Sorted models
+    */
+  def sortedNow(
+      ordering: M0#T => ColumnOrdered[_],
+      filter: M0#T => Rep[Boolean] = All,
+      limit: Int = -1,
+      offset: Int = -1
+  ): IO[Seq[M0]] = service.runDBIO(sorted(ordering, filter, limit, offset).result)
+
+  /**
+    * Filters this query by the given function.
+    *
+    * @param filter Filter to use
+    * @param limit  Amount to take
+    * @param offset Amount to drop
+    * @return       Filtered models
+    */
+  def filter(filter: M0#T => Rep[Boolean], limit: Int = -1, offset: Int = -1): Query[M0#T, M0, Seq] =
+    service.filter(baseFilter && filter, limit, offset)
 
   /**
     * Filters this set by the given function.
@@ -139,8 +224,19 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param offset Amount to drop
     * @return       Filtered models
     */
-  def filter(filter: M0#T => Rep[Boolean], limit: Int = -1, offset: Int = -1): IO[Seq[M0]] =
-    service.filter(baseFilter && filter, limit, offset)
+  def filterNow(filter: M0#T => Rep[Boolean], limit: Int = -1, offset: Int = -1): IO[Seq[M0]] =
+    service.runDBIO(this.filter(filter, limit, offset).result)
+
+  /**
+    * Filters this query by the opposite of the given function.
+    *
+    * @param filter Filter to use
+    * @param limit  Amount to take
+    * @param offset Amount to drop
+    * @return       Filtered models
+    */
+  def filterNot(filter: M0#T => Rep[Boolean], limit: Int = -1, offset: Int = -1): Query[M0#T, M0, Seq] =
+    this.filter(!filter(_), limit, offset)
 
   /**
     * Filters this set by the opposite of the given function.
@@ -150,22 +246,30 @@ class ModelAccess[M0 <: Model { type M = M0 }: ModelQuery](
     * @param offset Amount to drop
     * @return       Filtered models
     */
-  def filterNot(filter: M0#T => Rep[Boolean], limit: Int = -1, offset: Int = -1): IO[Seq[M0]] =
-    this.filter(!filter(_), limit, offset)
+  def filterNotNow(filter: M0#T => Rep[Boolean], limit: Int = -1, offset: Int = -1): IO[Seq[M0]] =
+    this.filterNow(!filter(_), limit, offset)
 
   /**
     * Counts how many elements in this set fulfill some predicate.
     * @param predicate The predicate to use
     * @return The amount of elements that fulfill the predicate.
     */
-  def count(predicate: M0#T => Rep[Boolean]): IO[Int] =
+  def count(predicate: M0#T => Rep[Boolean]): Rep[Int] =
     service.count(this.baseFilter && predicate)
+
+  /**
+    * Counts how many elements in this set fulfill some predicate and runs this program now.
+    * @param predicate The predicate to use
+    * @return The amount of elements that fulfill the predicate.
+    */
+  def countNow(predicate: M0#T => Rep[Boolean]): IO[Int] =
+    service.runDBIO(count(this.baseFilter && predicate).result)
 
   /**
     * Returns a Seq of this set.
     *
     * @return Seq of set
     */
-  def toSeq: IO[Seq[M0]] = all.map(_.toSeq)
+  def toSeqNow: IO[Seq[M0]] = service.runDBIO(service.filter(baseFilter).result)
 
 }

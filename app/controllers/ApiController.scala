@@ -38,7 +38,6 @@ import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import slick.lifted.Compiled
 
 /**
   * Ore API (v1)
@@ -111,7 +110,7 @@ final class ApiController @Inject()(
               keyType <- forms.ProjectApiKeyCreate.bindOptionT[IO]
               if keyType == Deployment
               exists <- OptionT
-                .liftF(this.projectApiKeys.exists(k => k.projectId === projectId && k.keyType === keyType))
+                .liftF(this.projectApiKeys.existsNow(k => k.projectId === projectId && k.keyType === keyType))
               if !exists
               pak <- OptionT.liftF(
                 this.projectApiKeys.add(
@@ -245,7 +244,7 @@ final class ApiController @Inject()(
             .flatMap {
               case (formData, formChannel) =>
                 val apiKeyTable = TableQuery[ProjectApiKeyTable]
-                def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[DbRef[Project]]) = {
+                def queryApiKey(deployment: ProjectApiKeyType, key: String, pId: DbRef[Project]) = {
                   val query = for {
                     k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
                   } yield {
@@ -254,16 +253,17 @@ final class ApiController @Inject()(
                   query.exists
                 }
 
-                val compiled = Compiled(queryApiKey _)
-
-                val apiKeyExists: IO[Boolean] =
-                  this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id)).result)
+                val query = Query.apply(
+                  (
+                    queryApiKey(Deployment, formData.apiKey, project.id),
+                    project.versions.exists(_.versionString === name)
+                  )
+                )
 
                 EitherT
-                  .liftF(apiKeyExists)
-                  .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(identity)
-                  .semiflatMap(_ => project.versions.exists(_.versionString === name))
-                  .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists)
+                  .liftF(service.runDBIO(query.result.head))
+                  .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
+                  .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
                   .semiflatMap(_ => project.owner.user)
                   .semiflatMap(user => user.toMaybeOrganization.semiflatMap(_.owner.user).getOrElse(user))
                   .flatMap { owner =>

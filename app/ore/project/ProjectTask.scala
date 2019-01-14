@@ -36,7 +36,7 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   private def dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
   private val newFilter       = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
   private def createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
-  private def newProjects     = service.filter[Project](newFilter && createdAtFilter)
+  private def newProjects     = service.filterNow[Project](newFilter && createdAtFilter)
 
   /**
     * Starts the task.

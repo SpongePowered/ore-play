@@ -34,7 +34,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return User if found, None otherwise
     */
   def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
-    this.find(equalsIgnoreCase(_.name, username)).orElse {
+    this.findNow(equalsIgnoreCase(_.name, username)).orElse {
       auth.getUser(username).map(User.partialFromSponge).semiflatMap(this.add)
     }
 
@@ -72,7 +72,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return     Found or new User
     */
   def getOrCreate(username: String, user: InsertFunc[User], ifInsert: User => IO[Unit] = _ => IO.unit): IO[User] = {
-    def like = this.find(_.name.toLowerCase === username.toLowerCase)
+    def like = this.findNow(_.name.toLowerCase === username.toLowerCase)
 
     like.value.flatMap {
       case Some(u) => IO.pure(u)
@@ -103,7 +103,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return       Session if found and has not expired
     */
   private def getSession(token: String): OptionT[IO, Session] =
-    this.service.find[Session](_.token === token).flatMap { session =>
+    this.service.findNow[Session](_.token === token).flatMap { session =>
       if (session.hasExpired)
         OptionT(service.delete(session).as(None: Option[Session]))
       else

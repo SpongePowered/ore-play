@@ -10,6 +10,7 @@ import play.api.mvc.{Action, AnyContent}
 
 import controllers.sugar.Bakery
 import db.{DbRef, ModelService}
+import db.impl.OrePostgresDriver.api._
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import models.user.role.OrganizationUserRole
@@ -51,14 +52,13 @@ class Organizations @Inject()(forms: OreForms)(
     * @return Organization creation panel
     */
   def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
-    request.user.ownedOrganizations.size.map { size =>
-      if (size >= this.createLimit)
+    service.runDBIO((request.user.ownedOrganizations.size > this.createLimit).result).map { limitReached =>
+      if (limitReached)
         Redirect(ShowHome).withError(request.messages.apply("error.org.createLimit", this.createLimit))
       else {
         Ok(views.createOrganization())
       }
     }
-
   }
 
   /**
@@ -72,22 +72,24 @@ class Organizations @Inject()(forms: OreForms)(
     ) { implicit request =>
       val user     = request.user
       val failCall = routes.Organizations.showCreator()
-      user.ownedOrganizations.size.flatMap { size =>
-        if (size >= this.createLimit)
-          IO.pure(BadRequest)
-        else if (user.isLocked)
-          IO.pure(Redirect(failCall).withError("error.user.locked"))
-        else if (!this.config.ore.orgs.enabled)
-          IO.pure(Redirect(failCall).withError("error.org.disabled"))
-        else {
-          val formData = request.body
-          organizations
-            .create(formData.name, user.id, formData.build())
-            .bimap(
-              error => Redirect(failCall).withError(error),
-              organization => Redirect(routes.Users.showProjects(organization.name, None))
-            )
-            .merge
+
+      if (user.isLocked) {
+        IO.pure(BadRequest)
+      } else if (!this.config.ore.orgs.enabled) {
+        IO.pure(Redirect(failCall).withError("error.org.disabled"))
+      } else {
+        service.runDBIO((user.ownedOrganizations.size >= this.createLimit).result).flatMap { limitReached =>
+          if (limitReached)
+            IO.pure(BadRequest)
+          else {
+            val formData = request.body
+            organizations
+              .create(formData.name, user.id, formData.build())
+              .fold(
+                error => Redirect(failCall).withError(error),
+                organization => Redirect(routes.Users.showProjects(organization.name, None))
+              )
+          }
         }
       }
     }

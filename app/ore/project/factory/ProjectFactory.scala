@@ -12,6 +12,7 @@ import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
 import db.impl.access.ProjectBase
+import db.impl.OrePostgresDriver.api._
 import db.{DbRef, ModelService}
 import discourse.OreDiscourseApi
 import models.project._
@@ -114,15 +115,15 @@ trait ProjectFactory {
       .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
       .flatMapF { plugin =>
         for {
-          t <- (project.channels.all, project.settings).parTupled
-          (channels, settings) = t
+          t <- (service.runDBIO(project.channels.query.take(1).result.head), project.settings).parTupled
+          (headChannel, settings) = t
           version = this.startVersion(
             plugin,
             project.pluginId,
             Some(project.id),
             project.url,
             settings.forumSync,
-            channels.head.name
+            headChannel.name
           )
           modelExists <- version match {
             case Right(v) => v.exists
@@ -311,8 +312,8 @@ trait ProjectFactory {
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
     checkNotNull(color, "null color", "")
     for {
-      channelCount <- project.channels.size
-      _ = checkState(channelCount < this.config.ore.projects.maxChannels, "channel limit reached", "")
+      limitReached <- service.runDBIO((project.channels.size < config.ore.projects.maxChannels).result)
+      _ = checkState(limitReached, "channel limit reached", "")
       channel <- this.service.access[Channel]().add(Channel.partial(project.id, name, color))
     } yield channel
   }
@@ -371,7 +372,7 @@ trait ProjectFactory {
 
   private def getOrCreateChannel(pending: PendingVersion, project: Project) =
     project.channels
-      .find(equalsIgnoreCase(_.name, pending.channelName))
+      .findNow(equalsIgnoreCase(_.name, pending.channelName))
       .getOrElseF(createChannel(project, pending.channelName, pending.channelColor))
 
   private def uploadPlugin(project: Project, plugin: PluginFileWithData, version: Version): EitherT[IO, String, Unit] =

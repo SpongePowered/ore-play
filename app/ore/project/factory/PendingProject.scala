@@ -52,7 +52,7 @@ case class PendingProject(
     } yield (updatedProject, newVersion._1)
 
   def owner(implicit service: ModelService): IO[User] =
-    service.get[User](ownerId).getOrElse(sys.error("No owner for pending project"))
+    service.getNow[User](ownerId).getOrElse(sys.error("No owner for pending project"))
 
   def asFunc: InsertFunc[Project] =
     Project.partial(

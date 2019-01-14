@@ -74,7 +74,7 @@ abstract class OreBaseController(
       implicit request: OreRequest[_]
   ): EitherT[IO, Result, Version] =
     project.versions
-      .find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
+      .findNow(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
       .toRight(notFound)
 
   /**

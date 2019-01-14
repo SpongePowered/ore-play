@@ -67,22 +67,20 @@ case class PendingVersion(
     * @return True if exists
     */
   def exists(implicit service: ModelService): IO[Boolean] = {
-    def hashExists(projectId: DbRef[Project]) = {
-      val baseQuery = for {
-        v <- TableQuery[VersionTable]
-        if v.projectId === projectId
-        if v.hash === hash
-      } yield v.id
+    val hashExistsBaseQuery = for {
+      v <- TableQuery[VersionTable]
+      if v.projectId === projectId
+      if v.hash === hash
+    } yield v.id
 
-      service.runDBIO((baseQuery.length > 0).result)
-    }
+    val hashExistsQuery = hashExistsBaseQuery.exists
 
     projectId.fold(IO.pure(false)) { projectId =>
       for {
-        hashExists <- hashExists(projectId)
-        project    <- service.get[Project](projectId).getOrElse(sys.error(s"No project found for id $projectId"))
-        pExists    <- project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
-      } yield hashExists && pExists
+        project <- service.getNow[Project](projectId).getOrElse(sys.error(s"No project found for id $projectId"))
+        versionExistsQuery = project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
+        res <- service.runDBIO(Query((hashExistsQuery, versionExistsQuery)).map(t => t._1 && t._2).result.head)
+      } yield res
     }
   }
 

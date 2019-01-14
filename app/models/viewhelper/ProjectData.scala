@@ -59,7 +59,7 @@ object ProjectData {
       cs: ContextShift[IO]
   ): IO[ProjectData] = {
     import cats.instances.vector._
-    val flagsF        = project.flags.all.map(_.toVector)
+    val flagsF        = project.flags.allNow.map(_.toVector)
     val flagUsersF    = flagsF.flatMap(flags => flags.parTraverse(_.user))
     val flagResolvedF = flagsF.flatMap(flags => flags.parTraverse(_.resolvedBy.flatTraverse(UserBase().get(_).value)))
 
@@ -71,9 +71,9 @@ object ProjectData {
     (
       project.settings,
       project.owner.user,
-      project.versions.count(_.visibility === (Visibility.Public: Visibility)),
+      project.versions.countNow(_.visibility === (Visibility.Public: Visibility)),
       members(project),
-      project.logger.flatMap(_.entries.size),
+      project.logger.flatMap(_.entries.sizeNow),
       flagsF,
       flagUsersF,
       flagResolvedF,

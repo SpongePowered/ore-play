@@ -74,9 +74,9 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
       OptionT(service.runDBIO(childPageQuery((parts(0), parts(1))).result.headOption)).map(_ -> false)
     } else {
       project.pages
-        .find(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId.isEmpty)
+        .findNow(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId.isEmpty)
         .map(_ -> false)
-        .orElse(project.pages.find(_.slug.toLowerCase === parts(0).toLowerCase).map(_ -> true))
+        .orElse(project.pages.findNow(_.slug.toLowerCase === parts(0).toLowerCase).map(_ -> true))
     }
   }
 
@@ -167,10 +167,12 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
               val parts = page.split("/")
 
               val created = if (parts.size == 2) {
-                project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id.value).value.flatMap { parentId =>
-                  val pageName = pageData.name.getOrElse(parts(1))
-                  project.getOrCreatePage(pageName, parentId, content)
-                }
+                service
+                  .runDBIO(project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id).result.headOption)
+                  .flatMap { parentId =>
+                    val pageName = pageData.name.getOrElse(parts(1))
+                    project.getOrCreatePage(pageName, parentId, content)
+                  }
               } else {
                 val pageName = pageData.name.getOrElse(parts(0))
                 project.getOrCreatePage(pageName, parentId, content)

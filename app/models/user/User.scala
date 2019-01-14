@@ -21,7 +21,6 @@ import ore.user.Prompt
 import security.pgp.PGPPublicKeyInfo
 import security.spauth.{SpongeAuthApi, SpongeUser}
 import util.OreMDC
-import util.StringUtils._
 import util.syntax._
 
 import cats.Parallel
@@ -225,15 +224,6 @@ case class User private (
   def projects(implicit service: ModelService): ModelAccess[Project] = service.access(_.userId === id.value)
 
   /**
-    * Returns the Project with the specified name that this User owns.
-    *
-    * @param name Name of project
-    * @return Owned project, if any, None otherwise
-    */
-  def getProject(name: String)(implicit service: ModelService): OptionT[IO, Project] =
-    this.projects.find(equalsIgnoreCase(_.name, name))
-
-  /**
     * Returns a [[ModelAccess]] of [[ProjectUserRole]]s.
     *
     * @return ProjectRoles
@@ -317,7 +307,7 @@ case class User private (
     */
   def hasUnresolvedFlagFor(project: Project)(implicit service: ModelService): IO[Boolean] = {
     checkNotNull(project, "null project", "")
-    this.flags.exists(f => f.projectId === project.id.value && !f.isResolved)
+    this.flags.existsNow(f => f.projectId === project.id.value && !f.isResolved)
   }
 
   /**

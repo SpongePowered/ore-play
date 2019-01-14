@@ -49,7 +49,7 @@ trait StatTracker {
     val filter     = ModelFilter[M](e => e.address === entry.address || e.cookie === entry.cookie)
 
     val userFilter = entry.user.map(u => ModelFilter[M](e => filter(e) || e.userId === u.id.value)).getOrElse(filter)
-    OptionT.liftF(userFilter).flatMap(uFilter => service.find(baseFilter && uFilter))
+    OptionT.liftF(userFilter).flatMap(uFilter => service.findNow(baseFilter && uFilter))
   }
 
   /**

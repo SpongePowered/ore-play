@@ -18,7 +18,7 @@ sealed abstract class NotificationFilter(
 ) extends IntEnumEntry {
 
   def apply(notifications: ModelAccess[Notification]): IO[Seq[Notification]] =
-    notifications.filter(this.filter)
+    notifications.filterNow(this.filter)
 }
 
 /**

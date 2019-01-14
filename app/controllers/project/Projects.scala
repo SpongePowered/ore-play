@@ -474,7 +474,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       request.project.apiKeys
-        .find(_.keyType === (ProjectApiKeyType.Deployment: ProjectApiKeyType))
+        .findNow(_.keyType === (ProjectApiKeyType.Deployment: ProjectApiKeyType))
         .value
         .map(deployKey => Ok(views.settings(request.data, request.scoped, deployKey)))
   }
@@ -725,8 +725,8 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     Authenticated.andThen(PermissionAction(ViewLogs)).andThen(ProjectAction(author, slug)).asyncF { implicit request =>
       for {
         logger <- request.project.logger
-        logs   <- logger.entries.all
-      } yield Ok(views.log(request.project, logs.toSeq))
+        logs   <- logger.entries.toSeqNow
+      } yield Ok(views.log(request.project, logs))
     }
   }
 

@@ -155,7 +155,7 @@ trait Actions extends Calls with ActionHelpers {
     */
   def isNonceValid(nonce: String): IO[Boolean] =
     this.signOns
-      .find(_.nonce === nonce)
+      .findNow(_.nonce === nonce)
       .semiflatMap { signOn =>
         if (signOn.isCompleted || new Date().getTime - signOn.createdAt.getTime > 600000)
           IO.pure(false)

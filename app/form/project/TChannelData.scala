@@ -39,8 +39,9 @@ trait TChannelData {
   def addTo(
       project: Project
   )(implicit service: ModelService): EitherT[IO, String, Channel] = {
+    //TODO: Rewrite this as one query
     EitherT
-      .liftF(project.channels.all)
+      .liftF(project.channels.allNow)
       .ensure("A project may only have up to five channels.")(_.size <= config.ore.projects.maxChannels)
       .ensure("A channel with that name already exists.")(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)))
       .ensure("A channel with that color already exists.")(_.forall(_.color != this.color))
@@ -59,7 +60,8 @@ trait TChannelData {
       project: Project,
       oldName: String
   )(implicit service: ModelService): EitherT[IO, NEL[String], Unit] = {
-    EitherT.liftF(project.channels.all).flatMap { allChannels =>
+    //TODO: Rewrite this as one/fewer quer(y/ies)
+    EitherT.liftF(project.channels.allNow).flatMap { allChannels =>
       val (channelChangeSet, channels) = allChannels.partition(_.name.equalsIgnoreCase(oldName))
       val channel                      = channelChangeSet.toSeq.head
       //TODO: Rewrite this nicer if we ever get a Validated/Validation type

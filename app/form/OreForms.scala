@@ -280,7 +280,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     })
 
   def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[IO, Channel] =
-    request.data.project.channels.find(_.name.toLowerCase === c.toLowerCase)
+    request.data.project.channels.findNow(_.name.toLowerCase === c.toLowerCase)
 
   def VersionDeploy(implicit request: ProjectRequest[_]) =
     Form(

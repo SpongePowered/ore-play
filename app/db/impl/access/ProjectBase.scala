@@ -52,7 +52,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return Stale projects
     */
   def stale: IO[Seq[Project]] =
-    this.filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
+    this.filterNow(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
 
   /**
     * Returns the Project with the specified owner name and name.
@@ -62,7 +62,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return       Project with name
     */
   def withName(owner: String, name: String): OptionT[IO, Project] =
-    this.find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase)
+    this.findNow(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase)
 
   /**
     * Returns the Project with the specified owner name and URL slug, if any.
@@ -72,7 +72,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return       Project if found, None otherwise
     */
   def withSlug(owner: String, slug: String): OptionT[IO, Project] =
-    this.find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase)
+    this.findNow(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase)
 
   /**
     * Returns the Project with the specified plugin ID, if any.
@@ -81,7 +81,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return         Project if found, None otherwise
     */
   def withPluginId(pluginId: String): OptionT[IO, Project] =
-    this.find(equalsIgnoreCase(_.pluginId, pluginId))
+    this.findNow(equalsIgnoreCase(_.pluginId, pluginId))
 
   /**
     * Returns true if the Project's desired slug is available.
@@ -151,9 +151,9 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   def deleteChannel(project: Project, channel: Channel)(implicit cs: ContextShift[IO]): IO[Unit] = {
     import cats.instances.vector._
     for {
-      channels         <- project.channels.all
-      noVersion        <- channel.versions.isEmpty
-      nonEmptyChannels <- channels.toVector.parTraverse(_.versions.nonEmpty).map(_.count(identity))
+      channels         <- project.channels.allNow
+      noVersion        <- channel.versions.isEmptyNow
+      nonEmptyChannels <- channels.toVector.parTraverse(_.versions.nonEmptyNow).map(_.count(identity))
       _                = checkArgument(channels.size > 1, "only one channel", "")
       _                = checkArgument(noVersion || nonEmptyChannels > 1, "last non-empty channel", "")
       reviewedChannels = channels.filter(!_.isNonReviewed)
@@ -162,7 +162,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
         "last reviewed channel",
         ""
       )
-      versions <- channel.versions.all
+      versions <- channel.versions.allNow
       _ <- versions.toVector.parTraverse { version =>
         val otherChannels = channels.filter(_ != channel)
         val newChannel =
@@ -177,10 +177,10 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   def prepareDeleteVersion(version: Version): IO[Project] =
     for {
       proj <- version.project
-      size <- proj.versions.count(_.visibility === (Visibility.Public: Visibility))
+      size <- proj.versions.countNow(_.visibility === (Visibility.Public: Visibility))
       _ = checkArgument(size > 1, "only one public version", "")
       rv       <- proj.recommendedVersion.value
-      projects <- proj.versions.sorted(_.createdAt.desc) // TODO optimize: only query one version
+      projects <- proj.versions.sortedNow(_.createdAt.desc) // TODO optimize: only query one version
       res <- {
         if (rv.contains(version))
           service.update(
@@ -197,7 +197,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     for {
       proj       <- prepareDeleteVersion(version)
       channel    <- version.channel
-      noVersions <- channel.versions.isEmpty
+      noVersions <- channel.versions.isEmptyNow
       _ <- {
         val versionDir = this.fileManager.getVersionDir(proj.ownerName, proj.name, version.name)
         FileUtils.deleteDirectory(versionDir)

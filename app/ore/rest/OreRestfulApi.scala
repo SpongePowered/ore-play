@@ -317,7 +317,7 @@ trait OreRestfulApi extends OreWrites {
   )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).semiflatMap { project =>
       for {
-        pages <- project.pages.sorted(_.name)
+        pages <- project.pages.sortedNow(_.name)
       } yield {
         val seq      = pages.filter(_.parentId == parentId)
         val pageById = pages.map(p => (p.id.value, p)).toMap
@@ -420,7 +420,7 @@ trait OreRestfulApi extends OreWrites {
   )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).flatMap { project =>
       project.versions
-        .find(
+        .findNow(
           v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === (Visibility.Public: Visibility)
         )
         .semiflatMap { v =>

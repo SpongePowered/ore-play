@@ -26,10 +26,9 @@ final class OreConfig @Inject()(config: Configuration) {
   val root: Configuration = this.config
 
   object app extends ConfigCategory {
-    val raw: Configuration               = root.get[Configuration]("application")
-    val baseUrl: String                  = raw.get[String]("baseUrl")
-    val dbDefaultTimeout: FiniteDuration = raw.get[FiniteDuration]("db.default-timeout")
-    val uploadsDir: String               = raw.get[String]("uploadsDir")
+    val raw: Configuration = root.get[Configuration]("application")
+    val baseUrl: String    = raw.get[String]("baseUrl")
+    val uploadsDir: String = raw.get[String]("uploadsDir")
 
     val trustedUrlHosts: Seq[String] = raw.get[Seq[String]]("trustedUrlHosts")
 

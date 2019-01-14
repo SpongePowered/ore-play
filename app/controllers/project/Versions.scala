@@ -189,27 +189,28 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showList(author: String, slug: String, channels: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
-      request.project.channels.toSeq.flatMap { allChannels =>
-        val visibleNames = channels.fold(allChannels.map(_.name.toLowerCase))(_.toLowerCase.split(',').toSeq)
-        val visible      = allChannels.filter(ch => visibleNames.contains(ch.name.toLowerCase))
-        val visibleIds   = visible.map(_.id.value)
-
-        def versionFilter(v: VersionTable): Rep[Boolean] = {
+      val dbio = for {
+        allChannels <- request.project.channels.query.result
+        visibleNames = channels.fold(allChannels.map(_.name.toLowerCase))(_.toLowerCase.split(',').toSeq)
+        visible      = allChannels.filter(ch => visibleNames.contains(ch.name.toLowerCase))
+        visibleIds   = visible.map(_.id.value)
+        versionCount <- request.project.versions.count { v =>
           val inChannel = v.channelId.inSetBind(visibleIds)
           val isVisible =
             if (request.headerData.globalPerm(ReviewProjects)) true: Rep[Boolean]
             else v.visibility === (Visibility.Public: Visibility)
           inChannel && isVisible
-        }
-
-        val versionCountF = request.project.versions.count(versionFilter)
-
+        }.result
+      } yield {
         val visibleNamesForView = if (visibleNames == allChannels.map(_.name.toLowerCase)) Nil else visibleNames
 
-        versionCountF.flatMap { versionCount =>
+        (allChannels, versionCount, visibleNamesForView)
+      }
+
+      service.runDBIO(dbio).flatMap {
+        case (allChannels, versionCount, visibleNamesForView) =>
           this.stats
             .projectViewed(Ok(views.list(request.data, request.scoped, allChannels, versionCount, visibleNamesForView)))
-        }
       }
     }
   }
@@ -223,7 +224,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showCreator(author: String, slug: String): Action[AnyContent] =
     VersionUploadAction(author, slug).asyncF { implicit request =>
-      request.project.channels.all.map { channels =>
+      request.project.channels.toSeqNow.map { channels =>
         val project = request.project
         Ok(
           views.create(
@@ -234,7 +235,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             isProjectPending = false,
             forumSync = request.data.settings.forumSync,
             None,
-            Some(channels.toSeq),
+            Some(channels),
             showFileControls = true
           )
         )
@@ -301,7 +302,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             val projectData = real.settings.map { settings =>
               (real.name, real.slug, real.ownerName, real.description, false, settings.forumSync)
             }
-            (real.channels.toSeq, projectData).parMapN((channels, data) => (Some(channels), data, pendingVersion))
+            (real.channels.toSeqNow, projectData).parMapN((channels, data) => (Some(channels), data, pendingVersion))
         }
         .map {
           case (
@@ -372,7 +373,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                   getProject(author, slug).flatMap {
                     project =>
                       project.channels
-                        .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))
+                        .findNow(equalsIgnoreCase(_.name, newPendingVersion.channelName))
                         .toRight(versionData.addTo(project))
                         .leftFlatMap(identity)
                         .semiflatMap {
@@ -576,7 +577,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       OptionT
         .fromOption[IO](req.cookies.get(DownloadWarning.COOKIE + "_" + version.id).map(_.value).orElse(token))
         .flatMap { tkn =>
-          this.warnings.find { warn =>
+          this.warnings.findNow { warn =>
             (warn.token === tkn) &&
             (warn.versionId === version.id.value) &&
             (warn.address === InetString(StatTracker.remoteAddress)) &&
@@ -733,7 +734,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .getOrElse(DownloadType.UploadedFile)
     // find warning
     this.warnings
-      .find { warn =>
+      .findNow { warn =>
         (warn.address === addr) &&
         (warn.token === token) &&
         (warn.versionId === versionId) &&

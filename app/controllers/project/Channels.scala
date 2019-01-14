@@ -19,8 +19,7 @@ import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
 
-import cats.data.EitherT
-import cats.effect.IO
+import cats.data.OptionT
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -95,8 +94,7 @@ class Channels @Inject()(forms: OreForms)(
     }
 
   /**
-    * Irreversibly deletes the specified channel and all version associated
-    * with it.
+    * Irreversibly deletes the specified channel.
     *
     * @param author      Project owner
     * @param slug        Project slug
@@ -105,26 +103,39 @@ class Channels @Inject()(forms: OreForms)(
     */
   def delete(author: String, slug: String, channelName: String): Action[AnyContent] =
     ChannelEditAction(author, slug).asyncEitherT { implicit request =>
-      import cats.instances.vector._
-      EitherT
-        .right[Status](request.project.channels.all)
-        .ensure(Redirect(self.showList(author, slug)).withError("error.channel.last"))(_.size != 1)
-        .flatMap { channels =>
-          EitherT
-            .fromEither[IO](channels.find(_.name == channelName).toRight(NotFound))
-            .semiflatMap { channel =>
-              (channel.versions.isEmpty, channels.toVector.parTraverse(_.versions.nonEmpty).map(_.count(identity))).parTupled
-                .tupleRight(channel)
-            }
-            .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastNonEmpty"))(
-              { case ((emptyChannel, nonEmptyChannelCount), _) => emptyChannel || nonEmptyChannelCount > 1 }
-            )
-            .map(_._2)
-            .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed"))(
-              channel => channel.isNonReviewed || channels.count(_.isReviewed) > 1
-            )
-            .semiflatMap(channel => projects.deleteChannel(request.project, channel))
-            .map(_ => Redirect(self.showList(author, slug)))
-        }
+      val channelsAccess = request.project.channels
+
+      val ourChannel = channelsAccess.find(_.name === channelName)
+      val ourChannelVersions = for {
+        channel <- ourChannel
+        version <- TableQuery[VersionTable] if version.channelId === channel.id
+      } yield version
+
+      val moreThanOneChannelR = channelsAccess.size =!= 1
+      val isChannelEmptyR     = ourChannelVersions.size === 0
+      val nonEmptyChannelsR = channelsAccess.query
+        .map(channel => TableQuery[VersionTable].filter(_.channelId === channel.id).length =!= 0)
+        .filter(identity)
+        .length
+      val reviewedChannelsCount = channelsAccess.count(!_.isNonReviewed) > 1
+
+      val query = for {
+        channel <- ourChannel
+      } yield
+        (
+          channel,
+          moreThanOneChannelR,
+          isChannelEmptyR || nonEmptyChannelsR > 1,
+          channel.isNonReviewed || reviewedChannelsCount
+        )
+
+      //TODO: Accumulate errors into a list and return them all at once
+      OptionT(service.runDBIO(query.result.headOption))
+        .toRight(NotFound)
+        .ensure(Redirect(self.showList(author, slug)).withError("error.channel.last"))(_._2)
+        .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastNonEmpty"))(_._3)
+        .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed"))(_._4)
+        .semiflatMap(channel => projects.deleteChannel(request.project, channel._1))
+        .as(Redirect(self.showList(author, slug)))
     }
 }

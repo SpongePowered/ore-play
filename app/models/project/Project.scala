@@ -175,7 +175,7 @@ case class Project private (
   def settings(implicit service: ModelService): IO[ProjectSettings] =
     service
       .access[ProjectSettings]()
-      .find(_.projectId === this.id.value)
+      .findNow(_.projectId === this.id.value)
       .getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
 
   /**
@@ -333,7 +333,7 @@ case class Project private (
       page: InsertFunc[Page]
   )(implicit service: ModelService): IO[Page] = {
     def like =
-      service.find[Page] { p =>
+      service.findNow[Page] { p =>
         p.projectId === this.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
           p.parentId.isEmpty
         )(parentId => (p.parentId === parentId).getOrElse(false: Rep[Boolean]))
@@ -355,15 +355,6 @@ case class Project private (
       Page.partial(this.id, Page.homeName, Page.template(this.name, Page.homeMessage), isDeletable = false, None)
     getOrInsert(Page.homeName, None)(page)
   }
-
-  /**
-    * Returns true if a page with the specified name exists.
-    *
-    * @param name   Page name
-    * @return       True if exists
-    */
-  def pageExists(name: String)(implicit service: ModelService): IO[Boolean] =
-    this.pages.exists(_.name === name)
 
   /**
     * Returns the specified Page or creates it if it doesn't exist.
@@ -394,11 +385,11 @@ case class Project private (
     * @return Root pages of project
     */
   def rootPages(implicit service: ModelService): IO[Seq[Page]] =
-    service.access[Page]().sorted(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
+    service.access[Page]().sortedNow(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
 
   def logger(implicit service: ModelService): IO[ProjectLog] = {
     val loggers = service.access[ProjectLog]()
-    loggers.find(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog.partial(id)))
+    loggers.findNow(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog.partial(id)))
   }
 
   def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] = service.access(_.projectId === id.value)

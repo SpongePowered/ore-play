@@ -132,21 +132,21 @@ object MembershipDossier {
 
     def addRole(model: M0, userId: DbRef[User], role: InsertFunc[RoleType]): IO[RoleType] = {
       for {
-        user   <- service.get[User](userId).getOrElseF(IO.raiseError(new Exception("Get on none")))
-        exists <- roles(model).exists(_.userId === user.id.value)
+        user   <- service.getNow[User](userId).getOrElseF(IO.raiseError(new Exception("Get on none")))
+        exists <- roles(model).existsNow(_.userId === user.id.value)
         _      <- if (!exists) addMember(model, user) else IO.pure(user)
         ret    <- roleAccess.add(role)
       } yield ret
     }
 
     def getRoles(model: M0, user: User): IO[Set[RoleType]] =
-      roles(model).filter(_.userId === user.id.value).map(_.toSet)
+      roles(model).filterNow(_.userId === user.id.value).map(_.toSet)
 
     def removeRole(model: M0, role: RoleType): IO[Unit] = {
       for {
         _      <- roleAccess.remove(role)
         user   <- role.user
-        exists <- roles(model).exists(_.userId === user.id.value)
+        exists <- roles(model).existsNow(_.userId === user.id.value)
         _      <- if (!exists) removeMember(model, user) else IO.pure(0)
       } yield ()
     }

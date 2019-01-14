@@ -36,8 +36,8 @@ object InviteFilter extends IntEnum[InviteFilter] {
           implicit service =>
             user =>
               Parallel.parMap2(
-                user.projectRoles.filterNot(_.isAccepted),
-                user.organizationRoles.filterNot(_.isAccepted)
+                user.projectRoles.filterNotNow(_.isAccepted),
+                user.organizationRoles.filterNotNow(_.isAccepted)
               )(_ ++ _)
       )
 
@@ -46,7 +46,7 @@ object InviteFilter extends IntEnum[InviteFilter] {
         1,
         "projects",
         "notification.invite.projects",
-        _ => implicit service => user => user.projectRoles.filterNot(_.isAccepted)
+        _ => implicit service => user => user.projectRoles.filterNotNow(_.isAccepted)
       )
 
   case object Organizations
@@ -54,6 +54,6 @@ object InviteFilter extends IntEnum[InviteFilter] {
         2,
         "organizations",
         "notification.invite.organizations",
-        _ => implicit service => user => user.organizationRoles.filterNot(_.isAccepted)
+        _ => implicit service => user => user.organizationRoles.filterNotNow(_.isAccepted)
       )
 }

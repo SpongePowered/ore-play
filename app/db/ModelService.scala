@@ -3,35 +3,22 @@ package db
 import java.sql.Timestamp
 import java.util.Date
 
-import scala.concurrent.duration.Duration
-
 import db.ModelFilter._
 import db.access.ModelAccess
+import db.impl.OrePostgresDriver
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import db.table.ModelTable
+import db.impl.OrePostgresDriver.api._
 
 import cats.data.OptionT
 import cats.effect.IO
 import cats.syntax.all._
 import doobie.ConnectionIO
-import slick.jdbc.{JdbcProfile, JdbcType}
 import slick.lifted.ColumnOrdered
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.
   */
-abstract class ModelService(val driver: JdbcProfile) {
-  import driver.api._
-
-  /**
-    * The default timeout when awaiting a query result.
-    */
-  def DefaultTimeout: Duration
-
-  /**
-    * Performs initialization code for the ModelService.
-    */
-  def start(): Unit
+abstract class ModelService {
 
   /**
     * Returns a current Timestamp.
@@ -117,35 +104,38 @@ abstract class ModelService(val driver: JdbcProfile) {
     runDBIO(newAction.filter(IdFilter(model.id)).update(model)).as(model)
 
   /**
-    * Sets a column in a [[ModelTable]].
-    *
-    * @param model  Model to update
-    * @param column Column to update
-    * @param value  Value to set
-    * @param mapper JdbcType
-    * @tparam A     Value type
-    * @tparam M0     Model type
-    */
-  def set[A, M0 <: Model { type M = M0 }: ModelQuery](model: M0, column: M0#T => Rep[A], value: A)(
-      implicit mapper: JdbcType[A]
-  ): IO[Int] = runDBIO(newAction.filter(IdFilter(model.id)).map(column(_)).update(value))
-
-  /**
     * Returns the first model that matches the given predicate.
     *
     * @param filter  Filter
     * @return        Optional result
     */
-  def find[M <: Model: ModelQuery](filter: M#T => Rep[Boolean]): OptionT[IO, M] =
-    OptionT(runDBIO(newAction.filter(filter).take(1).result).map(_.headOption))
+  def find[M <: Model: ModelQuery](filter: M#T => Rep[Boolean]): Query[M#T, M, Seq] =
+    newAction.filter(filter).take(1)
+
+  /**
+    * Returns the first model that matches the given predicate and runs this program now.
+    *
+    * @param filter  Filter
+    * @return        Optional result
+    */
+  def findNow[M <: Model: ModelQuery](filter: M#T => Rep[Boolean]): OptionT[IO, M] =
+    OptionT(runDBIO(find(filter).result.headOption))
 
   /**
     * Returns the size of the model table.
     *
     * @return Size of model table
     */
-  def count[M <: Model: ModelQuery](filter: M#T => Rep[Boolean] = All): IO[Int] =
-    runDBIO(newAction.filter(filter).length.result)
+  def count[M <: Model: ModelQuery](filter: M#T => Rep[Boolean] = All): Rep[Int] =
+    newAction.filter(filter).length
+
+  /**
+    * Returns the size of the model table runs the program now.
+    *
+    * @return Size of model table
+    */
+  def countNow[M <: Model: ModelQuery](filter: M#T => Rep[Boolean] = All): IO[Int] =
+    runDBIO(count(filter).result)
 
   /**
     * Deletes the specified Model.
@@ -170,8 +160,21 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param id   Model with ID
     * @return     Model if present, None otherwise
     */
-  def get[M0 <: Model { type M = M0 }: ModelQuery](id: DbRef[M0], filter: M0#T => Rep[Boolean] = All): OptionT[IO, M0] =
-    find(IdFilter[M0](id) && filter)
+  def get[M0 <: Model { type M = M0 }: ModelQuery](
+      id: DbRef[M0],
+      filter: M0#T => Rep[Boolean] = All
+  ): Query[M0#T, M0, Seq] = find(IdFilter[M0](id) && filter)
+
+  /**
+    * Returns the model with the specified ID, if any and runs this program now.
+    *
+    * @param id   Model with ID
+    * @return     Model if present, None otherwise
+    */
+  def getNow[M0 <: Model { type M = M0 }: ModelQuery](
+      id: DbRef[M0],
+      filter: M0#T => Rep[Boolean] = All
+  ): OptionT[IO, M0] = findNow(IdFilter[M0](id) && filter)
 
   /**
     * Returns a sequence of Model's that have an ID in the specified Set.
@@ -184,10 +187,23 @@ abstract class ModelService(val driver: JdbcProfile) {
   def in[M0 <: Model { type M = M0 }: ModelQuery](
       ids: Set[DbRef[M0]],
       filter: M0#T => Rep[Boolean] = All
-  ): IO[Seq[M0]] = this.filter(ModelFilter[M0](_.id.inSetBind(ids)) && filter)
+  ): Query[M0#T, M0, Seq] = this.filter(ModelFilter[M0](_.id.inSetBind(ids)) && filter)
 
   /**
-    * Returns a collection of models with the specified limit and offset.
+    * Returns a sequence of Model's that have an ID in the specified Set and runs the program now.
+    *
+    * @param ids        ID set
+    * @param filter     Additional filter
+    * @tparam M0         Model type
+    * @return           Seq of models in ID set
+    */
+  def inNow[M0 <: Model { type M = M0 }: ModelQuery](
+      ids: Set[DbRef[M0]],
+      filter: M0#T => Rep[Boolean] = All
+  ): IO[Seq[M0]] = runDBIO(in(ids, filter).result)
+
+  /**
+    * Returns a collection of models with the specified limit and offset .
     *
     * @param limit  Amount of models to take
     * @param offset Offset to drop
@@ -198,16 +214,28 @@ abstract class ModelService(val driver: JdbcProfile) {
       sort: Option[M#T => ColumnOrdered[_]] = None,
       limit: Int = -1,
       offset: Int = -1
-  ): IO[Seq[M]] = {
+  ): Query[M#T, M, Seq] = {
     type Q = Query[M#T, M, Seq]
     val addSort   = (query: Q) => sort.fold(query)(sort => query.sortBy(sort))
     val addOffset = (query: Q) => if (offset > -1) query.drop(offset) else query
     val addLimit  = (query: Q) => if (limit > -1) query.take(limit) else query
 
-    val query = Seq(addSort, addOffset, addLimit).foldLeft(newAction.filter(filter))((q, f) => f(q))
-
-    runDBIO(query.result)
+    Seq(addSort, addOffset, addLimit).foldLeft(newAction.filter(filter))((q, f) => f(q))
   }
+
+  /**
+    * Returns a collection of models with the specified limit and offset and runs the program now.
+    *
+    * @param limit  Amount of models to take
+    * @param offset Offset to drop
+    * @return       Collection of models
+    */
+  def collectNow[M <: Model: ModelQuery](
+      filter: M#T => Rep[Boolean] = All,
+      sort: Option[M#T => ColumnOrdered[_]] = None,
+      limit: Int = -1,
+      offset: Int = -1
+  ): IO[Seq[M]] = runDBIO(collect(filter, sort, limit, offset).result)
 
   /**
     * Filters the the models.
@@ -222,5 +250,20 @@ abstract class ModelService(val driver: JdbcProfile) {
       filter: M#T => Rep[Boolean],
       limit: Int = -1,
       offset: Int = -1
-  ): IO[Seq[M]] = collect(filter, limit = limit, offset = offset)
+  ): Query[M#T, M, Seq] = collect(filter, limit = limit, offset = offset)
+
+  /**
+    * Filters the the models and runs the program now.
+    *
+    * @param filter Model filter
+    * @param limit  Amount to take
+    * @param offset Amount to drop
+    * @tparam M     Model
+    * @return       Filtered models
+    */
+  def filterNow[M <: Model: ModelQuery](
+      filter: M#T => Rep[Boolean],
+      limit: Int = -1,
+      offset: Int = -1
+  ): IO[Seq[M]] = runDBIO(this.filter(filter, limit, offset).result)
 }

@@ -118,7 +118,7 @@ case class Page private (
     for {
       parent  <- OptionT.fromOption[IO](parentId)
       project <- parentProject
-      page    <- project.pages.find(_.id === parent)
+      page    <- project.pages.findNow(_.id === parent)
     } yield page
 
   /**
