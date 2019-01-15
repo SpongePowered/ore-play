@@ -10,19 +10,21 @@
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.view(p, sp, "#settings") {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/iconUpload.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/keyGen.js")"></script>
     <script nonce="@nonce">
-        projectName = "@p.project.name";
-        PROJECT_OWNER = "@p.project.ownerName";
-        PROJECT_SLUG = "@p.project.slug";
-        pluginId = "@p.project.pluginId";
-        keyGenText = "@messages("project.settings.genKey")";
-        keyRevokeText = "@messages("project.settings.revokeKey")";
+            projectName = "@p.project.name";
+            PROJECT_OWNER = "@p.project.ownerName";
+            PROJECT_SLUG = "@p.project.slug";
+            pluginId = "@p.project.pluginId";
+            keyGenText = "@messages("project.settings.genKey")";
+            keyRevokeText = "@messages("project.settings.revokeKey")";
     </script>
+}
+
+@projects.view(p, sp, "#settings", additionalScripts = scripts) {
 
     <div class="container">
         <div class="row">

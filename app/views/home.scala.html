@@ -34,8 +34,7 @@ sorted according to different criteria.
     }
 }
 
-@bootstrap.layout(messages("general.title")) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
     <script nonce="@nonce">
     @if(visibleCategories.isDefined) {
@@ -49,6 +48,9 @@ sorted according to different criteria.
     }
     currentlyLoaded = @models.size;
     </script>
+}
+
+@bootstrap.layout(messages("general.title"), scripts) {
 
     <div class="container" style="margin-top: 63px; padding-top: 1.5rem">
 

@@ -14,10 +14,12 @@
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],
         actionFilter: Option[Int], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
-@bootstrap.layout(messages("admin.log.title")) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("diff-match-patch/javascript/diff_match_patch.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/actionLog.js")"></script>
+}
+
+@bootstrap.layout(messages("admin.log.title"), scripts) {
 
     <div class="container" style="margin-top: 90px">
         <div class="row">

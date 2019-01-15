@@ -29,9 +29,11 @@
     }
 }
 
-@bootstrap.layout(messages("notification.plural")) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/notifications.js")"></script>
+}
+
+@bootstrap.layout(messages("notification.plural"), scripts) {
 
     <div class="container" style="margin-top: 90px">
         <div class="row">

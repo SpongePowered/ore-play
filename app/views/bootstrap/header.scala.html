@@ -5,7 +5,7 @@ The main header displayed on each layout.
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import ore.permission._
-@(user: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(authEnabled: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 
 @tooltip(title: String) = @{
@@ -56,7 +56,7 @@ The main header displayed on each layout.
         </div>
 
         <!-- Right navbar -->
-        @if(user) {
+        @if(authEnabled) {
             <ul class="nav navbar-nav navbar-collapse collapse navbar-right">
                 @request.headerData.currentUser.map { cu =>
 

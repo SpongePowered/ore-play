@@ -12,17 +12,18 @@ Discussion page within Project overview.
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.view(p, sp, "#discussion") {
-
+@scripts = {
     <script nonce="@nonce">
-        DiscourseEmbed = {
-            discourseUrl: '@config.forums.baseUrl/',
-            topicId: @p.project.topicId
-        };
+            DiscourseEmbed = {
+                discourseUrl: '@config.forums.baseUrl/',
+                topicId: @p.project.topicId
+            };
     </script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDiscuss.js")"></script>
     <script nonce="@nonce">$(function() { $('.btn-edit').click(); });</script>
+}
 
+@projects.view(p, sp, "#discussion", additionalScripts = scripts) {
     <div class="container">
         <div id='discourse-comments'></div>
         <div class="row">

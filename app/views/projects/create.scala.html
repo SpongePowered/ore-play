@@ -19,10 +19,12 @@ Page used for uploading and creating new projects.
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectCreateValidate.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pluginUpload.js")"></script>
+}
+
+@projects.helper.panelCreate(messages("project.create"), if (pending.isEmpty) 1 else 2, scripts) {
 
     <div class="panel-body project-body">
         <div class="minor create-blurb">

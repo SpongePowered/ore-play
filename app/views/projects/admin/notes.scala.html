@@ -14,11 +14,12 @@
 
 
 @projectRoutes = @{controllers.project.routes.Projects}
-
-@bootstrap.layout(messages("notes")) {
+@scripts = {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.versioned("javascripts/notes.js")"></script>
     <script nonce="@nonce">resourcePath = '@project.ownerName/@project.slug'</script>
+}
 
+@bootstrap.layout(messages("notes"), scripts) {
     <div class="container" style="margin-top: 90px">
         <div class="row">
             <div class="col-md-12  header-flags">

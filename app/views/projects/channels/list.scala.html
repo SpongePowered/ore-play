@@ -10,20 +10,22 @@
 @channelRoutes = @{controllers.project.routes.Channels}
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("channel.list.title", p.project.ownerName, p.project.slug)) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/channelManage.js")"></script>
     <script nonce="@nonce">
-        PROJECT_OWNER = '@p.project.ownerName';
-        PROJECT_SLUG = '@p.project.slug';
-        $(function() {
-            initChannelManager(
-                    "#channel-new", "", "@config.defaultChannelColor.hex", "New channel",
-                    "@channelRoutes.create(p.project.ownerName, p.project.slug)",
-                    "post", "Create channel", false
-            );
-        });
+            PROJECT_OWNER = '@p.project.ownerName';
+            PROJECT_SLUG = '@p.project.slug';
+            $(function() {
+                initChannelManager(
+                        "#channel-new", "", "@config.defaultChannelColor.hex", "New channel",
+                        "@channelRoutes.create(p.project.ownerName, p.project.slug)",
+                        "post", "Create channel", false
+                );
+            });
     </script>
+}
+
+@bootstrap.layout(messages("channel.list.title", p.project.ownerName, p.project.slug), scripts) {
 
     <div class="container" style="margin-top: 90px">
         <div class="row">

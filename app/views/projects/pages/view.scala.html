@@ -26,17 +26,18 @@ Documentation page within Project overview.
     sp.perms(EditPages) && !forceHideEditor
 }
 
-@projects.view(p, sp, "#docs") {
-
+@scripts = {
     <script type="text/javascript" src="@controllers.routes.Assets.versioned("javascripts/pageCollapse.js")"></script>
     <script nonce="@nonce">
-        pluginId = '@p.project.pluginId';
-        namespace = '@p.project.namespace';
+            pluginId = '@p.project.pluginId';
+            namespace = '@p.project.namespace';
     </script>
     @if(editorOpen) {
         <script nonce="@nonce">$(function() { $('.btn-edit').click(); });</script>
     }
+}
 
+@projects.view(p, sp, "#docs", additionalScripts = scripts) {
     <div class="project-wiki">
         <div class="container">
             <div class="row">

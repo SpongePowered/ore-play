@@ -7,8 +7,8 @@ this.
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import security.NonceFilter._
-@(title: String, scripts: Boolean = true, header: Boolean = true, user: Boolean = true,
-        footer: Boolean = true)(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
+@(title: String, additionalScripts: Html = Html(""), scriptsEnabled: Boolean = true, authEnabled: Boolean = true, showHeader: Boolean = true,
+        showFooter: Boolean = true)(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
 
 <!DOCTYPE html>
 <html>
@@ -33,25 +33,25 @@ this.
         <!-- See https://goo.gl/qRE0vM -->
         <meta name="theme-color" content="#333">
 
-        @if(scripts) {
+        @if(scriptsEnabled) {
             <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
             <script defer type="text/javascript" src="@routes.Assets.versioned("lib/font-awesome/js/all.min.js")" data-auto-add-css="false"></script>
         }
     </head>
     <body class="site">
-        @if(header) {
-            @bootstrap.header(user)
+        @if(showHeader) {
+            @bootstrap.header(authEnabled)
         }
 
         <div class="site-content">
             @content
         </div>
 
-        @if(footer) {
+        @if(showFooter) {
             @bootstrap.footer()
         }
 
-        @if(scripts) {
+        @if(scriptsEnabled) {
             <script type="text/javascript" src="@routes.Assets.versioned("lib/moment/min/moment.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("bootstrap/js/bootstrap.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/filesize/lib/filesize.js")"></script>
@@ -60,6 +60,8 @@ this.
             <script type="text/javascript" src="@routes.Assets.versioned("javascripts/main.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("javascripts/svg.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("javascripts/spongie.js")"></script>
+            @additionalScripts
+
             @if(request != null) {
                 <script nonce="@nonce">csrf = '@play.filters.csrf.CSRF.getToken.get.value'</script>
             }

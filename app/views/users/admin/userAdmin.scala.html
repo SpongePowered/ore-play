@@ -51,9 +51,11 @@
     </table>
 }
 
-@bootstrap.layout(prefix + user.user.name) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userAdmin.js")"></script>
+}
+
+@bootstrap.layout(prefix + user.user.name, scripts) {
 
     <div class="container" style="margin-top: 90px;">
         <div class="row">

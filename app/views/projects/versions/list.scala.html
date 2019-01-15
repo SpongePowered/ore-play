@@ -17,22 +17,24 @@ Versions page within Project overview.
 @versionRoutes = @{ controllers.project.routes.Versions }
 @channelRoutes = @{ controllers.project.routes.Channels }
 
-@projects.view(p, sp, "#versions") {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/versionList.js")"></script>
     <script nonce="@nonce">
-    PLUGIN_ID = '@p.project.pluginId';
-    PROJECT_OWNER = '@p.project.ownerName';
-    PROJECT_SLUG = '@p.project.slug';
-    @if(visibleChannels.nonEmpty) {
-        CHANNEL_STRING = '@visibleChannels.mkString(",")';
-    }
-    TOTAL_VERSIONS = @versionCount;
-    TEXT_NOT_APPROVED = '@messages("version.download.confirm.reviewedChannel")';
-    TEXT_PARTIALLY_APPROVED = '@messages("version.download.confirmPartial.reviewedChannel")';
-    TEXT_NOT_APPROVED_CHANNEL = '@messages("version.download.confirm.nonReviewedChannel")';
-    SHOW_HIDDEN = @request.headerData.globalPerm(ReviewProjects);
+            PLUGIN_ID = '@p.project.pluginId';
+            PROJECT_OWNER = '@p.project.ownerName';
+            PROJECT_SLUG = '@p.project.slug';
+            @if(visibleChannels.nonEmpty) {
+            CHANNEL_STRING = '@visibleChannels.mkString(",")';
+            }
+            TOTAL_VERSIONS = @versionCount;
+            TEXT_NOT_APPROVED = '@messages("version.download.confirm.reviewedChannel")';
+            TEXT_PARTIALLY_APPROVED = '@messages("version.download.confirmPartial.reviewedChannel")';
+            TEXT_NOT_APPROVED_CHANNEL = '@messages("version.download.confirm.nonReviewedChannel")';
+            SHOW_HIDDEN = @request.headerData.globalPerm(ReviewProjects);
     </script>
+}
+
+@projects.view(p, sp, "#versions", additionalScripts = scripts) {
 
     <div class="container version-container">
         <div class="row">

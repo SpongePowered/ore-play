@@ -2,7 +2,7 @@
 @import ore.OreConfig
 @()(implicit messages: Messages, request: OreRequest[_] = null, config: OreConfig)
 
-@bootstrap.layout("Error", user = false) {
+@bootstrap.layout("Error", authEnabled = false) {
 
     <div class="container-error container">
         <img src="@routes.Assets.versioned("images/ore-dark.png")" />
