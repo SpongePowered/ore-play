@@ -17,143 +17,141 @@
 
 @bootstrap.layout(messages("review.title", project.name, version.name), scripts) {
 
-    <div class="container" style="margin-top: 90px">
-        <div class="row">
-            <div class="col-md-12  header-flags">
-                <div class="clearfix">
-                    <h1 class="pull-left">@project.name <i>@version.versionString</i></h1>
-                </div>
-                <p class="user date pull-left">
-                    <a href="@routes.Users.showProjects(project.ownerName, None)">
-                        <strong>@project.ownerName</strong>
-                    </a>
-                    released this version on @prettifyDate(version.createdAt.value)
-                </p>
-                @if(!version.reviewState.isChecked) {
-                    <div class="pull-right">
-                        <span class="btn-group-sm">
-                            <a href="#" class="btn btn-info btn-skip-review">@if(version.reviewState != ReviewState.Backlog) { Remove from queue } else { Add to queue }</a>
-                            <a href="@projectRoutes.show(project.ownerName, project.slug)" class="btn btn-info">Project Page</a>
-                            <a href="@versionRoutes.downloadJar(project.ownerName, project.slug, version.versionString, None)" class="btn btn-info">Download File</a>
-                        </span>
-                        <span class="btn-group-sm">
-                            @if(mostRecentUnfinishedReview.isDefined) {
-                                @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
-                                    <button class="btn btn-review-stop btn-danger"><i class="fas fa-times-circle-o"></i> @messages("review.stop")</button>
-                                    <button class="btn btn-review-approve btn-success"><i class="fas fa-thumbs-up"></i> @messages("user.queue.approve")</button>
-                                    <button class="btn btn-review-approve-partial btn-success"><i class="fas fa-thumbs-up"></i> @messages("user.queue.approvePartial")</button>
-                                } else {
-                                    <button class="btn btn-review-takeover btn-danger"><i class="fas fa-clipboard"></i> @messages("review.takeover")</button>
-                                }
-                            } else {
-                                <button class="btn btn-review-start btn-success"><i class="fas fa-terminal"></i> @messages("review.start")</button>
-                            }
-                        </span>
-                    </div>
-                } else {
-                    <div class="pull-right">
-                        <span class="btn-group-sm">
-                            <a href="" class="btn btn-danger btn-review-reopen">Undo approval</a>
-                        </span>
-                    </div>
-                }
+    <div class="row">
+        <div class="col-md-12  header-flags">
+            <div class="clearfix">
+                <h1 class="pull-left">@project.name <i>@version.versionString</i></h1>
             </div>
+            <p class="user date pull-left">
+                <a href="@routes.Users.showProjects(project.ownerName, None)">
+                    <strong>@project.ownerName</strong>
+                </a>
+                released this version on @prettifyDate(version.createdAt.value)
+            </p>
+            @if(!version.reviewState.isChecked) {
+                <div class="pull-right">
+                    <span class="btn-group-sm">
+                        <a href="#" class="btn btn-info btn-skip-review">@if(version.reviewState != ReviewState.Backlog) { Remove from queue } else { Add to queue }</a>
+                        <a href="@projectRoutes.show(project.ownerName, project.slug)" class="btn btn-info">Project Page</a>
+                        <a href="@versionRoutes.downloadJar(project.ownerName, project.slug, version.versionString, None)" class="btn btn-info">Download File</a>
+                    </span>
+                    <span class="btn-group-sm">
+                    @if(mostRecentUnfinishedReview.isDefined) {
+                        @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
+                            <button class="btn btn-review-stop btn-danger"><i class="fas fa-times-circle-o"></i> @messages("review.stop")</button>
+                            <button class="btn btn-review-approve btn-success"><i class="fas fa-thumbs-up"></i> @messages("user.queue.approve")</button>
+                            <button class="btn btn-review-approve-partial btn-success"><i class="fas fa-thumbs-up"></i> @messages("user.queue.approvePartial")</button>
+                        } else {
+                            <button class="btn btn-review-takeover btn-danger"><i class="fas fa-clipboard"></i> @messages("review.takeover")</button>
+                        }
+                    } else {
+                        <button class="btn btn-review-start btn-success"><i class="fas fa-terminal"></i> @messages("review.start")</button>
+                    }
+                    </span>
+                </div>
+            } else {
+                <div class="pull-right">
+                    <span class="btn-group-sm">
+                        <a href="" class="btn btn-danger btn-review-reopen">Undo approval</a>
+                    </span>
+                </div>
+            }
         </div>
-        @if(mostRecentUnfinishedReview.isDefined) {
-            @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="input-group" style="width: 100%;
-                            margin-top: 1em;">
-                            <textarea type="text" class="form-control textarea-addmessage" placeholder="Message"></textarea>
-                            <div class="input-group-addon btn btn-review-addmessage-submit btn-primary"><i class="fas fa-clipboard"></i> @messages("review.addmessage")</div>
-                        </div>
-                    </div>
-                </div>
-            }
-        }
-        <div class="row version-description">
-            <div class="col-md-12">
-                <h2>@messages("review.log")</h2>
-            </div>
-            @if(reviews.isEmpty) {
+    </div>
+    @if(mostRecentUnfinishedReview.isDefined) {
+        @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
+            <div class="row">
                 <div class="col-md-12">
-                    <div class="alert-review alert alert-info" role="alert">
-                        <i class="fas fa-info-circle"></i>
-                        This version is not under review
+                    <div class="input-group" style="width: 100%;
+                        margin-top: 1em;">
+                        <textarea type="text" class="form-control textarea-addmessage" placeholder="Message"></textarea>
+                        <div class="input-group-addon btn btn-review-addmessage-submit btn-primary"><i class="fas fa-clipboard"></i> @messages("review.addmessage")</div>
                     </div>
                 </div>
-            }
-
+            </div>
+        }
+    }
+    <div class="row version-description">
+        <div class="col-md-12">
+            <h2>@messages("review.log")</h2>
+        </div>
+        @if(reviews.isEmpty) {
             <div class="col-md-12">
-                <table class="table table-condensed setting-no-border table-review-log">
-                    <tbody>
-                        @reviews.reverse.zipWithIndex.map { case ((item, name), index) =>
-                            @if(item.endedAt.isDefined) {
-                                @if(reviews.size > (reviews.size-index)) {
-                                    @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt.value))) {
-                                        <tr>
-                                            <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                            <td>
+                <div class="alert-review alert alert-info" role="alert">
+                    <i class="fas fa-info-circle"></i>
+                    This version is not under review
+                </div>
+            </div>
+        }
 
-                                                <strong>@name.getOrElse("Unknown")</strong>
-                                                took over from
-                                                <strong>@name.getOrElse("Unknown")</strong>
-                                                @if(!item.decodeMessages.exists(_.isTakeover)) {
-                                                    <i>- no message provided -</i>
-                                                } else {
-                                                    <i>@item.decodeMessages.filter(_.isTakeover).head.render</i>
-                                                }
-                                            </td>
-                                        </tr>
-                                    } else {
-                                        <tr>
-                                            <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                            <td><strong>@name.getOrElse("Unknown")</strong> stopped</td>
-                                        </tr>
-                                    }
-                                } else {
-                                    @if(version.approvedAt.isDefined) {
-                                        <tr>
-                                            <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                            <td><strong>@name.getOrElse("Unknown")</strong> approved</td>
-                                        </tr>
-                                    } else {
-                                        <tr>
-                                            <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                            <td>
-                                                <strong>@name.getOrElse("Unknown")</strong>
-                                                stopped
-                                                <br>
-                                                @if(!item.decodeMessages.exists(_.isStop)) {
-                                                    <i>- no message provided -</i>
-                                                } else {
-                                                    <i>@item.decodeMessages.filter(_.isStop).head.render</i>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                }
-                            }
-                            @item.decodeMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
+        <div class="col-md-12">
+            <table class="table table-condensed setting-no-border table-review-log">
+                <tbody>
+                @reviews.reverse.zipWithIndex.map { case ((item, name), index) =>
+                    @if(item.endedAt.isDefined) {
+                        @if(reviews.size > (reviews.size-index)) {
+                            @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt.value))) {
                                 <tr>
-                                    <td>@message.getTime</td>
+                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
+                                    <td>
+
+                                        <strong>@name.getOrElse("Unknown")</strong>
+                                        took over from
+                                        <strong>@name.getOrElse("Unknown")</strong>
+                                        @if(!item.decodeMessages.exists(_.isTakeover)) {
+                                            <i>- no message provided -</i>
+                                        } else {
+                                            <i>@item.decodeMessages.filter(_.isTakeover).head.render</i>
+                                        }
+                                    </td>
+                                </tr>
+                            } else {
+                                <tr>
+                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
+                                    <td><strong>@name.getOrElse("Unknown")</strong> stopped</td>
+                                </tr>
+                            }
+                        } else {
+                            @if(version.approvedAt.isDefined) {
+                                <tr>
+                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
+                                    <td><strong>@name.getOrElse("Unknown")</strong> approved</td>
+                                </tr>
+                            } else {
+                                <tr>
+                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
                                     <td>
                                         <strong>@name.getOrElse("Unknown")</strong>
-                                        added message
+                                        stopped
                                         <br>
-                                        <i>@message.render</i>
+                                        @if(!item.decodeMessages.exists(_.isStop)) {
+                                            <i>- no message provided -</i>
+                                        } else {
+                                            <i>@item.decodeMessages.filter(_.isStop).head.render</i>
+                                        }
                                     </td>
                                 </tr>
                             }
-                            <tr>
-                                <td>@prettifyDateAndTime(item.createdAt.value)</td>
-                                <td><strong>@name.getOrElse("Unknown")</strong> started a review</td>
-                            </tr>
                         }
-                    </tbody>
-                </table>
-            </div>
+                    }
+                    @item.decodeMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
+                        <tr>
+                            <td>@message.getTime</td>
+                            <td>
+                                <strong>@name.getOrElse("Unknown")</strong>
+                                added message
+                                <br>
+                                <i>@message.render</i>
+                            </td>
+                        </tr>
+                    }
+                <tr>
+                    <td>@prettifyDateAndTime(item.createdAt.value)</td>
+                    <td><strong>@name.getOrElse("Unknown")</strong> started a review</td>
+                </tr>
+                }
+                </tbody>
+            </table>
         </div>
     </div>
 

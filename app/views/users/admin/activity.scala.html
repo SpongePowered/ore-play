@@ -11,57 +11,55 @@
 
 @bootstrap.layout(messages("activity.title") + user.name) {
 
-    <div class="container" style="margin-top: 90px">
-        <div class="row">
-            <div class="col-md-12  header-flags">
-                <div class="clearfix">
-                    <h1 class="pull-left">@messages("activity.title") <i>@user.name</i></h1>
-                </div>
+    <div class="row">
+        <div class="col-md-12  header-flags">
+            <div class="clearfix">
+                <h1 class="pull-left">@messages("activity.title") <i>@user.name</i></h1>
             </div>
         </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4 class="panel-title pull-left">@messages("activity.title")</h4>
-                        <div class="clearfix"></div>
-                    </div>
-                    <table class="table table-condensed setting-no-border table-review-log">
-                        <tbody>
-                            @if(activities.isEmpty) {
-                                <tr><td>No activities founds</td></tr>
-                            }
-                            @activities.map {
-                                case (Right(review), project) => {
-									  <tr>
-										  <td>Review approved</td>
-										  <td>@prettifyDateAndTime(review.endedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
-										  <td>for:
-											  @if(project.isDefined) {
-												  <a href="@controllers.routes.Reviews.showReviews(project.get.ownerName, project.get.slug, review.id.value.toString)">
-													  @project.get.ownerName / @project.get.name
-												  </a>
-											  }
-										  </td>
-									  </tr>
-								  }
-                                case (Left(flag), project) => {
-									<tr>
-										<td>Flag resolved</td>
-										<td>@prettifyDateAndTime(flag.resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
-										<td>for:
-											@if(project.isDefined) {
-												<a href="@controllers.project.routes.Projects.show(project.get.ownerName, project.get.slug)">
-													@project.get.ownerName / @project.get.name
-												</a>
-											}
-										</td>
-									</tr>
-								}
-                            }
-                        </tbody>
-                    </table>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title pull-left">@messages("activity.title")</h4>
+                    <div class="clearfix"></div>
                 </div>
+                <table class="table table-condensed setting-no-border table-review-log">
+                    <tbody>
+                        @if(activities.isEmpty) {
+                            <tr><td>No activities founds</td></tr>
+                        }
+                        @activities.map {
+                            case (Right(review), project) => {
+                                <tr>
+                                    <td>Review approved</td>
+                                    <td>@prettifyDateAndTime(review.endedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
+                                    <td>for:
+                                        @if(project.isDefined) {
+                                            <a href="@controllers.routes.Reviews.showReviews(project.get.ownerName, project.get.slug, review.id.value.toString)">
+                                                @project.get.ownerName / @project.get.name
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            case (Left(flag), project) => {
+                                <tr>
+                                    <td>Flag resolved</td>
+                                    <td>@prettifyDateAndTime(flag.resolvedAt.getOrElse(Timestamp.from(Instant.EPOCH)))</td>
+                                    <td>for:
+                                        @if(project.isDefined) {
+                                            <a href="@controllers.project.routes.Projects.show(project.get.ownerName, project.get.slug)">
+                                                @project.get.ownerName / @project.get.name
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

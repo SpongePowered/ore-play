@@ -8,7 +8,7 @@ this.
 @import ore.OreConfig
 @import security.NonceFilter._
 @(title: String, additionalScripts: Html = Html(""), scriptsEnabled: Boolean = true, authEnabled: Boolean = true, showHeader: Boolean = true,
-        showFooter: Boolean = true)(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
+        showFooter: Boolean = true, noContainer: Boolean = false)(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
 
 <!DOCTYPE html>
 <html>
@@ -44,7 +44,13 @@ this.
         }
 
         <div class="site-content">
-            @content
+            @if(noContainer) {
+              @content
+            } else {
+                <div class="container @if(showHeader){site-header-margin}">
+                    @content
+                </div>
+            }
         </div>
 
         @if(showFooter) {

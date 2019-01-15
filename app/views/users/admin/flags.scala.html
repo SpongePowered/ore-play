@@ -17,59 +17,57 @@
 
 @bootstrap.layout("Flags", scripts) {
 
-    <div class="container" style="margin-top: 90px;">
-        <div class="row">
-            <div class="col-md-12 header-flags">
-                <h2>Flags</h2>
-                <h3 class="minor no-flags" @if(flags.nonEmpty) { style="display: none;" }>
-                    <i class="far fa-thumbs-up"></i> @messages("user.flags.none")
-                </h3>
-            </div>
+    <div class="row">
+        <div class="col-md-12 header-flags">
+            <h2>Flags</h2>
+            <h3 class="minor no-flags" @if(flags.nonEmpty) { style="display: none;" }>
+                <i class="far fa-thumbs-up"></i> @messages("user.flags.none")
+            </h3>
         </div>
-        <div class="row">
-            <div class="col-md-12">
-                <ul class="list-group list-flags-admin">
-                    @flags.map { case (flag, user, project, projectPerm) =>
-                        <li data-flag-id="@flag.id.value" class="list-group-item">
-                            <div class="row">
-                                <div class="col-xs-12 col-md-1" style="width: 40px;">
-                                    <a href="@routes.Users.showProjects(user.name, None)">
-                                        @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
-                                    </a>
-                                </div>
-                                <div class="col-xs-12 col-md-5">
-                                    <span class="description">
-                                        <strong>@user.name</strong>
-                                        <span class="minor"> reported </span>
-                                        <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                            @project.ownerName/<strong>@project.slug</strong>
-                                        </a>
-                                        <span class="minor"> for </span>
-                                        <strong>@flag.reason.title</strong>
-                                        @if(flag.comment != null) {
-                                            <br><i class="minor">@flag.comment</i>
-                                        }
-                                    </span>
-                                </div>
-                                <div class="col-xs-12">
-                                    <span class="pull-right btn-group-sm">
-                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@user.name" class="btn btn-default">
-                                            <i class="fas fa-reply"></i> @messages("user.flags.messageUser")
-                                        </a>
-                                        <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
-                                            <i class="fas fa-reply"></i> @messages("user.flags.messageOwner")
-                                        </a>
-                                        @projects.helper.btnHide(project, projectPerm)
-                                        <button type="submit" class="btn btn-primary btn-resolve">
-                                            <i class="fas fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
-                                        </button>
-                                    </span>
-                                </div>
-                            </div>
-                        </li>
-                    }
-                </ul>
-            </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <ul class="list-group list-flags-admin">
+            @flags.map { case (flag, user, project, projectPerm) =>
+            <li data-flag-id="@flag.id.value" class="list-group-item">
+                <div class="row">
+                    <div class="col-xs-12 col-md-1" style="width: 40px;">
+                        <a href="@routes.Users.showProjects(user.name, None)">
+                        @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
+                        </a>
+                    </div>
+                    <div class="col-xs-12 col-md-5">
+                        <span class="description">
+                            <strong>@user.name</strong>
+                            <span class="minor"> reported </span>
+                            <a href="@projectRoutes.show(project.ownerName, project.slug)">
+                                @project.ownerName/<strong>@project.slug</strong>
+                            </a>
+                            <span class="minor"> for </span>
+                            <strong>@flag.reason.title</strong>
+                            @if(flag.comment != null) {
+                                <br><i class="minor">@flag.comment</i>
+                            }
+                        </span>
+                    </div>
+                    <div class="col-xs-12">
+                        <span class="pull-right btn-group-sm">
+                            <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@user.name" class="btn btn-default">
+                                <i class="fas fa-reply"></i> @messages("user.flags.messageUser")
+                            </a>
+                            <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@project.ownerName" class="btn btn-default">
+                                <i class="fas fa-reply"></i> @messages("user.flags.messageOwner")
+                            </a>
+                            @projects.helper.btnHide(project, projectPerm)
+                            <button type="submit" class="btn btn-primary btn-resolve">
+                                <i class="fas fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </li>
+            }
+            </ul>
         </div>
     </div>
 

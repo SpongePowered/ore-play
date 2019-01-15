@@ -16,34 +16,47 @@
 
 @scripts = {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.versioned("javascripts/queue.js")"></script>
+    <script nonce="@nonce">
+            $(function(){
+                var momentNow = moment();
+                var maxDifference = @config.ore.queue.maxReviewTime.toMillis;
+                $('span[data-ago]').each(function() {
+                    var momentAgo = moment($(this).data('ago'))
+                    $(this).text($(this).data('title') + momentAgo.fromNow());
+                    if (momentNow.diff(momentAgo) >= maxDifference) {
+                        $(this).text('pastdue ' + momentAgo.fromNow()).css('color', 'darkred');
+                        $(this).parent().parent().find('.status').removeClass().addClass('status far fa-fw fa-clock fa-2x').css('color', 'darkred');
+                    }
+                });
+            });
+    </script>
 }
 
 @bootstrap.layout(messages("user.queue"), scripts) {
 
-    <div class="container" style="margin-top: 90px">
-        <div class="row">
-            <div class="col-md-12 header-flags">
-                <h2>@messages("user.queue.progress")</h2>
-            </div>
+    <div class="row">
+        <div class="col-md-12 header-flags">
+            <h2>@messages("user.queue.progress")</h2>
         </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4 class="panel-title pull-left">@messages("user.queue.progress")</h4>
-                        <div class="clearfix"></div>
-                    </div>
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Project version</th>
-                                <th>Queued by</th>
-                                <th style="text-align: right; max-width: 40px"></th>
-                                <th>Status</th>
-                                <th ></th>
-                            </tr>
-                        </thead>
-                        <tbody>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title pull-left">@messages("user.queue.progress")</h4>
+                    <div class="clearfix"></div>
+                </div>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Project version</th>
+                            <th>Queued by</th>
+                            <th style="text-align: right; max-width: 40px"></th>
+                            <th>Status</th>
+                            <th ></th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         @if(underReview.isEmpty) {
                             <tr>
                                 <th rowspan="5">
@@ -52,82 +65,82 @@
                             </tr>
                         }
                         @underReview.map { case (project, version, channel, author, (review, unfinishedReview, reviewer)) =>
-                            <tr @if(unfinishedReview && request.headerData.isCurrentUser(review.userId)){ class="warning" }>
-                                <td>
-                                    <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
-                                        @project.ownerName/<string>@project.name</string>
-                                    </a>
-                                    <br>
-                                    @version.versionString
-                                    <span class="channel" style="background-color: @channel.color.hex">@channel.name</span>
-                                </td>
-                                <td>
-                                    @if(author.isDefined) {
-                                        <a href="https://forums.spongepowered.org/users/@project.ownerName">
-                                        @author.get
-                                        </a>
-                                    } else {
-                                        Unknown
-                                    }
-                                    <br>
-                                    @prettifyDateAndTime(version.createdAt.value)
-                                </td>
-                                <td style="text-align: right; max-width: 40px">
-                                @if(unfinishedReview) {
-                                    @if(request.headerData.isCurrentUser(review.userId)) {
-                                        <i class="status fas fa-fw fa-play-circle fa-2x" style="color: green"></i>
-                                    } else {
-                                        <i class="status fas fa-fw fa-cog fa-2x" style="color: black"></i>
-                                    }
-                                } else {
-                                    <i class="status fas fa-fw fa-pause-circle fa-2x" style="color: orange"></i>
-                                }
-                                </td>
-                                <td @if(!unfinishedReview){ style="color: darkred" }>
-                                @if(unfinishedReview) {
-                                    @reviewer
-                                    <br>
-                                    <span data-ago="@review.createdAt.value.getTime" data-title="started "></span>
-                                } else {
-                                    <strike>@reviewer</strike>
-                                    <br>
-                                    <span data-ago="@review.createdAt.value.getTime" data-title="abandoned "></span>
-                                }
-                                </td>
-                                <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
-                                    <a href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews"><i class="fas fa-2x fa-fw fa-info"></i></a>
-                                </td>
-                            </tr>
+                        <tr @if(unfinishedReview && request.headerData.isCurrentUser(review.userId)){ class="warning" }>
+                        <td>
+                            <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
+                                @project.ownerName/<string>@project.name</string>
+                            </a>
+                            <br>
+                            @version.versionString
+                            <span class="channel" style="background-color: @channel.color.hex">@channel.name</span>
+                        </td>
+                        <td>
+                            @if(author.isDefined) {
+                                <a href="https://forums.spongepowered.org/users/@project.ownerName">
+                                @author.get
+                                </a>
+                            } else {
+                                Unknown
+                            }
+                        <br>
+                        @prettifyDateAndTime(version.createdAt.value)
+                        </td>
+                        <td style="text-align: right; max-width: 40px">
+                        @if(unfinishedReview) {
+                            @if(request.headerData.isCurrentUser(review.userId)) {
+                                <i class="status fas fa-fw fa-play-circle fa-2x" style="color: green"></i>
+                            } else {
+                                <i class="status fas fa-fw fa-cog fa-2x" style="color: black"></i>
+                            }
+                        } else {
+                            <i class="status fas fa-fw fa-pause-circle fa-2x" style="color: orange"></i>
                         }
-                        </tbody>
-                    </table>
-                </div>
+                        </td>
+                        <td @if(!unfinishedReview){ style="color: darkred" }>
+                        @if(unfinishedReview) {
+                            @reviewer
+                            <br>
+                            <span data-ago="@review.createdAt.value.getTime" data-title="started "></span>
+                        } else {
+                            <strike>@reviewer</strike>
+                            <br>
+                            <span data-ago="@review.createdAt.value.getTime" data-title="abandoned "></span>
+                        }
+                        </td>
+                        <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
+                            <a href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews"><i class="fas fa-2x fa-fw fa-info"></i></a>
+                        </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
-            </div>
         </div>
-        <div class="row">
-            <div class="col-md-12 header-flags">
-                <h2>@messages("user.queue.open")</h2>
-            </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 header-flags">
+            <h2>@messages("user.queue.open")</h2>
         </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4 class="panel-title pull-left">@messages("user.queue.open")</h4>
-                        <div class="clearfix"></div>
-                    </div>
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>Project</th>
-                                <th>Version</th>
-                                <th>Queued by</th>
-                                <th style="text-align: right">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title pull-left">@messages("user.queue.open")</h4>
+                    <div class="clearfix"></div>
+                </div>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Project</th>
+                            <th>Version</th>
+                            <th>Queued by</th>
+                            <th style="text-align: right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         @if(versions.isEmpty) {
                             <tr>
                                 <th rowspan="5">
@@ -136,51 +149,36 @@
                             </tr>
                         }
                         @versions.sortWith(_._2.createdAt.value.getTime < _._2.createdAt.value.getTime).map { case (project, version, channel, author, projectOwner) =>
-                            <tr data-version="@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)">
-                                <td>
-                                    @userAvatar(Some(projectOwner.name), projectOwner.avatarUrl, clazz = "user-avatar-xs")
-                                </td>
-                                <td>
-                                    <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
-                                        @project.ownerName/<strong>@project.name</strong>
+                        <tr data-version="@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)">
+                            <td>
+                            @userAvatar(Some(projectOwner.name), projectOwner.avatarUrl, clazz = "user-avatar-xs")
+                            </td>
+                            <td>
+                                <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
+                                    @project.ownerName/<strong>@project.name</strong>
+                                </a>
+                            </td>
+                            <td>
+                                <span class="faint">@prettifyDate(version.createdAt.value)</span>
+                                <span class="minor">@version.versionString</span>
+                                <span class="channel" style="background-color: @channel.color.hex;">@channel.name</span>
+                            </td>
+                            <td>
+                                @if(author.isDefined) {
+                                    <a href="https://forums.spongepowered.org/users/@project.ownerName">
+                                    @author.get
                                     </a>
-                                </td>
-                                <td>
-                                    <span class="faint">@prettifyDate(version.createdAt.value)</span>
-                                    <span class="minor">@version.versionString</span>
-                                    <span class="channel" style="background-color: @channel.color.hex;">@channel.name</span>
-                                </td>
-                                <td>
-                                    @if(author.isDefined) {
-                                        <a href="https://forums.spongepowered.org/users/@project.ownerName">
-                                        @author.get
-                                        </a>
-                                    }
-                                <br>
-                                <td style="vertical-align: middle; text-align: right">
-                                    <a class="btn btn-success" href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews">Start review</a>
-                                </td>
-                            </tr>
+                                }
+                            <br>
+                        <td style="vertical-align: middle; text-align: right">
+                            <a class="btn btn-success" href="/@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)/reviews">Start review</a>
+                        </td>
+                        </tr>
                         }
-                        </tbody>
-                    </table>
-                </div>
-
+                    </tbody>
+                </table>
             </div>
+
         </div>
     </div>
-    <script nonce="@nonce">
-        $(function(){
-            var momentNow = moment();
-            var maxDifference = @config.ore.queue.maxReviewTime.toMillis;
-            $('span[data-ago]').each(function() {
-                var momentAgo = moment($(this).data('ago'))
-                $(this).text($(this).data('title') + momentAgo.fromNow());
-                if (momentNow.diff(momentAgo) >= maxDifference) {
-                    $(this).text('pastdue ' + momentAgo.fromNow()).css('color', 'darkred');
-                    $(this).parent().parent().find('.status').removeClass().addClass('status far fa-fw fa-clock fa-2x').css('color', 'darkred');
-                }
-            });
-        });
-    </script>
 }
