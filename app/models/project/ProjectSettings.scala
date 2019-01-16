@@ -14,6 +14,7 @@ import ore.project.factory.PendingProject
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}
 import ore.user.notification.NotificationType
+import util.GitHubUtil
 import util.StringUtils._
 
 import cats.data.NonEmptyList
@@ -42,7 +43,8 @@ case class ProjectSettings(
     source: Option[String],
     licenseName: Option[String],
     licenseUrl: Option[String],
-    forumSync: Boolean
+    forumSync: Boolean,
+    githubSync: Boolean
 ) extends Model {
 
   override type M = ProjectSettings
@@ -83,7 +85,8 @@ case class ProjectSettings(
         source = noneIfEmpty(formData.source),
         licenseUrl = noneIfEmpty(formData.licenseUrl),
         licenseName = if (formData.licenseUrl.nonEmpty) Some(formData.licenseName) else licenseName,
-        forumSync = formData.forumSync
+        forumSync = formData.forumSync,
+        githubSync = formData.githubSync
       )
     )
 
@@ -159,7 +162,8 @@ object ProjectSettings {
       source: Option[String] = None,
       licenseName: Option[String] = None,
       licenseUrl: Option[String] = None,
-      forumSync: Boolean = true
+      forumSync: Boolean = true,
+      githubSync: Boolean = true
   ) {
 
     /**
@@ -215,7 +219,19 @@ object ProjectSettings {
     }
 
     def asFunc(projectId: DbRef[Project]): InsertFunc[ProjectSettings] =
-      (id, time) => ProjectSettings(id, time, projectId, homepage, issues, source, licenseName, licenseUrl, forumSync)
+      (id, time) =>
+        ProjectSettings(
+          id,
+          time,
+          projectId,
+          homepage,
+          issues,
+          source,
+          licenseName,
+          licenseUrl,
+          forumSync,
+          githubSync && source.exists(GitHubUtil.isGitHubUrl)
+      )
   }
 
   implicit val query: ModelQuery[ProjectSettings] =

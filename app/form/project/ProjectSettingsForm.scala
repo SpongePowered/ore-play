@@ -20,5 +20,6 @@ case class ProjectSettingsForm(
     roleUps: List[String],
     updateIcon: Boolean,
     ownerId: Option[DbRef[User]],
-    forumSync: Boolean
+    forumSync: Boolean,
+    githubSync: Boolean
 ) extends TProjectRoleSetBuilder

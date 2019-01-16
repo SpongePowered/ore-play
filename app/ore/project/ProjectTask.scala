@@ -7,8 +7,11 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
+import play.api.libs.ws.WSClient
+
 import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
+import db.impl.schema.{ProjectSettingsTable, ProjectTableMain}
 import db.{ModelFilter, ModelService}
 import models.project.{Project, Visibility}
 import ore.OreConfig
@@ -21,7 +24,7 @@ import com.typesafe.scalalogging
   * Task that is responsible for publishing New projects
   */
 @Singleton
-class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
+class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig, ws: WSClient)(
     implicit ec: ExecutionContext,
     service: ModelService
 ) extends Runnable {
@@ -38,6 +41,12 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   private def createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
   private def newProjects     = service.filter[Project](newFilter && createdAtFilter)
 
+  private val githubSyncProjects = for {
+    project  <- TableQuery[ProjectTableMain]
+    settings <- TableQuery[ProjectSettingsTable] if settings.id === project.id
+    if settings.githubSync
+  } yield project
+
   /**
     * Starts the task.
     */
@@ -49,10 +58,19 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   /**
     * Task runner
     */
-  def run(): Unit = newProjects.unsafeToFuture().foreach { projects =>
-    projects.foreach { project =>
-      Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-      project.setVisibility(Visibility.Public, "Changed by task", project.ownerId).unsafeRunAsyncAndForget()
+  def run(): Unit = {
+    newProjects.unsafeToFuture().foreach { projects =>
+      projects.foreach { project =>
+        Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
+        project.setVisibility(Visibility.Public, "Changed by task", project.ownerId).unsafeRunAsyncAndForget()
+      }
+    }
+
+    service.runDBIO(githubSyncProjects.result).unsafeToFuture().foreach { projects =>
+      projects.foreach { project =>
+        Logger.debug(s"Syncing README for ${project.ownerName}/${project.slug} from Github")
+        project.syncHomepage(service, config, ws).unsafeRunAsyncAndForget()
+      }
     }
   }
 }

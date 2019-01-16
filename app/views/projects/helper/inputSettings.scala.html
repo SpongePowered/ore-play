@@ -6,7 +6,8 @@
   licenseName: Option[String] = None,
   licenseUrl: Option[String] = None,
   selected: Option[Category] = None,
-  forumSync: Boolean = true)(implicit messages: Messages)
+  forumSync: Boolean = true,
+  githubSync: Boolean = true)(implicit messages: Messages)
 
 <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectManage.js")"></script>
 
@@ -92,6 +93,20 @@
         <label>
             <input @if(forumSync) { checked } value="true" form="@form" type="checkbox" id="forum-sync" name="forum-sync">
             Make forum posts
+        </label>
+    </div>
+    <div class="clearfix"></div>
+</div>
+
+<div class="setting">
+    <div class="setting-description">
+        <h4>@messages("project.settings.githubSync")</h4>
+        <p>@messages("project.settings.githubSync.info")</p>
+    </div>
+    <div class="setting-content">
+        <label>
+            <input @if(githubSync) { checked } value="true" form="@form" type="checkbox" id="github-sync" name="github-sync">
+            Sync github README
         </label>
     </div>
     <div class="clearfix"></div>

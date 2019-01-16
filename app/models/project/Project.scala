@@ -6,6 +6,7 @@ import java.time.Instant
 import play.api.i18n.Messages
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
+import play.api.libs.ws.WSClient
 import play.twirl.api.Html
 
 import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
@@ -31,11 +32,12 @@ import ore.permission.scope.HasScope
 import ore.project.{Category, FlagReason, ProjectMember}
 import ore.user.MembershipDossier
 import ore.{Joinable, OreConfig, Visitable}
+import _root_.util.GitHubUtil
 import _root_.util.StringUtils
 import _root_.util.StringUtils._
 import _root_.util.syntax._
 
-import cats.data.OptionT
+import cats.data.{EitherT, OptionT}
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
@@ -331,7 +333,7 @@ case class Project(
 
   private def getOrInsert(name: String, parentId: Option[DbRef[Page]])(
       page: InsertFunc[Page]
-  )(implicit service: ModelService): IO[Page] = {
+  )(implicit service: ModelService): IO[(Page, Boolean)] = {
     def like =
       service.find[Page] { p =>
         p.projectId === this.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
@@ -340,21 +342,49 @@ case class Project(
       }
 
     like.value.flatMap {
-      case Some(u) => IO.pure(u)
-      case None    => service.insert(page)
+      case Some(u) => IO.pure((u, false))
+      case None    => service.insert(page).tupleRight(true)
     }
   }
+
+  def getGithubReadme(implicit service: ModelService, config: OreConfig, ws: WSClient): EitherT[IO, String, String] =
+    OptionT(this.settings.map(_.source))
+      .filter(GitHubUtil.isGitHubUrl)
+      .toRight("No github source")
+      .flatMap { githubSource =>
+        val urlParts  = githubSource.split("//github.com/", 2)(1).split("/")
+        val ghUser    = urlParts(0)
+        val ghProject = urlParts(1)
+        GitHubUtil.getReadme(ghUser, ghProject)
+      }
+
+  def syncHomepage(implicit service: ModelService, config: OreConfig, ws: WSClient): IO[Page] =
+    homePageOrCreate(scrapGithub = true).flatMap {
+      case (page, true) => IO.pure(page)
+      case (page, false) =>
+        getGithubReadme.semiflatMap(str => service.update(page.copy(contents = str))).getOrElse(page)
+    }
+
+  def homePageOrCreate(
+      scrapGithub: Boolean
+  )(implicit service: ModelService, config: OreConfig, ws: WSClient): IO[(Page, Boolean)] =
+    EitherT
+      .rightT[IO, String](scrapGithub)
+      .ensure("")(identity)
+      .flatMap(_ => getGithubReadme)
+      .getOrElse(Page.homeMessage)
+      .map { body =>
+        Page.partial(this.id.value, Page.homeName, Page.template(this.name, body), isDeletable = false, None)
+      }
+      .flatMap(page => getOrInsert(Page.homeName, None)(page))
 
   /**
     * Returns this Project's home page.
     *
     * @return Project home page
     */
-  def homePage(implicit service: ModelService, config: OreConfig): IO[Page] = {
-    val page =
-      Page.partial(this.id.value, Page.homeName, Page.template(this.name, Page.homeMessage), isDeletable = false, None)
-    getOrInsert(Page.homeName, None)(page)
-  }
+  def homePage(implicit service: ModelService, config: OreConfig, ws: WSClient): IO[Page] =
+    settings.flatMap(settings => homePageOrCreate(settings.githubSync)).map(_._1)
 
   /**
     * Returns true if a page with the specified name exists.
@@ -385,7 +415,7 @@ case class Project(
         text
     }
     val page = Page.partial(this.id.value, name, c, isDeletable = true, parentId)
-    getOrInsert(name, parentId)(page)
+    getOrInsert(name, parentId)(page).map(_._1)
   }
 
   /**

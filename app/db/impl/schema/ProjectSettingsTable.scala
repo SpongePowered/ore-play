@@ -14,9 +14,12 @@ class ProjectSettingsTable(tag: Tag) extends ModelTable[ProjectSettings](tag, "p
   def licenseName = column[String]("license_name")
   def licenseUrl  = column[String]("license_url")
   def forumSync   = column[Boolean]("forum_sync")
+  def githubSync  = column[Boolean]("github_sync")
 
   override def * =
-    mkProj((id.?, createdAt.?, projectId, homepage.?, issues.?, source.?, licenseName.?, licenseUrl.?, forumSync))(
+    mkProj(
+      (id.?, createdAt.?, projectId, homepage.?, issues.?, source.?, licenseName.?, licenseUrl.?, forumSync, githubSync)
+    )(
       mkTuple[ProjectSettings]()
     )
 }
