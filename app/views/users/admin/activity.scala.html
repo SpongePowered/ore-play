@@ -7,7 +7,7 @@
 @import models.user.User
 @import ore.OreConfig
 @import util.StringUtils._
-@(user: User, activities: Seq[(Either[Flag, Review], Option[Project])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(user: User, activities: Seq[(Either[Flag, Review], Option[Project])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @bootstrap.layout(messages("activity.title") + user.name) {
 

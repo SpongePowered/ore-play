@@ -6,7 +6,7 @@
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
-@import views.html.utils.{alert, modal, prompt, userAvatar}
+@import views.html.utils.{modal, prompt, userAvatar}
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
@@ -23,7 +23,6 @@
 }
 
 @bootstrap.layout(u.user.name, scripts) {
-    @alert("error")
 
     @flash.get("pgp-updated").map { _ =>
         <script nonce="@nonce">

@@ -2,7 +2,7 @@
 
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@(title: String, step: Int, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(title: String, step: Int, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @bootstrap.layout(title, additionalScripts) {
 

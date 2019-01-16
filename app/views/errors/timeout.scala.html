@@ -1,6 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@()(implicit messages: Messages, request: OreRequest[_] = null, config: OreConfig)
+@()(implicit messages: Messages, request: OreRequest[_] = null, config: OreConfig, flash: Flash)
 
 @bootstrap.layout(messages("error.ore.timeout"), authEnabled = false, noContainer = true) {
 

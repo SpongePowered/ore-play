@@ -30,8 +30,6 @@ Discussion page within Project overview.
     @if(request.headerData.currentUser.isDefined) {
         <div class="col-md-8">
             <div class="reply-box">
-                @utils.alert("error")
-
                 @if(forumsAvailable) {
                     @if(sp.canPostAsOwnerOrga) {
                         <div class="pull-right push-down">

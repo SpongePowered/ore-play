@@ -5,7 +5,7 @@
   topicDirtyProjects: Seq[Project],
   staleProjects: Seq[Project],
   notPublicProjects: Seq[Project],
-  missingFileProjects: Seq[(Version, Project)])(implicit request: OreRequest[_], messages: Messages, config: OreConfig)
+  missingFileProjects: Seq[(Version, Project)])(implicit request: OreRequest[_], messages: Messages, config: OreConfig, flash: Flash)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}

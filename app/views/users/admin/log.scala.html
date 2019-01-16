@@ -12,7 +12,7 @@
 
 @(actions: Seq[LoggedActionViewModel[_]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],
-        actionFilter: Option[Int], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+        actionFilter: Option[Int], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("diff-match-patch/javascript/diff_match_patch.js")"></script>

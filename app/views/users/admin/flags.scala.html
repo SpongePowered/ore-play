@@ -6,7 +6,7 @@
 @import views.html.utils.userAvatar
 
 @* project perms for all visibilities *@
-@(flags: Seq[(Flag, User, Project, Map[Permission, Boolean])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(flags: Seq[(Flag, User, Project, Map[Permission, Boolean])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

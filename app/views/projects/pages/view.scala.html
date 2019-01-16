@@ -12,7 +12,7 @@ Documentation page within Project overview.
 @import ore.permission.EditPages
 @import security.NonceFilter._
 @import util.StringUtils._
-@import views.html.utils.{alert, editor}
+@import views.html.utils.editor
 @(p: ProjectData,
   sp: ScopedProjectData,
   rootPages: Seq[(Page, Seq[Page])],
@@ -42,7 +42,6 @@ Documentation page within Project overview.
         <div class="col-md-9">
             <div class="row">
                 <div class="col-md-12">
-                    @alert("error")
                     @editor(
                         saveCall = routes.Pages.save(p.project.ownerName, p.project.slug, page.fullSlug(parentPage)),
                         deleteCall = routes.Pages.delete(p.project.ownerName, p.project.slug, page.fullSlug(parentPage)),

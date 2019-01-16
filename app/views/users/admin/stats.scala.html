@@ -5,7 +5,7 @@
 @import security.NonceFilter._
 @(reviews: Seq[(String, String)], uploads: Seq[(String, String)], totalDownloads: Seq[(String, String)],
         unsafeDownloads: Seq[(String, String)], flagsOpen: Seq[(String, String)], flagsClosed: Seq[(String, String)])(implicit messages: Messages,
-        request: OreRequest[_], config: OreConfig)
+        request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @scripts = {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.versioned("lib/chart.js/dist/Chart.min.js")"></script>

@@ -11,7 +11,6 @@ sorted according to different criteria.
 @import ore.project.{Category, ProjectSortingStrategies}
 @import ore.{OreConfig, Platform, PlatformCategory}
 @import security.NonceFilter._
-@import views.html.utils.alert
 @(models: Seq[(Project, User, Version, Seq[VersionTag])], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform])(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
@@ -54,13 +53,6 @@ sorted according to different criteria.
 
     <!-- Header -->
     <div class="index-header">
-        <div class="row">
-            <div class="col-md-12">
-                @alert("success")
-                @alert("error")
-            </div>
-        </div>
-
         <div class="row centered-content-row">
             <div class="col-md-9 ore-banner">
                 <div class="row aligned-row">

@@ -2,7 +2,6 @@
 @import ore.OreConfig
 @import ore.permission.role.RoleCategory
 @import views.html.helper.{CSRF, form}
-@import views.html.utils.alert
 @()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @scripts = {
@@ -22,8 +21,6 @@
                     </div>
 
                     <div class="project-body panel-body">
-                        @alert("error")
-
                         <p class="minor"> @messages("org.info")</p>
 
                         @form(action = routes.Organizations.create(), 'id -> "form-continue") {

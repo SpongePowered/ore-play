@@ -7,7 +7,7 @@
         target: Version,
         isTargetChannelNonReviewed: Boolean,
         downloadType: DownloadType,
-        token: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+        token: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @versionRoutes = @{ controllers.project.routes.Versions }
 

@@ -10,7 +10,7 @@
 
 @* @notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }*@
 
-@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 
 @projectRoutes = @{controllers.project.routes.Projects}

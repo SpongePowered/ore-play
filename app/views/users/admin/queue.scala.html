@@ -9,7 +9,7 @@
 @import views.html.utils.userAvatar
 
 @(underReview: Seq[(Project, Version, Channel, Option[String], (Review, Boolean, String))],
-  versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+  versions: Seq[(Project, Version, Channel, Option[String], User)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 
 @versionRoutes = @{controllers.project.routes.Versions}

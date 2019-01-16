@@ -34,8 +34,6 @@ Page used for uploading and creating new projects.
             <p>@Html(messages("project.create.infoText.pgp"))</p>
         </div>
 
-        @utils.alert("error")
-
         @if(pending.isDefined) {
             @* Display plugin metadata *@
             @defining(pending.get) { project: PendingProject =>
