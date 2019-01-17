@@ -15,17 +15,17 @@
         <appender-ref ref="Console" />
     </appender>
 
-    <root level="WARN">
-        <appender-ref ref="Sentry" />
-        <appender-ref ref="AsyncConsole" />
-    </root>
-
     <!-- Sentry -->
     <appender name="Sentry" class="io.sentry.logback.SentryAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>WARN</level>
         </filter>
     </appender>
+
+    <root level="WARN">
+        <appender-ref ref="Sentry" />
+        <appender-ref ref="AsyncConsole" />
+    </root>
 
     <!-- Disables the security logger -->
     <turboFilter class="ch.qos.logback.classic.turbo.MarkerFilter">
