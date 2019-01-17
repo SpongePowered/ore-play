@@ -138,6 +138,38 @@ object ActionHelpers {
       * @return          Result with message
       */
     def withSuccesses(messages: List[String]): Result = withAlerts("success", messages)
+
+    /**
+      * Adds a warning info to the result.
+      *
+      * @param message  Info message
+      * @return         Result with message
+      */
+    def withInfo(message: String): Result = withAlert("info", message)
+
+    /**
+      * Adds one or more info messages to the result.
+      *
+      * @param messages  Info messages
+      * @return          Result with message
+      */
+    def withInfo(messages: List[String]): Result = withAlerts("info", messages)
+
+    /**
+      * Adds a warning message to the result.
+      *
+      * @param message  Warning message
+      * @return         Result with message
+      */
+    def withWarning(message: String): Result = withAlert("warning", message)
+
+    /**
+      * Adds one or more warning messages to the result.
+      *
+      * @param messages  Warning messages
+      * @return          Result with message
+      */
+    def withWarnings(messages: List[String]): Result = withAlerts("warning", messages)
   }
 
   class FormBindOps[A](private val form: Form[A]) extends AnyVal {
