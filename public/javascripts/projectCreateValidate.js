@@ -32,21 +32,17 @@ function tooltip(selector, title) {
     });
 }
 
-function removeSpinner(selector) {
-    $(selector).removeClass('fa-spinner fa-spin');
-}
-
 function success(selector, then) {
     // Simulate loading :P
     setTimeout(function() {
-        removeSpinner(selector);
+        toggleSpinner($(selector));
         $(selector).addClass('fa-check-circle');
         then();
     }, 500);
 }
 
 function failed(selector, message) {
-    removeSpinner(selector);
+    toggleSpinner($(selector));
     $(selector).addClass('fa-times-circle');
     tooltip(selector, message);
 }
@@ -93,7 +89,7 @@ function checkName(name, idSuccess, owner, slug) {
 
 function updateContinueButton(idSuccess, nameSuccess) {
     var btn = $('.continue-btn').hide().removeClass('btn-default');
-    var icon = btn.find('i').removeClass('fa-spinner fa-spin');
+    var icon = toggleSpinner(btn.find('[data-fa-i2svg]'));
     if (idSuccess && nameSuccess) {
         btn.addClass('btn-primary').prop('disabled', false);
         icon.addClass('fa-arrow-right');

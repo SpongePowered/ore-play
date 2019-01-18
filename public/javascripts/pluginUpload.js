@@ -30,8 +30,8 @@ function getAlert() {
 function clearIcon(e) {
     return e.removeClass('fa-spinner')
         .removeClass('fa-spin')
-        .removeClass('fa-pencil')
-        .removeClass('fa-upload');
+        .addClass('fa-pencil-alt')
+        .addClass('fa-upload');
 }
 
 function failure(message) {
@@ -40,8 +40,12 @@ function failure(message) {
 
     var bs = alert.find('.alert');
     bs.removeClass('alert-info').addClass('alert-danger');
-    var noticeIcon = bs.find('i');
-    noticeIcon.removeClass('fa-file-archive-o').addClass('fa-exclamation-circle').tooltip({
+    var noticeIcon = bs.find('[data-fa-i2svg]');
+
+    noticeIcon.attr('data-prefix', 'fas');
+    noticeIcon.toggleClass('fa-file-archive').toggleClass('fa-exclamation-circle');
+
+    bs.tooltip({
         placement: 'left',
         title: message
     });
@@ -49,8 +53,8 @@ function failure(message) {
     // flash
     function flash(amount) {
         if (amount > 0) {
-            noticeIcon.fadeOut('fast', function () {
-                noticeIcon.fadeIn('fast', flash(amount - 1));
+            bs.find('[data-fa-i2svg]').fadeOut('fast', function () {
+                bs.find('[data-fa-i2svg]').fadeIn('fast', flash(amount - 1));
             });
         }
     }
@@ -63,14 +67,14 @@ function failurePlugin(message) {
     var alert = getAlert();
     var control = alert.find('.file-upload');
     control.find('button').removeClass('btn-success').addClass('btn-danger').prop('disabled', true);
-    clearIcon(control.find('i')).addClass('fa-times');
+    clearIcon(control.find('[data-fa-i2svg]')).addClass('fa-times');
 }
 
 function failureSig(message) {
     failure(message);
     var alert = getAlert();
     var control = alert.find('.file-upload');
-    clearIcon(control.find('i')).addClass('fa-pencil');
+    clearIcon(control.find('[data-fa-i2svg]')).addClass('fa-pencil-alt');
 }
 
 function reset() {
@@ -79,11 +83,12 @@ function reset() {
 
     var control = alert.find('.file-upload');
     control.find('button').removeClass('btn-danger').addClass('btn-success').prop('disabled', false);
-    clearIcon(control.find('i')).addClass('fa-pencil');
+    clearIcon(control.find('[data-fa-i2svg]')).addClass('fa-pencil-alt');
 
     var bs = alert.find('.alert');
     bs.removeClass('alert-danger').addClass('alert-info');
-    bs.find('i').removeClass('fa-exclamation-circle').addClass('fa-file-archive-o').tooltip('destroy');
+    bs.find('[data-fa-i2svg]').attr('data-prefix', 'far');
+    bs.find('[data-fa-i2svg]').removeClass('fa-exclamation-circle').addClass('fa-file-archive').tooltip('destroy');
 
     return alert;
 }
@@ -101,13 +106,13 @@ function addSig(e) {
 
 $(function() {
     var platformTags = $('#upload-platform-tags');
-    if (platformTags.size() >= 1 && platformTags.children().length == 0) {
+    if (platformTags.size() >= 1 && platformTags.children().length === 0) {
         platformTags.html('<div class="tags"><span style="color: #FFF; background-color: #8b0000; border-color: #8b0000" class="tag">No Platform Detected</span></div>');
     }
 
     $('#pluginFile').on('change', function() {
         var alert = reset();
-        if (this.files.length == 0) {
+        if (this.files.length === 0) {
             $('#form-upload')[0].reset();
             return;
         }
@@ -138,24 +143,22 @@ $(function() {
         var alert = getAlert();
         var alertInner = alert.find('.alert');
         var button = alert.find('button');
-        var icon = button.find('i');
-        icon.removeClass('fa-pencil').addClass('fa-spinner fa-spin');
-        setTimeout(function() {
-            if (!fileName)
-                return;
+        var icon = button.find('[data-fa-i2svg]');
+
+        if(fileName) {
             if (!fileName.endsWith('.sig') && !fileName.endsWith('.asc')) {
                 failureSig('Only SIG and ASC files are accepted for signatures.');
-                return;
+            } else {
+                alertInner.removeClass('alert-info alert-danger').addClass('alert-success');
+                button.removeClass('btn-info').addClass('btn-success').off('click', addSig);
+
+                icon.addClass('fa-upload');
+
+                var newTitle = 'Upload plugin';
+                button.tooltip('hide')
+                    .attr('data-original-title', newTitle)
+                    .tooltip('fixTitle');
             }
-            alertInner.removeClass('alert-info alert-danger').addClass('alert-success');
-            button.removeClass('btn-info').addClass('btn-success').off('click', addSig);
-
-            icon.removeClass('fa-spinner fa-spin').addClass('fa-upload');
-
-            var newTitle = 'Upload plugin';
-            button.tooltip('hide')
-                .attr('data-original-title', newTitle)
-                .tooltip('fixTitle');
-        }, 3000);
+        }
     });
 });

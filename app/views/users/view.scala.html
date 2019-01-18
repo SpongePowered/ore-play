@@ -53,7 +53,7 @@
 
                     @if(canEditOrgSettings) {
                         <div class="edit-avatar" style="display: none;">
-                            <a href="@routes.Organizations.updateAvatar(u.user.name)"><i class="fa fa-edit"></i> @messages("user.editAvatar")</a>
+                            <a href="@routes.Organizations.updateAvatar(u.user.name)"><i class="fas fa-edit"></i> @messages("user.editAvatar")</a>
                         </div>
 
                         @if(!u.currentUser.get.readPrompts.contains(Prompt.ChangeAvatar)) {
@@ -67,17 +67,17 @@
 
                             @if(u.isCurrent && !u.isOrga) {
                                 <a class="user-settings" href="@config.security.api.url/accounts/settings">
-                                    <i class="fa fa-cog" data-toggle="tooltip"
+                                    <i class="fas fa-cog" data-toggle="tooltip"
                                         data-placement="top" title="Settings"></i>
                                 </a>
 
                                 <span data-toggle="modal" data-target="#modal-lock">
-                                    <i class="fa @{if (u.user.isLocked) "fa-lock" else "fa-unlock-alt"} action-lock-account" data-toggle="tooltip"
+                                    <i class="fas @{if (u.user.isLocked) "fa-lock" else "fa-unlock-alt"} action-lock-account" data-toggle="tooltip"
                                         data-placement="top" title="@messages("user.lock")"></i>
                                 </span>
 
                                 <span data-toggle="modal" data-target="#modal-pgp-edit">
-                                    <i class="fa fa-key action-pgp" data-toggle="tooltip"
+                                    <i class="fas fa-key action-pgp" data-toggle="tooltip"
                                         data-placement="top" title="@messages("user.pgp.pubKey")"></i>
                                 </span>
 
@@ -88,7 +88,7 @@
 
                             @if(!u.isCurrent && u.user.pgpPubKey.isDefined) {
                                 <span data-toggle="modal" data-target="#modal-pgp-show">
-                                    <i class="fa fa-key action-pgp" data-toggle="tooltip"
+                                    <i class="fas fa-key action-pgp" data-toggle="tooltip"
                                         data-placement="top" title="@messages("user.pgp.pubKey")"></i>
                                 </span>
                             }
@@ -96,7 +96,7 @@
                             @if(u.hasUser && u.userPerm(ViewActivity)) {
                                 @if(u.userPerm(ReviewFlags) || u.userPerm(ReviewProjects)) {
                                     <a class="user-settings" href="@routes.Application.showActivities(u.user.name)">
-                                        <i class="fa fa-calendar" data-toggle="tooltip"
+                                        <i class="fas fa-calendar" data-toggle="tooltip"
                                         data-placement="top" title="Activity"></i>
                                     </a>
                                 }
@@ -104,7 +104,7 @@
 
                             @if(request.headerData.globalPerm(UserAdmin)) {
                                 <a class="user-settings" href="@routes.Application.userAdmin(u.user.name)">
-                                    <i class="fa fa-wrench" data-toggle="tooltip"
+                                    <i class="fas fa-wrench" data-toggle="tooltip"
                                         data-placement="top" title="User Admin"></i>
                                 </a>
                             }
@@ -121,7 +121,7 @@
 
                             @if(u.isCurrent || canEditOrgSettings) {
                                 <a href="#" data-toggle="modal" data-target="#modal-tagline">
-                                    <i class="fa fa-edit"></i>
+                                    <i class="fas fa-edit"></i>
                                 </a>
                             }
                         </div>
@@ -145,7 +145,7 @@
                         u.user.joinDate.map(prettifyDate).getOrElse(prettifyDate(u.user.createdAt.value)))
                     </i><br/>
                     <a href="https://forums.spongepowered.org/users/@u.user.name">
-                        @messages("user.viewOnForums") <i class="fa fa-external-link"></i>
+                        @messages("user.viewOnForums") <i class="fas fa-external-link-alt"></i>
                     </a>
                 </div>
             </div>
@@ -167,7 +167,7 @@
                         @messages("user.pgp.pubKey")
                         <a href="https://docs.spongepowered.org/stable/en/ore/publish.html" data-toggle="tooltip"
                            data-placement="right" title="@messages("general.learnMore")">
-                            <i class="fa fa-question-circle"></i>
+                            <i class="fas fa-question-circle"></i>
                         </a>
                     </h4>
                 </div>

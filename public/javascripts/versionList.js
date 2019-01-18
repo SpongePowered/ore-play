@@ -133,7 +133,7 @@ function loadVersions(increment, scrollTop) {
                 infoOne.addClass("information-one");
 
                 var createdContainer = $("<div>");
-                createdContainer.append("<i class='fa fa-calendar'></i>");
+                createdContainer.append("<i class='fas fa-calendar'></i>");
 
                 var created = $("<span>");
                 created.text(moment(version.createdAt).format("MMM D, YYYY"));
@@ -143,7 +143,7 @@ function loadVersions(increment, scrollTop) {
 
 
                 var sizeContainer = $("<div>");
-                sizeContainer.append("<i class='fa fa-file-o'></i>");
+                sizeContainer.append("<i class='far fa-file'></i>");
 
                 var size = $("<span>");
                 size.text(filesize(version.fileSize));
@@ -160,7 +160,7 @@ function loadVersions(increment, scrollTop) {
                 if(version.author != null) {
                     var authorContainer = $("<div>");
                     authorContainer.addClass("author");
-                    authorContainer.append("<i class='fa fa-key'></i>");
+                    authorContainer.append("<i class='fas fa-key'></i>");
 
                     var author = $("<span>");
                     author.text(version.author);
@@ -173,7 +173,7 @@ function loadVersions(increment, scrollTop) {
                 }
 
                 var downloadContainer = $("<div>");
-                downloadContainer.append("<i class='fa fa-download'></i>");
+                downloadContainer.append("<i class='fas fa-download'></i>");
                 var downloads = $("<span>");
                 downloads.text(version.downloads + " Downloads");
                 downloadContainer.append(downloads);
@@ -190,7 +190,7 @@ function loadVersions(increment, scrollTop) {
                 downloadLink.addClass("download-link");
                 downloadLink.attr('href', version.href +  '/download/');
 
-                downloadLink.append("<i class='fa fa-2x fa-download'></i>");
+                downloadLink.append("<i class='fas fa-2x fa-download'></i>");
 
                 if(version.reviewState !== "Reviewed") {
                     var text;
@@ -210,10 +210,10 @@ function loadVersions(increment, scrollTop) {
                     warning.attr("data-placement", "bottom");
 
                     if(version.reviewState === "PartiallyReviewed") {
-                        warning.addClass("fa fa-check");
+                        warning.addClass("fas fa-check");
                     }
                     else {
-                        warning.addClass("fa fa-exclamation-circle");
+                        warning.addClass("fas fa-exclamation-circle");
                     }
 
                     downloadLink.append(warning);

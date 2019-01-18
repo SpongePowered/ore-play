@@ -28,14 +28,14 @@ $(function() {
         var project = $(this).data('project');
         var visibilityLevel = $(this).data('level');
         var needsModal = $(this).data('modal');
-        var spinner = $('button[data-project="'  + project + '"]').find('i');
-        spinner.removeClass(ICON).addClass('fa-spinner fa-spin');
+        var spinner = $('button[data-project="'  + project + '"]').find('[data-fa-i2svg]');
+        toggleSpinner(spinner.toggleClass(ICON));
         if (needsModal) {
             $('.modal-title').html($(this).text().trim() + ": comment");
             $('#modal-visibility-comment').modal('show');
             $('.btn-visibility-comment-submit').data('project', project);
             $('.btn-visibility-comment-submit').data('level', visibilityLevel);
-            spinner.addClass(ICON).removeClass('fa-spinner fa-spin');
+            toggleSpinner(spinner.toggleClass(ICON));
         } else {
             sendVisibilityRequest(project, visibilityLevel, '', spinner);
         }
@@ -45,7 +45,7 @@ $(function() {
         var project = $(this).data('project');
         var visibilityLevel = $(this).data('level');
         var spinner = $(this).find('i');
-        spinner.removeClass(ICON).addClass('fa-spinner fa-spin');
+        toggleSpinner(spinner.toggleClass(ICON));
         sendVisibilityRequest(project, visibilityLevel, $('.textarea-visibility-comment').val(), spinner);
 
     });
@@ -57,10 +57,10 @@ $(function() {
             url: _url,
             data: { csrfToken: csrf, comment: comment },
             fail: function () {
-                spinner.addClass(ICON).removeClass('fa-spinner fa-spin');
+                toggleSpinner($('button[data-project="'  + project + '"]').find('[data-fa-i2svg]').toggleClass(ICON));
             },
             success: function () {
-                spinner.addClass(ICON).removeClass('fa-spinner fa-spin');
+                toggleSpinner($('button[data-project="'  + project + '"]').find('[data-fa-i2svg]').toggleClass(ICON));
                 location.reload();
             }
         });

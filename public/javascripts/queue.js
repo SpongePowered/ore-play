@@ -25,12 +25,12 @@ $(function() {
     $('.btn-approve').click(function() {
         var listItem = $(this).closest('.list-group-item');
         var versionPath = listItem.data('version');
-        var icon = $(this).find('i').removeClass('fa-thumbs-up').addClass('fa-spinner fa-spin');
+        var icon = toggleSpinner($(this).find('[data-fa-i2svg]').removeClass('fa-thumbs-up'));
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/approve',
             data: { csrfToken: csrf },
-            complete: function() { icon.removeClass('fa-spinner fa-spin').addClass('fa-thumbs-up'); },
+            complete: function() { toggleSpinner($('.btn-approve').find('[data-fa-i2svg]').addClass('fa-thumbs-up')); },
             success: function() {
                 $.when(listItem.fadeOut('slow')).done(function() { 
                     listItem.remove();

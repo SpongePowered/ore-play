@@ -72,12 +72,12 @@
                                 <td style="text-align: right; max-width: 40px">
                                 @if(entry.isUnfinished) {
                                     @if(request.headerData.isCurrentUser(entry.reviewerId)) {
-                                        <i class="status fa fa-fw fa-play-circle fa-2x" style="color: green"></i>
+                                        <i class="status fas fa-fw fa-play-circle fa-2x" style="color: green"></i>
                                     } else {
-                                        <i class="status fa fa-fw fa-cog fa-2x" style="color: black"></i>
+                                        <i class="status fas fa-fw fa-cog fa-2x" style="color: black"></i>
                                     }
                                 } else {
-                                    <i class="status fa fa-fw fa-pause-circle fa-2x" style="color: orange"></i>
+                                    <i class="status fas fa-fw fa-pause-circle fa-2x" style="color: orange"></i>
                                 }
                                 </td>
                                 <td @if(!entry.isUnfinished){ style="color: darkred" }>
@@ -92,7 +92,7 @@
                                 }
                                 </td>
                                 <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
-                                    <a href="/@helper.urlEncode(entry.namespace.ownerName)/@helper.urlEncode(entry.namespace.slug)/versions/@helper.urlEncode(entry.versionString)/reviews"><i class="fa fa-2x fa-fw fa-info"></i></a>
+                                    <a href="/@helper.urlEncode(entry.namespace.ownerName)/@helper.urlEncode(entry.namespace.slug)/versions/@helper.urlEncode(entry.versionString)/reviews"><i class="fas fa-2x fa-fw fa-info"></i></a>
                                 </td>
                             </tr>
                         }
@@ -128,7 +128,7 @@
                         @if(versions.isEmpty) {
                             <tr>
                                 <th rowspan="5">
-                                    <h3><i class="fa fa-thumbs-o-up"></i> @messages("user.queue.none")</h3>
+                                    <h3><i class="fas fa-thumbs-o-up"></i> @messages("user.queue.none")</h3>
                                 </th>
                             </tr>
                         }
@@ -175,7 +175,7 @@
                 $(this).text($(this).data('title') + momentAgo.fromNow());
                 if (momentNow.diff(momentAgo) >= maxDifference) {
                     $(this).text('pastdue ' + momentAgo.fromNow()).css('color', 'darkred');
-                    $(this).parent().parent().find('.status').removeClass().addClass('status fa fa-fw fa-clock-o fa-2x').css('color', 'darkred');
+                    $(this).parent().parent().find('.status').removeClass().addClass('status far fa-fw fa-clock fa-2x').css('color', 'darkred');
                 }
             });
         });

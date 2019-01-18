@@ -1,10 +1,6 @@
 @import 'pallette';
 @import 'utils';
 
-.flags {
-  position: relative;
-}
-
 .list-flags > li {
   @include no-sides();
   cursor: pointer;

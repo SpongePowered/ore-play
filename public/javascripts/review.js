@@ -23,13 +23,13 @@
 
 $(function() {
     $('.btn-review-start').click(function() {
-        var icon = $(this).find('i').removeClass('fa-terminal').addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-terminal'));
         $(this).attr("disabled", "disabled");
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/init',
             data: { csrfToken: csrf },
-            complete: function() { icon.removeClass('fa-spinner fa-spin').addClass('fa-terminal'); },
+            complete: function() { toggleSpinner($('.btn-review-start [data-fa-i2svg]').addClass('fa-terminal')); },
             success: function() {
                 location.reload();
             }
@@ -56,13 +56,13 @@ $(function() {
     });
 
     $('.btn-review-stop-submit').click(function() {
-        var icon = $(this).find('i').removeClass('fa-times-circle-o').addClass('fa-spinner fa-spin');
+        var icon = toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-times-circle-o'));
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/stop',
 
             data: { csrfToken: csrf, content: $('.textarea-stop').val() },
-            complete: function() { icon.removeClass('fa-spinner fa-spin').addClass('fa-times-circle-o'); },
+            complete: function() { toggleSpinner(icon.addClass('fa-times-circle-o')); },
             success: function() {
                 location.reload();
             }
@@ -70,7 +70,7 @@ $(function() {
     });
 
     $('.btn-review-approve').click(function() {
-        var icon = $(this).find('i').removeClass('fa-thumbs-up').addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-thumbs-up'));
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/approve',
@@ -87,7 +87,7 @@ $(function() {
     });
 
     $('.btn-review-approve-partial').click(function() {
-        var icon = $(this).find('i').removeClass('fa-thumbs-up').addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-thumbs-up'));
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/approve',
@@ -110,7 +110,7 @@ $(function() {
     });
 
     $('.btn-review-takeover-submit').click(function() {
-        var icon = $(this).find('i').removeClass('fa-clipboard').addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-clipboard'));
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/takeover',
@@ -138,7 +138,7 @@ $(function() {
         var panel = $(this).parent().parent().parent();
         var textarea = panel.find('textarea');
         textarea.attr('disabled', 'disabled');
-        $(this).find('i').removeClass('fa-save').addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-save'));
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/edit/' + panel.data('review'),
@@ -150,7 +150,7 @@ $(function() {
     });
 
     $('.btn-review-addmessage-submit').click(function() {
-        var icon = $(this).find('i').removeClass('fa-clipboard').addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').removeClass('fa-clipboard'));
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/addmessage',
@@ -162,13 +162,13 @@ $(function() {
     });
 
     $('.btn-review-reopen').click(function() {
-        var icon = $(this).find('i').removeClass('fa-terminal').addClass('fa-spinner fa-spin');
+        var icon = toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-terminal'));
         $(this).attr("disabled", "disabled");
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/reopen',
             data: { csrfToken: csrf },
-            complete: function() { icon.removeClass('fa-spinner fa-spin').addClass('fa-terminal'); },
+            complete: function() { toggleSpinner(icon.toggleClass('fa-terminal')); },
             success: function() {
                 location.reload();
             }

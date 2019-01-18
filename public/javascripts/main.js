@@ -93,6 +93,10 @@ function slugify(name) {
     return name.trim().replace(/ +/g, ' ').replace(/ /g, '-');
 }
 
+function toggleSpinner(e) {
+    return e.toggleClass('fa-spinner').toggleClass('fa-spin');
+}
+
 /*
  * ==================================================
  * =                   Doc ready                    =
@@ -113,7 +117,7 @@ $(function() {
 
     $('.btn-spinner').click(function() {
         var iconClass = $(this).data('icon');
-        $(this).find('.' + iconClass).removeClass(iconClass).addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').toggle(iconClass));
     });
 
     var searchBar = $('.project-search');

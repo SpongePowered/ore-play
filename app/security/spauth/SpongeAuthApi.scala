@@ -58,7 +58,7 @@ trait SpongeAuthApi {
       "api-key"  -> Seq(this.apiKey),
       "username" -> Seq(username),
       "email"    -> Seq(email),
-      "verified" -> Seq(false.toString),
+      "verified" -> Seq(true.toString),
       "dummy"    -> Seq(true.toString)
     )
 

@@ -78,7 +78,7 @@ Documentation page within Project overview.
                             @if(canEditPages && pageCount < config.ore.projects.maxPages) {
                                 <button data-toggle="modal" data-target="#new-page" title="New"
                                         class="new-page btn yellow btn-xs pull-right">
-                                    <i class="fa fa-plus"></i>
+                                    <i class="fas fa-plus"></i>
                                 </button>
                                 @projects.pages.modalPageCreate(p.project, rootPages.map(_._1))
                             }
@@ -94,11 +94,11 @@ Documentation page within Project overview.
                                     @if(children.nonEmpty) {
                                         @if(!page.parentId.contains(pg.id.value)) {
                                             <a class="page-expand" data-page-id="@pg.id.value">
-                                                <i class="fa fa-plus-square-o"></i>
+                                                <i class="far fa-plus-square"></i>
                                             </a>
                                         } else {
                                             <a class="page-collapse" data-page-id="@pg.id.value">
-                                                <i class="fa fa-minus-square-o"></i>
+                                                <i class="far fa-minus-square"></i>
                                             </a>
                                         }
                                     }

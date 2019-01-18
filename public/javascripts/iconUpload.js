@@ -38,7 +38,7 @@ $(function() {
     var input = form.find('input[type="file"]');
 
     function updateButton() {
-        btn.prop('disabled', input[0].files.length == 0);
+        btn.prop('disabled', input[0].files.length === 0);
     }
 
     input.on('change', function() { updateButton(); });
@@ -49,7 +49,7 @@ $(function() {
     // Upload button
     btn.click(function(e) {
         e.preventDefault();
-        var icon = btn.find('i').removeClass('fa-upload').addClass('fa-spinner fa-spin');
+        toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-upload'));
         $.ajax({
             url: url,
             type: 'post',
@@ -57,11 +57,9 @@ $(function() {
             cache: false,
             contentType: false,
             processData: false,
-            complete: function() {
-                preview.css('background-image', 'url(' + url + '/pending' + ')');
-                icon.removeClass('fa-spinner fa-spin').addClass('fa-upload');
-            },
             success: function() {
+                preview.css('background-image', 'url(' + url + '/pending' + ')');
+                toggleSpinner($('#form-icon .btn-upload').find('[data-fa-i2svg]').toggleClass('fa-upload'));
                 $('#update-icon').val('true');
                 input.val('');
                 updateButton();
@@ -74,7 +72,7 @@ $(function() {
     var reset = form.find('.btn-reset');
     reset.click(function(e) {
         e.preventDefault();
-        $(this).text('').append('<i class="fa fa-spinner fa-spin"></i>');
+        $(this).text('').append('<i class="fas fa-spinner fa-spin"></i>');
         $.ajax({
             url: url + '/reset',
             type: 'post',

@@ -33,7 +33,7 @@
                 <input type="hidden" />
                 @userAvatar(None, clazz = "user-avatar-xs")
                 <a class="username"></a>
-                <i class="fa fa-times user-cancel"></i>
+                <i class="fas fa-times user-cancel"></i>
                 @users.invite.roleSelect(roleCategory = j.roleCategory, classes="pull-right")
             </li>
         </ul>
@@ -74,7 +74,7 @@
                     @if(!editable && settingsCall != null) {
                         <a href="@settingsCall"
                            class="btn yellow btn-xs">
-                            <i class="fa fa-pencil"></i>
+                            <i class="fas fa-pencil-alt"></i>
                         </a>
                     }
 
@@ -83,7 +83,7 @@
                             @CSRF.formField
                             <button class="btn-members-save btn btn-default btn-panel btn-xs" data-toggle="tooltip"
                                     data-placement="top" data-title="@messages("org.users.save")" style="display: none;">
-                                <i class="fa fa-paper-plane"></i>
+                                <i class="fas fa-paper-plane"></i>
                             </button>
                         }
                     }
@@ -102,9 +102,9 @@
                     <p style="display: none;" class="role-id">@role.id.value</p>
                     @if(editable && perms.getOrElse(EditSettings, false) && !role.role.trust.equals(Absolute)) {
                         <a href="#">
-                            <i style="padding-left:5px" class="fa fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
+                            <i style="padding-left:5px" class="fas fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
                         </a>
-                        <a href="#"><i style="padding-left:5px" class="fa fa-edit"></i></a>
+                        <a href="#"><i style="padding-left:5px" class="fas fa-edit"></i></a>
                     }
 
                 <span class="minor pull-right">

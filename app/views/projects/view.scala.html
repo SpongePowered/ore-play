@@ -78,13 +78,13 @@ Base template for Project overview.
                                 <!-- Tabs -->
                                 <li id="docs" class="">
                                     <a href="@Projects.show(p.project.ownerName, p.project.slug)">
-                                        <i class="fa fa-book"></i> @messages("project.docs")</a>
+                                        <i class="fas fa-book"></i> @messages("project.docs")</a>
                                 </li>
 
                                 <li id="versions" class="">
                                     <a href="@Versions.showList(
                                         p.project.ownerName, p.project.slug, None)">
-                                        <i class="fa fa-download"></i> @messages("project.versions")
+                                        <i class="fas fa-download"></i> @messages("project.versions")
                                     </a>
                                 </li>
 
@@ -92,7 +92,7 @@ Base template for Project overview.
                                     <li id="discussion" class="">
                                         <a href="@Projects.showDiscussion(
                                             p.project.ownerName, p.project.slug)">
-                                            <i class="fa fa-users"></i> @messages("project.discuss")
+                                            <i class="fas fa-users"></i> @messages("project.discuss")
                                         </a>
                                     </li>
                                 }
@@ -101,7 +101,7 @@ Base template for Project overview.
                                     @* Show manager if permitted *@
                                     <li id="settings" class="">
                                         <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
-                                            <i class="fa fa-cog"></i> @messages("project.settings")
+                                            <i class="fas fa-cog"></i> @messages("project.settings")
                                         </a>
                                     </li>
                                 }
@@ -111,7 +111,7 @@ Base template for Project overview.
                                         <a title="@issues" target="_blank" rel="noopener"
                                             href="@Projects.showIssues(
                                                 p.project.ownerName, p.project.slug)">
-                                            <i class="fa fa-bug"></i> Issues <i class="fa fa-external-link"></i></a>
+                                            <i class="fas fa-bug"></i> Issues <i class="fas fa-external-link-alt"></i></a>
                                     </li>
                                 }
 
@@ -119,7 +119,7 @@ Base template for Project overview.
                                     <li id="source">
                                         <a title="@source" target="_blank" rel="noopener"
                                         href="@Projects.showSource(p.project.ownerName, p.project.slug)">
-                                            <i class="fa fa-code"></i> Source <i class="fa fa-external-link"></i>
+                                            <i class="fas fa-code"></i> Source <i class="fas fa-external-link-alt"></i>
                                         </a>
                                     </li>
                                 }
@@ -133,7 +133,7 @@ Base template for Project overview.
 
                             @flash.get("reported").map { _ =>
                                 <span class="flag-msg">
-                                    <i class="fa fa-thumbs-up"></i> Flag submitted for review
+                                    <i class="fas fa-thumbs-up"></i> Flag submitted for review
                                 </span>
                             }
 
@@ -147,19 +147,19 @@ Base template for Project overview.
 
                                     <button class="btn btn-default btn-star">
                                         <i id="icon-star" @if(sp.starred) {
-                                            class="fa fa-star"
+                                            class="fas fa-star"
                                         } else {
-                                            class="fa fa-star-o" }></i>
+                                            class="far fa-star" }></i>
                                         <span class="starred"> @p.project.starCount</span>
                                     </button>
 
                                     <button class="btn btn-watch btn-default @if(sp.watching) { watching }">
-                                        <i class="fa fa-eye"></i>
+                                        <i class="fas @if(sp.watching) { fa-eye-slash } else { fa-eye }"></i>
                                         <span class="watch-status">@if(sp.watching) { Unwatch } else { Watch }</span>
                                     </button>
                                 } else {
                                     <span class="minor stars-static">
-                                        <i class="fa fa-star"></i> @p.project.starCount
+                                        <i class="fas fa-star"></i> @p.project.starCount
                                     </span>
                                 }
                             }
@@ -169,7 +169,7 @@ Base template for Project overview.
                                     && !sp.uProjectFlags
                                     && !p.project.isDeleted) {
                                 <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
-                                    <i class="fa fa-flag"></i> @messages("project.flag")
+                                    <i class="fas fa-flag"></i> @messages("project.flag")
                                 </button>
                                 <div class="modal fade" id="modal-flag" tabindex="-1" role="dialog"
                                      aria-labelledby="label-flag">
@@ -219,7 +219,7 @@ Base template for Project overview.
                                     <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
                                     title="@messages("project.download.recommend")" data-toggle="tooltip"
                                     data-placement="bottom" class="btn btn-primary">
-                                        <i class="fa fa-download"></i> @messages("general.download")
+                                        <i class="fas fa-download"></i> @messages("general.download")
                                     </a>
                                     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                         <span class="caret"></span>
@@ -254,7 +254,7 @@ Base template for Project overview.
                                         <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
                                             System Logs (@p.projectLogSize) </a></li>
                                     }
-                                    <li><a href="https://forums.spongepowered.org/users/@p.project.ownerName">Owner on forum <i class="fa fa-external-link" aria-hidden="true"></i></a></li>
+                                    <li><a href="https://forums.spongepowered.org/users/@p.project.ownerName">Owner on forum <i class="fas fa-external-link-alt" aria-hidden="true"></i></a></li>
                                 </ul>
                             }
                         </div>

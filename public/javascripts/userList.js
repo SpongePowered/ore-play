@@ -36,7 +36,7 @@ $(function() {
         var thisObj = $(this);
         if (thisObj.hasClass('user-sort')) {
             // Change direction
-            direction = $(this).find('i').hasClass('o-chevron-up') ? '-' : '';
+            direction = $(this).find('svg').hasClass('fa-chevron-up') ? '-' : '';
         }
         var start = thisObj.data("list");
         var url = '/' + start + '?sort=' + direction + sort;
