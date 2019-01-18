@@ -129,13 +129,24 @@ class Channels @Inject()(forms: OreForms)(
           channel.isNonReviewed || reviewedChannelsCount
         )
 
-      //TODO: Accumulate errors into a list and return them all at once
       OptionT(service.runDBIO(query.result.headOption))
         .toRight(NotFound)
-        .ensure(Redirect(self.showList(author, slug)).withError("error.channel.last"))(_._2)
-        .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastNonEmpty"))(_._3)
-        .ensure(Redirect(self.showList(author, slug)).withError("error.channel.lastReviewed"))(_._4)
-        .semiflatMap(channel => projects.deleteChannel(request.project, channel._1))
+        .subflatMap {
+          case (channel, notLast, notLastNonEmpty, notLastReviewed) =>
+            val errorSeq = Seq(
+              notLast         -> "error.channel.last",
+              notLastNonEmpty -> "error.channel.lastNonEmpty",
+              notLastReviewed -> "error.channel.lastReviewed"
+            ).collect {
+              case (success, msg) if !success => msg
+            }
+
+            if (errorSeq.isEmpty)
+              Right(channel)
+            else
+              Left(Redirect(self.showList(author, slug)).withErrors(errorSeq.toList))
+        }
+        .semiflatMap(channel => projects.deleteChannel(request.project, channel))
         .as(Redirect(self.showList(author, slug)))
     }
 }
