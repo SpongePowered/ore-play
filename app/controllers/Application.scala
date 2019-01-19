@@ -74,23 +74,24 @@ final class Application @Inject()(forms: OreForms)(
       sort: Option[Int],
       page: Option[Int],
       platformCategory: Option[String],
-      platform: Option[String]
+      platform: Option[String],
+      orderWithRelevance: Option[Boolean]
   ): Action[AnyContent] = OreAction.asyncF { implicit request =>
     // Get categories and sorting strategy
 
     val canHideProjects = request.headerData.globalPerm(HideProjects)
-    val currentUserId   = request.headerData.currentUser.map(_.id.value).getOrElse(-1L)
+    val currentUserId   = request.headerData.currentUser.map(_.id.value)
 
-    val ordering = sort.flatMap(ProjectSortingStrategy.withValueOpt).getOrElse(ProjectSortingStrategy.Default)
-    val pcat     = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
-    val pform    = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
+    val withRelevance = orderWithRelevance.getOrElse(true)
+    val ordering      = sort.flatMap(ProjectSortingStrategy.withValueOpt).getOrElse(ProjectSortingStrategy.Default)
+    val pcat          = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
+    val pform         = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
 
     // get the categories being queried
     val categoryPlatformNames = pcat.toList.flatMap(_.getPlatforms.map(_.name))
     val platformNames         = (pform.map(_.name).toList ::: categoryPlatformNames).map(_.toLowerCase)
 
     val categoryList = categories.fold(Category.fromString(""))(s => Category.fromString(s)).toList
-    val q            = query.fold("%")(qStr => s"%${qStr.toLowerCase}%")
 
     val pageSize = this.config.ore.projects.initLoad
     val pageNum  = math.max(page.getOrElse(1), 1)
@@ -99,13 +100,23 @@ final class Application @Inject()(forms: OreForms)(
     service
       .runDbCon(
         AppQueries
-          .getHomeProjects(currentUserId, canHideProjects, platformNames, categoryList, q, ordering, offset, pageSize)
+          .getHomeProjects(
+            currentUserId,
+            canHideProjects,
+            platformNames,
+            categoryList,
+            query.filter(_.nonEmpty),
+            ordering,
+            offset,
+            pageSize,
+            withRelevance
+          )
           .to[Vector]
       )
       .map { data =>
         val catList =
           if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
-        Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform))
+        Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance))
       }
   }
 
@@ -265,9 +276,8 @@ final class Application @Inject()(forms: OreForms)(
           .getLog(oPage, userFilter, projectFilter, versionFilter, pageFilter, actionFilter, subjectFilter)
           .to[Vector]
       ),
-      service.access[LoggedActionModel[Any]]().size,
-      request.currentUser.get.can(ViewIp).in(GlobalScope)
-    ).parMapN { (actions, size, canViewIP) =>
+      service.access[LoggedActionModel[Any]]().size
+    ).parMapN { (actions, size) =>
       Ok(
         views.users.admin.log(
           actions,
@@ -281,7 +291,7 @@ final class Application @Inject()(forms: OreForms)(
           pageFilter,
           actionFilter,
           subjectFilter,
-          canViewIP
+          request.headerData.globalPerm(ViewIp)
         )
       )
     }

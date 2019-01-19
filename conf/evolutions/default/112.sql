@@ -43,14 +43,29 @@ SELECT p.owner_name,
        p.description,
        p.name,
        p.plugin_id,
+       p.created_at,
+       p.last_updated,
        v.version_string,
-       pvt.name  AS tag_name,
-       pvt.data  AS tag_data,
-       pvt.color AS tag_color
+       pvt.name                                             AS tag_name,
+       pvt.data                                             AS tag_data,
+       pvt.color                                            AS tag_color,
+       setweight(to_tsvector('english', p.name), 'A') ||
+       setweight(to_tsvector('english', regexp_replace(p.name, '([a-z])([A-Z]+)', '\1_\2', 'g')), 'A') ||
+       setweight(to_tsvector('english', p.plugin_id), 'A') ||
+       setweight(to_tsvector('english', p.description), 'B') ||
+       setweight(
+           to_tsvector('english', string_agg(concat('tag:', pvt2.name, nullif('-' || pvt2.data, '-')), ' ')), 'C'
+         ) ||
+       setweight(to_tsvector('english', p.owner_name), 'D') ||
+       setweight(to_tsvector('english', regexp_replace(p.owner_name, '([a-z])([A-Z]+)', '\1_\2', 'g')), 'D') AS search_words
 FROM projects p
        JOIN project_versions v ON p.recommended_version_id = v.id
        LEFT JOIN project_version_tags pvt ON v.id = pvt.version_id
-       JOIN users u ON p.owner_id = u.id;
+       LEFT JOIN project_version_tags pvt2 ON v.id = pvt2.version_id
+       JOIN users u ON p.owner_id = u.id
+GROUP BY p.id, v.id, pvt.id;
+
+CREATE INDEX home_projects_search_words_idx ON home_projects USING gin (search_words);
 
 # --- !Downs
 

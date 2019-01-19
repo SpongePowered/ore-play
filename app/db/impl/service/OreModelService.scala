@@ -40,7 +40,7 @@ class OreModelService @Inject()(
   lazy val DB                                = db.get[JdbcProfile]
   override lazy val DefaultTimeout: Duration = this.config.app.dbDefaultTimeout
 
-  implicit lazy val xa: Transactor.Aux[IO, JdbcDataSource] = {
+  implicit val xa: Transactor.Aux[IO, JdbcDataSource] = {
     implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
     val connectExec  = Executors.newFixedThreadPool(32)

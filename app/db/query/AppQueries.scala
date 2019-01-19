@@ -2,7 +2,7 @@ package db.query
 
 import db.DbRef
 import models.admin.LoggedActionViewModel
-import models.project.{Page, Project, Version}
+import models.project.{Page, Project, ReviewState, Version}
 import models.querymodels._
 import models.user.User
 import ore.project.{Category, ProjectSortingStrategy}
@@ -16,18 +16,40 @@ object AppQueries extends DoobieOreProtocol {
   //implicit val logger: LogHandler = createLogger("AppQueries")
 
   def getHomeProjects(
-      currentUserId: DbRef[User],
+      currentUserId: Option[DbRef[User]],
       canSeeHidden: Boolean,
       platformNames: List[String],
       categories: List[Category],
-      query: String,
+      query: Option[String],
       order: ProjectSortingStrategy,
       offset: Int,
-      pageSize: Int
+      pageSize: Int,
+      orderWithRelevance: Boolean
   ): Query0[ProjectListEntry] = {
     //TODO: Let the query handle tag search in the future
     val platformFrag = platformNames.toNel.map(Fragments.in(fr"p.tag_name", _))
     val categoryFrag = categories.toNel.map(Fragments.in(fr"p.category", _))
+    val visibilityFrag =
+      if (canSeeHidden) None
+      else
+        currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
+          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))")
+        }
+    val queryFrag = query.map(q => fr"p.search_words @@ websearch_to_tsquery($q)")
+
+    val ordering = if (orderWithRelevance && query.nonEmpty) {
+      val relevance = query.fold(fr"1") { q =>
+        fr"ts_rank(p.search_words, websearch_to_tsquery($q)) DESC"
+      }
+      order match {
+        case ProjectSortingStrategy.MostStars       => fr"p.stars *" ++ relevance
+        case ProjectSortingStrategy.MostDownloads   => fr"p.downloads*" ++ relevance
+        case ProjectSortingStrategy.MostViews       => fr"p.views *" ++ relevance
+        case ProjectSortingStrategy.Newest          => fr"extract(EPOCH from p.created_at) *" ++ relevance
+        case ProjectSortingStrategy.RecentlyUpdated => fr"extract(EPOCH from p.last_updated) *" ++ relevance
+        case ProjectSortingStrategy.OnlyRelevance   => relevance
+      }
+    } else order.fragment
 
     val fragments =
       sql"""|SELECT p.owner_name,
@@ -43,14 +65,8 @@ object AppQueries extends DoobieOreProtocol {
             |       array_remove(array_agg(p.tag_name), NULL)  AS tag_names,
             |       array_remove(array_agg(p.tag_data), NULL)  AS tag_datas,
             |       array_remove(array_agg(p.tag_color), NULL) AS tag_colors
-            |  FROM home_projects p
-            |  WHERE ($canSeeHidden OR p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $currentUserId AND p.visibility != 5))
-            |   AND (lower(p.name) LIKE $query
-            |           OR lower(p.description) LIKE $query
-            |           OR lower(p.owner_name) LIKE $query
-            |           OR lower(concat(p.tag_name, ':', p.tag_data)) LIKE $query
-            |           OR lower(p.plugin_id) LIKE $query) """.stripMargin ++
-        Fragments.andOpt(platformFrag, categoryFrag) ++
+            |  FROM home_projects p """.stripMargin ++
+        Fragments.whereAndOpt(visibilityFrag, queryFrag, platformFrag, categoryFrag) ++
         fr"""|GROUP BY (p.owner_name,
              |          p.slug,
              |          p.visibility,
@@ -60,14 +76,18 @@ object AppQueries extends DoobieOreProtocol {
              |          p.category,
              |          p.description,
              |          p.name,
-             |          p.version_string)""".stripMargin
-    fr"ORDER BY " ++ order.fragment ++
-      fr"LIMIT $pageSize OFFSET $offset"
+             |          p.created_at,
+             |          p.last_updated,
+             |          p.version_string,
+             |          p.search_words)""".stripMargin ++
+        fr"ORDER BY" ++ ordering ++
+        fr"LIMIT $pageSize OFFSET $offset"
 
     fragments.query[ProjectListEntry]
   }
 
   val getQueue: Query0[UnsortedQueueEntry] = {
+    val reviewStateId = ReviewState.Unreviewed.value
     sql"""|SELECT sq.project_author,
           |       sq.project_slug,
           |       sq.project_name,
@@ -100,8 +120,7 @@ object AppQueries extends DoobieOreProtocol {
           |                 INNER JOIN users pu ON p.owner_id = pu.id
           |                 LEFT JOIN project_version_reviews r ON v.id = r.version_id
           |                 LEFT JOIN users ru ON ru.id = r.user_id
-          |          WHERE v.is_reviewed = FALSE
-          |            AND v.is_non_reviewed = FALSE
+          |          WHERE v.review_state = $reviewStateId
           |            AND p.visibility != 5) sq
           |  WHERE row = 1
           |  ORDER BY sq.project_name DESC, sq.version_string DESC""".stripMargin.query[UnsortedQueueEntry]
@@ -125,6 +144,7 @@ object AppQueries extends DoobieOreProtocol {
           |         JOIN roles rr ON rgr.role_id = rr.id
           |         JOIN global_trust gt ON ru.id = gt.user_id
           |         LEFT JOIN project_trust pt ON ru.id = pt.project_id
+          |  WHERE NOT pf.is_resolved
           |  GROUP BY pf.id, pf.reason, pf.comment, fu.name, p.owner_name, p.slug, p.visibility, gt.trust, pt.trust""".stripMargin
       .query[ShownFlag]
   }
@@ -189,7 +209,7 @@ object AppQueries extends DoobieOreProtocol {
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
 
-    val frags = sql"SELECT * FROM v_logged_actions la" ++ Fragments.whereAndOpt(
+    val frags = sql"SELECT * FROM v_logged_actions la " ++ Fragments.whereAndOpt(
       userFilter.map(id => fr"la.user_id = $id"),
       projectFilter.map(id => fr"la.filter_project = $id"),
       versionFilter.map(id => fr"la.filter_version = $id"),
@@ -198,6 +218,7 @@ object AppQueries extends DoobieOreProtocol {
       subjectFilter.map(id => fr"la.filter_subject = $id")
     ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
 
+    println(frags.query[LoggedActionViewModel[Any]].sql)
     frags.query[LoggedActionViewModel[Any]]
   }
 

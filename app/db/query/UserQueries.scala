@@ -128,22 +128,16 @@ object UserQueries extends DoobieOreProtocol {
   def globalTrust(userId: DbRef[User]): Query0[Trust] =
     sql"""SELECT gt.trust FROM global_trust gt WHERE gt.user_id = $userId""".query[Trust]
 
-  def projectTrust(userId: DbRef[User], projectId: DbRef[Project]): Query0[Trust] = {
+  def projectTrust(userId: DbRef[User], projectId: DbRef[Project]): Query0[Trust] =
     sql"""|SELECT greatest(gt.trust, pt.trust)
-          |  FROM global_trust gt,
-          |       project_trust pt
-          |  WHERE gt.user_id = $userId
-          |    AND pt.user_id = $userId
-          |    AND pt.project_id = $projectId""".stripMargin.query[Trust]
-  }
+          |  FROM global_trust gt LEFT JOIN project_trust pt ON pt.user_id = $userId AND pt.project_id = $projectId
+          |  WHERE gt.user_id = $userId""".stripMargin.query[Trust]
 
   def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] = {
-    sql"""|SELECT greatest(gt.trust, pt.trust)
-          |  FROM global_trust gt,
-          |       organization_trust ot
-          |  WHERE gt.user_id = $userId
-          |    AND ot.user_id = $userId
-          |    AND ot.organization_id = $organizationId""".stripMargin.query[Trust]
+    println("Getting organization trust")
+    sql"""|SELECT greatest(gt.trust, ot.trust)
+          |  FROM global_trust gt LEFT JOIN organization_trust ot ON ot.user_id = $userId AND ot.organization_id = $organizationId
+          |  WHERE gt.user_id = $userId""".stripMargin.query[Trust]
   }
 
 }

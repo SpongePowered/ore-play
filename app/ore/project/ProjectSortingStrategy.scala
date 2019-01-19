@@ -33,11 +33,13 @@ object ProjectSortingStrategy extends IntEnum[ProjectSortingStrategy] {
   /** The default strategy. */
   val Default: RecentlyUpdated.type = RecentlyUpdated
 
-  case object MostStars     extends ProjectSortingStrategy(0, "Most starts", _.stars.desc, fr"p.stars DESC, p.name ASC")
+  case object MostStars     extends ProjectSortingStrategy(0, "Most stars", _.stars.desc, fr"p.stars DESC, p.name ASC")
   case object MostDownloads extends ProjectSortingStrategy(1, "Most downloads", _.downloads.desc, fr"p.downloads DESC")
   case object MostViews     extends ProjectSortingStrategy(2, "Most views", _.views.desc, fr"p.views DESC")
   case object Newest        extends ProjectSortingStrategy(3, "Newest", _.createdAt.desc, fr"p.created_at DESC")
   case object RecentlyUpdated
       extends ProjectSortingStrategy(4, "Recently updated", _.lastUpdated.desc, fr"p.last_updated DESC")
+  case object OnlyRelevance
+      extends ProjectSortingStrategy(5, "Only relevance", _.lastUpdated.desc, fr"p.last_updated DESC")
 
 }

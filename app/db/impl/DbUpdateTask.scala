@@ -1,4 +1,5 @@
 package db.impl
+
 import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.ExecutionContext
@@ -21,11 +22,14 @@ class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
 
   private val Logger = scalalogging.Logger("DbUpdateTask")
 
-  def start(): Unit =
-    this.actorSystem.scheduler.schedule(0.seconds, interval, this)
+  def start(): Unit = {
+    this.actorSystem.scheduler.schedule(interval, interval, this)
+    run()
+  }
 
   override def run(): Unit = {
     Logger.debug("Updating homepage view")
     service.runDbCon(sql"REFRESH MATERIALIZED VIEW home_projects".update.run).unsafeToFuture()
+    ()
   }
 }
