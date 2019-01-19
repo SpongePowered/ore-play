@@ -130,8 +130,7 @@ object UserQueries extends DoobieOreProtocol {
             |          FROM users u
             |                 JOIN user_global_roles ugr ON u.id = ugr.user_id
             |                 JOIN roles r ON ugr.role_id = r.id
-            |          WHERE r.name IN ('Ore_Admin', 'Ore_Mod')
-            |          ORDER BY u.join_date) sq
+            |          WHERE r.name IN ('Ore_Admin', 'Ore_Mod')) sq
             |  WHERE sq.rank = 1 """.stripMargin ++
         userFragOrder(reverse, sort) ++
         fr"""OFFSET $offset LIMIT $pageSize"""
@@ -140,16 +139,26 @@ object UserQueries extends DoobieOreProtocol {
   }
 
   def globalTrust(userId: DbRef[User]): Query0[Trust] =
-    sql"""SELECT gt.trust FROM global_trust gt WHERE gt.user_id = $userId""".query[Trust]
+    sql"""|SELECT coalesce(gt.trust, 0)
+     |  FROM users u
+     |         LEFT JOIN global_trust_2 gt ON gt.user_id = u.id
+     |  WHERE gt.user_id = $userId""".query[Trust]
 
   def projectTrust(userId: DbRef[User], projectId: DbRef[Project]): Query0[Trust] =
-    sql"""|SELECT greatest(gt.trust, pt.trust)
-          |  FROM global_trust gt LEFT JOIN project_trust pt ON pt.user_id = $userId AND pt.project_id = $projectId
-          |  WHERE gt.user_id = $userId""".stripMargin.query[Trust]
+    sql"""|SELECT greatest(gt.trust, pt.trust, ot.trust)
+          |  FROM users u
+          |         LEFT JOIN global_trust_2 gt ON gt.user_id = u.id
+          |         LEFT JOIN project_trust_2 pt ON pt.user_id = u.id
+          |         LEFT JOIN projects p ON p.id = pt.project_id
+          |         LEFT JOIN organization_trust_2 ot ON ot.user_id = u.id AND ot.organization_id = p.owner_id
+          |  WHERE u.id = $userId AND p.id = $projectId""".stripMargin.query[Trust]
 
   def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] =
     sql"""|SELECT greatest(gt.trust, ot.trust)
-          |  FROM global_trust gt LEFT JOIN organization_trust ot ON ot.user_id = $userId AND ot.organization_id = $organizationId
-          |  WHERE gt.user_id = $userId""".stripMargin.query[Trust]
+          |  FROM users u
+          |         LEFT JOIN global_trust_2 gt ON gt.user_id = u.id
+          |         LEFT JOIN organization_trust_2 ot ON ot.user_id = u.id
+          |  WHERE u.id = $userId
+          |    AND ot.organization_id = $organizationId""".stripMargin.query[Trust]
 
 }

@@ -27,7 +27,6 @@ import models.user._
 import models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
 import ore.permission._
-import ore.permission.scope.GlobalScope
 import ore.project.factory.ProjectFactory
 import ore.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType
@@ -641,34 +640,32 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .andThen(ProjectPermissionAction(HideProjects))
       .asyncF { implicit request =>
         val newVisibility = Visibility.withValue(visibility)
-        request.user.can(newVisibility.permission).in(GlobalScope).flatMap { perm =>
-          if (perm) {
-            val forumVisbility =
-              if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
-                this.forums.changeTopicVisibility(request.project, isVisible = false).void
-              } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
-                this.forums.changeTopicVisibility(request.project, isVisible = true).void
-              } else IO.unit
+        if (request.headerData.globalPerm(ReviewProjects)) {
+          val forumVisbility =
+            if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
+              this.forums.changeTopicVisibility(request.project, isVisible = false).void
+            } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
+              this.forums.changeTopicVisibility(request.project, isVisible = true).void
+            } else IO.unit
 
-            val projectVisibility = if (newVisibility.showModal) {
-              val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-              request.project.setVisibility(newVisibility, comment, request.user.id.value)
-            } else {
-              request.project.setVisibility(newVisibility, "", request.user.id.value)
-            }
-
-            val log = UserActionLogger.log(
-              request.request,
-              LoggedAction.ProjectVisibilityChange,
-              request.project.id.value,
-              newVisibility.nameKey,
-              Visibility.NeedsChanges.nameKey
-            )
-
-            (forumVisbility, projectVisibility).parTupled.productR(log).as(Ok)
+          val projectVisibility = if (newVisibility.showModal) {
+            val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+            request.project.setVisibility(newVisibility, comment, request.user.id.value)
           } else {
-            IO.pure(Unauthorized)
+            request.project.setVisibility(newVisibility, "", request.user.id.value)
           }
+
+          val log = UserActionLogger.log(
+            request.request,
+            LoggedAction.ProjectVisibilityChange,
+            request.project.id.value,
+            newVisibility.nameKey,
+            Visibility.NeedsChanges.nameKey
+          )
+
+          (forumVisbility, projectVisibility).parTupled.productR(log).as(Ok)
+        } else {
+          IO.pure(Unauthorized)
         }
       }
   }

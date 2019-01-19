@@ -1,5 +1,7 @@
 import play.api.Configuration
 
+import scala.concurrent.duration._
+
 import db.query.AppQueries
 import ore.OreConfig
 
@@ -41,7 +43,7 @@ class AppQueriesSpec extends DbSpec {
   }
 
   test("GetUnhealtyProjects") {
-    check(AppQueries.getUnhealtyProjects)
+    check(AppQueries.getUnhealtyProjects(30.days))
   }
 
   test("GetReviewActivity") {

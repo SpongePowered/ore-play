@@ -1,7 +1,7 @@
 package models.viewhelper
 
 import db.ModelService
-import models.project.{Project, Visibility}
+import models.project.Project
 import models.user.User
 import ore.permission._
 import util.syntax._
@@ -40,8 +40,7 @@ object ScopedProjectData {
               projectTrust,
               globalRoles
               ) =>
-            val perms = EditPages +: EditSettings +: EditChannels +: EditVersions +: UploadVersions +: Visibility.values
-              .map(_.permission)
+            val perms   = EditPages :: EditSettings :: EditChannels :: EditVersions :: UploadVersions :: ReviewProjects :: Nil
             val permMap = user.can.asMap(projectTrust, globalRoles.toSet)(perms: _*)
             ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, permMap)
         }

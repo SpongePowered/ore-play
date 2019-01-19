@@ -2,7 +2,9 @@ package db.query
 
 import java.net.InetAddress
 import java.sql.Timestamp
+import java.util.concurrent.TimeUnit
 
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.runtime.universe.TypeTag
 
 import play.api.i18n.Lang
@@ -27,7 +29,7 @@ import doobie.implicits._
 import doobie.postgres._
 import doobie.postgres.implicits._
 import enumeratum.values.{ValueEnum, ValueEnumEntry}
-import org.postgresql.util.PGobject
+import org.postgresql.util.{PGInterval, PGobject}
 
 trait DoobieOreProtocol {
 
@@ -72,6 +74,22 @@ trait DoobieOreProtocol {
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
     Meta[Long].timap(ObjId.apply[A])(_.value)
   implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].timap(ObjectTimestamp.apply)(_.value)
+
+  implicit val intervalMeta: Meta[PGInterval] = Meta.Advanced.other[PGInterval]("interval")
+  implicit val finiteDurationPut: Put[FiniteDuration] = intervalMeta.put.contramap[FiniteDuration] { a =>
+    Option(a).map { dur =>
+      val str = dur.unit match {
+        case TimeUnit.DAYS                                => s"${dur.length} days"
+        case TimeUnit.HOURS                               => s"${dur.length} hours"
+        case TimeUnit.MINUTES                             => s"${dur.length} minutes"
+        case TimeUnit.SECONDS                             => s"${dur.length} seconds"
+        case TimeUnit.MILLISECONDS                        => s"${dur.length} milliseconds"
+        case TimeUnit.MICROSECONDS | TimeUnit.NANOSECONDS => s"${dur.length} microseconds"
+      }
+
+      new PGInterval(str)
+    }.orNull
+  }
 
   implicit val jsonMeta: Meta[JsValue] = Meta.Advanced
     .other[PGobject]("jsonb")

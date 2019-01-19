@@ -51,8 +51,8 @@ trait OreRestfulApi extends OreWrites {
       categories: Option[String],
       sort: Option[Int],
       q: Option[String],
-      limit: Option[Int],
-      offset: Option[Int]
+      limit: Option[Long],
+      offset: Option[Long]
   ): IO[JsValue] = {
     val cats: Option[Seq[Category]] = categories.map(Category.fromString).map(_.toSeq)
     val ordering                    = sort.map(ProjectSortingStrategy.withValue).getOrElse(ProjectSortingStrategy.Default)
@@ -60,7 +60,7 @@ trait OreRestfulApi extends OreWrites {
     val maxLoad = this.config.ore.projects.initLoad
     val lim     = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
-    def filteredProjects(offset: Option[Int], lim: Int) = {
+    def filteredProjects(offset: Option[Long], lim: Long) = {
       val query = queryProjectRV.filter {
         case (p, _, _) =>
           val query = "%" + q.map(_.toLowerCase).getOrElse("") + "%"
@@ -84,7 +84,7 @@ trait OreRestfulApi extends OreWrites {
           case (p, _, _) =>
             ordering.fn.apply(p)
         }
-        .drop(offset.getOrElse(0))
+        .drop(offset.getOrElse(0L))
         .take(lim)
     }
 

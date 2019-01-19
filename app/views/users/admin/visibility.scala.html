@@ -5,7 +5,7 @@
 @import ore.permission.Permission
 @import models.querymodels.{VisibilityNeedApprovalProject, VisibilityWaitingProject}
 @import models.project.Page
-@(needsApproval: Seq[(VisibilityNeedApprovalProject, Map[Permission, Boolean])],
+@(needsApproval: Seq[VisibilityNeedApprovalProject],
  waitingProjects: Seq[VisibilityWaitingProject])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -33,7 +33,7 @@
                                 <p>No projects found.</p>
                             </li>
                         }
-                        @needsApproval.map { case (project, perms) =>
+                        @needsApproval.map { project =>
                             <li data-flag-id="@project.id" class="list-group-item">
                                 <div class="row">
                                     <div class="col-xs-12 col-md-8">
@@ -68,7 +68,7 @@
                                     </div>
                                     <div class="col-xs-12 col-md-4">
                                         <span class="pull-right btn-group-sm">
-                                        @projects.helper.btnHide(project.namespace, project.visibility, perms)
+                                        @projects.helper.btnHide(project.namespace, project.visibility)
                                         </span>
                                     </div>
                                 </div>

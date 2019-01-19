@@ -7,7 +7,7 @@ Collection of all projects.
 @import ore.project.Category
 @import models.querymodels.{ProjectListEntry, ViewTag}
 @import views.html.utils
-@(models: Seq[ProjectListEntry], page: Int, pageSize: Int, call: Int => Call)(implicit config: OreConfig)
+@(models: Seq[ProjectListEntry], page: Int, pageSize: Long, call: Int => Call)(implicit config: OreConfig)
 
 @projectRoutes = @{
     controllers.project.routes.Projects

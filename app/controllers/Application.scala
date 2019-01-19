@@ -140,15 +140,13 @@ final class Application @Inject()(forms: OreForms)(
     * @return Flag overview
     */
   def showFlags(): Action[AnyContent] = FlagAction.asyncF { implicit request =>
-    service.runDbCon(AppQueries.flags(request.user.id.value).to[Vector]).map { flagSeq =>
-      val flagsWithPerms = flagSeq.map { shownFlag =>
-        val perms = request.user.can.asMap(shownFlag.requesterTrust, shownFlag.requesterRoles.map(_.toDbRole).toSet)(
-          Visibility.values.map(_.permission): _*
-        )
-        shownFlag -> perms
-      }
-      Ok(views.users.admin.flags(flagsWithPerms))
-    }
+    service
+      .runDbCon(
+        AppQueries
+          .flags(request.user.id.value)
+          .to[Vector]
+      )
+      .map(flagSeq => Ok(views.users.admin.flags(flagSeq)))
   }
 
   /**
@@ -185,7 +183,7 @@ final class Application @Inject()(forms: OreForms)(
       implicit val timestampOrder: Order[Timestamp] = Order.from[Timestamp](_.compareTo(_))
 
       (
-        service.runDbCon(AppQueries.getUnhealtyProjects.to[Vector]),
+        service.runDbCon(AppQueries.getUnhealtyProjects(config.ore.projects.staleAge).to[Vector]),
         projects.missingFile.flatMap { versions =>
           versions.toVector.parTraverse(v => v.project.tupleLeft(v))
         }
@@ -423,20 +421,7 @@ final class Application @Inject()(forms: OreForms)(
         service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),
         service.runDbCon(AppQueries.getVisibilityWaitingProject.to[Vector])
       ).mapN { (needsApproval, waitingProject) =>
-          val getRoles = needsApproval.traverse { project =>
-            val perms = Visibility.values.map(_.permission)
-
-            request.user.trustIn(project).map2(request.user.globalRoles.allFromParent(request.user)) { (t, r) =>
-              request.user.can.asMap(t, r.toSet)(perms: _*)
-            }
-          }
-
-          getRoles.map(perms => (needsApproval.zip(perms), waitingProject))
-        }
-        .flatten
-        .map {
-          case (needsApproval, waitingProjects) =>
-            Ok(views.users.admin.visibility(needsApproval, waitingProjects))
-        }
+        Ok(views.users.admin.visibility(needsApproval, waitingProject))
+      }
     }
 }

@@ -7,7 +7,7 @@
 @import views.html.utils.userAvatar
 
 @* project perms for all visibilities *@
-@(flags: Seq[(ShownFlag, Map[Permission, Boolean])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(flags: Seq[ShownFlag])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -28,7 +28,7 @@
         <div class="row">
             <div class="col-md-12">
                 <ul class="list-group list-flags-admin">
-                    @flags.map { case (flag, projectPerm) =>
+                    @flags.map { flag =>
                         <li data-flag-id="@flag.flagId" class="list-group-item">
                             <div class="row">
                                 <div class="col-xs-12 col-md-1" style="width: 40px;">
@@ -56,7 +56,7 @@
                                         <a target="_blank" rel="noopener" href="https://forums.spongepowered.org/users/@flag.projectOwnerName" class="btn btn-default">
                                             <i class="fas fa-reply"></i> @messages("user.flags.messageOwner")
                                         </a>
-                                        @projects.helper.btnHide(flag.projectNamespace, flag.projectVisibility, projectPerm)
+                                        @projects.helper.btnHide(flag.projectNamespace, flag.projectVisibility)
                                         <button type="submit" class="btn btn-primary btn-resolve">
                                             <i class="fas fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
                                         </button>

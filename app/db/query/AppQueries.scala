@@ -1,5 +1,7 @@
 package db.query
 
+import scala.concurrent.duration.FiniteDuration
+
 import db.DbRef
 import models.admin.LoggedActionViewModel
 import models.project.{Page, Project, ReviewState, Version}
@@ -10,6 +12,7 @@ import ore.project.{Category, ProjectSortingStrategy}
 import cats.syntax.all._
 import doobie._
 import doobie.implicits._
+import org.postgresql.util.PGInterval
 
 object AppQueries extends DoobieOreProtocol {
 
@@ -127,35 +130,31 @@ object AppQueries extends DoobieOreProtocol {
   }
 
   def flags(userId: DbRef[User]): Query0[ShownFlag] = {
-    sql"""|SELECT pf.id                                     AS flag_id,
-          |       pf.reason                                 AS flag_reason,
-          |       pf.comment                                AS flag_comment,
-          |       fu.name                                   AS reporter,
-          |       p.owner_name                              AS project_owner_name,
-          |       p.slug                                    AS project_slug,
-          |       p.visibility                              AS project_visibility,
-          |       array_agg(rr.name)                        AS request_role,
-          |       greatest(gt.trust, coalesce(pt.trust, 0)) AS trust
+    sql"""|SELECT pf.id        AS flag_id,
+          |       pf.reason    AS flag_reason,
+          |       pf.comment   AS flag_comment,
+          |       fu.name      AS reporter,
+          |       p.owner_name AS project_owner_name,
+          |       p.slug       AS project_slug,
+          |       p.visibility AS project_visibility
           |  FROM project_flags pf
           |         JOIN projects p ON pf.project_id = p.id
           |         JOIN users fu ON pf.user_id = fu.id
-          |         JOIN users ru ON ru.id = $userId
+          |         JOIN users ru ON ru.id = 9001
           |         JOIN user_global_roles rgr ON ru.id = rgr.user_id
           |         JOIN roles rr ON rgr.role_id = rr.id
-          |         JOIN global_trust gt ON ru.id = gt.user_id
-          |         LEFT JOIN project_trust pt ON ru.id = pt.project_id
           |  WHERE NOT pf.is_resolved
-          |  GROUP BY pf.id, pf.reason, pf.comment, fu.name, p.owner_name, p.slug, p.visibility, gt.trust, pt.trust""".stripMargin
+          |  GROUP BY pf.id, fu.id, p.id;""".stripMargin
       .query[ShownFlag]
   }
 
-  val getUnhealtyProjects: Query0[UnhealtyProject] = {
+  def getUnhealtyProjects(staleTime: FiniteDuration): Query0[UnhealtyProject] = {
     sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, p.is_topic_dirty, p.last_updated, p.visibility
           |  FROM projects p
           |  WHERE p.topic_id IS NULL
           |     OR p.post_id IS NULL
           |     OR p.is_topic_dirty
-          |     OR p.last_updated > now()
+          |     OR p.last_updated > (now() - $staleTime::INTERVAL)
           |     OR p.visibility != 1""".stripMargin
       .query[UnhealtyProject]
   }
