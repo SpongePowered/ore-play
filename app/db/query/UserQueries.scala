@@ -18,10 +18,14 @@ object UserQueries extends DoobieOreProtocol {
 
   def getProjects(
       username: String,
+      currentUserId: Option[DbRef[User]],
       order: ProjectSortingStrategy,
-      pageSize: Int,
-      offset: Int
+      pageSize: Long,
+      offset: Long
   ): Query0[ProjectListEntry] = {
+    val visibilityFrag = currentUserId.fold(fr"(p.visibility = 1 OR p.visibility = 2)") { id =>
+      fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))"
+    }
 
     val fragments =
       sql"""|SELECT p.owner_name,
@@ -33,15 +37,25 @@ object UserQueries extends DoobieOreProtocol {
             |       p.category,
             |       p.description,
             |       p.name,
-            |       v.version_string,
-            |       COALESCE((SELECT array_agg(t.name) AS name FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::VARCHAR(255)[]),
-            |       COALESCE((SELECT array_agg(t.data) AS data FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::VARCHAR(255)[]),
-            |       COALESCE((SELECT array_agg(t.color) AS color FROM project_version_tags t WHERE t.version_id = v.id), ARRAY[]::INTEGER[])
-            |  FROM projects p
-            |         JOIN project_versions v ON p.recommended_version_id = v.id
-            |         JOIN users u ON p.owner_id = u.id
-            |  WHERE p.owner_name = $username AND 
-            |    (p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = 9001 AND p.visibility != 5)) """.stripMargin ++
+            |       p.version_string,
+            |       array_remove(array_agg(p.tag_name), NULL)  AS tag_names,
+            |       array_remove(array_agg(p.tag_data), NULL)  AS tag_datas,
+            |       array_remove(array_agg(p.tag_color), NULL) AS tag_colors
+            |  FROM home_projects p
+            |  WHERE p.owner_name = $username """.stripMargin ++ fr"AND" ++ visibilityFrag ++
+        fr"""|GROUP BY (p.owner_name,
+             |          p.slug,
+             |          p.visibility,
+             |          p.views,
+             |          p.downloads,
+             |          p.stars,
+             |          p.category,
+             |          p.description,
+             |          p.name,
+             |          p.created_at,
+             |          p.last_updated,
+             |          p.version_string,
+             |          p.search_words)""".stripMargin ++
         fr"ORDER BY" ++ order.fragment ++
         fr"LIMIT $pageSize OFFSET $offset"
 
@@ -133,11 +147,9 @@ object UserQueries extends DoobieOreProtocol {
           |  FROM global_trust gt LEFT JOIN project_trust pt ON pt.user_id = $userId AND pt.project_id = $projectId
           |  WHERE gt.user_id = $userId""".stripMargin.query[Trust]
 
-  def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] = {
-    println("Getting organization trust")
+  def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] =
     sql"""|SELECT greatest(gt.trust, ot.trust)
           |  FROM global_trust gt LEFT JOIN organization_trust ot ON ot.user_id = $userId AND ot.organization_id = $organizationId
           |  WHERE gt.user_id = $userId""".stripMargin.query[Trust]
-  }
 
 }

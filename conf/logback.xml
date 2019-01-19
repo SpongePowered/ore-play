@@ -47,4 +47,5 @@
     <logger name="Organizations" level="INFO" />
     <logger name="SSO" level="INFO" />
     <logger name="ProjectTask" level="INFO" />
+    <logger name="DbUpdateTask" level="INFO" />
 </configuration>

@@ -22,8 +22,8 @@ object AppQueries extends DoobieOreProtocol {
       categories: List[Category],
       query: Option[String],
       order: ProjectSortingStrategy,
-      offset: Int,
-      pageSize: Int,
+      offset: Long,
+      pageSize: Long,
       orderWithRelevance: Boolean
   ): Query0[ProjectListEntry] = {
     //TODO: Let the query handle tag search in the future
@@ -192,7 +192,7 @@ object AppQueries extends DoobieOreProtocol {
           |            AND (CAST(resolved_at AS DATE) >= day OR resolved_at IS NULL))                          AS flags_created,
           |       (SELECT COUNT(*) FROM project_flags WHERE CAST(resolved_at AS DATE) = day)                   AS flags_resolved,
           |       CAST(day AS DATE)
-          |  FROM (SELECT CURRENT_DATE - (INTERVAL '1 day' * generate_series($skippedDays, $daysBack)) AS day) dates
+          |  FROM (SELECT CURRENT_DATE - (INTERVAL '1 day' * generate_series($skippedDays :: INT, $daysBack :: INT)) AS day) dates
           |  ORDER BY day ASC""".stripMargin.query[Stats]
   }
 
@@ -205,7 +205,7 @@ object AppQueries extends DoobieOreProtocol {
       actionFilter: Option[Int],
       subjectFilter: Option[DbRef[_]]
   ): Query0[LoggedActionViewModel[Any]] = {
-    val pageSize = 50
+    val pageSize = 50L
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
 
@@ -247,6 +247,7 @@ object AppQueries extends DoobieOreProtocol {
     sql"""|SELECT p.id              AS project_id,
           |       p.owner_name,
           |       p.slug,
+          |       p.visibility,
           |       vcr.comment       AS change_request_comment,
           |       uvc.name          AS last_changer
           |  FROM projects p

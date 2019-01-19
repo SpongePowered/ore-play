@@ -164,7 +164,15 @@ class Users @Inject()(
           // TODO include orga projects?
           t1 <- (
             service.runDbCon(
-              UserQueries.getProjects(username, ProjectSortingStrategy.MostStars, pageSize, offset).to[Vector]
+              UserQueries
+                .getProjects(
+                  username,
+                  request.headerData.currentUser.map(_.id.value),
+                  ProjectSortingStrategy.MostStars,
+                  pageSize,
+                  offset
+                )
+                .to[Vector]
             ),
             user.starred(),
             getOrga(username).value,

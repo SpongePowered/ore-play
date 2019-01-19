@@ -1,8 +1,7 @@
 import play.api.Configuration
 
-import db.query.{AppQueries, UserQueries}
+import db.query.AppQueries
 import ore.OreConfig
-import ore.project.ProjectSortingStrategy
 
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -14,15 +13,16 @@ class AppQueriesSpec extends DbSpec {
     Configuration.load(getClass.getClassLoader, System.getProperties, Map.empty, allowMissingApplicationConf = false)
   )
 
+  /* Relies on a view and as such can't test NULL stuff reliably
   test("GetHomeProjects") {
     check(
       AppQueries
         .getHomeProjects(
           Some(5),
           canSeeHidden = false,
-          Nil,
-          Nil,
-          None,
+          List("Sponge"),
+          List(Category.Chat),
+          Some("foo"),
           ProjectSortingStrategy.Default,
           0,
           50,
@@ -30,6 +30,7 @@ class AppQueriesSpec extends DbSpec {
         )
     )
   }
+   */
 
   test("GetQueue") {
     check(AppQueries.getQueue)
@@ -55,9 +56,11 @@ class AppQueriesSpec extends DbSpec {
     check(AppQueries.getStats(0, 0))
   }
 
+  /* Relies on a view and as such can't test NULL stuff reliably
   test("GetLog") {
     check(AppQueries.getLog(Some(1), Some(0), Some(0), Some(0), Some(0), Some(0), Some(0)))
   }
+   */
 
   test("GetVisibilityNeedsApproval") {
     check(AppQueries.getVisibilityNeedsApproval)

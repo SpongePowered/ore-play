@@ -2,8 +2,10 @@ package db.impl
 
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+
+import play.api.inject.ApplicationLifecycle
 
 import db.ModelService
 import ore.OreConfig
@@ -13,7 +15,7 @@ import com.typesafe.scalalogging
 import doobie.implicits._
 
 @Singleton
-class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
+class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
     implicit ec: ExecutionContext,
     service: ModelService
 ) extends Runnable {
@@ -23,7 +25,13 @@ class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   private val Logger = scalalogging.Logger("DbUpdateTask")
 
   def start(): Unit = {
-    this.actorSystem.scheduler.schedule(interval, interval, this)
+    Logger.info("DbUpdateTask starting")
+    val task = this.actorSystem.scheduler.schedule(interval, interval, this)
+    lifecycle.addStopHook { () =>
+      Future {
+        task.cancel()
+      }
+    }
     run()
   }
 
