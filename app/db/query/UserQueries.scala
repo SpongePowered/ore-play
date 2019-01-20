@@ -16,6 +16,8 @@ import doobie.implicits._
 
 object UserQueries extends DoobieOreProtocol {
 
+  //implicit val logger: LogHandler = createLogger("Database")
+
   def getProjects(
       username: String,
       currentUserId: Option[DbRef[User]],
@@ -140,25 +142,25 @@ object UserQueries extends DoobieOreProtocol {
 
   def globalTrust(userId: DbRef[User]): Query0[Trust] =
     sql"""|SELECT coalesce(gt.trust, 0)
-     |  FROM users u
-     |         LEFT JOIN global_trust_2 gt ON gt.user_id = u.id
-     |  WHERE gt.user_id = $userId""".query[Trust]
+          |  FROM users u
+          |         LEFT JOIN global_trust gt ON gt.user_id = u.id
+          |  WHERE u.id = $userId""".stripMargin.query[Trust]
 
   def projectTrust(userId: DbRef[User], projectId: DbRef[Project]): Query0[Trust] =
-    sql"""|SELECT greatest(gt.trust, pt.trust, ot.trust)
+    sql"""|SELECT greatest(gt.trust, pt.trust, ot.trust, 0)
           |  FROM users u
-          |         LEFT JOIN global_trust_2 gt ON gt.user_id = u.id
-          |         LEFT JOIN project_trust_2 pt ON pt.user_id = u.id
+          |         LEFT JOIN global_trust gt ON gt.user_id = u.id
+          |         LEFT JOIN project_trust pt ON pt.user_id = u.id
           |         LEFT JOIN projects p ON p.id = pt.project_id
-          |         LEFT JOIN organization_trust_2 ot ON ot.user_id = u.id AND ot.organization_id = p.owner_id
-          |  WHERE u.id = $userId AND p.id = $projectId""".stripMargin.query[Trust]
+          |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = p.owner_id
+          |  WHERE u.id = $userId AND (p.id IS NULL OR p.id = $projectId)""".stripMargin.query[Trust]
 
   def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] =
-    sql"""|SELECT greatest(gt.trust, ot.trust)
+    sql"""|SELECT greatest(gt.trust, ot.trust, 0)
           |  FROM users u
-          |         LEFT JOIN global_trust_2 gt ON gt.user_id = u.id
-          |         LEFT JOIN organization_trust_2 ot ON ot.user_id = u.id
+          |         LEFT JOIN global_trust gt ON gt.user_id = u.id
+          |         LEFT JOIN organization_trust ot ON ot.user_id = u.id
           |  WHERE u.id = $userId
-          |    AND ot.organization_id = $organizationId""".stripMargin.query[Trust]
+          |    AND (ot.organization_id IS NULL OR ot.organization_id = $organizationId)""".stripMargin.query[Trust]
 
 }

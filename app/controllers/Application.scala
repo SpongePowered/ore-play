@@ -185,7 +185,7 @@ final class Application @Inject()(forms: OreForms)(
       (
         service.runDbCon(AppQueries.getUnhealtyProjects(config.ore.projects.staleAge).to[Vector]),
         projects.missingFile.flatMap { versions =>
-          versions.toVector.parTraverse(v => v.project.tupleLeft(v))
+          versions.toVector.traverse(v => v.project.tupleLeft(v))
         }
       ).parMapN { (unhealtyProjects, missingFileProjects) =>
         val noTopicProjects    = unhealtyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)

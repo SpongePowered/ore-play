@@ -4,6 +4,7 @@ import java.net.InetAddress
 import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 
+import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.runtime.universe.TypeTag
 
@@ -78,16 +79,25 @@ trait DoobieOreProtocol {
   implicit val intervalMeta: Meta[PGInterval] = Meta.Advanced.other[PGInterval]("interval")
   implicit val finiteDurationPut: Put[FiniteDuration] = intervalMeta.put.contramap[FiniteDuration] { a =>
     Option(a).map { dur =>
-      val str = dur.unit match {
-        case TimeUnit.DAYS                                => s"${dur.length} days"
-        case TimeUnit.HOURS                               => s"${dur.length} hours"
-        case TimeUnit.MINUTES                             => s"${dur.length} minutes"
-        case TimeUnit.SECONDS                             => s"${dur.length} seconds"
-        case TimeUnit.MILLISECONDS                        => s"${dur.length} milliseconds"
-        case TimeUnit.MICROSECONDS | TimeUnit.NANOSECONDS => s"${dur.length} microseconds"
+      @tailrec
+      def getTimeStr(dur: FiniteDuration): String = {
+        if (dur.length > Int.MaxValue || dur.length < Int.MinValue) {
+          val nextUnit = TimeUnit.values()(dur.unit.ordinal() + 1)
+          getTimeStr(FiniteDuration(nextUnit.convert(dur.length, dur.unit), nextUnit))
+        } else {
+          val length = dur.length
+          dur.unit match {
+            case TimeUnit.DAYS                                => s"$length days"
+            case TimeUnit.HOURS                               => s"$length hours"
+            case TimeUnit.MINUTES                             => s"$length minutes"
+            case TimeUnit.SECONDS                             => s"$length seconds"
+            case TimeUnit.MILLISECONDS                        => s"$length milliseconds"
+            case TimeUnit.MICROSECONDS | TimeUnit.NANOSECONDS => s"$length microseconds"
+          }
+        }
       }
 
-      new PGInterval(str)
+      new PGInterval(getTimeStr(dur))
     }.orNull
   }
 

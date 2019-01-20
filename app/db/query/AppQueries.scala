@@ -12,11 +12,10 @@ import ore.project.{Category, ProjectSortingStrategy}
 import cats.syntax.all._
 import doobie._
 import doobie.implicits._
-import org.postgresql.util.PGInterval
 
 object AppQueries extends DoobieOreProtocol {
 
-  //implicit val logger: LogHandler = createLogger("AppQueries")
+  //implicit val logger: LogHandler = createLogger("Database")
 
   def getHomeProjects(
       currentUserId: Option[DbRef[User]],
@@ -144,8 +143,7 @@ object AppQueries extends DoobieOreProtocol {
           |         JOIN user_global_roles rgr ON ru.id = rgr.user_id
           |         JOIN roles rr ON rgr.role_id = rr.id
           |  WHERE NOT pf.is_resolved
-          |  GROUP BY pf.id, fu.id, p.id;""".stripMargin
-      .query[ShownFlag]
+          |  GROUP BY pf.id, fu.id, p.id;""".stripMargin.query[ShownFlag]
   }
 
   def getUnhealtyProjects(staleTime: FiniteDuration): Query0[UnhealtyProject] = {
@@ -155,8 +153,7 @@ object AppQueries extends DoobieOreProtocol {
           |     OR p.post_id IS NULL
           |     OR p.is_topic_dirty
           |     OR p.last_updated > (now() - $staleTime::INTERVAL)
-          |     OR p.visibility != 1""".stripMargin
-      .query[UnhealtyProject]
+          |     OR p.visibility != 1""".stripMargin.query[UnhealtyProject]
   }
 
   def getReviewActivity(username: String): Query0[ReviewActivity] = {
@@ -221,40 +218,34 @@ object AppQueries extends DoobieOreProtocol {
     frags.query[LoggedActionViewModel[Any]]
   }
 
-  //TODO: Only latest changes
-  val getVisibilityNeedsApproval = {
-    sql"""|SELECT p.id              AS project_id,
-          |       p.owner_name,
-          |       p.slug,
-          |       p.visibility,
-          |       vcr.comment       AS change_request_comment,
-          |       uvcr.name         AS change_requester,
-          |       vc.id IS NOT NULL AS has_previous_change,
-          |       uvc.name          AS last_changer
-          |  FROM projects p
-          |         LEFT JOIN project_visibility_changes vc ON p.id = vc.project_id
-          |         LEFT JOIN project_visibility_changes vcr ON p.id = vcr.project_id
-          |         LEFT JOIN users uvc ON vc.created_by = uvc.id
-          |         LEFT JOIN users uvcr ON vcr.created_by = uvcr.id
-          |  WHERE (vcr.visibility IS NULL OR vcr.visibility = 3)
-          |    AND (vc.visibility IS NULL OR vc.resolved_at IS NULL)
-          |    AND p.visibility = 4""".stripMargin.query[VisibilityNeedApprovalProject]
+  val getVisibilityNeedsApproval: Query0[ProjectNeedsApproval] = {
+    sql"""|SELECT sq.owner_name,
+          |       sq.slug,
+          |       sq.visibility,
+          |       sq.last_comment,
+          |       u.name AS change_requester
+          |  FROM (SELECT p.owner_name,
+          |               p.slug,
+          |               p.visibility,
+          |               vc.resolved_at,
+          |               lag(vc.comment) OVER last_vc    AS last_comment,
+          |               lag(vc.visibility) OVER last_vc AS last_visibility,
+          |               lag(vc.created_by) OVER last_vc AS last_changer
+          |          FROM projects p
+          |                 JOIN project_visibility_changes vc ON p.id = vc.project_id
+          |          WHERE p.visibility = 4 WINDOW last_vc AS (PARTITION BY p.id ORDER BY vc.created_at)) sq
+          |         JOIN users u ON sq.last_changer = u.id
+          |  WHERE sq.resolved_at IS NULL
+          |    AND sq.last_visibility = 3
+          |  ORDER BY sq.owner_name || sq.slug""".stripMargin.query[ProjectNeedsApproval]
   }
 
-  //TODO: Only latest changes
-  val getVisibilityWaitingProject = {
-    sql"""|SELECT p.id              AS project_id,
-          |       p.owner_name,
-          |       p.slug,
-          |       p.visibility,
-          |       vcr.comment       AS change_request_comment,
-          |       uvc.name          AS last_changer
+  val getVisibilityWaitingProject: Query0[ProjectNeedsApproval] = {
+    sql"""|SELECT p.owner_name, p.slug, p.visibility, vc.comment, u.name AS change_requester
           |  FROM projects p
-          |         LEFT JOIN project_visibility_changes vc ON p.id = vc.project_id
-          |         LEFT JOIN project_visibility_changes vcr ON p.id = vcr.project_id
-          |         LEFT JOIN users uvc ON vc.created_by = uvc.id
-          |  WHERE (vcr.visibility IS NULL OR vcr.visibility = 3)
-          |    AND (vc.visibility IS NULL OR vc.resolved_at IS NULL)
-          |    AND p.visibility = 3""".stripMargin.query[VisibilityWaitingProject]
+          |         JOIN project_visibility_changes vc ON p.id = vc.project_id
+          |         JOIN users u ON vc.created_by = u.id
+          |  WHERE vc.resolved_at IS NULL
+          |    AND p.visibility = 3""".stripMargin.query[ProjectNeedsApproval]
   }
 }
