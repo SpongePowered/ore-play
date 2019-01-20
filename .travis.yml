@@ -1,4 +1,3 @@
-sudo: false
 notifications:
   email: false
 
@@ -13,7 +12,7 @@ scala:
 services: postgresql
 
 addons:
-  postgresql: "11"
+  postgresql: "11.1"
 
 before_script:
   - psql -c 'CREATE DATABASE ore_test;' -U postgres
