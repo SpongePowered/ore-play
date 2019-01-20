@@ -26,7 +26,7 @@ before_script:
 env:
   global:
     - PGPORT=5433
-  - DB_USERNAME=travis
+    - DB_USERNAME=travis
 
 # Caching taken from https://www.scala-sbt.org/1.0/docs/Travis-CI-with-sbt.html#Caching
 cache:
