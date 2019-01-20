@@ -20,13 +20,15 @@ addons:
 
 
 before_script:
-  - psql -c 'CREATE DATABASE ore_test;' -U travis
+  - psql -c "ALTER USER travis WITH PASSWORD 'travis';"
   - cp conf/application.conf.template conf/application.conf
 
 env:
   global:
     - PGPORT=5433
     - DB_USERNAME=travis
+    - DB_PASSWORD=travis
+    - DB_DATABASE=travis
 
 # Caching taken from https://www.scala-sbt.org/1.0/docs/Travis-CI-with-sbt.html#Caching
 cache:
