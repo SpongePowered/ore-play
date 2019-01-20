@@ -20,8 +20,9 @@
                                maxlength="@config.ore.channels.maxNameLen"/>
                         <input type="hidden" name="channel-color-input" class="channel-color-input" value="" />
                         <a href="#">
-                            <i class="fas fa-circle channel-id color-picker" style=""
-                               data-toggle="popover" data-placement="right" data-trigger="hover"></i>
+                            <span class="color-picker" data-toggle="popover" data-placement="right" data-trigger="hover">
+                                <i class="fas fa-circle channel-id" style=""></i>
+                            </span>
                         </a>
                         @projects.channels.helper.popoverColorPicker()
                         <span class="pull-right channel preview" style="display: none;"></span>

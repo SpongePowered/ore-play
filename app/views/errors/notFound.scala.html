@@ -1,8 +1,8 @@
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@()(implicit messages: Messages, requestHeader: RequestHeader, request: OreRequest[_] = null, config: OreConfig)
+@()(implicit messages: Messages, requestHeader: RequestHeader, request: OreRequest[_] = null, config: OreConfig, flash: Flash)
 
-@bootstrap.layout(messages("error.notFound.title"), user = false) {
+@bootstrap.layout(messages("error.notFound.title"), authEnabled = false, noContainer = true) {
 
     <div class="container-error container">
         <img src="@routes.Assets.versioned("images/ore-dark.png")" />

@@ -394,7 +394,6 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                                   service
                                     .update(
                                       project.copy(
-                                        recommendedVersionId = Some(newVersion.id.value),
                                         lastUpdated = new Timestamp(new Date().getTime)
                                       )
                                     )

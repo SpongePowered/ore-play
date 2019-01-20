@@ -8,7 +8,7 @@
 @import ore.project.factory.PendingProject
 @import views.html.helper.{CSRF, form}
 @(owner: User, pending: PendingProject, userList: List[User], registeredUsers: Int)(implicit messages: Messages, request: OreRequest[_],
-        config: OreConfig)
+        config: OreConfig, flash: Flash)
 
 @projects.helper.panelCreate(messages("project.create"), 3) {
     <!-- Start panel -->
