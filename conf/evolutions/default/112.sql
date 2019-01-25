@@ -7,7 +7,7 @@ ALTER TABLE user_organization_roles
 CREATE OR REPLACE VIEW global_trust AS
 SELECT gr.user_id, coalesce(max(r.trust), 0) AS trust
 FROM user_global_roles gr
-       LEFT JOIN roles r ON gr.role_id = r.id
+       JOIN roles r ON gr.role_id = r.id
 GROUP BY gr.user_id;
 
 CREATE OR REPLACE VIEW project_trust AS
