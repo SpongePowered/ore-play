@@ -31,7 +31,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole.Partial]
-  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, String, Organization] = {
+  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, List[String], Organization] = {
     import cats.instances.vector._
     MDCLogger.debug("Creating Organization...")
     MDCLogger.debug("Name     : " + name)

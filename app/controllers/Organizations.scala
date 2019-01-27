@@ -84,7 +84,7 @@ class Organizations @Inject()(forms: OreForms)(
           organizations
             .create(formData.name, user.id.value, formData.build())
             .bimap(
-              error => Redirect(failCall).withError(error),
+              errors => Redirect(failCall).withErrors(errors),
               organization => Redirect(routes.Users.showProjects(organization.name, None))
             )
             .merge
