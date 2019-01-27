@@ -124,10 +124,8 @@ trait SpongeAuthApi {
           MDCLogger.debug(json.toString())
 
           val obj = json.as[JsObject]
-          if (obj.keys.contains("errors"))
-            Left((obj \ "errors").as[JsArray].value.map(value => value.as[String]).toList)
-          else if (obj.keys.contains("error"))
-            Left(List((obj \ "error").as[String]))
+          if (obj.keys.contains("error"))
+            Left((obj \ "error").as[JsArray].value.map(value => value.as[String]).toList)
           else
             Right(obj.as[SpongeUser])
         }
