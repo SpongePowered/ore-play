@@ -121,11 +121,9 @@ trait SpongeAuthApi {
     EitherT(
       OptionT(response.map(parseJson(_, MDCLogger)))
         .map { json =>
-          MDCLogger.debug(json.toString())
-
           val obj = json.as[JsObject]
           if (obj.keys.contains("error"))
-            Left((obj \ "error").as[JsArray].value.map(value => value.as[String]).toList)
+            Left((obj \ "error").as[JsArray].value.map(_.as[String]).toList)
           else
             Right(obj.as[SpongeUser])
         }
