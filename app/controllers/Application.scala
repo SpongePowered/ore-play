@@ -9,6 +9,7 @@ import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
+import play.api.routing.JavaScriptReverseRouter
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
@@ -53,6 +54,13 @@ final class Application @Inject()(forms: OreForms)(
 ) extends OreBaseController {
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](ReviewFlags))
+
+  def javascriptRoutes: Action[AnyContent] = Action { implicit request =>
+    Ok(
+      JavaScriptReverseRouter("jsRoutes")(
+      )
+    ).as("text/javascript")
+  }
 
   /**
     * Show external link warning page.
