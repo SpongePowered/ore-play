@@ -233,34 +233,25 @@ form {
   margin-right: -4px;
 }
 
-.category-table {
-  tr {
-    &:hover {
-      cursor: pointer;
-      background-color: $mainBackground;
+.category-selection {
+  a {
+    svg {
+      margin-right: 0.5rem;
     }
 
-    > td {
-      &:first-child {
-        text-align: center;
-        padding-right: 0;
-      }
-
-      border: none;
-    }
-
-    &.selected {
+    &.active {
+      background: white;
       box-shadow: inset -10px 0px 0px 0px $sponge_yellow;
-    }
-    &.selected td:nth-child(2) {
-      box-shadow: inset -10px 0px $sponge_yellow;
+      border-bottom-color: rgb(221, 221, 221);
+      border-top-color: rgb(221, 221, 221);
+
+      &:hover {
+        background: #f5f5f5;
+        border-bottom-color: rgb(221, 221, 221);
+        border-top-color: rgb(221, 221, 221);
+      }
     }
   }
-}
-
-.cat-icon {
-  width: 10px;
-  text-align: center;
 }
 
 .container-error {

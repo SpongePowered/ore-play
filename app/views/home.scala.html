@@ -13,7 +13,7 @@ sorted according to different criteria.
 @import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
 @import views.html.helper.CSPNonce
-@(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
+@(models: Seq[ProjectListEntry], visibleCategories: Seq[Category], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean)(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
@@ -25,8 +25,20 @@ sorted according to different criteria.
     logos(index)
 }
 
-@categoryString = @{
-    visibleCategories.map(_.map(_.value.toString).mkString(","))
+@currentCategoryString = @{
+    visibleCategories.map(_.value.toString).mkString(",")
+}
+
+@generateCategoryString(differentCategory: Category) = @{
+    if(visibleCategories.contains(differentCategory)) {
+        Some(visibleCategories.filter(!differentCategory.equals(_)).map(_.value.toString).mkString(","))
+    } else {
+        if(visibleCategories.size == Category.visible.size - 1) {
+          None
+        } else {
+          Some((visibleCategories :+ differentCategory).map(_.value.toString).mkString(","))
+        }
+    }
 }
 
 @orderingOption = @{
@@ -36,6 +48,12 @@ sorted according to different criteria.
     }
 }
 
+@categoryLink(category: Category) = @{
+    routes.Application.showHome(
+        generateCategoryString(category), query, orderingOption, Some(page),
+        platformCategory.map(_.name) ,platform.map(_.name))
+}
+
 @relevanceOption = @{
     Some(orderWithRelevance).filterNot(identity)
 }
@@ -43,9 +61,6 @@ sorted according to different criteria.
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
     <script @CSPNonce.attr>
-    @if(visibleCategories.isDefined) {
-    CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
-    }
     @if(!sort.equals(ProjectSortingStrategy.Default)) {
     SORT_STRING = "@sort.id";
     }
@@ -114,7 +129,7 @@ sorted according to different criteria.
                 page = page,
                 pageSize = config.ore.projects.initLoad,
                 call = page => routes.Application.showHome(
-                    categoryString, query, orderingOption, Some(page),
+                    Some(currentCategoryString), query, orderingOption, Some(page),
                     platformCategory.map(_.name) ,platform.map(_.name), relevanceOption)
             )
         </div>
@@ -138,7 +153,7 @@ sorted according to different criteria.
             <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title">@messages("project.category.plural")</h3>
-                    @if(visibleCategories.isDefined) {
+                    @if(visibleCategories.nonEmpty) {
                         <a href="@routes.Application.showHome(
                             None, None, None, None,
                             platformCategory.map(_.name),
@@ -147,19 +162,14 @@ sorted according to different criteria.
                         </a>
                     }
                 </div>
-
-                <table class="table panel-body category-table">
-                    <tbody>
-                    @for(category <- Category.visible) {
-                        <tr data-id="@category.value" @if(visibleCategories.isDefined && visibleCategories.get.contains(category)) { class="selected"} >
-                            <td><i class="fas @category.icon"></i></td>
-                            <td>
-                                <strong>@category.title</strong>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+                <div class="list-group category-selection">
+                @for(category <- Category.visible) {
+                    <a href="@categoryLink(category)" class="list-group-item @if(visibleCategories.contains(category)){active}">
+                        <i class="fas fa-fw @category.icon"></i>
+                        <strong>@category.title</strong>
+                    </a>
+                }
+                </div>
             </div>
 
             <!-- Platform list -->
@@ -171,7 +181,7 @@ sorted according to different criteria.
                 <ul class="list-group">
 
                     <a href="@routes.Application.showHome(
-                        categoryString,
+                        Some(currentCategoryString),
                         query,
                         orderingOption,
                         Some(page),
@@ -183,7 +193,7 @@ sorted according to different criteria.
 
                     @for(pc <- PlatformCategory.getPlatformCategories) {
                         <a href="@routes.Application.showHome(
-                            categoryString,
+                            Some(currentCategoryString),
                             query,
                             orderingOption,
                             Some(page),
@@ -198,7 +208,7 @@ sorted according to different criteria.
                             @if(platforms.size > 1) {
                                 @for(p <- platforms) {
                                     <a href="@routes.Application.showHome(
-                                        categoryString,
+                                        Some(currentCategoryString),
                                         query,
                                         orderingOption,
                                         Some(page),

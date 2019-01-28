@@ -122,9 +122,7 @@ final class Application @Inject()(forms: OreForms)(
           .to[Vector]
       )
       .map { data =>
-        val catList =
-          if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
-        Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance))
+        Ok(views.home(data, categoryList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance))
       }
   }
 
