@@ -26,7 +26,11 @@ sorted according to different criteria.
 }
 
 @currentCategoryString = @{
-    visibleCategories.map(_.value.toString).mkString(",")
+    if(visibleCategories.nonEmpty) {
+        Some(visibleCategories.map(_.value.toString).mkString(","))
+    } else {
+        None
+    }
 }
 
 @generateCategoryString(differentCategory: Category) = @{
@@ -60,17 +64,22 @@ sorted according to different criteria.
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
-    <script @CSPNonce.attr>
-    @if(!sort.equals(ProjectSortingStrategy.Default)) {
-    SORT_STRING = "@sort.id";
-    }
-    @if(request.getQueryString("q").isDefined) {
-    QUERY_STRING = "@request.getQueryString("q").get";
-    }
-    @if(!orderWithRelevance) {
-    ORDER_WITH_RELEVANCE = "@orderWithRelevance";
-    }
-    currentlyLoaded = @models.size;
+    <script nonce="@nonce">
+        @if(request.getQueryString("q").isDefined) {
+            QUERY_STRING = "@request.getQueryString("q").get";
+        }
+        @if(currentCategoryString.isDefined) {
+            CATEGORY_STRING = @currentCategoryString;
+        }
+        @if(sort != ProjectSortingStrategies.Default) {
+            SORT_STRING = "@sort.id";
+        }
+        @if(platformCategory.isDefined) {
+            PLATFORM_CATEGORY = @platformCategory.map(_.name);
+        }
+        @if(platform.isDefined) {
+            PLATFORM = @platform.map(_.name);
+        }
     </script>
 }
 
@@ -119,7 +128,13 @@ sorted according to different criteria.
             @if(query.isDefined) {
                 <li class="list-group-item minor search-header">
                     <span class="pull-left">Showing results for: <i>@query</i></span>
-                    <span class="dismiss pull-right"><i class="fas fa-times fa-1x"></i></span>
+                    <span class="dismiss pull-right"><a href="@routes.Application.showHome(
+                        currentCategoryString,
+                        None,
+                        orderingOption,
+                        Some(page),
+                        platformCategory.map(_.name),
+                        platform.map(_.name))"><i class="fas fa-times fa-1x"></i></a></span>
                     <div class="clearfix"></div>
                 </li>
             }
@@ -129,7 +144,7 @@ sorted according to different criteria.
                 page = page,
                 pageSize = config.ore.projects.initLoad,
                 call = page => routes.Application.showHome(
-                    Some(currentCategoryString), query, orderingOption, Some(page),
+                    currentCategoryString, query, orderingOption, Some(page),
                     platformCategory.map(_.name) ,platform.map(_.name), relevanceOption)
             )
         </div>
@@ -181,7 +196,7 @@ sorted according to different criteria.
                 <ul class="list-group">
 
                     <a href="@routes.Application.showHome(
-                        Some(currentCategoryString),
+                        currentCategoryString,
                         query,
                         orderingOption,
                         Some(page),
@@ -193,7 +208,7 @@ sorted according to different criteria.
 
                     @for(pc <- PlatformCategory.getPlatformCategories) {
                         <a href="@routes.Application.showHome(
-                            Some(currentCategoryString),
+                            currentCategoryString,
                             query,
                             orderingOption,
                             Some(page),
@@ -208,7 +223,7 @@ sorted according to different criteria.
                             @if(platforms.size > 1) {
                                 @for(p <- platforms) {
                                     <a href="@routes.Application.showHome(
-                                        Some(currentCategoryString),
+                                        currentCategoryString,
                                         query,
                                         orderingOption,
                                         Some(page),
