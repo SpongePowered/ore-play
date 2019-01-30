@@ -8,12 +8,15 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
+import play.api.i18n.Lang
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
 import play.api.routing.JavaScriptReverseRouter
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelAccess
+import db.impl.OrePostgresDriver.api._
+import db.impl.schema._
 import db.query.AppQueries
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
@@ -163,15 +166,17 @@ final class Application @Inject()(forms: OreForms)(
     * @param resolved Resolved state
     * @return         Ok
     */
-  def setFlagResolved(flagId: DbRef[Flag], resolved: Boolean): Action[AnyContent] =
+  def setFlagResolved(flagId: DbRef[Flag]): Action[AnyContent] =
     FlagAction.asyncF { implicit request =>
+      implicit val lang: Lang = request.lang
+
       this.service
         .access[Flag]()
         .get(flagId)
         .semiflatMap { flag =>
           for {
             user        <- users.current.value
-            _           <- flag.markResolved(resolved, user)
+            _           <- flag.resolvedBy(user)
             flagCreator <- flag.user
             _ <- UserActionLogger.log(
               request,
@@ -180,9 +185,9 @@ final class Application @Inject()(forms: OreForms)(
               s"Flag Resolved by ${user.fold("unknown")(_.name)}",
               s"Flagged by ${flagCreator.name}"
             )
-          } yield Ok
+          } yield Redirect(routes.Application.showFlags()).withSuccess(messagesApi.apply("user.flags.resolved"))
         }
-        .getOrElse(NotFound)
+        .getOrElse(Redirect(routes.Application.showFlags()).withError("Error!"))
     }
 
   def showHealth(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ViewHealth)).asyncF {

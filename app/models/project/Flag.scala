@@ -38,25 +38,16 @@ case class Flag(
   override type T = FlagTable
 
   /**
-    * Sets whether this Flag has been marked as resolved.
-    *
-    * @param resolved True if resolved
+    * Marks a Flag as resolved.
     */
-  def markResolved(
-      resolved: Boolean,
+  def resolvedBy(
       user: Option[User]
   )(implicit service: ModelService): IO[Flag] = {
-    val (at, by) =
-      if (resolved)
-        (Some(Timestamp.from(Instant.now)), Some(user.map(_.id.value).getOrElse(-1L)): Option[DbRef[User]])
-      else
-        (None, None)
-
     service.update(
       copy(
-        isResolved = resolved,
-        resolvedAt = at,
-        resolvedBy = by
+        isResolved = true,
+        resolvedAt = Some(Timestamp.from(Instant.now)),
+        resolvedBy = Some(user.map(_.id.value).getOrElse(-1L)): Option[DbRef[User]]
       )
     )
   }

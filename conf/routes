@@ -11,7 +11,7 @@ POST    /admin/user/:user/update                                    @controllers
 GET     /admin/approval/versions                                    @controllers.Application.showQueue()
 GET     /admin/approval/projects                                    @controllers.Application.showProjectVisibility()
 GET     /admin/flags                                                @controllers.Application.showFlags()
-GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: DbRef[Flag], resolved: Boolean)
+POST    /admin/flags/:id/resolve                                    @controllers.Application.setFlagResolved(id: DbRef[Flag])
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats()

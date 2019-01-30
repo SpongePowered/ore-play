@@ -7,12 +7,12 @@
 @import views.html.utils.userAvatar
 
 @* project perms for all visibilities *@
+@import views.html.helper.CSRF
 @(flags: Seq[ShownFlag])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/flags.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
 }
 
@@ -58,9 +58,13 @@
                                 <i class="fas fa-reply"></i> @messages("user.flags.messageOwner")
                             </a>
                             @projects.helper.btnHide(flag.projectNamespace, flag.projectVisibility)
-                            <button type="submit" class="btn btn-primary btn-resolve">
-                                <i class="fas fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
-                            </button>
+                            @helper.form(action = routes.Application.setFlagResolved(flag.id.value), 'class -> "form-inline") {
+                                @CSRF.formField
+
+                                <button type="submit" class="btn btn-primary btn-resolve">
+                                    <i class="fas fa-check"></i> <strong>@messages("user.flags.markResolved")</strong>
+                                </button>
+                            }
                         </span>
                     </div>
                 </div>
