@@ -20,8 +20,17 @@ Base template for Project overview.
     @additionalScripts
 }
 
-@bootstrap.layout(p.project.ownerName + " / " + p.project.name, scripts) {
+@meta = {
+    <meta property="og:title" content="@p.project.name" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@config.app.baseUrl@Projects.show(p.project.ownerName, p.project.slug)" />
+    <meta property="og:image" content="@config.app.baseUrl@Projects.showIcon(p.project.ownerName, p.project.slug)" />
+    @defining(p.project.description.getOrElse("")) { description =>
+        <meta property="og:description " content="@description" />
+    }
+}
 
+@bootstrap.layout(p.project.ownerName + " / " + p.project.name, scripts, additionalMeta = meta) {
     <div class="project-header-container">
         @if(p.visibility != Visibility.Public) {
             <div class="row">
