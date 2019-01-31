@@ -80,7 +80,15 @@ this.
             @additionalScripts
 
             @if(request != null) {
-                <script @CSPNonce.attr>csrf = '@play.filters.csrf.CSRF.getToken.get.value'</script>
+                <script @CSPNonce.attr>
+                    csrf = '@play.filters.csrf.CSRF.getToken.get.value';
+
+                    $.ajaxSetup({
+                        headers: {
+                            'Csrf-Token': csrf
+                        }
+                    });
+                </script>
             }
         }
 

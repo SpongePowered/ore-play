@@ -46,6 +46,9 @@ GET     /api/users/:user                                            @controllers
 GET     /api/:version/projects                                      @controllers.ApiController.listProjects(version, categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
 GET     /api/:version/projects/:pluginId                            @controllers.ApiController.showProject(version, pluginId)
 
+POST    /api/:version/:pluginId/keys/new                            @controllers.ApiController.createKey(version, pluginId)
+POST    /api/:version/:pluginId/keys/revoke                         @controllers.ApiController.revokeKey(version, pluginId)
+
 GET     /api/:version/projects/:pluginId/versions                   @controllers.ApiController.listVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/:version/projects/:pluginId/versionsAll                @controllers.ApiController.listAllVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.showVersion(version, pluginId, name)

@@ -5,7 +5,15 @@ var csrf = null;
 
 //=====> Constants
 
+var API_VERSION = "v1";
 var KEY_ENTER = 13;
+
+
+//=====> jQuery Refresh Plugin
+
+$.fn.refresh = function() {
+    return $(this.selector);
+};
 
 
 //=====> Clipboard Manager

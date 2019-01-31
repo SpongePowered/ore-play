@@ -1,42 +1,47 @@
-var pluginId = null;
-var keyGenText = null;
-var keyRevokeText = null;
+//=====> Nonce Variables
 
+var PLUGIN_ID = null;
+var KEY_GEN_TEXT = null;
+var KEY_REVOKE_TEXT = null;
 var KEY_TYPE_DEPLOYMENT = 0;
 
-function bindKeyGen(e) {
-    e.click(function() {
-        var spinner = $(this).find('.spinner').toggle();
-        var $this = $(this);
-        $.ajax({
-            url: '/api/projects/' + pluginId + '/keys/new',
-            method: 'post',
-            data: {csrfToken: csrf, 'key-type': KEY_TYPE_DEPLOYMENT},
-            dataType: 'json',
-            success: function(key) {
-                console.log(key);
-                $('.input-key').val(key.value);
-                $this.removeClass('btn-key-gen btn-info')
-                    .addClass('btn-key-revoke btn-danger')
-                    .data('key-id', key.id)
-                    .off('click');
-                $this.find('.text').text(keyRevokeText);
 
-                bindKeyRevoke($this);
-            },
-            complete: function() {
-                e.find('.spinner').toggle();
-            }
-        })
+//=====> jQuery Doc Ready
+
+$(function() {
+    var keyGenBtn = $('.btn-key-gen');
+
+    keyGenBtn.on('click', function () {
+        keyGenBtn.find('.spinner').toggle();
+
+        var route = jsRoutes.controllers.ApiController.createKey(API_VERSION, PLUGIN_ID);
+        $.ajax({
+            url: route.url,
+            type: route.type,
+            data: { 'key-type': KEY_TYPE_DEPLOYMENT }
+        }).always(function () {
+            keyGenBtn.find('.spinner').toggle();
+        }).done(function (key) {
+            $('.input-key').val(key.value);
+
+            keyGenBtn.find('.text').text(KEY_REVOKE_TEXT);
+            keyGenBtn.removeClass('btn-key-gen btn-info')
+                .addClass('btn-key-revoke btn-danger')
+                .data('key-id', key.id)
+                .off('click');
+        });
     });
-}
+
+    bindKeyRevoke($('.btn-key-revoke'));
+});
+
 
 function bindKeyRevoke(e) {
     e.click(function() {
         var spinner = $(this).find('.spinner').toggle();
         var $this = $(this);
         $.ajax({
-            url: '/api/projects/' + pluginId + '/keys/revoke',
+            url: '/api/projects/' + PLUGIN_ID + '/keys/revoke',
             method: 'post',
             data: {csrfToken: csrf, 'id': $(this).data('key-id')},
             success: function() {
@@ -44,8 +49,7 @@ function bindKeyRevoke(e) {
                 $this.removeClass('btn-key-revoke btn-danger')
                     .addClass('btn-key-gen btn-info')
                     .off('click');
-                $this.find('.text').text(keyGenText);
-                bindKeyGen($this);
+                $this.find('.text').text(KEY_GEN_TEXT);
             },
             complete: function() {
                 e.find('.spinner').toggle();
@@ -53,8 +57,3 @@ function bindKeyRevoke(e) {
         })
     });
 }
-
-$(function() {
-    bindKeyGen($('.btn-key-gen'));
-    bindKeyRevoke($('.btn-key-revoke'));
-});

@@ -61,7 +61,10 @@ final class Application @Inject()(forms: OreForms)(
   def javascriptRoutes: Action[AnyContent] = Action { implicit request =>
     Ok(
       JavaScriptReverseRouter("jsRoutes")(
-        routes.javascript.Application.showHome
+        routes.javascript.Application.showHome,
+        routes.javascript.ApiController.showUser,
+        routes.javascript.ApiController.createKey,
+        routes.javascript.ApiController.revokeKey
       )
     ).as("text/javascript")
   }
