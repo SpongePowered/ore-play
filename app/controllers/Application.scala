@@ -185,9 +185,9 @@ final class Application @Inject()(forms: OreForms)(
               s"Flag Resolved by ${user.fold("unknown")(_.name)}",
               s"Flagged by ${flagCreator.name}"
             )
-          } yield Redirect(routes.Application.showFlags()).withSuccess(messagesApi.apply("user.flags.resolved"))
+          } yield Redirect(routes.Application.showFlags()).withSuccess(messagesApi.apply("user.flags.resolved.success"))
         }
-        .getOrElse(Redirect(routes.Application.showFlags()).withError("Error!"))
+        .getOrElse(Redirect(routes.Application.showFlags()).withError(messagesApi.apply("user.flags.resolved.error")))
     }
 
   def showHealth(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ViewHealth)).asyncF {

@@ -1,26 +1,3 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * (C) SpongePowered 2018 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Powers the admin reviews.
- *
- * ==================================================
- */
-
-
-/*
- * ==================================================
- * =                   Doc ready                    =
- * ==================================================
- */
-
 $(function() {
     $('.btn-review-start').click(function() {
         toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-terminal'));

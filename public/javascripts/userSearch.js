@@ -1,20 +1,3 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * By Walker Crouse (windy) and contributors
- * (C) SpongePowered 2016-2017 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Powers the asynchronous user lookups via AJAX used throughout the site.
- *
- * ==================================================
- */
-
 var KEY_ENTER = 13;
 
 /*

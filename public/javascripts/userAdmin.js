@@ -1,6 +1,5 @@
 "use strict";
 
-
 function update(thing, action, data) {
     return $.ajax({
         url: window.location.pathname + '/update',

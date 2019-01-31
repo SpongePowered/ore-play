@@ -1,26 +1,3 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * By Walker Crouse (windy) and contributors
- * (C) SpongePowered 2016-2017 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Powers the notifications page.
- *
- * ==================================================
- */
-
-/*
- * ==================================================
- * =                Helper functions                =
- * ==================================================
- */
-
 function markRead(notification) {
     var btn = notification.find('.btn-mark-read');
     toggleSpinner(btn.toggleClass('btn-mark-read fa-check'))
