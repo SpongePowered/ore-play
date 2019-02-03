@@ -9,10 +9,10 @@ import play.api.inject.ApplicationLifecycle
 
 import db.ModelService
 import ore.OreConfig
+import util.OreMDC
 
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging
-import doobie.implicits._
 
 @Singleton
 class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
@@ -22,7 +22,8 @@ class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecy
 
   val interval: FiniteDuration = config.ore.homepage.updateInterval
 
-  private val Logger = scalalogging.Logger("DbUpdateTask")
+  private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("DbUpdateTask")
+  implicit private val mdc: OreMDC = OreMDC.NoMDC
 
   def start(): Unit = {
     Logger.info("DbUpdateTask starting")
@@ -37,7 +38,7 @@ class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecy
 
   override def run(): Unit = {
     Logger.debug("Updating homepage view")
-    service.runDbCon(sql"REFRESH MATERIALIZED VIEW home_projects".update.run).unsafeToFuture()
+    service.projectBase.refreshHomePage(Logger)
     ()
   }
 }

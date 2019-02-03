@@ -40,6 +40,7 @@ import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
+import com.typesafe.scalalogging
 
 /**
   * Controller for handling Version related actions.
@@ -59,6 +60,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private val fileManager = projects.fileManager
   private val self        = controllers.project.routes.Versions
   private val warnings    = this.service.access[DownloadWarning]()
+
+  private val Logger    = scalalogging.Logger("Versions")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   private def VersionEditAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditVersions))
@@ -421,6 +425,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                       UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id.value, "created", "null")
                     }
                     .flatTap(created => addUnstableTag(created._2, versionData.unstable))
+                    .productR(projects.refreshHomePage(MDCLogger))
                     .as(Redirect(ShowProject(author, slug)))
               }
             }

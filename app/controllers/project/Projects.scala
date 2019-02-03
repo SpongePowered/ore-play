@@ -36,11 +36,13 @@ import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.StringUtils._
 import _root_.util.syntax._
+import util.OreMDC
 import views.html.{projects => views}
 
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Controller for handling Project related actions.
@@ -61,6 +63,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   implicit val fileManager: ProjectFiles = factory.fileManager
 
   private val self = controllers.project.routes.Projects
+
+  private val Logger    = scalalogging.Logger("Projects")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   private def SettingsEditAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditSettings))
@@ -663,7 +668,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             Visibility.NeedsChanges.nameKey
           )
 
-          (forumVisbility, projectVisibility).parTupled.productR(log).as(Ok)
+          (forumVisbility, projectVisibility).parTupled
+            .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
+            .as(Ok)
         } else {
           IO.pure(Unauthorized)
         }
@@ -738,8 +745,14 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     Authenticated.andThen(PermissionAction(HardRemoveProject)).asyncF { implicit request =>
       getProject(author, slug).semiflatMap { project =>
         val effects = projects.delete(project) *>
-          UserActionLogger
-            .log(request, LoggedAction.ProjectVisibilityChange, project.id.value, "deleted", project.visibility.nameKey)
+          UserActionLogger.log(
+            request,
+            LoggedAction.ProjectVisibilityChange,
+            project.id.value,
+            "deleted",
+            project.visibility.nameKey
+          ) *>
+          projects.refreshHomePage(MDCLogger)
         effects.as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
       }.merge
     }
@@ -768,7 +781,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       )
 
       (oreVisibility, forumVisibility).parTupled
-        .productR(log)
+        .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
         .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", oldProject.name)))
     }
 
