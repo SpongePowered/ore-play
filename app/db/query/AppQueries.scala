@@ -214,7 +214,6 @@ object AppQueries extends DoobieOreProtocol {
       subjectFilter.map(id => fr"la.filter_subject = $id")
     ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
 
-    println(frags.query[LoggedActionViewModel[Any]].sql)
     frags.query[LoggedActionViewModel[Any]]
   }
 
