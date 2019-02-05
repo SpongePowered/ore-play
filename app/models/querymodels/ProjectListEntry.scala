@@ -11,6 +11,6 @@ case class ProjectListEntry(
     category: Category,
     description: Option[String],
     name: String,
-    version: String,
+    version: Option[String],
     tags: List[ViewTag]
 )

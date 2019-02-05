@@ -32,13 +32,15 @@ Collection of all projects.
                             </div>
                             <div class="col-sm-6 hidden-xs">
                                 <div class="info minor">
-                                    <span class="stat recommended-version" title="Recommended version">
-                                        <i class="far fa-gem"></i>
-                                        <a href="@controllers.project.routes.Versions.show(
-                                            entry.namespace.ownerName, entry.namespace.slug, entry.version)">
-                                        @entry.version
-                                        </a>
-                                    </span>
+                                    @entry.version.map { recommendedVersion =>
+                                        <span class="stat recommended-version" title="Recommended version">
+                                            <i class="far fa-gem"></i>
+                                            <a href="@controllers.project.routes.Versions.show(
+                                                entry.namespace.ownerName, entry.namespace.slug, recommendedVersion)">
+                                            @recommendedVersion
+                                            </a>
+                                        </span>
+                                    }
 
                                     <span class="stat" title="Views"><i class="fas fa-eye"></i> @entry.views</span>
                                     <span class="stat" title="Download"><i class="fas fa-download"></i> @entry.downloads</span>

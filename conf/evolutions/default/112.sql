@@ -53,7 +53,7 @@ SELECT p.owner_name,
        setweight(to_tsvector('english', p.owner_name), 'D') ||
        setweight(to_tsvector('english', regexp_replace(p.owner_name, '([a-z])([A-Z]+)', '\1_\2', 'g')), 'D') AS search_words
 FROM projects p
-       JOIN project_versions v ON p.recommended_version_id = v.id
+       LEFT JOIN project_versions v ON p.recommended_version_id = v.id
        LEFT JOIN project_version_tags pvt ON v.id = pvt.version_id
        LEFT JOIN project_version_tags pvt2 ON v.id = pvt2.version_id
        JOIN users u ON p.owner_id = u.id
