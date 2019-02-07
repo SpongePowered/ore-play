@@ -23,6 +23,7 @@ import db.{AssociationQuery, DbRef, InsertFunc, Model, ModelQuery, ModelService,
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.project.Visibility.Public
+import models.querymodels.ProjectNamespace
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -158,14 +159,14 @@ case class Project private (
   ): ModelAssociationAccess[ProjectWatchersTable, Project, User, IO] =
     new ModelAssociationAccessImpl
 
-  def namespace: String = this.ownerName + '/' + this.slug
+  def namespace: ProjectNamespace = ProjectNamespace(ownerName, slug)
 
   /**
     * Returns the base URL for this Project.
     *
     * @return Base URL for project
     */
-  override def url: String = this.ownerName + '/' + this.slug
+  override def url: String = namespace.toString
 
   /**
     * Returns this [[Project]]'s [[ProjectSettings]].

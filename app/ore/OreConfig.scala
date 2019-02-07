@@ -52,6 +52,11 @@ final class OreConfig @Inject()(config: Configuration) {
     val debug: Boolean     = raw.get[Boolean]("debug")
     val debugLevel: Int    = raw.get[Int]("debug-level")
 
+    object homepage extends ConfigCategory {
+      val raw: Configuration             = ore.raw.get[Configuration]("homepage")
+      val updateInterval: FiniteDuration = raw.get[FiniteDuration]("update-interval")
+    }
+
     object channels extends ConfigCategory {
       val raw: Configuration  = ore.raw.get[Configuration]("channels")
       val maxNameLen: Int     = raw.get[Int]("max-name-len")
@@ -74,7 +79,7 @@ final class OreConfig @Inject()(config: Configuration) {
       val maxNameLen: Int               = raw.get[Int]("max-name-len")
       val maxPages: Int                 = raw.get[Int]("max-pages")
       val maxChannels: Int              = raw.get[Int]("max-channels")
-      val initLoad: Int                 = raw.get[Int]("init-load")
+      val initLoad: Long                = raw.get[Long]("init-load")
       val initVersionLoad: Int          = raw.get[Int]("init-version-load")
       val maxDescLen: Int               = raw.get[Int]("max-desc-len")
       val fileValidate: Boolean         = raw.get[Boolean]("file-validate")
@@ -85,11 +90,11 @@ final class OreConfig @Inject()(config: Configuration) {
     }
 
     object users extends ConfigCategory {
-      val raw: Configuration   = ore.raw.get[Configuration]("users")
-      val starsPerPage: Int    = raw.get[Int]("stars-per-page")
-      val maxTaglineLen: Int   = raw.get[Int]("max-tagline-len")
-      val authorPageSize: Long = raw.get[Long]("author-page-size")
-      val projectPageSize: Int = raw.get[Int]("project-page-size")
+      val raw: Configuration    = ore.raw.get[Configuration]("users")
+      val starsPerPage: Int     = raw.get[Int]("stars-per-page")
+      val maxTaglineLen: Int    = raw.get[Int]("max-tagline-len")
+      val authorPageSize: Long  = raw.get[Long]("author-page-size")
+      val projectPageSize: Long = raw.get[Long]("project-page-size")
     }
 
     object orgs extends ConfigCategory {
@@ -172,6 +177,7 @@ final class OreConfig @Inject()(config: Configuration) {
   app.fakeUser.load()
   play.load()
   ore.load()
+  ore.homepage.load()
   ore.channels.load()
   ore.pages.load()
   ore.projects.load()

@@ -24,6 +24,7 @@ class ErrorHandler @Inject()(
 
   override def onProdServerError(request: RequestHeader, exception: UsefulException): Future[Result] = {
     implicit val requestImpl: RequestHeader = request
+    implicit val flash: Flash               = request.flash
 
     Future.successful {
       exception.cause match {
@@ -35,6 +36,7 @@ class ErrorHandler @Inject()(
 
   override def onNotFound(request: RequestHeader, message: String): Future[Result] = {
     implicit val requestImpl: RequestHeader = request
+    implicit val flash: Flash               = request.flash
 
     Future.successful(NotFound(views.html.errors.notFound()))
   }

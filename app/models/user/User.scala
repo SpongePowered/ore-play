@@ -11,11 +11,12 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.model.common.Named
 import db.impl.schema._
+import db.query.UserQueries
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
 import ore.permission._
-import ore.permission.role.{Role, _}
+import ore.permission.role._
 import ore.permission.scope._
 import ore.user.Prompt
 import security.pgp.PGPPublicKeyInfo
@@ -23,10 +24,8 @@ import security.spauth.{SpongeAuthApi, SpongeUser}
 import util.OreMDC
 import util.syntax._
 
-import cats.Parallel
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
-import cats.syntax.all._
+import cats.effect.IO
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
 
@@ -122,20 +121,7 @@ case class User private (
       }
     )
 
-  private def biggestRoleTpe(roles: Set[Role]): Trust =
-    if (roles.isEmpty) Trust.Default
-    else roles.map(_.trust).max
-
-  private def globalTrust(implicit service: ModelService) = {
-    val q = for {
-      ur <- TableQuery[UserGlobalRolesTable] if ur.userId === id.value
-      r  <- TableQuery[DbRoleTable] if ur.roleId === r.id
-    } yield r.trust
-
-    service.runDBIO(Query(q.max).result.head).map(_.getOrElse(Trust.Default))
-  }
-
-  def trustIn[A: HasScope](a: A)(implicit service: ModelService, cs: ContextShift[IO]): IO[Trust] =
+  def trustIn[A: HasScope](a: A)(implicit service: ModelService): IO[Trust] =
     trustIn(a.scope)
 
   /**
@@ -143,40 +129,14 @@ case class User private (
     *
     * @return Highest level of trust
     */
-  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService, cs: ContextShift[IO]): IO[Trust] = {
-    scope match {
-      case GlobalScope => globalTrust
-      case ProjectScope(projectId) =>
-        val projectRoles = service.runDBIO(Project.roleForTrustQuery((projectId, this.id)).result)
-
-        val projectTrust = projectRoles
-          .map(biggestRoleTpe)
-          .flatMap { userTrust =>
-            val projectsTable = TableQuery[ProjectTableMain]
-            val orgaTable     = TableQuery[OrganizationTable]
-            val memberTable   = TableQuery[OrganizationMembersTable]
-            val roleTable     = TableQuery[OrganizationRoleTable]
-
-            val query = for {
-              p <- projectsTable if projectId.bind === p.id
-              o <- orgaTable if p.userId === o.id
-              m <- memberTable if m.organizationId === o.id && m.userId === id.value.bind
-              r <- roleTable if id.value.bind === r.userId && r.organizationId === o.id
-            } yield r.roleType
-
-            service.runDBIO(query.to[Set].result).map { roleTypes =>
-              if (roleTypes.contains(Role.OrganizationAdmin) || roleTypes.contains(Role.OrganizationOwner)) {
-                biggestRoleTpe(roleTypes)
-              } else {
-                userTrust
-              }
-            }
-          }
-
-        Parallel.parMap2(projectTrust, globalTrust)(_ max _)
-      case OrganizationScope(organizationId) =>
-        Parallel.parMap2(Organization.getTrust(id, organizationId), globalTrust)(_ max _)
+  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Trust] = {
+    val conIO = scope match {
+      case GlobalScope                       => UserQueries.globalTrust(id.value).unique
+      case ProjectScope(projectId)           => UserQueries.projectTrust(id.value, projectId).unique
+      case OrganizationScope(organizationId) => UserQueries.organizationTrust(id.value, organizationId).unique
     }
+
+    service.runDbCon(conIO)
   }
 
   /**

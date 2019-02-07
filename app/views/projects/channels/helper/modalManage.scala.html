@@ -11,7 +11,7 @@
                 </button>
                 <h4 class="modal-title"></h4>
             </div>
-            @form(action = routes.Application.showHome(None, None, None, None, None, None)) {
+            @form(action = routes.Application.showHome(None, None, None, None, None, None, None)) {
                 @CSRF.formField
                 <div class="modal-body">
                     <div class="form-inline">
@@ -20,8 +20,9 @@
                                maxlength="@config.ore.channels.maxNameLen"/>
                         <input type="hidden" name="channel-color-input" class="channel-color-input" value="" />
                         <a href="#">
-                            <i class="fas fa-circle channel-id color-picker" style=""
-                               data-toggle="popover" data-placement="right" data-trigger="hover"></i>
+                            <span class="color-picker" data-toggle="popover" data-placement="right" data-trigger="hover">
+                                <i class="fas fa-circle channel-id" style=""></i>
+                            </span>
                         </a>
                         @projects.channels.helper.popoverColorPicker()
                         <span class="pull-right channel preview" style="display: none;"></span>

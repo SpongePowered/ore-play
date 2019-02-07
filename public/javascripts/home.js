@@ -21,10 +21,10 @@
  * ==================================================
  */
 
-var PROJECTS_PER_CLICK = 50;
 var CATEGORY_STRING = null;
 var SORT_STRING = null;
 var QUERY_STRING = null;
+var ORDER_WITH_RELEVANCE = null;
 
 var NUM_SUFFIXES = ["", "k", "m"];
 var currentlyLoaded = 0;
@@ -56,7 +56,7 @@ $(function() {
     $('.dismiss').click(function() {
         $('.search-header').fadeOut('slow');
         var url = '/';
-        if (CATEGORY_STRING || SORT_STRING)
+        if (CATEGORY_STRING || SORT_STRING || ORDER_WITH_RELEVANCE)
             url += '?';
         if (CATEGORY_STRING)
             url += 'categories=' + CATEGORY_STRING;
@@ -64,6 +64,11 @@ $(function() {
             if (CATEGORY_STRING)
                 url += '&';
             url += '&sort=' + SORT_STRING;
+        }
+        if (ORDER_WITH_RELEVANCE) {
+            if (CATEGORY_STRING || SORT_STRING)
+                url += '&';
+            url += '&relevance=' + ORDER_WITH_RELEVANCE;
         }
         go(url);
     });
@@ -92,8 +97,12 @@ $(function() {
         if (categoryString.length > 0) {
             url += 'categories=' + categoryString;
             if (SORT_STRING) url += '&sort=' + SORT_STRING;
+            if (ORDER_WITH_RELEVANCE) url += '&relevance=' + ORDER_WITH_RELEVANCE;
         } else if (SORT_STRING) {
             url += 'sort=' + SORT_STRING;
+            if (ORDER_WITH_RELEVANCE) url += '&relevance=' + ORDER_WITH_RELEVANCE;
+        } else if (ORDER_WITH_RELEVANCE) {
+            url += 'relevance=' + ORDER_WITH_RELEVANCE;
         }
 
         // Fly you fools!
@@ -103,43 +112,17 @@ $(function() {
     // Initialize sorting selection
     $('.select-sort').on('change', function() {
         var url = '/?sort=' + $(this).find('option:selected').val();
+        if (QUERY_STRING) url += '&q=' + QUERY_STRING;
         if (CATEGORY_STRING) url += '&categories=' + CATEGORY_STRING;
+        if (ORDER_WITH_RELEVANCE) url += '&relevance=' + ORDER_WITH_RELEVANCE;
         go(url);
     });
 
-    // Initialize more button
-    $('.btn-more').click(function() {
-        var ajaxUrl = '/api/projects?limit=' + PROJECTS_PER_CLICK + '&offset=' + currentlyLoaded;
-        if (CATEGORY_STRING) ajaxUrl += '&categories=' + CATEGORY_STRING;
-        if (SORT_STRING) ajaxUrl += '&sort=' + SORT_STRING;
-        if (QUERY_STRING) ajaxUrl += '&q=' + QUERY_STRING;
-
-        // Request more projects
-        $('.btn-more').html('<i class="fa fa-spinner fa-spin"></i>');
-        $.ajax({
-            url: ajaxUrl,
-            dataType: 'json',
-            success: function(projects) {
-                for (var i in projects) {
-                    if (!projects.hasOwnProperty(i)) continue;
-                    var project = projects[i];
-                    var category = project.category;
-
-                    // Add received project to table
-                    var projectRow = $('#row-project').clone().removeAttr('id');
-                    var nameCol = projectRow.find('.name');
-                    projectRow.find('.category').find('i').attr('title', category.title).addClass(category.icon);
-                    nameCol.find('strong').find('a').attr('href', project.href).text(project.name);
-                    nameCol.find('i').attr('title', project.description).text(project.description);
-                    projectRow.find('.author').find('a').attr('href', '/' + project.owner).text(project.owner);
-                    projectRow.find('.views').text(abbreviateStat(project.views));
-                    projectRow.find('.downloads').text(abbreviateStat(project.downloads));
-                    projectRow.find('.stars').text(abbreviateStat(project.stars));
-                    $('.project-table').find('tbody').append(projectRow);
-                }
-                currentlyLoaded += projects.length;
-                $('.btn-more').html('<strong>More</strong>');
-            }
-        });
+    $('#relevanceBox').change(function() {
+        var url = '/?relevance=' + this.checked;
+        if (QUERY_STRING) url += '&q=' + QUERY_STRING;
+        if (CATEGORY_STRING) url += '&categories=' + CATEGORY_STRING;
+        if (SORT_STRING) url += '&sort=' + SORT_STRING;
+        go(url);
     });
 });

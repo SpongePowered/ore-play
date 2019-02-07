@@ -77,6 +77,10 @@ ore {
     debug       =  false
     debug-level =  3
 
+    homepage {
+        update-interval = 2h
+    }
+
     channels {
         max-name-len = 15
         name-regex = "^[a-zA-Z0-9]+$"

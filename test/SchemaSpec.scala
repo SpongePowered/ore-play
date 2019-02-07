@@ -169,7 +169,7 @@ class SchemaSpec extends DbSpec {
      */
     check(sql"""SELECT p_id, p_plugin_id, p_slug, p_owner_name FROM v_logged_actions""".query[LoggedProject])
     check(sql"""SELECT pv_id, pv_version_string FROM v_logged_actions""".query[LoggedProjectVersion])
-    check(sql"""SELECT pp_id, pp_slug FROM v_logged_actions""".query[LoggedProjectPage])
+    check(sql"""SELECT pp_id, pp_name, pp_slug FROM v_logged_actions""".query[LoggedProjectPage])
     check(sql"""SELECT s_id, s_name FROM v_logged_actions""".query[LoggedSubject])
   }
 

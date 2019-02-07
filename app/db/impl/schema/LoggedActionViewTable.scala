@@ -29,6 +29,7 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
   def pvId            = column[DbRef[Version]]("pv_id")
   def pvVersionString = column[String]("pv_version_string")
   def ppId            = column[DbRef[Page]]("pp_id")
+  def ppName          = column[String]("pp_name")
   def ppSlug          = column[String]("pp_slug")
   def sId             = column[DbRef[_]]("s_id")
   def sName           = column[String]("s_name")
@@ -162,6 +163,6 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
   def loggedProjectVersionProjection =
     (pvId.?, pvVersionString.?) <> ((LoggedProjectVersion.apply _).tupled, LoggedProjectVersion.unapply)
   def loggedProjectPageProjection =
-    (ppId.?, ppSlug.?) <> ((LoggedProjectPage.apply _).tupled, LoggedProjectPage.unapply)
+    (ppId.?, ppName.?, ppSlug.?) <> ((LoggedProjectPage.apply _).tupled, LoggedProjectPage.unapply)
   def loggedSubjectProjection = (sId.?, sName.?) <> ((LoggedSubject.apply _).tupled, LoggedSubject.unapply)
 }

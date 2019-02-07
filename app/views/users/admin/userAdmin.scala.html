@@ -5,7 +5,7 @@
 @import models.viewhelper.{OrganizationData, UserData}
 @import ore.OreConfig
 @import ore.permission.role.Role
-@(user: UserData, orga: Option[OrganizationData], userProjectRoles: Seq[(Project, ProjectUserRole)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(user: UserData, orga: Option[OrganizationData], userProjectRoles: Seq[(Project, ProjectUserRole)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @prefix = @{"Edit " + (if(user.isOrga) "Organization" else "User") + ": "}
 
@@ -51,64 +51,64 @@
     </table>
 }
 
-@bootstrap.layout(prefix + user.user.name) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userAdmin.js")"></script>
+}
 
-    <div class="container" style="margin-top: 90px;">
-        <div class="row">
-            <div class="col-md-12">
-                <h1>@prefix<a href="@routes.Users.showProjects(user.user.name, None)">@user.user.name</a></h1>
-            </div>
+@bootstrap.layout(prefix + user.user.name, scripts) {
+
+    <div class="row">
+        <div class="col-md-12">
+            <h1>@prefix<a href="@routes.Users.showProjects(user.user.name, None)">@user.user.name</a></h1>
         </div>
+    </div>
 
-        <div class="row">
-            <div class="col-md-9">
+    <div class="row">
+        <div class="col-md-9">
 
-                <div class="row">
-                @if(!user.isOrga) {
-                    @panel("Organizations") {
-                        @roleTable[Organization, OrganizationUserRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.name)).toSet, orgRoles) { (org, _) =>
-                            <a href="@routes.Application.userAdmin(org.name)">
-                            @org.name
-                            </a>
-                        }
-                    }
-                } else {
-                    @panel("Members") {
-                        @roleTable[User, OrganizationUserRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, _) =>
-                            <a href="@routes.Application.userAdmin(user.name)">
-                            @user.name
-                            </a>
-                        }
+            <div class="row">
+            @if(!user.isOrga) {
+                @panel("Organizations") {
+                    @roleTable[Organization, OrganizationUserRole]("Organization", "orgRole", withOwner = true, user.orgas.map(t => (t._1, t._3, t._4.name)).toSet, orgRoles) { (org, _) =>
+                        <a href="@routes.Application.userAdmin(org.name)">
+                        @org.name
+                        </a>
                     }
                 }
-                </div>
-                @if(!user.isOrga) {
-                    <div class="row">
-                    @panel("Projects") {
-                        @roleTable[Project, ProjectUserRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, _) =>
-                            <a href="@controllers.project.routes.Projects.show(project.ownerName, project.slug)">
-                            @project.name
-                            </a>
-                        }
+            } else {
+                @panel("Members") {
+                    @roleTable[User, OrganizationUserRole]("User", "memberRole", withOwner = false, orga.get.members.map(t => (t._2, t._1, null)).toSet, orgRoles) { (user, _) =>
+                        <a href="@routes.Application.userAdmin(user.name)">
+                        @user.name
+                        </a>
                     }
-                    </div>
                 }
+            }
             </div>
-
-            @panel("Other Administration", size=3) {
-                <div class="list-group">
-                    <div class="list-group-item">
-                        <a href="@config.security.api.url/admin/accounts/user/@user.user.id/change/">SpongeAuth Profile</a>
-                    </div>
-                    <div class="list-group-item">
-                        <a href="https://forums.spongepowered.org/users/@user.user.name">Forum Profile</a>
-                    </div>
+            @if(!user.isOrga) {
+                <div class="row">
+                @panel("Projects") {
+                    @roleTable[Project, ProjectUserRole]("Project", "projectRole", withOwner = true, userProjectRoles.map(t => (t._1, t._2, t._1.ownerName)).toSet, projectRoles) { (project, _) =>
+                        <a href="@controllers.project.routes.Projects.show(project.ownerName, project.slug)">
+                        @project.name
+                        </a>
+                    }
+                }
                 </div>
             }
-
         </div>
+
+        @panel("Other Administration", size=3) {
+            <div class="list-group">
+                <div class="list-group-item">
+                    <a href="@config.security.api.url/admin/accounts/user/@user.user.id/change/">SpongeAuth Profile</a>
+                </div>
+                <div class="list-group-item">
+                    <a href="https://forums.spongepowered.org/users/@user.user.name">Forum Profile</a>
+                </div>
+            </div>
+        }
+
     </div>
 
 }

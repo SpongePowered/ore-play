@@ -7,6 +7,7 @@ import scala.collection.immutable
 
 import db.impl.model.common.Named
 import db.impl.schema.VersionTagTable
+import models.querymodels.ViewTag
 import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 
 import enumeratum.values._
@@ -25,6 +26,8 @@ case class VersionTag private (
 
   override type M = VersionTag
   override type T = VersionTagTable
+
+  def asViewTag: ViewTag = ViewTag(name, data, color)
 }
 object VersionTag {
   def partial(

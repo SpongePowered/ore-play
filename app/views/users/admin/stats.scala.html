@@ -3,42 +3,11 @@
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import security.NonceFilter._
-@(reviews: Seq[(String, String)], uploads: Seq[(String, String)], totalDownloads: Seq[(String, String)],
-        unsafeDownloads: Seq[(String, String)], flagsOpen: Seq[(String, String)], flagsClosed: Seq[(String, String)])(implicit messages: Messages,
-        request: OreRequest[_], config: OreConfig)
+@import models.querymodels.Stats
+@(stats: List[Stats])(implicit messages: Messages,
+        request: OreRequest[_], config: OreConfig, flash: Flash)
 
-@bootstrap.layout("Stats") {
-    <div class="container" style="margin-top: 90px">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4 class="panel-title pull-left">Plugins</h4>
-                        <div class="clearfix"></div>
-                    </div>
-                    <canvas id="chart-reviews" height="40vh" width="100%"></canvas>
-                </div>
-            </div>
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4 class="panel-title pull-left">Downloads</h4>
-                        <div class="clearfix"></div>
-                    </div>
-                    <canvas id="chart-downloads" height="40vh" width="100%"></canvas>
-                </div>
-            </div>
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4 class="panel-title pull-left">Flags</h4>
-                        <div class="clearfix"></div>
-                    </div>
-                    <canvas id="chart-flags" height="40vh" width="100%"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
+@scripts = {
     <script nonce="@nonce" type="text/javascript" src="@routes.Assets.versioned("lib/chart.js/dist/Chart.min.js")"></script>
     <script nonce="@nonce">
             $(function(){
@@ -47,19 +16,19 @@
                     responsive: true,
                     type: 'line',
                     data: {
-                        labels: @Html(Json.stringify(Json.toJson(reviews.map(_._2).toList))),
+                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString)))),
                         datasets: [{
                             label: "Reviews",
                             backgroundColor: "cornflowerblue",
                             borderColor: "dodgerblue",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(reviews.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.reviews))))
                         }, {
                             label: "Uploads",
                             backgroundColor: "lightseagreen",
                             borderColor: "darkseagreen",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(uploads.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.uploads))))
                         }]
                     },
                     options: {
@@ -74,19 +43,19 @@
                     responsive: true,
                     type: 'line',
                     data: {
-                        labels: @Html(Json.stringify(Json.toJson(totalDownloads.map(_._2).toList))),
+                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString)))),
                         datasets: [{
                             label: "Total Downloads",
                             backgroundColor: "cornflowerblue",
                             borderColor: "dodgerblue",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(totalDownloads.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.totalDownloads))))
                         }, {
                             label: "Unsafe Downloads",
                             backgroundColor: "lightseagreen",
                             borderColor: "darkseagreen",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(unsafeDownloads.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.unsafeDownloads))))
                         }]
                     },
                     options: {
@@ -101,19 +70,19 @@
                     responsive: true,
                     type: 'line',
                     data: {
-                        labels: @Html(Json.stringify(Json.toJson(flagsClosed.map(_._2).toList))),
+                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString)))),
                         datasets: [{
                             label: "Open flags",
                             backgroundColor: "cornflowerblue",
                             borderColor: "dodgerblue",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(flagsOpen.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.flagsOpened))))
                         }, {
                             label: "Closed flags",
                             backgroundColor: "lightseagreen",
                             borderColor: "darkseagreen",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(flagsClosed.map(_._1).toList)))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.flagsClosed))))
                         }]
                     },
                     options: {
@@ -124,4 +93,36 @@
                 });
             });
     </script>
+}
+
+@bootstrap.layout("Stats", scripts) {
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title pull-left">Plugins</h4>
+                    <div class="clearfix"></div>
+                </div>
+                <canvas id="chart-reviews" height="40vh" width="100%"></canvas>
+            </div>
+        </div>
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title pull-left">Downloads</h4>
+                    <div class="clearfix"></div>
+                </div>
+                <canvas id="chart-downloads" height="40vh" width="100%"></canvas>
+            </div>
+        </div>
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title pull-left">Flags</h4>
+                    <div class="clearfix"></div>
+                </div>
+                <canvas id="chart-flags" height="40vh" width="100%"></canvas>
+            </div>
+        </div>
+    </div>
 }

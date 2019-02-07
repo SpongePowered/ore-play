@@ -17,7 +17,11 @@ trait DbSpec extends FunSuite with Matchers with IOChecker with BeforeAndAfterAl
 
   lazy val database = Databases(
     "org.postgresql.Driver",
-    sys.env.getOrElse("ORE_TESTDB_JDBC", "jdbc:postgresql://localhost/ore_test"),
+    sys.env.getOrElse(
+      "ORE_TESTDB_JDBC",
+      "jdbc:postgresql://localhost" + sys.env.get("PGPORT").map(":" + _).getOrElse("") + "/" + sys.env
+        .getOrElse("DB_DATABASE", "ore_test")
+    ),
     config = Map(
       "username" -> sys.env.getOrElse("DB_USERNAME", "ore"),
       "password" -> sys.env.getOrElse("DB_PASSWORD", "")

@@ -23,7 +23,7 @@ import models.user.User
 import models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.permission.role.Role
-import ore.project.{Category, ProjectSortingStrategies}
+import ore.project.{Category, ProjectSortingStrategy}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
@@ -51,16 +51,16 @@ trait OreRestfulApi extends OreWrites {
       categories: Option[String],
       sort: Option[Int],
       q: Option[String],
-      limit: Option[Int],
-      offset: Option[Int]
+      limit: Option[Long],
+      offset: Option[Long]
   ): IO[JsValue] = {
     val cats: Option[Seq[Category]] = categories.map(Category.fromString).map(_.toSeq)
-    val ordering                    = sort.map(ProjectSortingStrategies.withId(_).get).getOrElse(ProjectSortingStrategies.Default)
+    val ordering                    = sort.map(ProjectSortingStrategy.withValue).getOrElse(ProjectSortingStrategy.Default)
 
     val maxLoad = this.config.ore.projects.initLoad
     val lim     = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
-    def filteredProjects(offset: Option[Int], lim: Int) = {
+    def filteredProjects(offset: Option[Long], lim: Long) = {
       val query = queryProjectRV.filter {
         case (p, _, _) =>
           val query = "%" + q.map(_.toLowerCase).getOrElse("") + "%"
@@ -84,7 +84,7 @@ trait OreRestfulApi extends OreWrites {
           case (p, _, _) =>
             ordering.fn.apply(p)
         }
-        .drop(offset.getOrElse(0))
+        .drop(offset.getOrElse(0L))
         .take(lim)
     }
 

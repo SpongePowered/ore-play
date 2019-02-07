@@ -2,81 +2,67 @@
 @import models.admin.ProjectVisibilityChange
 @import models.project.Project
 @import ore.OreConfig
-@* visChange1 is lastChangeRequest users.get(lastChangeRequest.get.createdBy.getOrElse(1)).map(_.username) *@
-@* visChange2 is users.get(project.lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
-@* visChange4 is users.get(lastVisibilityChange.get.createdBy.getOrElse(1)).map(_.username) *@
 @import ore.permission.Permission
-@(needsApproval: Seq[(Project, Map[Permission, Boolean], Option[ProjectVisibilityChange], String, Option[ProjectVisibilityChange], String)],
- waitingProjects: Seq[(Project, Option[ProjectVisibilityChange], Option[ProjectVisibilityChange], String)])(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@import models.querymodels.ProjectNeedsApproval
+@import models.project.Page
+@(needsApproval: Seq[ProjectNeedsApproval],
+ waitingProjects: Seq[ProjectNeedsApproval])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@bootstrap.layout("Project Visibility") {
-
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
-
-    <div class="container" style="margin-top: 90px">
-        <div class="row">
-            <div class="col-md-12 header-flags">
-                <h2>Needs Approval</h2>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h4 class="panel-title pull-left">Needs Approval</h4>
-                        <div class="clearfix"></div>
+@renderApprovalList(projectSeq: Seq[ProjectNeedsApproval]) = {
+    <ul class="list-group list-flags-admin">
+        @if(projectSeq.isEmpty) {
+            <li class="list-group-item">
+                <p>No projects found.</p>
+            </li>
+        }
+        @projectSeq.map { project =>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-xs-12 col-md-8">
+                        <span class="description">
+                            <strong>@project.changeRequester</strong>
+                            <span class="minor"> requested changes on </span>
+                            <a href="@projectRoutes.show(project.namespace.ownerName, project.namespace.slug)">
+                            @project.namespace
+                            </a>
+                        </span>
+                        <p>
+                            <strong>Request:</strong>
+                            @Page.render(project.comment)
+                        </p>
                     </div>
-                    <ul class="list-group list-flags-admin">
-                        @if(needsApproval.isEmpty) {
-                            <li class="list-group-item">
-                                <p>No projects found.</p>
-                            </li>
-                        }
-                        @needsApproval.map { case (project, projectPerms, lastChangeRequest, lastChangeRequester, lastVisibilityChange, lastVisibilityChanger) =>
-                            <li data-flag-id="@project.id" class="list-group-item">
-                                <div class="row">
-                                    <div class="col-xs-12 col-md-8">
-                                        @if(lastChangeRequest.isDefined) {
-                                            <span class="description">
-                                                <strong>@lastChangeRequester</strong>
-                                                <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                                    @project.ownerName/<strong>@project.slug</strong>
-                                                </a>
-                                            </span>
-                                            <p>
-                                                <strong>Requests:</strong>
-                                                @lastChangeRequest.get.renderComment
-                                            </p>
-                                        } else {
-                                            <span class="description">
-                                                @if(lastVisibilityChange.isDefined) {
-                                                    <strong>@lastVisibilityChanger</strong>
-                                                } else {
-                                                    <strong>Unknown</strong>
-                                                }
-                                                <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                                    @project.ownerName/<strong>@project.slug</strong>
-                                                </a>
-                                            </span>
-                                            <p>
-                                                <strong>No requests specified</strong>
-                                            </p>
-                                        }
-                                    </div>
-                                    <div class="col-xs-12 col-md-4">
-                                        <span class="pull-right btn-group-sm">
-                                        @projects.helper.btnHide(project, projectPerms)
-                                        </span>
-                                    </div>
-                                </div>
-                            </li>
-                        }
-                    </ul>
+                    <div class="col-xs-12 col-md-4">
+                        <span class="pull-right btn-group-sm">
+                        @projects.helper.btnHide(project.namespace, project.visibility)
+                        </span>
+                    </div>
                 </div>
+            </li>
+        }
+    </ul>
+}
+
+@scripts = {
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
+}
+
+@bootstrap.layout("Project Visibility", scripts) {
+
+    <div class="row">
+        <div class="col-md-12 header-flags">
+            <h2>Needs Approval</h2>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title pull-left">Needs Approval</h4>
+                    <div class="clearfix"></div>
+                </div>
+                @renderApprovalList(needsApproval)
             </div>
         </div>
         <div class="row">
@@ -91,34 +77,7 @@
                         <h4 class="panel-title pull-left">Waiting Changes</h4>
                         <div class="clearfix"></div>
                     </div>
-                    <ul class="list-group list-flags-admin">
-                        @if(waitingProjects.isEmpty) {
-                            <li class="list-group-item">
-                                <p>No projects found.</p>
-                            </li>
-                        }
-                        @waitingProjects.map { case (project, lastChangeRequest, _, lastVisibilityChanger) =>
-                            @lastChangeRequest.map { lastRequest =>
-                                <li data-flag-id="@project.id" class="list-group-item">
-                                    <div class="row">
-                                        <div class="col-xs-12">
-                                            <span class="description">
-                                                <strong>@lastVisibilityChanger</strong>
-                                                <span class="minor"> requested changes on </span>
-                                                <a href="@projectRoutes.show(project.ownerName, project.slug)">
-                                                    @project.ownerName/<strong>@project.slug</strong>
-                                                </a>
-                                            </span>
-                                            <p>
-                                                <strong>Requests:</strong>
-                                                @lastRequest.renderComment
-                                            </p>
-                                        </div>
-                                    </div>
-                                </li>
-                            }
-                        }
-                    </ul>
+                    @renderApprovalList(waitingProjects)
                 </div>
             </div>
         </div>

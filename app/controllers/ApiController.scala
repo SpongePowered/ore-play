@@ -77,8 +77,8 @@ final class ApiController @Inject()(
       categories: Option[String],
       sort: Option[Int],
       q: Option[String],
-      limit: Option[Int],
-      offset: Option[Int]
+      limit: Option[Long],
+      offset: Option[Long]
   ): Action[AnyContent] = Action.asyncF {
     version match {
       case "v1" => this.api.getProjectList(categories, sort, q, limit, offset).map(Ok(_))

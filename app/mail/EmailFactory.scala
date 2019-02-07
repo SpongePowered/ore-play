@@ -3,6 +3,7 @@ package mail
 import javax.inject.Inject
 
 import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.mvc.Flash
 
 import controllers.sugar.Requests.OreRequest
 import models.user.User
@@ -18,6 +19,9 @@ final class EmailFactory @Inject()(
 
   def create(user: User, id: String)(implicit request: OreRequest[_]): Email = {
     import user.langOrDefault
+
+    implicit def flash: Flash = request.flash
+
     Email(
       recipient = user.email.get,
       subject = this.messagesApi(s"$id.subject"),

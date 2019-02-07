@@ -16,7 +16,7 @@ case class LoggedProject(
     pOwnerName: Option[String]
 )
 case class LoggedProjectVersion(pvId: Option[DbRef[Version]], pvVersionString: Option[String])
-case class LoggedProjectPage(ppId: Option[DbRef[Page]], ppSlug: Option[String])
+case class LoggedProjectPage(ppId: Option[DbRef[Page]], ppName: Option[String], ppSlug: Option[String])
 case class LoggedSubject(sId: Option[DbRef[_]], sName: Option[String])
 
 case class LoggedActionViewModel[Ctx](

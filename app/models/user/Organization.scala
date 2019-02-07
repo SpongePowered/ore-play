@@ -1,13 +1,12 @@
 package models.user
 
-import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase
 import db.impl.model.common.Named
-import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable}
+import db.impl.schema.OrganizationTable
 import db._
 import models.user.role.OrganizationUserRole
 import ore.organization.OrganizationMember
-import ore.permission.role.{Role, Trust}
+import ore.permission.role.Role
 import ore.permission.scope.HasScope
 import ore.user.{MembershipDossier, UserOwned}
 import ore.{Joinable, Visitable}
@@ -18,7 +17,7 @@ import util.syntax._
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
-import slick.lifted.{Compiled, Rep, TableQuery}
+import slick.lifted.TableQuery
 
 /**
   * Represents an Ore Organization. An organization is like a [[User]] in the
@@ -92,6 +91,7 @@ case class Organization private (
 }
 
 object Organization {
+  implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
 
   def partial(id: ObjId[Organization], username: String, ownerId: DbRef[User]): InsertFunc[Organization] =
     (_, time) => Organization(id, time, username, ownerId)
@@ -99,28 +99,5 @@ object Organization {
   implicit val query: ModelQuery[Organization] =
     ModelQuery.from[Organization](TableQuery[OrganizationTable], (obj, _, time) => obj.copy(createdAt = time))
 
-  implicit val orgHasScope: HasScope[Organization]  = HasScope.orgScope(_.id.value)
   implicit val isUserOwned: UserOwned[Organization] = (a: Organization) => a.ownerId
-
-  lazy val roleForTrustQuery = Compiled(queryRoleForTrust _)
-
-  private def queryRoleForTrust(orgId: Rep[DbRef[Organization]], userId: Rep[DbRef[User]]) =
-    for {
-      m <- TableQuery[OrganizationMembersTable] if m.organizationId === orgId && m.userId === userId
-      r <- TableQuery[OrganizationRoleTable] if m.userId === r.userId && r.organizationId === orgId
-    } yield r.roleType
-
-  /**
-    * Returns the highest level of [[ore.permission.role.Trust]] this user has.
-    *
-    * @param user User to get trust of
-    * @return Trust of user
-    */
-  def getTrust(
-      userId: DbRef[User],
-      orgId: DbRef[Organization]
-  )(implicit service: ModelService): IO[Trust] =
-    service
-      .runDBIO(Organization.roleForTrustQuery((orgId, userId)).result)
-      .map(_.sortBy(_.trust).headOption.map(_.trust).getOrElse(Trust.Default))
 }

@@ -10,9 +10,7 @@ import play.api.i18n.MessagesApi
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
-import db.impl.schema.{ProjectTableMain, VersionTable}
 import db.query.UserQueries
 import db.{DbRef, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
@@ -21,6 +19,7 @@ import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.permission.ReviewProjects
 import ore.permission.role.Role
+import ore.project.ProjectSortingStrategy
 import ore.user.notification.{InviteFilter, NotificationFilter}
 import ore.user.{FakeUser, Prompt}
 import ore.{OreConfig, OreEnv}
@@ -157,35 +156,42 @@ class Users @Inject()(
     val pageSize = this.config.ore.users.projectPageSize
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
+
     users
       .withName(username)
       .semiflatMap { user =>
         for {
           // TODO include orga projects?
           t1 <- (
-            service.runDBIO(queryUserProjects(user).drop(offset).take(pageSize).result),
+            service.runDbCon(
+              UserQueries
+                .getProjects(
+                  username,
+                  request.headerData.currentUser.map(_.id.value),
+                  ProjectSortingStrategy.MostStars,
+                  pageSize,
+                  offset
+                )
+                .to[Vector]
+            ),
             user.starred(),
-            getOrga(username).value
+            getOrga(username).value,
+            getUserData(request, username).value
           ).parTupled
-          (projectSeq, starred, orga) = t1
+          (projects, starred, orga, userData) = t1
           t2 <- (
-            projectSeq.toVector.parTraverse(_._2.tags),
-            getUserData(request, username).value,
             starred.toVector.parTraverse(_.recommendedVersion.value),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
-          (tagsSeq, userData, starredRv, orgaData, scopedOrgaData) = t2
+          (starredRv, orgaData, scopedOrgaData) = t2
         } yield {
-          val data = projectSeq.zip(tagsSeq).map {
-            case ((p, v), tags) => (p, user, v, tags)
-          }
           val starredData = starred.zip(starredRv)
           Ok(
             views.users.projects(
               userData.get,
               orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-              data,
+              projects,
               starredData.take(5),
               pageNum
             )
@@ -194,17 +200,6 @@ class Users @Inject()(
       }
       .getOrElse(notFound)
   }
-
-  private def queryUserProjects(user: User) =
-    queryProjectRV
-      .filter { case (p, _) => p.userId === user.id.value }
-      .sortBy { case (p, _) => (p.stars.desc, p.name.asc) }
-
-  private def queryProjectRV =
-    for {
-      p <- TableQuery[ProjectTableMain]
-      v <- TableQuery[VersionTable] if p.recommendedVersionId === v.id
-    } yield (p, v)
 
   /**
     * Submits a change to the specified user's tagline.

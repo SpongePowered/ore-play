@@ -23,7 +23,7 @@ GET     /statusz                                                    @controllers
 +nocsrf
 POST    /api/sync_sso                                               @controllers.ApiController.syncSso()
 
-GET     /api/projects                                               @controllers.ApiController.listProjects(version = "v1", categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/projects                                               @controllers.ApiController.listProjects(version = "v1", categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
 GET     /api/projects/:pluginId                                     @controllers.ApiController.showProject(version = "v1", pluginId)
 
 POST    /api/projects/:pluginId/keys/new                            @controllers.ApiController.createKey(version = "v1", pluginId)
@@ -43,7 +43,7 @@ GET     /api/projects/:pluginId/versions/:name/signature            @controllers
 GET     /api/users                                                  @controllers.ApiController.listUsers(version = "v1", limit: Option[Int], offset: Option[Int])
 GET     /api/users/:user                                            @controllers.ApiController.showUser(version = "v1", user)
 
-GET     /api/:version/projects                                      @controllers.ApiController.listProjects(version, categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/:version/projects                                      @controllers.ApiController.listProjects(version, categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
 GET     /api/:version/projects/:pluginId                            @controllers.ApiController.showProject(version, pluginId)
 
 GET     /api/:version/projects/:pluginId/versions                   @controllers.ApiController.listVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
@@ -61,7 +61,7 @@ GET     /api/:version/tags/:tagId                                   @controllers
 
 # ---------- Application ----------
 
-GET     /                                                           @controllers.Application.showHome(categories: Option[String], q: Option[String], sort: Option[Int], page: Option[Int], platformCategory: Option[String], platform: Option[String])
+GET     /                                                           @controllers.Application.showHome(categories: Option[String], q: Option[String], sort: Option[Int], page: Option[Int], platformCategory: Option[String], platform: Option[String], relevance: Option[Boolean])
 GET     /linkout                                                    @controllers.Application.linkOut(remoteUrl: String)
 GET     /signup                                                     @controllers.Users.signUp()
 GET     /login                                                      @controllers.Users.logIn(sso: Option[String], sig: Option[String], returnUrl: Option[String])

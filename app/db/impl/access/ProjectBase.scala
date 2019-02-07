@@ -1,5 +1,6 @@
 package db.impl.access
 
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Files._
 import java.sql.Timestamp
@@ -7,6 +8,7 @@ import java.util.Date
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
+import db.query.AppQueries
 import db.{ModelBase, ModelService}
 import discourse.OreDiscourseApi
 import models.project.{Channel, Page, Project, Version, Visibility}
@@ -20,6 +22,7 @@ import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
+import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
 class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreConfig) extends ModelBase[Project] {
@@ -39,12 +42,24 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       versions
         .filter {
           case (ownerNamer, name, version) =>
-            val versionDir = this.fileManager.getVersionDir(ownerNamer, name, version.name)
-            Files.notExists(versionDir.resolve(version.fileName))
+            try {
+              val versionDir = this.fileManager.getVersionDir(ownerNamer, name, version.name)
+              Files.notExists(versionDir.resolve(version.fileName))
+            } catch {
+              case _: IOException =>
+                //Invalid file name
+                false
+            }
         }
         .map(_._3)
     }
   }
+
+  def refreshHomePage(logger: LoggerTakingImplicit[OreMDC])(implicit mdc: OreMDC): IO[Unit] =
+    IO(service.runDbCon(AppQueries.refreshHomeView.run).unsafeRunAsync {
+      case Right(_) => ()
+      case Left(e)  => logger.error("Failed to refresh home page", e)
+    })
 
   /**
     * Returns projects that have not beein updated in a while.

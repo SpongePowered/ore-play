@@ -35,7 +35,7 @@ class OreModelService @Inject()(
   // Implement ModelService
   lazy val DB = db.get[JdbcProfile]
 
-  implicit lazy val xa: Transactor.Aux[IO, JdbcDataSource] = {
+  implicit val xa: Transactor.Aux[IO, JdbcDataSource] = {
     implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
     val connectExec  = Executors.newFixedThreadPool(32)

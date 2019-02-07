@@ -6,8 +6,8 @@
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
-@import views.html.utils.{alert, modal, prompt, userAvatar}
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)])(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import views.html.utils.{modal, prompt, userAvatar}
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
     u.isOrga &&
@@ -16,144 +16,141 @@
     }
 }
 
-@bootstrap.layout(u.user.name) {
-
+@scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userPage.js")"></script>
     <script nonce="@nonce">USERNAME = '@u.user.name';</script>
+    @additionalScripts
+}
 
-    <div class="container" style="margin-top: 90px">
+@bootstrap.layout(u.user.name, scripts) {
 
-        @alert("error")
-
-        @flash.get("pgp-updated").map { _ =>
-          <script nonce="@nonce">
-              $(function() {
-                  $('#modal-pgp-edit').modal('show');
-              });
-          </script>
-        }
+    @flash.get("pgp-updated").map { _ =>
+        <script nonce="@nonce">
+                $(function() {
+                    $('#modal-pgp-edit').modal('show');
+                });
+        </script>
+    }
 
         <!-- Updated by JS -->
-        <div class="alert alert-success alert-dismissable" role="alert" style="display: none;">
-            <button type="button" class="close" data-dismiss="alert" aria-label="@messages("general.close")">
-                <span aria-hidden="true">&times;</span>
-            </button>
-            <strong>Success!</strong> <span class="success"></span>
-        </div>
+    <div class="alert alert-success alert-dismissable" role="alert" style="display: none;">
+        <button type="button" class="close" data-dismiss="alert" aria-label="@messages("general.close")">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <strong>Success!</strong> <span class="success"></span>
+    </div>
 
         <!-- Header -->
-        <div class="row user-header">
-            <div class="header-body">
+    <div class="row user-header">
+        <div class="header-body">
                 <!-- Title -->
-                <span class="user-badge">
-                    @userAvatar(
-                        userName = Some(u.user.name),
-                        avatarUrl = u.user.avatarUrl,
-                        clazz = "user-avatar-md" + (if (canEditOrgSettings) " organization-avatar" else ""))
+            <span class="user-badge">
+                @userAvatar(
+                    userName = Some(u.user.name),
+                    avatarUrl = u.user.avatarUrl,
+                    clazz = "user-avatar-md" + (if (canEditOrgSettings) " organization-avatar" else ""))
 
-                    @if(canEditOrgSettings) {
-                        <div class="edit-avatar" style="display: none;">
-                            <a href="@routes.Organizations.updateAvatar(u.user.name)"><i class="fas fa-edit"></i> @messages("user.editAvatar")</a>
-                        </div>
+                @if(canEditOrgSettings) {
+                    <div class="edit-avatar" style="display: none;">
+                        <a href="@routes.Organizations.updateAvatar(u.user.name)"><i class="fas fa-edit"></i> @messages("user.editAvatar")</a>
+                    </div>
 
-                        @if(!u.currentUser.get.readPrompts.contains(Prompt.ChangeAvatar)) {
-                            @prompt(Prompt.ChangeAvatar, "popover-avatar")
-                        }
+                    @if(!u.currentUser.get.readPrompts.contains(Prompt.ChangeAvatar)) {
+                        @prompt(Prompt.ChangeAvatar, "popover-avatar")
                     }
+                }
 
-                    <span class="user-title">
-                        <h1 class="username">
-                            @u.user.name
+                <span class="user-title">
+                    <h1 class="username">
+                        @u.user.name
 
-                            @if(u.isCurrent && !u.isOrga) {
-                                <a class="user-settings" href="@config.security.api.url/accounts/settings">
-                                    <i class="fas fa-cog" data-toggle="tooltip"
-                                        data-placement="top" title="Settings"></i>
-                                </a>
+                        @if(u.isCurrent && !u.isOrga) {
+                            <a class="user-settings" href="@config.security.api.url/accounts/settings">
+                                <i class="fas fa-cog" data-toggle="tooltip"
+                                data-placement="top" title="Settings"></i>
+                            </a>
 
-                                <span data-toggle="modal" data-target="#modal-lock">
-                                    <i class="fas @{if (u.user.isLocked) "fa-lock" else "fa-unlock-alt"} action-lock-account" data-toggle="tooltip"
-                                        data-placement="top" title="@messages("user.lock")"></i>
-                                </span>
+                            <span data-toggle="modal" data-target="#modal-lock">
+                                <i class="fas @{if (u.user.isLocked) "fa-lock" else "fa-unlock-alt"} action-lock-account" data-toggle="tooltip"
+                                data-placement="top" title="@messages("user.lock")"></i>
+                            </span>
 
-                                <span data-toggle="modal" data-target="#modal-pgp-edit">
-                                    <i class="fas fa-key action-pgp" data-toggle="tooltip"
-                                        data-placement="top" title="@messages("user.pgp.pubKey")"></i>
-                                </span>
+                            <span data-toggle="modal" data-target="#modal-pgp-edit">
+                                <i class="fas fa-key action-pgp" data-toggle="tooltip"
+                                data-placement="top" title="@messages("user.pgp.pubKey")"></i>
+                            </span>
 
-                                @if(!u.currentUser.get.readPrompts.contains(Prompt.PGP)) {
-                                    @prompt(Prompt.PGP, "popover-pgp")
-                                }
+                            @if(!u.currentUser.get.readPrompts.contains(Prompt.PGP)) {
+                                @prompt(Prompt.PGP, "popover-pgp")
                             }
+                        }
 
-                            @if(!u.isCurrent && u.user.pgpPubKey.isDefined) {
-                                <span data-toggle="modal" data-target="#modal-pgp-show">
-                                    <i class="fas fa-key action-pgp" data-toggle="tooltip"
-                                        data-placement="top" title="@messages("user.pgp.pubKey")"></i>
-                                </span>
-                            }
+                        @if(!u.isCurrent && u.user.pgpPubKey.isDefined) {
+                            <span data-toggle="modal" data-target="#modal-pgp-show">
+                                <i class="fas fa-key action-pgp" data-toggle="tooltip"
+                                data-placement="top" title="@messages("user.pgp.pubKey")"></i>
+                            </span>
+                        }
 
-                            @if(u.hasUser && u.userPerm(ViewActivity)) {
-                                @if(u.userPerm(ReviewFlags) || u.userPerm(ReviewProjects)) {
-                                    <a class="user-settings" href="@routes.Application.showActivities(u.user.name)">
-                                        <i class="fas fa-calendar" data-toggle="tooltip"
-                                        data-placement="top" title="Activity"></i>
-                                    </a>
-                                }
-                            }
-
-                            @if(request.headerData.globalPerm(UserAdmin)) {
-                                <a class="user-settings" href="@routes.Application.userAdmin(u.user.name)">
-                                    <i class="fas fa-wrench" data-toggle="tooltip"
-                                        data-placement="top" title="User Admin"></i>
+                        @if(u.hasUser && u.userPerm(ViewActivity)) {
+                            @if(u.userPerm(ReviewFlags) || u.userPerm(ReviewProjects)) {
+                                <a class="user-settings" href="@routes.Application.showActivities(u.user.name)">
+                                    <i class="fas fa-calendar" data-toggle="tooltip"
+                                    data-placement="top" title="Activity"></i>
                                 </a>
                             }
-                        </h1>
+                        }
 
-                        <div class="user-tag">
-                            <i class="minor">
-                                @if(u.user.tagline.isDefined) {
-                                    @u.user.tagline.get
-                                } else { @if(u.isCurrent || canEditOrgSettings) {
-                                    Add a tagline
-                                }}
-                            </i>
+                        @if(request.headerData.globalPerm(UserAdmin)) {
+                            <a class="user-settings" href="@routes.Application.userAdmin(u.user.name)">
+                                <i class="fas fa-wrench" data-toggle="tooltip"
+                                data-placement="top" title="User Admin"></i>
+                            </a>
+                        }
+                    </h1>
 
-                            @if(u.isCurrent || canEditOrgSettings) {
-                                <a href="#" data-toggle="modal" data-target="#modal-tagline">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            }
-                        </div>
-                    </span>
+                    <div class="user-tag">
+                        <i class="minor">
+                        @if(u.user.tagline.isDefined) {
+                            @u.user.tagline.get
+                        } else { @if(u.isCurrent || canEditOrgSettings) {
+                            Add a tagline
+                        }}
+                        </i>
+
+                        @if(u.isCurrent || canEditOrgSettings) {
+                            <a href="#" data-toggle="modal" data-target="#modal-tagline">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        }
+                    </div>
                 </span>
+            </span>
 
-                <!-- Roles -->
-                <ul class="user-roles">
-                    @defining(u.globalRoles.toSeq.sortBy(_.trust).lastOption) { roleOpt =>
-                        @roleOpt.map { role =>
-                            <li class="user-role channel" style="background-color: @role.color.hex">@role.title</li>
-                        }
-                    }
-                </ul>
+            <!-- Roles -->
+            <ul class="user-roles">
+            @defining(u.globalRoles.toSeq.sortBy(_.trust).lastOption) { roleOpt =>
+                @roleOpt.map { role =>
+                    <li class="user-role channel" style="background-color: @role.color.hex">@role.title</li>
+                }
+            }
+            </ul>
 
-                <div class="user-info">
-                    <i class="minor">@u.projectCount&nbsp;@if(u.projectCount == 1){project}else{projects}</i><br/>
-                    <i class="minor">
-                    @messages(
-                        "user.memberSince",
-                        u.user.joinDate.map(prettifyDate).getOrElse(prettifyDate(u.user.createdAt)))
-                    </i><br/>
-                    <a href="https://forums.spongepowered.org/users/@u.user.name">
-                        @messages("user.viewOnForums") <i class="fas fa-external-link-alt"></i>
-                    </a>
-                </div>
+            <div class="user-info">
+                <i class="minor">@u.projectCount&nbsp;@if(u.projectCount == 1){project}else{projects}</i><br/>
+                <i class="minor">
+                @messages(
+                    "user.memberSince",
+                    u.user.joinDate.map(prettifyDate).getOrElse(prettifyDate(u.user.createdAt)))
+                </i><br/>
+                <a href="https://forums.spongepowered.org/users/@u.user.name">
+                    @messages("user.viewOnForums") <i class="fas fa-external-link-alt"></i>
+                </a>
             </div>
         </div>
-
-        @content
-
     </div>
+
+    @content
 
     <div class="modal fade" id="modal-pgp-edit" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
         <div class="modal-dialog" role="document">
