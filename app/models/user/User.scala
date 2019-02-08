@@ -1,14 +1,14 @@
 package models.user
 
+import scala.language.higherKinds
+
 import java.sql.Timestamp
 
 import play.api.i18n.Lang
-import play.api.mvc.Request
 
 import db._
-import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
+import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.{OrganizationBase, UserBase}
 import db.impl.model.common.Named
 import db.impl.schema._
 import db.query.UserQueries
@@ -20,8 +20,7 @@ import ore.permission.role._
 import ore.permission.scope._
 import ore.user.Prompt
 import security.pgp.PGPPublicKeyInfo
-import security.spauth.{SpongeAuthApi, SpongeUser}
-import util.OreMDC
+import security.spauth.SpongeUser
 import util.syntax._
 
 import cats.data.OptionT
@@ -157,46 +156,30 @@ case class User private (
   }
 
   /**
-    * Returns true if this User is the currently authenticated user.
-    *
-    * @return True if currently authenticated user
-    */
-  def isCurrent(
-      implicit request: Request[_],
-      service: ModelService,
-      auth: SpongeAuthApi,
-      mdc: OreMDC
-  ): IO[Boolean] = {
-    checkNotNull(request, "null request", "")
-    UserBase().current
-      .semiflatMap { user =>
-        if (user == this) IO.pure(true)
-        else this.toMaybeOrganization.semiflatMap(_.owner.user).exists(_ == user)
-      }
-      .exists(identity)
-  }
-
-  /**
     * Returns all [[Project]]s owned by this user.
     *
     * @return Projects owned by user
     */
-  def projects(implicit service: ModelService): ModelAccess[Project] = service.access(_.userId === id.value)
+  def projects[V[_, _]: QueryView](view: V[Project#T, Project]): V[Project#T, Project] =
+    view.filterView(_.userId === id.value)
 
   /**
-    * Returns a [[ModelAccess]] of [[ProjectUserRole]]s.
+    * Returns a [[ModelView]] of [[ProjectUserRole]]s.
     *
     * @return ProjectRoles
     */
-  def projectRoles(implicit service: ModelService): ModelAccess[ProjectUserRole] = service.access(_.userId === id.value)
+  def projectRoles[V[_, _]: QueryView](
+      view: V[ProjectUserRole#T, ProjectUserRole]
+  ): V[ProjectUserRole#T, ProjectUserRole] =
+    view.filterView(_.userId === id.value)
 
   /**
     * Returns the [[Organization]]s that this User owns.
     *
     * @return Organizations user owns
     */
-  def ownedOrganizations(implicit service: ModelService): ModelAccess[Organization] =
-    service.access(_.userId === id.value)
+  def ownedOrganizations[V[_, _]: QueryView](view: V[Organization#T, Organization]): V[Organization#T, Organization] =
+    view.filterView(_.userId === id.value)
 
   /**
     * Returns the [[Organization]]s that this User belongs to.
@@ -208,20 +191,22 @@ case class User private (
   ): ModelAssociationAccess[OrganizationMembersTable, User, Organization, IO] = new ModelAssociationAccessImpl
 
   /**
-    * Returns a [[ModelAccess]] of [[OrganizationUserRole]]s.
+    * Returns a [[ModelView]] of [[OrganizationUserRole]]s.
     *
     * @return OrganizationRoles
     */
-  def organizationRoles(implicit service: ModelService): ModelAccess[OrganizationUserRole] =
-    service.access(_.userId === id.value)
+  def organizationRoles[V[_, _]: QueryView](
+      view: V[OrganizationUserRole#T, OrganizationUserRole]
+  ): V[OrganizationUserRole#T, OrganizationUserRole] =
+    view.filterView(_.userId === id.value)
 
   /**
     * Converts this User to an [[Organization]].
     *
     * @return Organization
     */
-  def toMaybeOrganization(implicit service: ModelService): OptionT[IO, Organization] =
-    OrganizationBase().get(this.id.value)
+  def toMaybeOrganization[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Organization#T, Organization]): QOptRet =
+    view.get(this.id.value)
 
   /**
     * Returns the [[Project]]s that this User is watching.
@@ -243,7 +228,6 @@ case class User private (
       project: Project,
       watching: Boolean
   )(implicit service: ModelService): IO[Unit] = {
-    checkNotNull(project, "null project", "")
     val contains = this.watching.contains(project, this)
     contains.flatMap {
       case true  => if (!watching) this.watching.removeAssoc(project, this) else IO.unit
@@ -256,7 +240,8 @@ case class User private (
     *
     * @return Flags submitted by user
     */
-  def flags(implicit service: ModelService): ModelAccess[Flag] = service.access(_.userId === id.value)
+  def flags[V[_, _]: QueryView](view: V[Flag#T, Flag]): V[Flag#T, Flag] =
+    view.filterView(_.userId === id.value)
 
   /**
     * Returns true if the User has an unresolved [[Flag]] on the specified
@@ -265,17 +250,19 @@ case class User private (
     * @param project Project to check
     * @return True if has pending flag on Project
     */
-  def hasUnresolvedFlagFor(project: Project)(implicit service: ModelService): IO[Boolean] = {
-    checkNotNull(project, "null project", "")
-    this.flags.existsNow(f => f.projectId === project.id.value && !f.isResolved)
-  }
+  def hasUnresolvedFlagFor[QOptRet, SRet[_]](
+      project: Project,
+      view: ModelView[QOptRet, SRet, Flag#T, Flag]
+  ): SRet[Boolean] =
+    this.flags(view).exists(f => f.projectId === project.id.value && !f.isResolved)
 
   /**
     * Returns this User's notifications.
     *
     * @return User notifications
     */
-  def notifications(implicit service: ModelService): ModelAccess[Notification] = service.access(_.userId === id.value)
+  def notifications[V[_, _]: QueryView](view: V[Notification#T, Notification]): V[Notification#T, Notification] =
+    view.filterView(_.userId === id.value)
 
   /**
     * Marks a [[Prompt]] as read by this User.

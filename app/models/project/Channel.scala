@@ -1,13 +1,16 @@
 package models.project
 
-import db.access.ModelAccess
+import scala.language.higherKinds
+
+import db.access.QueryView
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.ChannelTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
+import util.syntax._
 
 import slick.lifted.TableQuery
 
@@ -43,7 +46,8 @@ case class Channel private (
     *
     * @return All versions
     */
-  def versions(implicit service: ModelService): ModelAccess[Version] = service.access(_.channelId === id.value)
+  def versions[V[_, _]: QueryView](view: V[Version#T, Version]): V[Version#T, Version] =
+    view.filterView(_.channelId === id.value)
 }
 
 object Channel {

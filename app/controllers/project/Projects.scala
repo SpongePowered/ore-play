@@ -17,12 +17,15 @@ import play.api.mvc.{Action, AnyContent, MultipartFormData, Result}
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.{DbRef, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
-import models.project.{Note, Visibility}
+import models.admin.ProjectLogEntry
+import models.api.ProjectApiKey
+import models.project.{Flag, Note, Visibility}
 import models.user._
 import models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
@@ -353,7 +356,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val project  = request.project
       val formData = request.body
 
-      user.hasUnresolvedFlagFor(project).flatMap {
+      user.hasUnresolvedFlagFor(project, ModelView.now[Flag]).flatMap {
         // One flag per project, per user at a time
         case true => IO.pure(BadRequest)
         case false =>
@@ -424,7 +427,8 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def setInviteStatus(id: DbRef[ProjectUserRole], status: String): Action[AnyContent] = Authenticated.asyncF {
     implicit request =>
       val user = request.user
-      user.projectRoles
+      user
+        .projectRoles(ModelView.now[ProjectUserRole])
         .get(id)
         .semiflatMap { role =>
           status match {
@@ -451,7 +455,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val res = for {
         orga       <- organizations.withName(behalf)
         orgaUser   <- users.withName(behalf)
-        role       <- orgaUser.projectRoles.get(id)
+        role       <- orgaUser.projectRoles(ModelView.now[ProjectUserRole]).get(id)
         scopedData <- OptionT.liftF(ScopedOrganizationData.of(Some(user), orga))
         if scopedData.permissions.getOrElse(EditSettings, false)
         project <- OptionT.liftF(role.project)
@@ -477,8 +481,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
-      request.project.apiKeys
-        .findNow(_.keyType === (ProjectApiKeyType.Deployment: ProjectApiKeyType))
+      request.project
+        .apiKeys(ModelView.now[ProjectApiKey])
+        .find(_.keyType === (ProjectApiKeyType.Deployment: ProjectApiKeyType))
         .value
         .map(deployKey => Ok(views.settings(request.data, request.scoped, deployKey)))
   }
@@ -729,7 +734,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     Authenticated.andThen(PermissionAction(ViewLogs)).andThen(ProjectAction(author, slug)).asyncF { implicit request =>
       for {
         logger <- request.project.logger
-        logs   <- logger.entries.toSeqNow
+        logs   <- service.runDBIO(logger.entries(ModelView.raw[ProjectLogEntry]).result)
       } yield Ok(views.log(request.project, logs))
     }
   }
@@ -806,8 +811,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewFlags)).asyncEitherT { implicit request =>
       getProject(author, slug).semiflatMap { project =>
         import cats.instances.vector._
-        project.decodeNotes.toVector.parTraverse(note => users.get(note.user).value.tupleLeft(note)).map { notes =>
-          Ok(views.admin.notes(project, notes))
+        project.decodeNotes.toVector.parTraverse(note => ModelView.now[User].get(note.user).value.tupleLeft(note)).map {
+          notes =>
+            Ok(views.admin.notes(project, notes))
         }
       }
     }

@@ -2,7 +2,7 @@ package ore.user
 
 import scala.language.{higherKinds, implicitConversions}
 
-import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
+import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
 import db.table.AssociativeTable
@@ -24,9 +24,7 @@ trait MembershipDossier[F[_], M <: Model] {
   type RoleType <: UserRoleModel { type M = RoleType }
   type MemberType <: Member[RoleType]
 
-  def roles(model: M): ModelAccess[RoleType]
-
-  def roleAccess: ModelAccess[RoleType]
+  def roles(model: M): ModelView.Now[F, RoleType#T, RoleType]
 
   /**
     * Clears the roles of a User
@@ -111,10 +109,8 @@ object MembershipDossier {
     private def addMember(model: M0, user: User) =
       association.addAssoc(user, model)
 
-    def roles(model: M0): ModelAccess[RoleType] = service.access[RoleType](childFilter(_, model))
-
-    def roleAccess: ModelAccess[RoleType] =
-      service.access[RoleType]()
+    def roles(model: M0): ModelView.Now[IO, RoleType#T, RoleType] =
+      ModelView.now[RoleType].filterView(childFilter(_, model))
 
     def members(model: M0): IO[Set[MemberType]] =
       association
@@ -123,21 +119,21 @@ object MembershipDossier {
 
     def addRole(model: M0, userId: DbRef[User], role: InsertFunc[RoleType]): IO[RoleType] = {
       for {
-        user   <- service.getNow[User](userId).getOrElseF(IO.raiseError(new Exception("Get on none")))
-        exists <- roles(model).existsNow(_.userId === user.id.value)
+        user   <- ModelView.now[User].get(userId).getOrElseF(IO.raiseError(new Exception("Get on none")))
+        exists <- roles(model).exists(_.userId === user.id.value)
         _      <- if (!exists) addMember(model, user) else IO.pure(user)
-        ret    <- roleAccess.add(role)
+        ret    <- service.insert(role)
       } yield ret
     }
 
     def getRoles(model: M0, user: User): IO[Set[RoleType]] =
-      roles(model).filterNow(_.userId === user.id.value).map(_.toSet)
+      service.runDBIO(roles(model).filterView(_.userId === user.id.value).query.to[Set].result)
 
     def removeRole(model: M0, role: RoleType): IO[Unit] = {
       for {
-        _      <- roleAccess.remove(role)
+        _      <- service.delete(role)
         user   <- role.user
-        exists <- roles(model).existsNow(_.userId === user.id.value)
+        exists <- roles(model).exists(_.userId === user.id.value)
         _      <- if (!exists) removeMember(model, user) else IO.pure(0)
       } yield ()
     }
@@ -155,7 +151,7 @@ object MembershipDossier {
       override def newMember(model: Project, userId: DbRef[User]): ProjectMember = new ProjectMember(model, userId)
 
       override def clearRoles(model: Project, user: User): IO[Int] =
-        this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.projectId === model.id.value))
+        service.deleteWhere[ProjectUserRole](s => (s.userId === user.id.value) && (s.projectId === model.id.value))
     }
 
   implicit def organization(
@@ -170,7 +166,9 @@ object MembershipDossier {
         new OrganizationMember(model, userId)
 
       override def clearRoles(model: Organization, user: User): IO[Int] =
-        this.roleAccess.removeAll(s => (s.userId === user.id.value) && (s.organizationId === model.id.value))
+        service.deleteWhere[OrganizationUserRole](
+          s => (s.userId === user.id.value) && (s.organizationId === model.id.value)
+        )
     }
 
   val STATUS_DECLINE  = "decline"

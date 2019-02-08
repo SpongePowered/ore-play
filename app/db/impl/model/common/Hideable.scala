@@ -1,13 +1,15 @@
 package db.impl.model.common
 
-import db.access.ModelAccess
+import scala.language.higherKinds
+
+import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.VisibilityColumn
 import db.{DbRef, Model, ModelService}
 import models.project.Visibility
 import models.user.User
+import util.syntax._
 
-import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 
 /**
@@ -41,24 +43,25 @@ trait Hideable extends Model { self =>
   /**
     * Get VisibilityChanges
     */
-  def visibilityChanges(implicit service: ModelService): ModelAccess[ModelVisibilityChange]
+  def visibilityChanges[V[_, _]: QueryView](
+      view: V[ModelVisibilityChange#T, ModelVisibilityChange]
+  ): V[ModelVisibilityChange#T, ModelVisibilityChange]
 
-  def visibilityChangesByDate(implicit service: ModelService): IO[Seq[ModelVisibilityChange]] =
-    visibilityChanges.sortedNow(_.createdAt)
+  def visibilityChangesByDate[V[_, _]: QueryView](
+      view: V[ModelVisibilityChange#T, ModelVisibilityChange]
+  ): V[ModelVisibilityChange#T, ModelVisibilityChange] =
+    visibilityChanges(view).sortView(_.createdAt)
 
-  def lastVisibilityChange(
-      implicit service: ModelService
-  ): OptionT[IO, ModelVisibilityChange] =
-    OptionT(service.runDBIO(visibilityChanges.sorted(_.createdAt, _.resolvedAt.?.isEmpty, limit = 1).result.headOption))
+  def lastVisibilityChange[QOptRet, SRet[_]](
+      view: ModelView[QOptRet, SRet, ModelVisibilityChange#T, ModelVisibilityChange]
+  ): QOptRet = visibilityChangesByDate(view).filterView(_.resolvedAt.?.isEmpty).one
 
-  def lastChangeRequest(implicit service: ModelService): OptionT[IO, ModelVisibilityChange] =
-    OptionT(
-      service.runDBIO(
-        visibilityChanges
-          .sorted(_.createdAt.desc, _.visibility === (Visibility.NeedsChanges: Visibility), limit = 1)
-          .result
-          .headOption
-      )
-    )
+  def lastChangeRequest[QOptRet, SRet[_]](
+      view: ModelView[QOptRet, SRet, ModelVisibilityChange#T, ModelVisibilityChange]
+  ): QOptRet =
+    visibilityChanges(view)
+      .modifyingQuery(_.sortBy(_.createdAt.desc))
+      .filterView(_.visibility === (Visibility.NeedsChanges: Visibility))
+      .one
 
 }

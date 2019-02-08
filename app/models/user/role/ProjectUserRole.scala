@@ -38,6 +38,10 @@ case class ProjectUserRole private (
 
   override def subject(implicit service: ModelService): IO[Visitable] =
     ProjectOwned[ProjectUserRole].project(this)
+
+  override def withRole(role: Role): ProjectUserRole = copy(role = role)
+
+  override def withAccepted(accepted: Boolean): ProjectUserRole = copy(isAccepted = accepted)
 }
 object ProjectUserRole {
   case class Partial(

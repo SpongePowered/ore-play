@@ -7,6 +7,7 @@ import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
+import db.access.ModelView
 import db.{DbRef, InsertFunc, ModelService}
 import models.project.{Project, ProjectSettings, Version, Visibility}
 import models.user.User
@@ -52,7 +53,7 @@ case class PendingProject(
     } yield (updatedProject, newVersion._1)
 
   def owner(implicit service: ModelService): IO[User] =
-    service.getNow[User](ownerId).getOrElse(sys.error("No owner for pending project"))
+    ModelView.now[User].get(ownerId).getOrElseF(IO.raiseError(new Exception("No owner for pending project")))
 
   def asFunc: InsertFunc[Project] =
     Project.partial(

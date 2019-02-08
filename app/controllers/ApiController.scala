@@ -12,14 +12,14 @@ import play.api.libs.json._
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import db.access.ModelAccess
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectApiKeyTable
 import db.{DbRef, ModelService}
 import form.OreForms
 import models.api.ProjectApiKey
-import models.project.{Page, Project}
-import models.user.{LoggedAction, UserActionLogger}
+import models.project.{Page, Project, Version}
+import models.user.{LoggedAction, Organization, User, UserActionLogger}
 import ore.permission.role.Role
 import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.project.factory.ProjectFactory
@@ -59,8 +59,7 @@ final class ApiController @Inject()(
 ) extends OreBaseController
     with OreWrites {
 
-  val files                                      = new ProjectFiles(this.env)
-  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey]()
+  val files = new ProjectFiles(this.env)
 
   private val Logger = scalalogging.Logger("SSO")
 
@@ -110,10 +109,10 @@ final class ApiController @Inject()(
               keyType <- forms.ProjectApiKeyCreate.bindOptionT[IO]
               if keyType == Deployment
               exists <- OptionT
-                .liftF(this.projectApiKeys.existsNow(k => k.projectId === projectId && k.keyType === keyType))
+                .liftF(ModelView.now[ProjectApiKey].exists(k => k.projectId === projectId && k.keyType === keyType))
               if !exists
               pak <- OptionT.liftF(
-                this.projectApiKeys.add(
+                service.insert(
                   ProjectApiKey.partial(
                     projectId = projectId,
                     keyType = keyType,
@@ -256,7 +255,7 @@ final class ApiController @Inject()(
                 val query = Query.apply(
                   (
                     queryApiKey(Deployment, formData.apiKey, project.id),
-                    project.versions.exists(_.versionString === name)
+                    project.versions(ModelView.later[Version]).exists(_.versionString === name)
                   )
                 )
 
@@ -265,7 +264,10 @@ final class ApiController @Inject()(
                   .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
                   .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
                   .semiflatMap(_ => project.owner.user)
-                  .semiflatMap(user => user.toMaybeOrganization.semiflatMap(_.owner.user).getOrElse(user))
+                  .semiflatMap(
+                    user =>
+                      user.toMaybeOrganization(ModelView.now[Organization]).semiflatMap(_.owner.user).getOrElse(user)
+                  )
                   .flatMap { owner =>
                     val pluginUpload = this.factory
                       .getUploadError(owner)
@@ -388,7 +390,7 @@ final class ApiController @Inject()(
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
       .semiflatMap { q =>
         Logger.debug("Sync Payload: " + q)
-        users.get(q.get("external_id").get.toLong).value.tupleLeft(q)
+        ModelView.now[User].get(q.get("external_id").get.toLong).value.tupleLeft(q)
       }
       .semiflatMap {
         case (query, optUser) =>

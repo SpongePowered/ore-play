@@ -1,12 +1,13 @@
 package models.project
 
+import scala.language.higherKinds
+
 import java.net.{URI, URISyntaxException}
 
 import play.twirl.api.Html
 
-import db.access.ModelAccess
+import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.ProjectBase
 import db.impl.model.common.Named
 import db.impl.schema.PageTable
 import db._
@@ -14,9 +15,9 @@ import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectOwned
 import util.StringUtils._
+import util.syntax._
 import java.util
 
-import cats.data.OptionT
 import cats.effect.IO
 import com.google.common.base.Preconditions._
 import com.vladsch.flexmark.ast.MailLink
@@ -111,15 +112,11 @@ case class Page private (
     *
     * @return Optional Project
     */
-  def parentProject(implicit projectBase: ProjectBase): OptionT[IO, Project] =
-    projectBase.get(projectId)
+  def parentProject[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Project#T, Project]): QOptRet =
+    view.get(projectId)
 
-  def parentPage(implicit service: ModelService): OptionT[IO, Page] =
-    for {
-      parent  <- OptionT.fromOption[IO](parentId)
-      project <- parentProject
-      page    <- project.pages.findNow(_.id === parent)
-    } yield page
+  def parentPage[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Page#T, Page]): Option[QOptRet] =
+    parentId.map(view.get)
 
   /**
     * Get the /:parent/:child
@@ -133,8 +130,8 @@ case class Page private (
     *
     * @return Page's children
     */
-  def children(implicit service: ModelService): ModelAccess[Page] =
-    service.access(page => page.parentId.isDefined && page.parentId.get === this.id.value)
+  def children[V[_, _]: QueryView](view: V[Page#T, Page]): V[Page#T, Page] =
+    view.filterView(page => page.parentId.isDefined && page.parentId.get === this.id.value)
 
   def url(implicit project: Project, parentPage: Option[Page]): String =
     project.url + "/pages/" + this.fullSlug(parentPage)

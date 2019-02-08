@@ -13,7 +13,7 @@ import play.api.mvc._
 import controllers.routes
 import controllers.sugar.Requests._
 import db.ModelService
-import db.access.ModelAccess
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import models.project.{Project, Visibility}
@@ -36,7 +36,6 @@ trait Actions extends Calls with ActionHelpers {
 
   implicit def service: ModelService
   def sso: SingleSignOnConsumer
-  def signOns: ModelAccess[SignOn]
   def bakery: Bakery
   implicit def auth: SpongeAuthApi
 
@@ -154,8 +153,9 @@ trait Actions extends Calls with ActionHelpers {
     * @return True if valid
     */
   def isNonceValid(nonce: String): IO[Boolean] =
-    this.signOns
-      .findNow(_.nonce === nonce)
+    ModelView
+      .now[SignOn]
+      .find(_.nonce === nonce)
       .semiflatMap { signOn =>
         if (signOn.isCompleted || new Date().getTime - signOn.createdAt.getTime > 600000)
           IO.pure(false)

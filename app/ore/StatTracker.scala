@@ -8,6 +8,7 @@ import play.api.mvc.{RequestHeader, Result}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelFilter._
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.{DbRef, Model, ModelFilter, ModelQuery, ModelService}
 import models.project.{Project, Version}
@@ -49,7 +50,7 @@ trait StatTracker {
     val filter     = ModelFilter[M](e => e.address === entry.address || e.cookie === entry.cookie)
 
     val userFilter = entry.user.map(u => ModelFilter[M](e => filter(e) || e.userId === u.id.value)).getOrElse(filter)
-    OptionT.liftF(userFilter).flatMap(uFilter => service.findNow(baseFilter && uFilter))
+    OptionT.liftF(userFilter).flatMap(uFilter => ModelView.now[M].find(baseFilter && uFilter))
   }
 
   /**

@@ -11,6 +11,7 @@ import scala.util.matching.Regex
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
+import db.access.ModelView
 import db.impl.access.ProjectBase
 import db.impl.OrePostgresDriver.api._
 import db.{DbRef, ModelService}
@@ -115,7 +116,13 @@ trait ProjectFactory {
       .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
       .flatMapF { plugin =>
         for {
-          t <- (service.runDBIO(project.channels.query.take(1).result.head), project.settings).parTupled
+          t <- (
+            project
+              .channels(ModelView.now[Channel])
+              .one
+              .getOrElseF(IO.raiseError(new IllegalStateException("No channel found for project"))),
+            project.settings
+          ).parTupled
           (headChannel, settings) = t
           version = this.startVersion(
             plugin,
@@ -266,7 +273,7 @@ trait ProjectFactory {
       _                   = checkArgument(available, "slug not available", "")
       _                   = checkArgument(this.config.isValidProjectName(pending.name), "invalid name", "")
       // Create the project and it's settings
-      newProject <- this.projects.add(pending.asFunc)
+      newProject <- service.insert(pending.asFunc)
       _          <- service.insert(pending.settings.asFunc(newProject.id))
       _ <- {
         // Invite members
@@ -312,9 +319,11 @@ trait ProjectFactory {
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
     checkNotNull(color, "null color", "")
     for {
-      limitReached <- service.runDBIO((project.channels.size < config.ore.projects.maxChannels).result)
+      limitReached <- service.runDBIO(
+        (project.channels(ModelView.later[Channel]).size < config.ore.projects.maxChannels).result
+      )
       _ = checkState(limitReached, "channel limit reached", "")
-      channel <- this.service.access[Channel]().add(Channel.partial(project.id, name, color))
+      channel <- service.insert(Channel.partial(project.id, name, color))
     } yield channel
   }
 
@@ -339,7 +348,7 @@ trait ProjectFactory {
       // Create version
       newVersion <- {
         val newVersion = pending.asFunc(project.id, channel.id)
-        this.service.access[Version]().add(newVersion)
+        service.insert(newVersion)
       }
       tags <- addTags(pending, newVersion)
       // Notify watchers
@@ -371,8 +380,9 @@ trait ProjectFactory {
       )
 
   private def getOrCreateChannel(pending: PendingVersion, project: Project) =
-    project.channels
-      .findNow(equalsIgnoreCase(_.name, pending.channelName))
+    project
+      .channels(ModelView.now[Channel])
+      .find(equalsIgnoreCase(_.name, pending.channelName))
       .getOrElseF(createChannel(project, pending.channelName, pending.channelColor))
 
   private def uploadPlugin(project: Project, plugin: PluginFileWithData, version: Version): EitherT[IO, String, Unit] =

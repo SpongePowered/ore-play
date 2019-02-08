@@ -2,8 +2,8 @@ package ore.organization
 
 import scala.language.implicitConversions
 
-import db.DbRef
-import db.impl.access.OrganizationBase
+import db.access.ModelView
+import db.{DbRef, ModelService}
 import models.user.Organization
 
 import cats.effect.IO
@@ -18,6 +18,9 @@ import simulacrum.typeclass
   def organizationId(a: A): DbRef[Organization]
 
   /** Returns the Organization */
-  def organization(a: A)(implicit organizations: OrganizationBase): IO[Organization] =
-    organizations.get(organizationId(a)).getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
+  def organization(a: A)(implicit service: ModelService): IO[Organization] =
+    ModelView
+      .now[Organization]
+      .get(organizationId(a))
+      .getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
 }

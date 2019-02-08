@@ -4,6 +4,7 @@ import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
+import db.access.ModelView
 import db.{DbRef, InsertFunc, ModelService}
 import db.impl.schema.VersionTable
 import db.impl.OrePostgresDriver.api._
@@ -77,8 +78,10 @@ case class PendingVersion(
 
     projectId.fold(IO.pure(false)) { projectId =>
       for {
-        project <- service.getNow[Project](projectId).getOrElse(sys.error(s"No project found for id $projectId"))
-        versionExistsQuery = project.versions.exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
+        project <- ModelView.now[Project].get(projectId).getOrElse(sys.error(s"No project found for id $projectId"))
+        versionExistsQuery = project
+          .versions(ModelView.later[Version])
+          .exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
         res <- service.runDBIO(Query((hashExistsQuery, versionExistsQuery)).map(t => t._1 && t._2).result.head)
       } yield res
     }

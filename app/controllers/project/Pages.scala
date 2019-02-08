@@ -13,6 +13,7 @@ import play.utils.UriEncoding
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import db.ModelService
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.PageTable
 import form.OreForms
@@ -73,10 +74,11 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     if (parts.length == 2) {
       OptionT(service.runDBIO(childPageQuery((parts(0), parts(1))).result.headOption)).map(_ -> false)
     } else {
-      project.pages
-        .findNow(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId.isEmpty)
+      project
+        .pages(ModelView.now[Page])
+        .find(p => p.slug.toLowerCase === parts(0).toLowerCase && p.parentId.isEmpty)
         .map(_ -> false)
-        .orElse(project.pages.findNow(_.slug.toLowerCase === parts(0).toLowerCase).map(_ -> true))
+        .orElse(project.pages(ModelView.now[Page]).find(_.slug.toLowerCase === parts(0).toLowerCase).map(_ -> true))
     }
   }
 
@@ -155,7 +157,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
         val parentId = pageData.parentId
 
         //noinspection ComparingUnrelatedTypes
-        project.rootPages.flatMap { rootPages =>
+        service.runDBIO(project.rootPages(ModelView.raw[Page]).result).flatMap { rootPages =>
           if (parentId.isDefined && !rootPages
                 .filter(_.name != Page.homeName)
                 .exists(p => parentId.contains(p.id.value))) {
@@ -168,7 +170,14 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
 
               val created = if (parts.size == 2) {
                 service
-                  .runDBIO(project.pages.find(equalsIgnoreCase(_.slug, parts(0))).map(_.id).result.headOption)
+                  .runDBIO(
+                    project
+                      .pages(ModelView.later[Page])
+                      .find(equalsIgnoreCase(_.slug, parts(0)))
+                      .map(_.id)
+                      .result
+                      .headOption
+                  )
                   .flatMap { parentId =>
                     val pageName = pageData.name.getOrElse(parts(1))
                     project.getOrCreatePage(pageName, parentId, content)

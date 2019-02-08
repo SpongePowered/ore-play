@@ -1,13 +1,14 @@
 package models.project
 
+import scala.language.higherKinds
+
 import java.sql.Timestamp
 import java.time.Instant
 
 import play.twirl.api.Html
 
-import db.access.ModelAccess
+import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.UserBase
 import db.impl.model.common.{Describable, Downloadable, Hideable}
 import db.impl.schema.VersionTable
 import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
@@ -17,11 +18,11 @@ import models.user.User
 import ore.OreConfig
 import ore.project.{Dependency, ProjectOwned}
 import util.FileUtils
+import util.syntax._
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
-import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
 import slick.lifted.TableQuery
 
 /**
@@ -34,7 +35,7 @@ import slick.lifted.TableQuery
   *                         version separated by a ':'
   * @param description     User description of version
   * @param projectId        ID of project this version belongs to
-  * @param _channelId        ID of channel this version belongs to
+  * @param channelId        ID of channel this version belongs to
   */
 case class Version private (
     id: ObjId[Version],
@@ -79,10 +80,10 @@ case class Version private (
     * @return Channel
     */
   def channel(implicit service: ModelService): IO[Channel] =
-    service
-      .access[Channel]()
+    ModelView
+      .now[Channel]
       .get(this.channelId)
-      .getOrElse(throw new NoSuchElementException("None of Option")) // scalafix:ok
+      .getOrElseF(IO.raiseError(new NoSuchElementException("None of Option")))
 
   /**
     * Returns this Version's markdown description in HTML.
@@ -99,19 +100,20 @@ case class Version private (
     */
   def url(implicit project: Project): String = project.url + "/versions/" + this.versionString
 
-  def author(implicit userBase: UserBase): OptionT[IO, User] = userBase.get(this.authorId)
+  def author[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTag#T, VersionTag]): QOptRet =
+    view.get(this.authorId)
 
-  def reviewer(implicit userBase: UserBase): OptionT[IO, User] =
-    OptionT.fromOption[IO](this.reviewerId).flatMap(userBase.get)
+  def reviewer[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, User#T, User]): Option[QOptRet] =
+    this.reviewerId.map(view.get)
 
-  def tags(implicit service: ModelService): IO[List[VersionTag]] =
-    service.access[VersionTag]().filterNow(_.versionId === this.id.value).map(_.toList)
+  def tags[V[_, _]: QueryView](view: V[VersionTag#T, VersionTag]): V[VersionTag#T, VersionTag] =
+    view.filterView(_.versionId === this.id.value)
 
-  def isSpongePlugin(implicit service: ModelService): IO[Boolean] =
-    tags.map(_.map(_.name).contains("Sponge"))
+  def isSpongePlugin[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTag#T, VersionTag]): SRet[Boolean] =
+    tags(view).exists(_.name === "Sponge")
 
-  def isForgeMod(implicit service: ModelService): IO[Boolean] =
-    tags.map(_.map(_.name).contains("Forge"))
+  def isForgeMod[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTag#T, VersionTag]): SRet[Boolean] =
+    tags(view).exists(_.name === "Forge")
 
   /**
     * Returns this Versions plugin dependencies.
@@ -138,14 +140,16 @@ case class Version private (
   def addDownload(implicit service: ModelService): IO[Version] =
     service.update(copy(downloadCount = downloadCount + 1))
 
-  override def visibilityChanges(implicit service: ModelService): ModelAccess[VersionVisibilityChange] =
-    service.access(_.versionId === id.value)
+  override def visibilityChanges[V[_, _]: QueryView](
+      view: V[VersionVisibilityChange#T, VersionVisibilityChange]
+  ): V[VersionVisibilityChange#T, VersionVisibilityChange] =
+    view.filterView(_.versionId === id.value)
 
   override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[(Version, VersionVisibilityChange)] = {
-    val updateOldChange = lastVisibilityChange
+    val updateOldChange = lastVisibilityChange(ModelView.now[VersionVisibilityChange])
       .semiflatMap { vc =>
         service.update(
           vc.copy(
@@ -156,18 +160,16 @@ case class Version private (
       }
       .cata((), _ => ())
 
-    val createNewChange = service
-      .access[VersionVisibilityChange]()
-      .add(
-        VersionVisibilityChange.partial(
-          Some(creator),
-          this.id,
-          comment,
-          None,
-          None,
-          visibility
-        )
+    val createNewChange = service.insert(
+      VersionVisibilityChange.partial(
+        Some(creator),
+        this.id,
+        comment,
+        None,
+        None,
+        visibility
       )
+    )
 
     val updateVersion = service.update(
       copy(
@@ -179,12 +181,14 @@ case class Version private (
   }
 
   /**
-    * Returns [[ModelAccess]] to the recorded unique downloads.
+    * Returns [[ModelView]] to the recorded unique downloads.
     *
     * @return Recorded downloads
     */
-  def downloadEntries(implicit service: ModelService): ModelAccess[VersionDownload] =
-    service.access(_.modelId === id.value)
+  def downloadEntries[V[_, _]: QueryView](
+      view: V[VersionDownload#T, VersionDownload]
+  ): V[VersionDownload#T, VersionDownload] =
+    view.filterView(_.modelId === id.value)
 
   /**
     * Returns a human readable file size for this Version.
@@ -193,18 +197,20 @@ case class Version private (
     */
   def humanFileSize: String = FileUtils.formatFileSize(this.fileSize)
 
-  def reviewEntries(implicit service: ModelService): ModelAccess[Review] = service.access(_.versionId === id.value)
+  def reviewEntries[V[_, _]: QueryView](view: V[Review#T, Review]): V[Review#T, Review] =
+    view.filterView(_.versionId === id.value)
 
-  def unfinishedReviews(implicit service: ModelService): IO[Seq[Review]] =
-    reviewEntries.sortedNow(_.createdAt, _.endedAt.?.isEmpty)
+  def unfinishedReviews[V[_, _]: QueryView](view: V[Review#T, Review]): V[Review#T, Review] =
+    reviewEntries(view).sortView(_.createdAt).filterView(_.endedAt.?.isEmpty)
 
-  def mostRecentUnfinishedReview(implicit service: ModelService): OptionT[IO, Review] =
-    OptionT(unfinishedReviews.map(_.headOption))
+  def mostRecentUnfinishedReview[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Review#T, Review]): QOptRet =
+    unfinishedReviews(view).one
 
-  def mostRecentReviews(implicit service: ModelService): IO[Seq[Review]] = reviewEntries.sortedNow(_.createdAt)
+  def mostRecentReviews[V[_, _]: QueryView](view: V[Review#T, Review]): V[Review#T, Review] =
+    reviewEntries(view).sortView(_.createdAt)
 
   def reviewById(id: DbRef[Review])(implicit service: ModelService): OptionT[IO, Review] =
-    reviewEntries.findNow(_.id === id)
+    ModelView.now[Review].get(id)
 }
 
 object Version {

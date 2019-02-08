@@ -5,9 +5,10 @@ import java.util.{Date, UUID}
 
 import play.api.mvc.Request
 
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{InsertFunc, ModelBase, ModelService}
-import models.user.{Session, User}
+import db.{InsertFunc, ModelService}
+import models.user.{Organization, Session, User}
 import ore.OreConfig
 import ore.permission.Permission
 import security.spauth.SpongeAuthApi
@@ -21,7 +22,7 @@ import cats.syntax.all._
 /**
   * Represents a central location for all Users.
   */
-class UserBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[User] {
+class UserBase(implicit val service: ModelService, config: OreConfig) {
 
   implicit val self: UserBase = this
 
@@ -34,8 +35,8 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return User if found, None otherwise
     */
   def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
-    this.findNow(equalsIgnoreCase(_.name, username)).orElse {
-      auth.getUser(username).map(User.partialFromSponge).semiflatMap(this.add)
+    ModelView.now[User].find(equalsIgnoreCase(_.name, username)).orElse {
+      auth.getUser(username).map(User.partialFromSponge).semiflatMap(res => service.insert(res))
     }
 
   /**
@@ -55,7 +56,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     this.withName(name).flatMap { toCheck =>
       if (user == toCheck) OptionT.pure[IO](user) // Same user
       else
-        toCheck.toMaybeOrganization.flatMap { orga =>
+        toCheck.toMaybeOrganization(ModelView.now[Organization]).flatMap { orga =>
           OptionT.liftF(user.can(perm).in(orga)).collect {
             case true => toCheck // Has Orga perm
           }
@@ -72,7 +73,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return     Found or new User
     */
   def getOrCreate(username: String, user: InsertFunc[User], ifInsert: User => IO[Unit] = _ => IO.unit): IO[User] = {
-    def like = this.findNow(_.name.toLowerCase === username.toLowerCase)
+    def like = ModelView.now[User].find(_.name.toLowerCase === username.toLowerCase)
 
     like.value.flatMap {
       case Some(u) => IO.pure(u)
@@ -91,8 +92,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     val maxAge     = this.config.play.sessionMaxAge
     val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
     val token      = UUID.randomUUID().toString
-    val session    = Session.partial(expiration, user.name, token)
-    this.service.access[Session]().add(session)
+    service.insert(Session.partial(expiration, user.name, token))
   }
 
   /**
@@ -103,7 +103,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) extends Mo
     * @return       Session if found and has not expired
     */
   private def getSession(token: String): OptionT[IO, Session] =
-    this.service.findNow[Session](_.token === token).flatMap { session =>
+    ModelView.now[Session].find(_.token === token).flatMap { session =>
       if (session.hasExpired)
         OptionT(service.delete(session).as(None: Option[Session]))
       else

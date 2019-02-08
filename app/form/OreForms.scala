@@ -11,6 +11,7 @@ import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.data.{FieldMapping, Form, FormError, Mapping}
 
 import controllers.sugar.Requests.ProjectRequest
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.{DbRef, ModelService}
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
@@ -258,7 +259,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
         data
           .get(key)
           .flatMap(id => Try(id.toLong).toOption)
-          .map(service.access[ProjectApiKey]().get(_))
+          .map(ModelView.now[ProjectApiKey].get(_))
           .toRight(required(key))
 
       def unbind(key: String, value: OptionT[IO, ProjectApiKey]): Map[String, String] =
@@ -280,7 +281,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     })
 
   def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[IO, Channel] =
-    request.data.project.channels.findNow(_.name.toLowerCase === c.toLowerCase)
+    request.data.project.channels(ModelView.now[Channel]).find(_.name.toLowerCase === c.toLowerCase)
 
   def VersionDeploy(implicit request: ProjectRequest[_]) =
     Form(

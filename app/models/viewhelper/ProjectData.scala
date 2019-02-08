@@ -3,10 +3,10 @@ package models.viewhelper
 import play.twirl.api.Html
 
 import db.ModelService
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.impl.access.UserBase
 import db.impl.schema.{ProjectRoleTable, UserTable}
-import models.admin.ProjectVisibilityChange
+import models.admin.{ProjectLogEntry, ProjectVisibilityChange}
 import models.project._
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -15,8 +15,8 @@ import ore.permission.role.RoleCategory
 import ore.project.ProjectMember
 import util.syntax._
 
+import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
-import cats.instances.option._
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -58,28 +58,34 @@ object ProjectData {
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[ProjectData] = {
-    import cats.instances.vector._
-    val flagsF        = project.flags.allNow.map(_.toVector)
-    val flagUsersF    = flagsF.flatMap(flags => flags.parTraverse(_.user))
-    val flagResolvedF = flagsF.flatMap(flags => flags.parTraverse(_.resolvedBy.flatTraverse(UserBase().get(_).value)))
+    val flagsWithNames = project
+      .flags(ModelView.later[Flag])
+      .query
+      .join(TableQuery[UserTable])
+      .on(_.userId === _.id)
+      .joinLeft(TableQuery[UserTable])
+      .on(_._1.resolvedBy === _.id)
+      .map {
+        case ((flag, user), resolver) =>
+          (flag, user.name, resolver.map(_.name))
+      }
 
-    val lastVisibilityChangeF = project.lastVisibilityChange.value
-    val lastVisibilityChangeUserF = lastVisibilityChangeF.flatMap { lastVisibilityChange =>
-      lastVisibilityChange.fold(IO.pure("Unknown"))(_.created.fold("Unknown")(_.name))
-    }
+    val lastVisibilityChangeQ = project.lastVisibilityChange(ModelView.later[ProjectVisibilityChange])
+    val lastVisibilityChangeUserWithUser =
+      lastVisibilityChangeQ.joinLeft(TableQuery[UserTable]).on((t1, t2) => t1.createdBy === t2.id).map {
+        case (lastVisibilityChange, changer) =>
+          lastVisibilityChange -> changer.map(_.name)
+      }
 
     (
       project.settings,
       project.owner.user,
-      project.versions.countNow(_.visibility === (Visibility.Public: Visibility)),
+      project.versions(ModelView.now[Version]).count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
-      project.logger.flatMap(_.entries.sizeNow),
-      flagsF,
-      flagUsersF,
-      flagResolvedF,
-      lastVisibilityChangeF,
-      lastVisibilityChangeUserF,
-      project.recommendedVersion.value
+      project.logger.flatMap(log => log.entries(ModelView.now[ProjectLogEntry]).size),
+      service.runDBIO(flagsWithNames.result),
+      service.runDBIO(lastVisibilityChangeUserWithUser.result.headOption),
+      project.recommendedVersion(ModelView.now[Version]).getOrElse(OptionT.none[IO, Version]).value
     ).parMapN {
       case (
           settings,
@@ -87,17 +93,11 @@ object ProjectData {
           versions,
           members,
           logSize,
-          flags,
-          flagUsers,
-          flagResolved,
-          lastVisibilityChange,
-          lastVisibilityChangeUser,
+          flagData,
+          lastVisibilityChangeInfo,
           recommendedVersion
           ) =>
         val noteCount = project.decodeNotes.size
-        val flagData = flags.zip(flagUsers).zip(flagResolved).map {
-          case ((fl, user), resolved) => (fl, user.name, resolved.map(_.name))
-        }
 
         new ProjectData(
           project,
@@ -108,8 +108,8 @@ object ProjectData {
           logSize,
           flagData,
           noteCount,
-          lastVisibilityChange,
-          lastVisibilityChangeUser,
+          lastVisibilityChangeInfo.map(_._1),
+          lastVisibilityChangeInfo.flatMap(_._2).getOrElse("Unknown"),
           recommendedVersion
         )
     }

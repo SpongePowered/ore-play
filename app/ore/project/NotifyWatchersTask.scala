@@ -6,7 +6,6 @@ import db.impl.OrePostgresDriver.api._
 import db.{DbRef, ModelService}
 import models.project.{Project, Version}
 import models.user.{Notification, User}
-import ore.OreConfig
 import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList

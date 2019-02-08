@@ -2,7 +2,9 @@ package models.viewhelper
 
 import controllers.sugar.Requests.ProjectRequest
 import db.ModelService
+import db.access.ModelView
 import models.project.{Channel, Project, Version}
+import models.user.User
 import ore.Platform
 import ore.project.Dependency
 
@@ -37,11 +39,13 @@ object VersionData {
       cs: ContextShift[IO]
   ): IO[VersionData] = {
     import cats.instances.list._
+    import cats.instances.option._
     val depsF = version.dependencies.parTraverse(dep => dep.project.value.tupleLeft(dep))
 
-    (version.channel, version.reviewer.map(_.name).value, depsF).parMapN {
-      case (channel, approvedBy, deps) =>
-        VersionData(request.data, version, channel, approvedBy, deps)
-    }
+    (version.channel, version.reviewer(ModelView.now[User]).sequence.subflatMap(identity).map(_.name).value, depsF)
+      .parMapN {
+        case (channel, approvedBy, deps) =>
+          VersionData(request.data, version, channel, approvedBy, deps)
+      }
   }
 }

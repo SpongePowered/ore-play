@@ -3,8 +3,10 @@ package ore.user.notification
 import scala.collection.immutable
 
 import db.ModelService
+import db.access.ModelView
+import db.impl.OrePostgresDriver.api._
 import models.user.User
-import models.user.role.UserRoleModel
+import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 
 import cats.Parallel
 import cats.effect.{ContextShift, IO}
@@ -36,8 +38,10 @@ object InviteFilter extends IntEnum[InviteFilter] {
           implicit service =>
             user =>
               Parallel.parMap2(
-                user.projectRoles.filterNotNow(_.isAccepted),
-                user.organizationRoles.filterNotNow(_.isAccepted)
+                service.runDBIO(user.projectRoles(ModelView.raw[ProjectUserRole]).filter(!_.isAccepted).result),
+                service.runDBIO(
+                  user.organizationRoles(ModelView.raw[OrganizationUserRole]).filter(!_.isAccepted).result
+                )
               )(_ ++ _)
       )
 
@@ -46,7 +50,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
         1,
         "projects",
         "notification.invite.projects",
-        _ => implicit service => user => user.projectRoles.filterNotNow(_.isAccepted)
+        _ =>
+          implicit service =>
+            user => service.runDBIO(user.projectRoles(ModelView.raw[ProjectUserRole]).filter(!_.isAccepted).result)
       )
 
   case object Organizations
@@ -54,6 +60,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
         2,
         "organizations",
         "notification.invite.organizations",
-        _ => implicit service => user => user.organizationRoles.filterNotNow(_.isAccepted)
+        _ =>
+          implicit service =>
+            user =>
+              service.runDBIO(user.organizationRoles(ModelView.raw[OrganizationUserRole]).filter(!_.isAccepted).result)
       )
 }

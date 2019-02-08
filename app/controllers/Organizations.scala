@@ -9,10 +9,12 @@ import play.api.i18n.{Lang, MessagesApi}
 import play.api.mvc.{Action, AnyContent}
 
 import controllers.sugar.Bakery
+import db.access.ModelView
 import db.{DbRef, ModelService}
 import db.impl.OrePostgresDriver.api._
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
+import models.user.Organization
 import models.user.role.OrganizationUserRole
 import ore.permission.EditSettings
 import ore.user.MembershipDossier
@@ -52,13 +54,15 @@ class Organizations @Inject()(forms: OreForms)(
     * @return Organization creation panel
     */
   def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
-    service.runDBIO((request.user.ownedOrganizations.size > this.createLimit).result).map { limitReached =>
-      if (limitReached)
-        Redirect(ShowHome).withError(request.messages.apply("error.org.createLimit", this.createLimit))
-      else {
-        Ok(views.createOrganization())
+    service
+      .runDBIO((request.user.ownedOrganizations(ModelView.later[Organization]).size > this.createLimit).result)
+      .map { limitReached =>
+        if (limitReached)
+          Redirect(ShowHome).withError(request.messages.apply("error.org.createLimit", this.createLimit))
+        else {
+          Ok(views.createOrganization())
+        }
       }
-    }
   }
 
   /**
@@ -78,19 +82,21 @@ class Organizations @Inject()(forms: OreForms)(
       } else if (!this.config.ore.orgs.enabled) {
         IO.pure(Redirect(failCall).withError("error.org.disabled"))
       } else {
-        service.runDBIO((user.ownedOrganizations.size >= this.createLimit).result).flatMap { limitReached =>
-          if (limitReached)
-            IO.pure(BadRequest)
-          else {
-            val formData = request.body
-            organizations
-              .create(formData.name, user.id, formData.build())
-              .fold(
-                error => Redirect(failCall).withError(error),
-                organization => Redirect(routes.Users.showProjects(organization.name, None))
-              )
+        service
+          .runDBIO((user.ownedOrganizations(ModelView.later[Organization]).size >= this.createLimit).result)
+          .flatMap { limitReached =>
+            if (limitReached)
+              IO.pure(BadRequest)
+            else {
+              val formData = request.body
+              organizations
+                .create(formData.name, user.id, formData.build())
+                .fold(
+                  error => Redirect(failCall).withError(error),
+                  organization => Redirect(routes.Users.showProjects(organization.name, None))
+                )
+            }
           }
-        }
       }
     }
 
@@ -103,7 +109,8 @@ class Organizations @Inject()(forms: OreForms)(
     */
   def setInviteStatus(id: DbRef[OrganizationUserRole], status: String): Action[AnyContent] =
     Authenticated.asyncF { implicit request =>
-      request.user.organizationRoles
+      request.user
+        .organizationRoles(ModelView.now[OrganizationUserRole])
         .get(id)
         .semiflatMap { role =>
           status match {

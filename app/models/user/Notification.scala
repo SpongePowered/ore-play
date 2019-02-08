@@ -1,8 +1,8 @@
 package models.user
 
-import db.impl.access.UserBase
+import db.access.ModelView
 import db.impl.schema.NotificationTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
@@ -41,8 +41,8 @@ case class Notification private (
     *
     * @return User from which this originated from
     */
-  def origin(implicit userBase: UserBase): IO[User] =
-    userBase.get(this.originId).getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
+  def origin(implicit service: ModelService): IO[User] =
+    ModelView.now[User].get(this.originId).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
 }
 object Notification {
   def partial(

@@ -8,6 +8,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import db.ModelFilter._
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.{ModelFilter, ModelService}
 import models.project.{Project, Visibility}
@@ -36,7 +37,7 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   private def dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
   private val newFilter       = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
   private def createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
-  private def newProjects     = service.filterNow[Project](newFilter && createdAtFilter)
+  private def newProjects     = service.runDBIO(ModelView.now[Project].query.filter(newFilter && createdAtFilter).result)
 
   /**
     * Starts the task.

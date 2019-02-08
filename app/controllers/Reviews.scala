@@ -12,6 +12,7 @@ import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
 import db.{DbRef, ModelService}
@@ -48,15 +49,17 @@ final class Reviews @Inject()(forms: OreForms)(
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(ReviewProjects)).andThen(ProjectAction(author, slug)).asyncEitherT {
       implicit request =>
-        import cats.instances.vector._
         for {
           version <- getVersion(request.project, versionString)
-          reviews <- EitherT.right[Result](version.mostRecentReviews)
-          rv <- EitherT.right[Result](
-            reviews.toVector.parTraverse(r => users.get(r.userId).map(_.name).value.tupleLeft(r))
-          )
+          dbio = version
+            .mostRecentReviews(ModelView.raw[Review])
+            .joinLeft(TableQuery[UserTable])
+            .on(_.userId === _.id)
+            .map(t => t._1 -> t._2.map(_.name))
+            .result
+          rv <- EitherT.right[Result](service.runDBIO(dbio))
         } yield {
-          val unfinished = reviews.filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
+          val unfinished = rv.map(_._1).filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
           Ok(views.users.admin.reviews(unfinished, rv, request.project, version))
         }
     }
@@ -79,7 +82,7 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        review  <- EitherT.fromOptionF(version.mostRecentReviews.map(_.headOption), notFound)
+        review  <- version.mostRecentReviews(ModelView.now[Review]).one.toRight(notFound)
         _ <- EitherT.right[Result](
           service.update(
             version.copy(
@@ -104,7 +107,7 @@ final class Reviews @Inject()(forms: OreForms)(
       .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
-          review  <- version.mostRecentUnfinishedReview.toRight(notFound)
+          review  <- version.mostRecentUnfinishedReview(ModelView.now[Review]).toRight(notFound)
           _ <- EitherT.right[Result](
             service
               .update(review.copy(endedAt = Some(Timestamp.from(Instant.now()))))
@@ -119,7 +122,7 @@ final class Reviews @Inject()(forms: OreForms)(
       for {
         project <- getProject(author, slug)
         version <- getVersion(project, versionString)
-        review  <- version.mostRecentUnfinishedReview.toRight(notFound)
+        review  <- version.mostRecentUnfinishedReview(ModelView.now[Review]).toRight(notFound)
         _ <- EitherT.right[Result](
           (
             service.update(review.copy(endedAt = Some(Timestamp.from(Instant.now())))),
@@ -186,7 +189,8 @@ final class Reviews @Inject()(forms: OreForms)(
           version <- getProjectVersion(author, slug, versionString)
           _ <- {
             // Close old review
-            val closeOldReview = version.mostRecentUnfinishedReview
+            val closeOldReview = version
+              .mostRecentUnfinishedReview(ModelView.now[Review])
               .semiflatMap { oldreview =>
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
@@ -230,7 +234,7 @@ final class Reviews @Inject()(forms: OreForms)(
       implicit request =>
         for {
           version      <- getProjectVersion(author, slug, versionString)
-          recentReview <- version.mostRecentUnfinishedReview.toRight(Ok("Review"))
+          recentReview <- version.mostRecentUnfinishedReview(ModelView.now[Review]).toRight(Ok("Review"))
           currentUser  <- users.current.toRight(Ok("Review"))
           _ <- {
             if (recentReview.userId == currentUser.id.value) {

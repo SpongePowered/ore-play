@@ -1,8 +1,9 @@
 package models.viewhelper
 
 import db.ModelService
-import models.project.Project
-import models.user.User
+import db.access.ModelView
+import models.project.{Flag, Project}
+import models.user.{Organization, User}
 import ore.permission._
 import util.syntax._
 
@@ -24,9 +25,9 @@ object ScopedProjectData {
       .map { user =>
         (
           project.owner.user
-            .flatMap(_.toMaybeOrganization.value)
+            .flatMap(_.toMaybeOrganization(ModelView.now[Organization]).value)
             .flatMap(orgaOwner => user.can(PostAsOrganization) in orgaOwner),
-          user.hasUnresolvedFlagFor(project),
+          user.hasUnresolvedFlagFor(project, ModelView.now[Flag]),
           project.stars.contains(user, project),
           project.watchers.contains(project, user),
           user.trustIn(project),

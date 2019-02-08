@@ -6,6 +6,7 @@ import javax.inject.Inject
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 import db.impl.schema.{
@@ -317,7 +318,7 @@ trait OreRestfulApi extends OreWrites {
   )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).semiflatMap { project =>
       for {
-        pages <- project.pages.sortedNow(_.name)
+        pages <- service.runDBIO(project.pages(ModelView.raw[Page]).sortBy(_.name).result)
       } yield {
         val seq      = pages.filter(_.parentId == parentId)
         val pageById = pages.map(p => (p.id.value, p)).toMap
@@ -419,12 +420,13 @@ trait OreRestfulApi extends OreWrites {
       version: String
   )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).flatMap { project =>
-      project.versions
-        .findNow(
+      project
+        .versions(ModelView.now[Version])
+        .find(
           v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === (Visibility.Public: Visibility)
         )
         .semiflatMap { v =>
-          v.tags.map { tags =>
+          service.runDBIO(v.tags(ModelView.raw[VersionTag]).result).map { tags =>
             obj("pluginId" -> pluginId, "version" -> version, "tags" -> tags.map(toJson(_))): JsValue
           }
         }

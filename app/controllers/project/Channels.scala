@@ -10,10 +10,12 @@ import play.api.mvc.{Action, AnyContent}
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import db.ModelService
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ChannelTable, VersionTable}
 import form.OreForms
 import form.project.ChannelData
+import models.project.Channel
 import ore.permission.EditChannels
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -71,7 +73,7 @@ class Channels @Inject()(forms: OreForms)(
     ) { request =>
       request.body
         .addTo(request.project)
-        .leftMap(Redirect(self.showList(author, slug)).withError(_))
+        .leftMap(Redirect(self.showList(author, slug)).withErrors(_))
         .map(_ => Redirect(self.showList(author, slug)))
     }
 
@@ -89,7 +91,7 @@ class Channels @Inject()(forms: OreForms)(
     ) { request =>
       request.body
         .saveTo(request.project, channelName)
-        .leftMap(errors => Redirect(self.showList(author, slug)).withErrors(errors.toList))
+        .leftMap(Redirect(self.showList(author, slug)).withErrors(_))
         .map(_ => Redirect(self.showList(author, slug)))
     }
 
@@ -103,7 +105,7 @@ class Channels @Inject()(forms: OreForms)(
     */
   def delete(author: String, slug: String, channelName: String): Action[AnyContent] =
     ChannelEditAction(author, slug).asyncEitherT { implicit request =>
-      val channelsAccess = request.project.channels
+      val channelsAccess = request.project.channels(ModelView.later[Channel])
 
       val ourChannel = channelsAccess.find(_.name === channelName)
       val ourChannelVersions = for {

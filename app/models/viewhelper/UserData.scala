@@ -5,8 +5,10 @@ import play.api.mvc.Call
 import controllers.routes
 import controllers.sugar.Requests.OreRequest
 import db.ModelService
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
+import models.project.Project
 import models.user.role.OrganizationUserRole
 import models.user.{Organization, User}
 import ore.permission._
@@ -62,8 +64,8 @@ object UserData {
       cs: ContextShift[IO]
   ): IO[UserData] =
     for {
-      isOrga       <- user.toMaybeOrganization.isDefined
-      projectCount <- user.projects.sizeNow
+      isOrga       <- user.toMaybeOrganization(ModelView.now[Organization]).isDefined
+      projectCount <- user.projects(ModelView.now[Project]).size
       t            <- perms(user)
       (globalRoles, userPerms, orgaPerms) = t
       orgas <- service.runDBIO(queryRoles(user).result)
@@ -75,7 +77,7 @@ object UserData {
   ): IO[(Set[Role], Map[Permission, Boolean], Map[Permission, Boolean])] = {
     (
       user.trustIn(GlobalScope),
-      user.toMaybeOrganization.semiflatMap(user.trustIn[Organization]).value,
+      user.toMaybeOrganization(ModelView.now[Organization]).semiflatMap(user.trustIn[Organization]).value,
       user.globalRoles.allFromParent(user),
     ).parMapN { (userTrust, orgTrust, globalRoles) =>
       val userPerms = user.can.asMap(userTrust, globalRoles.toSet)(ViewActivity, ReviewFlags, ReviewProjects)

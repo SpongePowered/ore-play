@@ -32,4 +32,8 @@ abstract class UserRoleModel extends Model with UserRole { self =>
     * @return Subject of Role
     */
   def subject(implicit service: ModelService): IO[Visitable]
+
+  def withRole(role: Role): M
+
+  def withAccepted(accepted: Boolean): M
 }

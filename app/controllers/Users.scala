@@ -10,11 +10,15 @@ import play.api.i18n.MessagesApi
 import play.api.mvc._
 
 import controllers.sugar.Bakery
+import db.access.ModelView
+import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
+import db.impl.schema.UserTable
 import db.query.UserQueries
 import db.{DbRef, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
+import models.project.Version
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
 import ore.permission.ReviewProjects
@@ -61,7 +65,7 @@ class Users @Inject()(
     */
   def signUp(): Action[AnyContent] = Action.asyncF {
     val nonce = SingleSignOnConsumer.nonce
-    this.signOns.add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+    service.insert(SignOn.partial(nonce = nonce)) *> redirectToSso(
       this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
     )
   }
@@ -87,7 +91,7 @@ class Users @Inject()(
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
         val nonce = SingleSignOnConsumer.nonce
-        this.signOns.add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+        service.insert(SignOn.partial(nonce = nonce)) *> redirectToSso(
           this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
         ).map(_.flashing("url" -> returnPath.getOrElse(request.path)))
       } else {
@@ -119,8 +123,7 @@ class Users @Inject()(
     */
   def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
     val nonce = SingleSignOnConsumer.nonce
-    this.signOns
-      .add(SignOn.partial(nonce = nonce)) *> redirectToSso(
+    service.insert(SignOn.partial(nonce = nonce)) *> redirectToSso(
       this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
     )
   }
@@ -160,6 +163,7 @@ class Users @Inject()(
     users
       .withName(username)
       .semiflatMap { user =>
+        import cats.instances.option._
         for {
           // TODO include orga projects?
           t1 <- (
@@ -180,7 +184,8 @@ class Users @Inject()(
           ).parTupled
           (projects, starred, orga, userData) = t1
           t2 <- (
-            starred.toVector.parTraverse(_.recommendedVersion.value),
+            starred.toVector
+              .parTraverse(p => p.recommendedVersion(ModelView.now[Version]).sequence.subflatMap(identity).value),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
@@ -347,8 +352,12 @@ class Users @Inject()(
         .flatMap(str => InviteFilter.values.find(_.name.equalsIgnoreCase(str)))
         .getOrElse(InviteFilter.All)
 
-      val notificationsF =
-        nFilter(user.notifications).flatMap(l => l.toVector.parTraverse(notif => notif.origin.tupleLeft(notif)))
+      val notificationsF = service.runDBIO(
+        nFilter(user.notifications(ModelView.raw[Notification]))
+          .join(TableQuery[UserTable])
+          .on(_.originId === _.id)
+          .result
+      )
       val invitesF = iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject.tupleLeft(invite)))
 
       (notificationsF, invitesF).parMapN { (notifications, invites) =>
@@ -364,7 +373,8 @@ class Users @Inject()(
     * @return   Ok if marked as read, NotFound if notification does not exist
     */
   def markNotificationRead(id: DbRef[Notification]): Action[AnyContent] = Authenticated.asyncF { implicit request =>
-    request.user.notifications
+    request.user
+      .notifications(ModelView.now[Notification])
       .get(id)
       .semiflatMap(notification => service.update(notification.copy(isRead = true)).as(Ok))
       .getOrElse(notFound)

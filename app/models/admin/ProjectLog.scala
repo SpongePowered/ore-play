@@ -1,11 +1,14 @@
 package models.admin
 
-import db.access.ModelAccess
+import scala.language.higherKinds
+
+import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectLogTable
-import db.{InsertFunc, DbRef, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
+import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import models.project.Project
 import ore.project.ProjectOwned
+import util.syntax._
 
 import cats.effect.IO
 import slick.lifted.TableQuery
@@ -31,7 +34,8 @@ case class ProjectLog private (
     *
     * @return Entries in log
     */
-  def entries(implicit service: ModelService): ModelAccess[ProjectLogEntry] = service.access(_.logId === id.value)
+  def entries[V[_, _]: QueryView](view: V[ProjectLogEntry#T, ProjectLogEntry]): V[ProjectLogEntry#T, ProjectLogEntry] =
+    view.filterView(_.logId === id.value)
 
   /**
     * Adds a new entry with an "error" tag to the log.
@@ -41,10 +45,10 @@ case class ProjectLog private (
     */
   def err(message: String)(implicit service: ModelService): IO[ProjectLogEntry] = {
     val tag = "error"
-    entries
-      .findNow(e => e.message === message && e.tag === tag)
+    entries(ModelView.now[ProjectLogEntry])
+      .find(e => e.message === message && e.tag === tag)
       .semiflatMap { entry =>
-        entries.update(
+        service.update(
           entry.copy(
             occurrences = entry.occurrences + 1,
             lastOccurrence = service.theTime
@@ -52,7 +56,7 @@ case class ProjectLog private (
         )
       }
       .getOrElseF {
-        entries.add(
+        service.insert(
           ProjectLogEntry.partial(id, tag, message, lastOccurrence = service.theTime)
         )
       }

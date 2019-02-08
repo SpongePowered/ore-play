@@ -2,8 +2,8 @@ package ore.user
 
 import scala.language.implicitConversions
 
-import db.DbRef
-import db.impl.access.UserBase
+import db.access.ModelView
+import db.{DbRef, ModelService}
 import models.user.User
 
 import cats.effect.IO
@@ -16,6 +16,6 @@ import simulacrum.typeclass
   def userId(a: A): DbRef[User]
 
   /** Returns the User */
-  def user(a: A)(implicit users: UserBase): IO[User] =
-    users.get(userId(a)).getOrElse(throw new NoSuchElementException("None on get")) // scalafix:ok
+  def user(a: A)(implicit service: ModelService): IO[User] =
+    ModelView.now[User].get(userId(a)).getOrElseF(IO.raiseError(new NoSuchElementException("None on get")))
 }

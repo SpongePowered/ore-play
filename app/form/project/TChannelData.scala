@@ -1,11 +1,14 @@
 package form.project
 
 import db.ModelService
+import db.access.ModelView
+import db.impl.OrePostgresDriver.api._
 import models.project.{Channel, Project}
 import ore.project.factory.ProjectFactory
 import ore.{Color, OreConfig}
+import util.StringUtils._
 
-import cats.data.{EitherT, NonEmptyList => NEL}
+import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.syntax.all._
 
@@ -38,14 +41,27 @@ trait TChannelData {
     */
   def addTo(
       project: Project
-  )(implicit service: ModelService): EitherT[IO, String, Channel] = {
-    //TODO: Rewrite this as one query
-    EitherT
-      .liftF(project.channels.allNow)
-      .ensure("A project may only have up to five channels.")(_.size <= config.ore.projects.maxChannels)
-      .ensure("A channel with that name already exists.")(_.forall(ch => !ch.name.equalsIgnoreCase(this.channelName)))
-      .ensure("A channel with that color already exists.")(_.forall(_.color != this.color))
-      .semiflatMap(_ => this.factory.createChannel(project, this.channelName, this.color))
+  )(implicit service: ModelService): EitherT[IO, List[String], Channel] = {
+    val dbChannels = project.channels(ModelView.later[Channel])
+    val conditions = (
+      dbChannels.size <= config.ore.projects.maxChannels,
+      dbChannels.forall(!equalsIgnoreCase[Channel#T](_.name, this.channelName)(_)),
+      dbChannels.forall(_.color =!= this.color)
+    )
+
+    EitherT.liftF(service.runDBIO(conditions.result)).flatMap {
+      case (underMaxSize, uniqueName, uniqueColor) =>
+        val errors = List(
+          underMaxSize -> "A project may only have up to five channels.",
+          uniqueName   -> "error.channel.duplicateName",
+          uniqueColor  -> "error.channel.duplicateColor"
+        ).collect {
+          case (success, error) if !success => error
+        }
+
+        if (errors.isEmpty) EitherT.leftT[IO, Channel](errors)
+        else EitherT.right[List[String]](factory.createChannel(project, channelName, color))
+    }
   }
 
   /**
@@ -59,30 +75,37 @@ trait TChannelData {
   def saveTo(
       project: Project,
       oldName: String
-  )(implicit service: ModelService): EitherT[IO, NEL[String], Unit] = {
-    //TODO: Rewrite this as one/fewer quer(y/ies)
-    EitherT.liftF(project.channels.allNow).flatMap { allChannels =>
-      val (channelChangeSet, channels) = allChannels.partition(_.name.equalsIgnoreCase(oldName))
-      val channel                      = channelChangeSet.toSeq.head
-      //TODO: Rewrite this nicer if we ever get a Validated/Validation type
-      val e1 = if (channels.exists(_.color == this.color)) List("error.channel.duplicateColor") else Nil
-      val e2 =
-        if (channels.exists(_.name.equalsIgnoreCase(this.channelName))) List("error.channel.duplicateName") else Nil
-      val e3 = if (nonReviewed && channels.count(_.isReviewed) < 1) List("error.channel.minOneReviewed") else Nil
+  )(implicit service: ModelService): EitherT[IO, List[String], Unit] = {
+    val otherDbChannels = project.channels(ModelView.later[Channel]).filterView(_.name =!= oldName)
+    val query = project.channels(ModelView.raw[Channel]).filter(_.name === oldName).map { channel =>
+      (
+        channel,
+        otherDbChannels.forall(!equalsIgnoreCase[Channel#T](_.name, this.channelName)(_)),
+        otherDbChannels.forall(_.color =!= this.color),
+        otherDbChannels.count(!_.isNonReviewed) < 1 && nonReviewed
+      )
+    }
 
-      NEL.fromList(e1 ::: e2 ::: e3) match {
-        case Some(errors) => EitherT.leftT[IO, Unit](errors)
-        case None =>
-          val effect = service.update(
-            channel.copy(
-              name = channelName,
-              color = color,
-              isNonReviewed = nonReviewed
-            )
+    OptionT(service.runDBIO(query.result.headOption)).toRight(List("error.channel.nowFound")).flatMap {
+      case (channel, uniqueName, uniqueColor, minOneReviewed) =>
+        val errors = List(
+          uniqueName     -> "error.channel.duplicateName",
+          uniqueColor    -> "error.channel.duplicateColor",
+          minOneReviewed -> "error.channel.minOneReviewed"
+        ).collect {
+          case (success, error) if !success => error
+        }
+
+        val effect = service.update(
+          channel.copy(
+            name = channelName,
+            color = color,
+            isNonReviewed = nonReviewed
           )
+        )
 
-          EitherT.right[NEL[String]](effect.void)
-      }
+        if (errors.isEmpty) EitherT.leftT[IO, Unit](errors)
+        else EitherT.right[List[String]](effect.void)
     }
   }
 

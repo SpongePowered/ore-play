@@ -35,6 +35,10 @@ case class OrganizationUserRole private (
 
   override def subject(implicit service: ModelService): IO[Visitable] =
     OrganizationOwned[OrganizationUserRole].organization(this)
+
+  override def withRole(role: Role): OrganizationUserRole = copy(role = role)
+
+  override def withAccepted(accepted: Boolean): OrganizationUserRole = copy(isAccepted = accepted)
 }
 object OrganizationUserRole {
   case class Partial(

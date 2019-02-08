@@ -1,6 +1,7 @@
 package db.impl.access
 
-import db.{DbRef, ModelBase, ModelService, ObjId}
+import db.access.ModelView
+import db.{DbRef, ModelService, ObjId}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
 import ore.OreConfig
@@ -14,7 +15,7 @@ import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.typesafe.scalalogging
 
-class OrganizationBase(implicit val service: ModelService, config: OreConfig) extends ModelBase[Organization] {
+class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
 
   private val Logger    = scalalogging.Logger("Organizations")
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
@@ -58,7 +59,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
         // reference to the Sponge user ID, the organization's username and a
         // reference to the User owner of the organization.
         MDCLogger.info("Creating on Ore...")
-        this.add(Organization.partial(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
+        service.insert(Organization.partial(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
       }
       .semiflatMap { org =>
         // Every organization model has a regular User companion. Organizations
@@ -113,7 +114,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) ex
     * @return     Organization with name if exists, None otherwise
     */
   def withName(name: String): OptionT[IO, Organization] =
-    this.findNow(StringUtils.equalsIgnoreCase(_.name, name))
+    ModelView.now[Organization].find(StringUtils.equalsIgnoreCase(_.name, name))
 
 }
 object OrganizationBase {

@@ -2,9 +2,9 @@ package db.impl.model.common
 
 import java.sql.Timestamp
 
-import db.impl.access.UserBase
+import db.access.ModelView
 import db.impl.table.common.VisibilityChangeColumns
-import db.{DbRef, Model}
+import db.{DbRef, Model, ModelService}
 import models.project.Visibility
 import models.user.User
 
@@ -22,8 +22,8 @@ trait VisibilityChange extends Model { self =>
   def resolvedBy: Option[DbRef[User]]
   def visibility: Visibility
 
-  def created(implicit userBase: UserBase): OptionT[IO, User] =
-    OptionT.fromOption[IO](createdBy).flatMap(userBase.get(_))
+  def created(implicit service: ModelService): OptionT[IO, User] =
+    OptionT.fromOption[IO](createdBy).flatMap(ModelView.now[User].get)
 
   /** Check if the change has been dealt with */
   def isResolved: Boolean = resolvedAt.isDefined

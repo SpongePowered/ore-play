@@ -1,8 +1,8 @@
 package models.statistic
 
-import db.impl.access.UserBase
+import db.access.ModelView
 import db.impl.table.StatTable
-import db.{DbRef, InsertFunc, Model}
+import db.{DbRef, InsertFunc, Model, ModelService}
 import models.user.User
 
 import cats.data.OptionT
@@ -69,8 +69,8 @@ trait PartialStatEntry[Subject <: Model, M <: Model] {
     *
     * @return User of entry
     */
-  def user(implicit userBase: UserBase): OptionT[IO, User] =
-    OptionT.fromOption[IO](userId).flatMap(userBase.get)
+  def user(implicit service: ModelService): OptionT[IO, User] =
+    OptionT.fromOption[IO](userId).flatMap(ModelView.now[User].get)
 
   def asFunc: InsertFunc[M]
 }

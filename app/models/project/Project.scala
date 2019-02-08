@@ -1,5 +1,7 @@
 package models.project
 
+import scala.language.higherKinds
+
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -8,7 +10,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
-import db.access.{ModelAccess, ModelAssociationAccess, ModelAssociationAccessImpl}
+import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.{Describable, Downloadable, Hideable, Named}
 import db.impl.schema.{
@@ -36,7 +38,6 @@ import _root_.util.StringUtils
 import _root_.util.StringUtils._
 import _root_.util.syntax._
 
-import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
@@ -174,10 +175,10 @@ case class Project private (
     * @return Project settings
     */
   def settings(implicit service: ModelService): IO[ProjectSettings] =
-    service
-      .access[ProjectSettings]()
-      .findNow(_.projectId === this.id.value)
-      .getOrElse(throw new NoSuchElementException("Get on None")) // scalafix:ok
+    ModelView
+      .now[ProjectSettings]
+      .find(_.projectId === this.id.value)
+      .getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
 
   /**
     * Sets whether this project is visible.
@@ -188,7 +189,7 @@ case class Project private (
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[(Project, ProjectVisibilityChange)] = {
-    val updateOldChange = lastVisibilityChange
+    val updateOldChange = lastVisibilityChange(ModelView.now[ProjectVisibilityChange])
       .semiflatMap { vc =>
         service.update(
           vc.copy(
@@ -199,18 +200,16 @@ case class Project private (
       }
       .cata((), _ => ())
 
-    val createNewChange = service
-      .access[ProjectVisibilityChange]()
-      .add(
-        ProjectVisibilityChange.partial(
-          Some(creator),
-          this.id,
-          comment,
-          None,
-          None,
-          visibility
-        )
+    val createNewChange = service.insert(
+      ProjectVisibilityChange.partial(
+        Some(creator),
+        this.id,
+        comment,
+        None,
+        None,
+        visibility
       )
+    )
 
     val updateProject = service.update(
       copy(
@@ -224,11 +223,13 @@ case class Project private (
   /**
     * Get VisibilityChanges
     */
-  override def visibilityChanges(implicit service: ModelService): ModelAccess[ProjectVisibilityChange] =
-    service.access(_.projectId === id.value)
+  override def visibilityChanges[V[_, _]: QueryView](
+      view: V[ProjectVisibilityChange#T, ProjectVisibilityChange]
+  ): V[ProjectVisibilityChange#T, ProjectVisibilityChange] =
+    view.filterView(_.projectId === id.value)
 
   /**
-    * Returns [[db.access.ModelAccess]] to [[User]]s who have starred this
+    * Returns [[db.access.ModelAssociationAccess]] to [[User]]s who have starred this
     * project.
     *
     * @return Users who have starred this project
@@ -262,7 +263,8 @@ case class Project private (
     *
     * @return Unique project views
     */
-  def views(implicit service: ModelService): ModelAccess[ProjectView] = service.access(_.modelId === id.value)
+  def views[V[_, _]: QueryView](view: V[ProjectView#T, ProjectView]): V[ProjectView#T, ProjectView] =
+    view.filterView(_.modelId === id.value)
 
   /**
     * Adds a view to this Project.
@@ -283,7 +285,8 @@ case class Project private (
     *
     * @return Flags on project
     */
-  def flags(implicit service: ModelService): ModelAccess[Flag] = service.access(_.projectId === id.value)
+  def flags[V[_, _]: QueryView](view: V[Flag#T, Flag]): V[Flag#T, Flag] =
+    view.filterView(_.projectId === id.value)
 
   /**
     * Submits a flag on this project for the specified user.
@@ -298,7 +301,7 @@ case class Project private (
     checkNotNull(reason, "null reason", "")
     val userId = user.id.value
     checkArgument(userId != this.ownerId, "cannot flag own project", "")
-    service.access[Flag]().add(Flag.partial(this.id, user.id, reason, comment))
+    service.insert(Flag.partial(this.id, user.id, reason, comment))
   }
 
   /**
@@ -306,35 +309,38 @@ case class Project private (
     *
     * @return Channels in project
     */
-  def channels(implicit service: ModelService): ModelAccess[Channel] = service.access(_.projectId === id.value)
+  def channels[V[_, _]: QueryView](view: V[Channel#T, Channel]): V[Channel#T, Channel] =
+    view.filterView(_.projectId === id.value)
 
   /**
     * Returns all versions in this project.
     *
     * @return Versions in project
     */
-  def versions(implicit service: ModelService): ModelAccess[Version] = service.access(_.projectId === id.value)
+  def versions[V[_, _]: QueryView](view: V[Version#T, Version]): V[Version#T, Version] =
+    view.filterView(_.projectId === id.value)
 
   /**
     * Returns this Project's recommended version.
     *
     * @return Recommended version
     */
-  def recommendedVersion(implicit service: ModelService): OptionT[IO, Version] =
-    OptionT.fromOption[IO](recommendedVersionId).flatMap(versions.get)
+  def recommendedVersion[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Version#T, Version]): Option[QOptRet] =
+    recommendedVersionId.map(versions(view).get)
 
   /**
     * Returns the pages in this Project.
     *
     * @return Pages in project
     */
-  def pages(implicit service: ModelService): ModelAccess[Page] = service.access(_.projectId === id.value)
+  def pages[V[_, _]: QueryView](view: V[Page#T, Page]): V[Page#T, Page] =
+    view.filterView(_.projectId === id.value)
 
   private def getOrInsert(name: String, parentId: Option[DbRef[Page]])(
       page: InsertFunc[Page]
   )(implicit service: ModelService): IO[Page] = {
     def like =
-      service.findNow[Page] { p =>
+      ModelView.now[Page].find { p =>
         p.projectId === this.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
           p.parentId.isEmpty
         )(parentId => (p.parentId === parentId).getOrElse(false: Rep[Boolean]))
@@ -385,15 +391,14 @@ case class Project private (
     *
     * @return Root pages of project
     */
-  def rootPages(implicit service: ModelService): IO[Seq[Page]] =
-    service.access[Page]().sortedNow(_.name, p => p.projectId === this.id.value && p.parentId.isEmpty)
+  def rootPages[V[_, _]: QueryView](view: V[Page#T, Page]): V[Page#T, Page] =
+    view.sortView(_.name).filterView(p => p.projectId === this.id.value && p.parentId.isEmpty)
 
-  def logger(implicit service: ModelService): IO[ProjectLog] = {
-    val loggers = service.access[ProjectLog]()
-    loggers.findNow(_.projectId === this.id.value).getOrElseF(loggers.add(ProjectLog.partial(id)))
-  }
+  def logger(implicit service: ModelService): IO[ProjectLog] =
+    ModelView.now[ProjectLog].find(_.projectId === this.id.value).getOrElseF(service.insert(ProjectLog.partial(id)))
 
-  def apiKeys(implicit service: ModelService): ModelAccess[ProjectApiKey] = service.access(_.projectId === id.value)
+  def apiKeys[V[_, _]: QueryView](view: V[ProjectApiKey#T, ProjectApiKey]): V[ProjectApiKey#T, ProjectApiKey] =
+    view.filterView(_.projectId === id.value)
 
   /**
     * Add new note

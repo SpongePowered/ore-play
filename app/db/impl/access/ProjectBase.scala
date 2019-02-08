@@ -9,7 +9,8 @@ import java.util.Date
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
 import db.query.AppQueries
-import db.{ModelBase, ModelService}
+import db.ModelService
+import db.access.ModelView
 import discourse.OreDiscourseApi
 import models.project.{Channel, Page, Project, Version, Visibility}
 import ore.project.io.ProjectFiles
@@ -25,7 +26,7 @@ import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
-class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreConfig) extends ModelBase[Project] {
+class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreConfig) {
 
   val fileManager = new ProjectFiles(this.env)
 
@@ -67,7 +68,12 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return Stale projects
     */
   def stale: IO[Seq[Project]] =
-    this.filterNow(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
+    service.runDBIO(
+      ModelView
+        .raw[Project]
+        .filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
+        .result
+    )
 
   /**
     * Returns the Project with the specified owner name and name.
@@ -77,7 +83,9 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return       Project with name
     */
   def withName(owner: String, name: String): OptionT[IO, Project] =
-    this.findNow(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase)
+    ModelView
+      .now[Project]
+      .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase)
 
   /**
     * Returns the Project with the specified owner name and URL slug, if any.
@@ -87,7 +95,9 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return       Project if found, None otherwise
     */
   def withSlug(owner: String, slug: String): OptionT[IO, Project] =
-    this.findNow(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase)
+    ModelView
+      .now[Project]
+      .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase)
 
   /**
     * Returns the Project with the specified plugin ID, if any.
@@ -96,7 +106,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @return         Project if found, None otherwise
     */
   def withPluginId(pluginId: String): OptionT[IO, Project] =
-    this.findNow(equalsIgnoreCase(_.pluginId, pluginId))
+    ModelView.now[Project].find(equalsIgnoreCase(_.pluginId, pluginId))
 
   /**
     * Returns true if the Project's desired slug is available.
@@ -166,9 +176,11 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   def deleteChannel(project: Project, channel: Channel)(implicit cs: ContextShift[IO]): IO[Unit] = {
     import cats.instances.vector._
     for {
-      channels         <- project.channels.allNow
-      noVersion        <- channel.versions.isEmptyNow
-      nonEmptyChannels <- channels.toVector.parTraverse(_.versions.nonEmptyNow).map(_.count(identity))
+      channels  <- service.runDBIO(project.channels(ModelView.raw[Channel]).result)
+      noVersion <- channel.versions(ModelView.now[Version]).isEmpty
+      nonEmptyChannels <- channels.toVector
+        .parTraverse(_.versions(ModelView.now[Version]).nonEmpty)
+        .map(_.count(identity))
       _                = checkArgument(channels.size > 1, "only one channel", "")
       _                = checkArgument(noVersion || nonEmptyChannels > 1, "last non-empty channel", "")
       reviewedChannels = channels.filter(!_.isNonReviewed)
@@ -177,7 +189,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
         "last reviewed channel",
         ""
       )
-      versions <- channel.versions.allNow
+      versions <- service.runDBIO(channel.versions(ModelView.raw[Version]).result)
       _ <- versions.toVector.parTraverse { version =>
         val otherChannels = channels.filter(_ != channel)
         val newChannel =
@@ -189,13 +201,14 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     } yield ()
   }
 
-  def prepareDeleteVersion(version: Version): IO[Project] =
+  def prepareDeleteVersion(version: Version): IO[Project] = {
+    import cats.instances.option._
     for {
       proj <- version.project
-      size <- proj.versions.countNow(_.visibility === (Visibility.Public: Visibility))
+      size <- proj.versions(ModelView.now[Version]).count(_.visibility === (Visibility.Public: Visibility))
       _ = checkArgument(size > 1, "only one public version", "")
-      rv       <- proj.recommendedVersion.value
-      projects <- proj.versions.sortedNow(_.createdAt.desc) // TODO optimize: only query one version
+      rv       <- proj.recommendedVersion(ModelView.now[Version]).sequence.subflatMap(identity).value
+      projects <- service.runDBIO(proj.versions(ModelView.raw[Version]).sortBy(_.createdAt.desc).result) // TODO optimize: only query one version
       res <- {
         if (rv.contains(version))
           service.update(
@@ -204,6 +217,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
         else IO.pure(proj)
       }
     } yield res
+  }
 
   /**
     * Irreversibly deletes this version.
@@ -212,7 +226,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     for {
       proj       <- prepareDeleteVersion(version)
       channel    <- version.channel
-      noVersions <- channel.versions.isEmptyNow
+      noVersions <- channel.versions(ModelView.now[Version]).isEmpty
       _ <- {
         val versionDir = this.fileManager.getVersionDir(proj.ownerName, proj.name, version.name)
         FileUtils.deleteDirectory(versionDir)

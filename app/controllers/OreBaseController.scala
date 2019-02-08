@@ -11,11 +11,10 @@ import play.api.mvc._
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
 import controllers.sugar.{Actions, Bakery, Requests}
 import db.ModelService
-import db.access.ModelAccess
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
 import models.project.{Project, Version, Visibility}
-import models.user.SignOn
 import ore.permission.ReviewProjects
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -37,8 +36,6 @@ abstract class OreBaseController(
 ) extends InjectedController
     with Actions
     with I18nSupport {
-
-  override val signOns: ModelAccess[SignOn] = this.service.access[SignOn]()
 
   override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
 
@@ -73,8 +70,9 @@ abstract class OreBaseController(
   def getVersion(project: Project, versionString: String)(
       implicit request: OreRequest[_]
   ): EitherT[IO, Result, Version] =
-    project.versions
-      .findNow(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
+    project
+      .versions(ModelView.now[Version])
+      .find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
       .toRight(notFound)
 
   /**
