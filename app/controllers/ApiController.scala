@@ -109,11 +109,11 @@ final class ApiController @Inject()(
               keyType <- forms.ProjectApiKeyCreate.bindOptionT[IO]
               if keyType == Deployment
               exists <- OptionT
-                .liftF(ModelView.now[ProjectApiKey].exists(k => k.projectId === projectId && k.keyType === keyType))
+                .liftF(ModelView.now(ProjectApiKey).exists(k => k.projectId === projectId && k.keyType === keyType))
               if !exists
               pak <- OptionT.liftF(
                 service.insert(
-                  ProjectApiKey.partial(
+                  ProjectApiKey(
                     projectId = projectId,
                     keyType = keyType,
                     value = UUID.randomUUID().toString.replace("-", "")
@@ -255,7 +255,7 @@ final class ApiController @Inject()(
                 val query = Query.apply(
                   (
                     queryApiKey(Deployment, formData.apiKey, project.id),
-                    project.versions(ModelView.later[Version]).exists(_.versionString === name)
+                    project.versions(ModelView.later(Version)).exists(_.versionString === name)
                   )
                 )
 
@@ -266,7 +266,7 @@ final class ApiController @Inject()(
                   .semiflatMap(_ => project.owner.user)
                   .semiflatMap(
                     user =>
-                      user.toMaybeOrganization(ModelView.now[Organization]).semiflatMap(_.owner.user).getOrElse(user)
+                      user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.owner.user).getOrElse(user)
                   )
                   .flatMap { owner =>
                     val pluginUpload = this.factory
@@ -293,14 +293,14 @@ final class ApiController @Inject()(
                     case (newVersion, channel, tags) =>
                       val update =
                         if (formData.recommended)
-                          service.update(
-                            project.copy(
+                          service.update(project)(
+                            _.copy(
                               recommendedVersionId = Some(newVersion.id),
                               lastUpdated = new Timestamp(new Date().getTime)
                             )
                           )
                         else
-                          service.update(project.copy(lastUpdated = new Timestamp(new Date().getTime)))
+                          service.update(project)(_.copy(lastUpdated = new Timestamp(new Date().getTime)))
 
                       update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
                   }
@@ -390,7 +390,7 @@ final class ApiController @Inject()(
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
       .semiflatMap { q =>
         Logger.debug("Sync Payload: " + q)
-        ModelView.now[User].get(q.get("external_id").get.toLong).value.tupleLeft(q)
+        ModelView.now(User).get(q.get("external_id").get.toLong).value.tupleLeft(q)
       }
       .semiflatMap {
         case (query, optUser) =>
@@ -414,8 +414,8 @@ final class ApiController @Inject()(
                   .void
               }
 
-              service.update(
-                user.copy(
+              service.update(user)(
+                _.copy(
                   email = email.orElse(user.email),
                   name = username.getOrElse(user.name),
                   fullName = fullName.orElse(user.fullName)

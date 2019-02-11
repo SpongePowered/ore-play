@@ -6,7 +6,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
-import db.{DbRef, InsertFunc, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import models.project.{TagColor, Version, VersionTag}
 import ore.project.Dependency
 
@@ -77,11 +77,11 @@ class PluginFileData(data: Seq[DataValue]) {
     case _                  => false
   }
 
-  def createTags(versionId: DbRef[Version])(implicit service: ModelService): IO[Seq[VersionTag]] = {
-    val buffer = new ArrayBuffer[InsertFunc[VersionTag]]
+  def createTags(versionId: DbRef[Version])(implicit service: ModelService): IO[Seq[DbModel[VersionTag]]] = {
+    val buffer = new ArrayBuffer[VersionTag]
 
     if (containsMixins) {
-      val mixinTag = VersionTag.partial(versionId, "Mixin", "", TagColor.Mixin)
+      val mixinTag = VersionTag(versionId, "Mixin", "", TagColor.Mixin)
       buffer += mixinTag
     }
 

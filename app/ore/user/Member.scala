@@ -2,7 +2,7 @@ package ore.user
 
 import scala.language.implicitConversions
 
-import db.ModelService
+import db.{DbModel, ModelService}
 import models.user.User
 import models.user.role.UserRoleModel
 
@@ -18,13 +18,13 @@ trait Member[RoleType <: UserRoleModel] {
     *
     * @return Roles user has
     */
-  def roles(implicit service: ModelService): IO[Set[RoleType]]
+  def roles(implicit service: ModelService): IO[Set[DbModel[RoleType]]]
 
   /**
     * Returns the Member's top role.
     *
     * @return Top role
     */
-  def headRole(implicit service: ModelService): IO[RoleType]
+  def headRole(implicit service: ModelService): IO[DbModel[RoleType]]
 
 }

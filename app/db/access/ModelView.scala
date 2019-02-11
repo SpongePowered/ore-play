@@ -3,7 +3,7 @@ package db.access
 import scala.language.higherKinds
 
 import db.impl.OrePostgresDriver.api._
-import db.{DbRef, Model, ModelQuery, ModelService}
+import db.{DbModel, DbModelCompanion, DbRef, ModelService}
 
 import cats.arrow.FunctionK
 import cats.data.OptionT
@@ -106,15 +106,15 @@ object ModelView {
       ): ModelView[QueryOptRet, SingleRet, T, M] = fa.modifyingQuery(f)
     }
 
-  def now[M0 <: Model](
-      implicit service: ModelService,
-      query: ModelQuery[M0]
-  ): ModelView[OptionT[IO, M0], IO, M0#T, M0] = defaultNowView(query.baseQuery, FunctionK.lift(service.runDBIO))
+  def now[M](model: DbModelCompanion[M])(
+      implicit service: ModelService
+  ): ModelView[OptionT[IO, DbModel[M]], IO, model.T, DbModel[M]] =
+    defaultNowView(model.baseQuery, FunctionK.lift(service.runDBIO))
 
-  def later[M0 <: Model](implicit query: ModelQuery[M0]): ModelView[Query[M0#T, M0, Seq], Rep, M0#T, M0] =
-    defaultLaterView(query.baseQuery)
+  def later[M](model: DbModelCompanion[M]): ModelView[Query[model.T, DbModel[M], Seq], Rep, model.T, DbModel[M]] =
+    defaultLaterView(model.baseQuery)
 
-  def raw[M0 <: Model](implicit query: ModelQuery[M0]): Raw[M0#T, M0] = query.baseQuery
+  def raw[M](model: DbModelCompanion[M]): Raw[model.T, DbModel[M]] = model.baseQuery
 
   def defaultLaterView[T, M](
       baseQuery: Query[T, M, Seq]
@@ -131,14 +131,4 @@ object ModelView {
       runAction: FunctionK[DBIO, F]
   ): ModelView[OptionT[F, M], F, T, M] =
     new DefaultRunningView[F, T, M](queryView, runAction)
-
-  implicit def impLaterView[M0 <: Model](
-      implicit query: ModelQuery[M0]
-  ): ModelView[Query[M0#T, M0, Seq], Rep, M0#T, M0] =
-    defaultLaterView(query.baseQuery)
-
-  implicit def impNowView[M0 <: Model](
-      implicit service: ModelService,
-      query: ModelQuery[M0]
-  ): ModelView[OptionT[IO, M0], IO, M0#T, M0] = defaultNowView(query.baseQuery, FunctionK.lift(service.runDBIO))
 }

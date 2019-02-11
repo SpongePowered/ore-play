@@ -1,7 +1,7 @@
 package models.admin
 
 import db.impl.schema.LoggedActionViewTable
-import db.{DbRef, Model, ModelQuery, ObjId, ObjTimestamp}
+import db.{DbModel, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, LoggedActionContext, User}
 import ore.user.UserOwned
@@ -20,8 +20,6 @@ case class LoggedProjectPage(ppId: Option[DbRef[Page]], ppName: Option[String], 
 case class LoggedSubject(sId: Option[DbRef[_]], sName: Option[String])
 
 case class LoggedActionViewModel[Ctx](
-    id: ObjId[LoggedActionViewModel[Ctx]],
-    createdAt: ObjTimestamp,
     userId: DbRef[User],
     address: InetString,
     action: LoggedAction[Ctx],
@@ -40,7 +38,7 @@ case class LoggedActionViewModel[Ctx](
     filterPage: Option[DbRef[Page]],
     filterSubject: Option[DbRef[_]],
     filterAction: Option[Int]
-) extends Model {
+) {
 
   def contextId: DbRef[Ctx]                = actionContextId
   def actionType: LoggedActionContext[Ctx] = action.context
@@ -54,17 +52,19 @@ case class LoggedActionViewModel[Ctx](
   def ppSlug: Option[String]               = loggedProjectPage.ppSlug
   def sId: Option[DbRef[_]]                = loggedSubject.sId
   def sName: Option[String]                = loggedSubject.sName
-
-  override type T = LoggedActionViewTable[Ctx]
-  override type M = LoggedActionViewModel[Ctx]
 }
-object LoggedActionViewModel {
-  implicit def query[Ctx]: ModelQuery[LoggedActionViewModel[Ctx]] =
-    ModelQuery
-      .from[LoggedActionViewModel[Ctx]](
-        TableQuery[LoggedActionViewTable[Ctx]],
-        (obj, _, time) => obj.copy(createdAt = time)
-      )
+object LoggedActionViewModel
+    extends DbModelCompanionPartial[LoggedActionViewModel[_], LoggedActionViewTable[_]](
+      TableQuery[LoggedActionViewTable[_]]
+    ) {
+
+  implicit def query[Ctx]: ModelQuery[LoggedActionViewModel[Ctx]] = ModelQuery.from(this)
+
+  override def asDbModel(
+      model: LoggedActionViewModel[_],
+      id: ObjId[LoggedActionViewModel[_]],
+      time: ObjTimestamp
+  ): DbModel[LoggedActionViewModel[_]] = DbModel(ObjId(0L), time, model)
 
   implicit val isUserOwned: UserOwned[LoggedActionViewModel[_]] = (a: LoggedActionViewModel[_]) => a.userId
 }

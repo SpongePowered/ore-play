@@ -35,9 +35,9 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
 
   private def dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
-  private val newFilter       = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
-  private def createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
-  private def newProjects     = service.runDBIO(ModelView.now[Project].query.filter(newFilter && createdAtFilter).result)
+  private val newFilter       = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
+  private def createdAtFilter = ModelFilter(Project)(_.createdAt < dayAgo)
+  private def newProjects     = service.runDBIO(ModelView.now(Project).query.filter(newFilter && createdAtFilter).result)
 
   /**
     * Starts the task.

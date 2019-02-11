@@ -19,7 +19,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{DbRef, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
@@ -176,7 +176,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
   }
 
-  private def orgasUserCanUploadTo(user: User): IO[Set[DbRef[Organization]]] = {
+  private def orgasUserCanUploadTo(user: DbModel[User]): IO[Set[DbRef[Organization]]] = {
     import cats.instances.vector._
     for {
       all       <- user.organizations.allFromParent(user)
@@ -356,7 +356,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val project  = request.project
       val formData = request.body
 
-      user.hasUnresolvedFlagFor(project, ModelView.now[Flag]).flatMap {
+      user.hasUnresolvedFlagFor(project, ModelView.now(Flag)).flatMap {
         // One flag per project, per user at a time
         case true => IO.pure(BadRequest)
         case false =>
@@ -428,13 +428,13 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     implicit request =>
       val user = request.user
       user
-        .projectRoles(ModelView.now[ProjectUserRole])
+        .projectRoles(ModelView.now(ProjectUserRole))
         .get(id)
         .semiflatMap { role =>
           status match {
             case STATUS_DECLINE  => role.project.flatMap(MembershipDossier.project.removeRole(_, role)).as(Ok)
-            case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
-            case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.pure(BadRequest)
           }
         }
@@ -455,15 +455,15 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val res = for {
         orga       <- organizations.withName(behalf)
         orgaUser   <- users.withName(behalf)
-        role       <- orgaUser.projectRoles(ModelView.now[ProjectUserRole]).get(id)
+        role       <- orgaUser.projectRoles(ModelView.now(ProjectUserRole)).get(id)
         scopedData <- OptionT.liftF(ScopedOrganizationData.of(Some(user), orga))
         if scopedData.permissions.getOrElse(EditSettings, false)
         project <- OptionT.liftF(role.project)
         res <- OptionT.liftF[IO, Status] {
           status match {
             case STATUS_DECLINE  => project.memberships.removeRole(project, role).as(Ok)
-            case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
-            case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.pure(BadRequest)
           }
         }
@@ -482,7 +482,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       request.project
-        .apiKeys(ModelView.now[ProjectApiKey])
+        .apiKeys(ModelView.now(ProjectApiKey))
         .find(_.keyType === (ProjectApiKeyType.Deployment: ProjectApiKeyType))
         .value
         .map(deployKey => Ok(views.settings(request.data, request.scoped, deployKey)))
@@ -734,7 +734,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     Authenticated.andThen(PermissionAction(ViewLogs)).andThen(ProjectAction(author, slug)).asyncF { implicit request =>
       for {
         logger <- request.project.logger
-        logs   <- service.runDBIO(logger.entries(ModelView.raw[ProjectLogEntry]).result)
+        logs   <- service.runDBIO(logger.entries(ModelView.raw(ProjectLogEntry)).result)
       } yield Ok(views.log(request.project, logs))
     }
   }
@@ -811,7 +811,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     Authenticated.andThen(PermissionAction[AuthRequest](ReviewFlags)).asyncEitherT { implicit request =>
       getProject(author, slug).semiflatMap { project =>
         import cats.instances.vector._
-        project.decodeNotes.toVector.parTraverse(note => ModelView.now[User].get(note.user).value.tupleLeft(note)).map {
+        project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
           notes =>
             Ok(views.admin.notes(project, notes))
         }

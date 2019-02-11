@@ -2,7 +2,7 @@ package ore.user.notification
 
 import scala.collection.immutable
 
-import db.ModelService
+import db.{DbModel, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import models.user.User
@@ -19,9 +19,11 @@ sealed abstract class InviteFilter(
     val value: Int,
     val name: String,
     val title: String,
-    val filter: ContextShift[IO] => ModelService => User => IO[Seq[UserRoleModel]]
+    val filter: ContextShift[IO] => ModelService => DbModel[User] => IO[Seq[DbModel[UserRoleModel]]]
 ) extends IntEnumEntry {
-  def apply(user: User)(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[UserRoleModel]] =
+  def apply(
+      user: DbModel[User]
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[DbModel[UserRoleModel]]] =
     filter(cs)(service)(user)
 }
 
@@ -38,9 +40,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
           implicit service =>
             user =>
               Parallel.parMap2(
-                service.runDBIO(user.projectRoles(ModelView.raw[ProjectUserRole]).filter(!_.isAccepted).result),
+                service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result),
                 service.runDBIO(
-                  user.organizationRoles(ModelView.raw[OrganizationUserRole]).filter(!_.isAccepted).result
+                  user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result
                 )
               )(_ ++ _)
       )
@@ -52,7 +54,7 @@ object InviteFilter extends IntEnum[InviteFilter] {
         "notification.invite.projects",
         _ =>
           implicit service =>
-            user => service.runDBIO(user.projectRoles(ModelView.raw[ProjectUserRole]).filter(!_.isAccepted).result)
+            user => service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result)
       )
 
   case object Organizations
@@ -63,6 +65,6 @@ object InviteFilter extends IntEnum[InviteFilter] {
         _ =>
           implicit service =>
             user =>
-              service.runDBIO(user.organizationRoles(ModelView.raw[OrganizationUserRole]).filter(!_.isAccepted).result)
+              service.runDBIO(user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result)
       )
 }

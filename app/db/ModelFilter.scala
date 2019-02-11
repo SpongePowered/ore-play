@@ -12,7 +12,7 @@ import db.impl.OrePostgresDriver.api._
   * @param fn   Base filter function
   * @tparam M   Model type
   */
-class ModelFilter[M <: Model](private val fn: M#T => Rep[Boolean]) extends AnyVal {
+class ModelFilter[M, T <: Table[M]](private val fn: T => Rep[Boolean]) extends AnyVal {
 
   /**
     * Applies && to the wrapped function and returns a new filter.
@@ -20,7 +20,7 @@ class ModelFilter[M <: Model](private val fn: M#T => Rep[Boolean]) extends AnyVa
     * @param that Filter function to apply
     * @return New model filter
     */
-  def &&(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = m => fn(m) && that(m)
+  def &&(that: T => Rep[Boolean]): T => Rep[Boolean] = m => fn(m) && that(m)
 
   /**
     * Applies || to the wrapped function and returns a new filter.
@@ -28,20 +28,12 @@ class ModelFilter[M <: Model](private val fn: M#T => Rep[Boolean]) extends AnyVa
     * @param that Filter function to apply
     * @return New filter
     */
-  def ||(that: M#T => Rep[Boolean]): M#T => Rep[Boolean] = m => fn(m) || that(m)
+  def ||(that: T => Rep[Boolean]): T => Rep[Boolean] = m => fn(m) || that(m)
 }
 
 object ModelFilter {
 
-  implicit def liftFilter[M <: Model](f: M#T => Rep[Boolean]): ModelFilter[M] = new ModelFilter(f)
+  implicit def liftFilter[M, T <: Table[M]](f: T => Rep[Boolean]): ModelFilter[M, T] = new ModelFilter(f)
 
-  def apply[M <: Model](f: M#T => Rep[Boolean]): M#T => Rep[Boolean] = f
-
-  def Empty[M <: Model]: M#T => Rep[Boolean] = _ => false
-
-  def All[M <: Model]: M#T => Rep[Boolean] = _ => true
-
-  /** Filters models by ID */
-  def IdFilter[M0 <: Model { type M = M0 }](id: DbRef[M0]): M0#T => Rep[Boolean] = _.id === id
-
+  def apply[M](model: DbModelCompanion[M])(f: model.T => Rep[Boolean]): model.T => Rep[Boolean] = f
 }

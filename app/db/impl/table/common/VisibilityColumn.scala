@@ -1,7 +1,7 @@
 package db.impl.table.common
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Hideable
+import db.impl.model.common.{Hideable, VisibilityChange}
 import db.table.ModelTable
 import models.project.Visibility
 
@@ -11,7 +11,7 @@ import models.project.Visibility
   *
   * @tparam M Model type
   */
-trait VisibilityColumn[M <: Hideable] extends ModelTable[M] {
+trait VisibilityColumn[VC <: VisibilityChange, M <: Hideable[VC]] extends ModelTable[M] {
 
   /**
     * Column definition of visibility. True if visible.

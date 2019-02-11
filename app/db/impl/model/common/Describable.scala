@@ -1,18 +1,12 @@
 package db.impl.model.common
 
-import db.Model
-import db.impl.table.common.DescriptionColumn
-
 /**
-  * Represents a [[Model]] with a description.
+  * Represents a model with a description.
   */
-trait Describable extends Model { self =>
-
-  override type M <: Describable { type M = self.M }
-  override type T <: DescriptionColumn[M]
+trait Describable {
 
   /**
-    * Returns the [[Model]]'s description.
+    * Returns the models's description.
     *
     * @return Model description
     */

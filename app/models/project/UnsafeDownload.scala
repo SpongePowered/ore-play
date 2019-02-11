@@ -1,7 +1,7 @@
 package models.project
 
 import db.impl.schema.UnsafeDownloadsTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
+import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
 import models.user.User
 import ore.project.io.DownloadType
 
@@ -11,30 +11,17 @@ import slick.lifted.TableQuery
 /**
   * Represents a download instance of an unreviewed [[Project]] [[Version]].
   *
-  * @param id           Unique ID
-  * @param createdAt    Instant of creation
   * @param userId       User who downloaded (if applicable)
   * @param address      Address of client
   * @param downloadType Type of download
   */
-case class UnsafeDownload private (
-    id: ObjId[UnsafeDownload],
-    createdAt: ObjTimestamp,
+case class UnsafeDownload(
     userId: Option[DbRef[User]],
     address: InetString,
     downloadType: DownloadType
-) extends Model {
+)
+object UnsafeDownload
+    extends DefaultDbModelCompanion[UnsafeDownload, UnsafeDownloadsTable](TableQuery[UnsafeDownloadsTable]) {
 
-  override type M = UnsafeDownload
-  override type T = UnsafeDownloadsTable
-}
-object UnsafeDownload {
-  def partial(
-      userId: Option[DbRef[User]] = None,
-      address: InetString,
-      downloadType: DownloadType
-  ): InsertFunc[UnsafeDownload] = (id, time) => UnsafeDownload(id, time, userId, address, downloadType)
-
-  implicit val query: ModelQuery[UnsafeDownload] =
-    ModelQuery.from[UnsafeDownload](TableQuery[UnsafeDownloadsTable], _.copy(_, _))
+  implicit val query: ModelQuery[UnsafeDownload] = ModelQuery.from(this)
 }

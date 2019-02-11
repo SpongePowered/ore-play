@@ -3,6 +3,7 @@ package ore.rest
 import play.api.libs.json.Json.obj
 import play.api.libs.json._
 
+import db.DbModel
 import models.api.ProjectApiKey
 import models.project._
 import security.pgp.PGPPublicKeyInfo
@@ -12,7 +13,7 @@ import security.pgp.PGPPublicKeyInfo
   */
 trait OreWrites {
 
-  implicit val projectApiKeyWrites: Writes[ProjectApiKey] = (key: ProjectApiKey) =>
+  implicit val projectApiKeyWrites: Writes[DbModel[ProjectApiKey]] = (key: DbModel[ProjectApiKey]) =>
     obj(
       "id"        -> key.id.value,
       "createdAt" -> key.createdAt.value,
@@ -21,7 +22,7 @@ trait OreWrites {
       "value"     -> key.value
   )
 
-  implicit val pageWrites: Writes[Page] = (page: Page) =>
+  implicit val pageWrites: Writes[DbModel[Page]] = (page: DbModel[Page]) =>
     obj(
       "id"        -> page.id.value,
       "createdAt" -> page.createdAt.toString,
@@ -33,7 +34,7 @@ trait OreWrites {
   implicit val channelWrites: Writes[Channel] = (channel: Channel) =>
     obj("name" -> channel.name, "color" -> channel.color.hex, "nonReviewed" -> channel.isNonReviewed)
 
-  implicit val tagWrites: Writes[VersionTag] = (tag: VersionTag) => {
+  implicit val tagWrites: Writes[DbModel[VersionTag]] = (tag: DbModel[VersionTag]) => {
     obj(
       "id"              -> tag.id.value,
       "name"            -> tag.name,

@@ -4,7 +4,7 @@ import play.api.mvc.Call
 
 import controllers.routes
 import controllers.sugar.Requests.OreRequest
-import db.ModelService
+import db.{DbModel, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
@@ -24,10 +24,10 @@ import slick.lifted.TableQuery
 
 case class UserData(
     headerData: HeaderData,
-    user: User,
+    user: DbModel[User],
     isOrga: Boolean,
     projectCount: Int,
-    orgas: Seq[(Organization, User, OrganizationUserRole, User)],
+    orgas: Seq[(DbModel[Organization], DbModel[User], DbModel[OrganizationUserRole], DbModel[User])],
     globalRoles: Set[Role],
     userPerm: Map[Permission, Boolean],
     orgaPerm: Map[Permission, Boolean]
@@ -35,8 +35,8 @@ case class UserData(
 
   def global: HeaderData = headerData
 
-  def hasUser: Boolean          = global.hasUser
-  def currentUser: Option[User] = global.currentUser
+  def hasUser: Boolean                   = global.hasUser
+  def currentUser: Option[DbModel[User]] = global.currentUser
 
   def isCurrent: Boolean = currentUser.contains(user)
 
@@ -51,7 +51,7 @@ case class UserData(
 
 object UserData {
 
-  private def queryRoles(user: User) =
+  private def queryRoles(user: DbModel[User]) =
     for {
       role    <- TableQuery[OrganizationRoleTable] if role.userId === user.id.value
       org     <- TableQuery[OrganizationTable] if role.organizationId === org.id
@@ -59,25 +59,25 @@ object UserData {
       owner   <- TableQuery[UserTable] if org.userId === owner.id
     } yield (org, orgUser, role, owner)
 
-  def of[A](request: OreRequest[A], user: User)(
+  def of[A](request: OreRequest[A], user: DbModel[User])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[UserData] =
     for {
-      isOrga       <- user.toMaybeOrganization(ModelView.now[Organization]).isDefined
-      projectCount <- user.projects(ModelView.now[Project]).size
+      isOrga       <- user.toMaybeOrganization(ModelView.now(Organization)).isDefined
+      projectCount <- user.projects(ModelView.now(Project)).size
       t            <- perms(user)
       (globalRoles, userPerms, orgaPerms) = t
       orgas <- service.runDBIO(queryRoles(user).result)
     } yield UserData(request.headerData, user, isOrga, projectCount, orgas, globalRoles, userPerms, orgaPerms)
 
-  def perms(user: User)(
+  def perms(user: DbModel[User])(
       implicit cs: ContextShift[IO],
       service: ModelService
   ): IO[(Set[Role], Map[Permission, Boolean], Map[Permission, Boolean])] = {
     (
       user.trustIn(GlobalScope),
-      user.toMaybeOrganization(ModelView.now[Organization]).semiflatMap(user.trustIn[Organization]).value,
+      user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.trustIn[Organization]).value,
       user.globalRoles.allFromParent(user),
     ).parMapN { (userTrust, orgTrust, globalRoles) =>
       val userPerms = user.can.asMap(userTrust, globalRoles.toSet)(ViewActivity, ReviewFlags, ReviewProjects)

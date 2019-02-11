@@ -9,6 +9,7 @@ import scala.collection.JavaConverters._
 
 import play.api.i18n.Messages
 
+import db.DbModel
 import models.user.User
 import ore.user.UserOwned
 
@@ -20,7 +21,7 @@ import cats.effect.{IO, Resource}
   *
   * @param path Path to uploaded file
   */
-class PluginFile(val path: Path, val signaturePath: Path, val user: User) {
+class PluginFile(val path: Path, val signaturePath: Path, val user: DbModel[User]) {
 
   /**
     * Reads the temporary file's plugin meta file and returns the result.

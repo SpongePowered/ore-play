@@ -1,6 +1,6 @@
 package ore.organization
 
-import db.{DbRef, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import models.user.role.OrganizationUserRole
 import models.user.{Organization, User}
 import ore.user.{Member, UserOwned}
@@ -13,9 +13,10 @@ import cats.effect.IO
   * @param organization Organization member belongs to
   * @param userId       User ID
   */
-class OrganizationMember(val organization: Organization, val userId: DbRef[User]) extends Member[OrganizationUserRole] {
+class OrganizationMember(val organization: DbModel[Organization], val userId: DbRef[User])
+    extends Member[OrganizationUserRole] {
 
-  override def roles(implicit service: ModelService): IO[Set[OrganizationUserRole]] =
+  override def roles(implicit service: ModelService): IO[Set[DbModel[OrganizationUserRole]]] =
     UserOwned[OrganizationMember].user(this).flatMap(user => this.organization.memberships.getRoles(organization, user))
 
   /**
@@ -23,7 +24,7 @@ class OrganizationMember(val organization: Organization, val userId: DbRef[User]
     *
     * @return Top role
     */
-  override def headRole(implicit service: ModelService): IO[OrganizationUserRole] =
+  override def headRole(implicit service: ModelService): IO[DbModel[OrganizationUserRole]] =
     this.roles.map(role => role.maxBy(_.role.trust))
 
 }

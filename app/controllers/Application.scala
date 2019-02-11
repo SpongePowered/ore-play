@@ -17,7 +17,7 @@ import db.query.AppQueries
 import db.impl.OrePostgresDriver.api._
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
-import db.{DbRef, ModelQuery, ModelService}
+import db.{DbModel, DbModelCompanion, DbRef, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.user.role._
@@ -159,7 +159,7 @@ final class Application @Inject()(forms: OreForms)(
   def setFlagResolved(flagId: DbRef[Flag], resolved: Boolean): Action[AnyContent] =
     FlagAction.asyncF { implicit request =>
       ModelView
-        .now[Flag]
+        .now(Flag)
         .get(flagId)
         .semiflatMap { flag =>
           for {
@@ -274,7 +274,7 @@ final class Application @Inject()(forms: OreForms)(
           .getLog(oPage, userFilter, projectFilter, versionFilter, pageFilter, actionFilter, subjectFilter)
           .to[Vector]
       ),
-      ModelView.now[LoggedActionModel[Any]].size
+      ModelView.now(LoggedActionModel).size
     ).parMapN { (actions, size) =>
       Ok(
         views.users.admin.log(
@@ -303,9 +303,9 @@ final class Application @Inject()(forms: OreForms)(
       .withName(user)
       .semiflatMap { u =>
         for {
-          orga <- u.toMaybeOrganization(ModelView.now[Organization]).value
+          orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
           projectRoles <- orga.fold(
-            service.runDBIO(u.projectRoles(ModelView.raw[ProjectUserRole]).result)
+            service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
           )(orga => IO.pure(Nil))
           t2 <- (
             getUserData(request, user).value,
@@ -332,11 +332,11 @@ final class Application @Inject()(forms: OreForms)(
           val json       = Json.parse(data)
           val orgDossier = MembershipDossier.organization
 
-          def updateRoleTable[M0 <: UserRoleModel { type M = M0 }: ModelQuery](
-              modelAccess: ModelView.Now[IO, M0#T, M0],
+          def updateRoleTable[M0 <: UserRoleModel[M0]: ModelQuery](model: DbModelCompanion[M0])(
+              modelAccess: ModelView.Now[IO, model.T, DbModel[M0]],
               allowedCategory: RoleCategory,
               ownerType: Role,
-              transferOwner: M0 => IO[M0]
+              transferOwner: DbModel[M0] => IO[DbModel[M0]]
           ) = {
             val id = (json \ "id").as[DbRef[M0]]
             action match {
@@ -347,14 +347,14 @@ final class Application @Inject()(forms: OreForms)(
                   if (roleType == ownerType)
                     transferOwner(role).as(Ok)
                   else if (roleType.category == allowedCategory && roleType.isAssignable)
-                    service.update(role.withRole(roleType)).as(Ok)
+                    service.update(role)(_.withRole(roleType)).as(Ok)
                   else
                     IO.pure(BadRequest)
                 }
               case "setAccepted" =>
                 modelAccess
                   .get(id)
-                  .semiflatMap(role => service.update(role.withAccepted((json \ "accepted").as[Boolean])).as(Ok))
+                  .semiflatMap(role => service.update(role)(_.withAccepted((json \ "accepted").as[Boolean])).as(Ok))
               case "deleteRole" =>
                 modelAccess
                   .get(id)
@@ -363,25 +363,25 @@ final class Application @Inject()(forms: OreForms)(
             }
           }
 
-          def transferOrgOwner(r: OrganizationUserRole) =
+          def transferOrgOwner(r: DbModel[OrganizationUserRole]) =
             r.organization
               .flatMap(orga => orga.transferOwner(orgDossier.newMember(orga, r.userId)))
               .as(r)
 
           thing match {
             case "orgRole" =>
-              OptionT.liftF(user.toMaybeOrganization(ModelView.now[Organization]).isEmpty).filter(identity).flatMap {
+              OptionT.liftF(user.toMaybeOrganization(ModelView.now(Organization)).isEmpty).filter(identity).flatMap {
                 _ =>
-                  updateRoleTable[OrganizationUserRole](
-                    user.organizationRoles(ModelView.now[OrganizationUserRole]),
+                  updateRoleTable(OrganizationUserRole)(
+                    user.organizationRoles(ModelView.now(OrganizationUserRole)),
                     RoleCategory.Organization,
                     Role.OrganizationOwner,
                     transferOrgOwner,
                   )
               }
             case "memberRole" =>
-              user.toMaybeOrganization(ModelView.now[Organization]).flatMap { orga =>
-                updateRoleTable[OrganizationUserRole](
+              user.toMaybeOrganization(ModelView.now(Organization)).flatMap { orga =>
+                updateRoleTable(OrganizationUserRole)(
                   orgDossier.roles(orga),
                   RoleCategory.Organization,
                   Role.OrganizationOwner,
@@ -389,10 +389,10 @@ final class Application @Inject()(forms: OreForms)(
                 )
               }
             case "projectRole" =>
-              OptionT.liftF(user.toMaybeOrganization(ModelView.now[Organization]).isEmpty).filter(identity).flatMap {
+              OptionT.liftF(user.toMaybeOrganization(ModelView.now(Organization)).isEmpty).filter(identity).flatMap {
                 _ =>
-                  updateRoleTable[ProjectUserRole](
-                    user.projectRoles(ModelView.now[ProjectUserRole]),
+                  updateRoleTable(ProjectUserRole)(
+                    user.projectRoles(ModelView.now(ProjectUserRole)),
                     RoleCategory.Project,
                     Role.ProjectOwner,
                     r => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(p, r.userId))).as(r),

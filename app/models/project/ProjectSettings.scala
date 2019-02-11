@@ -6,7 +6,7 @@ import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
+import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
 import ore.permission.role.Role
@@ -24,8 +24,6 @@ import slick.lifted.TableQuery
 /**
   * Represents a [[Project]]'s settings.
   *
-  * @param id           Unique ID
-  * @param createdAt    Instant of creation
   * @param projectId    ID of project settings belong to
   * @param homepage     Project homepage
   * @param issues      Project issues URL
@@ -33,66 +31,56 @@ import slick.lifted.TableQuery
   * @param licenseName Project license name
   * @param licenseUrl  Project license URL
   */
-case class ProjectSettings private (
-    id: ObjId[ProjectSettings],
-    createdAt: ObjTimestamp,
+case class ProjectSettings(
     projectId: DbRef[Project],
-    homepage: Option[String],
-    issues: Option[String],
-    source: Option[String],
-    licenseName: Option[String],
-    licenseUrl: Option[String],
-    forumSync: Boolean
-) extends Model {
-
-  override type M = ProjectSettings
-  override type T = ProjectSettingsTable
+    homepage: Option[String] = None,
+    issues: Option[String] = None,
+    source: Option[String] = None,
+    licenseName: Option[String] = None,
+    licenseUrl: Option[String] = None,
+    forumSync: Boolean = true
+) {
 
   /**
-    * Saves a submitted [[ProjectSettingsForm]] to the [[Project]].
+    * Saves a submitted [[ProjectSettingsForm]] to the [[PendingProject]].
     *
     * @param formData Submitted settings
     * @param messages MessagesApi instance
     */
-  def save(project: Project, formData: ProjectSettingsForm)(
+  //noinspection ComparingUnrelatedTypes
+  def save(project: PendingProject, formData: ProjectSettingsForm)(
       implicit fileManager: ProjectFiles,
-      service: ModelService,
-      cs: ContextShift[IO]
-  ): IO[(Project, ProjectSettings)] = {
-    import cats.instances.vector._
-    Logger.debug("Saving project settings")
-    Logger.debug(formData.toString)
-    val newOwnerId = formData.ownerId.getOrElse(project.ownerId)
+      service: ModelService
+  ): IO[(PendingProject, ProjectSettings)] = {
+    val queryOwnerName = for {
+      u <- TableQuery[UserTable] if formData.ownerId.getOrElse(project.ownerId).bind === u.id
+    } yield u.name
 
-    val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
+    val updateProject = service.runDBIO(queryOwnerName.result).map { ownerName =>
+      val newProj = project.copy(
+        category = Category.values.find(_.title == formData.categoryName).get,
+        description = noneIfEmpty(formData.description),
+        ownerId = formData.ownerId.getOrElse(project.ownerId),
+        ownerName = ownerName.head
+      )(project.config)
 
-    val updateProject = service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
-      service.update(
-        project.copy(
-          category = Category.values.find(_.title == formData.categoryName).get,
-          description = noneIfEmpty(formData.description),
-          ownerId = newOwnerId,
-          ownerName = ownerName
-        )
-      )
+      newProj.pendingVersion = newProj.pendingVersion.copy(projectUrl = newProj.key)
+
+      newProj
     }
 
-    val updateSettings = service.update(
-      copy(
-        issues = noneIfEmpty(formData.issues),
-        source = noneIfEmpty(formData.source),
-        licenseUrl = noneIfEmpty(formData.licenseUrl),
-        licenseName = if (formData.licenseUrl.nonEmpty) Some(formData.licenseName) else licenseName,
-        forumSync = formData.forumSync
-      )
+    val updatedSettings = copy(
+      issues = noneIfEmpty(formData.issues),
+      source = noneIfEmpty(formData.source),
+      licenseUrl = noneIfEmpty(formData.licenseUrl),
+      licenseName = if (formData.licenseUrl.nonEmpty) Some(formData.licenseName) else licenseName,
+      forumSync = formData.forumSync
     )
 
-    val modelUpdates = (updateProject, updateSettings).parTupled
-
-    modelUpdates.flatMap { t =>
+    updateProject.map { project =>
       // Update icon
       if (formData.updateIcon) {
-        fileManager.getPendingIconPath(project).foreach { pendingPath =>
+        fileManager.getPendingIconPath(project.ownerName, project.name).foreach { pendingPath =>
           val iconDir = fileManager.getIconDir(project.ownerName, project.name)
           if (notExists(iconDir))
             createDirectories(iconDir)
@@ -101,107 +89,64 @@ case class ProjectSettings private (
         }
       }
 
-      // Add new roles
-      val dossier = project.memberships
-      formData
-        .build()
-        .toVector
-        .parTraverse { role =>
-          dossier.addRole(project, role.userId, role.copy(projectId = project.id).asFunc)
-        }
-        .flatMap { roles =>
-          val notifications = roles.map { role =>
-            Notification.partial(
-              userId = role.userId,
-              originId = project.ownerId,
-              notificationType = NotificationType.ProjectInvite,
-              messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
-            )
-          }
-
-          service.bulkInsert(notifications)
-        }
-        .productR {
-          // Update existing roles
-          val usersTable = TableQuery[UserTable]
-          // Select member userIds
-          service
-            .runDBIO(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
-            .flatMap { userIds =>
-              import cats.instances.list._
-              val roles = formData.roleUps.traverse { role =>
-                Role.projectRoles
-                  .find(_.value == role)
-                  .fold(IO.raiseError[Role](new RuntimeException("supplied invalid role type")))(IO.pure)
-              }
-
-              roles.map(xs => userIds.zip(xs))
-            }
-            .map {
-              _.map {
-                case (userId, role) => updateMemberShip(userId).update(role)
-              }
-            }
-            .flatMap(updates => service.runDBIO(DBIO.sequence(updates)).as(t))
-        }
+      (project, updatedSettings)
     }
   }
-
-  private def memberShipUpdate(userId: Rep[DbRef[User]]) =
-    TableQuery[ProjectRoleTable].filter(_.userId === userId).map(_.roleType)
-
-  private lazy val updateMemberShip = Compiled(memberShipUpdate _)
 }
-object ProjectSettings {
-  case class Partial(
-      homepage: Option[String] = None,
-      issues: Option[String] = None,
-      source: Option[String] = None,
-      licenseName: Option[String] = None,
-      licenseUrl: Option[String] = None,
-      forumSync: Boolean = true
-  ) {
+object ProjectSettings
+    extends DefaultDbModelCompanion[ProjectSettings, ProjectSettingsTable](TableQuery[ProjectSettingsTable]) {
+
+  implicit val query: ModelQuery[ProjectSettings] = ModelQuery.from(this)
+
+  implicit val isProjectOwned: ProjectOwned[ProjectSettings] = (a: ProjectSettings) => a.projectId
+
+  implicit class ProjectSettingsModelOps(private val self: DbModel[ProjectSettings]) extends AnyVal {
 
     /**
-      * Saves a submitted [[ProjectSettingsForm]] to the [[PendingProject]].
+      * Saves a submitted [[ProjectSettingsForm]] to the [[Project]].
       *
       * @param formData Submitted settings
       * @param messages MessagesApi instance
       */
-    //noinspection ComparingUnrelatedTypes
-    def save(project: PendingProject, formData: ProjectSettingsForm)(
+    def save(project: DbModel[Project], formData: ProjectSettingsForm)(
         implicit fileManager: ProjectFiles,
-        service: ModelService
-    ): IO[(PendingProject, Partial)] = {
-      val queryOwnerName = for {
-        u <- TableQuery[UserTable] if formData.ownerId.getOrElse(project.ownerId).bind === u.id
-      } yield u.name
+        service: ModelService,
+        cs: ContextShift[IO]
+    ): IO[(DbModel[Project], DbModel[ProjectSettings])] = {
+      import cats.instances.vector._
+      Logger.debug("Saving project settings")
+      Logger.debug(formData.toString)
+      val newOwnerId = formData.ownerId.getOrElse(project.ownerId)
 
-      val updateProject = service.runDBIO(queryOwnerName.result).map { ownerName =>
-        val newProj = project.copy(
-          category = Category.values.find(_.title == formData.categoryName).get,
-          description = noneIfEmpty(formData.description),
-          ownerId = formData.ownerId.getOrElse(project.ownerId),
-          ownerName = ownerName.head
-        )(project.config)
+      val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
 
-        newProj.pendingVersion = newProj.pendingVersion.copy(projectUrl = newProj.key)
-
-        newProj
+      val updateProject = service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
+        service.update(project)(
+          _.copy(
+            category = Category.values.find(_.title == formData.categoryName).get,
+            description = noneIfEmpty(formData.description),
+            ownerId = newOwnerId,
+            ownerName = ownerName
+          )
+        )
       }
 
-      val updatedSettings = copy(
-        issues = noneIfEmpty(formData.issues),
-        source = noneIfEmpty(formData.source),
-        licenseUrl = noneIfEmpty(formData.licenseUrl),
-        licenseName = if (formData.licenseUrl.nonEmpty) Some(formData.licenseName) else licenseName,
-        forumSync = formData.forumSync
+      val updateSettings = service.update(self)(
+        _.copy(
+          issues = noneIfEmpty(formData.issues),
+          source = noneIfEmpty(formData.source),
+          licenseUrl = noneIfEmpty(formData.licenseUrl),
+          licenseName = if (formData.licenseUrl.nonEmpty) Some(formData.licenseName) else self.licenseName,
+          forumSync = formData.forumSync
+        )
       )
 
-      updateProject.map { project =>
+      val modelUpdates = (updateProject, updateSettings).parTupled
+
+      modelUpdates.flatMap { t =>
         // Update icon
         if (formData.updateIcon) {
-          fileManager.getPendingIconPath(project.ownerName, project.name).foreach { pendingPath =>
+          fileManager.getPendingIconPath(project).foreach { pendingPath =>
             val iconDir = fileManager.getIconDir(project.ownerName, project.name)
             if (notExists(iconDir))
               createDirectories(iconDir)
@@ -210,16 +155,55 @@ object ProjectSettings {
           }
         }
 
-        (project, updatedSettings)
+        // Add new roles
+        val dossier = project.memberships
+        formData
+          .build()
+          .toVector
+          .parTraverse { role =>
+            dossier.addRole(project, role.userId, role.copy(projectId = project.id))
+          }
+          .flatMap { roles =>
+            val notifications = roles.map { role =>
+              Notification(
+                userId = role.userId,
+                originId = project.ownerId,
+                notificationType = NotificationType.ProjectInvite,
+                messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
+              )
+            }
+
+            service.bulkInsert(notifications)
+          }
+          .productR {
+            // Update existing roles
+            val usersTable = TableQuery[UserTable]
+            // Select member userIds
+            service
+              .runDBIO(usersTable.filter(_.name.inSetBind(formData.userUps)).map(_.id).result)
+              .flatMap { userIds =>
+                import cats.instances.list._
+                val roles = formData.roleUps.traverse { role =>
+                  Role.projectRoles
+                    .find(_.value == role)
+                    .fold(IO.raiseError[Role](new RuntimeException("supplied invalid role type")))(IO.pure)
+                }
+
+                roles.map(xs => userIds.zip(xs))
+              }
+              .map {
+                _.map {
+                  case (userId, role) => updateMemberShip(userId).update(role)
+                }
+              }
+              .flatMap(updates => service.runDBIO(DBIO.sequence(updates)).as(t))
+          }
       }
     }
-
-    def asFunc(projectId: DbRef[Project]): InsertFunc[ProjectSettings] =
-      (id, time) => ProjectSettings(id, time, projectId, homepage, issues, source, licenseName, licenseUrl, forumSync)
   }
 
-  implicit val query: ModelQuery[ProjectSettings] =
-    ModelQuery.from[ProjectSettings](TableQuery[ProjectSettingsTable], _.copy(_, _))
+  private def memberShipUpdate(userId: Rep[DbRef[User]]) =
+    TableQuery[ProjectRoleTable].filter(_.userId === userId).map(_.roleType)
 
-  implicit val isProjectOwned: ProjectOwned[ProjectSettings] = (a: ProjectSettings) => a.projectId
+  private lazy val updateMemberShip = Compiled(memberShipUpdate _)
 }

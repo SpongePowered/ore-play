@@ -1,20 +1,16 @@
 package models.user.role
 
-import db.impl.table.common.RoleTable
-import db.{Model, ModelService}
+import db.{DbModel, ModelService}
 import ore.Visitable
-import ore.permission.role.{Role, UserRole}
+import ore.permission.role.Role
 
 import cats.effect.IO
 
 /**
-  * Represents a [[UserRole]] in something like a [[models.project.Project]] or
+  * Represents a user's [[Role]] in something like a [[models.project.Project]] or
   * [[models.user.Organization]].
   */
-abstract class UserRoleModel extends Model with UserRole { self =>
-
-  override type M <: UserRoleModel { type M = self.M }
-  override type T <: RoleTable[M]
+abstract class UserRoleModel[Self] {
 
   /**
     * Type of Role
@@ -31,9 +27,9 @@ abstract class UserRoleModel extends Model with UserRole { self =>
     *
     * @return Subject of Role
     */
-  def subject(implicit service: ModelService): IO[Visitable]
+  def subject(implicit service: ModelService): IO[DbModel[Visitable]]
 
-  def withRole(role: Role): M
+  def withRole(role: Role): Self
 
-  def withAccepted(accepted: Boolean): M
+  def withAccepted(accepted: Boolean): Self
 }

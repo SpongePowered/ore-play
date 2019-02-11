@@ -12,6 +12,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema._
 import db.query.UserQueries
+import models.admin.ProjectVisibilityChange
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
@@ -23,7 +24,6 @@ import security.pgp.PGPPublicKeyInfo
 import security.spauth.SpongeUser
 import util.syntax._
 
-import cats.data.OptionT
 import cats.effect.IO
 import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
@@ -32,33 +32,27 @@ import slick.lifted.TableQuery
   * Represents a Sponge user.
   *
   * @param id           External ID provided by authentication.
-  * @param createdAt    Date this user first logged onto Ore.
   * @param fullName     Full name of user
   * @param name         Username
   * @param email        Email
   * @param tagline      The user configured "tagline" displayed on the user page.
   */
-case class User private (
-    id: ObjId[User],
-    createdAt: ObjTimestamp,
-    fullName: Option[String],
-    name: String,
-    email: Option[String],
-    tagline: Option[String],
-    joinDate: Option[Timestamp],
-    readPrompts: List[Prompt],
-    pgpPubKey: Option[String],
-    lastPgpPubKeyUpdate: Option[Timestamp],
-    isLocked: Boolean,
-    lang: Option[Lang]
-) extends Model
-    with Named {
+case class User(
+    private val id: ObjId[User],
+    fullName: Option[String] = None,
+    name: String = "",
+    email: Option[String] = None,
+    tagline: Option[String] = None,
+    joinDate: Option[Timestamp] = None,
+    readPrompts: List[Prompt] = Nil,
+    pgpPubKey: Option[String] = None,
+    lastPgpPubKeyUpdate: Option[Timestamp] = None,
+    isLocked: Boolean = false,
+    lang: Option[Lang] = None
+) extends Named {
 
   //TODO: Check this in some way
   //checkArgument(tagline.forall(_.length <= config.users.get[Int]("max-tagline-len")), "tagline too long", "")
-
-  override type M = User
-  override type T = UserTable
 
   /**
     * The User's [[PermissionPredicate]]. All permission checks go through
@@ -105,83 +99,6 @@ case class User private (
     new ModelAssociationAccessImpl[UserGlobalRolesTable, User, DbRole]
 
   /**
-    * Returns the highest level [[DonorRole]] this User has.
-    *
-    * @return Highest level donor type
-    */
-  def donorType(implicit service: ModelService): OptionT[IO, DonorRole] =
-    OptionT(
-      service.runDBIO(this.globalRoles.allQueryFromParent(this).filter(_.rank.?.isDefined).result).map { seq =>
-        seq
-          .map(_.toRole)
-          .collect { case donor: DonorRole => donor }
-          .sortBy(_.rank)
-          .headOption
-      }
-    )
-
-  def trustIn[A: HasScope](a: A)(implicit service: ModelService): IO[Trust] =
-    trustIn(a.scope)
-
-  /**
-    * Returns this User's highest level of Trust.
-    *
-    * @return Highest level of trust
-    */
-  def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Trust] = {
-    val conIO = scope match {
-      case GlobalScope                       => UserQueries.globalTrust(id.value).unique
-      case ProjectScope(projectId)           => UserQueries.projectTrust(id.value, projectId).unique
-      case OrganizationScope(organizationId) => UserQueries.organizationTrust(id.value, organizationId).unique
-    }
-
-    service.runDbCon(conIO)
-  }
-
-  /**
-    * Returns the Projects that this User has starred.
-    *
-    * @return Projects user has starred
-    */
-  def starred()(implicit service: ModelService): IO[Seq[Project]] = {
-    val filter = Visibility.isPublicFilter[Project]
-
-    val baseQuery = for {
-      assoc   <- TableQuery[ProjectStarsTable] if assoc.userId === id.value
-      project <- TableQuery[ProjectTableMain] if assoc.projectId === project.id
-      if filter(project)
-    } yield project
-
-    service.runDBIO(baseQuery.sortBy(_.name).result)
-  }
-
-  /**
-    * Returns all [[Project]]s owned by this user.
-    *
-    * @return Projects owned by user
-    */
-  def projects[V[_, _]: QueryView](view: V[Project#T, Project]): V[Project#T, Project] =
-    view.filterView(_.userId === id.value)
-
-  /**
-    * Returns a [[ModelView]] of [[ProjectUserRole]]s.
-    *
-    * @return ProjectRoles
-    */
-  def projectRoles[V[_, _]: QueryView](
-      view: V[ProjectUserRole#T, ProjectUserRole]
-  ): V[ProjectUserRole#T, ProjectUserRole] =
-    view.filterView(_.userId === id.value)
-
-  /**
-    * Returns the [[Organization]]s that this User owns.
-    *
-    * @return Organizations user owns
-    */
-  def ownedOrganizations[V[_, _]: QueryView](view: V[Organization#T, Organization]): V[Organization#T, Organization] =
-    view.filterView(_.userId === id.value)
-
-  /**
     * Returns the [[Organization]]s that this User belongs to.
     *
     * @return Organizations user belongs to
@@ -189,24 +106,6 @@ case class User private (
   def organizations(
       implicit service: ModelService
   ): ModelAssociationAccess[OrganizationMembersTable, User, Organization, IO] = new ModelAssociationAccessImpl
-
-  /**
-    * Returns a [[ModelView]] of [[OrganizationUserRole]]s.
-    *
-    * @return OrganizationRoles
-    */
-  def organizationRoles[V[_, _]: QueryView](
-      view: V[OrganizationUserRole#T, OrganizationUserRole]
-  ): V[OrganizationUserRole#T, OrganizationUserRole] =
-    view.filterView(_.userId === id.value)
-
-  /**
-    * Converts this User to an [[Organization]].
-    *
-    * @return Organization
-    */
-  def toMaybeOrganization[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Organization#T, Organization]): QOptRet =
-    view.get(this.id.value)
 
   /**
     * Returns the [[Project]]s that this User is watching.
@@ -217,123 +116,36 @@ case class User private (
       implicit service: ModelService
   ): ModelAssociationAccess[ProjectWatchersTable, Project, User, IO] =
     new ModelAssociationAccessImpl
-
-  /**
-    * Sets the "watching" status on the specified project.
-    *
-    * @param project  Project to update status on
-    * @param watching True if watching
-    */
-  def setWatching(
-      project: Project,
-      watching: Boolean
-  )(implicit service: ModelService): IO[Unit] = {
-    val contains = this.watching.contains(project, this)
-    contains.flatMap {
-      case true  => if (!watching) this.watching.removeAssoc(project, this) else IO.unit
-      case false => if (watching) this.watching.addAssoc(project, this) else IO.unit
-    }
-  }
-
-  /**
-    * Returns the [[Flag]]s submitted by this User.
-    *
-    * @return Flags submitted by user
-    */
-  def flags[V[_, _]: QueryView](view: V[Flag#T, Flag]): V[Flag#T, Flag] =
-    view.filterView(_.userId === id.value)
-
-  /**
-    * Returns true if the User has an unresolved [[Flag]] on the specified
-    * [[Project]].
-    *
-    * @param project Project to check
-    * @return True if has pending flag on Project
-    */
-  def hasUnresolvedFlagFor[QOptRet, SRet[_]](
-      project: Project,
-      view: ModelView[QOptRet, SRet, Flag#T, Flag]
-  ): SRet[Boolean] =
-    this.flags(view).exists(f => f.projectId === project.id.value && !f.isResolved)
-
-  /**
-    * Returns this User's notifications.
-    *
-    * @return User notifications
-    */
-  def notifications[V[_, _]: QueryView](view: V[Notification#T, Notification]): V[Notification#T, Notification] =
-    view.filterView(_.userId === id.value)
-
-  /**
-    * Marks a [[Prompt]] as read by this User.
-    *
-    * @param prompt Prompt to mark as read
-    */
-  def markPromptAsRead(prompt: Prompt)(implicit service: ModelService): IO[User] = {
-    checkNotNull(prompt, "null prompt", "")
-    service.update(
-      copy(
-        readPrompts = readPrompts :+ prompt
-      )
-    )
-  }
 }
 
-object User {
+object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTable]) {
+
+  override def asDbModel(
+      model: User,
+      id: ObjId[User],
+      time: ObjTimestamp
+  ): DbModel[User] = DbModel(model.id, time, model)
 
   /**
     * Copy this User with the information SpongeUser provides.
     *
     * @param user Sponge User
     */
-  def partialFromSponge(user: SpongeUser): InsertFunc[User] =
-    (_, time) =>
-      User(
-        id = ObjId(user.id),
-        createdAt = time,
-        fullName = None,
-        name = user.username,
-        email = Some(user.email),
-        lang = user.lang,
-        tagline = None,
-        joinDate = None,
-        readPrompts = Nil,
-        pgpPubKey = None,
-        lastPgpPubKeyUpdate = None,
-        isLocked = false
-    )
-
-  def partial(
-      id: ObjId[User],
-      fullName: Option[String] = None,
-      name: String = "",
-      email: Option[String] = None,
-      tagline: Option[String] = None,
-      joinDate: Option[Timestamp] = None,
-      readPrompts: List[Prompt] = List(),
-      pgpPubKey: Option[String] = None,
-      lastPgpPubKeyUpdate: Option[Timestamp] = None,
-      isLocked: Boolean = false,
-      lang: Option[Lang] = None
-  ): InsertFunc[User] =
-    (_, time) =>
-      User(
-        id,
-        time,
-        fullName,
-        name,
-        email,
-        tagline,
-        joinDate,
-        readPrompts,
-        pgpPubKey,
-        lastPgpPubKeyUpdate,
-        isLocked,
-        lang
-    )
+  def fromSponge(user: SpongeUser): User = User(
+    id = ObjId(user.id),
+    fullName = None,
+    name = user.username,
+    email = Some(user.email),
+    lang = user.lang,
+    tagline = None,
+    joinDate = None,
+    readPrompts = Nil,
+    pgpPubKey = None,
+    lastPgpPubKeyUpdate = None
+  )
 
   implicit val query: ModelQuery[User] =
-    ModelQuery.from[User](TableQuery[UserTable], (obj, _, time) => obj.copy(createdAt = time))
+    ModelQuery.from(this)
 
   implicit val assocMembersQuery: AssociationQuery[ProjectMembersTable, User, Project] =
     AssociationQuery.from[ProjectMembersTable, User, Project](TableQuery[ProjectMembersTable])(_.userId, _.projectId)
@@ -352,4 +164,153 @@ object User {
 
   def avatarUrl(name: String)(implicit config: OreConfig): String =
     config.security.api.avatarUrl.format(name)
+
+  implicit class UserModelOps(private val self: DbModel[User]) extends AnyVal {
+
+    /**
+      * Sets the "watching" status on the specified project.
+      *
+      * @param project  Project to update status on
+      * @param watching True if watching
+      */
+    def setWatching(
+        project: DbModel[Project],
+        watching: Boolean
+    )(implicit service: ModelService): IO[Unit] = {
+      val contains = self.watching.contains(project, self)
+      contains.flatMap {
+        case true  => if (!watching) self.watching.removeAssoc(project, self) else IO.unit
+        case false => if (watching) self.watching.addAssoc(project, self) else IO.unit
+      }
+    }
+
+    def trustIn[A: HasScope](a: A)(implicit service: ModelService): IO[Trust] =
+      trustIn(a.scope)
+
+    /**
+      * Returns this User's highest level of Trust.
+      *
+      * @return Highest level of trust
+      */
+    def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Trust] = {
+      val conIO = scope match {
+        case GlobalScope                       => UserQueries.globalTrust(self.id.value).unique
+        case ProjectScope(projectId)           => UserQueries.projectTrust(self.id.value, projectId).unique
+        case OrganizationScope(organizationId) => UserQueries.organizationTrust(self.id.value, organizationId).unique
+      }
+
+      service.runDbCon(conIO)
+    }
+
+    /**
+      * Returns the Projects that this User has starred.
+      *
+      * @return Projects user has starred
+      */
+    def starred()(implicit service: ModelService): IO[Seq[DbModel[Project]]] = {
+      val filter = Visibility.isPublicFilter[ProjectTableMain]
+
+      val baseQuery = for {
+        assoc   <- TableQuery[ProjectStarsTable] if assoc.userId === self.id.value
+        project <- TableQuery[ProjectTableMain] if assoc.projectId === project.id
+        if filter(project)
+      } yield project
+
+      service.runDBIO(baseQuery.sortBy(_.name).result)
+    }
+
+    /**
+      * Returns all [[Project]]s owned by this user.
+      *
+      * @return Projects owned by user
+      */
+    def projects[V[_, _]: QueryView](
+        view: V[ProjectTableMain, DbModel[Project]]
+    ): V[ProjectTableMain, DbModel[Project]] =
+      view.filterView(_.userId === self.id.value)
+
+    /**
+      * Returns a [[ModelView]] of [[ProjectUserRole]]s.
+      *
+      * @return ProjectRoles
+      */
+    def projectRoles[V[_, _]: QueryView](
+        view: V[ProjectRoleTable, DbModel[ProjectUserRole]]
+    ): V[ProjectRoleTable, DbModel[ProjectUserRole]] =
+      view.filterView(_.userId === self.id.value)
+
+    /**
+      * Returns the [[Organization]]s that this User owns.
+      *
+      * @return Organizations user owns
+      */
+    def ownedOrganizations[V[_, _]: QueryView](
+        view: V[OrganizationTable, DbModel[Organization]]
+    ): V[OrganizationTable, DbModel[Organization]] =
+      view.filterView(_.userId === self.id.value)
+
+    /**
+      * Returns a [[ModelView]] of [[OrganizationUserRole]]s.
+      *
+      * @return OrganizationRoles
+      */
+    def organizationRoles[V[_, _]: QueryView](
+        view: V[OrganizationRoleTable, DbModel[OrganizationUserRole]]
+    ): V[OrganizationRoleTable, DbModel[OrganizationUserRole]] =
+      view.filterView(_.userId === self.id.value)
+
+    /**
+      * Converts this User to an [[Organization]].
+      *
+      * @return Organization
+      */
+    def toMaybeOrganization[QOptRet, SRet[_]](
+        view: ModelView[QOptRet, SRet, OrganizationTable, DbModel[Organization]]
+    ): QOptRet = view.get(self.id.value)
+
+    /**
+      * Returns the [[Flag]]s submitted by this User.
+      *
+      * @return Flags submitted by user
+      */
+    def flags[V[_, _]: QueryView](view: V[FlagTable, DbModel[Flag]]): V[FlagTable, DbModel[Flag]] =
+      view.filterView(_.userId === self.id.value)
+
+    /**
+      * Returns true if the User has an unresolved [[Flag]] on the specified
+      * [[Project]].
+      *
+      * @param project Project to check
+      * @return True if has pending flag on Project
+      */
+    def hasUnresolvedFlagFor[QOptRet, SRet[_]](
+        project: DbModel[Project],
+        view: ModelView[QOptRet, SRet, FlagTable, DbModel[Flag]]
+    ): SRet[Boolean] =
+      flags(view).exists(f => f.projectId === project.id.value && !f.isResolved)
+
+    /**
+      * Returns this User's notifications.
+      *
+      * @return User notifications
+      */
+    def notifications[V[_, _]: QueryView](
+        view: V[NotificationTable, DbModel[Notification]]
+    ): V[NotificationTable, DbModel[Notification]] =
+      view.filterView(_.userId === self.id.value)
+
+    /**
+      * Marks a [[Prompt]] as read by this User.
+      *
+      * @param prompt Prompt to mark as read
+      */
+    def markPromptAsRead(prompt: Prompt)(implicit service: ModelService): IO[DbModel[User]] = {
+      checkNotNull(prompt, "null prompt", "")
+      service.update(self)(
+        _.copy(
+          readPrompts = self.readPrompts :+ prompt
+        )
+      )
+    }
+  }
 }

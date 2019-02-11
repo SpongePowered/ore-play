@@ -7,38 +7,30 @@ import scala.collection.immutable
 
 import db.impl.model.common.Named
 import db.impl.schema.VersionTagTable
+import db.{DbModel, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.querymodels.ViewTag
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
 
 import enumeratum.values._
 import slick.lifted.TableQuery
 
-case class VersionTag private (
-    id: ObjId[VersionTag],
+case class VersionTag(
     versionId: DbRef[Version],
     name: String,
     data: String,
     color: TagColor
-) extends Model
-    with Named {
-
-  override val createdAt: ObjTimestamp = ObjTimestamp(Timestamp.from(Instant.EPOCH))
-
-  override type M = VersionTag
-  override type T = VersionTagTable
+) extends Named {
 
   def asViewTag: ViewTag = ViewTag(name, data, color)
 }
-object VersionTag {
-  def partial(
-      versionId: DbRef[Version],
-      name: String,
-      data: String,
-      color: TagColor
-  ): InsertFunc[VersionTag] = (id, _) => VersionTag(id, versionId, name, data, color)
+object VersionTag extends DbModelCompanionPartial[VersionTag, VersionTagTable](TableQuery[VersionTagTable]) {
 
-  implicit val query: ModelQuery[VersionTag] =
-    ModelQuery.from[VersionTag](TableQuery[VersionTagTable], (obj, id, _) => obj.copy(id))
+  override def asDbModel(
+      model: VersionTag,
+      id: ObjId[VersionTag],
+      time: ObjTimestamp
+  ): DbModel[VersionTag] = DbModel(id, ObjTimestamp(Timestamp.from(Instant.EPOCH)), model)
+
+  implicit val query: ModelQuery[VersionTag] = ModelQuery.from(this)
 }
 
 sealed abstract class TagColor(val value: Int, val background: String, val foreground: String) extends IntEnumEntry

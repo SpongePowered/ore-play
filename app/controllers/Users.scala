@@ -65,7 +65,7 @@ class Users @Inject()(
     */
   def signUp(): Action[AnyContent] = Action.asyncF {
     val nonce = SingleSignOnConsumer.nonce
-    service.insert(SignOn.partial(nonce = nonce)) *> redirectToSso(
+    service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
     )
   }
@@ -91,14 +91,14 @@ class Users @Inject()(
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
         val nonce = SingleSignOnConsumer.nonce
-        service.insert(SignOn.partial(nonce = nonce)) *> redirectToSso(
+        service.insert(SignOn(nonce = nonce)) *> redirectToSso(
           this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
         ).map(_.flashing("url" -> returnPath.getOrElse(request.path)))
       } else {
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
           .authenticate(sso.get, sig.get)(isNonceValid)(OreMDC.NoMDC)
-          .map(sponge => User.partialFromSponge(sponge) -> sponge)
+          .map(sponge => User.fromSponge(sponge) -> sponge)
           .semiflatMap {
             case (fromSponge, sponge) =>
               // Complete authentication
@@ -123,7 +123,7 @@ class Users @Inject()(
     */
   def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
     val nonce = SingleSignOnConsumer.nonce
-    service.insert(SignOn.partial(nonce = nonce)) *> redirectToSso(
+    service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
     )
   }
@@ -185,7 +185,7 @@ class Users @Inject()(
           (projects, starred, orga, userData) = t1
           t2 <- (
             starred.toVector
-              .parTraverse(p => p.recommendedVersion(ModelView.now[Version]).sequence.subflatMap(identity).value),
+              .parTraverse(p => p.recommendedVersion(ModelView.now(Version)).sequence.subflatMap(identity).value),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
@@ -227,7 +227,7 @@ class Users @Inject()(
           else {
             val log = UserActionLogger
               .log(request, LoggedAction.UserTaglineChanged, user.id, tagline, user.tagline.getOrElse("null"))
-            val insert = service.update(user.copy(tagline = Some(tagline)))
+            val insert = service.update(user)(_.copy(tagline = Some(tagline)))
             EitherT.right[Result]((log *> insert).as(Redirect(ShowUser(user))))
           }
         }
@@ -251,8 +251,8 @@ class Users @Inject()(
         this.mailer.push(this.emails.create(user, this.emails.PgpUpdated))
         val log = UserActionLogger.log(request, LoggedAction.UserPgpKeySaved, user.id, "", "")
 
-        val update = service.update(
-          user.copy(
+        val update = service.update(user)(
+          _.copy(
             pgpPubKey = Some(keyInfo.raw),
             lastPgpPubKeyUpdate =
               if (user.lastPgpPubKeyUpdate.isDefined) Some(service.theTime)
@@ -277,8 +277,8 @@ class Users @Inject()(
         IO.pure(BadRequest)
       else {
         val log = UserActionLogger.log(request, LoggedAction.UserPgpKeyRemoved, user.id, "", "")
-        val insert = service.update(
-          user.copy(
+        val insert = service.update(user)(
+          _.copy(
             pgpPubKey = None,
             lastPgpPubKeyUpdate = Some(service.theTime)
           )
@@ -302,7 +302,7 @@ class Users @Inject()(
       if (!locked)
         this.mailer.push(this.emails.create(user, this.emails.AccountUnlocked))
       service
-        .update(user.copy(isLocked = locked))
+        .update(user)(_.copy(isLocked = locked))
         .as(Redirect(ShowUser(username)))
     }
   }
@@ -353,7 +353,7 @@ class Users @Inject()(
         .getOrElse(InviteFilter.All)
 
       val notificationsF = service.runDBIO(
-        nFilter(user.notifications(ModelView.raw[Notification]))
+        nFilter(user.notifications(ModelView.raw(Notification)))
           .join(TableQuery[UserTable])
           .on(_.originId === _.id)
           .result
@@ -374,9 +374,9 @@ class Users @Inject()(
     */
   def markNotificationRead(id: DbRef[Notification]): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     request.user
-      .notifications(ModelView.now[Notification])
+      .notifications(ModelView.now(Notification))
       .get(id)
-      .semiflatMap(notification => service.update(notification.copy(isRead = true)).as(Ok))
+      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).as(Ok))
       .getOrElse(notFound)
   }
 

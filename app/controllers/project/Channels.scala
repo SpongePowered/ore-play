@@ -105,7 +105,7 @@ class Channels @Inject()(forms: OreForms)(
     */
   def delete(author: String, slug: String, channelName: String): Action[AnyContent] =
     ChannelEditAction(author, slug).asyncEitherT { implicit request =>
-      val channelsAccess = request.project.channels(ModelView.later[Channel])
+      val channelsAccess = request.project.channels(ModelView.later(Channel))
 
       val ourChannel = channelsAccess.find(_.name === channelName)
       val ourChannelVersions = for {

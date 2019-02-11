@@ -6,45 +6,30 @@ import play.twirl.api.Html
 
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.VersionVisibilityChangeTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
+import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
 import models.project.{Page, Version, Visibility}
 import models.user.User
 import ore.OreConfig
 
 import slick.lifted.TableQuery
 
-case class VersionVisibilityChange private (
-    id: ObjId[VersionVisibilityChange],
-    createdAt: ObjTimestamp,
+case class VersionVisibilityChange(
     createdBy: Option[DbRef[User]],
     versionId: DbRef[Version],
     comment: String,
     resolvedAt: Option[Timestamp],
     resolvedBy: Option[DbRef[User]],
     visibility: Visibility
-) extends Model
-    with VisibilityChange {
-
-  /** Self referential type */
-  override type M = VersionVisibilityChange
-
-  /** The model's table */
-  override type T = VersionVisibilityChangeTable
+) extends VisibilityChange {
 
   /** Render the comment as Html */
   def renderComment(implicit config: OreConfig): Html = Page.render(comment)
 }
-object VersionVisibilityChange {
-  def partial(
-      createdBy: Option[DbRef[User]] = None,
-      versionId: DbRef[Version],
-      comment: String,
-      resolvedAt: Option[Timestamp] = None,
-      resolvedBy: Option[DbRef[User]] = None,
-      visibility: Visibility = Visibility.New
-  ): InsertFunc[VersionVisibilityChange] =
-    (id, time) => VersionVisibilityChange(id, time, createdBy, versionId, comment, resolvedAt, resolvedBy, visibility)
+object VersionVisibilityChange
+    extends DefaultDbModelCompanion[VersionVisibilityChange, VersionVisibilityChangeTable](
+      TableQuery[VersionVisibilityChangeTable]
+    ) {
 
   implicit val query: ModelQuery[VersionVisibilityChange] =
-    ModelQuery.from[VersionVisibilityChange](TableQuery[VersionVisibilityChangeTable], _.copy(_, _))
+    ModelQuery.from(this)
 }

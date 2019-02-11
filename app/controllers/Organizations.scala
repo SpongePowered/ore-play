@@ -55,7 +55,7 @@ class Organizations @Inject()(forms: OreForms)(
     */
   def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
     service
-      .runDBIO((request.user.ownedOrganizations(ModelView.later[Organization]).size > this.createLimit).result)
+      .runDBIO((request.user.ownedOrganizations(ModelView.later(Organization)).size > this.createLimit).result)
       .map { limitReached =>
         if (limitReached)
           Redirect(ShowHome).withError(request.messages.apply("error.org.createLimit", this.createLimit))
@@ -83,7 +83,7 @@ class Organizations @Inject()(forms: OreForms)(
         IO.pure(Redirect(failCall).withError("error.org.disabled"))
       } else {
         service
-          .runDBIO((user.ownedOrganizations(ModelView.later[Organization]).size >= this.createLimit).result)
+          .runDBIO((user.ownedOrganizations(ModelView.later(Organization)).size >= this.createLimit).result)
           .flatMap { limitReached =>
             if (limitReached)
               IO.pure(BadRequest)
@@ -110,13 +110,13 @@ class Organizations @Inject()(forms: OreForms)(
   def setInviteStatus(id: DbRef[OrganizationUserRole], status: String): Action[AnyContent] =
     Authenticated.asyncF { implicit request =>
       request.user
-        .organizationRoles(ModelView.now[OrganizationUserRole])
+        .organizationRoles(ModelView.now(OrganizationUserRole))
         .get(id)
         .semiflatMap { role =>
           status match {
             case STATUS_DECLINE  => role.organization.flatMap(MembershipDossier.organization.removeRole(_, role)).as(Ok)
-            case STATUS_ACCEPT   => service.update(role.copy(isAccepted = true)).as(Ok)
-            case STATUS_UNACCEPT => service.update(role.copy(isAccepted = false)).as(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.pure(BadRequest)
           }
         }

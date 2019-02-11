@@ -25,11 +25,11 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
 
   val Logger: Logger = this.api.Logger
 
-  private val topicFilter = ModelFilter[Project](_.topicId.isEmpty)
-  private val dirtyFilter = ModelFilter[Project](_.isTopicDirty)
+  private val topicFilter = ModelFilter(Project)(_.topicId.isEmpty)
+  private val dirtyFilter = ModelFilter(Project)(_.isTopicDirty)
 
-  private val toCreateProjects   = ModelView.now[Project].filterView(topicFilter && Visibility.isPublicFilter)
-  private val dirtyTopicProjects = ModelView.now[Project].filterView(dirtyFilter && Visibility.isPublicFilter)
+  private val toCreateProjects   = ModelView.now(Project).filterView(topicFilter && Visibility.isPublicFilter)
+  private val dirtyTopicProjects = ModelView.now(Project).filterView(dirtyFilter && Visibility.isPublicFilter)
 
   /**
     * Starts the recovery task to be run at the specified interval.

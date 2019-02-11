@@ -3,7 +3,7 @@ package ore.project
 import scala.language.implicitConversions
 
 import db.access.ModelView
-import db.{DbRef, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import models.project.Project
 
 import cats.effect.IO
@@ -18,6 +18,6 @@ import simulacrum.typeclass
   def projectId(a: A): DbRef[Project]
 
   /** Returns the Project */
-  def project(a: A)(implicit service: ModelService): IO[Project] =
-    ModelView.now[Project].get(projectId(a)).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
+  def project(a: A)(implicit service: ModelService): IO[DbModel[Project]] =
+    ModelView.now(Project).get(projectId(a)).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
 }

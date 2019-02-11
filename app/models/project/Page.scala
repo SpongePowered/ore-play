@@ -9,7 +9,7 @@ import play.twirl.api.Html
 import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
-import db.impl.schema.PageTable
+import db.impl.schema.{PageTable, ProjectTableMain}
 import db._
 import discourse.OreDiscourseApi
 import ore.OreConfig
@@ -38,8 +38,6 @@ import slick.lifted.TableQuery
 /**
   * Represents a documentation page within a project.
   *
-  * @param id           Page ID
-  * @param createdAt    Timestamp of creation
   * @param projectId    Project ID
   * @param parentId     The parent page ID, -1 if none
   * @param name         Page name
@@ -48,50 +46,18 @@ import slick.lifted.TableQuery
   * @param isDeletable  True if can be deleted by the user
   */
 case class Page private (
-    id: ObjId[Page],
-    createdAt: ObjTimestamp,
     projectId: DbRef[Project],
     parentId: Option[DbRef[Page]],
     name: String,
     slug: String,
     isDeletable: Boolean,
     contents: String
-) extends Model
-    with Named {
-
-  override type M = Page
-  override type T = PageTable
-
+) extends Named {
   import models.project.Page._
 
   checkNotNull(this.name, "name cannot be null", "")
   checkNotNull(this.slug, "slug cannot be null", "")
   checkNotNull(this.contents, "contents cannot be null", "")
-
-  /**
-    * Sets the Markdown contents of this Page and updates the associated forum
-    * topic if this is the home page.
-    *
-    * @param contents Markdown contents
-    */
-  def updateContentsWithForum(
-      contents: String
-  )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi): IO[Page] = {
-    checkNotNull(contents, "null contents", "")
-    checkArgument(
-      (this.isHome && contents.length <= maxLength) || contents.length <= maxLengthPage,
-      "contents too long",
-      ""
-    )
-    val newPage = copy(contents = contents)
-    for {
-      updated <- service.update(newPage)
-      project <- ProjectOwned[Page].project(this)
-      // Contents were updated, update on forums
-      _ <- if (this.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
-      else IO.pure(false)
-    } yield updated
-  }
 
   /**
     * Returns the HTML representation of this Page.
@@ -112,10 +78,10 @@ case class Page private (
     *
     * @return Optional Project
     */
-  def parentProject[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Project#T, Project]): QOptRet =
+  def parentProject[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, ProjectTableMain, DbModel[Project]]): QOptRet =
     view.get(projectId)
 
-  def parentPage[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Page#T, Page]): Option[QOptRet] =
+  def parentPage[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, PageTable, DbModel[Page]]): Option[QOptRet] =
     parentId.map(view.get)
 
   /**
@@ -124,37 +90,17 @@ case class Page private (
     * @return String
     */
   def fullSlug(parentPage: Option[Page]): String = parentPage.fold(slug)(pp => s"${pp.slug}/$slug")
-
-  /**
-    * Returns access to this Page's children (if any).
-    *
-    * @return Page's children
-    */
-  def children[V[_, _]: QueryView](view: V[Page#T, Page]): V[Page#T, Page] =
-    view.filterView(page => page.parentId.isDefined && page.parentId.get === this.id.value)
-
-  def url(implicit project: Project, parentPage: Option[Page]): String =
-    project.url + "/pages/" + this.fullSlug(parentPage)
 }
 
-object Page {
+object Page extends DefaultDbModelCompanion[Page, PageTable](TableQuery[PageTable]) {
 
-  def partial(
-      projectId: DbRef[Project],
-      parentId: Option[DbRef[Page]],
-      name: String,
-      slug: String,
-      isDeletable: Boolean = true,
-      contents: String
-  ): InsertFunc[Page] = (id, time) => Page(id, time, projectId, parentId, name, slug, isDeletable, contents)
-
-  def partial(
+  def apply(
       projectId: DbRef[Project],
       name: String,
       content: String,
       isDeletable: Boolean,
       parentId: Option[DbRef[Page]]
-  ): InsertFunc[Page] = partial(
+  ): Page = Page(
     projectId = projectId,
     name = compact(name),
     slug = slugify(name),
@@ -164,7 +110,7 @@ object Page {
   )
 
   implicit val query: ModelQuery[Page] =
-    ModelQuery.from[Page](TableQuery[PageTable], _.copy(_, _))
+    ModelQuery.from(this)
 
   implicit val isProjectOwned: ProjectOwned[Page] = (a: Page) => a.projectId
 
@@ -305,5 +251,40 @@ object Page {
     * @return       Template
     */
   def template(title: String, body: String = ""): String = "# " + title + "\n" + body
+
+  implicit class PageModelOps(private val self: DbModel[Page]) extends AnyVal {
+
+    /**
+      * Sets the Markdown contents of this Page and updates the associated forum
+      * topic if this is the home page.
+      *
+      * @param contents Markdown contents
+      */
+    def updateContentsWithForum(
+        contents: String
+    )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi): IO[DbModel[Page]] = {
+      checkNotNull(contents, "null contents", "")
+      checkArgument(
+        (self.isHome && contents.length <= maxLength) || contents.length <= maxLengthPage,
+        "contents too long",
+        ""
+      )
+      for {
+        updated <- service.update(self)(_.copy(contents = contents))
+        project <- ProjectOwned[Page].project(self)
+        // Contents were updated, update on forums
+        _ <- if (self.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
+        else IO.pure(false)
+      } yield updated
+    }
+
+    /**
+      * Returns access to this Page's children (if any).
+      *
+      * @return Page's children
+      */
+    def children[V[_, _]: QueryView](view: V[PageTable, DbModel[Page]]): V[PageTable, DbModel[Page]] =
+      view.filterView(page => page.parentId.isDefined && page.parentId.get === self.id.value)
+  }
 
 }

@@ -2,6 +2,7 @@ package controllers.sugar
 
 import play.api.mvc.{Request, WrappedRequest}
 
+import db.DbModel
 import models.project.Project
 import models.user.{Organization, User}
 import models.viewhelper._
@@ -17,8 +18,8 @@ object Requests {
     */
   sealed trait OreRequest[A] extends WrappedRequest[A] {
     def headerData: HeaderData
-    def currentUser: Option[User] = headerData.currentUser
-    def hasUser: Boolean          = headerData.currentUser.isDefined
+    def currentUser: Option[DbModel[User]] = headerData.currentUser
+    def hasUser: Boolean                   = headerData.currentUser.isDefined
   }
 
   final class SimpleOreRequest[A](val headerData: HeaderData, val request: Request[A])
@@ -28,7 +29,7 @@ object Requests {
   /** Represents a Request with a [[User]] and subject */
   sealed trait ScopedRequest[A] extends OreRequest[A] {
     type Subject
-    def user: User
+    def user: DbModel[User]
     def subject: Subject
   }
   object ScopedRequest {
@@ -36,8 +37,8 @@ object Requests {
   }
 
   sealed trait UserScopedRequest[A] extends ScopedRequest[A] {
-    type Subject = User
-    def subject: User = user
+    type Subject = DbModel[User]
+    def subject: DbModel[User] = user
   }
   object UserScopedRequest {
     implicit def hasScope: HasScope[UserScopedRequest[_]] = (_: UserScopedRequest[_]) => GlobalScope
@@ -49,7 +50,7 @@ object Requests {
     * @param user     Authenticated user
     * @param request  Request to wrap
     */
-  final class AuthRequest[A](val user: User, val headerData: HeaderData, request: Request[A])
+  final class AuthRequest[A](val user: DbModel[User], val headerData: HeaderData, request: Request[A])
       extends WrappedRequest[A](request)
       with OreRequest[A]
       with UserScopedRequest[A]
@@ -69,7 +70,7 @@ object Requests {
   ) extends WrappedRequest[A](request)
       with OreRequest[A] {
 
-    def project: Project = data.project
+    def project: DbModel[Project] = data.project
   }
 
   /**
@@ -88,9 +89,9 @@ object Requests {
       with ScopedRequest[A]
       with OreRequest[A] {
 
-    type Subject = Project
-    override def user: User       = request.user
-    override val subject: Project = this.data.project
+    type Subject = DbModel[Project]
+    override def user: DbModel[User]       = request.user
+    override val subject: DbModel[Project] = this.data.project
   }
   object AuthedProjectRequest {
     implicit def hasScope: HasScope[AuthedProjectRequest[_]] = HasScope.projectScope(_.subject.id.value)
@@ -126,9 +127,9 @@ object Requests {
   ) extends OrganizationRequest[A](data, scoped, headerData, request)
       with ScopedRequest[A]
       with OreRequest[A] {
-    type Subject = Organization
-    override def user: User            = request.user
-    override val subject: Organization = this.data.orga
+    type Subject = DbModel[Organization]
+    override def user: DbModel[User]            = request.user
+    override val subject: DbModel[Organization] = this.data.orga
   }
   object AuthedOrganizationRequest {
     implicit def hasScope: HasScope[AuthedOrganizationRequest[_]] = HasScope.orgScope(_.subject.id.value)

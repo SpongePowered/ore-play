@@ -7,7 +7,7 @@ import play.api.mvc.Cookie
 import controllers.sugar.Bakery
 import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ObjId, ObjTimestamp}
+import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
 import models.project.DownloadWarning.COOKIE
 
 import com.github.tminglei.slickpg.InetString
@@ -18,28 +18,20 @@ import slick.lifted.TableQuery
   * Represents an instance of a warning that a client has landed on. Warnings
   * will expire and are associated with a certain inet address.
   *
-  * @param id           Unique ID
-  * @param createdAt    Instant of creation
   * @param expiration   Instant of expiration
   * @param token        Unique token for the client to identify by
   * @param versionId    Version ID the warning is for
   * @param address      Address of client who landed on the warning
   * @param downloadId  Download ID
   */
-case class DownloadWarning private (
-    id: ObjId[DownloadWarning],
-    createdAt: ObjTimestamp,
+case class DownloadWarning(
     expiration: Timestamp,
     token: String,
     versionId: DbRef[Version],
     address: InetString,
-    isConfirmed: Boolean,
+    isConfirmed: Boolean = false,
     downloadId: Option[DbRef[UnsafeDownload]]
-) extends Model
-    with Expirable {
-
-  override type M = DownloadWarning
-  override type T = DownloadWarningsTable
+) extends Expirable {
 
   /**
     * Creates a cookie that should be given to the client.
@@ -52,19 +44,11 @@ case class DownloadWarning private (
   }
 }
 
-object DownloadWarning {
-  def partial(
-      expiration: Timestamp,
-      token: String,
-      versionId: DbRef[Version],
-      address: InetString,
-      isConfirmed: Boolean = false,
-      downloadId: Option[DbRef[UnsafeDownload]]
-  ): InsertFunc[DownloadWarning] =
-    (id, time) => DownloadWarning(id, time, expiration, token, versionId, address, isConfirmed, downloadId)
+object DownloadWarning
+    extends DefaultDbModelCompanion[DownloadWarning, DownloadWarningsTable](TableQuery[DownloadWarningsTable]) {
 
   implicit val query: ModelQuery[DownloadWarning] =
-    ModelQuery.from[DownloadWarning](TableQuery[DownloadWarningsTable], _.copy(_, _))
+    ModelQuery.from(this)
 
   /**
     * Cookie identifier name.

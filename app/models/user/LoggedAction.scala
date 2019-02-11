@@ -4,7 +4,7 @@ import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
+import db.{DbModel, DbModelCompanionPartial, DbRef, ModelQuery, ModelService, ObjId, ObjTimestamp}
 import ore.StatTracker
 import ore.user.UserOwned
 
@@ -14,8 +14,6 @@ import enumeratum.values.{IntEnum, IntEnumEntry}
 import slick.lifted.TableQuery
 
 case class LoggedActionModel[Ctx] private (
-    id: ObjId[LoggedActionModel[Ctx]],
-    createdAt: ObjTimestamp,
     userId: DbRef[User],
     address: InetString,
     action: LoggedAction[Ctx],
@@ -23,30 +21,18 @@ case class LoggedActionModel[Ctx] private (
     actionContextId: DbRef[Ctx],
     newState: String,
     oldState: String
-) extends Model {
-
-  override type T = LoggedActionTable[Ctx]
-  override type M = LoggedActionModel[Ctx]
-}
-object LoggedActionModel {
-
-  def partial[Ctx](
-      userId: DbRef[User],
-      address: InetString,
-      action: LoggedAction[Ctx],
-      actionContext: LoggedActionContext[Ctx],
-      actionContextId: DbRef[Ctx],
-      newState: String,
-      oldState: String
-  ): InsertFunc[LoggedActionModel[Ctx]] =
-    (id, time) =>
-      LoggedActionModel(id, time, userId, address, action, actionContext, actionContextId, newState, oldState)
+)
+object LoggedActionModel
+    extends DbModelCompanionPartial[LoggedActionModel[_], LoggedActionTable[_]](TableQuery[LoggedActionTable[_]]) {
 
   implicit def query[Ctx]: ModelQuery[LoggedActionModel[Ctx]] =
-    ModelQuery.from[LoggedActionModel[Ctx]](
-      TableQuery[LoggedActionTable[Ctx]],
-      (obj, _, time) => obj.copy(createdAt = time)
-    )
+    ModelQuery.from(this)
+
+  override def asDbModel(
+      model: LoggedActionModel[_],
+      id: ObjId[LoggedActionModel[_]],
+      time: ObjTimestamp
+  ): DbModel[LoggedActionModel[_]] = DbModel(???, time, model)
 
   implicit val isUserOwned: UserOwned[LoggedActionModel[_]] = (a: LoggedActionModel[_]) => a.userId
 }
@@ -151,9 +137,9 @@ object UserActionLogger {
       actionContextId: DbRef[Ctx],
       newState: String,
       oldState: String
-  )(implicit service: ModelService): IO[LoggedActionModel[Ctx]] =
+  )(implicit service: ModelService): IO[DbModel[LoggedActionModel[Ctx]]] =
     service.insert(
-      LoggedActionModel.partial(
+      LoggedActionModel(
         request.user.id,
         InetString(StatTracker.remoteAddress(request)),
         action,

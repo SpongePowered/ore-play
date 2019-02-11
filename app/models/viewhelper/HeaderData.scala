@@ -4,7 +4,7 @@ import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
-import db.{DbRef, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import models.project.{ReviewState, Visibility}
 import models.user.User
 import ore.permission._
@@ -19,7 +19,7 @@ import slick.lifted.TableQuery
   * Holds global user specific data - When a User is not authenticated a dummy is used
   */
 case class HeaderData(
-    currentUser: Option[User] = None,
+    currentUser: Option[DbModel[User]] = None,
     private val globalPermissions: Map[Permission, Boolean] = Map.empty,
     hasNotice: Boolean = false,
     hasUnreadNotifications: Boolean = false,
@@ -58,7 +58,7 @@ object HeaderData {
 
   val unAuthenticated: HeaderData = HeaderData(None, noPerms)
 
-  def cacheKey(user: User) = s"""user${user.id}"""
+  def cacheKey(user: DbModel[User]) = s"""user${user.id}"""
 
   def of[A](request: Request[A])(
       implicit service: ModelService,
@@ -81,7 +81,7 @@ object HeaderData {
     }
   }
 
-  private def projectApproval(user: User) =
+  private def projectApproval(user: DbModel[User]) =
     TableQuery[ProjectTableMain]
       .filter(p => p.userId === user.id.value && p.visibility === (Visibility.NeedsApproval: Visibility))
       .exists
@@ -92,7 +92,7 @@ object HeaderData {
   private val flagQueue: Rep[Boolean] = TableQuery[FlagTable].filter(_.isResolved === false).exists
 
   private def getHeaderData(
-      user: User
+      user: DbModel[User]
   )(implicit service: ModelService, cs: ContextShift[IO]) = {
     perms(user).flatMap { perms =>
       val query = Query.apply(
@@ -119,7 +119,7 @@ object HeaderData {
     }
   }
 
-  def perms(user: User)(implicit service: ModelService, cs: ContextShift[IO]): IO[Map[Permission, Boolean]] =
+  def perms(user: DbModel[User])(implicit service: ModelService, cs: ContextShift[IO]): IO[Map[Permission, Boolean]] =
     Parallel.parMap2(user.trustIn(GlobalScope), user.globalRoles.allFromParent(user))(
       (t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*)
     )

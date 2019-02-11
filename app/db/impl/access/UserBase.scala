@@ -7,7 +7,7 @@ import play.api.mvc.Request
 
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{InsertFunc, ModelService}
+import db.{DbModel, ModelService}
 import models.user.{Organization, Session, User}
 import ore.OreConfig
 import ore.permission.Permission
@@ -34,9 +34,9 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     * @param username Username of user
     * @return User if found, None otherwise
     */
-  def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
-    ModelView.now[User].find(equalsIgnoreCase(_.name, username)).orElse {
-      auth.getUser(username).map(User.partialFromSponge).semiflatMap(res => service.insert(res))
+  def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, DbModel[User]] =
+    ModelView.now(User).find(equalsIgnoreCase(_.name, username)).orElse {
+      auth.getUser(username).map(User.fromSponge).semiflatMap(res => service.insert(res))
     }
 
   /**
@@ -48,15 +48,15 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     *
     * @return the requested user
     */
-  def requestPermission(user: User, name: String, perm: Permission)(
+  def requestPermission(user: DbModel[User], name: String, perm: Permission)(
       implicit auth: SpongeAuthApi,
       cs: ContextShift[IO],
       mdc: OreMDC
-  ): OptionT[IO, User] = {
+  ): OptionT[IO, DbModel[User]] = {
     this.withName(name).flatMap { toCheck =>
       if (user == toCheck) OptionT.pure[IO](user) // Same user
       else
-        toCheck.toMaybeOrganization(ModelView.now[Organization]).flatMap { orga =>
+        toCheck.toMaybeOrganization(ModelView.now(Organization)).flatMap { orga =>
           OptionT.liftF(user.can(perm).in(orga)).collect {
             case true => toCheck // Has Orga perm
           }
@@ -72,8 +72,12 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     *
     * @return     Found or new User
     */
-  def getOrCreate(username: String, user: InsertFunc[User], ifInsert: User => IO[Unit] = _ => IO.unit): IO[User] = {
-    def like = ModelView.now[User].find(_.name.toLowerCase === username.toLowerCase)
+  def getOrCreate(
+      username: String,
+      user: User,
+      ifInsert: DbModel[User] => IO[Unit] = _ => IO.unit
+  ): IO[DbModel[User]] = {
+    def like = ModelView.now(User).find(_.name.toLowerCase === username.toLowerCase)
 
     like.value.flatMap {
       case Some(u) => IO.pure(u)
@@ -88,11 +92,11 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     *
     * @return     Newly created session
     */
-  def createSession(user: User): IO[Session] = {
+  def createSession(user: User): IO[DbModel[Session]] = {
     val maxAge     = this.config.play.sessionMaxAge
     val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
     val token      = UUID.randomUUID().toString
-    service.insert(Session.partial(expiration, user.name, token))
+    service.insert(Session(expiration, user.name, token))
   }
 
   /**
@@ -102,8 +106,8 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     * @param token  Token of session
     * @return       Session if found and has not expired
     */
-  private def getSession(token: String): OptionT[IO, Session] =
-    ModelView.now[Session].find(_.token === token).flatMap { session =>
+  private def getSession(token: String): OptionT[IO, DbModel[Session]] =
+    ModelView.now(Session).find(_.token === token).flatMap { session =>
       if (session.hasExpired)
         OptionT(service.delete(session).as(None: Option[Session]))
       else
@@ -116,7 +120,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     * @param session  Current session
     * @return         Authenticated user, if any, None otherwise
     */
-  def current(implicit session: Request[_], authApi: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
+  def current(implicit session: Request[_], authApi: SpongeAuthApi, mdc: OreMDC): OptionT[IO, DbModel[User]] =
     OptionT
       .fromOption[IO](session.cookies.get("_oretoken"))
       .flatMap(cookie => getSession(cookie.value))

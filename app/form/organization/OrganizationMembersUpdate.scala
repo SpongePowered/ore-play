@@ -1,6 +1,6 @@
 package form.organization
 
-import db.{DbRef, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
 import ore.OreConfig
@@ -27,7 +27,7 @@ case class OrganizationMembersUpdate(
     roleUps: List[String]
 ) extends TOrganizationRoleSetBuilder {
 
-  def saveTo(organization: Organization)(
+  def saveTo(organization: DbModel[Organization])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[Unit] = {
@@ -42,9 +42,9 @@ case class OrganizationMembersUpdate(
       .build()
       .toVector
       .parTraverse_ { role =>
-        val addRole = dossier.addRole(organization, role.userId, role.copy(organizationId = orgId).asFunc)
+        val addRole = dossier.addRole(organization, role.userId, role.copy(organizationId = orgId))
         val sendNotif = service.insert(
-          Notification.partial(
+          Notification(
             userId = role.userId,
             originId = orgId,
             notificationType = NotificationType.OrganizationInvite,

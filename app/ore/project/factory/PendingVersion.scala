@@ -5,7 +5,7 @@ import scala.concurrent.ExecutionContext
 import play.api.cache.SyncCacheApi
 
 import db.access.ModelView
-import db.{DbRef, InsertFunc, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import db.impl.schema.VersionTable
 import db.impl.OrePostgresDriver.api._
 import models.project._
@@ -44,9 +44,12 @@ case class PendingVersion(
 ) extends Cacheable {
 
   def complete(
-      project: Project,
+      project: DbModel[Project],
       factory: ProjectFactory
-  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] =
+  )(
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
+  ): IO[(DbModel[Version], DbModel[Channel], Seq[DbModel[VersionTag]])] =
     free *> factory.createVersion(project, this)
 
   override def key: String = projectUrl + '/' + versionString
@@ -57,7 +60,7 @@ case class PendingVersion(
       Dependency(data(0), if (data.length > 1) data(1) else "")
     }
 
-  def dependenciesAsGhostTags: Seq[InsertFunc[VersionTag]] =
+  def dependenciesAsGhostTags: Seq[VersionTag] =
     Platform.ghostTags(-1L, dependencies)
 
   /**
@@ -78,16 +81,16 @@ case class PendingVersion(
 
     projectId.fold(IO.pure(false)) { projectId =>
       for {
-        project <- ModelView.now[Project].get(projectId).getOrElse(sys.error(s"No project found for id $projectId"))
+        project <- ModelView.now(Project).get(projectId).getOrElse(sys.error(s"No project found for id $projectId"))
         versionExistsQuery = project
-          .versions(ModelView.later[Version])
+          .versions(ModelView.later(Version))
           .exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
         res <- service.runDBIO(Query((hashExistsQuery, versionExistsQuery)).map(t => t._1 && t._2).result.head)
       } yield res
     }
   }
 
-  def asFunc(projectId: DbRef[Project], channelId: DbRef[Channel]): InsertFunc[Version] = Version.partial(
+  def asVersion(projectId: DbRef[Project], channelId: DbRef[Channel]): Version = Version(
     versionString = versionString,
     dependencyIds = dependencyIds,
     description = description,

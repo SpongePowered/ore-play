@@ -12,19 +12,11 @@ import play.twirl.api.Html
 
 import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.{Describable, Downloadable, Hideable, Named}
-import db.impl.schema.{
-  ProjectMembersTable,
-  ProjectRoleTable,
-  ProjectStarsTable,
-  ProjectTable,
-  ProjectTableMain,
-  ProjectWatchersTable
-}
-import db.{AssociationQuery, DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
+import db.impl.model.common.{Describable, Downloadable, Hideable, HideableOps, Named}
+import db.impl.schema._
+import db._
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
-import models.project.Visibility.Public
 import models.querymodels.ProjectNamespace
 import models.statistic.ProjectView
 import models.user.User
@@ -33,9 +25,8 @@ import ore.permission.role.Role
 import ore.permission.scope.HasScope
 import ore.project.{Category, FlagReason, ProjectMember}
 import ore.user.MembershipDossier
-import ore.{Joinable, OreConfig, Visitable}
+import ore.{Joinable, JoinableOps, OreConfig, Visitable}
 import _root_.util.StringUtils
-import _root_.util.StringUtils._
 import _root_.util.syntax._
 
 import cats.effect.{ContextShift, IO}
@@ -49,8 +40,6 @@ import slick.lifted.{Rep, TableQuery}
   *
   * <p>Note: As a general rule, do not handle actions / results in model classes</p>
   *
-  * @param id                     Unique identifier
-  * @param createdAt              Instant of creation
   * @param pluginId               Plugin ID
   * @param ownerName              The owner Author for this project
   * @param ownerId                User ID of Project owner
@@ -67,88 +56,30 @@ import slick.lifted.{Rep, TableQuery}
   * @param lastUpdated            Instant of last version release
   * @param notes                  JSON notes
   */
-case class Project private (
-    id: ObjId[Project],
-    createdAt: ObjTimestamp,
+case class Project(
     pluginId: String,
     ownerName: String,
     ownerId: DbRef[User],
     name: String,
     slug: String,
-    recommendedVersionId: Option[DbRef[Version]],
-    category: Category,
+    recommendedVersionId: Option[DbRef[Version]] = None,
+    category: Category = Category.Undefined,
     description: Option[String],
-    starCount: Long,
-    viewCount: Long,
-    downloadCount: Long,
-    topicId: Option[Int],
-    postId: Option[Int],
-    isTopicDirty: Boolean,
-    visibility: Visibility,
-    lastUpdated: Timestamp,
-    notes: JsValue
-) extends Model
-    with Downloadable
+    starCount: Long = 0,
+    viewCount: Long = 0,
+    downloadCount: Long = 0,
+    topicId: Option[Int] = None,
+    postId: Option[Int] = None,
+    isTopicDirty: Boolean = false,
+    visibility: Visibility = Visibility.Public,
+    lastUpdated: Timestamp = Timestamp.from(Instant.now()),
+    notes: JsValue = JsObject.empty
+) extends Downloadable
     with Named
     with Describable
     with Hideable
-    with Joinable[ProjectMember, Project]
+    with Joinable
     with Visitable {
-
-  override type M                     = Project
-  override type T                     = ProjectTable
-  override type ModelVisibilityChange = ProjectVisibilityChange
-
-  /**
-    * Contains all information for [[User]] memberships.
-    */
-  override def memberships(
-      implicit service: ModelService
-  ): MembershipDossier.Aux[IO, Project, ProjectUserRole, ProjectMember] =
-    MembershipDossier[IO, Project]
-
-  def isOwner(user: User): Boolean = user.id.value == ownerId
-
-  /**
-    * Returns the owner [[ProjectMember]] of this project.
-    *
-    * @return Owner Member of project
-    */
-  override def owner(implicit service: ModelService): ProjectMember = new ProjectMember(this, this.ownerId)
-
-  override def transferOwner(
-      member: ProjectMember
-  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Project] = {
-    // Down-grade current owner to "Developer"
-    import cats.instances.vector._
-    for {
-      t1 <- (this.owner.user, member.user).parTupled
-      (owner, user) = t1
-      t2 <- (this.memberships.getRoles(this, owner), this.memberships.getRoles(this, user)).parTupled
-      (ownerRoles, userRoles) = t2
-      setOwner <- this.setOwner(user)
-      _ <- ownerRoles
-        .filter(_.role == Role.ProjectOwner)
-        .toVector
-        .parTraverse(role => service.update(role.copy(role = Role.ProjectDeveloper)))
-      _ <- userRoles.toVector.parTraverse(role => service.update(role.copy(role = Role.ProjectOwner)))
-    } yield setOwner
-  }
-
-  /**
-    * Sets the [[User]] that owns this Project.
-    *
-    * @param user User that owns project
-    */
-  def setOwner(user: User)(implicit service: ModelService): IO[Project] = {
-    checkNotNull(user, "null user", "")
-    service.update(
-      copy(
-        ownerId = user.id,
-        ownerName = user.name
-      )
-    )
-  }
 
   /**
     * Returns ModelAccess to the user's who are watching this project.
@@ -170,65 +101,6 @@ case class Project private (
   override def url: String = namespace.toString
 
   /**
-    * Returns this [[Project]]'s [[ProjectSettings]].
-    *
-    * @return Project settings
-    */
-  def settings(implicit service: ModelService): IO[ProjectSettings] =
-    ModelView
-      .now[ProjectSettings]
-      .find(_.projectId === this.id.value)
-      .getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
-
-  /**
-    * Sets whether this project is visible.
-    *
-    * @param visibility True if visible
-    */
-  def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
-      implicit service: ModelService,
-      cs: ContextShift[IO]
-  ): IO[(Project, ProjectVisibilityChange)] = {
-    val updateOldChange = lastVisibilityChange(ModelView.now[ProjectVisibilityChange])
-      .semiflatMap { vc =>
-        service.update(
-          vc.copy(
-            resolvedAt = Some(Timestamp.from(Instant.now())),
-            resolvedBy = Some(creator)
-          )
-        )
-      }
-      .cata((), _ => ())
-
-    val createNewChange = service.insert(
-      ProjectVisibilityChange.partial(
-        Some(creator),
-        this.id,
-        comment,
-        None,
-        None,
-        visibility
-      )
-    )
-
-    val updateProject = service.update(
-      copy(
-        visibility = visibility
-      )
-    )
-
-    updateOldChange *> (updateProject, createNewChange).parTupled
-  }
-
-  /**
-    * Get VisibilityChanges
-    */
-  override def visibilityChanges[V[_, _]: QueryView](
-      view: V[ProjectVisibilityChange#T, ProjectVisibilityChange]
-  ): V[ProjectVisibilityChange#T, ProjectVisibilityChange] =
-    view.filterView(_.projectId === id.value)
-
-  /**
     * Returns [[db.access.ModelAssociationAccess]] to [[User]]s who have starred this
     * project.
     *
@@ -237,182 +109,6 @@ case class Project private (
   def stars(
       implicit service: ModelService
   ): ModelAssociationAccess[ProjectStarsTable, User, Project, IO] = new ModelAssociationAccessImpl
-
-  /**
-    * Sets the "starred" state of this Project for the specified User.
-    *
-    * @param user User to set starred state of
-    * @param starred True if should star
-    */
-  def setStarredBy(
-      user: User,
-      starred: Boolean
-  )(implicit service: ModelService): IO[Project] = {
-    checkNotNull(user, "null user", "")
-    for {
-      contains <- this.stars.contains(user, this)
-      res <- if (starred != contains) {
-        if (contains) stars.removeAssoc(user, this) *> service.update(copy(starCount = starCount - 1))
-        else stars.addAssoc(user, this) *> service.update(copy(starCount = starCount + 1))
-      } else IO.pure(this)
-    } yield res
-  }
-
-  /**
-    * Returns the record of unique Project views.
-    *
-    * @return Unique project views
-    */
-  def views[V[_, _]: QueryView](view: V[ProjectView#T, ProjectView]): V[ProjectView#T, ProjectView] =
-    view.filterView(_.modelId === id.value)
-
-  /**
-    * Adds a view to this Project.
-    */
-  def addView(implicit service: ModelService): IO[Project] =
-    service.update(copy(viewCount = viewCount + 1))
-
-  /**
-    * Increments this Project's downloadc count by one.
-    *
-    * @return IO result
-    */
-  def addDownload(implicit service: ModelService): IO[Project] =
-    service.update(copy(downloadCount = downloadCount + 1))
-
-  /**
-    * Returns all flags on this project.
-    *
-    * @return Flags on project
-    */
-  def flags[V[_, _]: QueryView](view: V[Flag#T, Flag]): V[Flag#T, Flag] =
-    view.filterView(_.projectId === id.value)
-
-  /**
-    * Submits a flag on this project for the specified user.
-    *
-    * @param user   Flagger
-    * @param reason Reason for flagging
-    */
-  def flagFor(user: User, reason: FlagReason, comment: String)(
-      implicit service: ModelService
-  ): IO[Flag] = {
-    checkNotNull(user, "null user", "")
-    checkNotNull(reason, "null reason", "")
-    val userId = user.id.value
-    checkArgument(userId != this.ownerId, "cannot flag own project", "")
-    service.insert(Flag.partial(this.id, user.id, reason, comment))
-  }
-
-  /**
-    * Returns the Channels in this Project.
-    *
-    * @return Channels in project
-    */
-  def channels[V[_, _]: QueryView](view: V[Channel#T, Channel]): V[Channel#T, Channel] =
-    view.filterView(_.projectId === id.value)
-
-  /**
-    * Returns all versions in this project.
-    *
-    * @return Versions in project
-    */
-  def versions[V[_, _]: QueryView](view: V[Version#T, Version]): V[Version#T, Version] =
-    view.filterView(_.projectId === id.value)
-
-  /**
-    * Returns this Project's recommended version.
-    *
-    * @return Recommended version
-    */
-  def recommendedVersion[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, Version#T, Version]): Option[QOptRet] =
-    recommendedVersionId.map(versions(view).get)
-
-  /**
-    * Returns the pages in this Project.
-    *
-    * @return Pages in project
-    */
-  def pages[V[_, _]: QueryView](view: V[Page#T, Page]): V[Page#T, Page] =
-    view.filterView(_.projectId === id.value)
-
-  private def getOrInsert(name: String, parentId: Option[DbRef[Page]])(
-      page: InsertFunc[Page]
-  )(implicit service: ModelService): IO[Page] = {
-    def like =
-      ModelView.now[Page].find { p =>
-        p.projectId === this.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
-          p.parentId.isEmpty
-        )(parentId => (p.parentId === parentId).getOrElse(false: Rep[Boolean]))
-      }
-
-    like.value.flatMap {
-      case Some(u) => IO.pure(u)
-      case None    => service.insert(page)
-    }
-  }
-
-  /**
-    * Returns this Project's home page.
-    *
-    * @return Project home page
-    */
-  def homePage(implicit service: ModelService, config: OreConfig): IO[Page] = {
-    val page =
-      Page.partial(this.id, Page.homeName, Page.template(this.name, Page.homeMessage), isDeletable = false, None)
-    getOrInsert(Page.homeName, None)(page)
-  }
-
-  /**
-    * Returns the specified Page or creates it if it doesn't exist.
-    *
-    * @param name   Page name
-    * @return       Page with name or new name if it doesn't exist
-    */
-  def getOrCreatePage(
-      name: String,
-      parentId: Option[DbRef[Page]],
-      content: Option[String] = None
-  )(implicit config: OreConfig, service: ModelService): IO[Page] = {
-    checkNotNull(name, "null name", "")
-    val c = content match {
-      case None => Page.template(name, Page.homeMessage)
-      case Some(text) =>
-        checkNotNull(text, "null contents", "")
-        checkArgument(text.length <= Page.maxLengthPage, "contents too long", "")
-        text
-    }
-    val page = Page.partial(this.id, name, c, isDeletable = true, parentId)
-    getOrInsert(name, parentId)(page)
-  }
-
-  /**
-    * Returns the parentless, root, pages for this project.
-    *
-    * @return Root pages of project
-    */
-  def rootPages[V[_, _]: QueryView](view: V[Page#T, Page]): V[Page#T, Page] =
-    view.sortView(_.name).filterView(p => p.projectId === this.id.value && p.parentId.isEmpty)
-
-  def logger(implicit service: ModelService): IO[ProjectLog] =
-    ModelView.now[ProjectLog].find(_.projectId === this.id.value).getOrElseF(service.insert(ProjectLog.partial(id)))
-
-  def apiKeys[V[_, _]: QueryView](view: V[ProjectApiKey#T, ProjectApiKey]): V[ProjectApiKey#T, ProjectApiKey] =
-    view.filterView(_.projectId === id.value)
-
-  /**
-    * Add new note
-    */
-  def addNote(message: Note)(implicit service: ModelService): IO[Project] = {
-    val messages = decodeNotes :+ message
-    service.update(
-      copy(
-        notes = JsObject(
-          Seq("messages" -> Json.toJson(messages))
-        )
-      )
-    )
-  }
 
   /**
     * Get all messages
@@ -443,60 +139,20 @@ object Note {
       .and((JsPath \ "time").read[Long])(Note.apply _)
 }
 
-object Project {
+object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQuery[ProjectTableMain]) {
 
-  def partial(
-      pluginId: String,
-      ownerName: String,
-      ownerId: DbRef[User],
-      name: String,
-      slug: String,
-      recommendedVersionId: Option[DbRef[Version]] = None,
-      category: Category = Category.Undefined,
-      description: Option[String] = None,
-      starCount: Long = 0,
-      viewCount: Long = 0,
-      downloadCount: Long = 0,
-      topicId: Option[Int] = None,
-      postId: Option[Int] = None,
-      isTopicDirty: Boolean = false,
-      visibility: Visibility = Public,
-      lastUpdated: Timestamp = Timestamp.from(Instant.now()),
-      notes: JsValue = JsObject.empty
-  ): InsertFunc[Project] =
-    (id, time) =>
-      Project(
-        id,
-        time,
-        pluginId,
-        ownerName,
-        ownerId,
-        compact(name),
-        slugify(slug),
-        recommendedVersionId,
-        category,
-        description,
-        starCount,
-        viewCount,
-        downloadCount,
-        topicId,
-        postId,
-        isTopicDirty,
-        visibility,
-        lastUpdated,
-        notes
-    )
+  implicit val query: ModelQuery[Project] = ModelQuery.from(this)
 
-  implicit val query: ModelQuery[Project] =
-    ModelQuery.from[Project](
-      TableQuery[ProjectTableMain],
-      (obj, id, time) => obj.copy(id = id, createdAt = time, lastUpdated = time)
-    )
+  override def asDbModel(
+      model: Project,
+      id: ObjId[Project],
+      time: ObjTimestamp
+  ): DbModel[Project] = DbModel(id, time, model.copy(lastUpdated = time))
 
   implicit val assocWatchersQuery: AssociationQuery[ProjectWatchersTable, Project, User] =
     AssociationQuery.from[ProjectWatchersTable, Project, User](TableQuery[ProjectWatchersTable])(_.projectId, _.userId)
 
-  implicit val hasScope: HasScope[Project] = HasScope.projectScope(_.id.value)
+  implicit val hasScope: HasScope[DbModel[Project]] = HasScope.projectScope(_.id)
 
   private def queryRoleForTrust(projectId: Rep[DbRef[Project]], userId: Rep[DbRef[User]]) = {
     val q = for {
@@ -507,4 +163,299 @@ object Project {
   }
 
   lazy val roleForTrustQuery = lifted.Compiled(queryRoleForTrust _)
+
+  implicit class ProjectModelOps(private val self: DbModel[Project])
+      extends AnyVal
+      with HideableOps[Project, ProjectVisibilityChange, ProjectVisibilityChangeTable]
+      with JoinableOps[Project, ProjectMember] {
+
+    /**
+      * Contains all information for [[User]] memberships.
+      */
+    override def memberships(
+        implicit service: ModelService
+    ): MembershipDossier.Aux[IO, Project, ProjectUserRole, ProjectRoleTable, ProjectMember] =
+      MembershipDossier[IO, Project]
+
+    def isOwner(user: DbModel[User]): Boolean = user.id.value == self.ownerId
+
+    /**
+      * Returns the owner [[ProjectMember]] of this project.
+      *
+      * @return Owner Member of project
+      */
+    override def owner(implicit service: ModelService): ProjectMember = new ProjectMember(self, self.ownerId)
+
+    override def transferOwner(
+        member: ProjectMember
+    )(implicit service: ModelService, cs: ContextShift[IO]): IO[DbModel[Project]] = {
+      // Down-grade current owner to "Developer"
+      import cats.instances.vector._
+      for {
+        t1 <- (this.owner.user, member.user).parTupled
+        (owner, user) = t1
+        t2 <- (this.memberships.getRoles(self, owner), this.memberships.getRoles(self, user)).parTupled
+        (ownerRoles, userRoles) = t2
+        setOwner <- this.setOwner(user)
+        _ <- ownerRoles
+          .filter(_.role == Role.ProjectOwner)
+          .toVector
+          .parTraverse(role => service.update(role)(_.copy(role = Role.ProjectDeveloper)))
+        _ <- userRoles.toVector.parTraverse(role => service.update(role)(_.copy(role = Role.ProjectOwner)))
+      } yield setOwner
+    }
+
+    /**
+      * Get VisibilityChanges
+      */
+    override def visibilityChanges[V[_, _]: QueryView](
+        view: V[ProjectVisibilityChangeTable, DbModel[ProjectVisibilityChange]]
+    ): V[ProjectVisibilityChangeTable, DbModel[ProjectVisibilityChange]] =
+      view.filterView(_.projectId === self.id.value)
+
+    /**
+      * Sets whether this project is visible.
+      *
+      * @param visibility True if visible
+      */
+    override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
+        implicit service: ModelService,
+        cs: ContextShift[IO]
+    ): IO[(DbModel[Project], DbModel[ProjectVisibilityChange])] = {
+      val updateOldChange = lastVisibilityChange(ModelView.now(ProjectVisibilityChange))
+        .semiflatMap { vc =>
+          service.update(vc)(
+            _.copy(
+              resolvedAt = Some(Timestamp.from(Instant.now())),
+              resolvedBy = Some(creator)
+            )
+          )
+        }
+        .cata((), _ => ())
+
+      val createNewChange = service.insert(
+        ProjectVisibilityChange(
+          Some(creator),
+          self.id,
+          comment,
+          None,
+          None,
+          visibility
+        )
+      )
+
+      val updateProject = service.update(self)(
+        _.copy(
+          visibility = visibility
+        )
+      )
+
+      updateOldChange *> (updateProject, createNewChange).parTupled
+    }
+
+    /**
+      * Sets the [[User]] that owns this Project.
+      *
+      * @param user User that owns project
+      */
+    def setOwner(user: DbModel[User])(implicit service: ModelService): IO[DbModel[Project]] = {
+      service.update(self)(
+        _.copy(
+          ownerId = user.id,
+          ownerName = user.name
+        )
+      )
+    }
+
+    /**
+      * Returns this [[Project]]'s [[ProjectSettings]].
+      *
+      * @return Project settings
+      */
+    def settings(implicit service: ModelService): IO[DbModel[ProjectSettings]] =
+      ModelView
+        .now(ProjectSettings)
+        .find(_.projectId === self.id.value)
+        .getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
+
+    /**
+      * Returns this Project's recommended version.
+      *
+      * @return Recommended version
+      */
+    def recommendedVersion[QOptRet, SRet[_]](
+        view: ModelView[QOptRet, SRet, VersionTable, DbModel[Version]]
+    ): Option[QOptRet] =
+      self.recommendedVersionId.map(versions(view).get)
+
+    /**
+      * Sets the "starred" state of this Project for the specified User.
+      *
+      * @param user User to set starred state of
+      * @param starred True if should star
+      */
+    def setStarredBy(
+        user: DbModel[User],
+        starred: Boolean
+    )(implicit service: ModelService): IO[Project] = {
+      checkNotNull(user, "null user", "")
+      for {
+        contains <- self.stars.contains(user, self)
+        res <- if (starred != contains) {
+          if (contains)
+            self.stars.removeAssoc(user, self) *> service.update(self)(_.copy(starCount = self.starCount - 1))
+          else self.stars.addAssoc(user, self) *> service.update(self)(_.copy(starCount = self.starCount + 1))
+        } else IO.pure(self)
+      } yield res
+    }
+
+    /**
+      * Returns the record of unique Project views.
+      *
+      * @return Unique project views
+      */
+    def views[V[_, _]: QueryView](
+        view: V[ProjectViewsTable, DbModel[ProjectView]]
+    ): V[ProjectViewsTable, DbModel[ProjectView]] =
+      view.filterView(_.modelId === self.id.value)
+
+    /**
+      * Adds a view to this Project.
+      */
+    def addView(implicit service: ModelService): IO[DbModel[Project]] =
+      service.update(self)(_.copy(viewCount = self.viewCount + 1))
+
+    /**
+      * Increments this Project's downloadc count by one.
+      *
+      * @return IO result
+      */
+    def addDownload(implicit service: ModelService): IO[DbModel[Project]] =
+      service.update(self)(_.copy(downloadCount = self.downloadCount + 1))
+
+    /**
+      * Returns all flags on this project.
+      *
+      * @return Flags on project
+      */
+    def flags[V[_, _]: QueryView](view: V[FlagTable, DbModel[Flag]]): V[FlagTable, DbModel[Flag]] =
+      view.filterView(_.projectId === self.id.value)
+
+    /**
+      * Submits a flag on this project for the specified user.
+      *
+      * @param user   Flagger
+      * @param reason Reason for flagging
+      */
+    def flagFor(user: DbModel[User], reason: FlagReason, comment: String)(
+        implicit service: ModelService
+    ): IO[DbModel[Flag]] = {
+      val userId = user.id.value
+      checkArgument(userId != self.ownerId, "cannot flag own project", "")
+      service.insert(Flag(self.id, user.id, reason, comment))
+    }
+
+    /**
+      * Returns the Channels in this Project.
+      *
+      * @return Channels in project
+      */
+    def channels[V[_, _]: QueryView](view: V[ChannelTable, DbModel[Channel]]): V[ChannelTable, DbModel[Channel]] =
+      view.filterView(_.projectId === self.id.value)
+
+    /**
+      * Returns all versions in this project.
+      *
+      * @return Versions in project
+      */
+    def versions[V[_, _]: QueryView](view: V[VersionTable, DbModel[Version]]): V[VersionTable, DbModel[Version]] =
+      view.filterView(_.projectId === self.id.value)
+
+    /**
+      * Returns the pages in this Project.
+      *
+      * @return Pages in project
+      */
+    def pages[V[_, _]: QueryView](view: V[PageTable, DbModel[Page]]): V[PageTable, DbModel[Page]] =
+      view.filterView(_.projectId === self.id.value)
+
+    private def getOrInsert(name: String, parentId: Option[DbRef[Page]])(
+        page: Page
+    )(implicit service: ModelService): IO[DbModel[Page]] = {
+      def like =
+        ModelView.now(Page).find { p =>
+          p.projectId === self.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
+            p.parentId.isEmpty
+          )(parentId => (p.parentId === parentId).getOrElse(false: Rep[Boolean]))
+        }
+
+      like.value.flatMap {
+        case Some(u) => IO.pure(u)
+        case None    => service.insert(page)
+      }
+    }
+
+    /**
+      * Returns this Project's home page.
+      *
+      * @return Project home page
+      */
+    def homePage(implicit service: ModelService, config: OreConfig): IO[DbModel[Page]] = {
+      val page = Page(self.id, Page.homeName, Page.template(self.name, Page.homeMessage), isDeletable = false, None)
+      getOrInsert(Page.homeName, None)(page)
+    }
+
+    /**
+      * Returns the specified Page or creates it if it doesn't exist.
+      *
+      * @param name   Page name
+      * @return       Page with name or new name if it doesn't exist
+      */
+    def getOrCreatePage(
+        name: String,
+        parentId: Option[DbRef[Page]],
+        content: Option[String] = None
+    )(implicit config: OreConfig, service: ModelService): IO[DbModel[Page]] = {
+      checkNotNull(name, "null name", "")
+      val c = content match {
+        case None => Page.template(name, Page.homeMessage)
+        case Some(text) =>
+          checkNotNull(text, "null contents", "")
+          checkArgument(text.length <= Page.maxLengthPage, "contents too long", "")
+          text
+      }
+      val page = Page(self.id, name, c, isDeletable = true, parentId)
+      getOrInsert(name, parentId)(page)
+    }
+
+    /**
+      * Returns the parentless, root, pages for this project.
+      *
+      * @return Root pages of project
+      */
+    def rootPages[V[_, _]: QueryView](view: V[PageTable, DbModel[Page]]): V[PageTable, DbModel[Page]] =
+      view.sortView(_.name).filterView(p => p.projectId === self.id.value && p.parentId.isEmpty)
+
+    def logger(implicit service: ModelService): IO[DbModel[ProjectLog]] =
+      ModelView.now(ProjectLog).find(_.projectId === self.id.value).getOrElseF(service.insert(ProjectLog(self.id)))
+
+    def apiKeys[V[_, _]: QueryView](
+        view: V[ProjectApiKeyTable, DbModel[ProjectApiKey]]
+    ): V[ProjectApiKeyTable, DbModel[ProjectApiKey]] =
+      view.filterView(_.projectId === self.id.value)
+
+    /**
+      * Add new note
+      */
+    def addNote(message: Note)(implicit service: ModelService): IO[DbModel[Project]] = {
+      val messages = self.decodeNotes :+ message
+      service.update(self)(
+        _.copy(
+          notes = JsObject(
+            Seq("messages" -> Json.toJson(messages))
+          )
+        )
+      )
+    }
+  }
 }

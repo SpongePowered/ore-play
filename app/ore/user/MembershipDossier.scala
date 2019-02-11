@@ -4,9 +4,10 @@ import scala.language.{higherKinds, implicitConversions}
 
 import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{OrganizationMembersTable, ProjectMembersTable}
+import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, ProjectMembersTable, ProjectRoleTable}
+import db.impl.table.common.RoleTable
 import db.table.AssociativeTable
-import db.{AssociationQuery, DbRef, InsertFunc, Model, ModelQuery, ModelService}
+import db.{AssociationQuery, DbModel, DbModelCompanion, DbRef, ModelQuery, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 import models.user.{Organization, User}
@@ -18,20 +19,21 @@ import cats.effect.IO
 import cats.syntax.all._
 
 /**
-  * Handles and keeps track of [[User]] "memberships" for an [[Model]].
+  * Handles and keeps track of [[User]] "memberships" for a model.
   */
-trait MembershipDossier[F[_], M <: Model] {
+trait MembershipDossier[F[_], M] {
   type RoleType <: UserRoleModel { type M = RoleType }
+  type RoleTypeTable <: RoleTable[RoleType]
   type MemberType <: Member[RoleType]
 
-  def roles(model: M): ModelView.Now[F, RoleType#T, RoleType]
+  def roles(model: DbModel[M]): ModelView.Now[F, RoleTypeTable, DbModel[RoleType]]
 
   /**
     * Clears the roles of a User
     *
     * @param user User instance
     */
-  def clearRoles(model: M, user: User): F[Int]
+  def clearRoles(model: DbModel[M], user: DbModel[User]): F[Int]
 
   /**
     * Constructs a new member object of the MemberType.
@@ -39,7 +41,7 @@ trait MembershipDossier[F[_], M <: Model] {
     * @param userId User ID of member
     * @return       New Member
     */
-  def newMember(model: M, userId: DbRef[User]): MemberType
+  def newMember(model: DbModel[M], userId: DbRef[User]): MemberType
 
   /**
     * Returns all members of the model. This includes members that have not
@@ -47,14 +49,14 @@ trait MembershipDossier[F[_], M <: Model] {
     *
     * @return All members
     */
-  def members(model: M): F[Set[MemberType]]
+  def members(model: DbModel[M]): F[Set[DbModel[MemberType]]]
 
   /**
     * Adds a new role to the dossier and adds the user as a member if not already.
     *
     * @param role Role to add
     */
-  def addRole(model: M, userId: DbRef[User], role: InsertFunc[RoleType]): F[RoleType]
+  def addRole(model: DbModel[M], userId: DbRef[User], role: RoleType): F[RoleType]
 
   /**
     * Returns all roles for the specified [[User]].
@@ -62,14 +64,14 @@ trait MembershipDossier[F[_], M <: Model] {
     * @param user User to get roles for
     * @return     User roles
     */
-  def getRoles(model: M, user: User): F[Set[RoleType]]
+  def getRoles(model: DbModel[M], user: DbModel[User]): F[Set[DbModel[RoleType]]]
 
   /**
     * Removes a role from the dossier and removes the member if last role.
     *
     * @param role Role to remove
     */
-  def removeRole(model: M, role: RoleType): F[Unit]
+  def removeRole(model: DbModel[M], role: DbModel[RoleType]): F[Unit]
 
   /**
     * Clears all user roles and removes the user from the dossier.
@@ -77,59 +79,63 @@ trait MembershipDossier[F[_], M <: Model] {
     * @param user User to remove
     * @return
     */
-  def removeMember(model: M, user: User): F[Unit]
+  def removeMember(model: DbModel[M], user: DbModel[User]): F[Unit]
 }
 
 object MembershipDossier {
 
-  type Aux[F[_], M <: Model, RoleType0 <: UserRoleModel, MemberType0 <: Member[RoleType0]] = MembershipDossier[F, M] {
-    type RoleType   = RoleType0
-    type MemberType = MemberType0
+  type Aux[F[_], M, RoleType0 <: UserRoleModel, RoleTypeTable0 <: RoleTable[RoleType0], MemberType0 <: Member[
+    RoleType0
+  ]] = MembershipDossier[F, M] {
+    type RoleType      = RoleType0
+    type RoleTypeTable = RoleTypeTable0
+    type MemberType    = MemberType0
   }
 
-  def apply[F[_], M <: Model](
+  def apply[F[_], M](
       implicit dossier: MembershipDossier[F, M]
-  ): Aux[F, M, dossier.RoleType, dossier.MemberType] = dossier
+  ): Aux[F, M, dossier.RoleType, dossier.RoleTypeTable, dossier.MemberType] = dossier
 
   abstract class AbstractMembershipDossier[
-      M0 <: Model { type M                = M0 }: ModelQuery,
-      RoleType0 <: UserRoleModel { type M = RoleType0 }: ModelQuery,
+      M0,
+      RoleType0 <: UserRoleModel: ModelQuery,
       MembersTable <: AssociativeTable[User, M0]
-  ](childFilter: (RoleType0#T, M0) => Rep[Boolean])(
+  ](model: DbModelCompanion[M0], roleType: DbModelCompanion[RoleType0])(childFilter: (roleType.T, M0) => Rep[Boolean])(
       implicit service: ModelService,
       assocQuery: AssociationQuery[MembersTable, User, M0],
       roleUserOwned: UserOwned[RoleType0]
   ) extends MembershipDossier[IO, M0] {
 
-    type RoleType = RoleType0
+    type RoleType      = RoleType0
+    type RoleTypeTable = roleType.T
 
     private def association: ModelAssociationAccess[MembersTable, User, M0, IO] =
-      new ModelAssociationAccessImpl
+      new ModelAssociationAccessImpl(User, model)
 
-    private def addMember(model: M0, user: User) =
+    private def addMember(model: DbModel[M0], user: DbModel[User]) =
       association.addAssoc(user, model)
 
-    def roles(model: M0): ModelView.Now[IO, RoleType#T, RoleType] =
-      ModelView.now[RoleType].filterView(childFilter(_, model))
+    def roles(model: DbModel[M0]): ModelView.Now[IO, RoleTypeTable, DbModel[RoleType]] =
+      ModelView.now(roleType).filterView(childFilter(_, model))
 
-    def members(model: M0): IO[Set[MemberType]] =
+    def members(model: DbModel[M0]): IO[Set[DbModel[MemberType]]] =
       association
         .allFromChild(model)
         .map(_.map(user => newMember(model, user.id)).toSet)
 
-    def addRole(model: M0, userId: DbRef[User], role: InsertFunc[RoleType]): IO[RoleType] = {
+    def addRole(model: DbModel[M0], userId: DbRef[User], role: RoleType): IO[RoleType] = {
       for {
-        user   <- ModelView.now[User].get(userId).getOrElseF(IO.raiseError(new Exception("Get on none")))
+        user   <- ModelView.now(User).get(userId).getOrElseF(IO.raiseError(new Exception("Get on none")))
         exists <- roles(model).exists(_.userId === user.id.value)
         _      <- if (!exists) addMember(model, user) else IO.pure(user)
         ret    <- service.insert(role)
       } yield ret
     }
 
-    def getRoles(model: M0, user: User): IO[Set[RoleType]] =
+    def getRoles(model: DbModel[M0], user: User): IO[Set[RoleType]] =
       service.runDBIO(roles(model).filterView(_.userId === user.id.value).query.to[Set].result)
 
-    def removeRole(model: M0, role: RoleType): IO[Unit] = {
+    def removeRole(model: DbModel[M0], role: DbModel[RoleType]): IO[Unit] = {
       for {
         _      <- service.delete(role)
         user   <- role.user
@@ -138,13 +144,13 @@ object MembershipDossier {
       } yield ()
     }
 
-    def removeMember(model: M0, user: User): IO[Unit] =
+    def removeMember(model: DbModel[M0], user: DbModel[User]): IO[Unit] =
       clearRoles(model, user) *> association.removeAssoc(user, model)
   }
 
   implicit def project(
       implicit service: ModelService
-  ): Aux[IO, Project, ProjectUserRole, ProjectMember] =
+  ): Aux[IO, Project, ProjectUserRole, ProjectRoleTable, ProjectMember] =
     new AbstractMembershipDossier[Project, ProjectUserRole, ProjectMembersTable](_.projectId === _.id.value) {
       override type MemberType = ProjectMember
 
@@ -156,7 +162,7 @@ object MembershipDossier {
 
   implicit def organization(
       implicit service: ModelService
-  ): Aux[IO, Organization, OrganizationUserRole, OrganizationMember] =
+  ): Aux[IO, Organization, OrganizationUserRole, OrganizationRoleTable, OrganizationMember] =
     new AbstractMembershipDossier[Organization, OrganizationUserRole, OrganizationMembersTable](
       _.organizationId === _.id.value
     ) {

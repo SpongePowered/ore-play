@@ -1,6 +1,6 @@
 package models.viewhelper
 
-import db.ModelService
+import db.{DbModel, ModelService}
 import db.access.ModelView
 import models.project.{Flag, Project}
 import models.user.{Organization, User}
@@ -15,19 +15,19 @@ import cats.syntax.all._
   */
 object ScopedProjectData {
 
-  def cacheKey(project: Project, user: User) = s"""project${project.id}foruser${user.id}"""
+  def cacheKey(project: DbModel[Project], user: DbModel[User]) = s"""project${project.id}foruser${user.id}"""
 
   def of(
-      currentUser: Option[User],
-      project: Project
+      currentUser: Option[DbModel[User]],
+      project: DbModel[Project]
   )(implicit service: ModelService, cs: ContextShift[IO]): IO[ScopedProjectData] = {
     currentUser
       .map { user =>
         (
           project.owner.user
-            .flatMap(_.toMaybeOrganization(ModelView.now[Organization]).value)
+            .flatMap(_.toMaybeOrganization(ModelView.now(Organization)).value)
             .flatMap(orgaOwner => user.can(PostAsOrganization) in orgaOwner),
-          user.hasUnresolvedFlagFor(project, ModelView.now[Flag]),
+          user.hasUnresolvedFlagFor(project, ModelView.now(Flag)),
           project.stars.contains(user, project),
           project.watchers.contains(project, user),
           user.trustIn(project),

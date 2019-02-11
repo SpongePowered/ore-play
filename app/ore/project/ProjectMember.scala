@@ -1,6 +1,6 @@
 package ore.project
 
-import db.{DbRef, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import models.project.Project
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -14,9 +14,9 @@ import cats.effect.IO
   * @param project  Project this Member is a part of
   * @param userId   Member user ID
   */
-class ProjectMember(val project: Project, val userId: DbRef[User]) extends Member[ProjectUserRole] {
+class ProjectMember(val project: DbModel[Project], val userId: DbRef[User]) extends Member[ProjectUserRole] {
 
-  override def roles(implicit service: ModelService): IO[Set[ProjectUserRole]] =
+  override def roles(implicit service: ModelService): IO[Set[DbModel[ProjectUserRole]]] =
     UserOwned[ProjectMember].user(this).flatMap(user => this.project.memberships.getRoles(project, user))
 
   /**
@@ -24,7 +24,7 @@ class ProjectMember(val project: Project, val userId: DbRef[User]) extends Membe
     *
     * @return Top role
     */
-  override def headRole(implicit service: ModelService): IO[ProjectUserRole] =
+  override def headRole(implicit service: ModelService): IO[DbModel[ProjectUserRole]] =
     this.roles.map(_.maxBy(_.role.trust))
 }
 object ProjectMember {

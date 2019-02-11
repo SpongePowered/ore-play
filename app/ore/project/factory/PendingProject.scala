@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 import play.api.cache.SyncCacheApi
 
 import db.access.ModelView
-import db.{DbRef, InsertFunc, ModelService}
+import db.{DbModel, DbRef, ModelService, ObjId}
 import models.project.{Project, ProjectSettings, Version, Visibility}
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -33,9 +33,9 @@ case class PendingProject(
     channelName: String,
     description: Option[String] = None,
     category: Category = Category.Undefined,
-    settings: ProjectSettings.Partial = ProjectSettings.Partial(),
+    settings: ProjectSettings = ProjectSettings(ObjId(0L)), //Filled in later
     var pendingVersion: PendingVersion,
-    roles: Set[ProjectUserRole.Partial] = Set(),
+    roles: Set[ProjectUserRole] = Set(),
     cacheApi: SyncCacheApi
 )(implicit val config: OreConfig)
     extends Cacheable {
@@ -44,19 +44,19 @@ case class PendingProject(
       implicit service: ModelService,
       ec: ExecutionContext,
       cs: ContextShift[IO]
-  ): IO[(Project, Version)] =
+  ): IO[(DbModel[Project], DbModel[Version])] =
     for {
       _              <- free
       newProject     <- factory.createProject(this)
       newVersion     <- factory.createVersion(newProject, this.pendingVersion)
-      updatedProject <- service.update(newProject.copy(recommendedVersionId = Some(newVersion._1.id)))
+      updatedProject <- service.update(newProject)(_.copy(recommendedVersionId = Some(newVersion._1.id)))
     } yield (updatedProject, newVersion._1)
 
-  def owner(implicit service: ModelService): IO[User] =
-    ModelView.now[User].get(ownerId).getOrElseF(IO.raiseError(new Exception("No owner for pending project")))
+  def owner(implicit service: ModelService): IO[DbModel[User]] =
+    ModelView.now(User).get(ownerId).getOrElseF(IO.raiseError(new Exception("No owner for pending project")))
 
-  def asFunc: InsertFunc[Project] =
-    Project.partial(
+  def asFunc: Project =
+    Project(
       pluginId,
       ownerName,
       ownerId,

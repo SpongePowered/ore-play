@@ -8,7 +8,7 @@ import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjTimestamp}
+import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import models.project.{Page, Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -20,41 +20,17 @@ import slick.lifted.TableQuery
 /**
   * Represents an approval instance of [[Project]] [[Version]].
   *
-  * @param id           Unique ID
-  * @param createdAt    When it was created
   * @param versionId    User who is approving
   * @param userId       User who is approving
   * @param endedAt      When the approval process ended
   * @param message      Message of why it ended
   */
-case class Review private (
-    id: ObjId[Review],
-    createdAt: ObjTimestamp,
+case class Review(
     versionId: DbRef[Version],
     userId: DbRef[User],
     endedAt: Option[Timestamp],
     message: JsValue
-) extends Model {
-
-  /** Self referential type */
-  override type M = Review
-
-  /** The model's table */
-  override type T = ReviewTable
-
-  /**
-    * Add new message
-    */
-  def addMessage(message: Message)(implicit service: ModelService): IO[Review] = {
-    val messages = decodeMessages :+ message
-    service.update(
-      copy(
-        message = JsObject(
-          Seq("messages" -> Json.toJson(messages))
-        )
-      )
-    )
-  }
+) {
 
   /**
     * Get all messages
@@ -88,22 +64,33 @@ object Message {
   )
 }
 
-object Review {
-  def partial(
-      versionId: DbRef[Version],
-      userId: DbRef[User],
-      endedAt: Option[Timestamp],
-      message: JsValue
-  ): InsertFunc[Review] = (id, time) => Review(id, time, versionId, userId, endedAt, message)
+object Review extends DefaultDbModelCompanion[Review, ReviewTable](TableQuery[ReviewTable]) {
 
-  def ordering: Ordering[(Review, _)] =
+  def ordering: Ordering[(DbModel[Review], _)] =
     // TODO make simple + check order
     Ordering.by(_._1.createdAt.getTime)
 
-  def ordering2: Ordering[Review] =
+  def ordering2: Ordering[DbModel[Review]] =
     // TODO make simple + check order
     Ordering.by(_.createdAt.getTime)
 
   implicit val query: ModelQuery[Review] =
-    ModelQuery.from[Review](TableQuery[ReviewTable], _.copy(_, _))
+    ModelQuery.from(this)
+
+  implicit class ReviewModelOps(private val self: DbModel[Review]) extends AnyVal {
+
+    /**
+      * Add new message
+      */
+    def addMessage(message: Message)(implicit service: ModelService): IO[DbModel[Review]] = {
+      val messages = self.decodeMessages :+ message
+      service.update(self)(
+        _.copy(
+          message = JsObject(
+            Seq("messages" -> Json.toJson(messages))
+          )
+        )
+      )
+    }
+  }
 }

@@ -1,12 +1,13 @@
 package ore.project.io
 import java.nio.file.{Files, Path}
 
+import db.DbModel
 import models.user.User
 
 import cats.effect.IO
 import org.apache.commons.codec.digest.DigestUtils
 
-class PluginFileWithData(val path: Path, val signaturePath: Path, val user: User, val data: PluginFileData) {
+class PluginFileWithData(val path: Path, val signaturePath: Path, val user: DbModel[User], val data: PluginFileData) {
 
   def delete: IO[Unit] = IO(Files.delete(path))
 

@@ -10,7 +10,7 @@ import play.api.mvc._
 
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
 import controllers.sugar.{Actions, Bakery, Requests}
-import db.ModelService
+import db.{DbModel, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
@@ -50,7 +50,7 @@ abstract class OreBaseController(
     * @param request  Incoming request
     * @return         NotFound or project
     */
-  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[IO, Result, Project] =
+  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[IO, Result, DbModel[Project]] =
     projects.withSlug(author, slug).toRight(notFound)
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
@@ -67,11 +67,11 @@ abstract class OreBaseController(
     * @param request        Incoming request
     * @return               NotFound or function result
     */
-  def getVersion(project: Project, versionString: String)(
+  def getVersion(project: DbModel[Project], versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Version] =
+  ): EitherT[IO, Result, DbModel[Version]] =
     project
-      .versions(ModelView.now[Version])
+      .versions(ModelView.now(Version))
       .find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
       .toRight(notFound)
 
@@ -87,7 +87,7 @@ abstract class OreBaseController(
     */
   def getProjectVersion(author: String, slug: String, versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Version] =
+  ): EitherT[IO, Result, DbModel[Version]] =
     for {
       project <- getProject(author, slug)
       version <- getVersion(project, versionString)

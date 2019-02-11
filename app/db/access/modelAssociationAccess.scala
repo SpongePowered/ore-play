@@ -4,48 +4,49 @@ import scala.language.higherKinds
 
 import db.impl.OrePostgresDriver.api._
 import db.table.AssociativeTable
-import db.{AssociationQuery, Model, ModelQuery, ModelService}
+import db.{AssociationQuery, DbModel, DbModelCompanion, ModelService}
 
 import cats.effect.IO
 import cats.syntax.all._
 
-trait ModelAssociationAccess[Assoc <: AssociativeTable[P, C], P <: Model { type M = P }, C <: Model { type M = C }, F[
-    _
-]] {
+trait ModelAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, F[_]] {
 
-  def addAssoc(parent: P, child: C): F[Unit]
+  protected val pComanion: DbModelCompanion[P]
+  protected val cComanion: DbModelCompanion[C]
 
-  def removeAssoc(parent: P, child: C): F[Unit]
+  def addAssoc(parent: DbModel[P], child: DbModel[C]): F[Unit]
 
-  def contains(parent: P, child: C): F[Boolean]
+  def removeAssoc(parent: DbModel[P], child: DbModel[C]): F[Unit]
 
-  def deleteAllFromParent(parent: P): F[Unit]
+  def contains(parent: DbModel[P], child: DbModel[C]): F[Boolean]
 
-  def deleteAllFromChild(child: C): F[Unit]
+  def deleteAllFromParent(parent: DbModel[P]): F[Unit]
 
-  def allQueryFromParent(parent: P): Query[C#T, C, Seq]
+  def deleteAllFromChild(child: DbModel[C]): F[Unit]
 
-  def allFromParent(parent: P): F[Seq[C]]
+  def allQueryFromParent(parent: DbModel[P]): Query[cComanion.T, DbModel[C], Seq]
 
-  def allQueryFromChild(child: C): Query[P#T, P, Seq]
+  def allFromParent(parent: DbModel[P]): F[Seq[DbModel[C]]]
 
-  def allFromChild(child: C): F[Seq[P]]
+  def allQueryFromChild(child: DbModel[C]): Query[pComanion.T, DbModel[P], Seq]
+
+  def allFromChild(child: DbModel[C]): F[Seq[DbModel[P]]]
 }
 
 class ModelAssociationAccessImpl[
     Assoc <: AssociativeTable[P, C],
-    P <: Model { type M = P }: ModelQuery,
-    C <: Model { type M = C }: ModelQuery
-](
+    P,
+    C
+](protected val pComanion: DbModelCompanion[P], protected val cCompanion: DbModelCompanion[C])(
     implicit
     query: AssociationQuery[Assoc, P, C],
     service: ModelService
 ) extends ModelAssociationAccess[Assoc, P, C, IO] {
 
-  def addAssoc(parent: P, child: C): IO[Unit] =
+  def addAssoc(parent: DbModel[P], child: DbModel[C]): IO[Unit] =
     service.runDBIO(query.baseQuery += ((parent.id, child.id))).void
 
-  def removeAssoc(parent: P, child: C): IO[Unit] =
+  def removeAssoc(parent: DbModel[P], child: DbModel[C]): IO[Unit] =
     service
       .runDBIO(
         query.baseQuery
@@ -54,31 +55,31 @@ class ModelAssociationAccessImpl[
       )
       .void
 
-  def contains(parent: P, child: C): IO[Boolean] = service.runDBIO(
+  def contains(parent: DbModel[P], child: DbModel[C]): IO[Boolean] = service.runDBIO(
     (query.baseQuery
       .filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === child.id.value)
       .length > 0).result
   )
 
-  override def deleteAllFromParent(parent: P): IO[Unit] =
+  override def deleteAllFromParent(parent: DbModel[P]): IO[Unit] =
     service.runDBIO(query.baseQuery.filter(query.parentRef(_) === parent.id.value).delete).void
 
-  override def deleteAllFromChild(child: C): IO[Unit] =
+  override def deleteAllFromChild(child: DbModel[C]): IO[Unit] =
     service.runDBIO(query.baseQuery.filter(query.childRef(_) === child.id.value).delete).void
 
-  override def allQueryFromParent(parent: P): Query[C#T, C, Seq] =
+  override def allQueryFromParent(parent: DbModel[P]): Query[cCompanion.T, DbModel[C], Seq] =
     for {
       assoc <- query.baseQuery if query.parentRef(assoc) === parent.id.value
-      child <- ModelQuery[C].baseQuery if query.childRef(assoc) === child.id
+      child <- cCompanion.baseQuery if query.childRef(assoc) === child.id
     } yield child
 
-  def allFromParent(parent: P): IO[Seq[C]] = service.runDBIO(allQueryFromParent(parent).result)
+  def allFromParent(parent: DbModel[P]): IO[Seq[DbModel[C]]] = service.runDBIO(allQueryFromParent(parent).result)
 
-  override def allQueryFromChild(child: C): Query[P#T, P, Seq] =
+  override def allQueryFromChild(child: DbModel[C]): Query[pComanion.T, DbModel[P], Seq] =
     for {
       assoc  <- query.baseQuery if query.childRef(assoc) === child.id.value
-      parent <- ModelQuery[P].baseQuery if query.parentRef(assoc) === parent.id
+      parent <- pComanion.baseQuery if query.parentRef(assoc) === parent.id
     } yield parent
 
-  def allFromChild(child: C): IO[Seq[P]] = service.runDBIO(allQueryFromChild(child).result)
+  def allFromChild(child: DbModel[C]): IO[Seq[DbModel[P]]] = service.runDBIO(allQueryFromChild(child).result)
 }

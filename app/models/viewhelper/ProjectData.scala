@@ -2,7 +2,7 @@ package models.viewhelper
 
 import play.twirl.api.Html
 
-import db.ModelService
+import db.{DbModel, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, UserTable}
@@ -24,22 +24,22 @@ import slick.lifted.TableQuery
   * Holds ProjetData that is the same for all users
   */
 case class ProjectData(
-    joinable: Project,
-    projectOwner: User,
+    joinable: DbModel[Project],
+    projectOwner: DbModel[User],
     publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
-    settings: ProjectSettings,
-    members: Seq[(ProjectUserRole, User)],
+    settings: DbModel[ProjectSettings],
+    members: Seq[(DbModel[ProjectUserRole], DbModel[User])],
     projectLogSize: Int,
-    flags: Seq[(Flag, String, Option[String])], // (Flag, user.name, resolvedBy)
+    flags: Seq[(DbModel[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
     noteCount: Int, // getNotes.size
     lastVisibilityChange: Option[ProjectVisibilityChange],
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
-    recommendedVersion: Option[Version]
+    recommendedVersion: Option[DbModel[Version]]
 ) extends JoinableData[ProjectUserRole, ProjectMember, Project] {
 
   def flagCount: Int = flags.size
 
-  def project: Project = joinable
+  def project: DbModel[Project] = joinable
 
   def visibility: Visibility = project.visibility
 
@@ -52,14 +52,14 @@ case class ProjectData(
 
 object ProjectData {
 
-  def cacheKey(project: Project): String = "project" + project.id
+  def cacheKey(project: DbModel[Project]): String = "project" + project.id
 
-  def of[A](project: Project)(
+  def of[A](project: DbModel[Project])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[ProjectData] = {
     val flagsWithNames = project
-      .flags(ModelView.later[Flag])
+      .flags(ModelView.later(Flag))
       .query
       .join(TableQuery[UserTable])
       .on(_.userId === _.id)
@@ -70,7 +70,7 @@ object ProjectData {
           (flag, user.name, resolver.map(_.name))
       }
 
-    val lastVisibilityChangeQ = project.lastVisibilityChange(ModelView.later[ProjectVisibilityChange])
+    val lastVisibilityChangeQ = project.lastVisibilityChange(ModelView.later(ProjectVisibilityChange))
     val lastVisibilityChangeUserWithUser =
       lastVisibilityChangeQ.joinLeft(TableQuery[UserTable]).on((t1, t2) => t1.createdBy === t2.id).map {
         case (lastVisibilityChange, changer) =>
@@ -80,12 +80,12 @@ object ProjectData {
     (
       project.settings,
       project.owner.user,
-      project.versions(ModelView.now[Version]).count(_.visibility === (Visibility.Public: Visibility)),
+      project.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
-      project.logger.flatMap(log => log.entries(ModelView.now[ProjectLogEntry]).size),
+      project.logger.flatMap(log => log.entries(ModelView.now(ProjectLogEntry)).size),
       service.runDBIO(flagsWithNames.result),
       service.runDBIO(lastVisibilityChangeUserWithUser.result.headOption),
-      project.recommendedVersion(ModelView.now[Version]).getOrElse(OptionT.none[IO, Version]).value
+      project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[IO, DbModel[Version]]).value
     ).parMapN {
       case (
           settings,
@@ -116,8 +116,8 @@ object ProjectData {
   }
 
   def members(
-      project: Project
-  )(implicit service: ModelService): IO[Seq[(ProjectUserRole, User)]] = {
+      project: DbModel[Project]
+  )(implicit service: ModelService): IO[Seq[(DbModel[ProjectUserRole], DbModel[User])]] = {
     val query = for {
       r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
       u <- TableQuery[UserTable] if r.userId === u.id

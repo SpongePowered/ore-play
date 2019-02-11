@@ -1,8 +1,9 @@
 package form.project
 
-import db.ModelService
+import db.{DbModel, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
+import db.impl.schema.ChannelTable
 import models.project.{Channel, Project}
 import ore.project.factory.ProjectFactory
 import ore.{Color, OreConfig}
@@ -40,9 +41,9 @@ trait TChannelData {
     * @return         Either the new channel or an error message
     */
   def addTo(
-      project: Project
-  )(implicit service: ModelService): EitherT[IO, List[String], Channel] = {
-    val dbChannels = project.channels(ModelView.later[Channel])
+      project: DbModel[Project]
+  )(implicit service: ModelService): EitherT[IO, List[String], DbModel[Channel]] = {
+    val dbChannels = project.channels(ModelView.later(Channel))
     val conditions = (
       dbChannels.size <= config.ore.projects.maxChannels,
       dbChannels.forall(!equalsIgnoreCase[Channel#T](_.name, this.channelName)(_)),
@@ -73,14 +74,14 @@ trait TChannelData {
     * @return         Error, if any
     */
   def saveTo(
-      project: Project,
+      project: DbModel[Project],
       oldName: String
   )(implicit service: ModelService): EitherT[IO, List[String], Unit] = {
-    val otherDbChannels = project.channels(ModelView.later[Channel]).filterView(_.name =!= oldName)
-    val query = project.channels(ModelView.raw[Channel]).filter(_.name === oldName).map { channel =>
+    val otherDbChannels = project.channels(ModelView.later(Channel)).filterView(_.name =!= oldName)
+    val query = project.channels(ModelView.raw(Channel)).filter(_.name === oldName).map { channel =>
       (
         channel,
-        otherDbChannels.forall(!equalsIgnoreCase[Channel#T](_.name, this.channelName)(_)),
+        otherDbChannels.forall(!equalsIgnoreCase[ChannelTable](_.name, this.channelName)(_)),
         otherDbChannels.forall(_.color =!= this.color),
         otherDbChannels.count(!_.isNonReviewed) < 1 && nonReviewed
       )
