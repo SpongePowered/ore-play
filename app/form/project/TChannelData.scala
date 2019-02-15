@@ -74,8 +74,8 @@ trait TChannelData {
     * @return         Error, if any
     */
   def saveTo(
-              project: Model[Project],
-              oldName: String
+      project: Model[Project],
+      oldName: String
   )(implicit service: ModelService): EitherT[IO, List[String], Unit] = {
     val otherDbChannels = project.channels(ModelView.later(Channel)).filterView(_.name =!= oldName)
     val query = project.channels(ModelView.raw(Channel)).filter(_.name === oldName).map { channel =>

@@ -6,8 +6,9 @@ import java.util.Date
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.OrePostgresDriver.api._
 
-import cats.effect.IO
-import cats.syntax.all._
+import cats.arrow.FunctionK
+import cats.effect.{Clock, IO}
+import cats.~>
 import doobie.ConnectionIO
 
 /**
@@ -27,6 +28,9 @@ abstract class ModelService {
   def projectBase: ProjectBase
 
   def organizationBase: OrganizationBase
+
+  private val runDBIOFunc: DBIO ~> IO   = FunctionK.lift(runDBIO)
+  implicit private val clock: Clock[IO] = Clock.create[IO]
 
   /**
     * Runs the specified DBIO on the DB.
@@ -50,15 +54,7 @@ abstract class ModelService {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M](model: M)(implicit query: ModelQuery[M]): IO[Model[M]] = {
-    val toInsert = query.asDbModel(model)(new ObjId.UnsafeUninitialized, ObjTimestamp(theTime))
-    val models   = query.baseQuery
-    runDBIO {
-      models.returning(models.map(_.id)).into {
-        case (m, id) => query.asDbModel(m)(ObjId(id), m.createdAt)
-      } += toInsert
-    }
-  }
+  def insert[M](model: M)(implicit query: ModelQuery[M]): IO[Model[M]] = query.companion.insert(model)(runDBIOFunc)
 
   /**
     * Creates the specified models in it's table.
@@ -67,28 +63,17 @@ abstract class ModelService {
     * @return       Newly created models
     */
   def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[Model[M]]] =
-    if (models.nonEmpty) {
-      val toInsert = models.map(query.asDbModel(_)(new ObjId.UnsafeUninitialized, ObjTimestamp(theTime)))
-      val action   = query.baseQuery
-      runDBIO {
-        action
-          .returning(action.map(_.id))
-          .into((m, id) => query.asDbModel(m)(ObjId(id), m.createdAt)) ++= toInsert
-      }
-    } else IO.pure(Nil)
+    query.companion.bulkInsert(models)(runDBIOFunc)
 
-  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): IO[Model[M]] = {
-    val updatedModel = model.copy(obj = update(model.obj))
-    runDBIO(query.baseQuery.filter(_.id === model.id.value).update(updatedModel)).as(updatedModel)
-  }
+  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): IO[Model[M]] =
+    query.companion.update(model)(update)(runDBIOFunc)
 
   /**
     * Deletes the specified Model.
     *
     * @param model Model to delete
     */
-  def delete[M](model: Model[M])(implicit query: ModelQuery[M]): IO[Int] =
-    deleteWhere(query.companion)(_.id === model.id.value)
+  def delete[M](model: Model[M])(implicit query: ModelQuery[M]): IO[Int] = query.companion.delete(model)(runDBIOFunc)
 
   /**
     * Deletes all the models meeting the specified filter.
@@ -97,5 +82,5 @@ abstract class ModelService {
     * @tparam M         Model
     */
   def deleteWhere[M](model: DbModelCompanion[M])(filter: model.T => Rep[Boolean]): IO[Int] =
-    runDBIO(model.baseQuery.filter(filter).delete)
+    model.deleteWhere(filter)(runDBIOFunc)
 }

@@ -36,8 +36,8 @@ trait ModelAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, PT <: ModelT
 }
 
 class ParentAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, PT <: ModelTable[P], CT <: ModelTable[C], F[_]](
-                                                                                                                      parent: Model[P],
-                                                                                                                      val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
+    parent: Model[P],
+    val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
 ) {
 
   def addAssoc(child: Model[C]): F[Unit] = base.addAssoc(parent, child)
@@ -54,8 +54,8 @@ class ParentAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, PT <: Model
 }
 
 class ChildAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, PT <: ModelTable[P], CT <: ModelTable[C], F[_]](
-                                                                                                                     child: Model[C],
-                                                                                                                     val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
+    child: Model[C],
+    val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
 ) {
   def addAssoc(parent: Model[P]): F[Unit] = base.addAssoc(parent, child)
 

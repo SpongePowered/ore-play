@@ -297,8 +297,8 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       * @param starred True if should star
       */
     def setStarredBy(
-                      user: Model[User],
-                      starred: Boolean
+        user: Model[User],
+        starred: Boolean
     )(implicit service: ModelService): IO[Project] = {
       checkNotNull(user, "null user", "")
       for {

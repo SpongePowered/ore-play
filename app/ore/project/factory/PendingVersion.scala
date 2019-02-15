@@ -44,8 +44,8 @@ case class PendingVersion(
 ) extends Cacheable {
 
   def complete(
-                project: Model[Project],
-                factory: ProjectFactory
+      project: Model[Project],
+      factory: ProjectFactory
   )(
       implicit ec: ExecutionContext,
       cs: ContextShift[IO]

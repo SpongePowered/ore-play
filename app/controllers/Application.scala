@@ -341,10 +341,10 @@ final class Application @Inject()(forms: OreForms)(
           val orgDossier = MembershipDossier.organization
 
           def updateRoleTable[M0 <: UserRoleModel[M0]: ModelQuery](model: DbModelCompanion[M0])(
-            modelAccess: ModelView.Now[IO, model.T, Model[M0]],
-            allowedCategory: RoleCategory,
-            ownerType: Role,
-            transferOwner: Model[M0] => IO[Model[M0]]
+              modelAccess: ModelView.Now[IO, model.T, Model[M0]],
+              allowedCategory: RoleCategory,
+              ownerType: Role,
+              transferOwner: Model[M0] => IO[Model[M0]]
           ) = {
             val id = (json \ "id").as[DbRef[M0]]
             action match {

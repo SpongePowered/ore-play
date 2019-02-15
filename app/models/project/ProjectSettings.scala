@@ -1,12 +1,13 @@
 package models.project
 
+import java.nio.file.Files
 import java.nio.file.Files._
 
 import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{DbRef, DefaultDbModelCompanion, Model, ModelQuery, ModelService}
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
 import ore.permission.role.Role
@@ -150,7 +151,7 @@ object ProjectSettings
             val iconDir = fileManager.getIconDir(project.ownerName, project.name)
             if (notExists(iconDir))
               createDirectories(iconDir)
-            list(iconDir).forEach(delete(_))
+            list(iconDir).forEach(Files.delete(_))
             move(pendingPath, iconDir.resolve(pendingPath.getFileName))
           }
         }

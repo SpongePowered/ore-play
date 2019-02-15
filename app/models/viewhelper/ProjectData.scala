@@ -23,17 +23,17 @@ import slick.lifted.TableQuery
   * Holds ProjetData that is the same for all users
   */
 case class ProjectData(
-                        joinable: Model[Project],
-                        projectOwner: Model[User],
-                        publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
-                        settings: Model[ProjectSettings],
-                        members: Seq[(Model[ProjectUserRole], Model[User])],
-                        projectLogSize: Int,
-                        flags: Seq[(Model[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
-                        noteCount: Int, // getNotes.size
-                        lastVisibilityChange: Option[ProjectVisibilityChange],
-                        lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
-                        recommendedVersion: Option[Model[Version]]
+    joinable: Model[Project],
+    projectOwner: Model[User],
+    publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
+    settings: Model[ProjectSettings],
+    members: Seq[(Model[ProjectUserRole], Model[User])],
+    projectLogSize: Int,
+    flags: Seq[(Model[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
+    noteCount: Int, // getNotes.size
+    lastVisibilityChange: Option[ProjectVisibilityChange],
+    lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
+    recommendedVersion: Option[Model[Version]]
 ) extends JoinableData[ProjectUserRole, Project] {
 
   def flagCount: Int = flags.size

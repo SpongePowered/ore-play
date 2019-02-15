@@ -174,8 +174,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @param watching True if watching
       */
     def setWatching(
-                     project: Model[Project],
-                     watching: Boolean
+        project: Model[Project],
+        watching: Boolean
     )(implicit service: ModelService): IO[Unit] = {
       val contains = self.watching.contains(project)
       contains.flatMap {
@@ -284,8 +284,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return True if has pending flag on Project
       */
     def hasUnresolvedFlagFor[QOptRet, SRet[_]](
-                                                project: Model[Project],
-                                                view: ModelView[QOptRet, SRet, FlagTable, Model[Flag]]
+        project: Model[Project],
+        view: ModelView[QOptRet, SRet, FlagTable, Model[Flag]]
     ): SRet[Boolean] =
       flags(view).exists(f => f.projectId === project.id.value && !f.isResolved)
 

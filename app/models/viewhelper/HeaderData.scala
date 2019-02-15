@@ -19,13 +19,13 @@ import slick.lifted.TableQuery
   * Holds global user specific data - When a User is not authenticated a dummy is used
   */
 case class HeaderData(
-                       currentUser: Option[Model[User]] = None,
-                       private val globalPermissions: Map[Permission, Boolean] = Map.empty,
-                       hasNotice: Boolean = false,
-                       hasUnreadNotifications: Boolean = false,
-                       unresolvedFlags: Boolean = false,
-                       hasProjectApprovals: Boolean = false,
-                       hasReviewQueue: Boolean = false // queue.nonEmpty
+    currentUser: Option[Model[User]] = None,
+    private val globalPermissions: Map[Permission, Boolean] = Map.empty,
+    hasNotice: Boolean = false,
+    hasUnreadNotifications: Boolean = false,
+    unresolvedFlags: Boolean = false,
+    hasProjectApprovals: Boolean = false,
+    hasReviewQueue: Boolean = false // queue.nonEmpty
 ) {
 
   // Just some helpers in templates:

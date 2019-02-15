@@ -161,11 +161,11 @@ trait OreRestfulApi extends OreWrites {
   }
 
   def writeVersion(
-                    v: Model[Version],
-                    p: Project,
-                    c: Channel,
-                    author: Option[String],
-                    tags: Seq[Model[VersionTag]]
+      v: Model[Version],
+      p: Project,
+      c: Channel,
+      author: Option[String],
+      tags: Seq[Model[VersionTag]]
   ): JsObject = {
     val dependencies: List[JsObject] = v.dependencies.map { dependency =>
       obj("pluginId" -> dependency.pluginId, "version" -> dependency.version)

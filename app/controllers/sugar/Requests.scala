@@ -19,7 +19,7 @@ object Requests {
   sealed trait OreRequest[A] extends WrappedRequest[A] {
     def headerData: HeaderData
     def currentUser: Option[Model[User]] = headerData.currentUser
-    def hasUser: Boolean                   = headerData.currentUser.isDefined
+    def hasUser: Boolean                 = headerData.currentUser.isDefined
   }
 
   final class SimpleOreRequest[A](val headerData: HeaderData, val request: Request[A])

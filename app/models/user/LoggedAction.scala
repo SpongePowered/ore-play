@@ -1,16 +1,21 @@
 package models.user
 
+import scala.language.higherKinds
+
 import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{DbRef, DefaultDbModelCompanion, Model, ModelQuery, ModelService}
 import ore.StatTracker
 import ore.user.UserOwned
 
-import cats.effect.IO
+import cats.{Monad, ~>}
+import cats.effect.{Clock, IO}
+import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
+import slick.dbio.DBIO
 import slick.lifted.TableQuery
 
 case class LoggedActionModel[Ctx] private (
@@ -143,5 +148,25 @@ object UserActionLogger {
         oldState
       )
     )
+
+  def logF[Ctx, F[_]: Monad: Clock](
+      request: AuthRequest[_],
+      action: LoggedAction[Ctx],
+      actionContextId: DbRef[Ctx],
+      newState: String,
+      oldState: String
+  )(runDBIO: DBIO ~> F): F[Model[LoggedActionModel[Ctx]]] = {
+    LoggedActionModel.insert(
+      LoggedActionModel(
+        request.user.id,
+        InetString(StatTracker.remoteAddress(request)),
+        action,
+        action.context,
+        actionContextId,
+        newState,
+        oldState
+      )
+    )(runDBIO)
+  }.map(_.asInstanceOf[Model[LoggedActionModel[Ctx]]])
 
 }

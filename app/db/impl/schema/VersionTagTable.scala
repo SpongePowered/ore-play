@@ -18,8 +18,7 @@ class VersionTagTable(tag: Tag)
   def color     = column[TagColor]("color")
 
   override def * = {
-    val convertedApply
-      : ((Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)) => Model[VersionTag] = {
+    val convertedApply: ((Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)) => Model[VersionTag] = {
       case (id, versionIds, name, data, color) =>
         Model(
           ObjId.unsafeFromOption(id),

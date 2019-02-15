@@ -159,9 +159,9 @@ final class Reviews @Inject()(forms: OreForms)(
   private lazy val notificationUsersQuery = Compiled(queryNotificationUsers _)
 
   private def sendReviewNotification(
-                                      project: Model[Project],
-                                      version: Version,
-                                      requestUser: Model[User]
+      project: Model[Project],
+      version: Version,
+      requestUser: Model[User]
   ): IO[Unit] = {
     val usersF =
       service.runDBIO(notificationUsersQuery((project.id, version.authorId, None)).result).map { list =>

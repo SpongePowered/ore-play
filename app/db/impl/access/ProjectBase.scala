@@ -148,8 +148,8 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @param name     New name to assign Project
     */
   def rename(
-              project: Model[Project],
-              name: String
+      project: Model[Project],
+      name: String
   )(implicit forums: OreDiscourseApi): IO[Boolean] = {
     val newName = compact(name)
     val newSlug = slugify(newName)

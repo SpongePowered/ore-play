@@ -12,11 +12,11 @@ import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 
 case class VersionData(
-                        p: ProjectData,
-                        v: Model[Version],
-                        c: Model[Channel],
-                        approvedBy: Option[String], // Reviewer if present
-                        dependencies: Seq[(Dependency, Option[Model[Project]])]
+    p: ProjectData,
+    v: Model[Version],
+    c: Model[Channel],
+    approvedBy: Option[String], // Reviewer if present
+    dependencies: Seq[(Dependency, Option[Model[Project]])]
 ) {
 
   def isRecommended: Boolean = p.project.recommendedVersionId.contains(v.id.value)

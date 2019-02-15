@@ -16,9 +16,9 @@ import cats.syntax.all._
 import slick.lifted.TableQuery
 
 case class OrganizationData(
-                             joinable: Model[Organization],
-                             members: Seq[(Model[OrganizationUserRole], Model[User])], // TODO sorted/reverse
-                             projectRoles: Seq[(Model[ProjectUserRole], Model[Project])]
+    joinable: Model[Organization],
+    members: Seq[(Model[OrganizationUserRole], Model[User])], // TODO sorted/reverse
+    projectRoles: Seq[(Model[ProjectUserRole], Model[Project])]
 ) extends JoinableData[OrganizationUserRole, Organization] {
 
   def orga: Model[Organization] = joinable

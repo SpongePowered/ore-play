@@ -18,8 +18,8 @@ object ScopedProjectData {
   def cacheKey(project: Model[Project], user: Model[User]) = s"""project${project.id}foruser${user.id}"""
 
   def of(
-          currentUser: Option[Model[User]],
-          project: Model[Project]
+      currentUser: Option[Model[User]],
+      project: Model[Project]
   )(implicit service: ModelService, cs: ContextShift[IO]): IO[ScopedProjectData] = {
     currentUser
       .map { user =>

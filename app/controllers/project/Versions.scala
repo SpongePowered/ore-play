@@ -825,10 +825,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
 
   private def sendJar(
-                       project: Model[Project],
-                       version: Model[Version],
-                       token: Option[String],
-                       api: Boolean = false
+      project: Model[Project],
+      version: Model[Version],
+      token: Option[String],
+      api: Boolean = false
   )(
       implicit request: ProjectRequest[_]
   ): IO[Result] = {

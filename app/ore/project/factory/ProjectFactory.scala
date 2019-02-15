@@ -331,8 +331,8 @@ trait ProjectFactory {
     * @return New version
     */
   def createVersion(
-                     project: Model[Project],
-                     pending: PendingVersion
+      project: Model[Project],
+      pending: PendingVersion
   )(
       implicit ec: ExecutionContext,
       cs: ContextShift[IO]

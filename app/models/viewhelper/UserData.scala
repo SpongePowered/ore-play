@@ -23,19 +23,19 @@ import slick.lifted.TableQuery
 // TODO separate Scoped UserData
 
 case class UserData(
-                     headerData: HeaderData,
-                     user: Model[User],
-                     isOrga: Boolean,
-                     projectCount: Int,
-                     orgas: Seq[(Model[Organization], Model[User], Model[OrganizationUserRole], Model[User])],
-                     globalRoles: Set[Role],
-                     userPerm: Map[Permission, Boolean],
-                     orgaPerm: Map[Permission, Boolean]
+    headerData: HeaderData,
+    user: Model[User],
+    isOrga: Boolean,
+    projectCount: Int,
+    orgas: Seq[(Model[Organization], Model[User], Model[OrganizationUserRole], Model[User])],
+    globalRoles: Set[Role],
+    userPerm: Map[Permission, Boolean],
+    orgaPerm: Map[Permission, Boolean]
 ) {
 
   def global: HeaderData = headerData
 
-  def hasUser: Boolean                   = global.hasUser
+  def hasUser: Boolean                 = global.hasUser
   def currentUser: Option[Model[User]] = global.currentUser
 
   def isCurrent: Boolean = currentUser.contains(user)
