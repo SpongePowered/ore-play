@@ -2,9 +2,9 @@
 @import models.project.Channel
 @import models.viewhelper.ProjectData
 @import ore.OreConfig
-@import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
+@import views.html.helper.CSPNonce
 @(p: ProjectData, channels: Seq[(Channel, Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @channelRoutes = @{controllers.project.routes.Channels}
@@ -12,7 +12,7 @@
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/channelManage.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr>
             PROJECT_OWNER = '@p.project.ownerName';
             PROJECT_SLUG = '@p.project.slug';
             $(function() {
@@ -69,7 +69,7 @@
                                                 </div>
                                             </td>
                                         }
-                                        <script nonce="@nonce">
+                                        <script @CSPNonce.attr>
                                           $(function() {
                                               initChannelDelete('#channel-delete-@channel.id', '@channel.name', @versions);
                                               initChannelManager(

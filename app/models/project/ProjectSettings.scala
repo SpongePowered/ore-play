@@ -2,8 +2,6 @@ package models.project
 
 import java.nio.file.Files._
 
-import play.api.Logger
-
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
 import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
@@ -14,11 +12,13 @@ import ore.project.factory.PendingProject
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}
 import ore.user.notification.NotificationType
+import util.OreMDC
 import util.StringUtils._
 
 import cats.data.NonEmptyList
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import com.typesafe.scalalogging
 import slick.lifted.TableQuery
 
 /**
@@ -56,12 +56,13 @@ case class ProjectSettings(
     */
   def save(project: Project, formData: ProjectSettingsForm)(
       implicit fileManager: ProjectFiles,
+      mdc: OreMDC,
       service: ModelService,
       cs: ContextShift[IO]
   ): IO[(Project, ProjectSettings)] = {
     import cats.instances.vector._
-    Logger.debug("Saving project settings")
-    Logger.debug(formData.toString)
+    ProjectSettings.MDCLogger.debug("Saving project settings")
+    ProjectSettings.MDCLogger.debug(formData.toString)
     val newOwnerId = formData.ownerId.getOrElse(project.ownerId)
 
     val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
@@ -153,6 +154,10 @@ case class ProjectSettings(
   private lazy val updateMemberShip = Compiled(memberShipUpdate _)
 }
 object ProjectSettings {
+
+  private val Logger    = scalalogging.Logger("ProjectSettings")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
+
   case class Partial(
       homepage: Option[String] = None,
       issues: Option[String] = None,
@@ -171,6 +176,7 @@ object ProjectSettings {
     //noinspection ComparingUnrelatedTypes
     def save(project: PendingProject, formData: ProjectSettingsForm)(
         implicit fileManager: ProjectFiles,
+        mdc: OreMDC,
         service: ModelService
     ): IO[(PendingProject, Partial)] = {
       val queryOwnerName = for {

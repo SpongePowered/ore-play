@@ -5,9 +5,9 @@
 @import models.user.User
 @import ore.OreConfig
 @import ore.permission.role.Role
-@import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.utils.userAvatar
+@import views.html.helper.CSPNonce
 @(staff: Seq[(String, Role, Option[Timestamp], Timestamp)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @pageSize = @{ config.ore.users.authorPageSize }
@@ -20,7 +20,7 @@
 
 @scripts = {
 	<script type="text/javascript" src="@routes.Assets.versioned("javascripts/userList.js")"></script>
-	<script nonce="@nonce">CURRENT_PAGE = @page;</script>
+	<script @CSPNonce.attr>CURRENT_PAGE = @page;</script>
 }
 
 @bootstrap.layout("Staff - Ore", scripts) {

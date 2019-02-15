@@ -8,13 +8,13 @@ Page used for uploading and creating new projects.
 @import models.user.Organization
 @import ore.OreConfig
 @import ore.project.factory.PendingProject
-@import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
 @import db.ObjId
 @import db.ObjectTimestamp
 @import java.sql.Timestamp
 @import java.time.Instant
+@import views.html.helper.CSPNonce
 @(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -95,7 +95,7 @@ Page used for uploading and creating new projects.
                         </tbody>
                     </table>
 
-                    <script nonce="@nonce">
+                    <script @CSPNonce.attr>
                         $(function() {
                             validateMeta("@project.pluginId", "@project.name",
                                     "@project.ownerName", "@project.slug");

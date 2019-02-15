@@ -6,7 +6,7 @@ this.
 
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@import security.NonceFilter._
+@import views.html.helper.CSPNonce
 @(title: String, additionalScripts: Html = Html(""), scriptsEnabled: Boolean = true, authEnabled: Boolean = true, showHeader: Boolean = true,
         showFooter: Boolean = true, noContainer: Boolean = false, additionalMeta: Html = Html(""))(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig, flash: Flash)
 
@@ -80,7 +80,7 @@ this.
             @additionalScripts
 
             @if(request != null) {
-                <script nonce="@nonce">csrf = '@play.filters.csrf.CSRF.getToken.get.value'</script>
+                <script @CSPNonce.attr>csrf = '@play.filters.csrf.CSRF.getToken.get.value'</script>
             }
         }
 

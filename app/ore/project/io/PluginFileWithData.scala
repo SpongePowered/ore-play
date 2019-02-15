@@ -2,9 +2,9 @@ package ore.project.io
 import java.nio.file.{Files, Path}
 
 import models.user.User
+import util.StringUtils
 
 import cats.effect.IO
-import org.apache.commons.codec.digest.DigestUtils
 
 class PluginFileWithData(val path: Path, val signaturePath: Path, val user: User, val data: PluginFileData) {
 
@@ -15,5 +15,5 @@ class PluginFileWithData(val path: Path, val signaturePath: Path, val user: User
     *
     * @return MD5 hash
     */
-  lazy val md5: String = DigestUtils.md5Hex(Files.newInputStream(this.path))
+  lazy val md5: String = StringUtils.md5ToHex(Files.readAllBytes(this.path))
 }

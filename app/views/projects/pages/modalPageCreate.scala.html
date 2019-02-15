@@ -1,10 +1,10 @@
 @import models.project.{Page, Project}
 @import ore.OreConfig
-@import security.NonceFilter._
+@import views.html.helper.CSPNonce
 @(model: Project, rootPages: Seq[Page])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
 
 <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pageEdit.js")"></script>
-<script nonce="@nonce">
+<script @CSPNonce.attr>
     PROJECT_OWNER = '@model.ownerName';
     PROJECT_SLUG = '@model.slug';
 </script>

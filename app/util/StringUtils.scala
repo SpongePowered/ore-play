@@ -1,6 +1,7 @@
 package util
 
 import java.nio.file.{Files, Path}
+import java.security.MessageDigest
 import java.text.{DateFormat, MessageFormat}
 import java.util.Date
 
@@ -79,4 +80,22 @@ object StringUtils {
     */
   def prettifyDateAndTime(date: Date)(implicit messages: Messages): String =
     DateFormat.getDateTimeInstance(DateFormat.DEFAULT, DateFormat.DEFAULT, messages.lang.locale).format(date)
+
+  //https://stackoverflow.com/a/9855338
+  private val hexArray = "0123456789ABCDEF".toCharArray
+  def bytesToHex(bytes: Array[Byte]): String = {
+    val hexChars = new Array[Char](bytes.length * 2)
+    var j        = 0
+    while (j < bytes.length) {
+      val v = bytes(j) & 0xFF
+      hexChars(j * 2) = hexArray(v >>> 4)
+      hexChars(j * 2 + 1) = hexArray(v & 0x0F)
+
+      j += 1
+    }
+    new String(hexChars)
+  }
+
+  def md5ToHex(bytes: Array[Byte]): String =
+    bytesToHex(MessageDigest.getInstance("MD5").digest(bytes))
 }

@@ -6,7 +6,7 @@ Versions page within Project overview.
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.{EditChannels, ReviewProjects, UploadVersions}
-@import security.NonceFilter._
+@import views.html.helper.CSPNonce
 @(p: ProjectData,
         sp: ScopedProjectData,
         channels: Seq[Channel],
@@ -19,7 +19,7 @@ Versions page within Project overview.
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/versionList.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr>
             PLUGIN_ID = '@p.project.pluginId';
             PROJECT_OWNER = '@p.project.ownerName';
             PROJECT_SLUG = '@p.project.slug';

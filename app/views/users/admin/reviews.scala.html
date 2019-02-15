@@ -2,8 +2,8 @@
 @import models.admin.Review
 @import models.project.{Project, ReviewState, Version}
 @import ore.OreConfig
-@import security.NonceFilter._
 @import util.StringUtils._
+@import views.html.helper.CSPNonce
 @(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Review, Option[String])], project: Project, version: Version)(implicit messages: Messages,
         request: OreRequest[_], config: OreConfig, flash: Flash)
 
@@ -11,8 +11,8 @@
 @versionRoutes = @{controllers.project.routes.Versions}
 
 @scripts = {
-    <script nonce="@nonce" type="text/javascript" src="@routes.Assets.versioned("javascripts/review.js")"></script>
-    <script nonce="@nonce">versionPath = '@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)'</script>
+    <script @CSPNonce.attr type="text/javascript" src="@routes.Assets.versioned("javascripts/review.js")"></script>
+    <script @CSPNonce.attr>versionPath = '@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)'</script>
 }
 
 @bootstrap.layout(messages("review.title", project.name, version.name), scripts) {
@@ -87,68 +87,70 @@
         <div class="col-md-12">
             <table class="table table-condensed setting-no-border table-review-log">
                 <tbody>
-                @reviews.reverse.zipWithIndex.map { case ((item, name), index) =>
-                    @if(item.endedAt.isDefined) {
-                        @if(reviews.size > (reviews.size-index)) {
-                            @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt.value))) {
-                                <tr>
-                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                    <td>
+                @reviews.reverse.zipWithIndex.map { case (t, index) =>
+                    @defining((t._1, t._2)) { case (item, name) =>
+                        @if(item.endedAt.isDefined) {
+                            @if(reviews.size > (reviews.size - index)) {
+                                @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt.value))) {
+                                    <tr>
+                                        <td>@prettifyDateAndTime(item.endedAt.get)</td>
+                                        <td>
 
-                                        <strong>@name.getOrElse("Unknown")</strong>
-                                        took over from
-                                        <strong>@name.getOrElse("Unknown")</strong>
-                                        @if(!item.decodeMessages.exists(_.isTakeover)) {
-                                            <i>- no message provided -</i>
-                                        } else {
-                                            <i>@item.decodeMessages.filter(_.isTakeover).head.render</i>
-                                        }
-                                    </td>
-                                </tr>
+                                            <strong>@name.getOrElse("Unknown")</strong>
+                                            took over from
+                                            <strong>@name.getOrElse("Unknown")</strong>
+                                            @if(!item.decodeMessages.exists(_.isTakeover)) {
+                                                <i>- no message provided -</i>
+                                            } else {
+                                                <i>@item.decodeMessages.filter(_.isTakeover).head.render</i>
+                                            }
+                                        </td>
+                                    </tr>
+                                } else {
+                                    <tr>
+                                        <td>@prettifyDateAndTime(item.endedAt.get)</td>
+                                        <td><strong>@name.getOrElse("Unknown")</strong> stopped</td>
+                                    </tr>
+                                }
                             } else {
-                                <tr>
-                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                    <td><strong>@name.getOrElse("Unknown")</strong> stopped</td>
-                                </tr>
-                            }
-                        } else {
-                            @if(version.approvedAt.isDefined) {
-                                <tr>
-                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                    <td><strong>@name.getOrElse("Unknown")</strong> approved</td>
-                                </tr>
-                            } else {
-                                <tr>
-                                    <td>@prettifyDateAndTime(item.endedAt.get)</td>
-                                    <td>
-                                        <strong>@name.getOrElse("Unknown")</strong>
-                                        stopped
-                                        <br>
-                                        @if(!item.decodeMessages.exists(_.isStop)) {
-                                            <i>- no message provided -</i>
-                                        } else {
-                                            <i>@item.decodeMessages.filter(_.isStop).head.render</i>
-                                        }
-                                    </td>
-                                </tr>
+                                @if(version.approvedAt.isDefined) {
+                                    <tr>
+                                        <td>@prettifyDateAndTime(item.endedAt.get)</td>
+                                        <td><strong>@name.getOrElse("Unknown")</strong> approved</td>
+                                    </tr>
+                                } else {
+                                    <tr>
+                                        <td>@prettifyDateAndTime(item.endedAt.get)</td>
+                                        <td>
+                                            <strong>@name.getOrElse("Unknown")</strong>
+                                            stopped
+                                            <br>
+                                            @if(!item.decodeMessages.exists(_.isStop)) {
+                                                <i>- no message provided -</i>
+                                            } else {
+                                                <i>@item.decodeMessages.filter(_.isStop).head.render</i>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
                             }
                         }
-                    }
-                    @item.decodeMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
+                        @item.decodeMessages.filterNot(_.isTakeover).filterNot(_.isStop).reverse.map { message =>
+                            <tr>
+                                <td>@message.getTime</td>
+                                <td>
+                                    <strong>@name.getOrElse("Unknown")</strong>
+                                    added message
+                                    <br>
+                                    <i>@message.render</i>
+                                </td>
+                            </tr>
+                        }
                         <tr>
-                            <td>@message.getTime</td>
-                            <td>
-                                <strong>@name.getOrElse("Unknown")</strong>
-                                added message
-                                <br>
-                                <i>@message.render</i>
-                            </td>
+                            <td>@prettifyDateAndTime(item.createdAt.value)</td>
+                            <td><strong>@name.getOrElse("Unknown")</strong> started a review</td>
                         </tr>
                     }
-                <tr>
-                    <td>@prettifyDateAndTime(item.createdAt.value)</td>
-                    <td><strong>@name.getOrElse("Unknown")</strong> started a review</td>
-                </tr>
                 }
                 </tbody>
             </table>

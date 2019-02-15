@@ -3,8 +3,6 @@ package discourse
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-import play.api.Logger
-
 import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
@@ -13,6 +11,7 @@ import models.project.{Project, Visibility}
 import ore.OreConfig
 
 import akka.actor.Scheduler
+import com.typesafe.scalalogging.Logger
 
 /**
   * Task to periodically retry failed Discourse requests.

@@ -59,4 +59,7 @@
     <logger name="DbUpdateTask" level="INFO" />
     <logger name="Projects" level="INFO" />
     <logger name="Versions" level="INFO" />
+    <logger name="Users" level="INFO" />
+    <logger name="ProjectSettings" level="INFO" />
+    <logger name="ProjectFiles" level="INFO" />
 </configuration>

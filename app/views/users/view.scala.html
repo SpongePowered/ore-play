@@ -3,10 +3,10 @@
 @import ore.OreConfig
 @import ore.permission.{EditSettings, ReviewFlags, ReviewProjects, UserAdmin, ViewActivity}
 @import ore.user.Prompt
-@import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.{modal, prompt, userAvatar}
+@import views.html.helper.CSPNonce
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
@@ -18,14 +18,14 @@
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userPage.js")"></script>
-    <script nonce="@nonce">USERNAME = '@u.user.name';</script>
+    <script @CSPNonce.attr>USERNAME = '@u.user.name';</script>
     @additionalScripts
 }
 
 @bootstrap.layout(u.user.name, scripts) {
 
     @flash.get("pgp-updated").map { _ =>
-        <script nonce="@nonce">
+        <script @CSPNonce.attr>
                 $(function() {
                     $('#modal-pgp-edit').modal('show');
                 });

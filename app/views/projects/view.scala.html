@@ -9,8 +9,8 @@ Base template for Project overview.
 @import ore.OreConfig
 @import ore.permission.{EditPages, EditSettings, ReviewFlags, ViewLogs}
 @import ore.project.FlagReason
-@import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
+@import views.html.helper.CSPNonce
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @appRoutes = @{controllers.routes.Application}
@@ -136,7 +136,7 @@ Base template for Project overview.
                                 </li>
                             }
                         </ul>
-                        <script nonce="@nonce">$(function() { $(".nav").find("@active").addClass("active"); });</script>
+                        <script @CSPNonce.attr>$(function() { $(".nav").find("@active").addClass("active"); });</script>
                     </div>
                 </div>
 
@@ -151,7 +151,7 @@ Base template for Project overview.
 
                         @if(!p.project.isDeleted) {
                             @if(request.currentUser.exists(u => !p.project.isOwner(u))) {
-                                <script nonce="@nonce">
+                                <script @CSPNonce.attr>
                                         var projectOwner = "@p.project.ownerName";
                                         var projectSlug = "@p.project.slug";
                                         var alreadyStarred = @sp.starred;

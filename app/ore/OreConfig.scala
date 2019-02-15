@@ -240,11 +240,6 @@ final class OreConfig @Inject()(config: Configuration) {
   /** Returns true if the application is running in debug mode. */
   def isDebug: Boolean = this.ore.debug
 
-  /** Sends a debug message if in debug mode */
-  def debug(msg: Any, level: Int = 1): Unit =
-    if (isDebug && (level == ore.debugLevel || level == -1))
-      Logger.debug(msg.toString)
-
   /** Asserts that the application is in debug mode. */
   def checkDebug(): Unit =
     if (!isDebug)

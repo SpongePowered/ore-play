@@ -53,7 +53,8 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
   /** The base URL for this instance */
   def baseUrl: String
 
-  private val MDCLogger = scalalogging.Logger.takingImplicit[DiscourseMDC](Logger.logger)
+  val Logger            = scalalogging.Logger("Discourse")                                    // scalalogging.Logger.takingImplicit[DiscourseMDC](Logger.logger)
+  private val MDCLogger = scalalogging.Logger.takingImplicit[DiscourseMDC](Logger.underlying) // scalalogging.Logger.takingImplicit[DiscourseMDC](Logger.logger)
 
   /**
     * Initializes and starts this API instance.

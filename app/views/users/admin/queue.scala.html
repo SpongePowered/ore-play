@@ -5,18 +5,18 @@
 @import models.project.{Channel, Project, Version}
 @import models.user.User
 @import ore.OreConfig
-@import security.NonceFilter._
 @import views.html.utils.userAvatar
 
 @import models.querymodels.{ReviewedQueueEntry, NotStartedQueueEntry}
 
+@import views.html.helper.CSPNonce
 @(underReview: Seq[ReviewedQueueEntry], versions: Seq[NotStartedQueueEntry])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @versionRoutes = @{controllers.project.routes.Versions}
 
 @scripts = {
-    <script nonce="@nonce" type="text/javascript" src="@routes.Assets.versioned("javascripts/queue.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr type="text/javascript" src="@routes.Assets.versioned("javascripts/queue.js")"></script>
+    <script @CSPNonce.attr>
             $(function(){
                 var momentNow = moment();
                 var maxDifference = @config.ore.queue.maxReviewTime.toMillis;

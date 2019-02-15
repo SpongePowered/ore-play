@@ -10,9 +10,9 @@ Documentation page within Project overview.
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.EditPages
-@import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.utils.editor
+@import views.html.helper.CSPNonce
 @(p: ProjectData,
   sp: ScopedProjectData,
   rootPages: Seq[(Page, Seq[Page])],
@@ -28,12 +28,12 @@ Documentation page within Project overview.
 
 @scripts = {
     <script type="text/javascript" src="@controllers.routes.Assets.versioned("javascripts/pageCollapse.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr>
             pluginId = '@p.project.pluginId';
             namespace = '@p.project.namespace';
     </script>
     @if(editorOpen) {
-        <script nonce="@nonce">$(function() { $('.btn-edit').click(); });</script>
+        <script @CSPNonce.attr>$(function() { $('.btn-edit').click(); });</script>
     }
 }
 

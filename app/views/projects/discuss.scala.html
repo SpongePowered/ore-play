@@ -4,23 +4,23 @@ Discussion page within Project overview.
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import security.NonceFilter._
 @import views.html.utils
 
 @import org.spongepowered.play.discourse.DiscourseApi
+@import views.html.helper.CSPNonce
 @(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
 @scripts = {
-    <script nonce="@nonce">
+    <script @CSPNonce.attr>
             DiscourseEmbed = {
                 discourseUrl: '@config.forums.baseUrl/',
                 topicId: @p.project.topicId
             };
     </script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDiscuss.js")"></script>
-    <script nonce="@nonce">$(function() { $('.btn-edit').click(); });</script>
+    <script @CSPNonce.attr>$(function() { $('.btn-edit').click(); });</script>
 }
 
 @projects.view(p, sp, "#discussion", additionalScripts = scripts) {

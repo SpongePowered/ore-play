@@ -12,7 +12,7 @@ import com.google.inject.AbstractModule
 /** The Ore Module */
 class Module extends AbstractModule {
 
-  def configure(): Unit = {
+  override def configure(): Unit = {
     bind(classOf[OreRestfulApi]).to(classOf[OreRestfulServer])
     bind(classOf[StatTracker]).to(classOf[OreStatTracker])
     bind(classOf[ProjectFactory]).to(classOf[OreProjectFactory])
