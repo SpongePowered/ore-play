@@ -74,7 +74,7 @@ lazy val playSlickVersion    = "4.0.0"
 lazy val slickPgVersion      = "0.17.1"
 
 libraryDependencies ++= Seq(
-  "org.spongepowered"          % "play-discourse"                 % "3.0.3",
+  "org.spongepowered"          % "play-discourse"                 % "4.0.0",
   "org.spongepowered"          % "plugin-meta"                    % "0.4.1",
   "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
   "com.typesafe.play"          %% "play-slick-evolutions"         % playSlickVersion,
@@ -113,7 +113,7 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   jdbc % Test,
   //specs2 % Test,
-  "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2"       % Test,
+  "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.1"       % Test,
   "org.tpolecat"           %% "doobie-scalatest"   % doobieVersion % Test
 )
 
