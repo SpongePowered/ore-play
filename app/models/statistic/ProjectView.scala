@@ -3,7 +3,7 @@ package models.statistic
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.ProjectViewsTable
-import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.Project
 import models.user.User
 import ore.StatTracker._
@@ -28,7 +28,7 @@ case class ProjectView(
     userId: Option[DbRef[User]]
 ) extends StatEntry[Project]
 
-object ProjectView extends DefaultDbModelCompanion[ProjectView, ProjectViewsTable](TableQuery[ProjectViewsTable]) {
+object ProjectView extends DefaultModelCompanion[ProjectView, ProjectViewsTable](TableQuery[ProjectViewsTable]) {
 
   implicit val query: ModelQuery[ProjectView] = ModelQuery.from(this)
 

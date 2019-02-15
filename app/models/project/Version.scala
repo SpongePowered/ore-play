@@ -18,7 +18,7 @@ import db.impl.schema.{
   VersionTagTable,
   VersionVisibilityChangeTable
 }
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -134,7 +134,7 @@ case class Version(
     ModelView.now(Review).get(id)
 }
 
-object Version extends DefaultDbModelCompanion[Version, VersionTable](TableQuery[VersionTable]) {
+object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[VersionTable]) {
 
   implicit val query: ModelQuery[Version] = ModelQuery.from(this)
 

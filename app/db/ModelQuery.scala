@@ -3,7 +3,7 @@ package db
 import slick.lifted.Query
 
 trait ModelQuery[A] {
-  val companion: DbModelCompanion[A]
+  val companion: ModelCompanion[A]
 
   def baseQuery: Query[companion.T, Model[A], Seq] = companion.baseQuery
 
@@ -19,8 +19,8 @@ trait ModelQuery[A] {
 object ModelQuery {
   def apply[A](implicit query: ModelQuery[A]): ModelQuery[A] = query
 
-  def from[A](model: DbModelCompanion[A]): ModelQuery[A] =
+  def from[A](model: ModelCompanion[A]): ModelQuery[A] =
     new ModelQuery[A] {
-      override val companion: DbModelCompanion[A] = model
+      override val companion: ModelCompanion[A] = model
     }
 }

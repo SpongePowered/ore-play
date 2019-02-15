@@ -34,5 +34,5 @@ object ModelFilter {
 
   implicit def liftFilter[T <: Table[_]](f: T => Rep[Boolean]): ModelFilter[T] = new ModelFilter(f)
 
-  def apply[M](model: DbModelCompanion[M])(f: model.T => Rep[Boolean]): model.T => Rep[Boolean] = f
+  def apply[M](model: ModelCompanion[M])(f: model.T => Rep[Boolean]): model.T => Rep[Boolean] = f
 }

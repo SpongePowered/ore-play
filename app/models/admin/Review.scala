@@ -8,7 +8,7 @@ import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.project.{Page, Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -64,7 +64,7 @@ object Message {
   )
 }
 
-object Review extends DefaultDbModelCompanion[Review, ReviewTable](TableQuery[ReviewTable]) {
+object Review extends DefaultModelCompanion[Review, ReviewTable](TableQuery[ReviewTable]) {
 
   def ordering: Ordering[(Model[Review], _)] =
     // TODO make simple + check order

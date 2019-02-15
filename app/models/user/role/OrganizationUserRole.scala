@@ -1,7 +1,7 @@
 package models.user.role
 
 import db.impl.schema.OrganizationRoleTable
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.user.{Organization, User}
 import ore.Visitable
 import ore.organization.OrganizationOwned
@@ -34,7 +34,7 @@ case class OrganizationUserRole(
   override def withAccepted(accepted: Boolean): OrganizationUserRole = copy(isAccepted = accepted)
 }
 object OrganizationUserRole
-    extends DefaultDbModelCompanion[OrganizationUserRole, OrganizationRoleTable](TableQuery[OrganizationRoleTable]) {
+    extends DefaultModelCompanion[OrganizationUserRole, OrganizationRoleTable](TableQuery[OrganizationRoleTable]) {
 
   implicit val query: ModelQuery[OrganizationUserRole] = ModelQuery.from(this)
 

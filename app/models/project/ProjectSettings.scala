@@ -7,7 +7,7 @@ import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{DbRef, DefaultDbModelCompanion, Model, ModelQuery, ModelService}
+import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
 import ore.permission.role.Role
@@ -95,7 +95,7 @@ case class ProjectSettings(
   }
 }
 object ProjectSettings
-    extends DefaultDbModelCompanion[ProjectSettings, ProjectSettingsTable](TableQuery[ProjectSettingsTable]) {
+    extends DefaultModelCompanion[ProjectSettings, ProjectSettingsTable](TableQuery[ProjectSettingsTable]) {
 
   implicit val query: ModelQuery[ProjectSettings] = ModelQuery.from(this)
 

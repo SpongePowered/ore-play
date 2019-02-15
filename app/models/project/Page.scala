@@ -92,7 +92,7 @@ case class Page private (
   def fullSlug(parentPage: Option[Page]): String = parentPage.fold(slug)(pp => s"${pp.slug}/$slug")
 }
 
-object Page extends DefaultDbModelCompanion[Page, PageTable](TableQuery[PageTable]) {
+object Page extends DefaultModelCompanion[Page, PageTable](TableQuery[PageTable]) {
 
   def apply(
       projectId: DbRef[Project],

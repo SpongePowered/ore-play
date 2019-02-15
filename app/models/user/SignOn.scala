@@ -1,7 +1,7 @@
 package models.user
 
 import db.impl.schema.SignOnTable
-import db.{DefaultDbModelCompanion, ModelQuery, ObjId, ObjTimestamp}
+import db.{DefaultModelCompanion, ModelQuery, ObjId, ObjTimestamp}
 
 import slick.lifted.TableQuery
 
@@ -15,7 +15,7 @@ case class SignOn(
     nonce: String,
     isCompleted: Boolean = false
 )
-object SignOn extends DefaultDbModelCompanion[SignOn, SignOnTable](TableQuery[SignOnTable]) {
+object SignOn extends DefaultModelCompanion[SignOn, SignOnTable](TableQuery[SignOnTable]) {
 
   implicit val query: ModelQuery[SignOn] =
     ModelQuery.from(this)

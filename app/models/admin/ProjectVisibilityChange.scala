@@ -6,7 +6,7 @@ import play.twirl.api.Html
 
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.ProjectVisibilityChangeTable
-import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.{Page, Project, Visibility}
 import models.user.User
 import ore.OreConfig
@@ -26,7 +26,7 @@ case class ProjectVisibilityChange(
   def renderComment(implicit config: OreConfig): Html = Page.render(comment)
 }
 object ProjectVisibilityChange
-    extends DefaultDbModelCompanion[ProjectVisibilityChange, ProjectVisibilityChangeTable](
+    extends DefaultModelCompanion[ProjectVisibilityChange, ProjectVisibilityChangeTable](
       TableQuery[ProjectVisibilityChangeTable]
     ) {
 

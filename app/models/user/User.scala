@@ -82,7 +82,7 @@ case class User(
   implicit def langOrDefault: Lang = lang.getOrElse(Lang.defaultLang)
 }
 
-object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTable]) {
+object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]) {
 
   override def asDbModel(
       model: User,

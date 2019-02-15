@@ -5,7 +5,7 @@ import java.sql.Timestamp
 import db.impl.access.UserBase
 import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{Model, DefaultDbModelCompanion, ModelQuery}
+import db.{Model, DefaultModelCompanion, ModelQuery}
 import security.spauth.SpongeAuthApi
 import util.OreMDC
 
@@ -35,7 +35,7 @@ case class Session(
   def user(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, Model[User]] =
     users.withName(this.username)
 }
-object Session extends DefaultDbModelCompanion[Session, SessionTable](TableQuery[SessionTable]) {
+object Session extends DefaultModelCompanion[Session, SessionTable](TableQuery[SessionTable]) {
 
   implicit val query: ModelQuery[Session] =
     ModelQuery.from(this)

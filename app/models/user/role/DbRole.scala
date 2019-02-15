@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.schema.DbRoleTable
-import db.{Model, DbModelCompanionPartial, ModelQuery, ObjId, ObjTimestamp}
+import db.{Model, ModelCompanionPartial, ModelQuery, ObjId, ObjTimestamp}
 import ore.permission.role.{Role, RoleCategory, Trust}
 
 import slick.lifted.TableQuery
@@ -21,7 +21,7 @@ case class DbRole(
 
   def toRole: Role = Role.withValue(name)
 }
-object DbRole extends DbModelCompanionPartial[DbRole, DbRoleTable](TableQuery[DbRoleTable]) {
+object DbRole extends ModelCompanionPartial[DbRole, DbRoleTable](TableQuery[DbRoleTable]) {
 
   override def asDbModel(
       model: DbRole,

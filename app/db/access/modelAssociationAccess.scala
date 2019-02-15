@@ -4,7 +4,7 @@ import scala.language.higherKinds
 
 import db.impl.OrePostgresDriver.api._
 import db.table.{AssociativeTable, ModelTable}
-import db.{AssociationQuery, Model, DbModelCompanion, ModelService}
+import db.{AssociationQuery, Model, ModelCompanion, ModelService}
 
 import cats.effect.IO
 import cats.syntax.all._
@@ -76,7 +76,7 @@ class ModelAssociationAccessImpl[
     C,
     PT <: ModelTable[P],
     CT <: ModelTable[C]
-](val pCompanion: DbModelCompanion.Aux[P, PT], val cCompanion: DbModelCompanion.Aux[C, CT])(
+](val pCompanion: ModelCompanion.Aux[P, PT], val cCompanion: ModelCompanion.Aux[C, CT])(
     implicit
     query: AssociationQuery[Assoc, P, C],
     service: ModelService

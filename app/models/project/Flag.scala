@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.schema.FlagTable
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.user.User
 import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned
@@ -29,7 +29,7 @@ case class Flag(
     resolvedAt: Option[Timestamp] = None,
     resolvedBy: Option[DbRef[User]] = None
 )
-object Flag extends DefaultDbModelCompanion[Flag, FlagTable](TableQuery[FlagTable]) {
+object Flag extends DefaultModelCompanion[Flag, FlagTable](TableQuery[FlagTable]) {
 
   implicit val query: ModelQuery[Flag] =
     ModelQuery.from(this)

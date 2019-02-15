@@ -2,7 +2,7 @@ package models.user
 
 import db.access.ModelView
 import db.impl.schema.NotificationTable
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
@@ -37,7 +37,7 @@ case class Notification(
   def origin(implicit service: ModelService): IO[Model[User]] =
     ModelView.now(User).get(this.originId).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
 }
-object Notification extends DefaultDbModelCompanion[Notification, NotificationTable](TableQuery[NotificationTable]) {
+object Notification extends DefaultModelCompanion[Notification, NotificationTable](TableQuery[NotificationTable]) {
 
   implicit val query: ModelQuery[Notification] =
     ModelQuery.from(this)

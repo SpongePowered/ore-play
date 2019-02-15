@@ -12,7 +12,7 @@ import cats.effect.Clock
 import cats.syntax.all._
 import cats.{Functor, Monad, ~>}
 
-trait DbModelCompanion[M] {
+trait ModelCompanion[M] {
   type T <: ModelTable[M]
 
   def baseQuery: Query[T, Model[M], Seq]
@@ -79,15 +79,15 @@ trait DbModelCompanion[M] {
   def deleteWhere[F[_]: Monad](filter: T => Rep[Boolean])(runDBIO: DBIO ~> F): F[Int] =
     runDBIO(baseQuery.filter(filter).delete)
 }
-object DbModelCompanion {
-  type Aux[M, T0 <: ModelTable[M]] = DbModelCompanion[M] { type T = T0 }
+object ModelCompanion {
+  type Aux[M, T0 <: ModelTable[M]] = ModelCompanion[M] { type T = T0 }
 }
 
-abstract class DbModelCompanionPartial[M, T0 <: ModelTable[M]](val baseQuery: Query[T0, Model[M], Seq])
-    extends DbModelCompanion[M] {
+abstract class ModelCompanionPartial[M, T0 <: ModelTable[M]](val baseQuery: Query[T0, Model[M], Seq])
+    extends ModelCompanion[M] {
   type T = T0
 }
-abstract class DefaultDbModelCompanion[M, T0 <: ModelTable[M]](baseQuery: Query[T0, Model[M], Seq])
-    extends DbModelCompanionPartial(baseQuery) {
+abstract class DefaultModelCompanion[M, T0 <: ModelTable[M]](baseQuery: Query[T0, Model[M], Seq])
+    extends ModelCompanionPartial(baseQuery) {
   override def asDbModel(model: M, id: ObjId[M], time: ObjTimestamp): Model[M] = Model(id, time, model)
 }

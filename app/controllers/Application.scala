@@ -17,7 +17,7 @@ import db.query.AppQueries
 import db.impl.OrePostgresDriver.api._
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
-import db.{Model, DbModelCompanion, DbRef, ModelQuery, ModelService}
+import db.{Model, ModelCompanion, DbRef, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.user.role._
@@ -340,7 +340,7 @@ final class Application @Inject()(forms: OreForms)(
           val json       = Json.parse(data)
           val orgDossier = MembershipDossier.organization
 
-          def updateRoleTable[M0 <: UserRoleModel[M0]: ModelQuery](model: DbModelCompanion[M0])(
+          def updateRoleTable[M0 <: UserRoleModel[M0]: ModelQuery](model: ModelCompanion[M0])(
               modelAccess: ModelView.Now[IO, model.T, Model[M0]],
               allowedCategory: RoleCategory,
               ownerType: Role,

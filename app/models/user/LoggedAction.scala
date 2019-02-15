@@ -6,7 +6,7 @@ import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{DbRef, DefaultDbModelCompanion, Model, ModelQuery, ModelService}
+import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
 import ore.StatTracker
 import ore.user.UserOwned
 
@@ -28,7 +28,7 @@ case class LoggedActionModel[Ctx] private (
     oldState: String
 )
 object LoggedActionModel
-    extends DefaultDbModelCompanion[LoggedActionModel[Any], LoggedActionTable[Any]](TableQuery[LoggedActionTable[Any]]) {
+    extends DefaultModelCompanion[LoggedActionModel[Any], LoggedActionTable[Any]](TableQuery[LoggedActionTable[Any]]) {
 
   implicit def query[Ctx]: ModelQuery[LoggedActionModel[Ctx]] =
     ModelQuery.from(this).asInstanceOf[ModelQuery[LoggedActionModel[Ctx]]]

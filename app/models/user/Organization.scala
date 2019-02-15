@@ -48,7 +48,7 @@ case class Organization(
   override def url: String  = this.username
 }
 
-object Organization extends DbModelCompanionPartial[Organization, OrganizationTable](TableQuery[OrganizationTable]) {
+object Organization extends ModelCompanionPartial[Organization, OrganizationTable](TableQuery[OrganizationTable]) {
   implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
 
   override def asDbModel(

@@ -7,7 +7,7 @@ import play.api.mvc.Cookie
 import controllers.sugar.Bakery
 import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.DownloadWarning.COOKIE
 
 import com.github.tminglei.slickpg.InetString
@@ -45,7 +45,7 @@ case class DownloadWarning(
 }
 
 object DownloadWarning
-    extends DefaultDbModelCompanion[DownloadWarning, DownloadWarningsTable](TableQuery[DownloadWarningsTable]) {
+    extends DefaultModelCompanion[DownloadWarning, DownloadWarningsTable](TableQuery[DownloadWarningsTable]) {
 
   implicit val query: ModelQuery[DownloadWarning] =
     ModelQuery.from(this)

@@ -3,7 +3,7 @@ package models.statistic
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.VersionDownloadsTable
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.Version
 import models.user.User
 import ore.StatTracker._
@@ -28,7 +28,7 @@ case class VersionDownload(
     userId: Option[DbRef[User]]
 ) extends StatEntry[Version]
 object VersionDownload
-    extends DefaultDbModelCompanion[VersionDownload, VersionDownloadsTable](TableQuery[VersionDownloadsTable]) {
+    extends DefaultModelCompanion[VersionDownload, VersionDownloadsTable](TableQuery[VersionDownloadsTable]) {
 
   implicit val query: ModelQuery[VersionDownload] = ModelQuery.from(this)
 

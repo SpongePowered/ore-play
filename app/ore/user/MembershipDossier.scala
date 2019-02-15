@@ -13,7 +13,7 @@ import db.impl.schema.{
 }
 import db.impl.table.common.RoleTable
 import db.table.AssociativeTable
-import db.{AssociationQuery, Model, DbModelCompanion, DbRef, ModelQuery, ModelService}
+import db.{AssociationQuery, Model, ModelCompanion, DbRef, ModelQuery, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 import models.user.{Organization, User}
@@ -107,7 +107,7 @@ object MembershipDossier {
       RoleType0 <: UserRoleModel[RoleType0]: ModelQuery,
       RoleTypeTable0 <: RoleTable[RoleType0],
       MembersTable <: AssociativeTable[User, M0]
-  ](model: DbModelCompanion[M0], roleType: DbModelCompanion.Aux[RoleType0, RoleTypeTable0])(
+  ](model: ModelCompanion[M0], roleType: ModelCompanion.Aux[RoleType0, RoleTypeTable0])(
       childFilter: (RoleTypeTable0, Model[M0]) => Rep[Boolean]
   )(
       implicit service: ModelService,

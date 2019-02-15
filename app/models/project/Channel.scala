@@ -6,7 +6,7 @@ import db.access.QueryView
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.{ChannelTable, VersionTable}
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
@@ -34,7 +34,7 @@ case class Channel(
   def isReviewed: Boolean = !isNonReviewed
 }
 
-object Channel extends DefaultDbModelCompanion[Channel, ChannelTable](TableQuery[ChannelTable]) {
+object Channel extends DefaultModelCompanion[Channel, ChannelTable](TableQuery[ChannelTable]) {
 
   implicit val channelsAreOrdered: Ordering[Channel] = (x: Channel, y: Channel) => x.name.compare(y.name)
 

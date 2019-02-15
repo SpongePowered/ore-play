@@ -3,7 +3,7 @@ package models.admin
 import java.sql.Timestamp
 
 import db.impl.schema.ProjectLogEntryTable
-import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{DbRef, DefaultModelCompanion, ModelQuery}
 
 import slick.lifted.TableQuery
 
@@ -24,7 +24,7 @@ case class ProjectLogEntry(
     lastOccurrence: Timestamp
 )
 object ProjectLogEntry
-    extends DefaultDbModelCompanion[ProjectLogEntry, ProjectLogEntryTable](TableQuery[ProjectLogEntryTable]) {
+    extends DefaultModelCompanion[ProjectLogEntry, ProjectLogEntryTable](TableQuery[ProjectLogEntryTable]) {
 
   implicit val query: ModelQuery[ProjectLogEntry] =
     ModelQuery.from(this)

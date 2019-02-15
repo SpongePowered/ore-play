@@ -1,7 +1,7 @@
 package models.admin
 
 import db.impl.schema.LoggedActionViewTable
-import db.{Model, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
+import db.{Model, ModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, LoggedActionContext, User}
 import ore.user.UserOwned
@@ -54,7 +54,7 @@ case class LoggedActionViewModel[Ctx](
   def sName: Option[String]                = loggedSubject.sName
 }
 object LoggedActionViewModel
-    extends DbModelCompanionPartial[LoggedActionViewModel[Any], LoggedActionViewTable[Any]](
+    extends ModelCompanionPartial[LoggedActionViewModel[Any], LoggedActionViewTable[Any]](
       TableQuery[LoggedActionViewTable[Any]]
     ) {
 

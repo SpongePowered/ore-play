@@ -119,7 +119,7 @@ object Note {
       .and((JsPath \ "time").read[Long])(Note.apply _)
 }
 
-object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQuery[ProjectTableMain]) {
+object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQuery[ProjectTableMain]) {
 
   implicit val query: ModelQuery[Project] = ModelQuery.from(this)
 

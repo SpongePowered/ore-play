@@ -1,7 +1,7 @@
 package models.user.role
 
 import db.impl.schema.ProjectRoleTable
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.project.Project
 import models.user.User
 import ore.Visitable
@@ -36,8 +36,7 @@ case class ProjectUserRole(
 
   override def withAccepted(accepted: Boolean): ProjectUserRole = copy(isAccepted = accepted)
 }
-object ProjectUserRole
-    extends DefaultDbModelCompanion[ProjectUserRole, ProjectRoleTable](TableQuery[ProjectRoleTable]) {
+object ProjectUserRole extends DefaultModelCompanion[ProjectUserRole, ProjectRoleTable](TableQuery[ProjectRoleTable]) {
 
   implicit val query: ModelQuery[ProjectUserRole] = ModelQuery.from(this)
 

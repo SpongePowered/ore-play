@@ -7,7 +7,7 @@ import scala.collection.immutable
 
 import db.impl.model.common.Named
 import db.impl.schema.VersionTagTable
-import db.{Model, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
+import db.{Model, ModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.querymodels.ViewTag
 
 import enumeratum.values._
@@ -22,7 +22,7 @@ case class VersionTag(
 
   def asViewTag: ViewTag = ViewTag(name, data, color)
 }
-object VersionTag extends DbModelCompanionPartial[VersionTag, VersionTagTable](TableQuery[VersionTagTable]) {
+object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](TableQuery[VersionTagTable]) {
 
   override def asDbModel(
       model: VersionTag,

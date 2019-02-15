@@ -81,6 +81,6 @@ abstract class ModelService {
     * @param filter     Filter to use
     * @tparam M         Model
     */
-  def deleteWhere[M](model: DbModelCompanion[M])(filter: model.T => Rep[Boolean]): IO[Int] =
+  def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): IO[Int] =
     model.deleteWhere(filter)(runDBIOFunc)
 }

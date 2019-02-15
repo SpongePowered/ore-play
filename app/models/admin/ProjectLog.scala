@@ -5,7 +5,7 @@ import scala.language.higherKinds
 import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectLogEntryTable, ProjectLogTable}
-import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.project.Project
 import util.syntax._
 
@@ -20,7 +20,7 @@ import slick.lifted.TableQuery
 case class ProjectLog(
     projectId: DbRef[Project]
 )
-object ProjectLog extends DefaultDbModelCompanion[ProjectLog, ProjectLogTable](TableQuery[ProjectLogTable]) {
+object ProjectLog extends DefaultModelCompanion[ProjectLog, ProjectLogTable](TableQuery[ProjectLogTable]) {
 
   implicit val query: ModelQuery[ProjectLog] =
     ModelQuery.from(this)

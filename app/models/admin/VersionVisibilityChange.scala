@@ -6,7 +6,7 @@ import play.twirl.api.Html
 
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.VersionVisibilityChangeTable
-import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.{Page, Version, Visibility}
 import models.user.User
 import ore.OreConfig
@@ -26,7 +26,7 @@ case class VersionVisibilityChange(
   def renderComment(implicit config: OreConfig): Html = Page.render(comment)
 }
 object VersionVisibilityChange
-    extends DefaultDbModelCompanion[VersionVisibilityChange, VersionVisibilityChangeTable](
+    extends DefaultModelCompanion[VersionVisibilityChange, VersionVisibilityChangeTable](
       TableQuery[VersionVisibilityChangeTable]
     ) {
 

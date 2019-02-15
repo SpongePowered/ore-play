@@ -11,7 +11,7 @@ import db.ModelFilter._
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.StatTable
-import db.{Model, DbModelCompanion, DbRef, ModelQuery, ModelService}
+import db.{Model, ModelCompanion, DbRef, ModelQuery, ModelService}
 import models.project.{Project, Version}
 import models.statistic.{ProjectView, StatEntry, VersionDownload}
 import models.user.User
@@ -33,8 +33,8 @@ trait StatTracker {
 
   private def record[S, M <: StatEntry[S]: ModelQuery, T <: StatTable[S, M]](
       entry: M,
-      subject: DbModelCompanion[S],
-      model: DbModelCompanion.Aux[M, T]
+      subject: ModelCompanion[S],
+      model: ModelCompanion.Aux[M, T]
   )(setUserId: (M, DbRef[User]) => M): IO[Boolean] = {
     like[S, M, T](entry, model).value.flatMap {
       case None => service.insert(entry).as(true)
@@ -48,7 +48,7 @@ trait StatTracker {
 
   private def like[S, M <: StatEntry[S]: ModelQuery, T <: StatTable[S, M]](
       entry: M,
-      model: DbModelCompanion.Aux[M, T]
+      model: ModelCompanion.Aux[M, T]
   ): OptionT[IO, Model[M]] = {
     val baseFilter: T => Rep[Boolean] = _.modelId === entry.modelId
     val filter: T => Rep[Boolean]     = e => e.address === entry.address || e.cookie === entry.cookie

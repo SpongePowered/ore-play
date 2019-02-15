@@ -1,7 +1,7 @@
 package models.project
 
 import db.impl.schema.UnsafeDownloadsTable
-import db.{DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.user.User
 import ore.project.io.DownloadType
 
@@ -21,7 +21,7 @@ case class UnsafeDownload(
     downloadType: DownloadType
 )
 object UnsafeDownload
-    extends DefaultDbModelCompanion[UnsafeDownload, UnsafeDownloadsTable](TableQuery[UnsafeDownloadsTable]) {
+    extends DefaultModelCompanion[UnsafeDownload, UnsafeDownloadsTable](TableQuery[UnsafeDownloadsTable]) {
 
   implicit val query: ModelQuery[UnsafeDownload] = ModelQuery.from(this)
 }
