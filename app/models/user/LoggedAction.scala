@@ -165,7 +165,7 @@ object UserActionLogger {
         actionContextId,
         newState,
         oldState
-      )
+      ).asInstanceOf[LoggedActionModel[Any]]
     )(runDBIO)
   }.map(_.asInstanceOf[Model[LoggedActionModel[Ctx]]])
 
