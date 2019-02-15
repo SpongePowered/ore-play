@@ -5,7 +5,7 @@ import scala.language.higherKinds
 import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.VisibilityChangeColumns
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project.Visibility
 import models.user.User
 import util.syntax._
@@ -39,26 +39,26 @@ trait HideableOps[M, MVisibilityChange <: VisibilityChange, MVisibilityChangeTab
   def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
       implicit service: ModelService,
       cs: ContextShift[IO]
-  ): IO[(DbModel[M], DbModel[MVisibilityChange])]
+  ): IO[(Model[M], Model[MVisibilityChange])]
 
   /**
     * Get VisibilityChanges
     */
   def visibilityChanges[V[_, _]: QueryView](
-      view: V[MVisibilityChangeTable, DbModel[MVisibilityChange]]
-  ): V[MVisibilityChangeTable, DbModel[MVisibilityChange]]
+      view: V[MVisibilityChangeTable, Model[MVisibilityChange]]
+  ): V[MVisibilityChangeTable, Model[MVisibilityChange]]
 
   def visibilityChangesByDate[V[_, _]: QueryView](
-      view: V[MVisibilityChangeTable, DbModel[MVisibilityChange]]
-  ): V[MVisibilityChangeTable, DbModel[MVisibilityChange]] =
+      view: V[MVisibilityChangeTable, Model[MVisibilityChange]]
+  ): V[MVisibilityChangeTable, Model[MVisibilityChange]] =
     visibilityChanges(view).sortView(_.createdAt)
 
   def lastVisibilityChange[QOptRet, SRet[_]](
-      view: ModelView[QOptRet, SRet, MVisibilityChangeTable, DbModel[MVisibilityChange]]
+      view: ModelView[QOptRet, SRet, MVisibilityChangeTable, Model[MVisibilityChange]]
   ): QOptRet = visibilityChangesByDate(view).filterView(_.resolvedAt.?.isEmpty).one
 
   def lastChangeRequest[QOptRet, SRet[_]](
-      view: ModelView[QOptRet, SRet, MVisibilityChangeTable, DbModel[MVisibilityChange]]
+      view: ModelView[QOptRet, SRet, MVisibilityChangeTable, Model[MVisibilityChange]]
   ): QOptRet =
     visibilityChanges(view)
       .modifyingQuery(_.sortBy(_.createdAt.desc))

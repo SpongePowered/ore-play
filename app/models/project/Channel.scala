@@ -6,7 +6,7 @@ import db.access.QueryView
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.{ChannelTable, VersionTable}
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
@@ -49,14 +49,14 @@ object Channel extends DefaultDbModelCompanion[Channel, ChannelTable](TableQuery
   val Colors: Seq[Color] =
     Seq(Purple, Violet, Magenta, Blue, Aqua, Cyan, Green, DarkGreen, Chartreuse, Amber, Orange, Red)
 
-  implicit class ChannelModelOps(private val self: DbModel[Channel]) extends AnyVal {
+  implicit class ChannelModelOps(private val self: Model[Channel]) extends AnyVal {
 
     /**
       * Returns all Versions in this channel.
       *
       * @return All versions
       */
-    def versions[V[_, _]: QueryView](view: V[VersionTable, DbModel[Version]]): V[VersionTable, DbModel[Version]] =
+    def versions[V[_, _]: QueryView](view: V[VersionTable, Model[Version]]): V[VersionTable, Model[Version]] =
       view.filterView(_.channelId === self.id.value)
   }
 }

@@ -3,7 +3,7 @@ import java.sql.Timestamp
 
 import play.api.i18n.Lang
 
-import db.{DbModel, DbRef, ObjId, ObjTimestamp}
+import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.NameColumn
 import db.table.ModelTable
@@ -41,9 +41,9 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
             Boolean,
             Option[Lang]
         )
-    ) => DbModel[User] = {
+    ) => Model[User] = {
       case (id, time, fullName, name, email, tagline, joinDate, prompts, pgpKey, keyLastUpdate, locked, lang) =>
-        DbModel(
+        Model(
           ObjId.unsafeFromOption(id),
           ObjTimestamp.unsafeFromOption(time),
           User(
@@ -62,7 +62,7 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
         )
     }
 
-    val unapplyFunc: DbModel[User] => Option[
+    val unapplyFunc: Model[User] => Option[
       (
           Option[DbRef[User]],
           Option[Timestamp],
@@ -78,7 +78,7 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
           Option[Lang]
       )
     ] = {
-      case DbModel(
+      case Model(
           _,
           createdAt,
           User(

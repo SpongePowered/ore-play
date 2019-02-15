@@ -5,8 +5,8 @@
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
-@import db.DbModel
-@(p: ProjectData, channels: Seq[(DbModel[Channel], Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import db.Model
+@(p: ProjectData, channels: Seq[(Model[Channel], Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @channelRoutes = @{controllers.project.routes.Channels}
 @versionRoutes = @{controllers.project.routes.Versions}

@@ -12,7 +12,7 @@ import play.api.mvc._
 
 import controllers.routes
 import controllers.sugar.Requests._
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
@@ -251,7 +251,7 @@ trait Actions extends Calls with ActionHelpers {
 
   private def maybeAuthRequest[A](
       request: Request[A],
-      userF: OptionT[IO, DbModel[User]]
+      userF: OptionT[IO, Model[User]]
   )(implicit cs: ContextShift[IO]): Future[Either[Result, AuthRequest[A]]] =
     userF
       .semiflatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
@@ -280,7 +280,7 @@ trait Actions extends Calls with ActionHelpers {
       maybeProjectRequest(request, projects.withPluginId(pluginId))
   }
 
-  private def maybeProjectRequest[A](r: OreRequest[A], project: OptionT[IO, DbModel[Project]])(
+  private def maybeProjectRequest[A](r: OreRequest[A], project: OptionT[IO, Model[Project]])(
       implicit cs: ContextShift[IO]
   ): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request: OreRequest[A] = r
@@ -296,16 +296,16 @@ trait Actions extends Calls with ActionHelpers {
       .unsafeToFuture()
   }
 
-  private def toProjectRequest[T](project: DbModel[Project])(f: (ProjectData, ScopedProjectData) => T)(
+  private def toProjectRequest[T](project: Model[Project])(f: (ProjectData, ScopedProjectData) => T)(
       implicit
       request: OreRequest[_],
       cs: ContextShift[IO]
   ) =
     (ProjectData.of(project), ScopedProjectData.of(request.headerData.currentUser, project)).parMapN(f)
 
-  private def processProject(project: DbModel[Project], user: Option[DbModel[User]])(
+  private def processProject(project: Model[Project], user: Option[Model[User]])(
       implicit cs: ContextShift[IO]
-  ): OptionT[IO, DbModel[Project]] = {
+  ): OptionT[IO, Model[Project]] = {
     if (project.visibility == Visibility.Public || project.visibility == Visibility.New) {
       OptionT.pure[IO](project)
     } else {
@@ -324,7 +324,7 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: DbModel[Project], user: DbModel[User])(
+  private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User])(
       implicit cs: ContextShift[IO]
   ) = {
     if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
@@ -334,7 +334,7 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def authedProjectActionImpl(project: OptionT[IO, DbModel[Project]])(
+  def authedProjectActionImpl(project: OptionT[IO, Model[Project]])(
       implicit ec: ExecutionContext,
       cs: ContextShift[IO]
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
@@ -410,12 +410,12 @@ trait Actions extends Calls with ActionHelpers {
 
   }
 
-  private def toOrgaRequest[T](orga: DbModel[Organization])(f: (OrganizationData, ScopedOrganizationData) => T)(
+  private def toOrgaRequest[T](orga: Model[Organization])(f: (OrganizationData, ScopedOrganizationData) => T)(
       implicit request: OreRequest[_],
       cs: ContextShift[IO]
   ) = (OrganizationData.of(orga), ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
 
-  def getOrga(organization: String): OptionT[IO, DbModel[Organization]] =
+  def getOrga(organization: String): OptionT[IO, Model[Organization]] =
     organizations.withName(organization)
 
   def getUserData(request: OreRequest[_], userName: String)(implicit cs: ContextShift[IO]): OptionT[IO, UserData] =

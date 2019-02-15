@@ -1,6 +1,6 @@
 package ore
 
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.user.User
 import models.user.role.UserRoleModel
 import ore.user.{Member, MembershipDossier}
@@ -28,7 +28,7 @@ trait JoinableOps[M, Mem <: Member[_ <: UserRoleModel[_]]] extends Any {
   /**
     * Transfers ownership of this object to the given member.
     */
-  def transferOwner(owner: Mem)(implicit service: ModelService, cs: ContextShift[IO]): IO[DbModel[M]]
+  def transferOwner(owner: Mem)(implicit service: ModelService, cs: ContextShift[IO]): IO[Model[M]]
 
   /**
     * Returns this objects membership information.

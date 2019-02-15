@@ -19,7 +19,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
@@ -177,7 +177,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
   }
 
-  private def orgasUserCanUploadTo(user: DbModel[User]): IO[Set[DbRef[Organization]]] = {
+  private def orgasUserCanUploadTo(user: Model[User]): IO[Set[DbRef[Organization]]] = {
     import cats.instances.vector._
     for {
       all       <- user.organizations.allFromParent
@@ -232,7 +232,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           views.pages.view(
             request.data,
             request.scoped,
-            DbModel.unwrapNested[Seq[(DbModel[Page], Seq[Page])]](pages),
+            Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
             homePage,
             None,
             pageCount
@@ -408,7 +408,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
       val query = request.project.stars.allQueryFromChild.drop(offset).take(pageSize).sortBy(_.name).result
       service.runDBIO(query).map { users =>
-        Ok(views.stargazers(request.data, request.scoped, DbModel.unwrapNested(users), pageNum, pageSize))
+        Ok(views.stargazers(request.data, request.scoped, Model.unwrapNested(users), pageNum, pageSize))
       }
     }
 
@@ -824,7 +824,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         import cats.instances.vector._
         project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
           notes =>
-            Ok(views.admin.notes(project, DbModel.unwrapNested(notes)))
+            Ok(views.admin.notes(project, Model.unwrapNested(notes)))
         }
       }
     }

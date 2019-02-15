@@ -5,7 +5,7 @@ import java.nio.file.Path
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import models.project.{Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -74,8 +74,8 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @return        True if successful
     */
   def createProjectTopic(
-      project: DbModel[Project]
-  )(implicit service: ModelService, config: OreConfig): IO[DbModel[Project]] = {
+      project: Model[Project]
+  )(implicit service: ModelService, config: OreConfig): IO[Model[Project]] = {
     if (!this.isEnabled)
       IO.pure(project)
     else {
@@ -135,7 +135,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @return         True if successful
     */
   def updateProjectTopic(
-      project: DbModel[Project]
+      project: Model[Project]
   )(implicit service: ModelService, config: OreConfig): IO[Boolean] = {
     if (!this.isEnabled)
       IO.pure(true)
@@ -209,7 +209,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @param version Version of project
     * @return
     */
-  def postVersionRelease(project: DbModel[Project], version: Version, content: Option[String])(
+  def postVersionRelease(project: Model[Project], version: Version, content: Option[String])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): EitherT[IO, List[String], DiscoursePost] = {
@@ -249,7 +249,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @param project  Project to delete topic for
     * @return         True if deleted
     */
-  def deleteProjectTopic(project: DbModel[Project])(implicit service: ModelService): IO[DbModel[Project]] = {
+  def deleteProjectTopic(project: Model[Project])(implicit service: ModelService): IO[Model[Project]] = {
     if (!this.isEnabled)
       IO.pure(project)
     else {
@@ -286,7 +286,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
 
     /** Generates the content for a project topic. */
     def projectTopic(
-        project: DbModel[Project]
+        project: Model[Project]
     )(implicit config: OreConfig, service: ModelService): IO[String] = project.homePage.map { page =>
       readAndFormatFile(
         topicTemplatePath,

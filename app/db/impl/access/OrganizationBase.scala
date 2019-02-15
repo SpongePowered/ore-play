@@ -1,7 +1,7 @@
 package db.impl.access
 
 import db.access.ModelView
-import db.{DbModel, DbRef, ModelService, ObjId}
+import db.{Model, DbRef, ModelService, ObjId}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
 import ore.OreConfig
@@ -32,7 +32,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole]
-  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, String, DbModel[Organization]] = {
+  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, String, Model[Organization]] = {
     import cats.instances.vector._
     MDCLogger.debug("Creating Organization...")
     MDCLogger.debug("Name     : " + name)
@@ -111,7 +111,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
     * @param name Organization name
     * @return     Organization with name if exists, None otherwise
     */
-  def withName(name: String): OptionT[IO, DbModel[Organization]] =
+  def withName(name: String): OptionT[IO, Model[Organization]] =
     ModelView.now(Organization).find(StringUtils.equalsIgnoreCase(_.name, name))
 
 }

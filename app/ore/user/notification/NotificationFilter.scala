@@ -4,7 +4,7 @@ import scala.language.higherKinds
 
 import scala.collection.immutable
 
-import db.DbModel
+import db.Model
 import db.access.QueryView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.NotificationTable
@@ -22,8 +22,8 @@ sealed abstract class NotificationFilter(
 ) extends IntEnumEntry {
 
   def apply[V[_, _]: QueryView](
-      notifications: V[NotificationTable, DbModel[Notification]]
-  ): V[NotificationTable, DbModel[Notification]] =
+      notifications: V[NotificationTable, Model[Notification]]
+  ): V[NotificationTable, Model[Notification]] =
     notifications.filterView(this.filter)
 }
 

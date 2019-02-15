@@ -1,7 +1,7 @@
 package models.viewhelper
 
 import controllers.sugar.Requests.OreRequest
-import db.DbModel
+import db.Model
 import models.user.User
 import models.user.role.UserRoleModel
 import ore.Joinable
@@ -11,12 +11,12 @@ import ore.user.Member
 
 trait JoinableData[R <: UserRoleModel[R], T <: Joinable] {
 
-  def joinable: DbModel[T]
-  def members: Seq[(DbModel[R], DbModel[User])]
+  def joinable: Model[T]
+  def members: Seq[(Model[R], Model[User])]
 
   def roleCategory: RoleCategory
 
-  def filteredMembers(implicit request: OreRequest[_]): Seq[(DbModel[R], DbModel[User])] = {
+  def filteredMembers(implicit request: OreRequest[_]): Seq[(Model[R], Model[User])] = {
     val hasEditSettings = request.headerData.globalPerm(EditSettings)
     val userIsOwner     = request.currentUser.map(_.id.value).contains(joinable.ownerId)
     if (hasEditSettings || userIsOwner)

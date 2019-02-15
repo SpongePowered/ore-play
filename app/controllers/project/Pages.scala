@@ -12,7 +12,7 @@ import play.utils.UriEncoding
 
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.PageTable
@@ -69,7 +69,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     * @param page
     * @return Tuple: Optional Page, true if using legacy fallback
     */
-  def withPage(project: DbModel[Project], page: String): OptionT[IO, (DbModel[Page], Boolean)] = {
+  def withPage(project: Model[Project], page: String): OptionT[IO, (Model[Page], Boolean)] = {
     val parts = page.split("/").map(page => UriEncoding.decodePathSegment(page, StandardCharsets.UTF_8))
 
     if (parts.length == 2) {
@@ -106,9 +106,9 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
                   views.view(
                     request.data,
                     request.scoped,
-                    DbModel.unwrapNested[Seq[(DbModel[Page], Seq[Page])]](pages),
+                    Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
                     p,
-                    DbModel.unwrapNested(parentPage),
+                    Model.unwrapNested(parentPage),
                     pageCount,
                     b
                   )
@@ -143,9 +143,9 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
                 views.view(
                   request.data,
                   request.scoped,
-                  DbModel.unwrapNested[Seq[(DbModel[Page], Seq[Page])]](pages),
+                  Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
                   p,
-                  DbModel.unwrapNested(parentPage),
+                  Model.unwrapNested(parentPage),
                   pageCount,
                   editorOpen = true
                 )

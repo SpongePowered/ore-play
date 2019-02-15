@@ -41,7 +41,7 @@ case class Organization(
     *
     * @return This Organization as a User
     */
-  def toUser(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, DbModel[User]] =
+  def toUser(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, Model[User]] =
     users.withName(this.username)
 
   override val name: String = this.username
@@ -55,14 +55,14 @@ object Organization extends DbModelCompanionPartial[Organization, OrganizationTa
       model: Organization,
       id: ObjId[Organization],
       time: ObjTimestamp
-  ): DbModel[Organization] = DbModel(model.id, time, model)
+  ): Model[Organization] = Model(model.id, time, model)
 
   implicit val query: ModelQuery[Organization] =
     ModelQuery.from(this)
 
   implicit val isUserOwned: UserOwned[Organization] = (a: Organization) => a.ownerId
 
-  implicit class OrganizationModelOps(private val self: DbModel[Organization])
+  implicit class OrganizationModelOps(private val self: Model[Organization])
       extends AnyVal
       with JoinableOps[Organization, OrganizationMember] {
 
@@ -84,7 +84,7 @@ object Organization extends DbModelCompanionPartial[Organization, OrganizationTa
 
     override def transferOwner(
         member: OrganizationMember
-    )(implicit service: ModelService, cs: ContextShift[IO]): IO[DbModel[Organization]] = {
+    )(implicit service: ModelService, cs: ContextShift[IO]): IO[Model[Organization]] = {
       import cats.instances.vector._
       // Down-grade current owner to "Admin"
       for {

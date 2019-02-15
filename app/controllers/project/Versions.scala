@@ -20,7 +20,7 @@ import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.UserTable
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import form.OreForms
 import models.admin.VersionVisibilityChange
 import models.project._
@@ -222,7 +222,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 views.list(
                   request.data,
                   request.scoped,
-                  DbModel.unwrapNested(allChannels),
+                  Model.unwrapNested(allChannels),
                   versionCount,
                   visibleNamesForView
                 )
@@ -252,7 +252,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             isProjectPending = false,
             forumSync = request.data.settings.forumSync,
             None,
-            Some(DbModel.unwrapNested(channels)),
+            Some(Model.unwrapNested(channels)),
             showFileControls = true
           )
         )
@@ -337,7 +337,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 isPending,
                 forumSync,
                 Some(pendingVersion),
-                DbModel.unwrapNested(channels),
+                Model.unwrapNested(channels),
                 showFileControls = channels.isDefined
               )
             )
@@ -346,11 +346,11 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       success.getOrElse(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }
 
-  private def pendingOrReal(author: String, slug: String): OptionT[IO, Either[PendingProject, DbModel[Project]]] =
+  private def pendingOrReal(author: String, slug: String): OptionT[IO, Either[PendingProject, Model[Project]]] =
     // Returns either a PendingProject or existing Project
     projects
       .withSlug(author, slug)
-      .map[Either[PendingProject, DbModel[Project]]](Right.apply)
+      .map[Either[PendingProject, Model[Project]]](Right.apply)
       .orElse(OptionT.fromOption[IO](this.factory.getPendingProject(author, slug)).map(Left.apply))
 
   /**
@@ -450,7 +450,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
   }
 
-  private def addUnstableTag(version: DbModel[Version], unstable: Boolean) = {
+  private def addUnstableTag(version: Model[Version], unstable: Boolean) = {
     if (unstable) {
       service
         .insert(
@@ -555,7 +555,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             views.log(
               request.project,
               version,
-              DbModel.unwrapNested[Seq[(DbModel[VersionVisibilityChange], Option[User])]](visChanges)
+              Model.unwrapNested[Seq[(Model[VersionVisibilityChange], Option[User])]](visChanges)
             )
           )
     }
@@ -575,7 +575,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       getVersion(project, versionString).semiflatMap(sendVersion(project, _, token))
     }
 
-  private def sendVersion(project: Project, version: DbModel[Version], token: Option[String])(
+  private def sendVersion(project: Project, version: Model[Version], token: Option[String])(
       implicit req: ProjectRequest[_]
   ): IO[Result] = {
     checkConfirmation(version, token).flatMap { passed =>
@@ -596,7 +596,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
   }
 
-  private def checkConfirmation(version: DbModel[Version], token: Option[String])(
+  private def checkConfirmation(version: Model[Version], token: Option[String])(
       implicit req: ProjectRequest[_]
   ): IO[Boolean] = {
     if (version.reviewState == ReviewState.Reviewed)
@@ -618,7 +618,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
   }
 
-  private def _sendVersion(project: Project, version: DbModel[Version])(implicit req: ProjectRequest[_]): IO[Result] =
+  private def _sendVersion(project: Project, version: Model[Version])(implicit req: ProjectRequest[_]): IO[Result] =
     this.stats.versionDownloaded(version) {
       IO.pure {
         Ok.sendPath(
@@ -825,10 +825,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
 
   private def sendJar(
-      project: DbModel[Project],
-      version: DbModel[Version],
-      token: Option[String],
-      api: Boolean = false
+                       project: Model[Project],
+                       version: Model[Version],
+                       token: Option[String],
+                       api: Boolean = false
   )(
       implicit request: ProjectRequest[_]
   ): IO[Result] = {

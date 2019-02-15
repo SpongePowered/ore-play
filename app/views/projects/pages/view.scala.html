@@ -13,10 +13,10 @@ Documentation page within Project overview.
 @import security.NonceFilter._
 @import util.StringUtils._
 @import views.html.utils.editor
-@import db.DbModel
+@import db.Model
 @(p: ProjectData,
   sp: ScopedProjectData,
-  rootPages: Seq[(DbModel[Page], Seq[Page])],
+  rootPages: Seq[(Model[Page], Seq[Page])],
   page: Page,
   parentPage: Option[Page],
   pageCount: Int,

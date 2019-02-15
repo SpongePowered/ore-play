@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.schema.FlagTable
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import models.user.User
 import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned
@@ -37,7 +37,7 @@ object Flag extends DefaultDbModelCompanion[Flag, FlagTable](TableQuery[FlagTabl
   implicit val isProjectOwned: ProjectOwned[Flag] = (a: Flag) => a.projectId
   implicit val isUserOwned: UserOwned[Flag]       = (a: Flag) => a.userId
 
-  implicit class FlagModelOps(private val self: DbModel[Flag]) extends AnyVal {
+  implicit class FlagModelOps(private val self: Model[Flag]) extends AnyVal {
 
     /**
       * Sets whether this Flag has been marked as resolved.
@@ -46,8 +46,8 @@ object Flag extends DefaultDbModelCompanion[Flag, FlagTable](TableQuery[FlagTabl
       */
     def markResolved(
         resolved: Boolean,
-        user: Option[DbModel[User]]
-    )(implicit service: ModelService): IO[DbModel[Flag]] = {
+        user: Option[Model[User]]
+    )(implicit service: ModelService): IO[Model[Flag]] = {
       val (at, by) =
         if (resolved)
           (Some(Timestamp.from(Instant.now)), user.map(_.id.value): Option[DbRef[User]])

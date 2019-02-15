@@ -7,9 +7,9 @@
 
 @import cats.data.{NonEmptyList => NEL}
 
-@import db.DbModel
+@import db.Model
 
-@(notifications: Seq[(DbModel[Notification], User)], invites: Seq[(DbModel[UserRoleModel[_]], Visitable)], notificationFilter: NotificationFilter,
+@(notifications: Seq[(Model[Notification], User)], invites: Seq[(Model[UserRoleModel[_]], Visitable)], notificationFilter: NotificationFilter,
         inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @notificationFilterOption(option: NotificationFilter) = @{

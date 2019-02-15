@@ -2,7 +2,7 @@ package models.viewhelper
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectTableMain}
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole}
 import models.user.{Organization, User}
@@ -16,12 +16,12 @@ import cats.syntax.all._
 import slick.lifted.TableQuery
 
 case class OrganizationData(
-    joinable: DbModel[Organization],
-    members: Seq[(DbModel[OrganizationUserRole], DbModel[User])], // TODO sorted/reverse
-    projectRoles: Seq[(DbModel[ProjectUserRole], DbModel[Project])]
+                             joinable: Model[Organization],
+                             members: Seq[(Model[OrganizationUserRole], Model[User])], // TODO sorted/reverse
+                             projectRoles: Seq[(Model[ProjectUserRole], Model[Project])]
 ) extends JoinableData[OrganizationUserRole, Organization] {
 
-  def orga: DbModel[Organization] = joinable
+  def orga: Model[Organization] = joinable
 
   def roleCategory: RoleCategory = RoleCategory.Organization
 }
@@ -29,9 +29,9 @@ case class OrganizationData(
 object OrganizationData {
   val noPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
-  def cacheKey(orga: DbModel[Organization]): String = "organization" + orga.id
+  def cacheKey(orga: Model[Organization]): String = "organization" + orga.id
 
-  def of[A](orga: DbModel[Organization])(
+  def of[A](orga: Model[Organization])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[OrganizationData] = {
@@ -53,7 +53,7 @@ object OrganizationData {
       if role.userId === userId
     } yield (role, project)
 
-  def of[A](orga: Option[DbModel[Organization]])(
+  def of[A](orga: Option[Model[Organization]])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): OptionT[IO, OrganizationData] = OptionT.fromOption[IO](orga).semiflatMap(of)

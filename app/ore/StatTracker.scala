@@ -11,7 +11,7 @@ import db.ModelFilter._
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.StatTable
-import db.{DbModel, DbModelCompanion, DbRef, ModelQuery, ModelService}
+import db.{Model, DbModelCompanion, DbRef, ModelQuery, ModelService}
 import models.project.{Project, Version}
 import models.statistic.{ProjectView, StatEntry, VersionDownload}
 import models.user.User
@@ -49,7 +49,7 @@ trait StatTracker {
   private def like[S, M <: StatEntry[S]: ModelQuery, T <: StatTable[S, M]](
       entry: M,
       model: DbModelCompanion.Aux[M, T]
-  ): OptionT[IO, DbModel[M]] = {
+  ): OptionT[IO, Model[M]] = {
     val baseFilter: T => Rep[Boolean] = _.modelId === entry.modelId
     val filter: T => Rep[Boolean]     = e => e.address === entry.address || e.cookie === entry.cookie
 
@@ -84,7 +84,7 @@ trait StatTracker {
     * @param version Version to check downloads for
     * @param request Request to download the version
     */
-  def versionDownloaded(version: DbModel[Version])(f: IO[Result])(
+  def versionDownloaded(version: Model[Version])(f: IO[Result])(
       implicit request: ProjectRequest[_],
       auth: SpongeAuthApi,
       cs: ContextShift[IO]

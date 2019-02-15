@@ -14,7 +14,7 @@ import play.api.i18n.Messages
 import db.access.ModelView
 import db.impl.access.ProjectBase
 import db.impl.OrePostgresDriver.api._
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import discourse.OreDiscourseApi
 import models.project._
 import models.user.role.ProjectUserRole
@@ -62,7 +62,7 @@ trait ProjectFactory {
     * @param owner      Upload owner
     * @return Loaded PluginFile
     */
-  def processPluginUpload(uploadData: PluginUpload, owner: DbModel[User])(
+  def processPluginUpload(uploadData: PluginUpload, owner: Model[User])(
       implicit messages: Messages,
       mdc: OreMDC
   ): EitherT[IO, String, PluginFileWithData] = {
@@ -105,7 +105,7 @@ trait ProjectFactory {
     }
   }
 
-  def processSubsequentPluginUpload(uploadData: PluginUpload, owner: DbModel[User], project: DbModel[Project])(
+  def processSubsequentPluginUpload(uploadData: PluginUpload, owner: Model[User], project: Model[Project])(
       implicit messages: Messages,
       cs: ContextShift[IO],
       mdc: OreMDC
@@ -260,7 +260,7 @@ trait ProjectFactory {
     * @return New Project
     * @throws         IllegalArgumentException if the project already exists
     */
-  def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[DbModel[Project]] = {
+  def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[Model[Project]] = {
     import cats.instances.vector._
 
     for {
@@ -313,7 +313,7 @@ trait ProjectFactory {
     * @param color   Channel color
     * @return New channel
     */
-  def createChannel(project: DbModel[Project], name: String, color: Color): IO[DbModel[Channel]] = {
+  def createChannel(project: Model[Project], name: String, color: Color): IO[Model[Channel]] = {
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
     for {
       limitReached <- service.runDBIO(
@@ -331,12 +331,12 @@ trait ProjectFactory {
     * @return New version
     */
   def createVersion(
-      project: DbModel[Project],
-      pending: PendingVersion
+                     project: Model[Project],
+                     pending: PendingVersion
   )(
       implicit ec: ExecutionContext,
       cs: ContextShift[IO]
-  ): IO[(DbModel[Version], DbModel[Channel], Seq[DbModel[VersionTag]])] = {
+  ): IO[(Model[Version], Model[Channel], Seq[Model[VersionTag]])] = {
 
     for {
       // Create channel if not exists
@@ -360,15 +360,15 @@ trait ProjectFactory {
     } yield (newVersion, channel, tags)
   }
 
-  private def addTags(pendingVersion: PendingVersion, newVersion: DbModel[Version])(
+  private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version])(
       implicit cs: ContextShift[IO]
-  ): IO[Seq[DbModel[VersionTag]]] =
+  ): IO[Seq[Model[VersionTag]]] =
     (
       pendingVersion.plugin.data.createTags(newVersion.id),
       addDependencyTags(newVersion)
     ).parMapN(_ ++ _)
 
-  private def addDependencyTags(version: DbModel[Version]): IO[Seq[DbModel[VersionTag]]] =
+  private def addDependencyTags(version: Model[Version]): IO[Seq[Model[VersionTag]]] =
     Platform
       .createPlatformTags(
         version.id,
@@ -376,7 +376,7 @@ trait ProjectFactory {
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
       )
 
-  private def getOrCreateChannel(pending: PendingVersion, project: DbModel[Project]) =
+  private def getOrCreateChannel(pending: PendingVersion, project: Model[Project]) =
     project
       .channels(ModelView.now(Channel))
       .find(equalsIgnoreCase(_.name, pending.channelName))

@@ -15,8 +15,8 @@ Page used for uploading and creating new projects.
 @import db.ObjTimestamp
 @import java.sql.Timestamp
 @import java.time.Instant
-@import db.DbModel
-@(createProjectOrgas: Seq[DbModel[Organization]],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import db.Model
+@(createProjectOrgas: Seq[Model[Organization]],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

@@ -88,7 +88,7 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       model: User,
       id: ObjId[User],
       time: ObjTimestamp
-  ): DbModel[User] = DbModel(model.id, time, model)
+  ): Model[User] = Model(model.id, time, model)
 
   /**
     * Copy this User with the information SpongeUser provides.
@@ -129,7 +129,7 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
   def avatarUrl(name: String)(implicit config: OreConfig): String =
     config.security.api.avatarUrl.format(name)
 
-  implicit class UserModelOps(private val self: DbModel[User]) extends AnyVal {
+  implicit class UserModelOps(private val self: Model[User]) extends AnyVal {
 
     /**
       * The User's [[PermissionPredicate]]. All permission checks go through
@@ -174,8 +174,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @param watching True if watching
       */
     def setWatching(
-        project: DbModel[Project],
-        watching: Boolean
+                     project: Model[Project],
+                     watching: Boolean
     )(implicit service: ModelService): IO[Unit] = {
       val contains = self.watching.contains(project)
       contains.flatMap {
@@ -207,7 +207,7 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       *
       * @return Projects user has starred
       */
-    def starred()(implicit service: ModelService): IO[Seq[DbModel[Project]]] = {
+    def starred()(implicit service: ModelService): IO[Seq[Model[Project]]] = {
       val filter = Visibility.isPublicFilter[ProjectTableMain]
 
       val baseQuery = for {
@@ -225,8 +225,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return Projects owned by user
       */
     def projects[V[_, _]: QueryView](
-        view: V[ProjectTableMain, DbModel[Project]]
-    ): V[ProjectTableMain, DbModel[Project]] =
+        view: V[ProjectTableMain, Model[Project]]
+    ): V[ProjectTableMain, Model[Project]] =
       view.filterView(_.userId === self.id.value)
 
     /**
@@ -235,8 +235,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return ProjectRoles
       */
     def projectRoles[V[_, _]: QueryView](
-        view: V[ProjectRoleTable, DbModel[ProjectUserRole]]
-    ): V[ProjectRoleTable, DbModel[ProjectUserRole]] =
+        view: V[ProjectRoleTable, Model[ProjectUserRole]]
+    ): V[ProjectRoleTable, Model[ProjectUserRole]] =
       view.filterView(_.userId === self.id.value)
 
     /**
@@ -245,8 +245,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return Organizations user owns
       */
     def ownedOrganizations[V[_, _]: QueryView](
-        view: V[OrganizationTable, DbModel[Organization]]
-    ): V[OrganizationTable, DbModel[Organization]] =
+        view: V[OrganizationTable, Model[Organization]]
+    ): V[OrganizationTable, Model[Organization]] =
       view.filterView(_.userId === self.id.value)
 
     /**
@@ -255,8 +255,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return OrganizationRoles
       */
     def organizationRoles[V[_, _]: QueryView](
-        view: V[OrganizationRoleTable, DbModel[OrganizationUserRole]]
-    ): V[OrganizationRoleTable, DbModel[OrganizationUserRole]] =
+        view: V[OrganizationRoleTable, Model[OrganizationUserRole]]
+    ): V[OrganizationRoleTable, Model[OrganizationUserRole]] =
       view.filterView(_.userId === self.id.value)
 
     /**
@@ -265,7 +265,7 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return Organization
       */
     def toMaybeOrganization[QOptRet, SRet[_]](
-        view: ModelView[QOptRet, SRet, OrganizationTable, DbModel[Organization]]
+        view: ModelView[QOptRet, SRet, OrganizationTable, Model[Organization]]
     ): QOptRet = view.get(self.id.value)
 
     /**
@@ -273,7 +273,7 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       *
       * @return Flags submitted by user
       */
-    def flags[V[_, _]: QueryView](view: V[FlagTable, DbModel[Flag]]): V[FlagTable, DbModel[Flag]] =
+    def flags[V[_, _]: QueryView](view: V[FlagTable, Model[Flag]]): V[FlagTable, Model[Flag]] =
       view.filterView(_.userId === self.id.value)
 
     /**
@@ -284,8 +284,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return True if has pending flag on Project
       */
     def hasUnresolvedFlagFor[QOptRet, SRet[_]](
-        project: DbModel[Project],
-        view: ModelView[QOptRet, SRet, FlagTable, DbModel[Flag]]
+                                                project: Model[Project],
+                                                view: ModelView[QOptRet, SRet, FlagTable, Model[Flag]]
     ): SRet[Boolean] =
       flags(view).exists(f => f.projectId === project.id.value && !f.isResolved)
 
@@ -295,8 +295,8 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       * @return User notifications
       */
     def notifications[V[_, _]: QueryView](
-        view: V[NotificationTable, DbModel[Notification]]
-    ): V[NotificationTable, DbModel[Notification]] =
+        view: V[NotificationTable, Model[Notification]]
+    ): V[NotificationTable, Model[Notification]] =
       view.filterView(_.userId === self.id.value)
 
     /**
@@ -304,7 +304,7 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
       *
       * @param prompt Prompt to mark as read
       */
-    def markPromptAsRead(prompt: Prompt)(implicit service: ModelService): IO[DbModel[User]] = {
+    def markPromptAsRead(prompt: Prompt)(implicit service: ModelService): IO[Model[User]] = {
       checkNotNull(prompt, "null prompt", "")
       service.update(self)(
         _.copy(

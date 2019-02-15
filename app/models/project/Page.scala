@@ -78,10 +78,10 @@ case class Page private (
     *
     * @return Optional Project
     */
-  def parentProject[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, ProjectTableMain, DbModel[Project]]): QOptRet =
+  def parentProject[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, ProjectTableMain, Model[Project]]): QOptRet =
     view.get(projectId)
 
-  def parentPage[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, PageTable, DbModel[Page]]): Option[QOptRet] =
+  def parentPage[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, PageTable, Model[Page]]): Option[QOptRet] =
     parentId.map(view.get)
 
   /**
@@ -252,7 +252,7 @@ object Page extends DefaultDbModelCompanion[Page, PageTable](TableQuery[PageTabl
     */
   def template(title: String, body: String = ""): String = "# " + title + "\n" + body
 
-  implicit class PageModelOps(private val self: DbModel[Page]) extends AnyVal {
+  implicit class PageModelOps(private val self: Model[Page]) extends AnyVal {
 
     /**
       * Sets the Markdown contents of this Page and updates the associated forum
@@ -262,7 +262,7 @@ object Page extends DefaultDbModelCompanion[Page, PageTable](TableQuery[PageTabl
       */
     def updateContentsWithForum(
         contents: String
-    )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi): IO[DbModel[Page]] = {
+    )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi): IO[Model[Page]] = {
       checkNotNull(contents, "null contents", "")
       checkArgument(
         (self.isHome && contents.length <= maxLength) || contents.length <= maxLengthPage,
@@ -283,7 +283,7 @@ object Page extends DefaultDbModelCompanion[Page, PageTable](TableQuery[PageTabl
       *
       * @return Page's children
       */
-    def children[V[_, _]: QueryView](view: V[PageTable, DbModel[Page]]): V[PageTable, DbModel[Page]] =
+    def children[V[_, _]: QueryView](view: V[PageTable, Model[Page]]): V[PageTable, Model[Page]] =
       view.filterView(page => page.parentId.isDefined && page.parentId.get === self.id.value)
   }
 

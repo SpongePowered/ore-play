@@ -9,7 +9,7 @@ import java.util.Date
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
 import db.query.AppQueries
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import db.access.ModelView
 import discourse.OreDiscourseApi
 import models.project.{Channel, Page, Project, Version, Visibility}
@@ -32,7 +32,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
 
   implicit val self: ProjectBase = this
 
-  def missingFile: IO[Seq[DbModel[Version]]] = {
+  def missingFile: IO[Seq[Model[Version]]] = {
     def allVersions =
       for {
         v <- TableQuery[VersionTable]
@@ -67,7 +67,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     *
     * @return Stale projects
     */
-  def stale: IO[Seq[DbModel[Project]]] =
+  def stale: IO[Seq[Model[Project]]] =
     service.runDBIO(
       ModelView
         .raw(Project)
@@ -82,7 +82,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @param name   Project name
     * @return       Project with name
     */
-  def withName(owner: String, name: String): OptionT[IO, DbModel[Project]] =
+  def withName(owner: String, name: String): OptionT[IO, Model[Project]] =
     ModelView
       .now(Project)
       .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase)
@@ -94,7 +94,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @param slug   URL slug
     * @return       Project if found, None otherwise
     */
-  def withSlug(owner: String, slug: String): OptionT[IO, DbModel[Project]] =
+  def withSlug(owner: String, slug: String): OptionT[IO, Model[Project]] =
     ModelView
       .now(Project)
       .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase)
@@ -105,7 +105,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @param pluginId Plugin ID
     * @return         Project if found, None otherwise
     */
-  def withPluginId(pluginId: String): OptionT[IO, DbModel[Project]] =
+  def withPluginId(pluginId: String): OptionT[IO, Model[Project]] =
     ModelView.now(Project).find(equalsIgnoreCase(_.pluginId, pluginId))
 
   /**
@@ -148,8 +148,8 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     * @param name     New name to assign Project
     */
   def rename(
-      project: DbModel[Project],
-      name: String
+              project: Model[Project],
+              name: String
   )(implicit forums: OreDiscourseApi): IO[Boolean] = {
     val newName = compact(name)
     val newSlug = slugify(newName)
@@ -173,7 +173,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   /**
     * Irreversibly deletes this channel and all version associated with it.
     */
-  def deleteChannel(project: DbModel[Project], channel: DbModel[Channel])(implicit cs: ContextShift[IO]): IO[Unit] = {
+  def deleteChannel(project: Model[Project], channel: Model[Channel])(implicit cs: ContextShift[IO]): IO[Unit] = {
     import cats.instances.vector._
     for {
       channels  <- service.runDBIO(project.channels(ModelView.raw(Channel)).result)
@@ -201,7 +201,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     } yield ()
   }
 
-  def prepareDeleteVersion(version: DbModel[Version]): IO[DbModel[Project]] = {
+  def prepareDeleteVersion(version: Model[Version]): IO[Model[Project]] = {
     import cats.instances.option._
     for {
       proj <- version.project
@@ -222,7 +222,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   /**
     * Irreversibly deletes this version.
     */
-  def deleteVersion(version: DbModel[Version])(implicit cs: ContextShift[IO], mdc: OreMDC): IO[DbModel[Project]] = {
+  def deleteVersion(version: Model[Version])(implicit cs: ContextShift[IO], mdc: OreMDC): IO[Model[Project]] = {
     for {
       proj       <- prepareDeleteVersion(version)
       channel    <- version.channel
@@ -242,7 +242,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     *
     * @param project Project to delete
     */
-  def delete(project: DbModel[Project])(implicit forums: OreDiscourseApi, mdc: OreMDC): IO[Int] = {
+  def delete(project: Model[Project])(implicit forums: OreDiscourseApi, mdc: OreMDC): IO[Int] = {
     FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
     val eff =
       if (project.topicId.isDefined)
@@ -252,7 +252,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     eff *> service.delete(project)
   }
 
-  def queryProjectPages(project: DbModel[Project]): IO[Seq[(DbModel[Page], Seq[DbModel[Page]])]] = {
+  def queryProjectPages(project: Model[Project]): IO[Seq[(Model[Page], Seq[Model[Page]])]] = {
     val tablePage = TableQuery[PageTable]
     val pagesQuery = for {
       (pp, p) <- tablePage.joinLeft(tablePage).on(_.id === _.parentId)

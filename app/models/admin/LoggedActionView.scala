@@ -1,7 +1,7 @@
 package models.admin
 
 import db.impl.schema.LoggedActionViewTable
-import db.{DbModel, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
+import db.{Model, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, LoggedActionContext, User}
 import ore.user.UserOwned
@@ -65,7 +65,7 @@ object LoggedActionViewModel
       model: LoggedActionViewModel[Any],
       id: ObjId[LoggedActionViewModel[Any]],
       time: ObjTimestamp
-  ): DbModel[LoggedActionViewModel[Any]] = DbModel(ObjId(0L), time, model)
+  ): Model[LoggedActionViewModel[Any]] = Model(ObjId(0L), time, model)
 
   implicit val isUserOwned: UserOwned[LoggedActionViewModel[_]] = (a: LoggedActionViewModel[_]) => a.userId
 }

@@ -1,6 +1,6 @@
 package models.user.role
 
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import ore.Visitable
 import ore.permission.role.Role
 
@@ -27,7 +27,7 @@ abstract class UserRoleModel[Self] {
     *
     * @return Subject of Role
     */
-  def subject(implicit service: ModelService): IO[DbModel[Visitable]]
+  def subject(implicit service: ModelService): IO[Model[Visitable]]
 
   def withRole(role: Role): Self
 

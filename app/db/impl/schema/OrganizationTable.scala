@@ -2,7 +2,7 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{DbModel, DbRef, ObjId, ObjTimestamp}
+import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.NameColumn
 import db.table.ModelTable
@@ -14,9 +14,9 @@ class OrganizationTable(tag: Tag) extends ModelTable[Organization](tag, "organiz
   def userId      = column[DbRef[User]]("user_id")
 
   override def * = {
-    val applyFunc: ((Option[DbRef[Organization]], Option[Timestamp], String, DbRef[User])) => DbModel[Organization] = {
+    val applyFunc: ((Option[DbRef[Organization]], Option[Timestamp], String, DbRef[User])) => Model[Organization] = {
       case (id, time, name, userId) =>
-        DbModel(
+        Model(
           ObjId.unsafeFromOption(id),
           ObjTimestamp.unsafeFromOption(time),
           Organization(ObjId.unsafeFromOption(id), name, userId)
@@ -24,8 +24,8 @@ class OrganizationTable(tag: Tag) extends ModelTable[Organization](tag, "organiz
     }
 
     val unapplyFunc
-      : DbModel[Organization] => Option[(Option[DbRef[Organization]], Option[Timestamp], String, DbRef[User])] = {
-      case DbModel(_, createdAt, Organization(id, username, ownerId)) =>
+      : Model[Organization] => Option[(Option[DbRef[Organization]], Option[Timestamp], String, DbRef[User])] = {
+      case Model(_, createdAt, Organization(id, username, ownerId)) =>
         Some((id.unsafeToOption, createdAt.unsafeToOption, username, ownerId))
     }
 

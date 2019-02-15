@@ -3,7 +3,7 @@ package ore.project
 import scala.concurrent.ExecutionContext
 
 import db.impl.OrePostgresDriver.api._
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project.{Project, Version}
 import models.user.{Notification, User}
 import ore.user.notification.NotificationType
@@ -18,7 +18,7 @@ import cats.data.NonEmptyList
   * @param version  New version
   * @param projects ProjectBase instance
   */
-case class NotifyWatchersTask(version: DbModel[Version], project: DbModel[Project])(
+case class NotifyWatchersTask(version: Model[Version], project: Model[Project])(
     implicit ec: ExecutionContext,
     service: ModelService
 ) extends Runnable {

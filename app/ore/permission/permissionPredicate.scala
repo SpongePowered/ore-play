@@ -1,6 +1,6 @@
 package ore.permission
 
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import models.user.User
 import models.user.role.DbRole
 import ore.permission.role.{Role, Trust}
@@ -15,21 +15,21 @@ import cats.syntax.all._
   *
   * @param user User to check
   */
-class PermissionPredicate(private val user: DbModel[User]) extends AnyVal {
+class PermissionPredicate(private val user: Model[User]) extends AnyVal {
 
   def apply(p: Permission): AndThen = AndThen(user, p)
 
-  def asMap(trust: Trust, globalRoles: Set[DbModel[DbRole]])(perms: Permission*): Map[Permission, Boolean] =
+  def asMap(trust: Trust, globalRoles: Set[Model[DbRole]])(perms: Permission*): Map[Permission, Boolean] =
     perms.map(p => p -> apply(p).withTrustAndGlobalRoles(trust, globalRoles)).toMap
 
-  def asMap(trust: Option[Trust], globalRoles: Option[Set[DbModel[DbRole]]])(
+  def asMap(trust: Option[Trust], globalRoles: Option[Set[Model[DbRole]]])(
       perms: Permission*
   ): Map[Permission, Boolean] =
     perms.map(p => p -> apply(p).withTrustAndGlobalRoles(trust, globalRoles)).toMap
 }
 
-protected case class AndThen(user: DbModel[User], p: Permission) {
-  def withTrustAndGlobalRoles(trust: Trust, globalRoles: Set[DbModel[DbRole]]): Boolean =
+protected case class AndThen(user: Model[User], p: Permission) {
+  def withTrustAndGlobalRoles(trust: Trust, globalRoles: Set[Model[DbRole]]): Boolean =
     // Special Ore Developer Case
     if (globalRoles
           .map(_.toRole)
@@ -37,7 +37,7 @@ protected case class AndThen(user: DbModel[User], p: Permission) {
       true
     else p.trust <= trust
 
-  def withTrustAndGlobalRoles(optTrust: Option[Trust], optGlobalRoles: Option[Set[DbModel[DbRole]]]): Boolean =
+  def withTrustAndGlobalRoles(optTrust: Option[Trust], optGlobalRoles: Option[Set[Model[DbRole]]]): Boolean =
     (optTrust, optGlobalRoles) match {
       case (Some(trust), Some(globalRoles)) => withTrustAndGlobalRoles(trust, globalRoles)
       case _                                => false

@@ -3,14 +3,14 @@ package db.table
 import java.sql.Timestamp
 
 import db.impl.OrePostgresDriver.api._
-import db.{DbModel, DbRef}
+import db.{Model, DbRef}
 
 import slick.lifted.Tag
 
 /**
-  * Represents a Table in the database that contains [[db.DbModel]]s.
+  * Represents a Table in the database that contains [[db.Model]]s.
   */
-abstract class ModelTable[M](tag: Tag, name: String) extends Table[DbModel[M]](tag, name) {
+abstract class ModelTable[M](tag: Tag, name: String) extends Table[Model[M]](tag, name) {
 
   /** The Model's primary key column */
   def id = column[DbRef[M]]("id", O.PrimaryKey, O.AutoInc)

@@ -1,6 +1,6 @@
 package form.organization
 
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
 import ore.permission.role.Role
@@ -26,7 +26,7 @@ case class OrganizationMembersUpdate(
     roleUps: List[String]
 ) extends TOrganizationRoleSetBuilder {
 
-  def saveTo(organization: DbModel[Organization])(
+  def saveTo(organization: Model[Organization])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[Unit] = {

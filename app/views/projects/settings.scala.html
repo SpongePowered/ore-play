@@ -6,8 +6,8 @@
 @import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
-@import db.DbModel
-@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[DbModel[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import db.Model
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

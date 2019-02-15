@@ -1,5 +1,5 @@
 package db
-import db.DbModel.{SuperLowPriorityUnwrappers, Unwrapper}
+import db.Model.{SuperLowPriorityUnwrappers, Unwrapper}
 
 // GENERATED CODE. DO NOT EDIT!
 

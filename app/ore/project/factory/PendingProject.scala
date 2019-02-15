@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 import play.api.cache.SyncCacheApi
 
 import db.access.ModelView
-import db.{DbModel, DbRef, ModelService, ObjId}
+import db.{Model, DbRef, ModelService, ObjId}
 import models.project.{Project, ProjectSettings, Version, Visibility}
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -44,7 +44,7 @@ case class PendingProject(
       implicit service: ModelService,
       ec: ExecutionContext,
       cs: ContextShift[IO]
-  ): IO[(DbModel[Project], DbModel[Version])] =
+  ): IO[(Model[Project], Model[Version])] =
     for {
       _              <- free
       newProject     <- factory.createProject(this)
@@ -52,7 +52,7 @@ case class PendingProject(
       updatedProject <- service.update(newProject)(_.copy(recommendedVersionId = Some(newVersion._1.id)))
     } yield (updatedProject, newVersion._1)
 
-  def owner(implicit service: ModelService): IO[DbModel[User]] =
+  def owner(implicit service: ModelService): IO[Model[User]] =
     ModelView.now(User).get(ownerId).getOrElseF(IO.raiseError(new Exception("No owner for pending project")))
 
   def asFunc: Project =

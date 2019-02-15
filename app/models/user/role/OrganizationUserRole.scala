@@ -1,7 +1,7 @@
 package models.user.role
 
 import db.impl.schema.OrganizationRoleTable
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import models.user.{Organization, User}
 import ore.Visitable
 import ore.organization.OrganizationOwned
@@ -26,7 +26,7 @@ case class OrganizationUserRole(
     isAccepted: Boolean = false
 ) extends UserRoleModel[OrganizationUserRole] {
 
-  override def subject(implicit service: ModelService): IO[DbModel[Visitable]] =
+  override def subject(implicit service: ModelService): IO[Model[Visitable]] =
     OrganizationOwned[OrganizationUserRole].organization(this)
 
   override def withRole(role: Role): OrganizationUserRole = copy(role = role)

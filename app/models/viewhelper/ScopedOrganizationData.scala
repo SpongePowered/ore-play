@@ -1,6 +1,6 @@
 package models.viewhelper
 
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import models.user.{Organization, User}
 import ore.permission._
 
@@ -14,9 +14,9 @@ object ScopedOrganizationData {
 
   val noScope = ScopedOrganizationData()
 
-  def cacheKey(orga: DbModel[Organization], user: DbModel[User]) = s"""organization${orga.id}foruser${user.id}"""
+  def cacheKey(orga: Model[Organization], user: Model[User]) = s"""organization${orga.id}foruser${user.id}"""
 
-  def of[A](currentUser: Option[DbModel[User]], orga: DbModel[Organization])(
+  def of[A](currentUser: Option[Model[User]], orga: Model[Organization])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[ScopedOrganizationData] =
@@ -26,7 +26,7 @@ object ScopedOrganizationData {
       }
     }
 
-  def of[A](currentUser: Option[DbModel[User]], orga: Option[DbModel[Organization]])(
+  def of[A](currentUser: Option[Model[User]], orga: Option[Model[Organization]])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): OptionT[IO, ScopedOrganizationData] =

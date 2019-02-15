@@ -13,7 +13,7 @@ import play.api.data.{FieldMapping, Form, FormError, Mapping}
 import controllers.sugar.Requests.ProjectRequest
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
 import models.api.ProjectApiKey
@@ -253,34 +253,34 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
 
   def required(key: String): Seq[FormError] = Seq(FormError(key, "error.required", Nil))
 
-  def projectApiKey: FieldMapping[OptionT[IO, DbModel[ProjectApiKey]]] =
-    of[OptionT[IO, DbModel[ProjectApiKey]]](new Formatter[OptionT[IO, DbModel[ProjectApiKey]]] {
-      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, DbModel[ProjectApiKey]]] =
+  def projectApiKey: FieldMapping[OptionT[IO, Model[ProjectApiKey]]] =
+    of[OptionT[IO, Model[ProjectApiKey]]](new Formatter[OptionT[IO, Model[ProjectApiKey]]] {
+      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, Model[ProjectApiKey]]] =
         data
           .get(key)
           .flatMap(id => Try(id.toLong).toOption)
           .map(ModelView.now(ProjectApiKey).get(_))
           .toRight(required(key))
 
-      def unbind(key: String, value: OptionT[IO, DbModel[ProjectApiKey]]): Map[String, String] =
+      def unbind(key: String, value: OptionT[IO, Model[ProjectApiKey]]): Map[String, String] =
         value.value.unsafeRunSync().map(_.id.toString).map(key -> _).toMap
     })
 
   def ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))
 
-  def channel(implicit request: ProjectRequest[_]): FieldMapping[OptionT[IO, DbModel[Channel]]] =
-    of[OptionT[IO, DbModel[Channel]]](new Formatter[OptionT[IO, DbModel[Channel]]] {
-      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, DbModel[Channel]]] =
+  def channel(implicit request: ProjectRequest[_]): FieldMapping[OptionT[IO, Model[Channel]]] =
+    of[OptionT[IO, Model[Channel]]](new Formatter[OptionT[IO, Model[Channel]]] {
+      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, Model[Channel]]] =
         data
           .get(key)
           .map(channelOptF(_))
           .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
 
-      def unbind(key: String, value: OptionT[IO, DbModel[Channel]]): Map[String, String] =
+      def unbind(key: String, value: OptionT[IO, Model[Channel]]): Map[String, String] =
         value.value.unsafeRunSync().map(key -> _.name.toLowerCase).toMap
     })
 
-  def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[IO, DbModel[Channel]] =
+  def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[IO, Model[Channel]] =
     request.data.project.channels(ModelView.now(Channel)).find(_.name.toLowerCase === c.toLowerCase)
 
   def VersionDeploy(implicit request: ProjectRequest[_]) =

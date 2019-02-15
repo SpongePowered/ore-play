@@ -3,7 +3,7 @@ package ore.organization
 import scala.language.implicitConversions
 
 import db.access.ModelView
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.user.Organization
 
 import cats.effect.IO
@@ -18,7 +18,7 @@ import simulacrum.typeclass
   def organizationId(a: A): DbRef[Organization]
 
   /** Returns the Organization */
-  def organization(a: A)(implicit service: ModelService): IO[DbModel[Organization]] =
+  def organization(a: A)(implicit service: ModelService): IO[Model[Organization]] =
     ModelView
       .now(Organization)
       .get(organizationId(a))

@@ -5,7 +5,7 @@ import scala.language.higherKinds
 import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectLogEntryTable, ProjectLogTable}
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import models.project.Project
 import util.syntax._
 
@@ -25,7 +25,7 @@ object ProjectLog extends DefaultDbModelCompanion[ProjectLog, ProjectLogTable](T
   implicit val query: ModelQuery[ProjectLog] =
     ModelQuery.from(this)
 
-  implicit class ProjectLogModelOps(private val self: DbModel[ProjectLog]) extends AnyVal {
+  implicit class ProjectLogModelOps(private val self: Model[ProjectLog]) extends AnyVal {
 
     /**
       * Returns all entries in this log.
@@ -33,8 +33,8 @@ object ProjectLog extends DefaultDbModelCompanion[ProjectLog, ProjectLogTable](T
       * @return Entries in log
       */
     def entries[V[_, _]: QueryView](
-        view: V[ProjectLogEntryTable, DbModel[ProjectLogEntry]]
-    ): V[ProjectLogEntryTable, DbModel[ProjectLogEntry]] =
+        view: V[ProjectLogEntryTable, Model[ProjectLogEntry]]
+    ): V[ProjectLogEntryTable, Model[ProjectLogEntry]] =
       view.filterView(_.logId === self.id.value)
 
     /**
@@ -43,7 +43,7 @@ object ProjectLog extends DefaultDbModelCompanion[ProjectLog, ProjectLogTable](T
       * @param message  Message to log
       * @return         New entry
       */
-    def err(message: String)(implicit service: ModelService): IO[DbModel[ProjectLogEntry]] = {
+    def err(message: String)(implicit service: ModelService): IO[Model[ProjectLogEntry]] = {
       val tag = "error"
       entries(ModelView.now(ProjectLogEntry))
         .find(e => e.message === message && e.tag === tag)

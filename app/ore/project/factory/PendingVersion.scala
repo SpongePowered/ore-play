@@ -5,7 +5,7 @@ import scala.concurrent.ExecutionContext
 import play.api.cache.SyncCacheApi
 
 import db.access.ModelView
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import db.impl.schema.VersionTable
 import db.impl.OrePostgresDriver.api._
 import models.project._
@@ -44,12 +44,12 @@ case class PendingVersion(
 ) extends Cacheable {
 
   def complete(
-      project: DbModel[Project],
-      factory: ProjectFactory
+                project: Model[Project],
+                factory: ProjectFactory
   )(
       implicit ec: ExecutionContext,
       cs: ContextShift[IO]
-  ): IO[(DbModel[Version], DbModel[Channel], Seq[DbModel[VersionTag]])] =
+  ): IO[(Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
     free *> factory.createVersion(project, this)
 
   override def key: String = projectUrl + '/' + versionString

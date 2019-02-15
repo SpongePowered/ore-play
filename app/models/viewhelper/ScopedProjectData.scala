@@ -1,6 +1,6 @@
 package models.viewhelper
 
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import db.access.ModelView
 import models.project.{Flag, Project}
 import models.user.{Organization, User}
@@ -15,11 +15,11 @@ import cats.syntax.all._
   */
 object ScopedProjectData {
 
-  def cacheKey(project: DbModel[Project], user: DbModel[User]) = s"""project${project.id}foruser${user.id}"""
+  def cacheKey(project: Model[Project], user: Model[User]) = s"""project${project.id}foruser${user.id}"""
 
   def of(
-      currentUser: Option[DbModel[User]],
-      project: DbModel[Project]
+          currentUser: Option[Model[User]],
+          project: Model[Project]
   )(implicit service: ModelService, cs: ContextShift[IO]): IO[ScopedProjectData] = {
     currentUser
       .map { user =>

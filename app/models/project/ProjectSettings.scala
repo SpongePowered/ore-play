@@ -6,7 +6,7 @@ import play.api.Logger
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
 import ore.permission.role.Role
@@ -100,7 +100,7 @@ object ProjectSettings
 
   implicit val isProjectOwned: ProjectOwned[ProjectSettings] = (a: ProjectSettings) => a.projectId
 
-  implicit class ProjectSettingsModelOps(private val self: DbModel[ProjectSettings]) extends AnyVal {
+  implicit class ProjectSettingsModelOps(private val self: Model[ProjectSettings]) extends AnyVal {
 
     /**
       * Saves a submitted [[ProjectSettingsForm]] to the [[Project]].
@@ -108,11 +108,11 @@ object ProjectSettings
       * @param formData Submitted settings
       * @param messages MessagesApi instance
       */
-    def save(project: DbModel[Project], formData: ProjectSettingsForm)(
+    def save(project: Model[Project], formData: ProjectSettingsForm)(
         implicit fileManager: ProjectFiles,
         service: ModelService,
         cs: ContextShift[IO]
-    ): IO[(DbModel[Project], DbModel[ProjectSettings])] = {
+    ): IO[(Model[Project], Model[ProjectSettings])] = {
       import cats.instances.vector._
       Logger.debug("Saving project settings")
       Logger.debug(formData.toString)

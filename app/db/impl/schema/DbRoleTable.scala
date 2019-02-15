@@ -3,7 +3,7 @@ package db.impl.schema
 import java.sql.Timestamp
 import java.time.Instant
 
-import db.{DbModel, DbRef, ObjId, ObjTimestamp}
+import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.table.ModelTable
 import db.impl.OrePostgresDriver.api._
 import models.user.role.DbRole
@@ -21,19 +21,19 @@ class DbRoleTable(tag: Tag) extends ModelTable[DbRole](tag, "roles") {
   override def * = {
     val applyFunc: (
         (Option[DbRef[DbRole]], String, RoleCategory, Trust, String, String, Boolean, Option[Int])
-    ) => DbModel[DbRole] = {
+    ) => Model[DbRole] = {
       case (id, name, category, trust, title, color, isAssignable, rank) =>
-        DbModel(
+        Model(
           ObjId.unsafeFromOption(id),
           ObjTimestamp(Timestamp.from(Instant.EPOCH)),
           DbRole(name, category, trust, title, color, isAssignable, rank)
         )
     }
 
-    val unapplyFunc: DbModel[DbRole] => Option[
+    val unapplyFunc: Model[DbRole] => Option[
       (Option[DbRef[DbRole]], String, RoleCategory, Trust, String, String, Boolean, Option[Int])
     ] = {
-      case DbModel(id, _, DbRole(name, category, trust, title, color, isAssignable, rank)) =>
+      case Model(id, _, DbRole(name, category, trust, title, color, isAssignable, rank)) =>
         Some((id.unsafeToOption, name, category, trust, title, color, isAssignable, rank))
     }
 

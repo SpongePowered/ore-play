@@ -1,6 +1,6 @@
 package form.project
 
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ChannelTable
@@ -41,8 +41,8 @@ trait TChannelData {
     * @return         Either the new channel or an error message
     */
   def addTo(
-      project: DbModel[Project]
-  )(implicit service: ModelService): EitherT[IO, List[String], DbModel[Channel]] = {
+      project: Model[Project]
+  )(implicit service: ModelService): EitherT[IO, List[String], Model[Channel]] = {
     val dbChannels = project.channels(ModelView.later(Channel))
     val conditions = (
       dbChannels.size <= config.ore.projects.maxChannels,
@@ -60,7 +60,7 @@ trait TChannelData {
           case (success, error) if !success => error
         }
 
-        if (errors.isEmpty) EitherT.leftT[IO, DbModel[Channel]](errors)
+        if (errors.isEmpty) EitherT.leftT[IO, Model[Channel]](errors)
         else EitherT.right[List[String]](factory.createChannel(project, channelName, color))
     }
   }
@@ -74,8 +74,8 @@ trait TChannelData {
     * @return         Error, if any
     */
   def saveTo(
-      project: DbModel[Project],
-      oldName: String
+              project: Model[Project],
+              oldName: String
   )(implicit service: ModelService): EitherT[IO, List[String], Unit] = {
     val otherDbChannels = project.channels(ModelView.later(Channel)).filterView(_.name =!= oldName)
     val query = project.channels(ModelView.raw(Channel)).filter(_.name === oldName).map { channel =>

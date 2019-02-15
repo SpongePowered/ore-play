@@ -7,7 +7,7 @@ import scala.collection.immutable
 
 import db.impl.model.common.Named
 import db.impl.schema.VersionTagTable
-import db.{DbModel, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
+import db.{Model, DbModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.querymodels.ViewTag
 
 import enumeratum.values._
@@ -28,7 +28,7 @@ object VersionTag extends DbModelCompanionPartial[VersionTag, VersionTagTable](T
       model: VersionTag,
       id: ObjId[VersionTag],
       time: ObjTimestamp
-  ): DbModel[VersionTag] = DbModel(id, ObjTimestamp(Timestamp.from(Instant.EPOCH)), model)
+  ): Model[VersionTag] = Model(id, ObjTimestamp(Timestamp.from(Instant.EPOCH)), model)
 
   implicit val query: ModelQuery[VersionTag] = ModelQuery.from(this)
 }

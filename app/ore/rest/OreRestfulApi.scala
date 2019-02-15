@@ -18,7 +18,7 @@ import db.impl.schema.{
   VersionTable,
   VersionTagTable
 }
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project._
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -105,7 +105,7 @@ trait OreRestfulApi extends OreWrites {
       u <- TableQuery[UserTable] if r.userId === u.id
     } yield (r, u)
 
-  def writeMembers(members: Seq[(DbModel[ProjectUserRole], DbModel[User])]): Seq[JsObject] = {
+  def writeMembers(members: Seq[(Model[ProjectUserRole], Model[User])]): Seq[JsObject] = {
     val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.role))
     members.map {
       case (_, user) =>
@@ -121,8 +121,8 @@ trait OreRestfulApi extends OreWrites {
   }
 
   private def writeProjects(
-      projects: Seq[(DbModel[Project], DbModel[Version], DbModel[Channel])]
-  ): IO[Seq[(DbModel[Project], JsObject)]] = {
+      projects: Seq[(Model[Project], Model[Version], Model[Channel])]
+  ): IO[Seq[(Model[Project], JsObject)]] = {
     val projectIds = projects.map(_._1.id.value)
     val versionIds = projects.map(_._2.id.value)
 
@@ -161,11 +161,11 @@ trait OreRestfulApi extends OreWrites {
   }
 
   def writeVersion(
-      v: DbModel[Version],
-      p: Project,
-      c: Channel,
-      author: Option[String],
-      tags: Seq[DbModel[VersionTag]]
+                    v: Model[Version],
+                    p: Project,
+                    c: Channel,
+                    author: Option[String],
+                    tags: Seq[Model[VersionTag]]
   ): JsObject = {
     val dependencies: List[JsObject] = v.dependencies.map { dependency =>
       obj("pluginId" -> dependency.pluginId, "version" -> dependency.version)
@@ -345,7 +345,7 @@ trait OreRestfulApi extends OreWrites {
     }
   }
 
-  private def queryStars(users: Seq[DbModel[User]]) =
+  private def queryStars(users: Seq[Model[User]]) =
     for {
       s <- TableQuery[ProjectStarsTable] if s.userId.inSetBind(users.map(_.id.value))
       p <- TableQuery[ProjectTableMain] if s.projectId === p.id
@@ -368,7 +368,7 @@ trait OreRestfulApi extends OreWrites {
     } yield toJson(writtenUsers)
 
   def writeUsers(
-      userList: Seq[DbModel[User]]
+      userList: Seq[Model[User]]
   )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[JsObject]] = {
     implicit def config: OreConfig = this.config
     import cats.instances.vector._

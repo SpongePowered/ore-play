@@ -15,7 +15,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.UserTable
 import db.query.UserQueries
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
 import models.project.Version
@@ -197,7 +197,7 @@ class Users @Inject()(
               userData.get,
               orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
               projects,
-              DbModel.unwrapNested(starredData.take(5)),
+              Model.unwrapNested(starredData.take(5)),
               pageNum
             )
           )
@@ -363,7 +363,7 @@ class Users @Inject()(
       (notificationsF, invitesF).parMapN { (notifications, invites) =>
         Ok(
           views.users.notifications(
-            DbModel.unwrapNested[Seq[(DbModel[Notification], User)]](notifications),
+            Model.unwrapNested[Seq[(Model[Notification], User)]](notifications),
             invites.map(t => t._1 -> t._2.obj),
             nFilter,
             iFilter

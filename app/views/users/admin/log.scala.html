@@ -10,8 +10,8 @@
 @import ore.OreConfig
 @import util.StringUtils._
 
-@import db.DbModel
-@(actions: Seq[DbModel[LoggedActionViewModel[_]]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
+@import db.Model
+@(actions: Seq[Model[LoggedActionViewModel[_]]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],
         actionFilter: Option[Int], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 

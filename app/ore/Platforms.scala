@@ -2,7 +2,7 @@ package ore
 
 import scala.collection.immutable
 
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project.{TagColor, Version, VersionTag}
 import ore.project.Dependency
 
@@ -100,7 +100,7 @@ object Platform extends IntEnum[Platform] {
 
   def createPlatformTags(versionId: DbRef[Version], dependencies: Seq[Dependency])(
       implicit service: ModelService
-  ): IO[Seq[DbModel[VersionTag]]] = service.bulkInsert(ghostTags(versionId, dependencies))
+  ): IO[Seq[Model[VersionTag]]] = service.bulkInsert(ghostTags(versionId, dependencies))
 
 }
 

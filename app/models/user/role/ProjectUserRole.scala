@@ -1,7 +1,7 @@
 package models.user.role
 
 import db.impl.schema.ProjectRoleTable
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import models.project.Project
 import models.user.User
 import ore.Visitable
@@ -29,7 +29,7 @@ case class ProjectUserRole(
     isAccepted: Boolean = false
 ) extends UserRoleModel[ProjectUserRole] {
 
-  override def subject(implicit service: ModelService): IO[DbModel[Visitable]] =
+  override def subject(implicit service: ModelService): IO[Model[Visitable]] =
     ProjectOwned[ProjectUserRole].project(this)
 
   override def withRole(role: Role): ProjectUserRole = copy(role = role)

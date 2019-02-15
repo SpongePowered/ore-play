@@ -1,7 +1,7 @@
 package models.statistic
 
 import db.access.ModelView
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.user.User
 
 import cats.data.OptionT
@@ -42,6 +42,6 @@ abstract class StatEntry[Subject] {
     *
     * @return User of entry
     */
-  def user(implicit service: ModelService): OptionT[IO, DbModel[User]] =
+  def user(implicit service: ModelService): OptionT[IO, Model[User]] =
     OptionT.fromOption[IO](userId).flatMap(ModelView.now(User).get)
 }

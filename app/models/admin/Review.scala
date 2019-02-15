@@ -8,7 +8,7 @@ import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import models.project.{Page, Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -66,23 +66,23 @@ object Message {
 
 object Review extends DefaultDbModelCompanion[Review, ReviewTable](TableQuery[ReviewTable]) {
 
-  def ordering: Ordering[(DbModel[Review], _)] =
+  def ordering: Ordering[(Model[Review], _)] =
     // TODO make simple + check order
     Ordering.by(_._1.createdAt.getTime)
 
-  def ordering2: Ordering[DbModel[Review]] =
+  def ordering2: Ordering[Model[Review]] =
     // TODO make simple + check order
     Ordering.by(_.createdAt.getTime)
 
   implicit val query: ModelQuery[Review] =
     ModelQuery.from(this)
 
-  implicit class ReviewModelOps(private val self: DbModel[Review]) extends AnyVal {
+  implicit class ReviewModelOps(private val self: Model[Review]) extends AnyVal {
 
     /**
       * Add new message
       */
-    def addMessage(message: Message)(implicit service: ModelService): IO[DbModel[Review]] = {
+    def addMessage(message: Message)(implicit service: ModelService): IO[Model[Review]] = {
       val messages = self.decodeMessages :+ message
       service.update(self)(
         _.copy(

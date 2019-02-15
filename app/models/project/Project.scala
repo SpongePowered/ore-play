@@ -127,12 +127,12 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       model: Project,
       id: ObjId[Project],
       time: ObjTimestamp
-  ): DbModel[Project] = DbModel(id, time, model.copy(lastUpdated = time))
+  ): Model[Project] = Model(id, time, model.copy(lastUpdated = time))
 
   implicit val assocWatchersQuery: AssociationQuery[ProjectWatchersTable, Project, User] =
     AssociationQuery.from[ProjectWatchersTable, Project, User](TableQuery[ProjectWatchersTable])(_.projectId, _.userId)
 
-  implicit val hasScope: HasScope[DbModel[Project]] = HasScope.projectScope(_.id)
+  implicit val hasScope: HasScope[Model[Project]] = HasScope.projectScope(_.id)
 
   private def queryRoleForTrust(projectId: Rep[DbRef[Project]], userId: Rep[DbRef[User]]) = {
     val q = for {
@@ -144,7 +144,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
 
   lazy val roleForTrustQuery = lifted.Compiled(queryRoleForTrust _)
 
-  implicit class ProjectModelOps(private val self: DbModel[Project])
+  implicit class ProjectModelOps(private val self: Model[Project])
       extends AnyVal
       with HideableOps[Project, ProjectVisibilityChange, ProjectVisibilityChangeTable]
       with JoinableOps[Project, ProjectMember] {
@@ -179,7 +179,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
     ): MembershipDossier.Aux[IO, Project, ProjectUserRole, ProjectRoleTable, ProjectMember] =
       MembershipDossier[IO, Project]
 
-    def isOwner(user: DbModel[User]): Boolean = user.id.value == self.ownerId
+    def isOwner(user: Model[User]): Boolean = user.id.value == self.ownerId
 
     /**
       * Returns the owner [[ProjectMember]] of this project.
@@ -190,7 +190,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
 
     override def transferOwner(
         member: ProjectMember
-    )(implicit service: ModelService, cs: ContextShift[IO]): IO[DbModel[Project]] = {
+    )(implicit service: ModelService, cs: ContextShift[IO]): IO[Model[Project]] = {
       // Down-grade current owner to "Developer"
       import cats.instances.vector._
       for {
@@ -211,8 +211,8 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       * Get VisibilityChanges
       */
     override def visibilityChanges[V[_, _]: QueryView](
-        view: V[ProjectVisibilityChangeTable, DbModel[ProjectVisibilityChange]]
-    ): V[ProjectVisibilityChangeTable, DbModel[ProjectVisibilityChange]] =
+        view: V[ProjectVisibilityChangeTable, Model[ProjectVisibilityChange]]
+    ): V[ProjectVisibilityChangeTable, Model[ProjectVisibilityChange]] =
       view.filterView(_.projectId === self.id.value)
 
     /**
@@ -223,7 +223,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
     override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
         implicit service: ModelService,
         cs: ContextShift[IO]
-    ): IO[(DbModel[Project], DbModel[ProjectVisibilityChange])] = {
+    ): IO[(Model[Project], Model[ProjectVisibilityChange])] = {
       val updateOldChange = lastVisibilityChange(ModelView.now(ProjectVisibilityChange))
         .semiflatMap { vc =>
           service.update(vc)(
@@ -260,7 +260,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @param user User that owns project
       */
-    def setOwner(user: DbModel[User])(implicit service: ModelService): IO[DbModel[Project]] = {
+    def setOwner(user: Model[User])(implicit service: ModelService): IO[Model[Project]] = {
       service.update(self)(
         _.copy(
           ownerId = user.id,
@@ -274,7 +274,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return Project settings
       */
-    def settings(implicit service: ModelService): IO[DbModel[ProjectSettings]] =
+    def settings(implicit service: ModelService): IO[Model[ProjectSettings]] =
       ModelView
         .now(ProjectSettings)
         .find(_.projectId === self.id.value)
@@ -286,7 +286,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       * @return Recommended version
       */
     def recommendedVersion[QOptRet, SRet[_]](
-        view: ModelView[QOptRet, SRet, VersionTable, DbModel[Version]]
+        view: ModelView[QOptRet, SRet, VersionTable, Model[Version]]
     ): Option[QOptRet] =
       self.recommendedVersionId.map(versions(view).get)
 
@@ -297,8 +297,8 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       * @param starred True if should star
       */
     def setStarredBy(
-        user: DbModel[User],
-        starred: Boolean
+                      user: Model[User],
+                      starred: Boolean
     )(implicit service: ModelService): IO[Project] = {
       checkNotNull(user, "null user", "")
       for {
@@ -317,14 +317,14 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       * @return Unique project views
       */
     def views[V[_, _]: QueryView](
-        view: V[ProjectViewsTable, DbModel[ProjectView]]
-    ): V[ProjectViewsTable, DbModel[ProjectView]] =
+        view: V[ProjectViewsTable, Model[ProjectView]]
+    ): V[ProjectViewsTable, Model[ProjectView]] =
       view.filterView(_.modelId === self.id.value)
 
     /**
       * Adds a view to this Project.
       */
-    def addView(implicit service: ModelService): IO[DbModel[Project]] =
+    def addView(implicit service: ModelService): IO[Model[Project]] =
       service.update(self)(_.copy(viewCount = self.viewCount + 1))
 
     /**
@@ -332,7 +332,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return IO result
       */
-    def addDownload(implicit service: ModelService): IO[DbModel[Project]] =
+    def addDownload(implicit service: ModelService): IO[Model[Project]] =
       service.update(self)(_.copy(downloadCount = self.downloadCount + 1))
 
     /**
@@ -340,7 +340,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return Flags on project
       */
-    def flags[V[_, _]: QueryView](view: V[FlagTable, DbModel[Flag]]): V[FlagTable, DbModel[Flag]] =
+    def flags[V[_, _]: QueryView](view: V[FlagTable, Model[Flag]]): V[FlagTable, Model[Flag]] =
       view.filterView(_.projectId === self.id.value)
 
     /**
@@ -349,9 +349,9 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       * @param user   Flagger
       * @param reason Reason for flagging
       */
-    def flagFor(user: DbModel[User], reason: FlagReason, comment: String)(
+    def flagFor(user: Model[User], reason: FlagReason, comment: String)(
         implicit service: ModelService
-    ): IO[DbModel[Flag]] = {
+    ): IO[Model[Flag]] = {
       val userId = user.id.value
       checkArgument(userId != self.ownerId, "cannot flag own project", "")
       service.insert(Flag(self.id, user.id, reason, comment))
@@ -362,7 +362,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return Channels in project
       */
-    def channels[V[_, _]: QueryView](view: V[ChannelTable, DbModel[Channel]]): V[ChannelTable, DbModel[Channel]] =
+    def channels[V[_, _]: QueryView](view: V[ChannelTable, Model[Channel]]): V[ChannelTable, Model[Channel]] =
       view.filterView(_.projectId === self.id.value)
 
     /**
@@ -370,7 +370,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return Versions in project
       */
-    def versions[V[_, _]: QueryView](view: V[VersionTable, DbModel[Version]]): V[VersionTable, DbModel[Version]] =
+    def versions[V[_, _]: QueryView](view: V[VersionTable, Model[Version]]): V[VersionTable, Model[Version]] =
       view.filterView(_.projectId === self.id.value)
 
     /**
@@ -378,12 +378,12 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return Pages in project
       */
-    def pages[V[_, _]: QueryView](view: V[PageTable, DbModel[Page]]): V[PageTable, DbModel[Page]] =
+    def pages[V[_, _]: QueryView](view: V[PageTable, Model[Page]]): V[PageTable, Model[Page]] =
       view.filterView(_.projectId === self.id.value)
 
     private def getOrInsert(name: String, parentId: Option[DbRef[Page]])(
         page: Page
-    )(implicit service: ModelService): IO[DbModel[Page]] = {
+    )(implicit service: ModelService): IO[Model[Page]] = {
       def like =
         ModelView.now(Page).find { p =>
           p.projectId === self.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
@@ -402,7 +402,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return Project home page
       */
-    def homePage(implicit service: ModelService, config: OreConfig): IO[DbModel[Page]] = {
+    def homePage(implicit service: ModelService, config: OreConfig): IO[Model[Page]] = {
       val page = Page(self.id, Page.homeName, Page.template(self.name, Page.homeMessage), isDeletable = false, None)
       getOrInsert(Page.homeName, None)(page)
     }
@@ -417,7 +417,7 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
         name: String,
         parentId: Option[DbRef[Page]],
         content: Option[String] = None
-    )(implicit config: OreConfig, service: ModelService): IO[DbModel[Page]] = {
+    )(implicit config: OreConfig, service: ModelService): IO[Model[Page]] = {
       checkNotNull(name, "null name", "")
       val c = content match {
         case None => Page.template(name, Page.homeMessage)
@@ -435,21 +435,21 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       *
       * @return Root pages of project
       */
-    def rootPages[V[_, _]: QueryView](view: V[PageTable, DbModel[Page]]): V[PageTable, DbModel[Page]] =
+    def rootPages[V[_, _]: QueryView](view: V[PageTable, Model[Page]]): V[PageTable, Model[Page]] =
       view.sortView(_.name).filterView(p => p.projectId === self.id.value && p.parentId.isEmpty)
 
-    def logger(implicit service: ModelService): IO[DbModel[ProjectLog]] =
+    def logger(implicit service: ModelService): IO[Model[ProjectLog]] =
       ModelView.now(ProjectLog).find(_.projectId === self.id.value).getOrElseF(service.insert(ProjectLog(self.id)))
 
     def apiKeys[V[_, _]: QueryView](
-        view: V[ProjectApiKeyTable, DbModel[ProjectApiKey]]
-    ): V[ProjectApiKeyTable, DbModel[ProjectApiKey]] =
+        view: V[ProjectApiKeyTable, Model[ProjectApiKey]]
+    ): V[ProjectApiKeyTable, Model[ProjectApiKey]] =
       view.filterView(_.projectId === self.id.value)
 
     /**
       * Add new note
       */
-    def addNote(message: Note)(implicit service: ModelService): IO[DbModel[Project]] = {
+    def addNote(message: Note)(implicit service: ModelService): IO[Model[Project]] = {
       val messages = self.decodeNotes :+ message
       service.update(self)(
         _.copy(

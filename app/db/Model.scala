@@ -14,23 +14,23 @@ import cats.Functor
 import cats.syntax.all._
 import shapeless._
 
-case class DbModel[+A](
+case class Model[+A](
     id: ObjId[A],
     createdAt: ObjTimestamp,
     obj: A
 )
-object DbModel {
-  implicit def unwrap[A](dbModel: DbModel[A]): A = dbModel.obj
+object Model {
+  implicit def unwrap[A](dbModel: Model[A]): A = dbModel.obj
 
-  implicit def isProjectOwned[A](implicit isOwned: ProjectOwned[A]): ProjectOwned[DbModel[A]] =
-    (a: DbModel[A]) => isOwned.projectId(a.obj)
-  implicit def isUserOwned[A](implicit isOwned: UserOwned[A]): UserOwned[DbModel[A]] =
-    (a: DbModel[A]) => isOwned.userId(a.obj)
-  implicit def isOrgOwned[A](implicit isOwned: OrganizationOwned[A]): OrganizationOwned[DbModel[A]] =
-    (a: DbModel[A]) => isOwned.organizationId(a.obj)
+  implicit def isProjectOwned[A](implicit isOwned: ProjectOwned[A]): ProjectOwned[Model[A]] =
+    (a: Model[A]) => isOwned.projectId(a.obj)
+  implicit def isUserOwned[A](implicit isOwned: UserOwned[A]): UserOwned[Model[A]] =
+    (a: Model[A]) => isOwned.userId(a.obj)
+  implicit def isOrgOwned[A](implicit isOwned: OrganizationOwned[A]): OrganizationOwned[Model[A]] =
+    (a: Model[A]) => isOwned.organizationId(a.obj)
 
-  implicit def hasUnderlyingScope[A](implicit hasScope: HasScope[A]): HasScope[DbModel[A]] =
-    (a: DbModel[A]) => hasScope.scope(a.obj)
+  implicit def hasUnderlyingScope[A](implicit hasScope: HasScope[A]): HasScope[Model[A]] =
+    (a: Model[A]) => hasScope.scope(a.obj)
 
   def unwrapNested[Out]: UnwrapNestedPartiallyApplied[Out] = new UnwrapNestedPartiallyApplied[Out]()
 
@@ -45,9 +45,9 @@ object DbModel {
     def apply[A](implicit unwrapper: Unwrapper[A]): Unwrapper.Aux[A, unwrapper.Out]        = unwrapper
     def solve[In, Out](implicit unwrapper: Unwrapper.Aux[In, Out]): Unwrapper.Aux[In, Out] = unwrapper
 
-    implicit def unwrapWrapper[A]: Unwrapper.Aux[DbModel[A], A] = new Unwrapper[DbModel[A]] {
+    implicit def unwrapWrapper[A]: Unwrapper.Aux[Model[A], A] = new Unwrapper[Model[A]] {
       type Out = A
-      def apply(t: DbModel[A]): Out = t.obj
+      def apply(t: Model[A]): Out = t.obj
     }
 
     implicit def unwrapHCons[H, T <: HList, HOut, TOut <: HList](

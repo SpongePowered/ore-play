@@ -2,7 +2,7 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{DbModel, DbRef, ObjId, ObjTimestamp}
+import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.admin.{LoggedActionViewModel, LoggedProject, LoggedProjectPage, LoggedProjectVersion, LoggedSubject}
@@ -60,7 +60,7 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
       filterPage: Option[DbRef[Page]],
       filterSubject: Option[DbRef[_]],
       filterAction: Option[Int]
-  ) = DbModel(
+  ) = Model(
     ObjId.unsafeFromOption(id),
     ObjTimestamp.unsafeFromOption(createdAt),
     LoggedActionViewModel[Ctx](
@@ -85,8 +85,8 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
     )
   )
 
-  private def rawUnapply(m: DbModel[LoggedActionViewModel[Ctx]]) = m match {
-    case DbModel(
+  private def rawUnapply(m: Model[LoggedActionViewModel[Ctx]]) = m match {
+    case Model(
         id,
         createdAt,
         LoggedActionViewModel(

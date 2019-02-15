@@ -2,7 +2,7 @@ package ore.user.notification
 
 import scala.collection.immutable
 
-import db.{DbModel, ModelService}
+import db.{Model, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import models.user.User
@@ -19,11 +19,11 @@ sealed abstract class InviteFilter(
     val value: Int,
     val name: String,
     val title: String,
-    val filter: ContextShift[IO] => ModelService => DbModel[User] => IO[Seq[DbModel[UserRoleModel[_]]]]
+    val filter: ContextShift[IO] => ModelService => Model[User] => IO[Seq[Model[UserRoleModel[_]]]]
 ) extends IntEnumEntry {
   def apply(
-      user: DbModel[User]
-  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[DbModel[UserRoleModel[_]]]] =
+      user: Model[User]
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[Model[UserRoleModel[_]]]] =
     filter(cs)(service)(user)
 }
 

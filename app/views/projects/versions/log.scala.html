@@ -5,9 +5,9 @@
 @import ore.OreConfig
 @import util.StringUtils._
 
-@import db.DbModel
+@import db.Model
 
-@(project: Project, version: Version, visibilityChanges: Seq[(DbModel[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @versionRoutes = @{controllers.project.routes.Versions}
 

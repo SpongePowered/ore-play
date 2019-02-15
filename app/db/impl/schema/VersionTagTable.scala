@@ -3,7 +3,7 @@ package db.impl.schema
 import java.sql.Timestamp
 import java.time.Instant
 
-import db.{DbModel, DbRef, ObjId, ObjTimestamp}
+import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.table.common.NameColumn
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
@@ -19,17 +19,17 @@ class VersionTagTable(tag: Tag)
 
   override def * = {
     val convertedApply
-      : ((Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)) => DbModel[VersionTag] = {
+      : ((Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)) => Model[VersionTag] = {
       case (id, versionIds, name, data, color) =>
-        DbModel(
+        Model(
           ObjId.unsafeFromOption(id),
           ObjTimestamp(Timestamp.from(Instant.EPOCH)),
           VersionTag(versionIds, name, data, color)
         )
     }
     val convertedUnapply
-      : PartialFunction[DbModel[VersionTag], (Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)] = {
-      case DbModel(id, _, VersionTag(versionIds, name, data, color)) =>
+      : PartialFunction[Model[VersionTag], (Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)] = {
+      case Model(id, _, VersionTag(versionIds, name, data, color)) =>
         (id.unsafeToOption, versionIds, name, data, color)
     }
     (id.?, versionId, name, data, color) <> (convertedApply, convertedUnapply.lift)

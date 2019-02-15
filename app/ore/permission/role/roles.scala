@@ -5,7 +5,7 @@ import java.time.Instant
 
 import scala.collection.immutable
 
-import db.{DbModel, ObjId, ObjTimestamp}
+import db.{Model, ObjId, ObjTimestamp}
 import models.user.role.DbRole
 import ore.Color
 import ore.Color._
@@ -23,7 +23,7 @@ sealed abstract case class Role(
     isAssignable: Boolean = true
 ) extends StringEnumEntry {
 
-  def toDbRole: DbModel[DbRole] =
+  def toDbRole: Model[DbRole] =
     DbRole.asDbModel(
       DbRole(
         name = value,

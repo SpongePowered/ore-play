@@ -3,7 +3,7 @@ package models.statistic
 import controllers.sugar.Requests.ProjectRequest
 import db.impl.access.UserBase
 import db.impl.schema.VersionDownloadsTable
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery}
 import models.project.Version
 import models.user.User
 import ore.StatTracker._
@@ -40,7 +40,7 @@ object VersionDownload
     * @param request  Request to bind
     * @return         New VersionDownload
     */
-  def bindFromRequest(version: DbModel[Version])(
+  def bindFromRequest(version: Model[Version])(
       implicit request: ProjectRequest[_],
       users: UserBase,
       auth: SpongeAuthApi

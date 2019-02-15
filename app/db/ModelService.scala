@@ -50,7 +50,7 @@ abstract class ModelService {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M](model: M)(implicit query: ModelQuery[M]): IO[DbModel[M]] = {
+  def insert[M](model: M)(implicit query: ModelQuery[M]): IO[Model[M]] = {
     val toInsert = query.asDbModel(model)(new ObjId.UnsafeUninitialized, ObjTimestamp(theTime))
     val models   = query.baseQuery
     runDBIO {
@@ -66,7 +66,7 @@ abstract class ModelService {
     * @param models  Models to create
     * @return       Newly created models
     */
-  def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[DbModel[M]]] =
+  def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[Model[M]]] =
     if (models.nonEmpty) {
       val toInsert = models.map(query.asDbModel(_)(new ObjId.UnsafeUninitialized, ObjTimestamp(theTime)))
       val action   = query.baseQuery
@@ -77,7 +77,7 @@ abstract class ModelService {
       }
     } else IO.pure(Nil)
 
-  def update[M](model: DbModel[M])(update: M => M)(implicit query: ModelQuery[M]): IO[DbModel[M]] = {
+  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): IO[Model[M]] = {
     val updatedModel = model.copy(obj = update(model.obj))
     runDBIO(query.baseQuery.filter(_.id === model.id.value).update(updatedModel)).as(updatedModel)
   }
@@ -87,7 +87,7 @@ abstract class ModelService {
     *
     * @param model Model to delete
     */
-  def delete[M](model: DbModel[M])(implicit query: ModelQuery[M]): IO[Int] =
+  def delete[M](model: Model[M])(implicit query: ModelQuery[M]): IO[Int] =
     deleteWhere(query.companion)(_.id === model.id.value)
 
   /**

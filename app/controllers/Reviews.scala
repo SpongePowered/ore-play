@@ -15,7 +15,7 @@ import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{DbModel, DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, ReviewState, Version}
@@ -61,7 +61,7 @@ final class Reviews @Inject()(forms: OreForms)(
           rv <- EitherT.right[Result](service.runDBIO(dbio))
         } yield {
           val unfinished = rv.map(_._1).filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
-          Ok(views.users.admin.reviews(DbModel.unwrapNested(unfinished), rv, request.project, version))
+          Ok(views.users.admin.reviews(Model.unwrapNested(unfinished), rv, request.project, version))
         }
     }
 
@@ -159,9 +159,9 @@ final class Reviews @Inject()(forms: OreForms)(
   private lazy val notificationUsersQuery = Compiled(queryNotificationUsers _)
 
   private def sendReviewNotification(
-      project: DbModel[Project],
-      version: Version,
-      requestUser: DbModel[User]
+                                      project: Model[Project],
+                                      version: Version,
+                                      requestUser: Model[User]
   ): IO[Unit] = {
     val usersF =
       service.runDBIO(notificationUsersQuery((project.id, version.authorId, None)).result).map { list =>

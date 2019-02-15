@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.schema.DbRoleTable
-import db.{DbModel, DbModelCompanionPartial, ModelQuery, ObjId, ObjTimestamp}
+import db.{Model, DbModelCompanionPartial, ModelQuery, ObjId, ObjTimestamp}
 import ore.permission.role.{Role, RoleCategory, Trust}
 
 import slick.lifted.TableQuery
@@ -27,7 +27,7 @@ object DbRole extends DbModelCompanionPartial[DbRole, DbRoleTable](TableQuery[Db
       model: DbRole,
       id: ObjId[DbRole],
       time: ObjTimestamp
-  ): DbModel[DbRole] = DbModel(id, ObjTimestamp(Timestamp.from(Instant.EPOCH)), model)
+  ): Model[DbRole] = Model(id, ObjTimestamp(Timestamp.from(Instant.EPOCH)), model)
 
   implicit val query: ModelQuery[DbRole] = ModelQuery.from(this)
 }

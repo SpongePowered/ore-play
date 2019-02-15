@@ -18,7 +18,7 @@ import db.impl.schema.{
   VersionTagTable,
   VersionVisibilityChangeTable
 }
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -77,7 +77,7 @@ case class Version(
     *
     * @return Channel
     */
-  def channel(implicit service: ModelService): IO[DbModel[Channel]] =
+  def channel(implicit service: ModelService): IO[Model[Channel]] =
     ModelView
       .now(Channel)
       .get(this.channelId)
@@ -98,10 +98,10 @@ case class Version(
     */
   def url(implicit project: Project): String = project.url + "/versions/" + this.versionString
 
-  def author[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTagTable, DbModel[VersionTag]]): QOptRet =
+  def author[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]): QOptRet =
     view.get(this.authorId)
 
-  def reviewer[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, UserTable, DbModel[User]]): Option[QOptRet] =
+  def reviewer[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, UserTable, Model[User]]): Option[QOptRet] =
     this.reviewerId.map(view.get)
 
   /**
@@ -130,7 +130,7 @@ case class Version(
     */
   def humanFileSize: String = FileUtils.formatFileSize(this.fileSize)
 
-  def reviewById(id: DbRef[Review])(implicit service: ModelService): OptionT[IO, DbModel[Review]] =
+  def reviewById(id: DbRef[Review])(implicit service: ModelService): OptionT[IO, Model[Review]] =
     ModelView.now(Review).get(id)
 }
 
@@ -140,19 +140,19 @@ object Version extends DefaultDbModelCompanion[Version, VersionTable](TableQuery
 
   implicit val isProjectOwned: ProjectOwned[Version] = (a: Version) => a.projectId
 
-  implicit class VersionModelOps(private val self: DbModel[Version])
+  implicit class VersionModelOps(private val self: Model[Version])
       extends AnyVal
       with HideableOps[Version, VersionVisibilityChange, VersionVisibilityChangeTable] {
 
     override def visibilityChanges[V[_, _]: QueryView](
-        view: V[VersionVisibilityChangeTable, DbModel[VersionVisibilityChange]]
-    ): V[VersionVisibilityChangeTable, DbModel[VersionVisibilityChange]] =
+        view: V[VersionVisibilityChangeTable, Model[VersionVisibilityChange]]
+    ): V[VersionVisibilityChangeTable, Model[VersionVisibilityChange]] =
       view.filterView(_.versionId === self.id.value)
 
     override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
         implicit service: ModelService,
         cs: ContextShift[IO]
-    ): IO[(DbModel[Version], DbModel[VersionVisibilityChange])] = {
+    ): IO[(Model[Version], Model[VersionVisibilityChange])] = {
       val updateOldChange = lastVisibilityChange(ModelView.now(VersionVisibilityChange))
         .semiflatMap { vc =>
           service.update(vc)(
@@ -185,24 +185,24 @@ object Version extends DefaultDbModelCompanion[Version, VersionTable](TableQuery
     }
 
     def tags[V[_, _]: QueryView](
-        view: V[VersionTagTable, DbModel[VersionTag]]
-    ): V[VersionTagTable, DbModel[VersionTag]] =
+        view: V[VersionTagTable, Model[VersionTag]]
+    ): V[VersionTagTable, Model[VersionTag]] =
       view.filterView(_.versionId === self.id.value)
 
     def isSpongePlugin[QOptRet, SRet[_]](
-        view: ModelView[QOptRet, SRet, VersionTagTable, DbModel[VersionTag]]
+        view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]
     ): SRet[Boolean] =
       tags(view).exists(_.name === "Sponge")
 
     def isForgeMod[QOptRet, SRet[_]](
-        view: ModelView[QOptRet, SRet, VersionTagTable, DbModel[VersionTag]]
+        view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]
     ): SRet[Boolean] =
       tags(view).exists(_.name === "Forge")
 
     /**
       * Adds a download to the amount of unique downloads this Version has.
       */
-    def addDownload(implicit service: ModelService): IO[DbModel[Version]] =
+    def addDownload(implicit service: ModelService): IO[Model[Version]] =
       service.update(self)(_.copy(downloadCount = self.downloadCount + 1))
 
     /**
@@ -215,18 +215,18 @@ object Version extends DefaultDbModelCompanion[Version, VersionTable](TableQuery
     ): V[VersionDownloadsTable, VersionDownload] =
       view.filterView(_.modelId === self.id.value)
 
-    def reviewEntries[V[_, _]: QueryView](view: V[ReviewTable, DbModel[Review]]): V[ReviewTable, DbModel[Review]] =
+    def reviewEntries[V[_, _]: QueryView](view: V[ReviewTable, Model[Review]]): V[ReviewTable, Model[Review]] =
       view.filterView(_.versionId === self.id.value)
 
-    def unfinishedReviews[V[_, _]: QueryView](view: V[ReviewTable, DbModel[Review]]): V[ReviewTable, DbModel[Review]] =
+    def unfinishedReviews[V[_, _]: QueryView](view: V[ReviewTable, Model[Review]]): V[ReviewTable, Model[Review]] =
       reviewEntries(view).sortView(_.createdAt).filterView(_.endedAt.?.isEmpty)
 
     def mostRecentUnfinishedReview[QOptRet, SRet[_]](
-        view: ModelView[QOptRet, SRet, ReviewTable, DbModel[Review]]
+        view: ModelView[QOptRet, SRet, ReviewTable, Model[Review]]
     ): QOptRet =
       unfinishedReviews(view).one
 
-    def mostRecentReviews[V[_, _]: QueryView](view: V[ReviewTable, DbModel[Review]]): V[ReviewTable, DbModel[Review]] =
+    def mostRecentReviews[V[_, _]: QueryView](view: V[ReviewTable, Model[Review]]): V[ReviewTable, Model[Review]] =
       reviewEntries(view).sortView(_.createdAt)
   }
 }

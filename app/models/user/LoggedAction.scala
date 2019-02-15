@@ -4,7 +4,7 @@ import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
+import db.{Model, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import ore.StatTracker
 import ore.user.UserOwned
 
@@ -131,7 +131,7 @@ object UserActionLogger {
       actionContextId: DbRef[Ctx],
       newState: String,
       oldState: String
-  )(implicit service: ModelService): IO[DbModel[LoggedActionModel[Ctx]]] =
+  )(implicit service: ModelService): IO[Model[LoggedActionModel[Ctx]]] =
     service.insert(
       LoggedActionModel(
         request.user.id,

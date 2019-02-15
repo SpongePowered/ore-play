@@ -1,6 +1,6 @@
 package ore.project
 
-import db.DbModel
+import db.Model
 import db.impl.access.ProjectBase
 import models.project.Project
 
@@ -20,7 +20,7 @@ case class Dependency(pluginId: String, version: String) {
     *
     * @return Project if dependency is on Ore, empty otherwise.
     */
-  def project(implicit projects: ProjectBase): OptionT[IO, DbModel[Project]] =
+  def project(implicit projects: ProjectBase): OptionT[IO, Model[Project]] =
     projects.withPluginId(this.pluginId)
 
 }

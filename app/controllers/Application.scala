@@ -17,7 +17,7 @@ import db.query.AppQueries
 import db.impl.OrePostgresDriver.api._
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
-import db.{DbModel, DbModelCompanion, DbRef, ModelQuery, ModelService}
+import db.{Model, DbModelCompanion, DbRef, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.user.role._
@@ -199,7 +199,7 @@ final class Application @Inject()(forms: OreForms)(
             topicDirtyProjects,
             staleProjects,
             notPublic,
-            DbModel.unwrapNested(missingFileProjects)
+            Model.unwrapNested(missingFileProjects)
           )
         )
       }
@@ -341,10 +341,10 @@ final class Application @Inject()(forms: OreForms)(
           val orgDossier = MembershipDossier.organization
 
           def updateRoleTable[M0 <: UserRoleModel[M0]: ModelQuery](model: DbModelCompanion[M0])(
-              modelAccess: ModelView.Now[IO, model.T, DbModel[M0]],
-              allowedCategory: RoleCategory,
-              ownerType: Role,
-              transferOwner: DbModel[M0] => IO[DbModel[M0]]
+            modelAccess: ModelView.Now[IO, model.T, Model[M0]],
+            allowedCategory: RoleCategory,
+            ownerType: Role,
+            transferOwner: Model[M0] => IO[Model[M0]]
           ) = {
             val id = (json \ "id").as[DbRef[M0]]
             action match {
@@ -371,7 +371,7 @@ final class Application @Inject()(forms: OreForms)(
             }
           }
 
-          def transferOrgOwner(r: DbModel[OrganizationUserRole]) =
+          def transferOrgOwner(r: Model[OrganizationUserRole]) =
             r.organization
               .flatMap(orga => orga.transferOwner(orgDossier.newMember(orga, r.userId)))
               .as(r)
