@@ -82,7 +82,7 @@ object StringUtils {
     DateFormat.getDateTimeInstance(DateFormat.DEFAULT, DateFormat.DEFAULT, messages.lang.locale).format(date)
 
   //https://stackoverflow.com/a/9855338
-  private val hexArray = "0123456789ABCDEF".toCharArray
+  private val hexArray = "0123456789abcdef".toCharArray
   def bytesToHex(bytes: Array[Byte]): String = {
     val hexChars = new Array[Char](bytes.length * 2)
     var j        = 0
