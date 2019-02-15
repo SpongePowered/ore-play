@@ -12,7 +12,7 @@ import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.StatTable
 import db.{DbModel, DbModelCompanion, DbRef, ModelQuery, ModelService}
-import models.project.Version
+import models.project.{Project, Version}
 import models.statistic.{ProjectView, StatEntry, VersionDownload}
 import models.user.User
 import ore.StatTracker.COOKIE_NAME
@@ -33,6 +33,7 @@ trait StatTracker {
 
   private def record[S, M <: StatEntry[S]: ModelQuery, T <: StatTable[S, M]](
       entry: M,
+      subject: DbModelCompanion[S],
       model: DbModelCompanion.Aux[M, T]
   )(setUserId: (M, DbRef[User]) => M): IO[Boolean] = {
     like[S, M, T](entry, model).value.flatMap {
@@ -66,7 +67,7 @@ trait StatTracker {
       auth: SpongeAuthApi
   ): IO[Result] = {
     ProjectView.bindFromRequest.flatMap { statEntry =>
-      record(statEntry, ProjectView)((m, id) => m.copy(userId = Some(id)))
+      record(statEntry, Project, ProjectView)((m, id) => m.copy(userId = Some(id)))
         .flatMap {
           case true  => projectRequest.data.project.addView
           case false => IO.unit
@@ -90,7 +91,7 @@ trait StatTracker {
   ): IO[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
       val recordDownload =
-        record(statEntry, VersionDownload)((m, id) => m.copy(userId = Some(id)))
+        record(statEntry, Version, VersionDownload)((m, id) => m.copy(userId = Some(id)))
           .flatMap {
             case true  => version.addDownload *> request.data.project.addDownload
             case false => IO.unit

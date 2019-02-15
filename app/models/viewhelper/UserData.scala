@@ -77,8 +77,8 @@ object UserData {
   ): IO[(Set[Role], Map[Permission, Boolean], Map[Permission, Boolean])] = {
     (
       user.trustIn(GlobalScope),
-      user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.trustIn[Organization]).value,
-      user.globalRoles.allFromParent(user),
+      user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.trustIn(_)).value,
+      user.globalRoles.allFromParent,
     ).parMapN { (userTrust, orgTrust, globalRoles) =>
       val userPerms = user.can.asMap(userTrust, globalRoles.toSet)(ViewActivity, ReviewFlags, ReviewProjects)
       val orgaPerms = user.can.asMap(orgTrust, Some(globalRoles.toSet))(EditSettings)

@@ -109,7 +109,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
   private def getSession(token: String): OptionT[IO, DbModel[Session]] =
     ModelView.now(Session).find(_.token === token).flatMap { session =>
       if (session.hasExpired)
-        OptionT(service.delete(session).as(None: Option[Session]))
+        OptionT(service.delete(session).as(None: Option[DbModel[Session]]))
       else
         OptionT.some[IO](session)
     }

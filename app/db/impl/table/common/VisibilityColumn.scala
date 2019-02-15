@@ -11,7 +11,7 @@ import models.project.Visibility
   *
   * @tparam M Model type
   */
-trait VisibilityColumn[VC <: VisibilityChange, M <: Hideable[VC]] extends ModelTable[M] {
+trait VisibilityColumn[M <: Hideable] extends ModelTable[M] {
 
   /**
     * Column definition of visibility. True if visible.

@@ -15,7 +15,7 @@ import cats.syntax.all._
   *
   * @param user User to check
   */
-case class PermissionPredicate(user: DbModel[User]) {
+class PermissionPredicate(private val user: DbModel[User]) extends AnyVal {
 
   def apply(p: Permission): AndThen = AndThen(user, p)
 
@@ -44,7 +44,7 @@ protected case class AndThen(user: DbModel[User], p: Permission) {
     }
 
   def in[A: HasScope](subject: A)(implicit service: ModelService, cs: ContextShift[IO]): IO[Boolean] =
-    Parallel.parMap2(user.trustIn(subject), user.globalRoles.allFromParent(user))(
+    Parallel.parMap2(user.trustIn(subject), user.globalRoles.allFromParent)(
       (t, r) => withTrustAndGlobalRoles(t, r.toSet)
     )
 

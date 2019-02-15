@@ -276,7 +276,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
           .map(channelOptF(_))
           .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
 
-      def unbind(key: String, value: OptionT[IO, Channel]): Map[String, String] =
+      def unbind(key: String, value: OptionT[IO, DbModel[Channel]]): Map[String, String] =
         value.value.unsafeRunSync().map(key -> _.name.toLowerCase).toMap
     })
 

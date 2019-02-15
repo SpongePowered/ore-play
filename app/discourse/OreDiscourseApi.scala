@@ -286,7 +286,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
 
     /** Generates the content for a project topic. */
     def projectTopic(
-        project: Project
+        project: DbModel[Project]
     )(implicit config: OreConfig, service: ModelService): IO[String] = project.homePage.map { page =>
       readAndFormatFile(
         topicTemplatePath,

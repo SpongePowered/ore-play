@@ -193,7 +193,15 @@ final class Application @Inject()(forms: OreForms)(
         val staleProjects = unhealtyProjects
           .filter(_.lastUpdated > new Timestamp(new Date().getTime - config.ore.projects.staleAge.toMillis))
         val notPublic = unhealtyProjects.filter(_.visibility != Visibility.Public)
-        Ok(views.users.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
+        Ok(
+          views.users.admin.health(
+            noTopicProjects,
+            topicDirtyProjects,
+            staleProjects,
+            notPublic,
+            DbModel.unwrapNested(missingFileProjects)
+          )
+        )
       }
   }
 
@@ -315,7 +323,7 @@ final class Application @Inject()(forms: OreForms)(
           (userData, projects, orgaData) = t2
         } yield {
           val pr = projects.zip(projectRoles)
-          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr))
+          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.map(t => t._1.obj -> t._2)))
         }
       }
       .getOrElse(notFound)

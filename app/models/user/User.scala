@@ -7,12 +7,11 @@ import java.sql.Timestamp
 import play.api.i18n.Lang
 
 import db._
-import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView, QueryView}
+import db.access.{ChildAssociationAccess, ModelAssociationAccessImpl, ModelView, ParentAssociationAccess, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema._
 import db.query.UserQueries
-import models.admin.ProjectVisibilityChange
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
@@ -54,12 +53,6 @@ case class User(
   //TODO: Check this in some way
   //checkArgument(tagline.forall(_.length <= config.users.get[Int]("max-tagline-len")), "tagline too long", "")
 
-  /**
-    * The User's [[PermissionPredicate]]. All permission checks go through
-    * here.
-    */
-  val can: PermissionPredicate = PermissionPredicate(this)
-
   def avatarUrl(implicit config: OreConfig): String = User.avatarUrl(name)
 
   /**
@@ -87,35 +80,6 @@ case class User(
     * was configured.
     */
   implicit def langOrDefault: Lang = lang.getOrElse(Lang.defaultLang)
-
-  /**
-    * Returns the [[DbRole]]s that this User has.
-    *
-    * @return Roles the user has.
-    */
-  def globalRoles(
-      implicit service: ModelService
-  ): ModelAssociationAccess[UserGlobalRolesTable, User, DbRole, IO] =
-    new ModelAssociationAccessImpl[UserGlobalRolesTable, User, DbRole]
-
-  /**
-    * Returns the [[Organization]]s that this User belongs to.
-    *
-    * @return Organizations user belongs to
-    */
-  def organizations(
-      implicit service: ModelService
-  ): ModelAssociationAccess[OrganizationMembersTable, User, Organization, IO] = new ModelAssociationAccessImpl
-
-  /**
-    * Returns the [[Project]]s that this User is watching.
-    *
-    * @return Projects user is watching
-    */
-  def watching(
-      implicit service: ModelService
-  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, IO] =
-    new ModelAssociationAccessImpl
 }
 
 object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTable]) {
@@ -168,6 +132,42 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
   implicit class UserModelOps(private val self: DbModel[User]) extends AnyVal {
 
     /**
+      * The User's [[PermissionPredicate]]. All permission checks go through
+      * here.
+      */
+    def can: PermissionPredicate = new PermissionPredicate(self)
+
+    /**
+      * Returns the [[DbRole]]s that this User has.
+      *
+      * @return Roles the user has.
+      */
+    def globalRoles(
+        implicit service: ModelService
+    ): ParentAssociationAccess[UserGlobalRolesTable, User, DbRole, UserTable, DbRoleTable, IO] =
+      new ModelAssociationAccessImpl(User, DbRole).applyParent(self)
+
+    /**
+      * Returns the [[Organization]]s that this User belongs to.
+      *
+      * @return Organizations user belongs to
+      */
+    def organizations(
+        implicit service: ModelService
+    ): ParentAssociationAccess[OrganizationMembersTable, User, Organization, UserTable, OrganizationTable, IO] =
+      new ModelAssociationAccessImpl(User, Organization).applyParent(self)
+
+    /**
+      * Returns the [[Project]]s that this User is watching.
+      *
+      * @return Projects user is watching
+      */
+    def watching(
+        implicit service: ModelService
+    ): ChildAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, IO] =
+      new ModelAssociationAccessImpl(Project, User).applyChild(self)
+
+    /**
       * Sets the "watching" status on the specified project.
       *
       * @param project  Project to update status on
@@ -177,10 +177,10 @@ object User extends DbModelCompanionPartial[User, UserTable](TableQuery[UserTabl
         project: DbModel[Project],
         watching: Boolean
     )(implicit service: ModelService): IO[Unit] = {
-      val contains = self.watching.contains(project, self)
+      val contains = self.watching.contains(project)
       contains.flatMap {
-        case true  => if (!watching) self.watching.removeAssoc(project, self) else IO.unit
-        case false => if (watching) self.watching.addAssoc(project, self) else IO.unit
+        case true  => if (!watching) self.watching.removeAssoc(project) else IO.unit
+        case false => if (watching) self.watching.addAssoc(project) else IO.unit
       }
     }
 

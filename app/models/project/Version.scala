@@ -215,16 +215,18 @@ object Version extends DefaultDbModelCompanion[Version, VersionTable](TableQuery
     ): V[VersionDownloadsTable, VersionDownload] =
       view.filterView(_.modelId === self.id.value)
 
-    def reviewEntries[V[_, _]: QueryView](view: V[ReviewTable, Review]): V[ReviewTable, Review] =
+    def reviewEntries[V[_, _]: QueryView](view: V[ReviewTable, DbModel[Review]]): V[ReviewTable, DbModel[Review]] =
       view.filterView(_.versionId === self.id.value)
 
-    def unfinishedReviews[V[_, _]: QueryView](view: V[ReviewTable, Review]): V[ReviewTable, Review] =
+    def unfinishedReviews[V[_, _]: QueryView](view: V[ReviewTable, DbModel[Review]]): V[ReviewTable, DbModel[Review]] =
       reviewEntries(view).sortView(_.createdAt).filterView(_.endedAt.?.isEmpty)
 
-    def mostRecentUnfinishedReview[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, ReviewTable, Review]): QOptRet =
+    def mostRecentUnfinishedReview[QOptRet, SRet[_]](
+        view: ModelView[QOptRet, SRet, ReviewTable, DbModel[Review]]
+    ): QOptRet =
       unfinishedReviews(view).one
 
-    def mostRecentReviews[V[_, _]: QueryView](view: V[ReviewTable, Review]): V[ReviewTable, Review] =
+    def mostRecentReviews[V[_, _]: QueryView](view: V[ReviewTable, DbModel[Review]]): V[ReviewTable, DbModel[Review]] =
       reviewEntries(view).sortView(_.createdAt)
   }
 }

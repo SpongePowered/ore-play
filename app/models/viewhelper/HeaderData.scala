@@ -120,7 +120,7 @@ object HeaderData {
   }
 
   def perms(user: DbModel[User])(implicit service: ModelService, cs: ContextShift[IO]): IO[Map[Permission, Boolean]] =
-    Parallel.parMap2(user.trustIn(GlobalScope), user.globalRoles.allFromParent(user))(
+    Parallel.parMap2(user.trustIn(GlobalScope), user.globalRoles.allFromParent)(
       (t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*)
     )
 }

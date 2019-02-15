@@ -46,7 +46,7 @@ trait TChannelData {
     val dbChannels = project.channels(ModelView.later(Channel))
     val conditions = (
       dbChannels.size <= config.ore.projects.maxChannels,
-      dbChannels.forall(!equalsIgnoreCase[Channel#T](_.name, this.channelName)(_)),
+      dbChannels.forall(!equalsIgnoreCase[ChannelTable](_.name, this.channelName)(_)),
       dbChannels.forall(_.color =!= this.color)
     )
 
@@ -60,7 +60,7 @@ trait TChannelData {
           case (success, error) if !success => error
         }
 
-        if (errors.isEmpty) EitherT.leftT[IO, Channel](errors)
+        if (errors.isEmpty) EitherT.leftT[IO, DbModel[Channel]](errors)
         else EitherT.right[List[String]](factory.createChannel(project, channelName, color))
     }
   }
@@ -97,8 +97,8 @@ trait TChannelData {
           case (success, error) if !success => error
         }
 
-        val effect = service.update(
-          channel.copy(
+        val effect = service.update(channel)(
+          _.copy(
             name = channelName,
             color = color,
             isNonReviewed = nonReviewed

@@ -20,7 +20,7 @@ import slick.lifted.TableQuery
   * @param action           Action to perform on click
   * @param isRead             True if notification has been read
   */
-case class Notification private (
+case class Notification(
     userId: DbRef[User],
     originId: DbRef[User],
     notificationType: NotificationType,

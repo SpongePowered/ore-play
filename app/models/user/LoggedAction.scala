@@ -4,7 +4,7 @@ import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{DbModel, DbModelCompanionPartial, DbRef, ModelQuery, ModelService, ObjId, ObjTimestamp}
+import db.{DbModel, DbRef, DefaultDbModelCompanion, ModelQuery, ModelService}
 import ore.StatTracker
 import ore.user.UserOwned
 
@@ -23,16 +23,10 @@ case class LoggedActionModel[Ctx] private (
     oldState: String
 )
 object LoggedActionModel
-    extends DbModelCompanionPartial[LoggedActionModel[_], LoggedActionTable[_]](TableQuery[LoggedActionTable[_]]) {
+    extends DefaultDbModelCompanion[LoggedActionModel[Any], LoggedActionTable[Any]](TableQuery[LoggedActionTable[Any]]) {
 
   implicit def query[Ctx]: ModelQuery[LoggedActionModel[Ctx]] =
-    ModelQuery.from(this)
-
-  override def asDbModel(
-      model: LoggedActionModel[_],
-      id: ObjId[LoggedActionModel[_]],
-      time: ObjTimestamp
-  ): DbModel[LoggedActionModel[_]] = DbModel(???, time, model)
+    ModelQuery.from(this).asInstanceOf[ModelQuery[LoggedActionModel[Ctx]]]
 
   implicit val isUserOwned: UserOwned[LoggedActionModel[_]] = (a: LoggedActionModel[_]) => a.userId
 }

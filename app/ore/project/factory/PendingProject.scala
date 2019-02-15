@@ -33,7 +33,7 @@ case class PendingProject(
     channelName: String,
     description: Option[String] = None,
     category: Category = Category.Undefined,
-    settings: ProjectSettings = ProjectSettings(ObjId(0L)), //Filled in later
+    settings: ProjectSettings = ProjectSettings(0L), //Filled in later
     var pendingVersion: PendingVersion,
     roles: Set[ProjectUserRole] = Set(),
     cacheApi: SyncCacheApi

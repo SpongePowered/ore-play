@@ -9,7 +9,7 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.JoinableData
 @import ore.permission.Permission
-@(j: JoinableData[_ <: UserRoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_], _]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
+@(j: JoinableData[_ <: UserRoleModel[_], _ <: Joinable], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 
 <!-- TODO: Pagination -->

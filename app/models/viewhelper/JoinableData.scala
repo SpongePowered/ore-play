@@ -9,7 +9,7 @@ import ore.permission.EditSettings
 import ore.permission.role.RoleCategory
 import ore.user.Member
 
-trait JoinableData[R <: UserRoleModel, M <: Member[R], T <: Joinable[M, T]] {
+trait JoinableData[R <: UserRoleModel[R], T <: Joinable] {
 
   def joinable: DbModel[T]
   def members: Seq[(DbModel[R], DbModel[User])]

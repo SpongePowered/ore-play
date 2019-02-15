@@ -16,7 +16,7 @@ trait Joinable {
 
 }
 
-trait JoinableOps[M, Mem <: Member[_ <: UserRoleModel]] extends Any {
+trait JoinableOps[M, Mem <: Member[_ <: UserRoleModel[_]]] extends Any {
 
   /**
     * Returns the owner of this object.

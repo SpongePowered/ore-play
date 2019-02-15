@@ -7,5 +7,8 @@ import models.statistic.ProjectView
 
 class ProjectViewsTable(tag: Tag) extends StatTable[Project, ProjectView](tag, "project_views", "project_id") {
 
-  override def * = mkProj((id.?, createdAt.?, modelId, address, cookie, userId.?))(mkTuple[ProjectView]())
+  override def * =
+    (id.?, createdAt.?, (modelId, address, cookie, userId.?)) <> (mkApply((ProjectView.apply _).tupled), mkUnapply(
+      ProjectView.unapply
+    ))
 }

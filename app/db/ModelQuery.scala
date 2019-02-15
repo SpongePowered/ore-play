@@ -21,6 +21,6 @@ object ModelQuery {
 
   def from[A](model: DbModelCompanion[A]): ModelQuery[A] =
     new ModelQuery[A] {
-      override protected val companion: DbModelCompanion[A] = model
+      override val companion: DbModelCompanion[A] = model
     }
 }

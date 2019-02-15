@@ -1,6 +1,9 @@
 package db.impl.schema
 
-import db.{DbRef, ObjId}
+import java.sql.Timestamp
+import java.time.Instant
+
+import db.{DbModel, DbRef, ObjId, ObjTimestamp}
 import db.impl.table.common.NameColumn
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
@@ -15,13 +18,19 @@ class VersionTagTable(tag: Tag)
   def color     = column[TagColor]("color")
 
   override def * = {
-    val convertedApply: ((Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)) => VersionTag = {
+    val convertedApply
+      : ((Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)) => DbModel[VersionTag] = {
       case (id, versionIds, name, data, color) =>
-        VersionTag(ObjId.unsafeFromOption(id), versionIds, name, data, color)
+        DbModel(
+          ObjId.unsafeFromOption(id),
+          ObjTimestamp(Timestamp.from(Instant.EPOCH)),
+          VersionTag(versionIds, name, data, color)
+        )
     }
     val convertedUnapply
-      : PartialFunction[VersionTag, (Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)] = {
-      case VersionTag(id, versionIds, name, data, color) => (id.unsafeToOption, versionIds, name, data, color)
+      : PartialFunction[DbModel[VersionTag], (Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)] = {
+      case DbModel(id, _, VersionTag(versionIds, name, data, color)) =>
+        (id.unsafeToOption, versionIds, name, data, color)
     }
     (id.?, versionId, name, data, color) <> (convertedApply, convertedUnapply.lift)
   }

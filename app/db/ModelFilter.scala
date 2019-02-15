@@ -10,9 +10,8 @@ import db.impl.OrePostgresDriver.api._
   * function lifted out of this wrapper implicitly.
   *
   * @param fn   Base filter function
-  * @tparam M   Model type
   */
-class ModelFilter[M, T <: Table[M]](private val fn: T => Rep[Boolean]) extends AnyVal {
+class ModelFilter[T <: Table[_]](private val fn: T => Rep[Boolean]) extends AnyVal {
 
   /**
     * Applies && to the wrapped function and returns a new filter.
@@ -33,7 +32,7 @@ class ModelFilter[M, T <: Table[M]](private val fn: T => Rep[Boolean]) extends A
 
 object ModelFilter {
 
-  implicit def liftFilter[M, T <: Table[M]](f: T => Rep[Boolean]): ModelFilter[M, T] = new ModelFilter(f)
+  implicit def liftFilter[T <: Table[_]](f: T => Rep[Boolean]): ModelFilter[T] = new ModelFilter(f)
 
   def apply[M](model: DbModelCompanion[M])(f: model.T => Rep[Boolean]): model.T => Rep[Boolean] = f
 }

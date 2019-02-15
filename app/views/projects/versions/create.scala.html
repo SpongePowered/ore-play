@@ -112,7 +112,7 @@
                                         <td>
                                             <div class="pull-right" id="upload-platform-tags">
                                             @for(t <- version.dependenciesAsGhostTags) {
-                                                @projects.tag(t(ObjId(0L), ObjTimestamp(Timestamp.from(Instant.now()))).asViewTag)
+                                                @projects.tag(t.asViewTag)
                                             }
                                             </div>
                                         </td>

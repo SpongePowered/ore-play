@@ -29,6 +29,7 @@ import views.html.projects.{pages => views}
 import cats.data.OptionT
 import cats.effect.IO
 import cats.syntax.all._
+import cats.instances.option._
 
 /**
   * Controller for handling Page related actions.
@@ -99,8 +100,20 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
               val pageCount = pages.size + pages.map(_._2.size).sum
               val parentPage =
                 if (pages.map(_._1).contains(p)) None
-                else pages.collectFirst { case (pp, subPage) if subPage.contains(p.obj) => pp }
-              this.stats.projectViewed(Ok(views.view(request.data, request.scoped, pages, p, parentPage, pageCount, b)))
+                else pages.collectFirst { case (pp, subPage) if subPage.contains(p) => pp }
+              this.stats.projectViewed(
+                Ok(
+                  views.view(
+                    request.data,
+                    request.scoped,
+                    DbModel.unwrapNested[Seq[(DbModel[Page], Seq[Page])]](pages),
+                    p,
+                    DbModel.unwrapNested(parentPage),
+                    pageCount,
+                    b
+                  )
+                )
+              )
             }
         }
         .getOrElse(notFound)
@@ -125,8 +138,18 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
           optP.fold(notFound) {
             case (p, _) =>
               val pageCount  = pages.size + pages.map(_._2.size).sum
-              val parentPage = pages.collectFirst { case (pp, page) if page.contains(p.obj) => pp }
-              Ok(views.view(request.data, request.scoped, pages, p, parentPage, pageCount, editorOpen = true))
+              val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
+              Ok(
+                views.view(
+                  request.data,
+                  request.scoped,
+                  DbModel.unwrapNested[Seq[(DbModel[Page], Seq[Page])]](pages),
+                  p,
+                  DbModel.unwrapNested(parentPage),
+                  pageCount,
+                  editorOpen = true
+                )
+              )
           }
       }
     }

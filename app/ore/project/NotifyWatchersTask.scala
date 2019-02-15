@@ -33,7 +33,7 @@ case class NotifyWatchersTask(version: DbModel[Version], project: DbModel[Projec
   )
 
   private val watchingUsers =
-    service.runDBIO(project.watchers.allQueryFromParent(project).filter(_.id =!= version.authorId).result)
+    service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).result)
 
   def run(): Unit =
     watchingUsers

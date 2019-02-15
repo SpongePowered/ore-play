@@ -195,13 +195,13 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
         val newChannel =
           if (channel.isNonReviewed) otherChannels.find(_.isNonReviewed).getOrElse(otherChannels.head)
           else otherChannels.head
-        service.update(version.copy(channelId = newChannel.id))
+        service.update(version)(_.copy(channelId = newChannel.id))
       }
       _ <- service.delete(channel)
     } yield ()
   }
 
-  def prepareDeleteVersion(version: DbModel[Version]): IO[Project] = {
+  def prepareDeleteVersion(version: DbModel[Version]): IO[DbModel[Project]] = {
     import cats.instances.option._
     for {
       proj <- version.project
@@ -211,8 +211,8 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
       projects <- service.runDBIO(proj.versions(ModelView.raw(Version)).sortBy(_.createdAt.desc).result) // TODO optimize: only query one version
       res <- {
         if (rv.contains(version))
-          service.update(
-            proj.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id))
+          service.update(proj)(
+            _.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id))
           )
         else IO.pure(proj)
       }
@@ -222,7 +222,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   /**
     * Irreversibly deletes this version.
     */
-  def deleteVersion(version: DbModel[Version])(implicit cs: ContextShift[IO], mdc: OreMDC): IO[Project] = {
+  def deleteVersion(version: DbModel[Version])(implicit cs: ContextShift[IO], mdc: OreMDC): IO[DbModel[Project]] = {
     for {
       proj       <- prepareDeleteVersion(version)
       channel    <- version.channel
@@ -252,7 +252,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     eff *> service.delete(project)
   }
 
-  def queryProjectPages(project: DbModel[Project]): IO[Seq[(Page, Seq[Page])]] = {
+  def queryProjectPages(project: DbModel[Project]): IO[Seq[(DbModel[Page], Seq[DbModel[Page]])]] = {
     val tablePage = TableQuery[PageTable]
     val pagesQuery = for {
       (pp, p) <- tablePage.joinLeft(tablePage).on(_.id === _.parentId)

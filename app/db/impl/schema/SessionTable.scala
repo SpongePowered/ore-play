@@ -12,5 +12,8 @@ class SessionTable(tag: Tag) extends ModelTable[DbSession](tag, "user_sessions")
   def username   = column[String]("username")
   def token      = column[String]("token")
 
-  def * = mkProj((id.?, createdAt.?, expiration, username, token))(mkTuple[DbSession]())
+  def * =
+    (id.?, createdAt.?, (expiration, username, token)) <> (mkApply((DbSession.apply _).tupled), mkUnapply(
+      DbSession.unapply
+    ))
 }

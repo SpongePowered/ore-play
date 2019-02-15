@@ -11,7 +11,7 @@ import cats.effect.IO
 /**
   * Represents a [[User]] member of some entity.
   */
-trait Member[RoleType <: UserRoleModel] {
+trait Member[RoleType <: UserRoleModel[RoleType]] {
 
   /**
     * Returns the [[UserRoleModel]]s the user has in this entity.

@@ -12,7 +12,6 @@ import models.user.User
 import models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.permission.role.RoleCategory
-import ore.project.ProjectMember
 import util.syntax._
 
 import cats.data.OptionT
@@ -35,7 +34,7 @@ case class ProjectData(
     lastVisibilityChange: Option[ProjectVisibilityChange],
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
     recommendedVersion: Option[DbModel[Version]]
-) extends JoinableData[ProjectUserRole, ProjectMember, Project] {
+) extends JoinableData[ProjectUserRole, Project] {
 
   def flagCount: Int = flags.size
 

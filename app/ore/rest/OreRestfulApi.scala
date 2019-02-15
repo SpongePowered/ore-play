@@ -381,7 +381,7 @@ trait OreRestfulApi extends OreWrites {
       allProjects     <- service.runDBIO(query.result)
       stars           <- service.runDBIO(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
       jsonProjects    <- writeProjects(allProjects)
-      userGlobalRoles <- userList.toVector.parTraverse(u => u.globalRoles.allFromParent(u))
+      userGlobalRoles <- userList.toVector.parTraverse(_.globalRoles.allFromParent)
     } yield {
       val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
       userList.zip(userGlobalRoles).map {

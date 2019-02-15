@@ -16,7 +16,7 @@ class ProjectSettingsTable(tag: Tag) extends ModelTable[ProjectSettings](tag, "p
   def forumSync   = column[Boolean]("forum_sync")
 
   override def * =
-    mkProj((id.?, createdAt.?, projectId, homepage.?, issues.?, source.?, licenseName.?, licenseUrl.?, forumSync))(
-      mkTuple[ProjectSettings]()
-    )
+    (id.?, createdAt.?, (projectId, homepage.?, issues.?, source.?, licenseName.?, licenseUrl.?, forumSync)) <> (mkApply(
+      (ProjectSettings.apply _).tupled
+    ), mkUnapply(ProjectSettings.unapply))
 }

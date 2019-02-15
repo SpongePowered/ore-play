@@ -47,7 +47,7 @@ object Flag extends DefaultDbModelCompanion[Flag, FlagTable](TableQuery[FlagTabl
     def markResolved(
         resolved: Boolean,
         user: Option[DbModel[User]]
-    )(implicit service: ModelService): IO[Flag] = {
+    )(implicit service: ModelService): IO[DbModel[Flag]] = {
       val (at, by) =
         if (resolved)
           (Some(Timestamp.from(Instant.now)), user.map(_.id.value): Option[DbRef[User]])

@@ -10,7 +10,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
-import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView, QueryView}
+import db.access.{ChildAssociationAccess, ModelAssociationAccessImpl, ModelView, ParentAssociationAccess, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.{Describable, Downloadable, Hideable, HideableOps, Named}
 import db.impl.schema._
@@ -81,16 +81,6 @@ case class Project(
     with Joinable
     with Visitable {
 
-  /**
-    * Returns ModelAccess to the user's who are watching this project.
-    *
-    * @return Users watching project
-    */
-  def watchers(
-      implicit service: ModelService
-  ): ModelAssociationAccess[ProjectWatchersTable, Project, User, IO] =
-    new ModelAssociationAccessImpl
-
   def namespace: ProjectNamespace = ProjectNamespace(ownerName, slug)
 
   /**
@@ -99,16 +89,6 @@ case class Project(
     * @return Base URL for project
     */
   override def url: String = namespace.toString
-
-  /**
-    * Returns [[db.access.ModelAssociationAccess]] to [[User]]s who have starred this
-    * project.
-    *
-    * @return Users who have starred this project
-    */
-  def stars(
-      implicit service: ModelService
-  ): ModelAssociationAccess[ProjectStarsTable, User, Project, IO] = new ModelAssociationAccessImpl
 
   /**
     * Get all messages
@@ -168,6 +148,28 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
       extends AnyVal
       with HideableOps[Project, ProjectVisibilityChange, ProjectVisibilityChangeTable]
       with JoinableOps[Project, ProjectMember] {
+
+    /**
+      * Returns ModelAccess to the user's who are watching this project.
+      *
+      * @return Users watching project
+      */
+    def watchers(
+        implicit service: ModelService
+    ): ParentAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, IO] =
+      new ModelAssociationAccessImpl(Project, User).applyParent(self)
+
+    /**
+      * Returns [[db.access.ChildAssociationAccess]] to [[User]]s who have starred this
+      * project.
+      *
+      * @return Users who have starred this project
+      */
+    def stars(
+        implicit service: ModelService
+    ): ChildAssociationAccess[ProjectStarsTable, User, Project, UserTable, ProjectTableMain, IO] =
+      new ModelAssociationAccessImpl[ProjectStarsTable, User, Project, UserTable, ProjectTableMain](User, Project)
+        .applyChild(self)
 
     /**
       * Contains all information for [[User]] memberships.
@@ -300,11 +302,11 @@ object Project extends DbModelCompanionPartial[Project, ProjectTableMain](TableQ
     )(implicit service: ModelService): IO[Project] = {
       checkNotNull(user, "null user", "")
       for {
-        contains <- self.stars.contains(user, self)
+        contains <- self.stars.contains(user)
         res <- if (starred != contains) {
           if (contains)
-            self.stars.removeAssoc(user, self) *> service.update(self)(_.copy(starCount = self.starCount - 1))
-          else self.stars.addAssoc(user, self) *> service.update(self)(_.copy(starCount = self.starCount + 1))
+            self.stars.removeAssoc(user) *> service.update(self)(_.copy(starCount = self.starCount - 1))
+          else self.stars.addAssoc(user) *> service.update(self)(_.copy(starCount = self.starCount + 1))
         } else IO.pure(self)
       } yield res
     }

@@ -3,7 +3,6 @@ package form.organization
 import db.{DbModel, DbRef, ModelService}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
-import ore.OreConfig
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import util.syntax._
@@ -73,7 +72,7 @@ case class OrganizationMembersUpdate(
 
         userMemRole.toVector.parTraverse_ {
           case Some(((_, mem), role)) =>
-            mem.headRole.flatMap(headRole => service.update(headRole.copy(role = role)))
+            mem.headRole.flatMap(headRole => service.update(headRole)(_.copy(role = role)))
           case None => IO.unit
         }
     }

@@ -28,10 +28,10 @@ object ScopedProjectData {
             .flatMap(_.toMaybeOrganization(ModelView.now(Organization)).value)
             .flatMap(orgaOwner => user.can(PostAsOrganization) in orgaOwner),
           user.hasUnresolvedFlagFor(project, ModelView.now(Flag)),
-          project.stars.contains(user, project),
-          project.watchers.contains(project, user),
+          project.stars.contains(user),
+          project.watchers.contains(user),
           user.trustIn(project),
-          user.globalRoles.allFromParent(user)
+          user.globalRoles.allFromParent
         ).parMapN {
           case (
               canPostAsOwnerOrga,

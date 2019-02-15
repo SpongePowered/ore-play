@@ -68,7 +68,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
         // and should be treated as such.
         for {
           userOrg <- org.toUser.getOrElseF(IO.raiseError(new IllegalStateException("User not created")))
-          _       <- userOrg.globalRoles.addAssoc(userOrg, Role.Organization.toDbRole)
+          _       <- userOrg.globalRoles.addAssoc(Role.Organization.toDbRole)
           _ <- // Add the owner
           org.memberships.addRole(
             org,

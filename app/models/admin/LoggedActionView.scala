@@ -54,17 +54,18 @@ case class LoggedActionViewModel[Ctx](
   def sName: Option[String]                = loggedSubject.sName
 }
 object LoggedActionViewModel
-    extends DbModelCompanionPartial[LoggedActionViewModel[_], LoggedActionViewTable[_]](
-      TableQuery[LoggedActionViewTable[_]]
+    extends DbModelCompanionPartial[LoggedActionViewModel[Any], LoggedActionViewTable[Any]](
+      TableQuery[LoggedActionViewTable[Any]]
     ) {
 
-  implicit def query[Ctx]: ModelQuery[LoggedActionViewModel[Ctx]] = ModelQuery.from(this)
+  implicit def query[Ctx]: ModelQuery[LoggedActionViewModel[Ctx]] =
+    ModelQuery.from(this).asInstanceOf[ModelQuery[LoggedActionViewModel[Ctx]]]
 
   override def asDbModel(
-      model: LoggedActionViewModel[_],
-      id: ObjId[LoggedActionViewModel[_]],
+      model: LoggedActionViewModel[Any],
+      id: ObjId[LoggedActionViewModel[Any]],
       time: ObjTimestamp
-  ): DbModel[LoggedActionViewModel[_]] = DbModel(ObjId(0L), time, model)
+  ): DbModel[LoggedActionViewModel[Any]] = DbModel(ObjId(0L), time, model)
 
   implicit val isUserOwned: UserOwned[LoggedActionViewModel[_]] = (a: LoggedActionViewModel[_]) => a.userId
 }

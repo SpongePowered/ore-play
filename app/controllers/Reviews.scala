@@ -30,6 +30,7 @@ import views.{html => views}
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.IO
 import cats.syntax.all._
+import cats.instances.option._
 import slick.lifted.{Rep, TableQuery}
 
 /**
@@ -60,7 +61,7 @@ final class Reviews @Inject()(forms: OreForms)(
           rv <- EitherT.right[Result](service.runDBIO(dbio))
         } yield {
           val unfinished = rv.map(_._1).filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
-          Ok(views.users.admin.reviews(unfinished, rv, request.project, version))
+          Ok(views.users.admin.reviews(DbModel.unwrapNested(unfinished), rv, request.project, version))
         }
     }
 

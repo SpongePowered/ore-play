@@ -408,9 +408,9 @@ final class ApiController @Inject()(
               }
 
               val updateRoles = globalRoles.fold(IO.unit) { roles =>
-                user.globalRoles.deleteAllFromParent(user) *> roles
+                user.globalRoles.deleteAllFromParent *> roles
                   .map(_.toDbRole)
-                  .traverse(user.globalRoles.addAssoc(user, _))
+                  .traverse(user.globalRoles.addAssoc)
                   .void
               }
 

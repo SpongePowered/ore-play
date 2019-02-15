@@ -15,7 +15,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.UserTable
 import db.query.UserQueries
-import db.{DbRef, ModelService}
+import db.{DbModel, DbRef, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
 import models.project.Version
@@ -86,7 +86,7 @@ class Users @Inject()(
           .getOrCreate(
             this.fakeUser.username,
             this.fakeUser,
-            ifInsert = fakeUser => fakeUser.globalRoles.addAssoc(fakeUser, Role.OreAdmin.toDbRole).void
+            ifInsert = fakeUser => fakeUser.globalRoles.addAssoc(Role.OreAdmin.toDbRole).void
           )
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
@@ -104,9 +104,9 @@ class Users @Inject()(
               // Complete authentication
               for {
                 user <- users.getOrCreate(sponge.username, fromSponge)
-                _    <- user.globalRoles.deleteAllFromParent(user)
+                _    <- user.globalRoles.deleteAllFromParent
                 _ <- sponge.newGlobalRoles
-                  .fold(IO.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.addAssoc(user, _)))
+                  .fold(IO.unit)(_.map(_.toDbRole).traverse_(user.globalRoles.addAssoc))
                 result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
               } yield result
           }
@@ -197,7 +197,7 @@ class Users @Inject()(
               userData.get,
               orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
               projects,
-              starredData.take(5),
+              DbModel.unwrapNested(starredData.take(5)),
               pageNum
             )
           )
@@ -361,7 +361,14 @@ class Users @Inject()(
       val invitesF = iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject.tupleLeft(invite)))
 
       (notificationsF, invitesF).parMapN { (notifications, invites) =>
-        Ok(views.users.notifications(notifications, invites, nFilter, iFilter))
+        Ok(
+          views.users.notifications(
+            DbModel.unwrapNested[Seq[(DbModel[Notification], User)]](notifications),
+            invites.map(t => t._1 -> t._2.obj),
+            nFilter,
+            iFilter
+          )
+        )
       }
     }
   }

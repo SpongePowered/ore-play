@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 
 import java.sql.Timestamp
 
-sealed trait DbInitialized[A] {
+sealed trait DbInitialized[+A] {
   def value: A
   private[db] def unsafeToOption: Option[A]
   override def toString: String = unsafeToOption match {
@@ -13,7 +13,7 @@ sealed trait DbInitialized[A] {
   }
 }
 
-sealed trait ObjId[A] extends DbInitialized[DbRef[A]]
+sealed trait ObjId[+A] extends DbInitialized[DbRef[A]]
 object ObjId {
   implicit def unwrapObjId[A](objId: ObjId[A]): DbRef[A] = objId.value
 

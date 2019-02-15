@@ -3,6 +3,7 @@ package util
 import scala.language.implicitConversions
 
 import controllers.sugar.Requests._
+import db.DbModel
 import models.project.Project
 import models.user.{Organization, User}
 
@@ -22,17 +23,17 @@ object OreMDC {
 
   implicit val canLogOreMDCCtx: CanLog[OreMDC] = new CanLog[OreMDC] {
 
-    def putUser(user: User): Unit = {
+    def putUser(user: DbModel[User]): Unit = {
       MDC.put("currentUserId", user.id.toString)
       MDC.put("currentUserName", user.name)
     }
 
-    def putProject(project: Project): Unit = {
+    def putProject(project: DbModel[Project]): Unit = {
       MDC.put("currentProjectId", project.id.toString)
       MDC.put("currentProjectSlug", project.slug)
     }
 
-    def putOrg(orga: Organization): Unit = {
+    def putOrg(orga: DbModel[Organization]): Unit = {
       MDC.put("currentOrgaId", orga.id.toString)
       MDC.put("currentOrgaName", orga.name)
     }

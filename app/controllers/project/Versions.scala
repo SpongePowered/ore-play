@@ -24,7 +24,7 @@ import db.{DbModel, DbRef, ModelService}
 import form.OreForms
 import models.admin.VersionVisibilityChange
 import models.project._
-import models.user.{LoggedAction, UserActionLogger}
+import models.user.{LoggedAction, User, UserActionLogger}
 import models.viewhelper.VersionData
 import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
 import ore.project.factory.{PendingProject, ProjectFactory}
@@ -217,7 +217,17 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       service.runDBIO(dbio).flatMap {
         case (allChannels, versionCount, visibleNamesForView) =>
           this.stats
-            .projectViewed(Ok(views.list(request.data, request.scoped, allChannels, versionCount, visibleNamesForView)))
+            .projectViewed(
+              Ok(
+                views.list(
+                  request.data,
+                  request.scoped,
+                  DbModel.unwrapNested(allChannels),
+                  versionCount,
+                  visibleNamesForView
+                )
+              )
+            )
       }
     }
   }
@@ -242,7 +252,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             isProjectPending = false,
             forumSync = request.data.settings.forumSync,
             None,
-            Some(channels),
+            Some(DbModel.unwrapNested(channels)),
             showFileControls = true
           )
         )
@@ -327,7 +337,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 isPending,
                 forumSync,
                 Some(pendingVersion),
-                channels,
+                DbModel.unwrapNested(channels),
                 showFileControls = channels.isDefined
               )
             )
@@ -540,7 +550,14 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 .result
             )
           )
-        } yield Ok(views.log(request.project, version, visChanges))
+        } yield
+          Ok(
+            views.log(
+              request.project,
+              version,
+              DbModel.unwrapNested[Seq[(DbModel[VersionVisibilityChange], Option[User])]](visChanges)
+            )
+          )
     }
   }
 

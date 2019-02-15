@@ -1,7 +1,8 @@
 @import models.project.{Page, Project}
 @import ore.OreConfig
 @import security.NonceFilter._
-@(model: Project, rootPages: Seq[Page])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
+@import db.DbModel
+@(model: Project, rootPages: Seq[DbModel[Page]])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
 
 <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pageEdit.js")"></script>
 <script nonce="@nonce">

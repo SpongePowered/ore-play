@@ -8,6 +8,7 @@ import play.api.Logger
 import db.ModelFilter._
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
+import db.impl.schema.ProjectTableMain
 import db.{ModelFilter, ModelService}
 import models.project.{Project, Visibility}
 import ore.OreConfig
@@ -25,11 +26,12 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
 
   val Logger: Logger = this.api.Logger
 
-  private val topicFilter = ModelFilter(Project)(_.topicId.isEmpty)
-  private val dirtyFilter = ModelFilter(Project)(_.isTopicDirty)
+  private val topicFilter   = ModelFilter(Project)(_.topicId.isEmpty)
+  private val dirtyFilter   = ModelFilter(Project)(_.isTopicDirty)
+  private val visibleFilter = Visibility.isPublicFilter[ProjectTableMain]
 
-  private val toCreateProjects   = ModelView.now(Project).filterView(topicFilter && Visibility.isPublicFilter)
-  private val dirtyTopicProjects = ModelView.now(Project).filterView(dirtyFilter && Visibility.isPublicFilter)
+  private val toCreateProjects   = ModelView.raw(Project).filter(topicFilter && visibleFilter)
+  private val dirtyTopicProjects = ModelView.raw(Project).filter(dirtyFilter && visibleFilter)
 
   /**
     * Starts the recovery task to be run at the specified interval.
@@ -42,12 +44,12 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
   override def run(): Unit = {
     Logger.debug("Running Discourse recovery task...")
 
-    service.runDBIO(toCreateProjects.query.result).unsafeToFuture().foreach { toCreate =>
+    service.runDBIO(toCreateProjects.result).unsafeToFuture().foreach { toCreate =>
       Logger.debug(s"Creating ${toCreate.size} topics...")
       toCreate.foreach(this.api.createProjectTopic(_).unsafeToFuture())
     }
 
-    service.runDBIO(dirtyTopicProjects.query.result).unsafeToFuture().foreach { toUpdate =>
+    service.runDBIO(dirtyTopicProjects.result).unsafeToFuture().foreach { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} topics...")
       toUpdate.foreach(this.api.updateProjectTopic(_).unsafeToFuture())
     }

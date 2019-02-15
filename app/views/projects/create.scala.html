@@ -15,7 +15,8 @@ Page used for uploading and creating new projects.
 @import db.ObjTimestamp
 @import java.sql.Timestamp
 @import java.time.Instant
-@(createProjectOrgas: Seq[Organization],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import db.DbModel
+@(createProjectOrgas: Seq[DbModel[Organization]],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -70,7 +71,7 @@ Page used for uploading and creating new projects.
                                 <td>
                                     <div class="pull-right" id="upload-platform-tags">
                                     @for(t <- project.pendingVersion.dependenciesAsGhostTags) {
-                                        @projects.tag(t(ObjId(0L), ObjTimestamp(Timestamp.from(Instant.now()))).asViewTag)
+                                        @projects.tag(t.asViewTag)
                                     }
                                     </div>
                                 </td>

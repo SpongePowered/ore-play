@@ -13,7 +13,7 @@ class VersionTable(tag: Tag)
     extends ModelTable[Version](tag, "project_versions")
     with DownloadsColumn[Version]
     with DescriptionColumn[Version]
-    with VisibilityColumn[VersionVisibilityChange, Version] {
+    with VisibilityColumn[Version] {
 
   def versionString     = column[String]("version_string")
   def dependencies      = column[List[String]]("dependencies")
@@ -29,10 +29,10 @@ class VersionTable(tag: Tag)
   def signatureFileName = column[String]("signature_file_name")
 
   override def * =
-    mkProj(
+    (
+      id.?,
+      createdAt.?,
       (
-        id.?,
-        createdAt.?,
         projectId,
         versionString,
         dependencies,
@@ -49,5 +49,5 @@ class VersionTable(tag: Tag)
         fileName,
         signatureFileName
       )
-    )(mkTuple[Version]())
+    ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
 }

@@ -21,7 +21,7 @@ object ScopedOrganizationData {
       cs: ContextShift[IO]
   ): IO[ScopedOrganizationData] =
     currentUser.fold(IO.pure(noScope)) { user =>
-      Parallel.parMap2(user.trustIn(orga), user.globalRoles.allFromParent(user)) { (trust, globalRoles) =>
+      Parallel.parMap2(user.trustIn(orga), user.globalRoles.allFromParent) { (trust, globalRoles) =>
         ScopedOrganizationData(user.can.asMap(trust, globalRoles.toSet)(EditSettings))
       }
     }

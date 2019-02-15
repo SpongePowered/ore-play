@@ -2,7 +2,7 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{DbRef, ObjId, ObjTimestamp}
+import db.{DbModel, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.user.{LoggedAction, LoggedActionContext, LoggedActionModel, User}
@@ -30,22 +30,10 @@ class LoggedActionTable[Ctx](tag: Tag) extends ModelTable[LoggedActionModel[Ctx]
       newState: String,
       oldState: String
   ) =
-    LoggedActionModel(
+    DbModel(
       ObjId.unsafeFromOption(id),
       ObjTimestamp.unsafeFromOption(createdAt),
-      userId,
-      address,
-      action,
-      actionContext,
-      actionContextId,
-      newState,
-      oldState
-    )
-
-  private def rawUnapply(m: LoggedActionModel[Ctx]) = m match {
-    case LoggedActionModel(
-        id,
-        createdAt,
+      LoggedActionModel(
         userId,
         address,
         action,
@@ -53,6 +41,22 @@ class LoggedActionTable[Ctx](tag: Tag) extends ModelTable[LoggedActionModel[Ctx]
         actionContextId,
         newState,
         oldState
+      )
+    )
+
+  private def rawUnapply(m: DbModel[LoggedActionModel[Ctx]]) = m match {
+    case DbModel(
+        id,
+        createdAt,
+        LoggedActionModel(
+          userId,
+          address,
+          action,
+          actionContext,
+          actionContextId,
+          newState,
+          oldState
+        )
         ) =>
       Some(
         (
@@ -81,5 +85,5 @@ class LoggedActionTable[Ctx](tag: Tag) extends ModelTable[LoggedActionModel[Ctx]
       actionContextId,
       newState,
       oldState
-    ) <> ((rawApply _).tupled, rawUnapply _)
+    ) <> ((rawApply _).tupled, rawUnapply)
 }

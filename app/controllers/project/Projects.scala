@@ -25,7 +25,7 @@ import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
 import models.admin.ProjectLogEntry
 import models.api.ProjectApiKey
-import models.project.{Flag, Note, Visibility}
+import models.project.{Flag, Note, Page, Visibility}
 import models.user._
 import models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
@@ -45,6 +45,7 @@ import views.html.{projects => views}
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.syntax.all._
+import cats.instances.option._
 import com.typesafe.scalalogging
 
 /**
@@ -81,7 +82,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
     import cats.instances.vector._
     for {
-      orgas      <- request.user.organizations.allFromParent(request.user)
+      orgas      <- request.user.organizations.allFromParent
       createOrga <- orgas.toVector.parTraverse(request.user.can(CreateProject).in(_))
     } yield {
       val createdOrgas = orgas.zip(createOrga).collect {
@@ -123,7 +124,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       case Some(pending) =>
         import cats.instances.vector._
         for {
-          t <- (request.user.organizations.allFromParent(request.user), pending.owner).parTupled
+          t <- (request.user.organizations.allFromParent, pending.owner).parTupled
           (orgas, owner) = t
           createOrga <- orgas.toVector.parTraverse(owner.can(CreateProject).in(_))
         } yield {
@@ -179,7 +180,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def orgasUserCanUploadTo(user: DbModel[User]): IO[Set[DbRef[Organization]]] = {
     import cats.instances.vector._
     for {
-      all       <- user.organizations.allFromParent(user)
+      all       <- user.organizations.allFromParent
       canCreate <- all.toVector.parTraverse(org => user.can(CreateProject).in(org).tupleLeft(org.id.value))
     } yield {
       // Filter by can Create Project
@@ -226,7 +227,18 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       t <- (projects.queryProjectPages(request.project), request.project.homePage).parTupled
       (pages, homePage) = t
       pageCount         = pages.size + pages.map(_._2.size).sum
-      res <- stats.projectViewed(Ok(views.pages.view(request.data, request.scoped, pages, homePage, None, pageCount)))
+      res <- stats.projectViewed(
+        Ok(
+          views.pages.view(
+            request.data,
+            request.scoped,
+            DbModel.unwrapNested[Seq[(DbModel[Page], Seq[Page])]](pages),
+            homePage,
+            None,
+            pageCount
+          )
+        )
+      )
     } yield res
   }
 
@@ -394,10 +406,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val pageNum  = math.max(page.getOrElse(1), 1)
       val offset   = (pageNum - 1) * pageSize
 
-      val query =
-        request.project.stars.allQueryFromChild(request.project).drop(offset).take(pageSize).sortBy(_.name).result
+      val query = request.project.stars.allQueryFromChild.drop(offset).take(pageSize).sortBy(_.name).result
       service.runDBIO(query).map { users =>
-        Ok(views.stargazers(request.data, request.scoped, users, pageNum, pageSize))
+        Ok(views.stargazers(request.data, request.scoped, DbModel.unwrapNested(users), pageNum, pageSize))
       }
     }
 
@@ -813,7 +824,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         import cats.instances.vector._
         project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
           notes =>
-            Ok(views.admin.notes(project, notes))
+            Ok(views.admin.notes(project, DbModel.unwrapNested(notes)))
         }
       }
     }

@@ -6,7 +6,6 @@ import db.{DbModel, DbRef, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole}
 import models.user.{Organization, User}
-import ore.organization.OrganizationMember
 import ore.permission._
 import ore.permission.role.RoleCategory
 import util.syntax._
@@ -20,7 +19,7 @@ case class OrganizationData(
     joinable: DbModel[Organization],
     members: Seq[(DbModel[OrganizationUserRole], DbModel[User])], // TODO sorted/reverse
     projectRoles: Seq[(DbModel[ProjectUserRole], DbModel[Project])]
-) extends JoinableData[OrganizationUserRole, OrganizationMember, Organization] {
+) extends JoinableData[OrganizationUserRole, Organization] {
 
   def orga: DbModel[Organization] = joinable
 
