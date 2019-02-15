@@ -32,7 +32,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole]
-  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, String, Model[Organization]] = {
+  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, List[String], Model[Organization]] = {
     import cats.instances.vector._
     MDCLogger.debug("Creating Organization...")
     MDCLogger.debug("Name     : " + name)
@@ -44,7 +44,8 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
     // that name. We will give the organization a dummy email for continuity.
     // By default we use "<org>@ore.spongepowered.org".
     MDCLogger.debug("Creating on SpongeAuth...")
-    val dummyEmail   = name + '@' + this.config.ore.orgs.dummyEmailDomain
+    // Replace all invalid characters to not throw invalid email error when trying to create org with invalid username
+    val dummyEmail   = name.replaceAll("[^a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]", "") + '@' + this.config.ore.orgs.dummyEmailDomain
     val spongeResult = auth.createDummyUser(name, dummyEmail)
 
     // Check for error

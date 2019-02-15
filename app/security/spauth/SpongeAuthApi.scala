@@ -44,14 +44,14 @@ trait SpongeAuthApi {
     * @param email    Email
     * @return         Newly created user
     */
-  def createDummyUser(username: String, email: String)(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] =
+  def createDummyUser(username: String, email: String)(implicit mdc: OreMDC): EitherT[IO, List[String], SpongeUser] =
     doCreateUser(username, email, None)
 
   private def doCreateUser(
       username: String,
       email: String,
       password: Option[String],
-  )(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] = {
+  )(implicit mdc: OreMDC): EitherT[IO, List[String], SpongeUser] = {
     checkNotNull(username, "null username", "")
     checkNotNull(email, "null email", "")
     val params = Map(
@@ -117,23 +117,23 @@ trait SpongeAuthApi {
     }
   }
 
-  private def readUser(response: IO[WSResponse])(implicit mdc: OreMDC): EitherT[IO, String, SpongeUser] = {
+  private def readUser(response: IO[WSResponse])(implicit mdc: OreMDC): EitherT[IO, List[String], SpongeUser] = {
     EitherT(
       OptionT(response.map(parseJson(_, MDCLogger)))
         .map { json =>
           val obj = json.as[JsObject]
           if (obj.keys.contains("error"))
-            Left((obj \ "error").as[String])
+            Left((obj \ "error").as[JsArray].value.map(_.as[String]).toList)
           else
             Right(obj.as[SpongeUser])
         }
-        .getOrElse(Left("error.spongeauth.auth"))
+        .getOrElse(Left(List("error.spongeauth.auth")))
         .handleError {
           case _: TimeoutException =>
-            Left("error.spongeauth.auth")
+            Left(List("error.spongeauth.auth"))
           case e =>
             MDCLogger.error("An unexpected error occured while handling a response", e)
-            Left("error.spongeauth.unexpected")
+            Left(List("error.spongeauth.unexpected"))
         }
     )
   }

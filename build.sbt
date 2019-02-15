@@ -1,5 +1,5 @@
 name := "ore"
-version := "1.7"
+version := "1.7.1"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
@@ -46,7 +46,7 @@ scalacOptions ++= Seq(
 )
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
 addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
-addCompilerPlugin(scalafixSemanticdb("4.1.0"))
+addCompilerPlugin(scalafixSemanticdb("4.1.2"))
 
 routesGenerator := InjectedRoutesGenerator
 routesImport ++= Seq(
@@ -68,13 +68,13 @@ lazy val doobieVersion = "0.6.0"
 
 libraryDependencies ++= Seq(ehcache, ws, guice)
 
-lazy val flexmarkVersion     = "0.40.4"
+lazy val flexmarkVersion     = "0.40.16"
 lazy val bouncycastleVersion = "1.60"
 lazy val playSlickVersion    = "3.0.3"
-lazy val slickPgVersion      = "0.17.0"
+lazy val slickPgVersion      = "0.17.1"
 
 libraryDependencies ++= Seq(
-  "org.spongepowered"          % "play-discourse"                 % "3.0.2",
+  "org.spongepowered"          % "play-discourse"                 % "3.0.3",
   "org.spongepowered"          % "plugin-meta"                    % "0.4.1",
   "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
   "com.typesafe.play"          %% "play-slick-evolutions"         % playSlickVersion,
@@ -83,7 +83,7 @@ libraryDependencies ++= Seq(
   "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
   "com.fasterxml.jackson.core" % "jackson-databind"               % "2.8.11.3",
   "com.typesafe.scala-logging" %% "scala-logging"                 % "3.9.2",
-  "io.sentry"                  % "sentry-logback"                 % "1.7.16",
+  "io.sentry"                  % "sentry-logback"                 % "1.7.17",
   "org.bouncycastle"           % "bcprov-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"           % "bcpkix-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"           % "bcpg-jdk15on"                   % bouncycastleVersion,
@@ -92,7 +92,7 @@ libraryDependencies ++= Seq(
   "com.beachape"               %% "enumeratum-slick"              % "1.5.15",
   "com.chuusai"                %% "shapeless"                     % "2.3.3",
   "org.typelevel"              %% "cats-core"                     % "1.5.0",
-  "com.github.mpilquist"       %% "simulacrum"                    % "0.14.0",
+  "com.github.mpilquist"       %% "simulacrum"                    % "0.15.0",
   "org.tpolecat"               %% "doobie-core"                   % doobieVersion,
   "org.tpolecat"               %% "doobie-postgres"               % doobieVersion,
   "com.vladsch.flexmark"       % "flexmark"                       % flexmarkVersion,
@@ -104,9 +104,9 @@ libraryDependencies ++= Seq(
   "com.vladsch.flexmark"       % "flexmark-ext-typographic"       % flexmarkVersion,
   "com.vladsch.flexmark"       % "flexmark-ext-wikilink"          % flexmarkVersion,
   "org.webjars.npm"            % "jquery"                         % "2.2.4",
-  "org.webjars"                % "font-awesome"                   % "5.6.1",
+  "org.webjars"                % "font-awesome"                   % "5.6.3",
   "org.webjars.npm"            % "filesize"                       % "3.6.1",
-  "org.webjars.npm"            % "moment"                         % "2.23.0",
+  "org.webjars.npm"            % "moment"                         % "2.24.0",
   "org.webjars.npm"            % "clipboard"                      % "2.0.4",
   "org.webjars.npm"            % "chart.js"                       % "2.7.3"
 )

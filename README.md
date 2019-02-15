@@ -1,5 +1,5 @@
 # Ore
-[![Build Status](https://travis-ci.org/SpongePowered/Ore.svg?branch=master)](https://travis-ci.org/SpongePowered/Ore)
+[![Build Status](https://travis-ci.com/SpongePowered/Ore.svg?branch=master)](https://travis-ci.com/SpongePowered/Ore)
 [![Hydra](https://img.shields.io/badge/%22%22%22%7CHydra-4%20cpus-brightgreen.svg)](https://www.triplequote.com/hydra)
 
 Repository software for Sponge plugins and Forge mods https://ore.spongepowered.org/

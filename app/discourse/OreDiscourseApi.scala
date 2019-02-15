@@ -108,14 +108,11 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
 
       res
         .leftSemiflatMap {
-          case (errors, content) =>
+          case (errors, _) =>
             // Request went through but Discourse responded with errors
             // Don't schedule a retry because this will just keep happening
             val message =
-              s"""|Request to create project topic was successful but Discourse responded with errors:
-                  |Project: ${project.url}
-                  |Title: $title
-                  |Content: $content
+              s"""|Request to create topic for project '${project.url}' was successful but Discourse responded with errors:
                   |Errors: ${errors.mkString(", ")}""".stripMargin
             MDCLogger.warn(message)
             project.logger.flatMap(_.err(message)).as(project)

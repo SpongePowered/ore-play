@@ -92,7 +92,7 @@ class Organizations @Inject()(forms: OreForms)(
               organizations
                 .create(formData.name, user.id, formData.build())
                 .fold(
-                  error => Redirect(failCall).withError(error),
+                  error => Redirect(failCall).withErrors(error),
                   organization => Redirect(routes.Users.showProjects(organization.name, None))
                 )
             }

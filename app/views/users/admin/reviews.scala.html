@@ -39,7 +39,7 @@
                     <span class="btn-group-sm">
                     @if(mostRecentUnfinishedReview.isDefined) {
                         @if(request.headerData.isCurrentUser(mostRecentUnfinishedReview.get.userId)) {
-                            <button class="btn btn-review-stop btn-danger"><i class="fas fa-times-circle-o"></i> @messages("review.stop")</button>
+                            <button class="btn btn-review-stop btn-danger"><i class="fas fa-stop-circle"></i> @messages("review.stop")</button>
                             <button class="btn btn-review-approve btn-success"><i class="fas fa-thumbs-up"></i> @messages("user.queue.approve")</button>
                             <button class="btn btn-review-approve-partial btn-success"><i class="fas fa-thumbs-up"></i> @messages("user.queue.approvePartial")</button>
                         } else {
