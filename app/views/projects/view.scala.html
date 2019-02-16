@@ -237,10 +237,12 @@ Base template for Project overview.
                                     <span class="caret"></span>
                                     <span class="sr-only">Toggle Dropdown</span>
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-right">
-                                    <li><a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)">@messages("general.download")</a></li>
-                                    <li><a href="#" class="copy-url" data-clipboard-text="@config.app.baseUrl@Versions.download(p.project.ownerName, p.project.slug, p.recommendedVersion.map(v => v.versionString).getOrElse(""), None)">Copy URL</a></li>
-                                </ul>
+                                @p.recommendedVersion.map { v =>
+                                    <ul class="dropdown-menu dropdown-menu-right">
+                                        <li><a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)">@messages("general.download")</a></li>
+                                        <li><a href="#" class="copy-url" data-clipboard-text="@config.app.baseUrl@Versions.download(p.project.ownerName, p.project.slug, v.versionString, None)">Copy URL</a></li>
+                                    </ul>
+                                }
                             </div>
                         }
 
