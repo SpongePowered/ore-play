@@ -55,7 +55,7 @@ sorted according to different criteria.
 @categoryLink(category: Category) = @{
     routes.Application.showHome(
         generateCategoryString(category), query, orderingOption, Some(page),
-        platformCategory.map(_.name) ,platform.map(_.name))
+        platformCategory.map(_.name), platform.map(_.name), Some(orderWithRelevance))
 }
 
 @relevanceOption = @{
@@ -64,14 +64,14 @@ sorted according to different criteria.
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr>
         @if(request.getQueryString("q").isDefined) {
             QUERY_STRING = "@request.getQueryString("q").get";
         }
         @if(currentCategoryString.isDefined) {
             CATEGORY_STRING = @currentCategoryString;
         }
-        @if(sort != ProjectSortingStrategies.Default) {
+        @if(sort != ProjectSortingStrategy.Default) {
             SORT_STRING = "@sort.id";
         }
         @if(platformCategory.isDefined) {
@@ -79,6 +79,9 @@ sorted according to different criteria.
         }
         @if(platform.isDefined) {
             PLATFORM = @platform.map(_.name);
+        }
+        @if(!orderWithRelevance) {
+            ORDER_WITH_RELEVANCE = "@orderWithRelevance";
         }
     </script>
 }
@@ -134,7 +137,8 @@ sorted according to different criteria.
                         orderingOption,
                         Some(page),
                         platformCategory.map(_.name),
-                        platform.map(_.name))"><i class="fas fa-times fa-1x"></i></a></span>
+                        platform.map(_.name),
+                        relevanceOption)"><i class="fas fa-times fa-1x"></i></a></span>
                     <div class="clearfix"></div>
                 </li>
             }

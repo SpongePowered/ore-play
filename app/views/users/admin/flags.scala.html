@@ -58,7 +58,7 @@
                                 <i class="fas fa-reply"></i> @messages("user.flags.messageOwner")
                             </a>
                             @projects.helper.btnHide(flag.projectNamespace, flag.projectVisibility)
-                            @helper.form(action = routes.Application.setFlagResolved(flag.id.value), 'class -> "form-inline") {
+                            @helper.form(action = routes.Application.setFlagResolved(flag.flagId), 'class -> "form-inline") {
                                 @CSRF.formField
 
                                 <button type="submit" class="btn btn-primary btn-resolve">
