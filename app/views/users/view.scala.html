@@ -152,6 +152,7 @@
 
     @content
 
+    @if(u.isCurrent || request.headerData.globalPerm(UserAdmin)) {
     <div class="modal fade" id="modal-pgp-edit" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -238,6 +239,7 @@
             </div>
         </div>
     </div>
+    }
 
     @modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
         @if(u.user.pgpPubKey.isDefined) {
