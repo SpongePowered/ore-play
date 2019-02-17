@@ -16,7 +16,7 @@ import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
-import ore.permission.ReviewProjects
+import ore.permission.{HideProjects, ReviewProjects}
 import ore.permission.role.Role
 import ore.project.ProjectSortingStrategy
 import ore.user.notification.{InviteFilter, NotificationFilter}
@@ -160,6 +160,8 @@ class Users @Inject()(
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
 
+    val canHideProjects = request.headerData.globalPerm(HideProjects)
+
     users
       .withName(username)
       .semiflatMap { user =>
@@ -171,6 +173,7 @@ class Users @Inject()(
                 .getProjects(
                   username,
                   request.headerData.currentUser.map(_.id.value),
+                  canHideProjects,
                   ProjectSortingStrategy.MostStars,
                   pageSize,
                   offset

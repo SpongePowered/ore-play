@@ -21,13 +21,17 @@ object UserQueries extends DoobieOreProtocol {
   def getProjects(
       username: String,
       currentUserId: Option[DbRef[User]],
+      canSeeHidden: Boolean,
       order: ProjectSortingStrategy,
       pageSize: Long,
       offset: Long
   ): Query0[ProjectListEntry] = {
-    val visibilityFrag = currentUserId.fold(fr"(p.visibility = 1 OR p.visibility = 2)") { id =>
-      fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))"
-    }
+    val visibilityFrag =
+      if (canSeeHidden) None
+      else
+        currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
+          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))")
+        }
 
     val fragments =
       sql"""|SELECT p.owner_name,
@@ -44,7 +48,7 @@ object UserQueries extends DoobieOreProtocol {
             |       array_remove(array_agg(p.tag_data), NULL)  AS tag_datas,
             |       array_remove(array_agg(p.tag_color), NULL) AS tag_colors
             |  FROM home_projects p
-            |  WHERE p.owner_name = $username """.stripMargin ++ fr"AND" ++ visibilityFrag ++
+            |  WHERE p.owner_name = $username """.stripMargin ++ visibilityFrag.fold(fr0"")(frag => fr"AND" ++ frag) ++
         fr"""|GROUP BY (p.owner_name,
              |          p.slug,
              |          p.visibility,
