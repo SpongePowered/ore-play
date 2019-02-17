@@ -15,10 +15,12 @@ import models.statistic.{PartialStatEntry, ProjectView, StatEntry, VersionDownlo
 import models.user.User
 import ore.StatTracker.COOKIE_NAME
 import security.spauth.SpongeAuthApi
+import util.{IOUtils, OreMDC}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Helper class for handling tracking of statistics.
@@ -29,15 +31,20 @@ trait StatTracker {
 
   def bakery: Bakery
 
+  private val Logger    = scalalogging.Logger("StatTracker")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
+
   private def record[S <: Model, MP <: PartialStatEntry[S, M0], M0 <: StatEntry[S] { type M = M0 }: ModelQuery](
       entry: MP
   )(setUserId: (M0, DbRef[User]) => M0): IO[Boolean] = {
     like[S, MP, M0](entry).value.flatMap {
       case None => service.insert(entry.asFunc).as(true)
       case Some(existingEntry) =>
-        val effect = if (existingEntry.userId.isEmpty && entry.userId.isDefined) {
-          service.update(setUserId(existingEntry, entry.userId.get)).void
-        } else IO.unit
+        val effect =
+          if (existingEntry.userId.isEmpty && entry.userId.isDefined)
+            service.update(setUserId(existingEntry, entry.userId.get)).void
+          else
+            IO.unit
         effect.as(false)
     }
   }
@@ -46,10 +53,10 @@ trait StatTracker {
       entry: MP
   ): OptionT[IO, M] = {
     val baseFilter = ModelFilter[M](_.modelId === entry.modelId)
-    val filter     = ModelFilter[M](e => e.address === entry.address || e.cookie === entry.cookie)
+    val filter     = ModelFilter[M](_.cookie === entry.cookie)
 
-    val userFilter = entry.user.map(u => ModelFilter[M](e => filter(e) || e.userId === u.id.value)).getOrElse(filter)
-    OptionT.liftF(userFilter).flatMap(uFilter => service.find(baseFilter && uFilter))
+    val userFilter = entry.userId.fold(filter)(id => ModelFilter[M](e => filter(e) || e.userId === id))
+    service.find(baseFilter && userFilter)
   }
 
   /**
@@ -59,15 +66,21 @@ trait StatTracker {
     */
   def projectViewed(f: => Result)(
       implicit projectRequest: ProjectRequest[_],
-      auth: SpongeAuthApi
+      auth: SpongeAuthApi,
+      mdc: OreMDC
   ): IO[Result] = {
     ProjectView.bindFromRequest.flatMap { statEntry =>
-      record[Project, ProjectView.Partial, ProjectView](statEntry)((m, id) => m.copy(userId = Some(id)))
-        .flatMap {
-          case true  => projectRequest.data.project.addView
-          case false => IO.unit
-        }
+      val projectView =
+        record[Project, ProjectView.Partial, ProjectView](statEntry)((m, id) => m.copy(userId = Some(id)))
+          .flatMap {
+            case true  => projectRequest.data.project.addView
+            case false => IO.unit
+          }
+
+      projectView
+        .runAsync(IOUtils.logCallback("Failed to register project view", MDCLogger))
         .as(f.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
+        .toIO
     }
   }
 
@@ -82,17 +95,19 @@ trait StatTracker {
   def versionDownloaded(version: Version)(f: IO[Result])(
       implicit request: ProjectRequest[_],
       auth: SpongeAuthApi,
+      mdc: OreMDC,
       cs: ContextShift[IO]
   ): IO[Result] = {
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
       val recordDownload =
         record[Version, VersionDownload.Partial, VersionDownload](statEntry)((m, id) => m.copy(userId = Some(id)))
           .flatMap {
-            case true  => version.addDownload *> request.data.project.addDownload
+            case true  => version.addDownload &> request.data.project.addDownload
             case false => IO.unit
           }
 
-      recordDownload &> f.map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
+      recordDownload.runAsync(IOUtils.logCallback("Failed to register version download", MDCLogger)).toIO *> f
+        .map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
     }
   }
 
