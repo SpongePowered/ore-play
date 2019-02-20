@@ -33,10 +33,10 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   val interval: FiniteDuration = this.config.ore.projects.checkInterval
   val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
 
-  private def dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
-  private val newFilter       = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
-  private def createdAtFilter = ModelFilter[Project](_.createdAt < dayAgo)
-  private def newProjects     = service.filter[Project](newFilter && createdAtFilter)
+  private def dayAgo            = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
+  private val newFilter         = ModelFilter[Project](_.visibility === (Visibility.New: Visibility))
+  private def createdAtFilter   = ModelFilter[Project](_.createdAt < dayAgo)
+  private def deleteNewProjects = service.deleteWhere[Project](newFilter && createdAtFilter)
 
   /**
     * Starts the task.
@@ -49,10 +49,9 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   /**
     * Task runner
     */
-  def run(): Unit = newProjects.unsafeToFuture().foreach { projects =>
-    projects.foreach { project =>
-      Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-      project.setVisibility(Visibility.Public, "Changed by task", project.ownerId).unsafeRunAsyncAndForget()
-    }
+  def run(): Unit = {
+    Logger.debug(s"Deleting draft projects")
+    deleteNewProjects.unsafeToFuture()
+    ()
   }
 }

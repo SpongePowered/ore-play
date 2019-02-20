@@ -21,6 +21,7 @@ import models.project.{Channel, Page}
 import models.user.Organization
 import models.user.role.ProjectUserRole
 import ore.OreConfig
+import ore.project.Category
 import ore.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyType
 
@@ -83,6 +84,26 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
       if (errors.isEmpty) Valid
       else Invalid(errors)
     }
+
+  val category: FieldMapping[Category] = of[Category](new Formatter[Category] {
+    override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], Category] =
+      data
+        .get(key)
+        .flatMap(s => Category.values.find(_.title == s))
+        .toRight(Seq(FormError(key, "error.project.categoryNotFound", Nil)))
+
+    override def unbind(key: String, value: Category): Map[String, String] = Map(key -> value.title)
+  })
+
+  def projectCreate(organisationUserCanUploadTo: Seq[DbRef[Organization]]) = Form(
+    mapping(
+      "name"        -> text,
+      "pluginId"    -> text,
+      "category"    -> category,
+      "description" -> optional(text),
+      "owner"       -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo))
+    )(ProjectCreateForm.apply)(ProjectCreateForm.unapply)
+  )
 
   /**
     * Submits settings changes for a Project.

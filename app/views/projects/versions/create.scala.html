@@ -11,8 +11,8 @@
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
 @import views.html.helper.CSPNonce
-@(projectName: String, projectSlug: String, ownerName: String, projectDescription: Option[String], isProjectPending: Boolean, forumSync: Boolean, pending: Option[PendingVersion],
-  channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(projectName: String, projectSlug: String, ownerName: String, projectDescription: Option[String], forumSync: Boolean, pending: Option[PendingVersion],
+  channels: Seq[Channel], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @mainWidth = {
     @pending.map(_ => "col-md-10").getOrElse("col-md-12")
@@ -67,7 +67,7 @@
                                             @if(showFileControls) {
                                                 <select id="select-channel" form="form-publish" name="channel-input"
                                                 class="form-control">
-                                                @channels.get.map { channel =>
+                                                @channels.map { channel =>
                                                     <option value="@channel.name" data-color="@channel.color.hex"
                                                 @if(channel.name.equals(version.channelName)) {
                                                     selected
@@ -145,7 +145,7 @@
                                         <td class="rv">
                                             <div class="checkbox-inline">
                                                 <input form="form-publish" name="forum-post" type="checkbox"
-                                                @if(isProjectPending || forumSync) { checked } value="true"/>
+                                                @if(forumSync) { checked } value="true"/>
                                             </div>
                                             <div class="clearfix"></div>
                                         </td>
@@ -202,13 +202,6 @@
                                 value="@config.defaultChannelColor.hex" />
 
                                 <div @if(!showFileControls) { class="btn-group" } >
-                                    @if(!showFileControls) {
-                                        <a href="@projectRoutes.Projects.showCreatorWithMeta(
-                                            ownerName, projectName)" title="Back"
-                                        class="btn btn-default">
-                                            <i class="fas fa-arrow-left"></i>
-                                        </a>
-                                    }
                                     <input type="submit" name="create" value="@messages("version.create.publish")"
                                     class="btn btn-primary" />
                                 </div>

@@ -8,7 +8,6 @@ import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTime
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
 import ore.permission.role.Role
-import ore.project.factory.PendingProject
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}
 import ore.user.notification.NotificationType
@@ -158,71 +157,15 @@ object ProjectSettings {
   private val Logger    = scalalogging.Logger("ProjectSettings")
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
-  case class Partial(
+  def partial(
       homepage: Option[String] = None,
       issues: Option[String] = None,
       source: Option[String] = None,
       licenseName: Option[String] = None,
       licenseUrl: Option[String] = None,
       forumSync: Boolean = true
-  ) {
-
-    /**
-      * Saves a submitted [[ProjectSettingsForm]] to the [[PendingProject]].
-      *
-      * @param formData Submitted settings
-      * @param messages MessagesApi instance
-      */
-    //noinspection ComparingUnrelatedTypes
-    def save(project: PendingProject, formData: ProjectSettingsForm)(
-        implicit fileManager: ProjectFiles,
-        mdc: OreMDC,
-        service: ModelService
-    ): IO[(PendingProject, Partial)] = {
-      val queryOwnerName = for {
-        u <- TableQuery[UserTable] if formData.ownerId.getOrElse(project.ownerId).bind === u.id
-      } yield u.name
-
-      val updateProject = service.runDBIO(queryOwnerName.result).map { ownerName =>
-        val newProj = project.copy(
-          category = Category.values.find(_.title == formData.categoryName).get,
-          description = noneIfEmpty(formData.description),
-          ownerId = formData.ownerId.getOrElse(project.ownerId),
-          ownerName = ownerName.head
-        )(project.config)
-
-        newProj.pendingVersion = newProj.pendingVersion.copy(projectUrl = newProj.key)
-
-        newProj
-      }
-
-      val updatedSettings = copy(
-        issues = noneIfEmpty(formData.issues),
-        source = noneIfEmpty(formData.source),
-        licenseUrl = noneIfEmpty(formData.licenseUrl),
-        licenseName = if (formData.licenseUrl.nonEmpty) Some(formData.licenseName) else licenseName,
-        forumSync = formData.forumSync
-      )
-
-      updateProject.map { project =>
-        // Update icon
-        if (formData.updateIcon) {
-          fileManager.getPendingIconPath(project.ownerName, project.name).foreach { pendingPath =>
-            val iconDir = fileManager.getIconDir(project.ownerName, project.name)
-            if (notExists(iconDir))
-              createDirectories(iconDir)
-            list(iconDir).forEach(delete(_))
-            move(pendingPath, iconDir.resolve(pendingPath.getFileName))
-          }
-        }
-
-        (project, updatedSettings)
-      }
-    }
-
-    def asFunc(projectId: DbRef[Project]): InsertFunc[ProjectSettings] =
-      (id, time) => ProjectSettings(id, time, projectId, homepage, issues, source, licenseName, licenseUrl, forumSync)
-  }
+  )(projectId: DbRef[Project]): InsertFunc[ProjectSettings] =
+    (id, time) => ProjectSettings(id, time, projectId, homepage, issues, source, licenseName, licenseUrl, forumSync)
 
   implicit val query: ModelQuery[ProjectSettings] =
     ModelQuery.from[ProjectSettings](TableQuery[ProjectSettingsTable], _.copy(_, _))

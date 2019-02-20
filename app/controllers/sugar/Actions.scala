@@ -20,7 +20,7 @@ import models.project.{Project, Visibility}
 import models.user.{Organization, SignOn, User}
 import models.viewhelper._
 import ore.permission.scope.{GlobalScope, HasScope}
-import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
+import ore.permission.{EditPages, EditSettings, EditVersions, HideProjects, Permission}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.{IOUtils, OreMDC}
 
@@ -306,7 +306,7 @@ trait Actions extends Calls with ActionHelpers {
   private def processProject(project: Project, user: Option[User])(
       implicit cs: ContextShift[IO]
   ): OptionT[IO, Project] = {
-    if (project.visibility == Visibility.Public || project.visibility == Visibility.New) {
+    if (project.visibility == Visibility.Public) {
       OptionT.pure[IO](project)
     } else {
       OptionT
@@ -324,13 +324,12 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: Project, user: User)(implicit cs: ContextShift[IO]) = {
-    if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
-      user.can(EditPages).in(project)
-    } else {
-      IO.pure(false)
+  private def canEditAndNeedChangeOrApproval(project: Project, user: User)(implicit cs: ContextShift[IO]) =
+    project.visibility match {
+      case Visibility.New                                     => user.can(EditVersions).in(project)
+      case Visibility.NeedsChanges | Visibility.NeedsApproval => user.can(EditPages).in(project)
+      case _                                                  => IO.pure(false)
     }
-  }
 
   def authedProjectActionImpl(project: OptionT[IO, Project])(
       implicit ec: ExecutionContext,

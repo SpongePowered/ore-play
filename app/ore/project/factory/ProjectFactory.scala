@@ -12,22 +12,20 @@ import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
 import db.impl.access.ProjectBase
-import db.{DbRef, ModelService}
+import db.{DbRef, InsertFunc, ModelService}
 import discourse.OreDiscourseApi
+import form.project.ProjectCreateForm
 import models.project._
-import models.user.role.ProjectUserRole
-import models.user.{Notification, User}
-import ore.permission.role.Role
+import models.user.User
 import ore.project.NotifyWatchersTask
 import ore.project.io._
-import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
 import util.OreMDC
 import util.StringUtils._
 
 import akka.actor.ActorSystem
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.EitherT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
@@ -150,33 +148,42 @@ trait ProjectFactory {
       user.isLocked                            -> "error.user.locked"
     ).find(_._1).map(_._2)
 
-  /**
-    * Starts the construction process of a [[Project]].
-    *
-    * @param plugin First version file
-    * @return PendingProject instance
-    */
-  def startProject(plugin: PluginFileWithData): PendingProject = {
-    val metaData = plugin.data
-    val owner    = plugin.user
-    val name     = metaData.name.getOrElse("name not found")
+  def createProject(owner: User, settings: ProjectCreateForm)(
+      implicit cs: ContextShift[IO]
+  ): EitherT[IO, String, (Project, ProjectSettings)] = {
+    val name = settings.name
+    val slug = slugify(name)
 
-    // Start a new pending project
-    val pendingProject = PendingProject(
-      pluginId = metaData.id.get,
+    val project = Project.partial(
+      pluginId = settings.pluginId,
       ownerName = owner.name,
       ownerId = owner.id.value,
       name = name,
-      slug = slugify(name),
+      slug = slug,
+      category = settings.category,
+      description = settings.description,
       visibility = Visibility.New,
-      file = plugin,
-      channelName = this.config.getSuggestedNameForVersion(metaData.version.get),
-      pendingVersion = null, // scalafix:ok
-      cacheApi = this.cacheApi
     )
-    //TODO: Remove cyclic dependency between PendingProject and PendingVersion
-    pendingProject.pendingVersion = PendingProject.createPendingVersion(this, pendingProject)
-    pendingProject
+
+    val projectSettings: DbRef[Project] => InsertFunc[ProjectSettings] = ProjectSettings.partial()
+    val channel: DbRef[Project] => InsertFunc[Channel] =
+      Channel.partial(_, config.defaultChannelName, config.defaultChannelColor)
+
+    for {
+      t <- EitherT.liftF(
+        (
+          this.projects.exists(owner.name, name),
+          this.projects.isNamespaceAvailable(owner.name, slug)
+        ).parTupled
+      )
+      (exists, available) = t
+      _           <- EitherT.cond[IO].apply(!exists, (), "project already exists")
+      _           <- EitherT.cond[IO].apply(available, (), "slug not available")
+      _           <- EitherT.cond[IO].apply(config.isValidProjectName(name), (), "invalid name")
+      newProject  <- EitherT.right[String](service.insert(project))
+      newSettings <- EitherT.right[String](service.insert(projectSettings(newProject.id.value)))
+      _           <- EitherT.right[String](service.insert(channel(newProject.id.value)))
+    } yield (newProject, newSettings)
   }
 
   /**
@@ -224,16 +231,6 @@ trait ProjectFactory {
   }
 
   /**
-    * Returns the PendingProject of the specified owner and name, if any.
-    *
-    * @param owner Project owner
-    * @param slug  Project slug
-    * @return PendingProject if present, None otherwise
-    */
-  def getPendingProject(owner: String, slug: String): Option[PendingProject] =
-    this.cacheApi.get[PendingProject](owner + '/' + slug)
-
-  /**
     * Returns the pending version for the specified owner, name, channel, and
     * version string.
     *
@@ -244,58 +241,6 @@ trait ProjectFactory {
     */
   def getPendingVersion(owner: String, slug: String, version: String): Option[PendingVersion] =
     this.cacheApi.get[PendingVersion](owner + '/' + slug + '/' + version)
-
-  /**
-    * Creates a new Project from the specified PendingProject
-    *
-    * @param pending PendingProject
-    * @return New Project
-    * @throws         IllegalArgumentException if the project already exists
-    */
-  def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[Project] = {
-    import cats.instances.vector._
-
-    for {
-      t <- (
-        this.projects.exists(pending.ownerName, pending.name),
-        this.projects.isNamespaceAvailable(pending.ownerName, pending.slug)
-      ).parTupled
-      (exists, available) = t
-      _                   = checkArgument(!exists, "project already exists", "")
-      _                   = checkArgument(available, "slug not available", "")
-      _                   = checkArgument(this.config.isValidProjectName(pending.name), "invalid name", "")
-      // Create the project and it's settings
-      newProject <- this.projects.add(pending.asFunc)
-      _          <- service.insert(pending.settings.asFunc(newProject.id.value))
-      _ <- {
-        // Invite members
-        val dossier   = newProject.memberships
-        val owner     = newProject.owner
-        val ownerId   = owner.userId
-        val projectId = newProject.id.value
-
-        val addRole = dossier.addRole(
-          newProject,
-          ownerId,
-          ProjectUserRole.Partial(ownerId, projectId, Role.ProjectOwner, isAccepted = true).asFunc
-        )
-        val addOtherRoles = pending.roles.toVector.parTraverse { role =>
-          dossier.addRole(newProject, role.userId, role.copy(projectId = projectId).asFunc) *>
-            service.insert(
-              Notification.partial(
-                userId = role.userId,
-                originId = ownerId,
-                notificationType = NotificationType.ProjectInvite,
-                messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, newProject.name)
-              )
-            )
-        }
-
-        addRole *> addOtherRoles
-      }
-      withTopicId <- this.forums.createProjectTopic(newProject)
-    } yield withTopicId
-  }
 
   /**
     * Creates a new release channel for the specified [[Project]].
@@ -326,7 +271,7 @@ trait ProjectFactory {
   def createVersion(
       project: Project,
       pending: PendingVersion
-  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] = {
+  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Project, Version, Channel, Seq[VersionTag])] = {
 
     for {
       // Create channel if not exists
@@ -344,13 +289,19 @@ trait ProjectFactory {
       // Notify watchers
       _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
       _ <- uploadPlugin(project, pending.plugin, newVersion).fold(e => IO.raiseError(new Exception(e)), IO.pure)
-      _ <- if (project.topicId.isDefined && pending.createForumPost)
+      firstTimeUploadProject <- {
+        if (project.visibility == Visibility.New) {
+          val setVisibility = project.setVisibility(Visibility.Public, "First upload", project.ownerId).map(_._1)
+          if (project.topicId.isEmpty) this.forums.createProjectTopic(project) *> setVisibility else setVisibility
+        } else IO.pure(project)
+      }
+      _ <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)
         this.forums
-          .postVersionRelease(project, newVersion, newVersion.description)
+          .postVersionRelease(firstTimeUploadProject, newVersion, newVersion.description)
           .leftMap(_.mkString("\n"))
           .fold(e => IO.raiseError(new Exception(e)), _ => IO.unit)
       else IO.unit
-    } yield (newVersion, channel, tags)
+    } yield (firstTimeUploadProject, newVersion, channel, tags)
   }
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Version)(

@@ -45,7 +45,7 @@ case class PendingVersion(
   def complete(
       project: Project,
       factory: ProjectFactory
-  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] =
+  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Project, Version, Channel, Seq[VersionTag])] =
     free *> factory.createVersion(project, this)
 
   override def key: String = projectUrl + '/' + versionString

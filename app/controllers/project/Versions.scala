@@ -8,7 +8,6 @@ import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
 
-import play.api.Logger
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.libs.json.Json
@@ -26,7 +25,7 @@ import models.project._
 import models.user.{LoggedAction, UserActionLogger}
 import models.viewhelper.VersionData
 import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
-import ore.project.factory.{PendingProject, ProjectFactory}
+import ore.project.factory.ProjectFactory
 import ore.project.io.DownloadType._
 import ore.project.io.{DownloadType, PluginFile, PluginUpload}
 import ore.{OreConfig, OreEnv, StatTracker}
@@ -235,10 +234,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             project.slug,
             project.ownerName,
             project.description,
-            isProjectPending = false,
             forumSync = request.data.settings.forumSync,
             None,
-            Some(channels.toSeq),
+            channels.toSeq,
             showFileControls = true
           )
         )
@@ -295,22 +293,18 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val success = OptionT
         .fromOption[IO](this.factory.getPendingVersion(author, slug, versionString))
         // Get pending version
-        .flatMap(pendingVersion => pendingOrReal(author, slug).map(pendingVersion -> _))
+        .flatMap(pendingVersion => projects.withSlug(author, slug).tupleLeft(pendingVersion))
         .semiflatMap {
-          case (pendingVersion, Left(pending)) =>
-            val projectData =
-              (pending.name, pending.slug, pending.ownerName, pending.description, true, pending.settings.forumSync)
-            IO.pure((None, projectData, pendingVersion))
-          case (pendingVersion, Right(real)) =>
-            val projectData = real.settings.map { settings =>
-              (real.name, real.slug, real.ownerName, real.description, false, settings.forumSync)
+          case (pendingVersion, project) =>
+            val projectData = project.settings.map { settings =>
+              (project.name, project.slug, project.ownerName, project.description, settings.forumSync)
             }
-            (real.channels.toSeq, projectData).parMapN((channels, data) => (Some(channels), data, pendingVersion))
+            (project.channels.toSeq, projectData).parMapN((channels, data) => (channels, data, pendingVersion))
         }
         .map {
           case (
               channels,
-              (projectName, projectSlug, ownerName, projectDescription, isPending, forumSync),
+              (projectName, projectSlug, ownerName, projectDescription, forumSync),
               pendingVersion
               ) =>
             Ok(
@@ -319,24 +313,16 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 projectSlug,
                 ownerName,
                 projectDescription,
-                isPending,
                 forumSync,
                 Some(pendingVersion),
                 channels,
-                showFileControls = channels.isDefined
+                showFileControls = true
               )
             )
         }
 
       success.getOrElse(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }
-
-  private def pendingOrReal(author: String, slug: String): OptionT[IO, Either[PendingProject, Project]] =
-    // Returns either a PendingProject or existing Project
-    projects
-      .withSlug(author, slug)
-      .map[Either[PendingProject, Project]](Right.apply)
-      .orElse(OptionT.fromOption[IO](this.factory.getPendingProject(author, slug)).map(Left.apply))
 
   /**
     * Completes the creation of the specified pending version or project if
@@ -369,65 +355,52 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 description = versionData.content
               )
 
-              // Check for pending project
-              this.factory.getPendingProject(author, slug) match {
-                case None =>
-                  // No pending project, create version for existing project
-                  getProject(author, slug).flatMap {
-                    project =>
-                      project.channels
-                        .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))
-                        .toRight(versionData.addTo(project))
-                        .leftFlatMap(identity)
-                        .semiflatMap {
-                          _ =>
-                            newPendingVersion
-                              .complete(project, factory)
-                              .map(_._1)
-                              .flatTap { newVersion =>
-                                if (versionData.recommended)
-                                  service
-                                    .update(
-                                      project.copy(
-                                        recommendedVersionId = Some(newVersion.id.value),
-                                        lastUpdated = new Timestamp(new Date().getTime)
-                                      )
+              getProject(author, slug).flatMap {
+                project =>
+                  project.channels
+                    .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))
+                    .toRight(versionData.addTo(project))
+                    .leftFlatMap(identity)
+                    .semiflatMap {
+                      _ =>
+                        newPendingVersion
+                          .complete(project, factory)
+                          .map(t => (t._1, t._2))
+                          .flatTap {
+                            case (newProject, newVersion) =>
+                              if (versionData.recommended)
+                                service
+                                  .update(
+                                    newProject.copy(
+                                      recommendedVersionId = Some(newVersion.id.value),
+                                      lastUpdated = new Timestamp(new Date().getTime)
                                     )
-                                    .void
-                                else
-                                  service
-                                    .update(
-                                      project.copy(
-                                        lastUpdated = new Timestamp(new Date().getTime)
-                                      )
+                                  )
+                                  .void
+                              else
+                                service
+                                  .update(
+                                    newProject.copy(
+                                      lastUpdated = new Timestamp(new Date().getTime)
                                     )
-                                    .void
-                              }
-                              .flatTap(addUnstableTag(_, versionData.unstable))
-                              .flatTap { newVersion =>
-                                UserActionLogger.log(
-                                  request,
-                                  LoggedAction.VersionUploaded,
-                                  newVersion.id.value,
-                                  "published",
-                                  "null"
-                                )
-                              }
-                              .as(Redirect(self.show(author, slug, versionString)))
-                        }
-                        .leftMap(Redirect(self.showCreatorWithMeta(author, slug, versionString)).withError(_))
-                  }.merge
-                case Some(pendingProject) =>
-                  // Found a pending project, create it with first version
-                  pendingProject
-                    .complete(factory)
-                    .flatTap { created =>
-                      UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id.value, "created", "null")
+                                  )
+                                  .void
+                          }
+                          .map(_._2)
+                          .flatTap(addUnstableTag(_, versionData.unstable))
+                          .flatTap { newVersion =>
+                            UserActionLogger.log(
+                              request,
+                              LoggedAction.VersionUploaded,
+                              newVersion.id.value,
+                              "published",
+                              "null"
+                            )
+                          }
+                          .as(Redirect(self.show(author, slug, versionString)))
                     }
-                    .flatTap(created => addUnstableTag(created._2, versionData.unstable))
-                    .productR(projects.refreshHomePage(MDCLogger))
-                    .as(Redirect(ShowProject(author, slug)))
-              }
+                    .leftMap(Redirect(self.showCreatorWithMeta(author, slug, versionString)).withError(_))
+              }.merge
             }
           )
       }
@@ -836,7 +809,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                       .void
                   }
                   .onError {
-                    case e => IO(Logger.error("an error occurred while trying to send a plugin", e))
+                    case e => IO(MDCLogger.error("an error occurred while trying to send a plugin", e))
                   }
                   .as(Ok.sendPath(jarPath, onClose = () => Files.delete(jarPath)))
               }
@@ -960,7 +933,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val path =
         this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(version.signatureFileName)
       if (notExists(path)) {
-        Logger.warn("project version missing signature file")
+        MDCLogger.warn("project version missing signature file")
         notFound
       } else Ok.sendPath(path)
     }

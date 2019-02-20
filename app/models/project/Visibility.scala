@@ -25,8 +25,8 @@ object Visibility extends IntEnum[Visibility] {
   case object NeedsApproval extends Visibility(4, "needsApproval", showModal = false, "striped project-needsChanges")
   case object SoftDelete    extends Visibility(5, "softDelete", showModal = true, "striped project-hidden")
 
-  def isPublic(visibility: Visibility): Boolean = visibility == Public || visibility == New
+  def isPublic(visibility: Visibility): Boolean = visibility == Public
 
   def isPublicFilter[H <: Hideable]: H#T => Rep[Boolean] =
-    ModelFilter[H](_.visibility === (Public: Visibility)) || ModelFilter[H](_.visibility === (New: Visibility))
+    ModelFilter[H](_.visibility === (Public: Visibility))
 }
