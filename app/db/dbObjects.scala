@@ -13,7 +13,18 @@ sealed trait DbInitialized[+A] {
   }
 }
 
-sealed trait ObjId[+A] extends DbInitialized[DbRef[A]]
+sealed trait ObjId[+A] extends DbInitialized[DbRef[A]] {
+
+  override def equals(other: Any): Boolean = other match {
+    case that: ObjId[_] => value == that.value
+    case _              => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(value)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
+}
 object ObjId {
   implicit def unwrapObjId[A](objId: ObjId[A]): DbRef[A] = objId.value
 
@@ -34,7 +45,18 @@ object ObjId {
   }
 }
 
-sealed trait ObjTimestamp extends DbInitialized[Timestamp]
+sealed trait ObjTimestamp extends DbInitialized[Timestamp] {
+
+  override def equals(other: Any): Boolean = other match {
+    case that: ObjTimestamp => value == that.value
+    case _                  => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(value)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
+}
 object ObjTimestamp {
   implicit def unwrapObjTimestamp(objTimestamp: ObjTimestamp): Timestamp = objTimestamp.value
 
