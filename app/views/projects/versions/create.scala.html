@@ -7,10 +7,10 @@
 @import models.project.Channel
 @import ore.OreConfig
 @import ore.project.factory.PendingVersion
-@import security.NonceFilter._
 @import util.StringUtils
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
+@import views.html.helper.CSPNonce
 @(projectName: String, projectSlug: String, ownerName: String, projectDescription: Option[String], isProjectPending: Boolean, forumSync: Boolean, pending: Option[PendingVersion],
   channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
@@ -83,7 +83,7 @@
                                                 </a>
                                                 <script type="text/javascript"
                                                 src="@routes.Assets.versioned("javascripts/versionCreateChannelNew.js")"></script>
-                                                <script nonce="@nonce">DEFAULT_COLOR = '@config.defaultChannelColor.hex';</script>
+                                                <script @CSPNonce.attr>DEFAULT_COLOR = '@config.defaultChannelColor.hex';</script>
                                             } else {
                                                 <span id="channel-name" class="channel" style="background-color: @version.channelColor;">
                                                 @version.channelName
@@ -92,7 +92,7 @@
                                                     <i id="channel-edit" class="fas fa-edit"
                                                     data-toggle="modal" data-target="#channel-settings"></i>
                                                 </a>
-                                                <script nonce="@nonce">
+                                                <script @CSPNonce.attr>
                                                         $(function() {
                                                             // Setup editor
                                                             initChannelManager(
@@ -168,7 +168,7 @@
                                     )
                                 </div>
                             </div>
-                            <script nonce="@nonce">$(function () { $('.btn-edit').click() });</script>
+                            <script @CSPNonce.attr>$(function () { $('.btn-edit').click() });</script>
                         }
                         }
                     }

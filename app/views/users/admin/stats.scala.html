@@ -2,14 +2,14 @@
 
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@import security.NonceFilter._
 @import models.querymodels.Stats
+@import views.html.helper.CSPNonce
 @(stats: List[Stats])(implicit messages: Messages,
         request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @scripts = {
-    <script nonce="@nonce" type="text/javascript" src="@routes.Assets.versioned("lib/chart.js/dist/Chart.min.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr type="text/javascript" src="@routes.Assets.versioned("lib/chart.js/dist/Chart.min.js")"></script>
+    <script @CSPNonce.attr>
             $(function(){
                 var domChartReview = document.getElementById("chart-reviews");
                 var chartReviews = new Chart(domChartReview, {

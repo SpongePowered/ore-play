@@ -10,9 +10,9 @@ sorted according to different criteria.
 @import ore.project.ProjectSortingStrategy._
 @import ore.project.{Category, ProjectSortingStrategy}
 @import ore.{OreConfig, Platform, PlatformCategory}
-@import security.NonceFilter._
 @import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
+@import views.html.helper.CSPNonce
 @(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean)(implicit messages: Messages, flash: Flash,
@@ -42,7 +42,7 @@ sorted according to different criteria.
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr>
     @if(visibleCategories.isDefined) {
     CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
     }

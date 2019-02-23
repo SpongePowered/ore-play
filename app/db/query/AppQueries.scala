@@ -29,7 +29,7 @@ object AppQueries extends DoobieOreProtocol {
       orderWithRelevance: Boolean
   ): Query0[ProjectListEntry] = {
     //TODO: Let the query handle tag search in the future
-    val platformFrag = platformNames.toNel.map(Fragments.in(fr"p.tag_name", _))
+    val platformFrag = platformNames.map(_.toLowerCase).toNel.map(Fragments.in(fr"lower(p.tag_name)", _))
     val categoryFrag = categories.toNel.map(Fragments.in(fr"p.category", _))
     val visibilityFrag =
       if (canSeeHidden) None

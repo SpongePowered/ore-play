@@ -3,8 +3,6 @@ package models.project
 import java.nio.file.Files
 import java.nio.file.Files._
 
-import play.api.Logger
-
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
 import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
@@ -15,11 +13,13 @@ import ore.project.factory.PendingProject
 import ore.project.io.ProjectFiles
 import ore.project.{Category, ProjectOwned}
 import ore.user.notification.NotificationType
+import util.OreMDC
 import util.StringUtils._
 
 import cats.data.NonEmptyList
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import com.typesafe.scalalogging
 import slick.lifted.TableQuery
 
 /**
@@ -51,6 +51,7 @@ case class ProjectSettings(
   //noinspection ComparingUnrelatedTypes
   def save(project: PendingProject, formData: ProjectSettingsForm)(
       implicit fileManager: ProjectFiles,
+      mdc: OreMDC,
       service: ModelService
   ): IO[(PendingProject, ProjectSettings)] = {
     val queryOwnerName = for {
@@ -101,6 +102,9 @@ object ProjectSettings
 
   implicit val isProjectOwned: ProjectOwned[ProjectSettings] = (a: ProjectSettings) => a.projectId
 
+  private val Logger    = scalalogging.Logger("ProjectSettings")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
+
   implicit class ProjectSettingsModelOps(private val self: Model[ProjectSettings]) extends AnyVal {
 
     /**
@@ -111,12 +115,13 @@ object ProjectSettings
       */
     def save(project: Model[Project], formData: ProjectSettingsForm)(
         implicit fileManager: ProjectFiles,
+        mdc: OreMDC,
         service: ModelService,
         cs: ContextShift[IO]
     ): IO[(Model[Project], Model[ProjectSettings])] = {
       import cats.instances.vector._
-      Logger.debug("Saving project settings")
-      Logger.debug(formData.toString)
+      MDCLogger.debug("Saving project settings")
+      MDCLogger.debug(formData.toString)
       val newOwnerId = formData.ownerId.getOrElse(project.ownerId)
 
       val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)

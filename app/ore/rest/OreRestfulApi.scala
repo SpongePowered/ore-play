@@ -183,7 +183,8 @@ trait OreRestfulApi extends OreWrites {
       "reviewState"   -> v.reviewState.toString,
       "href"          -> ('/' + v.url(p)),
       "tags"          -> tags.map(toJson(_)),
-      "downloads"     -> v.downloadCount
+      "downloads"     -> v.downloadCount,
+      "description"   -> v.description
     )
 
     lazy val jsonVisibility = obj(

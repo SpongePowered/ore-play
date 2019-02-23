@@ -17,7 +17,7 @@ import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import util.StringUtils._
 import util.syntax._
-import util.{FileUtils, OreMDC}
+import util.{FileUtils, IOUtils, OreMDC}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
@@ -57,10 +57,10 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   }
 
   def refreshHomePage(logger: LoggerTakingImplicit[OreMDC])(implicit mdc: OreMDC): IO[Unit] =
-    IO(service.runDbCon(AppQueries.refreshHomeView.run).unsafeRunAsync {
-      case Right(_) => ()
-      case Left(e)  => logger.error("Failed to refresh home page", e)
-    })
+    service
+      .runDbCon(AppQueries.refreshHomeView.run)
+      .runAsync(IOUtils.logCallback("Failed to refresh home page", logger))
+      .toIO
 
   /**
     * Returns projects that have not beein updated in a while.

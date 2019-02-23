@@ -13,7 +13,7 @@ scalacOptions ++= Seq(
   "-feature",
   "-unchecked",
   "-Xcheckinit",
-  //"-Xfatal-warnings",
+  "-Xfatal-warnings",
   "-Xlint:adapted-args",
   "-Xlint:by-name-right-associative",
   "-Xlint:constant",
@@ -66,22 +66,21 @@ resolvers ++= Seq(
 
 lazy val doobieVersion = "0.6.0"
 
-libraryDependencies ++= Seq(ehcache, ws, guice)
+libraryDependencies ++= Seq(caffeine, ws, guice)
 
 lazy val flexmarkVersion     = "0.40.16"
 lazy val bouncycastleVersion = "1.60"
-lazy val playSlickVersion    = "3.0.3"
+lazy val playSlickVersion    = "4.0.0"
 lazy val slickPgVersion      = "0.17.1"
 
 libraryDependencies ++= Seq(
-  "org.spongepowered"          % "play-discourse"                 % "3.0.3",
+  "org.spongepowered"          % "play-discourse"                 % "4.0.0",
   "org.spongepowered"          % "plugin-meta"                    % "0.4.1",
   "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
   "com.typesafe.play"          %% "play-slick-evolutions"         % playSlickVersion,
   "org.postgresql"             % "postgresql"                     % "42.2.5",
   "com.github.tminglei"        %% "slick-pg"                      % slickPgVersion,
   "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
-  "com.fasterxml.jackson.core" % "jackson-databind"               % "2.8.11.3",
   "com.typesafe.scala-logging" %% "scala-logging"                 % "3.9.2",
   "io.sentry"                  % "sentry-logback"                 % "1.7.17",
   "org.bouncycastle"           % "bcprov-jdk15on"                 % bouncycastleVersion,
@@ -114,7 +113,7 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   jdbc % Test,
   //specs2 % Test,
-  "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2"       % Test,
+  "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.1"       % Test,
   "org.tpolecat"           %% "doobie-scalatest"   % doobieVersion % Test
 )
 

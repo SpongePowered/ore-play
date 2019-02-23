@@ -3,8 +3,9 @@ package security
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
+import util.StringUtils
+
 import com.google.common.base.Preconditions._
-import org.apache.commons.codec.binary.Hex
 
 /**
   * Handles common cryptography functions within the application.
@@ -43,5 +44,5 @@ object CryptoUtils {
     * @return
     */
   def hmac_sha256(secret: String, data: Array[Byte]): String =
-    Hex.encodeHexString(hmac(HmacSha256, secret.getBytes(CharEncoding), data))
+    StringUtils.bytesToHex(hmac(HmacSha256, secret.getBytes(CharEncoding), data))
 }

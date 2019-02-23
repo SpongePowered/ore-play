@@ -4,7 +4,6 @@ import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
 
-import play.Logger
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.mvc._
@@ -21,7 +20,7 @@ import mail.{EmailFactory, Mailer}
 import models.project.Version
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
-import ore.permission.ReviewProjects
+import ore.permission.{HideProjects, ReviewProjects}
 import ore.permission.role.Role
 import ore.project.ProjectSortingStrategy
 import ore.user.notification.{InviteFilter, NotificationFilter}
@@ -35,6 +34,7 @@ import cats.data.EitherT
 import cats.effect.{IO, Timer}
 import cats.instances.list._
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Controller for general user actions.
@@ -57,6 +57,9 @@ class Users @Inject()(
 ) extends OreBaseController {
 
   private val baseUrl = this.config.app.baseUrl
+
+  private val Logger    = scalalogging.Logger("Users")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Redirect to auth page for SSO authentication.
@@ -160,6 +163,8 @@ class Users @Inject()(
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
 
+    val canHideProjects = request.headerData.globalPerm(HideProjects)
+
     users
       .withName(username)
       .semiflatMap { user =>
@@ -172,6 +177,7 @@ class Users @Inject()(
                 .getProjects(
                   username,
                   request.headerData.currentUser.map(_.id.value),
+                  canHideProjects,
                   ProjectSortingStrategy.MostStars,
                   pageSize,
                   offset
@@ -271,7 +277,7 @@ class Users @Inject()(
     */
   def deletePgpPublicKey(username: String, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
     VerifiedAction(username, sso, sig).asyncF { implicit request =>
-      Logger.debug("Deleting public key for " + username)
+      MDCLogger.debug("Deleting public key for " + username)
       val user = request.user
       if (user.pgpPubKey.isEmpty)
         IO.pure(BadRequest)

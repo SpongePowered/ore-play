@@ -7,18 +7,21 @@ import java.nio.file.Path
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-import play.api.Logger
-
 import models.project.Project
 import ore.OreEnv
+import util.OreMDC
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Handles file management of Projects.
   */
 class ProjectFiles(val env: OreEnv) {
+
+  private val Logger    = scalalogging.Logger("ProjectFiles")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Returns the specified project's plugin directory.
@@ -86,7 +89,8 @@ class ProjectFiles(val env: OreEnv) {
     * @param project Project to get icon for
     * @return Project icon
     */
-  def getIconPath(project: Project): Option[Path] = findFirstFile(getIconDir(project.ownerName, project.name))
+  def getIconPath(project: Project)(implicit mdc: OreMDC): Option[Path] =
+    findFirstFile(getIconDir(project.ownerName, project.name))
 
   /**
     * Returns the directory that contains an icon that has not yet been saved.
@@ -104,7 +108,7 @@ class ProjectFiles(val env: OreEnv) {
     * @param project Project to get icon for
     * @return Pending icon path
     */
-  def getPendingIconPath(project: Project): Option[Path] =
+  def getPendingIconPath(project: Project)(implicit mdc: OreMDC): Option[Path] =
     getPendingIconPath(project.ownerName, project.name)
 
   /**
@@ -115,10 +119,10 @@ class ProjectFiles(val env: OreEnv) {
     * @param name Name of the project to get icon for
     * @return Pending icon path
     */
-  def getPendingIconPath(ownerName: String, name: String): Option[Path] =
+  def getPendingIconPath(ownerName: String, name: String)(implicit mdc: OreMDC): Option[Path] =
     findFirstFile(getPendingIconDir(ownerName, name))
 
-  private def findFirstFile(dir: Path): Option[Path] = {
+  private def findFirstFile(dir: Path)(implicit MDC: OreMDC): Option[Path] = {
     if (exists(dir)) {
       Resource
         .fromAutoCloseable(IO(list(dir)))
@@ -126,7 +130,7 @@ class ProjectFiles(val env: OreEnv) {
           IO.pure(stream.iterator.asScala.filterNot(isDirectory(_)).toStream.headOption)
         }
         .recoverWith {
-          case e: IOException => IO(Logger.error("an error occurred while searching a directory", e)).as(None)
+          case e: IOException => IO(MDCLogger.error("an error occurred while searching a directory", e)).as(None)
         }
         .unsafeRunSync()
     } else

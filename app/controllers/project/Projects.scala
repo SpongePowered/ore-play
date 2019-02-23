@@ -337,7 +337,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     projects
       .withSlug(author, slug)
       .map { project =>
-        projects.fileManager.getIconPath(project) match {
+        projects.fileManager.getIconPath(project)(OreMDC.NoMDC) match {
           case None           => Redirect(User.avatarUrl(project.ownerName))
           case Some(iconPath) => showImage(iconPath)
         }
@@ -516,7 +516,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           if (Files.notExists(pendingDir))
             Files.createDirectories(pendingDir)
           Files.list(pendingDir).iterator().asScala.foreach(Files.delete)
-          tmpFile.ref.moveTo(pendingDir.resolve(tmpFile.filename).toFile, replace = true)
+          tmpFile.ref.moveFileTo(pendingDir.resolve(tmpFile.filename), replace = true)
           //todo data
           UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id, "", "").as(Ok)
       }

@@ -28,11 +28,26 @@ play {
     evolutions.autocommit              =   false
     evolutions.db.default.autoApply    =   true
     ws.timeout.connection              =   10000ms
-    filters.headers.contentSecurityPolicy = null
-    filters.enabled                    =  ${play.filters.enabled} ["security.NonceFilter", "filters.MimeKeyedCspFilter"]
-    filters.csrf.body.bufferSize       =   1000000
-    filters.hosts {
-        allowed = [".spongepowered.org", "localhost:9000"]
+
+    filters {
+        enabled                +=  play.filters.csp.CSPFilter
+        csrf.body.bufferSize   =   1000000
+
+        csp {
+            directives = {
+                block-all-mixed-content = ""
+                script-src = ${play.filters.csp.nonce.pattern} "'self' https://forums.spongepowered.org https://forums-cdn.spongepowered.org"
+                style-src = "'self' 'unsafe-inline' https://fonts.googleapis.com https://forums-cdn.spongepowered.org"
+                img-src = "'self' https: http:"
+                font-src = "'self' https://fonts.gstatic.com"
+                frame-src = "https://forums.spongepowered.org"
+                frame-ancestors = "'none'"
+            }
+        }
+
+        hosts {
+            allowed = [".spongepowered.org", "localhost:9000"]
+        }
     }
 
     http {
@@ -234,46 +249,4 @@ sponge {
           "link": "https://www.gameserverkings.com/"
         }
     ]
-}
-
-filters {
-    csp {
-        default {
-            default-src = ["self"]
-            script-src = [
-                "self",
-                "'%NONCE-SOURCE%'"
-                "https://forums.spongepowered.org"
-                "https://forums-cdn.spongepowered.org"
-                "https://www.google-analytics.com"
-            ]
-            style-src = [
-                "self"
-                "unsafe-inline"
-                "https://fonts.googleapis.com"
-                "https://forums-cdn.spongepowered.org"
-            ]
-            img-src = [
-                "self",
-                "https:"
-            ]
-            font-src = [
-                "self"
-                "https://fonts.gstatic.com"
-            ]
-            frame-src = [
-                "https://forums.spongepowered.org"
-            ]
-            frame-ancestors = [
-                "none"
-            ]
-            base-uri = [
-                "none"
-            ]
-            object-src = [
-                "none"
-            ]
-            block-all-mixed-content = []
-        }
-    }
 }

@@ -3,10 +3,10 @@
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.permission.{HardRemoveProject, HideProjects}
-@import security.NonceFilter._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
 @import db.Model
+@import views.html.helper.CSPNonce
 @(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -15,7 +15,7 @@
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/iconUpload.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/keyGen.js")"></script>
-    <script nonce="@nonce">
+    <script @CSPNonce.attr>
             projectName = "@p.project.name";
             PROJECT_OWNER = "@p.project.ownerName";
             PROJECT_SLUG = "@p.project.slug";
