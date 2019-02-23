@@ -109,22 +109,24 @@ object ModelView {
   def now[M](model: ModelCompanion[M])(
       implicit service: ModelService
   ): ModelView[OptionT[IO, Model[M]], IO, model.T, Model[M]] =
-    defaultNowView(model.baseQuery, FunctionK.lift(service.runDBIO))
+    defaultNowView(model.baseQuery, _.id, FunctionK.lift(service.runDBIO))
 
   def later[M](model: ModelCompanion[M]): ModelView[Query[model.T, Model[M], Seq], Rep, model.T, Model[M]] =
-    defaultLaterView(model.baseQuery)
+    defaultLaterView(model.baseQuery, _.id)
 
   def raw[M](model: ModelCompanion[M]): Raw[model.T, Model[M]] = model.baseQuery
 
   def defaultLaterView[T, M](
-      baseQuery: Query[T, M, Seq]
-  ): ModelView[Query[T, M, Seq], Rep, T, M] = new DefaultQueryView(baseQuery)
+      baseQuery: Query[T, M, Seq],
+      idRef: T => Rep[DbRef[M]]
+  ): ModelView[Query[T, M, Seq], Rep, T, M] = new DefaultQueryView(baseQuery, idRef)
 
   def defaultNowView[F[_], T, M](
       baseQuery: Query[T, M, Seq],
+      idRef: T => Rep[DbRef[M]],
       runAction: FunctionK[DBIO, F]
   ): ModelView[OptionT[F, M], F, T, M] =
-    defaultNowView[F, T, M](defaultLaterView(baseQuery), runAction)
+    defaultNowView[F, T, M](defaultLaterView(baseQuery, idRef), runAction)
 
   def defaultNowView[F[_], T, M](
       queryView: Later[T, M],

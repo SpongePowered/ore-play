@@ -5,11 +5,11 @@ import db.impl.OrePostgresDriver.api._
 
 import slick.lifted.Query
 
-class DefaultQueryView[T, M](baseQuery: Query[T, M, Seq]) extends ModelView[Query[T, M, Seq], Rep, T, M] {
+class DefaultQueryView[T, M](baseQuery: Query[T, M, Seq], idRef: T => Rep[DbRef[M]])
+    extends ModelView[Query[T, M, Seq], Rep, T, M] {
 
   override def get(id: DbRef[M]): Query[T, M, Seq] =
-    //baseQuery.filter(_.id === id)
-    ???
+    baseQuery.filter(t => idRef(t) === id)
 
   override def one: Query[T, M, Seq] = baseQuery.take(1)
 
@@ -31,7 +31,7 @@ class DefaultQueryView[T, M](baseQuery: Query[T, M, Seq]) extends ModelView[Quer
 
   override def modifyingQuery(
       f: Query[T, M, Seq] => Query[T, M, Seq]
-  ): DefaultQueryView[T, M] = new DefaultQueryView[T, M](f(baseQuery))
+  ): DefaultQueryView[T, M] = new DefaultQueryView[T, M](f(baseQuery), idRef)
 }
 object DefaultQueryView {
   implicit val defaultQueryViewIsQueryView: QueryView[DefaultQueryView] = new QueryView[DefaultQueryView] {
