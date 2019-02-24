@@ -154,17 +154,16 @@ object UserQueries extends DoobieOreProtocol {
     sql"""|SELECT greatest(gt.trust, pt.trust, ot.trust, 0)
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
-          |         LEFT JOIN project_trust pt ON pt.user_id = u.id
+          |         LEFT JOIN project_trust pt ON pt.user_id = u.id AND pt.project_id = $projectId
           |         LEFT JOIN projects p ON p.id = pt.project_id
           |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = p.owner_id
-          |  WHERE u.id = $userId AND (p.id IS NULL OR p.id = $projectId)""".stripMargin.query[Trust]
+          |  WHERE u.id = $userId;""".stripMargin.query[Trust]
 
   def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] =
     sql"""|SELECT greatest(gt.trust, ot.trust, 0)
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
-          |         LEFT JOIN organization_trust ot ON ot.user_id = u.id
-          |  WHERE u.id = $userId
-          |    AND (ot.organization_id IS NULL OR ot.organization_id = $organizationId)""".stripMargin.query[Trust]
+          |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = $organizationId
+          |  WHERE u.id = $userId;""".stripMargin.query[Trust]
 
 }
