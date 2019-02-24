@@ -1,5 +1,5 @@
 name := "ore"
-version := "1.8.0"
+version := "1.8.1"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
@@ -71,7 +71,7 @@ libraryDependencies ++= Seq(caffeine, ws, guice)
 lazy val flexmarkVersion     = "0.40.18"
 lazy val bouncycastleVersion = "1.61"
 lazy val playSlickVersion    = "4.0.0"
-lazy val slickPgVersion      = "0.17.2"
+lazy val slickPgVersion      = "0.17.1"
 
 libraryDependencies ++= Seq(
   "org.spongepowered"          % "play-discourse"                 % "4.0.0",
