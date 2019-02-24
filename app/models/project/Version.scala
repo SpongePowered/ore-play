@@ -55,7 +55,7 @@ case class Version(
     reviewState: ReviewState = ReviewState.Unreviewed,
     reviewerId: Option[DbRef[User]] = None,
     approvedAt: Option[Timestamp] = None,
-    visibility: Visibility = Visibility.New,
+    visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
 ) extends Describable
