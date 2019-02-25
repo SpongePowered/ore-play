@@ -170,6 +170,8 @@ object Page extends DefaultModelCompanion[Page, PageTable](TableQuery[PageTable]
   private lazy val (markdownParser, htmlRenderer) = {
     val options = new MutableDataSet()
       .set[java.lang.Boolean](HtmlRenderer.SUPPRESS_HTML, true)
+      .set[java.lang.String](AnchorLinkExtension.ANCHORLINKS_TEXT_PREFIX, "<i class=\"fas fa-link\"></i>")
+      .set[java.lang.String](AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "headeranchor")
       .set[java.lang.Boolean](AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
 
       // GFM table compatibility
