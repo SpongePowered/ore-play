@@ -205,13 +205,13 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def userAction(username: String)(implicit ec: ExecutionContext, cs: ContextShift[IO]): ActionFilter[AuthRequest] =
+  def userEditAction(username: String)(implicit ec: ExecutionContext, cs: ContextShift[IO]): ActionFilter[AuthRequest] =
     new ActionFilter[AuthRequest] {
       def executionContext: ExecutionContext = ec
 
       def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
         users
-          .requestPermission(request.user, username, EditSettings)(auth, cs, OreMDC.RequestMDC(request))
+          .requestPermission(request.user, username, Permission.EditUserSettings)(auth, cs, OreMDC.RequestMDC(request))
           .transform {
             case None    => Some(Unauthorized) // No Permission
             case Some(_) => None // Permission granted => No Filter

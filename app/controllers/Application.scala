@@ -79,8 +79,8 @@ final class Application @Inject()(forms: OreForms)(
   ): Action[AnyContent] = OreAction.asyncF { implicit request =>
     // Get categories and sorting strategy
 
-    val canHideProjects = request.headerData.globalPerm(HideProjects)
-    val currentUserId   = request.headerData.currentUser.map(_.id.value)
+    val canSeeHidden  = request.headerData.globalPerm(Permission.SeeHidden)
+    val currentUserId = request.headerData.currentUser.map(_.id.value)
 
     val withRelevance = orderWithRelevance.getOrElse(true)
     val ordering      = sort.flatMap(ProjectSortingStrategy.withValueOpt).getOrElse(ProjectSortingStrategy.Default)
@@ -102,7 +102,7 @@ final class Application @Inject()(forms: OreForms)(
         AppQueries
           .getHomeProjects(
             currentUserId,
-            canHideProjects,
+            canSeeHidden,
             platformNames,
             categoryList,
             query.filter(_.nonEmpty),
@@ -126,7 +126,7 @@ final class Application @Inject()(forms: OreForms)(
     * @return View of unreviewed versions.
     */
   def showQueue(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncF { implicit request =>
       // TODO: Pages
       service.runDbCon(AppQueries.getQueue.to[Vector]).map { queueEntries =>
         val (started, notStarted) = queueEntries.partitionEither(_.sort)
@@ -178,8 +178,8 @@ final class Application @Inject()(forms: OreForms)(
         .getOrElse(NotFound)
     }
 
-  def showHealth(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](ViewHealth)).asyncF {
-    implicit request =>
+  def showHealth(): Action[AnyContent] =
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewHealth)).asyncF { implicit request =>
       implicit val timestampOrder: Order[Timestamp] = Order.from[Timestamp](_.compareTo(_))
 
       (
@@ -203,7 +203,7 @@ final class Application @Inject()(forms: OreForms)(
           )
         )
       }
-  }
+    }
 
   /**
     * Removes a trailing slash from a route.
@@ -217,7 +217,7 @@ final class Application @Inject()(forms: OreForms)(
     * Show the activities page for a user
     */
   def showActivities(user: String): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncF { implicit request =>
       val dbProgram = for {
         reviewActibity <- AppQueries.getReviewActivity(user).to[Vector]
         flagActivity   <- AppQueries.getFlagActivity(user).to[Vector]
@@ -257,7 +257,7 @@ final class Application @Inject()(forms: OreForms)(
     * @return
     */
   def showStats(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](ViewStats)).asyncF { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewStats)).asyncF { implicit request =>
       service.runDbCon(AppQueries.getStats(0, 10).to[List]).map { stats =>
         Ok(views.users.admin.stats(stats))
       }
@@ -271,7 +271,7 @@ final class Application @Inject()(forms: OreForms)(
       pageFilter: Option[DbRef[Page]],
       actionFilter: Option[Int],
       subjectFilter: Option[DbRef[_]]
-  ): Action[AnyContent] = Authenticated.andThen(PermissionAction(ViewLogs)).asyncF { implicit request =>
+  ): Action[AnyContent] = Authenticated.andThen(PermissionAction(Permission.ViewLogs)).asyncF { implicit request =>
     val pageSize = 50
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
@@ -297,7 +297,7 @@ final class Application @Inject()(forms: OreForms)(
           pageFilter,
           actionFilter,
           subjectFilter,
-          request.headerData.globalPerm(ViewIp)
+          request.headerData.globalPerm(Permission.ViewIp)
         )
       )
     }
@@ -414,12 +414,13 @@ final class Application @Inject()(forms: OreForms)(
     }
 
   def showProjectVisibility(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewVisibility)).asyncF { implicit request =>
-      (
-        service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),
-        service.runDbCon(AppQueries.getVisibilityWaitingProject.to[Vector])
-      ).mapN { (needsApproval, waitingProject) =>
-        Ok(views.users.admin.visibility(needsApproval, waitingProject))
-      }
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewSubjectVisibilityLog)).asyncF {
+      implicit request =>
+        (
+          service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),
+          service.runDbCon(AppQueries.getVisibilityWaitingProject.to[Vector])
+        ).mapN { (needsApproval, waitingProject) =>
+          Ok(views.users.admin.visibility(needsApproval, waitingProject))
+        }
     }
 }

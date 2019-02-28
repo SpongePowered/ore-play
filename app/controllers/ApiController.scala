@@ -20,8 +20,8 @@ import form.OreForms
 import models.api.ProjectApiKey
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, Organization, User, UserActionLogger}
+import ore.permission.Permission
 import ore.permission.role.Role
-import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.project.factory.ProjectFactory
 import ore.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType._
@@ -100,7 +100,7 @@ final class ApiController @Inject()(
   }
 
   def createKey(version: String, pluginId: String): Action[AnyContent] =
-    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(EditApiKeys)).asyncF {
+    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(Permission.EditApiKeys)).asyncF {
       implicit request =>
         version match {
           case "v1" =>
@@ -136,27 +136,28 @@ final class ApiController @Inject()(
     }
 
   def revokeKey(version: String, pluginId: String): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(EditApiKeys)).asyncF { implicit request =>
-      version match {
-        case "v1" =>
-          val res = for {
-            optKey <- forms.ProjectApiKeyRevoke.bindOptionT[IO]
-            key    <- optKey
-            if key.projectId == request.data.project.id.value
-            _ <- OptionT.liftF(service.delete(key))
-            _ <- OptionT.liftF(
-              UserActionLogger.log(
-                request.request,
-                LoggedAction.ProjectSettingsChanged,
-                request.data.project.id,
-                s"${request.user.name} removed an ApiKey",
-                ""
+    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(Permission.EditApiKeys)).asyncF {
+      implicit request =>
+        version match {
+          case "v1" =>
+            val res = for {
+              optKey <- forms.ProjectApiKeyRevoke.bindOptionT[IO]
+              key    <- optKey
+              if key.projectId == request.data.project.id.value
+              _ <- OptionT.liftF(service.delete(key))
+              _ <- OptionT.liftF(
+                UserActionLogger.log(
+                  request.request,
+                  LoggedAction.ProjectSettingsChanged,
+                  request.data.project.id,
+                  s"${request.user.name} removed an ApiKey",
+                  ""
+                )
               )
-            )
-          } yield Ok
-          res.getOrElse(BadRequest)
-        case _ => IO.pure(NotFound)
-      }
+            } yield Ok
+            res.getOrElse(BadRequest)
+          case _ => IO.pure(NotFound)
+        }
     }
 
   /**
@@ -200,7 +201,7 @@ final class ApiController @Inject()(
       limit: Option[Int],
       offset: Option[Int]
   ): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(PermissionAction(ReviewProjects)).asyncF {
+    AuthedProjectActionById(pluginId).andThen(PermissionAction(Permission.SeeHidden)).asyncF {
       version match {
         case "v1" =>
           this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)

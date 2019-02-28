@@ -83,7 +83,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     import cats.instances.vector._
     for {
       orgas      <- request.user.organizations.allFromParent
-      createOrga <- orgas.toVector.parTraverse(request.user.can(CreateProject).in(_))
+      createOrga <- orgas.toVector.parTraverse(request.user.can(Permission.CreateProject).in(_))
     } yield {
       val createdOrgas = orgas.zip(createOrga).collect {
         case (orga, true) => orga
@@ -126,7 +126,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         for {
           t <- (request.user.organizations.allFromParent, pending.owner).parTupled
           (orgas, owner) = t
-          createOrga <- orgas.toVector.parTraverse(owner.can(CreateProject).in(_))
+          createOrga <- orgas.toVector.parTraverse(owner.can(Permission.CreateProject).in(_))
         } yield {
           val createdOrgas = orgas.zip(createOrga).collect {
             case (orga, true) => orga
@@ -181,7 +181,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     import cats.instances.vector._
     for {
       all       <- user.organizations.allFromParent
-      canCreate <- all.toVector.parTraverse(org => user.can(CreateProject).in(org).tupleLeft(org.id.value))
+      canCreate <- all.toVector.parTraverse(org => user.can(Permission.CreateProject).in(org).tupleLeft(org.id.value))
     } yield {
       // Filter by can Create Project
       val others = canCreate.collect {
@@ -288,7 +288,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           poster <- {
             OptionT
               .fromOption[IO](formData.poster)
-              .flatMap(posterName => users.requestPermission(request.user, posterName, PostAsOrganization))
+              .flatMap(posterName => users.requestPermission(request.user, posterName, Permission.PostAsOrganization))
               .getOrElse(request.user)
           }
           errors <- this.forums.postDiscussionReply(request.project, poster, formData.content).swap.getOrElse(Nil)
@@ -658,38 +658,34 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def setVisible(author: String, slug: String, visibility: Int): Action[AnyContent] = {
     AuthedProjectAction(author, slug, requireUnlock = true)
-      .andThen(ProjectPermissionAction(HideProjects))
+      .andThen(ProjectPermissionAction(Permission.ChangeRawVisibility))
       .asyncF { implicit request =>
         val newVisibility = Visibility.withValue(visibility)
-        if (request.headerData.globalPerm(ReviewProjects)) {
-          val forumVisbility =
-            if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
-              this.forums.changeTopicVisibility(request.project, isVisible = false).void
-            } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
-              this.forums.changeTopicVisibility(request.project, isVisible = true).void
-            } else IO.unit
+        val forumVisbility =
+          if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
+            this.forums.changeTopicVisibility(request.project, isVisible = false).void
+          } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
+            this.forums.changeTopicVisibility(request.project, isVisible = true).void
+          } else IO.unit
 
-          val projectVisibility = if (newVisibility.showModal) {
-            val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
-            request.project.setVisibility(newVisibility, comment, request.user.id)
-          } else {
-            request.project.setVisibility(newVisibility, "", request.user.id)
-          }
-
-          val log = UserActionLogger.log(
-            request.request,
-            LoggedAction.ProjectVisibilityChange,
-            request.project.id,
-            newVisibility.nameKey,
-            Visibility.NeedsChanges.nameKey
-          )
-
-          (forumVisbility, projectVisibility).parTupled
-            .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
-            .as(Ok)
+        val projectVisibility = if (newVisibility.showModal) {
+          val comment = this.forms.NeedsChanges.bindFromRequest.get.trim
+          request.project.setVisibility(newVisibility, comment, request.user.id)
         } else {
-          IO.pure(Unauthorized)
+          request.project.setVisibility(newVisibility, "", request.user.id)
         }
+
+        val log = UserActionLogger.log(
+          request.request,
+          LoggedAction.ProjectVisibilityChange,
+          request.project.id,
+          newVisibility.nameKey,
+          Visibility.NeedsChanges.nameKey
+        )
+
+        (forumVisbility, projectVisibility).parTupled
+          .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
+          .as(Ok)
       }
   }
 
@@ -742,11 +738,12 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   }
 
   def showLog(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ViewLogs)).andThen(ProjectAction(author, slug)).asyncF { implicit request =>
-      for {
-        logger <- request.project.logger
-        logs   <- service.runDBIO(logger.entries(ModelView.raw(ProjectLogEntry)).result)
-      } yield Ok(views.log(request.project, logs))
+    Authenticated.andThen(PermissionAction(Permission.ViewLogs)).andThen(ProjectAction(author, slug)).asyncF {
+      implicit request =>
+        for {
+          logger <- request.project.logger
+          logs   <- service.runDBIO(logger.entries(ModelView.raw(ProjectLogEntry)).result)
+        } yield Ok(views.log(request.project, logs))
     }
   }
 
@@ -758,7 +755,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def delete(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(HardRemoveProject)).asyncF { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.HardDeleteProject)).asyncF { implicit request =>
       getProject(author, slug).semiflatMap { project =>
         val effects = projects.delete(project) *>
           UserActionLogger.log(
@@ -808,8 +805,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     */
   def showFlags(author: String, slug: String): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewFlags)).andThen(ProjectAction(author, slug)) { implicit request =>
-      Ok(views.admin.flags(request.data))
+    Authenticated.andThen(PermissionAction(Permission.ModNotesAndFlags)).andThen(ProjectAction(author, slug)) {
+      implicit request =>
+        Ok(views.admin.flags(request.data))
     }
 
   /**
@@ -819,7 +817,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     */
   def showNotes(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewFlags)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags)).asyncEitherT { implicit request =>
       getProject(author, slug).semiflatMap { project =>
         import cats.instances.vector._
         project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
@@ -832,7 +830,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
   def addMessage(author: String, slug: String): Action[String] = {
     Authenticated
-      .andThen(PermissionAction[AuthRequest](ReviewProjects))
+      .andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
       .asyncEitherT(parse.form(forms.NoteDescription)) { implicit request =>
         getProject(author, slug)
           .semiflatMap(_.addNote(Note(request.body.trim, request.user.id)))
