@@ -11,7 +11,7 @@ import scala.reflect.runtime.universe.TypeTag
 import play.api.i18n.Lang
 import play.api.libs.json.{JsValue, Json}
 
-import models.querymodels.ViewTag
+import models.querymodels.{APIV2VersionTag, ViewTag}
 import db.{Model, ObjId, ObjTimestamp}
 import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
@@ -186,5 +186,10 @@ trait DoobieOreProtocol {
 
   implicit val viewTagListWrite: Write[List[ViewTag]] =
     Write[(List[String], List[String], List[TagColor])].contramap(_.flatMap(ViewTag.unapply).unzip3)
+
+  implicit val apiV2TagRead: Read[List[APIV2VersionTag]] =
+    viewTagListRead.map(_.map(t => APIV2VersionTag(t.name, t.data, t.color)))
+  implicit val apiV2TagWrite: Write[List[APIV2VersionTag]] =
+    viewTagListWrite.contramap(_.map(t => ViewTag(t.name, t.data, t.color)))
 }
 object DoobieOreProtocol extends DoobieOreProtocol

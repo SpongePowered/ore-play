@@ -17,47 +17,60 @@ GET     /admin/activities/:user                                     @controllers
 GET     /admin/stats                                                @controllers.Application.showStats()
 GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[DbRef[User]], projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]], actionFilter: Option[Int], subjectFilter: Option[DbRef[_]])
 
-GET     /statusz                                                    @controllers.ApiController.showStatusZ()
+GET     /statusz                                                    @controllers.ApiV1Controller.showStatusZ()
 
 # ---------- API (v1) ----------
 +nocsrf
-POST    /api/sync_sso                                               @controllers.ApiController.syncSso()
+POST    /api/sync_sso                                               @controllers.ApiV1Controller.syncSso()
 
-GET     /api/projects                                               @controllers.ApiController.listProjects(version = "v1", categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
-GET     /api/projects/:pluginId                                     @controllers.ApiController.showProject(version = "v1", pluginId)
+GET     /api/projects                                               @controllers.ApiV1Controller.listProjects(categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
+GET     /api/projects/:pluginId                                     @controllers.ApiV1Controller.showProject(pluginId)
 
-POST    /api/projects/:pluginId/keys/new                            @controllers.ApiController.createKey(version = "v1", pluginId)
-POST    /api/projects/:pluginId/keys/revoke                         @controllers.ApiController.revokeKey(version = "v1", pluginId)
+POST    /api/projects/:pluginId/keys/new                            @controllers.ApiV1Controller.createKey(pluginId)
+POST    /api/projects/:pluginId/keys/revoke                         @controllers.ApiV1Controller.revokeKey(pluginId)
 
-GET     /api/projects/:pluginId/versions                            @controllers.ApiController.listVersions(version = "v1", pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
-GET     /api/projects/:pluginId/versions/:name                      @controllers.ApiController.showVersion(version = "v1", pluginId, name)
-POST    /api/projects/:pluginId/versions/:name                      @controllers.ApiController.deployVersion(version = "v1", pluginId, name)
+GET     /api/projects/:pluginId/versions                            @controllers.ApiV1Controller.listVersions(pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/projects/:pluginId/versions/:name                      @controllers.ApiV1Controller.showVersion(pluginId, name)
+POST    /api/projects/:pluginId/versions/:name                      @controllers.ApiV1Controller.deployVersion(pluginId, name)
 
-GET     /api/projects/:pluginId/pages                               @controllers.ApiController.listPages(version = "v1", pluginId, parentId: Option[DbRef[Page]])
+GET     /api/projects/:pluginId/pages                               @controllers.ApiV1Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
 
 GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
 GET     /api/projects/:pluginId/versions/recommended/signature      @controllers.project.Versions.downloadRecommendedSignatureById(pluginId)
 GET     /api/projects/:pluginId/versions/:name/download             @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
 GET     /api/projects/:pluginId/versions/:name/signature            @controllers.project.Versions.downloadSignatureById(pluginId, name)
 
-GET     /api/users                                                  @controllers.ApiController.listUsers(version = "v1", limit: Option[Int], offset: Option[Int])
-GET     /api/users/:user                                            @controllers.ApiController.showUser(version = "v1", user)
+GET     /api/users                                                  @controllers.ApiV1Controller.listUsers(limit: Option[Int], offset: Option[Int])
+GET     /api/users/:user                                            @controllers.ApiV1Controller.showUser(user)
 
-GET     /api/:version/projects                                      @controllers.ApiController.listProjects(version, categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
-GET     /api/:version/projects/:pluginId                            @controllers.ApiController.showProject(version, pluginId)
+GET     /api/v1/projects                                            @controllers.ApiV1Controller.listProjects(categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
+GET     /api/v1/projects/:pluginId                                  @controllers.ApiV1Controller.showProject(pluginId)
 
-GET     /api/:version/projects/:pluginId/versions                   @controllers.ApiController.listVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
-GET     /api/:version/projects/:pluginId/versionsAll                @controllers.ApiController.listAllVersions(version, pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
-GET     /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.showVersion(version, pluginId, name)
-POST    /api/:version/projects/:pluginId/versions/:name             @controllers.ApiController.deployVersion(version, pluginId, name)
+GET     /api/v1/projects/:pluginId/versions                         @controllers.ApiV1Controller.listVersions(pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/v1/projects/:pluginId/versionsAll                      @controllers.ApiV1Controller.listAllVersions(pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/v1/projects/:pluginId/versions/:name                   @controllers.ApiV1Controller.showVersion(pluginId, name)
+POST    /api/v1/projects/:pluginId/versions/:name                   @controllers.ApiV1Controller.deployVersion(pluginId, name)
 
-GET     /api/:version/projects/:pluginId/pages                      @controllers.ApiController.listPages(version, pluginId, parentId: Option[DbRef[Page]])
+GET     /api/v1/projects/:pluginId/pages                            @controllers.ApiV1Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
 
-GET     /api/:version/users                                         @controllers.ApiController.listUsers(version, limit: Option[Int], offset: Option[Int])
-GET     /api/:version/users/:user                                   @controllers.ApiController.showUser(version, user)
+GET     /api/v1/users                                               @controllers.ApiV1Controller.listUsers(limit: Option[Int], offset: Option[Int])
+GET     /api/v1/users/:user                                         @controllers.ApiV1Controller.showUser(user)
 
-GET     /api/:version/projects/:plugin/tags/:versionName            @controllers.ApiController.listTags(version, plugin, versionName)
-GET     /api/:version/tags/:tagId                                   @controllers.ApiController.tagColor(version, tagId)
+GET     /api/v1/projects/:plugin/tags/:versionName                  @controllers.ApiV1Controller.listTags(plugin, versionName)
+GET     /api/v1/tags/:tagId                                         @controllers.ApiV1Controller.tagColor(tagId)
+
+# ---------- API (v2) ----------
+GET     /api/v2/projects                                            @controllers.ApiV2Controller.listProjects(q: Option[String], categories: Seq[String], tags: Seq[String], owner: Option[String], sort: Option[String], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+GET     /api/v2/projects/:pluginId                                  @controllers.ApiV2Controller.showProject(pluginId)
+GET     /api/v2/projects/:pluginId/members                          @controllers.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
+
+GET     /api/v2/projects/:pluginId/versions                         @controllers.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.showVersion(pluginId, name)
+POST    /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.deployVersion(pluginId, name)
+
+#GET     /api/v2/projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
+
+GET     /api/v2/users/:user                                         @controllers.ApiV2Controller.showUser(user)
 
 # ---------- Application ----------
 

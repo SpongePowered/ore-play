@@ -33,7 +33,7 @@ import cats.syntax.all._
 /**
   * The Ore API
   */
-trait OreRestfulApi extends OreWrites {
+trait OreRestfulApiV1 extends OreWrites {
 
   def service: ModelService
   def config: OreConfig
@@ -451,4 +451,4 @@ trait OreRestfulApi extends OreWrites {
   def getTagColor(tagId: Int): Option[JsValue] = TagColor.withValueOpt(tagId).map(toJson(_)(tagColorWrites))
 }
 
-class OreRestfulServer @Inject()(val service: ModelService, val config: OreConfig) extends OreRestfulApi
+class OreRestfulServerV1 @Inject()(val service: ModelService, val config: OreConfig) extends OreRestfulApiV1

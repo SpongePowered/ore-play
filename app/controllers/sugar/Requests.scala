@@ -13,6 +13,18 @@ import ore.permission.scope.{GlobalScope, HasScope}
   */
 object Requests {
 
+  case class ApiAuthInfo(user: Model[User], permissions: Permission)
+
+  case class ApiRequest[A](apiInfo: Option[ApiAuthInfo], request: Request[A]) extends WrappedRequest[A](request) {
+    def user: Option[Model[User]] = apiInfo.map(_.user)
+    def permission: Permission    = apiInfo.map(_.permissions).getOrElse(Permission.Default)
+  }
+
+  case class AuthApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) {
+    def user: Model[User]      = apiInfo.user
+    def permission: Permission = apiInfo.permissions
+  }
+
   /**
     * Base Request for Ore that holds all data needed for rendering the header
     */
