@@ -174,7 +174,7 @@ POST    /:author/:slug/versions/:version/delete                     @controllers
 
 GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean])
 +nocsrf
-POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token)
+POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token: Option[String])
 
 GET     /:author/:slug/versions/recommended/download                @controllers.project.Versions.downloadRecommended(author, slug, token: Option[String])
 GET     /:author/:slug/versions/recommended/signature               @controllers.project.Versions.downloadRecommendedSignature(author, slug)
