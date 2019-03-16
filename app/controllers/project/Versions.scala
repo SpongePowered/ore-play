@@ -719,7 +719,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               )
             } else {
               version.channel.map(_.isNonReviewed).map { nonReviewed =>
-                MultipleChoices(views.unsafeDownload(project, version, nonReviewed, dlType))
+                //We return Ok here to make sure Chrome sets the cookie
+                //https://bugs.chromium.org/p/chromium/issues/detail?id=696204
+                Ok(views.unsafeDownload(project, version, nonReviewed, dlType))
                   .addingToSession(DownloadWarning.cookieKey(version.id) -> "set")
               }
             }
