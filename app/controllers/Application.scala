@@ -52,7 +52,7 @@ final class Application @Inject()(forms: OreForms)(
     service: ModelService
 ) extends OreBaseController {
 
-  private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](ReviewFlags))
+  private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
 
   /**
     * Show external link warning page.
@@ -414,7 +414,7 @@ final class Application @Inject()(forms: OreForms)(
     }
 
   def showProjectVisibility(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewSubjectVisibilityLog)).asyncF {
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewProjectVisibilityLog)).asyncF {
       implicit request =>
         (
           service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),

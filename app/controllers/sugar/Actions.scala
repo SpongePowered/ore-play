@@ -20,7 +20,7 @@ import models.project.{Project, Visibility}
 import models.user.{Organization, SignOn, User}
 import models.viewhelper._
 import ore.permission.scope.{GlobalScope, HasScope}
-import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
+import ore.permission.Permission
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.{IOUtils, OreMDC}
 
@@ -86,7 +86,7 @@ trait Actions extends Calls with ActionHelpers {
       def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
         implicit val r: R[A] = request
 
-        request.user.can(p).in(request).unsafeToFuture().flatMap { perm =>
+        request.user.permissionsIn(request).map(_.has(p)).unsafeToFuture().flatMap { perm =>
           log(success = perm, request)
           if (!perm) onUnauthorized.map(Left.apply)
           else Future.successful(Right(request))
@@ -313,7 +313,7 @@ trait Actions extends Calls with ActionHelpers {
         .fromOption[IO](user)
         .semiflatMap { user =>
           val check1 = canEditAndNeedChangeOrApproval(project, user)
-          val check2 = user.can(HideProjects).in(GlobalScope)
+          val check2 = user.permissionsIn(GlobalScope).map(_.has(Permission.SeeHidden))
 
           IOUtils.raceBoolean(check1, check2)
         }
@@ -328,7 +328,7 @@ trait Actions extends Calls with ActionHelpers {
       implicit cs: ContextShift[IO]
   ) = {
     if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
-      user.can(EditPages).in(project)
+      user.permissionsIn(project).map(_.has(Permission.EditProjectSettings))
     } else {
       IO.pure(false)
     }

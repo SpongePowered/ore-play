@@ -5,9 +5,8 @@ import db.Model
 import models.user.User
 import models.user.role.UserRoleModel
 import ore.Joinable
-import ore.permission.EditSettings
+import ore.permission.Permission
 import ore.permission.role.RoleCategory
-import ore.user.Member
 
 trait JoinableData[R <: UserRoleModel[R], T <: Joinable] {
 
@@ -17,9 +16,9 @@ trait JoinableData[R <: UserRoleModel[R], T <: Joinable] {
   def roleCategory: RoleCategory
 
   def filteredMembers(implicit request: OreRequest[_]): Seq[(Model[R], Model[User])] = {
-    val hasEditSettings = request.headerData.globalPerm(EditSettings)
-    val userIsOwner     = request.currentUser.map(_.id.value).contains(joinable.ownerId)
-    if (hasEditSettings || userIsOwner)
+    val hasEditMembers = request.headerData.globalPerm(Permission.ManageSubjectMembers)
+    val userIsOwner    = request.currentUser.map(_.id.value).contains(joinable.ownerId)
+    if (hasEditMembers || userIsOwner)
       members
     else
       members.filter {

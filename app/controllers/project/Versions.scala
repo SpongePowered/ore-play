@@ -66,7 +66,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   private def VersionEditAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditVersions))
+    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.EditVersion))
 
   private def VersionUploadAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.CreateVersion))
@@ -502,19 +502,21 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def softDelete(author: String, slug: String, versionString: String): Action[String] =
-    VersionEditAction(author, slug).asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
-      val comment = request.body
-      getVersion(request.project, versionString)
-        .semiflatMap(version => projects.prepareDeleteVersion(version).as(version))
-        .semiflatMap { version =>
-          version.setVisibility(Visibility.SoftDelete, comment, request.user.id).as(version)
-        }
-        .semiflatMap { version =>
-          UserActionLogger
-            .log(request.request, LoggedAction.VersionDeleted, version.id, s"SoftDelete: $comment", "")
-        }
-        .map(_ => Redirect(self.showList(author, slug, None)))
-    }
+    AuthedProjectAction(author, slug, requireUnlock = true)
+      .andThen(ProjectPermissionAction(Permission.DeleteVersion))
+      .asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
+        val comment = request.body
+        getVersion(request.project, versionString)
+          .semiflatMap(version => projects.prepareDeleteVersion(version).as(version))
+          .semiflatMap { version =>
+            version.setVisibility(Visibility.SoftDelete, comment, request.user.id).as(version)
+          }
+          .semiflatMap { version =>
+            UserActionLogger
+              .log(request.request, LoggedAction.VersionDeleted, version.id, s"SoftDelete: $comment", "")
+          }
+          .map(_ => Redirect(self.showList(author, slug, None)))
+      }
 
   /**
     * Restore the specified version.

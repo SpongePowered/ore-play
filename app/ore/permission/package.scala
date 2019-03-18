@@ -30,15 +30,16 @@ package object permission {
     val EditUserSettings = Permission(1L << 1)
     val EditApiKeys      = Permission(1L << 2)
 
-    private val EditSubjectSettings  = Permission(1L << 4)
-    private val ManageSubjectMembers = Permission(1L << 5)
-    private val IsSubjectOwner       = Permission(1L << 6)
+    private val EditSubjectSettings = Permission(1L << 4)
+    val ManageSubjectMembers        = Permission(1L << 5)
+    private val IsSubjectOwner      = Permission(1L << 6)
 
     val CreateProject        = Permission(1L << 8)
     val EditPage             = Permission(1L << 9)
+    val DeleteProject        = Permission(1L << 10)
     val EditProjectSettings  = EditSubjectSettings
     val ManageProjectMembers = ManageSubjectMembers
-    val IsProjectOwner       = IsSubjectOwner ++ EditPage ++ EditProjectSettings ++ ManageProjectMembers
+    val IsProjectOwner       = IsSubjectOwner ++ EditProjectSettings ++ ManageProjectMembers
 
     val CreateVersion = Permission(1L << 12)
     val EditVersion   = Permission(1L << 13)
@@ -49,12 +50,12 @@ package object permission {
     val PostAsOrganization        = Permission(1L << 21)
     val EditOrganizationSettings  = EditSubjectSettings
     val ManageOrganizationMembers = ManageSubjectMembers
-    val IsOrganizationOwner       = IsProjectOwner ++ PostAsOrganization
+    val IsOrganizationOwner       = IsProjectOwner
 
     val ModNotesAndFlags = Permission(1L << 24)
     val SeeHidden        = Permission(1L << 25)
     val IsStaff          = Permission(1L << 26)
-    val Reviewer         = Permission(1L << 27)
+    val Reviewer         = Permission(1L << 27) ++ IsStaff
 
     val ViewHealth                       = Permission(1L << 32)
     val ViewIp                           = Permission(1L << 33)
@@ -75,37 +76,37 @@ package object permission {
       * Add a permission to this permission.
       * @param other The other permission.
       */
-    def addPermissions(other: Permission): Permission = Permission(permission | other)
+    def add(other: Permission): Permission = Permission(permission | other)
 
     /**
       * Add a permission to this permission.
       * @param other The other permission.
       */
-    def ++(other: Permission): Permission = addPermissions(other)
+    def ++(other: Permission): Permission = add(other)
 
     /**
       * Remove a permission from this permission.
       * @param other The permission to remove.
       */
-    def removePermissions(other: Permission): Permission = Permission(permission & ~other)
+    def remove(other: Permission): Permission = Permission(permission & ~other)
 
     /**
       * Remove a permission from this permission.
       * @param other The permission to remove.
       */
-    def --(other: Permission): Permission = removePermissions(other)
+    def --(other: Permission): Permission = remove(other)
 
     /**
       * Toggle a permission in this permission.
       * @param other The permission to toggle.
       */
-    def togglePermissions(other: Permission): Permission = Permission(permission ^ other)
+    def toggle(other: Permission): Permission = Permission(permission ^ other)
 
     /**
       * Check if this permission has a permission.
       * @param other The permission to check against.
       */
-    def hasPermissions(other: Permission): Boolean = (permission & other) == other
+    def has(other: Permission): Boolean = (permission & other) == other
 
     /**
       * Check if this permission grants any permissions.

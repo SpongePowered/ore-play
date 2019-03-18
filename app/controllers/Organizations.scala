@@ -16,7 +16,7 @@ import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import models.user.Organization
 import models.user.role.OrganizationUserRole
-import ore.permission.EditSettings
+import ore.permission.Permission
 import ore.user.MembershipDossier
 import ore.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
@@ -42,9 +42,6 @@ class Organizations @Inject()(forms: OreForms)(
     cache: AsyncCacheApi,
     messagesApi: MessagesApi
 ) extends OreBaseController {
-
-  private def EditOrganizationAction(organization: String) =
-    AuthedOrganizationAction(organization, requireUnlock = true).andThen(OrganizationPermissionAction(EditSettings))
 
   private val createLimit: Int = this.config.ore.orgs.createLimit
 
@@ -129,17 +126,19 @@ class Organizations @Inject()(forms: OreForms)(
     * @param organization Organization to update avatar of
     * @return             Redirect to auth or bad request
     */
-  def updateAvatar(organization: String): Action[AnyContent] = EditOrganizationAction(organization).asyncF {
-    implicit request =>
-      implicit val lang: Lang = request.lang
+  def updateAvatar(organization: String): Action[AnyContent] =
+    AuthedOrganizationAction(organization, requireUnlock = true)
+      .andThen(OrganizationPermissionAction(Permission.EditOrganizationSettings))
+      .asyncF { implicit request =>
+        implicit val lang: Lang = request.lang
 
-      auth.getChangeAvatarToken(request.user.name, organization).value.map {
-        case Left(_) =>
-          Redirect(routes.Users.showProjects(organization, None)).withError(messagesApi("organization.avatarFailed"))
-        case Right(token) =>
-          Redirect(auth.url + s"/accounts/user/$organization/change-avatar/?key=${token.signedData}")
+        auth.getChangeAvatarToken(request.user.name, organization).value.map {
+          case Left(_) =>
+            Redirect(routes.Users.showProjects(organization, None)).withError(messagesApi("organization.avatarFailed"))
+          case Right(token) =>
+            Redirect(auth.url + s"/accounts/user/$organization/change-avatar/?key=${token.signedData}")
+        }
       }
-  }
 
   /**
     * Removes a member from an [[models.user.Organization]].
@@ -148,14 +147,16 @@ class Organizations @Inject()(forms: OreForms)(
     * @return             Redirect to Organization page
     */
   def removeMember(organization: String): Action[String] =
-    EditOrganizationAction(organization).asyncF(parse.form(forms.OrganizationMemberRemove)) { implicit request =>
-      val res = for {
-        user <- users.withName(request.body)
-        _    <- OptionT.liftF(request.data.orga.memberships.removeMember(request.data.orga, user))
-      } yield Redirect(ShowUser(organization))
+    AuthedOrganizationAction(organization, requireUnlock = true)
+      .andThen(OrganizationPermissionAction(Permission.ManageOrganizationMembers))
+      .asyncF(parse.form(forms.OrganizationMemberRemove)) { implicit request =>
+        val res = for {
+          user <- users.withName(request.body)
+          _    <- OptionT.liftF(request.data.orga.memberships.removeMember(request.data.orga, user))
+        } yield Redirect(ShowUser(organization))
 
-      res.getOrElse(BadRequest)
-    }
+        res.getOrElse(BadRequest)
+      }
 
   /**
     * Updates an [[models.user.Organization]]'s members.
@@ -164,7 +165,11 @@ class Organizations @Inject()(forms: OreForms)(
     * @return             Redirect to Organization page
     */
   def updateMembers(organization: String): Action[OrganizationMembersUpdate] =
-    EditOrganizationAction(organization)(parse.form(forms.OrganizationUpdateMembers)).asyncF { implicit request =>
-      request.body.saveTo(request.data.orga).as(Redirect(ShowUser(organization)))
-    }
+    AuthedOrganizationAction(organization, requireUnlock = true)
+      .andThen(OrganizationPermissionAction(Permission.ManageOrganizationMembers))(
+        parse.form(forms.OrganizationUpdateMembers)
+      )
+      .asyncF { implicit request =>
+        request.body.saveTo(request.data.orga).as(Redirect(ShowUser(organization)))
+      }
 }

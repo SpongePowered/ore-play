@@ -16,7 +16,6 @@ import models.project.{Flag, Project, Visibility}
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
 import ore.permission._
-import ore.permission.role._
 import ore.permission.scope._
 import ore.user.Prompt
 import security.pgp.PGPPublicKeyInfo
@@ -132,12 +131,6 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
   implicit class UserModelOps(private val self: Model[User]) extends AnyVal {
 
     /**
-      * The User's [[PermissionPredicate]]. All permission checks go through
-      * here.
-      */
-    def can: PermissionPredicate = new PermissionPredicate(self)
-
-    /**
       * Returns the [[DbRole]]s that this User has.
       *
       * @return Roles the user has.
@@ -184,19 +177,20 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       }
     }
 
-    def trustIn[A: HasScope](a: A)(implicit service: ModelService): IO[Trust] =
-      trustIn(a.scope)
+    def permissionsIn[A: HasScope](a: A)(implicit service: ModelService): IO[Permission] =
+      permissionsIn(a.scope)
 
     /**
       * Returns this User's highest level of Trust.
       *
       * @return Highest level of trust
       */
-    def trustIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Trust] = {
+    def permissionsIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Permission] = {
       val conIO = scope match {
-        case GlobalScope                       => UserQueries.globalTrust(self.id.value).unique
-        case ProjectScope(projectId)           => UserQueries.projectTrust(self.id.value, projectId).unique
-        case OrganizationScope(organizationId) => UserQueries.organizationTrust(self.id.value, organizationId).unique
+        case GlobalScope             => UserQueries.globalPermission(self.id.value).unique
+        case ProjectScope(projectId) => UserQueries.projectPermission(self.id.value, projectId).unique
+        case OrganizationScope(organizationId) =>
+          UserQueries.organizationPermission(self.id.value, organizationId).unique
       }
 
       service.runDbCon(conIO)

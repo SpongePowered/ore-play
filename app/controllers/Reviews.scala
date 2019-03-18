@@ -137,8 +137,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private def queryNotificationUsers(
       projectId: Rep[DbRef[Project]],
-      userId: Rep[DbRef[User]],
-      noRole: Rep[Option[Role]]
+      userId: Rep[DbRef[User]]
   ): Query[(Rep[DbRef[User]], Rep[Option[Role]]), (DbRef[User], Option[Role]), Seq] = {
     // Query Orga Members
     val q1 = for {
@@ -151,7 +150,7 @@ final class Reviews @Inject()(forms: OreForms)(
     // Query version author
     val q2 = for {
       user <- TableQuery[UserTable] if user.id === userId
-    } yield (user.id, noRole)
+    } yield (user.id, None: Rep[Option[Role]])
 
     q1 ++ q2 // Union
   }
@@ -164,10 +163,10 @@ final class Reviews @Inject()(forms: OreForms)(
       requestUser: Model[User]
   ): IO[Unit] = {
     val usersF =
-      service.runDBIO(notificationUsersQuery((project.id, version.authorId, None)).result).map { list =>
+      service.runDBIO(notificationUsersQuery((project.id, version.authorId)).result).map { list =>
         list.collect {
-          case (res, Some(level)) if level.trust >= Trust.Lifted => res
-          case (res, None)                                       => res
+          case (res, Some(role)) if role.permissions.has(Permission.EditVersion) => res
+          case (res, None)                                                       => res
         }
       }
 

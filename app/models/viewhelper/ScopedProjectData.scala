@@ -1,11 +1,10 @@
 package models.viewhelper
 
-import db.{Model, ModelService}
 import db.access.ModelView
+import db.{Model, ModelService}
 import models.project.{Flag, Project}
-import models.user.{Organization, User}
-import ore.permission._
-import util.syntax._
+import models.user.User
+import ore.permission.{Permission, _}
 
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
@@ -24,26 +23,24 @@ object ScopedProjectData {
     currentUser
       .map { user =>
         (
-          project.owner.user
-            .flatMap(_.toMaybeOrganization(ModelView.now(Organization)).value)
-            .flatMap(orgaOwner => user.can(PostAsOrganization) in orgaOwner),
           user.hasUnresolvedFlagFor(project, ModelView.now(Flag)),
           project.stars.contains(user),
           project.watchers.contains(user),
-          user.trustIn(project),
-          user.globalRoles.allFromParent
+          user.permissionsIn(project)
         ).parMapN {
           case (
-              canPostAsOwnerOrga,
               uProjectFlags,
               starred,
               watching,
-              projectTrust,
-              globalRoles
+              projectPerms
               ) =>
-            val perms   = EditPages :: EditSettings :: EditChannels :: EditVersions :: UploadVersions :: ReviewProjects :: Nil
-            val permMap = user.can.asMap(projectTrust, globalRoles.toSet)(perms: _*)
-            ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, permMap)
+            ScopedProjectData(
+              projectPerms.has(Permission.PostAsOrganization),
+              uProjectFlags,
+              starred,
+              watching,
+              projectPerms
+            )
         }
       }
       .getOrElse(IO.pure(noScope))
@@ -57,9 +54,9 @@ case class ScopedProjectData(
     uProjectFlags: Boolean = false,
     starred: Boolean = false,
     watching: Boolean = false,
-    permissions: Map[Permission, Boolean] = Map.empty
+    permissions: Permission = Permission.None
 ) {
 
-  def perms(perm: Permission): Boolean = permissions.getOrElse(perm, false)
+  def perms(perm: Permission): Boolean = permissions.has(perm)
 
 }

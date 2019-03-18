@@ -72,7 +72,12 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   private def SettingsEditAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditSettings))
+    AuthedProjectAction(author, slug, requireUnlock = true)
+      .andThen(ProjectPermissionAction(Permission.EditProjectSettings))
+
+  private def MemberEditAction(author: String, slug: String) =
+    AuthedProjectAction(author, slug, requireUnlock = true)
+      .andThen(ProjectPermissionAction(Permission.ManageProjectMembers))
 
   /**
     * Displays the "create project" page.
@@ -83,7 +88,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     import cats.instances.vector._
     for {
       orgas      <- request.user.organizations.allFromParent
-      createOrga <- orgas.toVector.parTraverse(request.user.can(Permission.CreateProject).in(_))
+      createOrga <- orgas.toVector.parTraverse(request.user.permissionsIn(_).map(_.has(Permission.CreateProject)))
     } yield {
       val createdOrgas = orgas.zip(createOrga).collect {
         case (orga, true) => orga
@@ -126,7 +131,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         for {
           t <- (request.user.organizations.allFromParent, pending.owner).parTupled
           (orgas, owner) = t
-          createOrga <- orgas.toVector.parTraverse(owner.can(Permission.CreateProject).in(_))
+          createOrga <- orgas.toVector.parTraverse(request.user.permissionsIn(_).map(_.has(Permission.CreateProject)))
         } yield {
           val createdOrgas = orgas.zip(createOrga).collect {
             case (orga, true) => orga
@@ -180,8 +185,10 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private def orgasUserCanUploadTo(user: Model[User]): IO[Set[DbRef[Organization]]] = {
     import cats.instances.vector._
     for {
-      all       <- user.organizations.allFromParent
-      canCreate <- all.toVector.parTraverse(org => user.can(Permission.CreateProject).in(org).tupleLeft(org.id.value))
+      all <- user.organizations.allFromParent
+      canCreate <- all.toVector.parTraverse(
+        org => user.permissionsIn(org).map(_.has(Permission.CreateProject)).tupleLeft(org.id.value)
+      )
     } yield {
       // Filter by can Create Project
       val others = canCreate.collect {
@@ -468,7 +475,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         orgaUser   <- users.withName(behalf)
         role       <- orgaUser.projectRoles(ModelView.now(ProjectUserRole)).get(id)
         scopedData <- OptionT.liftF(ScopedOrganizationData.of(Some(user), orga))
-        if scopedData.permissions.getOrElse(EditSettings, false)
+        if scopedData.permissions.has(Permission.ManageProjectMembers)
         project <- OptionT.liftF(role.project)
         res <- OptionT.liftF[IO, Status] {
           status match {
@@ -563,7 +570,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     */
   def removeMember(author: String, slug: String): Action[String] =
-    SettingsEditAction(author, slug).asyncF(parse.form(forms.ProjectMemberRemove)) { implicit request =>
+    MemberEditAction(author, slug).asyncF(parse.form(forms.ProjectMemberRemove)) { implicit request =>
       users
         .withName(request.body)
         .semiflatMap { user =>
@@ -779,24 +786,26 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def softDelete(author: String, slug: String): Action[String] =
-    SettingsEditAction(author, slug).asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
-      val oldProject = request.project
-      val comment    = request.body.trim
+    AuthedProjectAction(author, slug, requireUnlock = true)
+      .andThen(ProjectPermissionAction(Permission.DeleteProject))
+      .asyncF(parse.form(forms.NeedsChanges)) { implicit request =>
+        val oldProject = request.project
+        val comment    = request.body.trim
 
-      val oreVisibility   = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id)
-      val forumVisibility = this.forums.changeTopicVisibility(oldProject, isVisible = false)
-      val log = UserActionLogger.log(
-        request.request,
-        LoggedAction.ProjectVisibilityChange,
-        oldProject.id,
-        Visibility.SoftDelete.nameKey,
-        oldProject.visibility.nameKey
-      )
+        val oreVisibility   = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id)
+        val forumVisibility = this.forums.changeTopicVisibility(oldProject, isVisible = false)
+        val log = UserActionLogger.log(
+          request.request,
+          LoggedAction.ProjectVisibilityChange,
+          oldProject.id,
+          Visibility.SoftDelete.nameKey,
+          oldProject.visibility.nameKey
+        )
 
-      (oreVisibility, forumVisibility).parTupled
-        .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
-        .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", oldProject.name)))
-    }
+        (oreVisibility, forumVisibility).parTupled
+          .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
+          .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", oldProject.name)))
+      }
 
   /**
     * Show the flags that have been made on this project

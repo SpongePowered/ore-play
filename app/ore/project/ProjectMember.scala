@@ -25,7 +25,7 @@ class ProjectMember(val project: Model[Project], val userId: DbRef[User]) extend
     * @return Top role
     */
   override def headRole(implicit service: ModelService): IO[Model[ProjectUserRole]] =
-    this.roles.map(_.maxBy(_.role.trust))
+    this.roles.map(_.maxBy(_.role.permissions: Long)) ////This is terrible, but probably works
 }
 object ProjectMember {
   implicit val isUserOwned: UserOwned[ProjectMember] = (a: ProjectMember) => a.userId

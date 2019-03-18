@@ -103,7 +103,7 @@ object ProjectData {
           projectOwner,
           versions,
           settings,
-          members.sortBy(_._1.role.trust).reverse,
+          members.sortBy(_._1.role.permissions: Long).reverse, //This is stupid, but works
           logSize,
           flagData,
           noteCount,
