@@ -589,7 +589,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               project.slug,
               version.name,
               Some(UploadedFile.value),
-              api = Some(false)
+              api = Some(false),
+              Some("dummy")
             )
           )
         )
@@ -646,6 +647,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param author Project author
     * @param slug   Project slug
     * @param target Target version
+    * @param dummy  A parameter to get around Chrome's cache
     * @return       Confirmation view
     */
   def showDownloadConfirm(
@@ -653,7 +655,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       slug: String,
       target: String,
       downloadType: Option[Int],
-      api: Option[Boolean]
+      api: Option[Boolean],
+      dummy: Option[String]
   ): Action[AnyContent] = {
     ProjectAction(author, slug).asyncEitherT { implicit request =>
       val dlType              = downloadType.flatMap(DownloadType.withValueOpt).getOrElse(DownloadType.UploadedFile)
@@ -693,9 +696,11 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               MultipleChoices(
                 Json.obj(
                   "message" -> apiMsg,
-                  "post"    -> self.confirmDownload(author, slug, target, Some(dlType.value), Some(token)).absoluteURL(),
-                  "url"     -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
-                  "token"   -> token
+                  "post" -> self
+                    .confirmDownload(author, slug, target, Some(dlType.value), Some(token), None)
+                    .absoluteURL(),
+                  "url"   -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
+                  "token" -> token
                 )
               )
             )
@@ -712,7 +717,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 MultipleChoices(
                   apiMsg + "\n" + this.messagesApi(
                     "version.download.confirm.curl",
-                    self.confirmDownload(author, slug, target, Some(dlType.value), Some(token)).absoluteURL(),
+                    self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
                     CSRF.getToken.get.value
                   ) + "\n"
                 ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
@@ -735,7 +740,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       slug: String,
       target: String,
       downloadType: Option[Int],
-      token: Option[String]
+      token: Option[String],
+      dummy: Option[String] //A parameter to get around Chrome's cache
   ): Action[AnyContent] = {
     ProjectAction(author, slug).asyncEitherT { implicit request =>
       getVersion(request.data.project, target)
@@ -864,7 +870,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 project.slug,
                 version.name,
                 Some(JarFile.value),
-                api = Some(api)
+                api = Some(api),
+                None
               )
             )
           )

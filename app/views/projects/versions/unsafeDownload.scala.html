@@ -48,7 +48,7 @@
                         </div>
 
                         <div class="col-xs-12 col-sm-6">
-                            <form action="@versionRoutes.confirmDownload(project.ownerName, project.slug, target.name, Some(downloadType.value), None)" method="post" id="form-download">
+                            <form action="@versionRoutes.confirmDownload(project.ownerName, project.slug, target.name, Some(downloadType.value), None, Some("dummy"))" method="post" id="form-download">
                                 @CSRF.formField
 
                                 <button type="submit" form="form-download" class="btn btn-danger pull-right-sm">
