@@ -6,7 +6,7 @@ import java.sql.Timestamp
 import java.util.Date
 import javax.inject.Inject
 
-import db.{InsertFunc, ObjId}
+import db.ObjId
 import models.user.User
 import ore.OreConfig
 
@@ -27,7 +27,7 @@ final class FakeUser @Inject()(config: OreConfig) {
 
   private lazy val user =
     if (isEnabled)
-      User.partial(
+      User(
         id = ObjId(conf.id),
         fullName = conf.name,
         name = username,
@@ -38,4 +38,4 @@ final class FakeUser @Inject()(config: OreConfig) {
 
 }
 
-object FakeUser { implicit def unwrap(fake: FakeUser): InsertFunc[User] = fake.user }
+object FakeUser { implicit def unwrap(fake: FakeUser): User = fake.user }

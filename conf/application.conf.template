@@ -6,7 +6,6 @@
 application {
     baseUrl             =   "http://localhost:9000"
     baseUrl             =   ${?BASE_URL}
-    db.default-timeout  =   10s
     uploadsDir = "uploads"
     uploadsDir = ${?UPLOADS_DIR}
 

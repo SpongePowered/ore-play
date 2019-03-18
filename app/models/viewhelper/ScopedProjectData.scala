@@ -1,8 +1,9 @@
 package models.viewhelper
 
-import db.ModelService
-import models.project.Project
-import models.user.User
+import db.{Model, ModelService}
+import db.access.ModelView
+import models.project.{Flag, Project}
+import models.user.{Organization, User}
 import ore.permission._
 import util.syntax._
 
@@ -14,23 +15,23 @@ import cats.syntax.all._
   */
 object ScopedProjectData {
 
-  def cacheKey(project: Project, user: User) = s"""project${project.id.value}foruser${user.id.value}"""
+  def cacheKey(project: Model[Project], user: Model[User]) = s"""project${project.id}foruser${user.id}"""
 
   def of(
-      currentUser: Option[User],
-      project: Project
+      currentUser: Option[Model[User]],
+      project: Model[Project]
   )(implicit service: ModelService, cs: ContextShift[IO]): IO[ScopedProjectData] = {
     currentUser
       .map { user =>
         (
           project.owner.user
-            .flatMap(_.toMaybeOrganization.value)
+            .flatMap(_.toMaybeOrganization(ModelView.now(Organization)).value)
             .flatMap(orgaOwner => user.can(PostAsOrganization) in orgaOwner),
-          user.hasUnresolvedFlagFor(project),
-          project.stars.contains(user, project),
-          project.watchers.contains(project, user),
+          user.hasUnresolvedFlagFor(project, ModelView.now(Flag)),
+          project.stars.contains(user),
+          project.watchers.contains(user),
           user.trustIn(project),
-          user.globalRoles.allFromParent(user)
+          user.globalRoles.allFromParent
         ).parMapN {
           case (
               canPostAsOwnerOrga,

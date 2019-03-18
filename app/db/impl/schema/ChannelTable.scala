@@ -13,5 +13,8 @@ class ChannelTable(tag: Tag) extends ModelTable[Channel](tag, "project_channels"
   def projectId     = column[DbRef[Project]]("project_id")
   def isNonReviewed = column[Boolean]("is_non_reviewed")
 
-  override def * = mkProj((id.?, createdAt.?, projectId, name, color, isNonReviewed))(mkTuple[Channel]())
+  override def * =
+    (id.?, createdAt.?, (projectId, name, color, isNonReviewed)) <> (mkApply((Channel.apply _).tupled), mkUnapply(
+      Channel.unapply
+    ))
 }

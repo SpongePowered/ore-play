@@ -12,19 +12,19 @@ import play.api.mvc.{Action, ActionBuilder, AnyContent}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import db.access.ModelAccess
+import db.access.ModelView
 import db.query.AppQueries
+import db.impl.OrePostgresDriver.api._
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
-import db.{DbRef, ModelQuery, ModelService}
+import db.{Model, ModelCompanion, DbRef, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.user.role._
-import models.user.{LoggedAction, LoggedActionModel, User, UserActionLogger}
+import models.user.{LoggedAction, LoggedActionModel, Organization, User, UserActionLogger}
 import models.viewhelper.OrganizationData
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
-import ore.permission.scope.GlobalScope
 import ore.project.{Category, ProjectSortingStrategy}
 import ore.user.MembershipDossier
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
@@ -143,7 +143,7 @@ final class Application @Inject()(forms: OreForms)(
     service
       .runDbCon(
         AppQueries
-          .flags(request.user.id.value)
+          .flags(request.user.id)
           .to[Vector]
       )
       .map(flagSeq => Ok(views.users.admin.flags(flagSeq)))
@@ -158,8 +158,8 @@ final class Application @Inject()(forms: OreForms)(
     */
   def setFlagResolved(flagId: DbRef[Flag], resolved: Boolean): Action[AnyContent] =
     FlagAction.asyncF { implicit request =>
-      this.service
-        .access[Flag]()
+      ModelView
+        .now(Flag)
         .get(flagId)
         .semiflatMap { flag =>
           for {
@@ -193,7 +193,15 @@ final class Application @Inject()(forms: OreForms)(
         val staleProjects = unhealtyProjects
           .filter(_.lastUpdated > new Timestamp(new Date().getTime - config.ore.projects.staleAge.toMillis))
         val notPublic = unhealtyProjects.filter(_.visibility != Visibility.Public)
-        Ok(views.users.admin.health(noTopicProjects, topicDirtyProjects, staleProjects, notPublic, missingFileProjects))
+        Ok(
+          views.users.admin.health(
+            noTopicProjects,
+            topicDirtyProjects,
+            staleProjects,
+            notPublic,
+            Model.unwrapNested(missingFileProjects)
+          )
+        )
       }
   }
 
@@ -274,7 +282,7 @@ final class Application @Inject()(forms: OreForms)(
           .getLog(oPage, userFilter, projectFilter, versionFilter, pageFilter, actionFilter, subjectFilter)
           .to[Vector]
       ),
-      service.access[LoggedActionModel[Any]]().size
+      ModelView.now(LoggedActionModel).size
     ).parMapN { (actions, size) =>
       Ok(
         views.users.admin.log(
@@ -303,14 +311,10 @@ final class Application @Inject()(forms: OreForms)(
       .withName(user)
       .semiflatMap { u =>
         for {
-          isOrga <- u.toMaybeOrganization.isDefined
-          t1 <- {
-            if (isOrga)
-              (IO.pure(Nil), getOrga(user).value).tupled
-            else
-              (u.projectRoles.all, IO.pure(None)).tupled
-          }
-          (projectRoles, orga) = t1
+          orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
+          projectRoles <- orga.fold(
+            service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
+          )(orga => IO.pure(Nil))
           t2 <- (
             getUserData(request, user).value,
             projectRoles.toVector.parTraverse(_.project),
@@ -319,7 +323,7 @@ final class Application @Inject()(forms: OreForms)(
           (userData, projects, orgaData) = t2
         } yield {
           val pr = projects.zip(projectRoles)
-          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr))
+          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.map(t => t._1.obj -> t._2)))
         }
       }
       .getOrElse(notFound)
@@ -336,13 +340,11 @@ final class Application @Inject()(forms: OreForms)(
           val json       = Json.parse(data)
           val orgDossier = MembershipDossier.organization
 
-          def updateRoleTable[M0 <: UserRoleModel { type M = M0 }: ModelQuery](
-              modelAccess: ModelAccess[M0],
+          def updateRoleTable[M0 <: UserRoleModel[M0]: ModelQuery](model: ModelCompanion[M0])(
+              modelAccess: ModelView.Now[IO, model.T, Model[M0]],
               allowedCategory: RoleCategory,
               ownerType: Role,
-              transferOwner: M0 => IO[M0],
-              setRoleType: (M0, Role) => IO[M0],
-              setAccepted: (M0, Boolean) => IO[M0]
+              transferOwner: Model[M0] => IO[Model[M0]]
           ) = {
             val id = (json \ "id").as[DbRef[M0]]
             action match {
@@ -353,14 +355,14 @@ final class Application @Inject()(forms: OreForms)(
                   if (roleType == ownerType)
                     transferOwner(role).as(Ok)
                   else if (roleType.category == allowedCategory && roleType.isAssignable)
-                    setRoleType(role, roleType).as(Ok)
+                    service.update(role)(_.withRole(roleType)).as(Ok)
                   else
                     IO.pure(BadRequest)
                 }
               case "setAccepted" =>
                 modelAccess
                   .get(id)
-                  .semiflatMap(role => setAccepted(role, (json \ "accepted").as[Boolean]).as(Ok))
+                  .semiflatMap(role => service.update(role)(_.withAccepted((json \ "accepted").as[Boolean])).as(Ok))
               case "deleteRole" =>
                 modelAccess
                   .get(id)
@@ -369,44 +371,40 @@ final class Application @Inject()(forms: OreForms)(
             }
           }
 
-          def transferOrgOwner(r: OrganizationUserRole) =
+          def transferOrgOwner(r: Model[OrganizationUserRole]) =
             r.organization
               .flatMap(orga => orga.transferOwner(orgDossier.newMember(orga, r.userId)))
               .as(r)
 
           thing match {
             case "orgRole" =>
-              OptionT.liftF(user.toMaybeOrganization.isEmpty).filter(identity).flatMap { _ =>
-                updateRoleTable[OrganizationUserRole](
-                  user.organizationRoles,
-                  RoleCategory.Organization,
-                  Role.OrganizationOwner,
-                  transferOrgOwner,
-                  (r, tpe) => user.organizationRoles.update(r.copy(role = tpe)),
-                  (r, accepted) => user.organizationRoles.update(r.copy(isAccepted = accepted))
-                )
+              OptionT.liftF(user.toMaybeOrganization(ModelView.now(Organization)).isEmpty).filter(identity).flatMap {
+                _ =>
+                  updateRoleTable(OrganizationUserRole)(
+                    user.organizationRoles(ModelView.now(OrganizationUserRole)),
+                    RoleCategory.Organization,
+                    Role.OrganizationOwner,
+                    transferOrgOwner,
+                  )
               }
             case "memberRole" =>
-              user.toMaybeOrganization.flatMap { orga =>
-                updateRoleTable[OrganizationUserRole](
+              user.toMaybeOrganization(ModelView.now(Organization)).flatMap { orga =>
+                updateRoleTable(OrganizationUserRole)(
                   orgDossier.roles(orga),
                   RoleCategory.Organization,
                   Role.OrganizationOwner,
                   transferOrgOwner,
-                  (r, tpe) => orgDossier.roles(orga).update(r.copy(role = tpe)),
-                  (r, accepted) => orgDossier.roles(orga).update(r.copy(isAccepted = accepted))
                 )
               }
             case "projectRole" =>
-              OptionT.liftF(user.toMaybeOrganization.isEmpty).filter(identity).flatMap { _ =>
-                updateRoleTable[ProjectUserRole](
-                  user.projectRoles,
-                  RoleCategory.Project,
-                  Role.ProjectOwner,
-                  r => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(p, r.userId))).as(r),
-                  (r, tpe) => user.projectRoles.update(r.copy(role = tpe)),
-                  (r, accepted) => user.projectRoles.update(r.copy(isAccepted = accepted))
-                )
+              OptionT.liftF(user.toMaybeOrganization(ModelView.now(Organization)).isEmpty).filter(identity).flatMap {
+                _ =>
+                  updateRoleTable(ProjectUserRole)(
+                    user.projectRoles(ModelView.now(ProjectUserRole)),
+                    RoleCategory.Project,
+                    Role.ProjectOwner,
+                    r => r.project.flatMap(p => p.transferOwner(p.memberships.newMember(p, r.userId))).as(r),
+                  )
               }
             case _ => OptionT.none[IO, Status]
           }

@@ -2,7 +2,7 @@ package db.query
 
 import scala.concurrent.duration.FiniteDuration
 
-import db.DbRef
+import db.{Model, DbRef}
 import models.admin.LoggedActionViewModel
 import models.project.{Page, Project, ReviewState, Version}
 import models.querymodels._
@@ -202,7 +202,7 @@ object AppQueries extends DoobieOreProtocol {
       pageFilter: Option[DbRef[Page]],
       actionFilter: Option[Int],
       subjectFilter: Option[DbRef[_]]
-  ): Query0[LoggedActionViewModel[Any]] = {
+  ): Query0[Model[LoggedActionViewModel[Any]]] = {
     val pageSize = 50L
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
@@ -216,7 +216,7 @@ object AppQueries extends DoobieOreProtocol {
       subjectFilter.map(id => fr"la.filter_subject = $id")
     ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
 
-    frags.query[LoggedActionViewModel[Any]]
+    frags.query[Model[LoggedActionViewModel[Any]]]
   }
 
   val getVisibilityNeedsApproval: Query0[ProjectNeedsApproval] = {

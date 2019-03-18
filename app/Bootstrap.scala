@@ -29,8 +29,6 @@ abstract class Bootstrap(
   Logger.info("Initializing Ore...")
   val time: Long = System.currentTimeMillis()
 
-  this.service.start()
-
   this.forums.start(
     ec,
     service,

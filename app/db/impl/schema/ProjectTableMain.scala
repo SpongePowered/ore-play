@@ -34,10 +34,10 @@ trait ProjectTable
   def notes                = column[JsValue]("notes")
 
   override def * =
-    mkProj(
+    (
+      id.?,
+      createdAt.?,
       (
-        id.?,
-        createdAt.?,
         pluginId,
         ownerName,
         userId,
@@ -56,7 +56,7 @@ trait ProjectTable
         lastUpdated,
         notes
       )
-    )(mkTuple[Project]())
+    ) <> (mkApply((Project.apply _).tupled), mkUnapply(Project.unapply))
 }
 
 class ProjectTableMain(tag: Tag) extends ModelTable[Project](tag, "projects") with ProjectTable

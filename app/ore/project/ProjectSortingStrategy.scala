@@ -3,7 +3,7 @@ package ore.project
 import scala.collection.immutable
 
 import db.impl.OrePostgresDriver.api._
-import models.project.Project
+import db.impl.schema.ProjectTableMain
 
 import doobie._
 import doobie.implicits._
@@ -16,7 +16,7 @@ import slick.lifted.ColumnOrdered
 sealed abstract class ProjectSortingStrategy(
     val value: Int,
     val title: String,
-    val fn: Project#T => ColumnOrdered[_],
+    val fn: ProjectTableMain => ColumnOrdered[_],
     val fragment: Fragment
 ) extends IntEnumEntry {
   def id: Int = value

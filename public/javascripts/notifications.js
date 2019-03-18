@@ -23,7 +23,7 @@
 
 function markRead(notification) {
     var btn = notification.find('.btn-mark-read');
-    toggleSpinner(btn.toggleClass('btn-mark-read fa-check'))
+    toggleSpinner(btn);
     $.ajax({
         type: 'post',
         url: '/notifications/read/' + notification.data('id'),

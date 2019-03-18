@@ -5,7 +5,7 @@ import java.sql.Timestamp
 import db.impl.access.UserBase
 import db.impl.model.common.Expirable
 import db.impl.schema.SessionTable
-import db.{InsertFunc, Model, ModelQuery, ObjId, ObjectTimestamp}
+import db.{Model, DefaultModelCompanion, ModelQuery}
 import security.spauth.SpongeAuthApi
 import util.OreMDC
 
@@ -16,23 +16,15 @@ import slick.lifted.TableQuery
 /**
   * Represents a persistant [[User]] session.
   *
-  * @param id         Unique ID
-  * @param createdAt  Instant of creation
   * @param expiration Instant of expiration
   * @param username   Username session belongs to
   * @param token      Unique token
   */
 case class Session(
-    id: ObjId[Session],
-    createdAt: ObjectTimestamp,
     expiration: Timestamp,
     username: String,
     token: String
-) extends Model
-    with Expirable {
-
-  override type M = Session
-  override type T = SessionTable
+) extends Expirable {
 
   /**
     * Returns the [[User]] that this Session belongs to.
@@ -40,17 +32,11 @@ case class Session(
     * @param users UserBase instance
     * @return User session belongs to
     */
-  def user(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, User] =
+  def user(implicit users: UserBase, auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, Model[User]] =
     users.withName(this.username)
 }
-object Session {
-
-  def partial(
-      expiration: Timestamp,
-      username: String,
-      token: String
-  ): InsertFunc[Session] = (id, time) => Session(id, time, expiration, username, token)
+object Session extends DefaultModelCompanion[Session, SessionTable](TableQuery[SessionTable]) {
 
   implicit val query: ModelQuery[Session] =
-    ModelQuery.from[Session](TableQuery[SessionTable], _.copy(_, _))
+    ModelQuery.from(this)
 }

@@ -38,7 +38,7 @@ class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecy
 
   override def run(): Unit = {
     Logger.debug("Updating homepage view")
-    service.projectBase.refreshHomePage(Logger)
+    service.projectBase.refreshHomePage(Logger).unsafeRunSync()
     ()
   }
 }

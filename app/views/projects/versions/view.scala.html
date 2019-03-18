@@ -28,7 +28,7 @@
                 <a href="@routes.Users.showProjects(v.p.project.ownerName, None)">
                     <strong>@v.p.project.ownerName</strong>
                 </a>
-                released this version on @prettifyDate(v.v.createdAt.value)
+                released this version on @prettifyDate(v.v.createdAt)
             </p>
 
                 <!-- Buttons -->
@@ -74,7 +74,7 @@
                                 v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
                                 @CSRF.formField
                                 <button type="submit" class="btn btn-info">
-                                    <i class="fas fa-diamond"></i> Set recommended
+                                    <i class="fas fa-gem"></i> Set recommended
                                 </button>
                             }
                         }
@@ -132,7 +132,7 @@
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
-                                    <li><a href="@appRoutes.showLog(None, None, None, Some(v.v.id.value), None, None, None)">User Action Logs</a></li>
+                                    <li><a href="@appRoutes.showLog(None, None, None, Some(v.v.id), None, None, None)">User Action Logs</a></li>
                                     @if(request.headerData.globalPerm(ReviewProjects)) {
                                         @if(v.v.visibility == Visibility.SoftDelete) {
                                             <li><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>

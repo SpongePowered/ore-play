@@ -10,5 +10,5 @@ class ProjectLogTable(tag: Tag) extends ModelTable[ProjectLog](tag, "project_log
 
   def projectId = column[DbRef[Project]]("project_id")
 
-  override def * = mkProj((id.?, createdAt.?, projectId))(mkTuple[ProjectLog]())
+  override def * = (id.?, createdAt.?, projectId) <> (mkApply(ProjectLog.apply), mkUnapply(ProjectLog.unapply))
 }

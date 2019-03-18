@@ -1,32 +1,35 @@
 package db.impl.model.common
 
-import db.access.ModelAccess
+import scala.language.higherKinds
+
+import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.table.common.VisibilityColumn
-import db.{DbRef, Model, ModelService}
+import db.impl.table.common.VisibilityChangeColumns
+import db.{Model, DbRef, ModelService}
 import models.project.Visibility
 import models.user.User
+import util.syntax._
 
-import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 
 /**
-  * Represents a [[Model]] that has a toggleable visibility.
+  * Represents a model that has a toggleable visibility.
   */
-trait Hideable extends Model { self =>
-
-  override type M <: Hideable { type M = self.M }
-  override type T <: VisibilityColumn[M]
-  type ModelVisibilityChange <: VisibilityChange { type M = ModelVisibilityChange }
+trait Hideable {
 
   /**
-    * Returns true if the [[Model]] is visible.
+    * Returns true if the model is visible.
     *
     * @return True if model is visible
     */
   def visibility: Visibility
 
   def isDeleted: Boolean = visibility == Visibility.SoftDelete
+
+}
+trait HideableOps[M, MVisibilityChange <: VisibilityChange, MVisibilityChangeTable <: VisibilityChangeColumns[
+  MVisibilityChange
+]] extends Any {
 
   /**
     * Sets whether this project is visible.
@@ -36,26 +39,29 @@ trait Hideable extends Model { self =>
   def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
       implicit service: ModelService,
       cs: ContextShift[IO]
-  ): IO[(M, ModelVisibilityChange)]
+  ): IO[(Model[M], Model[MVisibilityChange])]
 
   /**
     * Get VisibilityChanges
     */
-  def visibilityChanges(implicit service: ModelService): ModelAccess[ModelVisibilityChange]
+  def visibilityChanges[V[_, _]: QueryView](
+      view: V[MVisibilityChangeTable, Model[MVisibilityChange]]
+  ): V[MVisibilityChangeTable, Model[MVisibilityChange]]
 
-  def visibilityChangesByDate(implicit service: ModelService): IO[Seq[ModelVisibilityChange]] =
-    visibilityChanges.sorted(_.createdAt)
+  def visibilityChangesByDate[V[_, _]: QueryView](
+      view: V[MVisibilityChangeTable, Model[MVisibilityChange]]
+  ): V[MVisibilityChangeTable, Model[MVisibilityChange]] =
+    visibilityChanges(view).sortView(_.createdAt)
 
-  def lastVisibilityChange(
-      implicit service: ModelService
-  ): OptionT[IO, ModelVisibilityChange] =
-    OptionT(visibilityChanges.sorted(_.createdAt, _.resolvedAt.?.isEmpty, limit = 1).map(_.headOption))
+  def lastVisibilityChange[QOptRet, SRet[_]](
+      view: ModelView[QOptRet, SRet, MVisibilityChangeTable, Model[MVisibilityChange]]
+  ): QOptRet = visibilityChangesByDate(view).filterView(_.resolvedAt.?.isEmpty).one
 
-  def lastChangeRequest(implicit service: ModelService): OptionT[IO, ModelVisibilityChange] =
-    OptionT(
-      visibilityChanges
-        .sorted(_.createdAt.desc, _.visibility === (Visibility.NeedsChanges: Visibility), limit = 1)
-        .map(_.headOption)
-    )
-
+  def lastChangeRequest[QOptRet, SRet[_]](
+      view: ModelView[QOptRet, SRet, MVisibilityChangeTable, Model[MVisibilityChange]]
+  ): QOptRet =
+    visibilityChanges(view)
+      .modifyingQuery(_.sortBy(_.createdAt.desc))
+      .filterView(_.visibility === (Visibility.NeedsChanges: Visibility))
+      .one
 }

@@ -1,6 +1,6 @@
 package models.viewhelper
 
-import db.ModelService
+import db.{Model, ModelService}
 import models.user.{Organization, User}
 import ore.permission._
 
@@ -14,19 +14,19 @@ object ScopedOrganizationData {
 
   val noScope = ScopedOrganizationData()
 
-  def cacheKey(orga: Organization, user: User) = s"""organization${orga.id.value}foruser${user.id.value}"""
+  def cacheKey(orga: Model[Organization], user: Model[User]) = s"""organization${orga.id}foruser${user.id}"""
 
-  def of[A](currentUser: Option[User], orga: Organization)(
+  def of[A](currentUser: Option[Model[User]], orga: Model[Organization])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[ScopedOrganizationData] =
     currentUser.fold(IO.pure(noScope)) { user =>
-      Parallel.parMap2(user.trustIn(orga), user.globalRoles.allFromParent(user)) { (trust, globalRoles) =>
+      Parallel.parMap2(user.trustIn(orga), user.globalRoles.allFromParent) { (trust, globalRoles) =>
         ScopedOrganizationData(user.can.asMap(trust, globalRoles.toSet)(EditSettings))
       }
     }
 
-  def of[A](currentUser: Option[User], orga: Option[Organization])(
+  def of[A](currentUser: Option[Model[User]], orga: Option[Model[Organization]])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): OptionT[IO, ScopedOrganizationData] =

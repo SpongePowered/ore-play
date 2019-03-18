@@ -11,8 +11,10 @@ import scala.util.matching.Regex
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
+import db.access.ModelView
 import db.impl.access.ProjectBase
-import db.{DbRef, ModelService}
+import db.impl.OrePostgresDriver.api._
+import db.{Model, DbRef, ModelService}
 import discourse.OreDiscourseApi
 import models.project._
 import models.user.role.ProjectUserRole
@@ -60,7 +62,7 @@ trait ProjectFactory {
     * @param owner      Upload owner
     * @return Loaded PluginFile
     */
-  def processPluginUpload(uploadData: PluginUpload, owner: User)(
+  def processPluginUpload(uploadData: PluginUpload, owner: Model[User])(
       implicit messages: Messages,
       mdc: OreMDC
   ): EitherT[IO, String, PluginFileWithData] = {
@@ -103,7 +105,7 @@ trait ProjectFactory {
     }
   }
 
-  def processSubsequentPluginUpload(uploadData: PluginUpload, owner: User, project: Project)(
+  def processSubsequentPluginUpload(uploadData: PluginUpload, owner: Model[User], project: Model[Project])(
       implicit messages: Messages,
       cs: ContextShift[IO],
       mdc: OreMDC
@@ -114,15 +116,21 @@ trait ProjectFactory {
       .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
       .flatMapF { plugin =>
         for {
-          t <- (project.channels.all, project.settings).parTupled
-          (channels, settings) = t
+          t <- (
+            project
+              .channels(ModelView.now(Channel))
+              .one
+              .getOrElseF(IO.raiseError(new IllegalStateException("No channel found for project"))),
+            project.settings
+          ).parTupled
+          (headChannel, settings) = t
           version = this.startVersion(
             plugin,
             project.pluginId,
-            project.id.unsafeToOption,
+            Some(project.id),
             project.url,
             settings.forumSync,
-            channels.head.name
+            headChannel.name
           )
           modelExists <- version match {
             case Right(v) => v.exists
@@ -165,7 +173,7 @@ trait ProjectFactory {
     val pendingProject = PendingProject(
       pluginId = metaData.id.get,
       ownerName = owner.name,
-      ownerId = owner.id.value,
+      ownerId = owner.id,
       name = name,
       slug = slugify(name),
       visibility = Visibility.New,
@@ -211,7 +219,7 @@ trait ProjectFactory {
           hash = plugin.md5,
           fileName = path.getFileName.toString,
           signatureFileName = plugin.signaturePath.getFileName.toString,
-          authorId = plugin.user.id.value,
+          authorId = plugin.user.id,
           projectUrl = projectUrl,
           channelName = channelName,
           channelColor = this.config.defaultChannelColor,
@@ -252,7 +260,7 @@ trait ProjectFactory {
     * @return New Project
     * @throws         IllegalArgumentException if the project already exists
     */
-  def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[Project] = {
+  def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[Model[Project]] = {
     import cats.instances.vector._
 
     for {
@@ -265,24 +273,24 @@ trait ProjectFactory {
       _                   = checkArgument(available, "slug not available", "")
       _                   = checkArgument(this.config.isValidProjectName(pending.name), "invalid name", "")
       // Create the project and it's settings
-      newProject <- this.projects.add(pending.asFunc)
-      _          <- service.insert(pending.settings.asFunc(newProject.id.value))
+      newProject <- service.insert(pending.asFunc)
+      _          <- service.insert(pending.settings.copy(projectId = newProject.id))
       _ <- {
         // Invite members
         val dossier   = newProject.memberships
         val owner     = newProject.owner
         val ownerId   = owner.userId
-        val projectId = newProject.id.value
+        val projectId = newProject.id
 
         val addRole = dossier.addRole(
           newProject,
           ownerId,
-          ProjectUserRole.Partial(ownerId, projectId, Role.ProjectOwner, isAccepted = true).asFunc
+          ProjectUserRole(ownerId, projectId, Role.ProjectOwner, isAccepted = true)
         )
         val addOtherRoles = pending.roles.toVector.parTraverse { role =>
-          dossier.addRole(newProject, role.userId, role.copy(projectId = projectId).asFunc) *>
+          dossier.addRole(newProject, role.userId, role.copy(projectId = projectId)) *>
             service.insert(
-              Notification.partial(
+              Notification(
                 userId = role.userId,
                 originId = ownerId,
                 notificationType = NotificationType.ProjectInvite,
@@ -305,15 +313,14 @@ trait ProjectFactory {
     * @param color   Channel color
     * @return New channel
     */
-  def createChannel(project: Project, name: String, color: Color): IO[Channel] = {
-    checkNotNull(project, "null project", "")
-    checkNotNull(name, "null name", "")
+  def createChannel(project: Model[Project], name: String, color: Color): IO[Model[Channel]] = {
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
-    checkNotNull(color, "null color", "")
     for {
-      channelCount <- project.channels.size
-      _ = checkState(channelCount < this.config.ore.projects.maxChannels, "channel limit reached", "")
-      channel <- this.service.access[Channel]().add(Channel.partial(project.id.value, name, color))
+      limitReached <- service.runDBIO(
+        (project.channels(ModelView.later(Channel)).size < config.ore.projects.maxChannels).result
+      )
+      _ = checkState(limitReached, "channel limit reached", "")
+      channel <- service.insert(Channel(project.id, name, color))
     } yield channel
   }
 
@@ -324,9 +331,12 @@ trait ProjectFactory {
     * @return New version
     */
   def createVersion(
-      project: Project,
+      project: Model[Project],
       pending: PendingVersion
-  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Version, Channel, Seq[VersionTag])] = {
+  )(
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
+  ): IO[(Model[Version], Model[Channel], Seq[Model[VersionTag]])] = {
 
     for {
       // Create channel if not exists
@@ -336,11 +346,8 @@ trait ProjectFactory {
         IO.raiseError(new IllegalArgumentException("Version already exists."))
       else IO.unit
       // Create version
-      newVersion <- {
-        val newVersion = pending.asFunc(project.id.value, channel.id.value)
-        this.service.access[Version]().add(newVersion)
-      }
-      tags <- addTags(pending, newVersion)
+      newVersion <- service.insert(pending.asVersion(project.id, channel.id))
+      tags       <- addTags(pending, newVersion)
       // Notify watchers
       _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
       _ <- uploadPlugin(project, pending.plugin, newVersion).fold(e => IO.raiseError(new Exception(e)), IO.pure)
@@ -353,24 +360,25 @@ trait ProjectFactory {
     } yield (newVersion, channel, tags)
   }
 
-  private def addTags(pendingVersion: PendingVersion, newVersion: Version)(
+  private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version])(
       implicit cs: ContextShift[IO]
-  ): IO[Seq[VersionTag]] =
+  ): IO[Seq[Model[VersionTag]]] =
     (
-      pendingVersion.plugin.data.createTags(newVersion.id.value),
+      pendingVersion.plugin.data.createTags(newVersion.id),
       addDependencyTags(newVersion)
     ).parMapN(_ ++ _)
 
-  private def addDependencyTags(version: Version): IO[Seq[VersionTag]] =
+  private def addDependencyTags(version: Model[Version]): IO[Seq[Model[VersionTag]]] =
     Platform
       .createPlatformTags(
-        version.id.value,
+        version.id,
         // filter valid dependency versions
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
       )
 
-  private def getOrCreateChannel(pending: PendingVersion, project: Project) =
-    project.channels
+  private def getOrCreateChannel(pending: PendingVersion, project: Model[Project]) =
+    project
+      .channels(ModelView.now(Channel))
       .find(equalsIgnoreCase(_.name, pending.channelName))
       .getOrElseF(createChannel(project, pending.channelName, pending.channelColor))
 

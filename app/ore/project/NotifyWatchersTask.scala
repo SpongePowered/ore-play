@@ -3,10 +3,9 @@ package ore.project
 import scala.concurrent.ExecutionContext
 
 import db.impl.OrePostgresDriver.api._
-import db.{DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project.{Project, Version}
 import models.user.{Notification, User}
-import ore.OreConfig
 import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList
@@ -19,13 +18,13 @@ import cats.data.NonEmptyList
   * @param version  New version
   * @param projects ProjectBase instance
   */
-case class NotifyWatchersTask(version: Version, project: Project)(
+case class NotifyWatchersTask(version: Model[Version], project: Model[Project])(
     implicit ec: ExecutionContext,
     service: ModelService
 ) extends Runnable {
 
   private val notification = (userId: DbRef[User]) =>
-    Notification.partial(
+    Notification(
       userId = userId,
       originId = project.ownerId,
       notificationType = NotificationType.NewProjectVersion,
@@ -34,10 +33,10 @@ case class NotifyWatchersTask(version: Version, project: Project)(
   )
 
   private val watchingUsers =
-    service.runDBIO(project.watchers.allQueryFromParent(project).filter(_.id =!= version.authorId).result)
+    service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).result)
 
   def run(): Unit =
     watchingUsers
       .unsafeToFuture()
-      .foreach(_.foreach(watcher => service.insert(notification(watcher.id.value))))
+      .foreach(_.foreach(watcher => service.insert(notification(watcher.id))))
 }

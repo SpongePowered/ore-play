@@ -5,8 +5,9 @@
 @import ore.permission.{HardRemoveProject, HideProjects}
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
+@import db.Model
 @import views.html.helper.CSPNonce
-@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[ProjectApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -133,7 +134,7 @@
                         </div>
                         <div class="setting-content">
                         @deploymentKey.map { key =>
-                        <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id.value">
+                        <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id">
                             <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
                             <span class="text">@messages("project.settings.revokeKey")</span>
                         </button>

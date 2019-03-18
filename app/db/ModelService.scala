@@ -3,35 +3,18 @@ package db
 import java.sql.Timestamp
 import java.util.Date
 
-import scala.concurrent.duration.Duration
-
-import db.ModelFilter._
-import db.access.ModelAccess
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import db.table.ModelTable
+import db.impl.OrePostgresDriver.api._
 
-import cats.data.OptionT
-import cats.effect.IO
-import cats.syntax.all._
+import cats.arrow.FunctionK
+import cats.effect.{Clock, IO}
+import cats.~>
 import doobie.ConnectionIO
-import slick.jdbc.{JdbcProfile, JdbcType}
-import slick.lifted.ColumnOrdered
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.
   */
-abstract class ModelService(val driver: JdbcProfile) {
-  import driver.api._
-
-  /**
-    * The default timeout when awaiting a query result.
-    */
-  def DefaultTimeout: Duration
-
-  /**
-    * Performs initialization code for the ModelService.
-    */
-  def start(): Unit
+abstract class ModelService {
 
   /**
     * Returns a current Timestamp.
@@ -46,13 +29,8 @@ abstract class ModelService(val driver: JdbcProfile) {
 
   def organizationBase: OrganizationBase
 
-  /**
-    * Returns the base query for the specified Model class.
-    *
-    * @tparam M         Model type
-    * @return           Base query for Model
-    */
-  def newAction[M <: Model](implicit query: ModelQuery[M]): Query[M#T, M, Seq] = query.baseQuery
+  private val runDBIOFunc: DBIO ~> IO   = FunctionK.lift(runDBIO)
+  implicit private val clock: Clock[IO] = Clock.create[IO]
 
   /**
     * Runs the specified DBIO on the DB.
@@ -71,30 +49,12 @@ abstract class ModelService(val driver: JdbcProfile) {
   def runDbCon[R](program: ConnectionIO[R]): IO[R]
 
   /**
-    * Returns a new ModelAccess to access a ModelTable synchronously.
-    *
-    * @param baseFilter Base filter to apply
-    * @tparam M0         Model
-    * @return           New ModelAccess
-    */
-  def access[M0 <: Model { type M = M0 }: ModelQuery](baseFilter: M0#T => Rep[Boolean] = All[M0]) =
-    new ModelAccess[M0](this, baseFilter)
-
-  /**
     * Creates the specified model in it's table.
     *
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M <: Model](model: InsertFunc[M])(implicit query: ModelQuery[M]): IO[M] = {
-    val toInsert = model(ObjId.UnsafeUninitialized(), ObjectTimestamp(theTime))
-    val models   = newAction
-    runDBIO {
-      models.returning(models.map(_.id)).into {
-        case (m, id) => query.copyWith(m)(ObjId(id), m.createdAt)
-      } += toInsert
-    }
-  }
+  def insert[M](model: M)(implicit query: ModelQuery[M]): IO[Model[M]] = query.companion.insert(model)(runDBIOFunc)
 
   /**
     * Creates the specified models in it's table.
@@ -102,58 +62,18 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param models  Models to create
     * @return       Newly created models
     */
-  def bulkInsert[M <: Model](models: Seq[InsertFunc[M]])(implicit query: ModelQuery[M]): IO[Seq[M]] =
-    if (models.nonEmpty) {
-      val toInsert = models.map(_(ObjId.UnsafeUninitialized(), ObjectTimestamp(theTime)))
-      val action   = newAction[M]
-      runDBIO {
-        action
-          .returning(action.map(_.id))
-          .into((m, id) => query.copyWith(m)(ObjId(id), m.createdAt)) ++= toInsert
-      }
-    } else IO.pure(Nil)
+  def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[Model[M]]] =
+    query.companion.bulkInsert(models)(runDBIOFunc)
 
-  def update[M0 <: Model { type M = M0 }: ModelQuery](model: M0): IO[M0] =
-    runDBIO(newAction.filter(IdFilter(model.id.value)).update(model)).as(model)
-
-  /**
-    * Sets a column in a [[ModelTable]].
-    *
-    * @param model  Model to update
-    * @param column Column to update
-    * @param value  Value to set
-    * @param mapper JdbcType
-    * @tparam A     Value type
-    * @tparam M0     Model type
-    */
-  def set[A, M0 <: Model { type M = M0 }: ModelQuery](model: M0, column: M0#T => Rep[A], value: A)(
-      implicit mapper: JdbcType[A]
-  ): IO[Int] = runDBIO(newAction.filter(IdFilter(model.id.value)).map(column(_)).update(value))
-
-  /**
-    * Returns the first model that matches the given predicate.
-    *
-    * @param filter  Filter
-    * @return        Optional result
-    */
-  def find[M <: Model: ModelQuery](filter: M#T => Rep[Boolean]): OptionT[IO, M] =
-    OptionT(runDBIO(newAction.filter(filter).take(1).result).map(_.headOption))
-
-  /**
-    * Returns the size of the model table.
-    *
-    * @return Size of model table
-    */
-  def count[M <: Model: ModelQuery](filter: M#T => Rep[Boolean] = All): IO[Int] =
-    runDBIO(newAction.filter(filter).length.result)
+  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): IO[Model[M]] =
+    query.companion.update(model)(update)(runDBIOFunc)
 
   /**
     * Deletes the specified Model.
     *
     * @param model Model to delete
     */
-  def delete[M0 <: Model { type M = M0 }: ModelQuery](model: M0): IO[Int] =
-    deleteWhere[M0](IdFilter(model.id.value))
+  def delete[M](model: Model[M])(implicit query: ModelQuery[M]): IO[Int] = query.companion.delete(model)(runDBIOFunc)
 
   /**
     * Deletes all the models meeting the specified filter.
@@ -161,66 +81,6 @@ abstract class ModelService(val driver: JdbcProfile) {
     * @param filter     Filter to use
     * @tparam M         Model
     */
-  def deleteWhere[M <: Model: ModelQuery](filter: M#T => Rep[Boolean]): IO[Int] =
-    runDBIO(newAction.filter(filter).delete)
-
-  /**
-    * Returns the model with the specified ID, if any.
-    *
-    * @param id   Model with ID
-    * @return     Model if present, None otherwise
-    */
-  def get[M0 <: Model { type M = M0 }: ModelQuery](id: DbRef[M0], filter: M0#T => Rep[Boolean] = All): OptionT[IO, M0] =
-    find(IdFilter[M0](id) && filter)
-
-  /**
-    * Returns a sequence of Model's that have an ID in the specified Set.
-    *
-    * @param ids        ID set
-    * @param filter     Additional filter
-    * @tparam M0         Model type
-    * @return           Seq of models in ID set
-    */
-  def in[M0 <: Model { type M = M0 }: ModelQuery](
-      ids: Set[DbRef[M0]],
-      filter: M0#T => Rep[Boolean] = All
-  ): IO[Seq[M0]] = this.filter(ModelFilter[M0](_.id.inSetBind(ids)) && filter)
-
-  /**
-    * Returns a collection of models with the specified limit and offset.
-    *
-    * @param limit  Amount of models to take
-    * @param offset Offset to drop
-    * @return       Collection of models
-    */
-  def collect[M <: Model: ModelQuery](
-      filter: M#T => Rep[Boolean] = All,
-      sort: Option[M#T => ColumnOrdered[_]] = None,
-      limit: Int = -1,
-      offset: Int = -1
-  ): IO[Seq[M]] = {
-    type Q = Query[M#T, M, Seq]
-    val addSort   = (query: Q) => sort.fold(query)(sort => query.sortBy(sort))
-    val addOffset = (query: Q) => if (offset > -1) query.drop(offset) else query
-    val addLimit  = (query: Q) => if (limit > -1) query.take(limit) else query
-
-    val query = Seq(addSort, addOffset, addLimit).foldLeft(newAction.filter(filter))((q, f) => f(q))
-
-    runDBIO(query.result)
-  }
-
-  /**
-    * Filters the the models.
-    *
-    * @param filter Model filter
-    * @param limit  Amount to take
-    * @param offset Amount to drop
-    * @tparam M     Model
-    * @return       Filtered models
-    */
-  def filter[M <: Model: ModelQuery](
-      filter: M#T => Rep[Boolean],
-      limit: Int = -1,
-      offset: Int = -1
-  ): IO[Seq[M]] = collect(filter, limit = limit, offset = offset)
+  def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): IO[Int] =
+    model.deleteWhere(filter)(runDBIOFunc)
 }

@@ -9,7 +9,7 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.JoinableData
 @import ore.permission.Permission
-@(j: JoinableData[_ <: UserRoleModel, _ <: Member[_], _ <: Joinable[_ <: Member[_], _]], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
+@(j: JoinableData[_ <: UserRoleModel[_], _ <: Joinable], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 
 <!-- TODO: Pagination -->
@@ -99,7 +99,7 @@
                 <a class="username" href="@routes.Users.showProjects(user.name, None)">
                 @user.name
                 </a>
-                    <p style="display: none;" class="role-id">@role.id.value</p>
+                    <p style="display: none;" class="role-id">@role.id</p>
                     @if(editable && perms.getOrElse(EditSettings, false) && !role.role.trust.equals(Absolute)) {
                         <a href="#">
                             <i style="padding-left:5px" class="fas fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>

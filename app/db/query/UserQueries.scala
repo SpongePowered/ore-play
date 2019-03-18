@@ -21,13 +21,17 @@ object UserQueries extends DoobieOreProtocol {
   def getProjects(
       username: String,
       currentUserId: Option[DbRef[User]],
+      canSeeHidden: Boolean,
       order: ProjectSortingStrategy,
       pageSize: Long,
       offset: Long
   ): Query0[ProjectListEntry] = {
-    val visibilityFrag = currentUserId.fold(fr"(p.visibility = 1 OR p.visibility = 2)") { id =>
-      fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))"
-    }
+    val visibilityFrag =
+      if (canSeeHidden) None
+      else
+        currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
+          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))")
+        }
 
     val fragments =
       sql"""|SELECT p.owner_name,
@@ -44,7 +48,7 @@ object UserQueries extends DoobieOreProtocol {
             |       array_remove(array_agg(p.tag_data), NULL)  AS tag_datas,
             |       array_remove(array_agg(p.tag_color), NULL) AS tag_colors
             |  FROM home_projects p
-            |  WHERE p.owner_name = $username """.stripMargin ++ fr"AND" ++ visibilityFrag ++
+            |  WHERE p.owner_name = $username """.stripMargin ++ visibilityFrag.fold(fr0"")(frag => fr"AND" ++ frag) ++
         fr"""|GROUP BY (p.owner_name,
              |          p.slug,
              |          p.visibility,
@@ -150,17 +154,16 @@ object UserQueries extends DoobieOreProtocol {
     sql"""|SELECT greatest(gt.trust, pt.trust, ot.trust, 0)
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
-          |         LEFT JOIN project_trust pt ON pt.user_id = u.id
+          |         LEFT JOIN project_trust pt ON pt.user_id = u.id AND pt.project_id = $projectId
           |         LEFT JOIN projects p ON p.id = pt.project_id
           |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = p.owner_id
-          |  WHERE u.id = $userId AND (p.id IS NULL OR p.id = $projectId)""".stripMargin.query[Trust]
+          |  WHERE u.id = $userId;""".stripMargin.query[Trust]
 
   def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] =
     sql"""|SELECT greatest(gt.trust, ot.trust, 0)
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
-          |         LEFT JOIN organization_trust ot ON ot.user_id = u.id
-          |  WHERE u.id = $userId
-          |    AND (ot.organization_id IS NULL OR ot.organization_id = $organizationId)""".stripMargin.query[Trust]
+          |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = $organizationId
+          |  WHERE u.id = $userId;""".stripMargin.query[Trust]
 
 }

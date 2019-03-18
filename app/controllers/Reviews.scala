@@ -12,9 +12,10 @@ import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, ReviewState, Version}
@@ -29,6 +30,7 @@ import views.{html => views}
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.IO
 import cats.syntax.all._
+import cats.instances.option._
 import slick.lifted.{Rep, TableQuery}
 
 /**
@@ -48,25 +50,27 @@ final class Reviews @Inject()(forms: OreForms)(
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(ReviewProjects)).andThen(ProjectAction(author, slug)).asyncEitherT {
       implicit request =>
-        import cats.instances.vector._
         for {
           version <- getVersion(request.project, versionString)
-          reviews <- EitherT.right[Result](version.mostRecentReviews)
-          rv <- EitherT.right[Result](
-            reviews.toVector.parTraverse(r => users.get(r.userId).map(_.name).value.tupleLeft(r))
-          )
+          dbio = version
+            .mostRecentReviews(ModelView.raw(Review))
+            .joinLeft(TableQuery[UserTable])
+            .on(_.userId === _.id)
+            .map(t => t._1 -> t._2.map(_.name))
+            .result
+          rv <- EitherT.right[Result](service.runDBIO(dbio))
         } yield {
-          val unfinished = reviews.filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
-          Ok(views.users.admin.reviews(unfinished, rv, request.project, version))
+          val unfinished = rv.map(_._1).filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
+          Ok(views.users.admin.reviews(Model.unwrapNested(unfinished), rv, request.project, version))
         }
     }
 
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
     Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
-        val review = Review.partial(
-          version.id.value,
-          request.user.id.value,
+        val review = Review(
+          version.id,
+          request.user.id,
           None,
           JsObject.empty
         )
@@ -79,10 +83,10 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        review  <- EitherT.fromOptionF(version.mostRecentReviews.map(_.headOption), notFound)
+        review  <- version.mostRecentReviews(ModelView.now(Review)).one.toRight(notFound)
         _ <- EitherT.right[Result](
-          service.update(
-            version.copy(
+          service.update(version)(
+            _.copy(
               reviewState = ReviewState.Unreviewed,
               approvedAt = None,
               reviewerId = None
@@ -91,7 +95,7 @@ final class Reviews @Inject()(forms: OreForms)(
         )
         _ <- EitherT.right[Result](
           service
-            .update(review.copy(endedAt = None))
+            .update(review)(_.copy(endedAt = None))
             .flatMap(_.addMessage(Message("Reopened the review", System.currentTimeMillis(), "start")))
         )
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
@@ -104,10 +108,10 @@ final class Reviews @Inject()(forms: OreForms)(
       .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
-          review  <- version.mostRecentUnfinishedReview.toRight(notFound)
+          review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound)
           _ <- EitherT.right[Result](
             service
-              .update(review.copy(endedAt = Some(Timestamp.from(Instant.now()))))
+              .update(review)(_.copy(endedAt = Some(Timestamp.from(Instant.now()))))
               .flatMap(_.addMessage(Message(request.body.trim, System.currentTimeMillis(), "stop")))
           )
         } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
@@ -119,10 +123,10 @@ final class Reviews @Inject()(forms: OreForms)(
       for {
         project <- getProject(author, slug)
         version <- getVersion(project, versionString)
-        review  <- version.mostRecentUnfinishedReview.toRight(notFound)
+        review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound)
         _ <- EitherT.right[Result](
           (
-            service.update(review.copy(endedAt = Some(Timestamp.from(Instant.now())))),
+            service.update(review)(_.copy(endedAt = Some(Timestamp.from(Instant.now())))),
             // send notification that review happened
             sendReviewNotification(project, version, request.user)
           ).parTupled
@@ -154,9 +158,13 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private lazy val notificationUsersQuery = Compiled(queryNotificationUsers _)
 
-  private def sendReviewNotification(project: Project, version: Version, requestUser: User): IO[Unit] = {
+  private def sendReviewNotification(
+      project: Model[Project],
+      version: Version,
+      requestUser: Model[User]
+  ): IO[Unit] = {
     val usersF =
-      service.runDBIO(notificationUsersQuery((project.id.value, version.authorId, None)).result).map { list =>
+      service.runDBIO(notificationUsersQuery((project.id, version.authorId, None)).result).map { list =>
         list.collect {
           case (res, Some(level)) if level.trust >= Trust.Lifted => res
           case (res, None)                                       => res
@@ -166,9 +174,9 @@ final class Reviews @Inject()(forms: OreForms)(
     usersF
       .map { users =>
         users.map { userId =>
-          Notification.partial(
+          Notification(
             userId = userId,
-            originId = requestUser.id.value,
+            originId = requestUser.id,
             notificationType = NotificationType.VersionReviewed,
             messageArgs = NonEmptyList.of("notification.project.reviewed", project.slug, version.versionString)
           )
@@ -186,11 +194,12 @@ final class Reviews @Inject()(forms: OreForms)(
           version <- getProjectVersion(author, slug, versionString)
           _ <- {
             // Close old review
-            val closeOldReview = version.mostRecentUnfinishedReview
+            val closeOldReview = version
+              .mostRecentUnfinishedReview(ModelView.now(Review))
               .semiflatMap { oldreview =>
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
-                  service.update(oldreview.copy(endedAt = Some(Timestamp.from(Instant.now())))),
+                  service.update(oldreview)(_.copy(endedAt = Some(Timestamp.from(Instant.now())))),
                 ).parTupled.void
               }
               .getOrElse(())
@@ -199,9 +208,9 @@ final class Reviews @Inject()(forms: OreForms)(
             val result = (
               closeOldReview,
               this.service.insert(
-                Review.partial(
-                  version.id.value,
-                  request.user.id.value,
+                Review(
+                  version.id,
+                  request.user.id,
                   None,
                   JsObject.empty
                 )
@@ -230,7 +239,7 @@ final class Reviews @Inject()(forms: OreForms)(
       implicit request =>
         for {
           version      <- getProjectVersion(author, slug, versionString)
-          recentReview <- version.mostRecentUnfinishedReview.toRight(Ok("Review"))
+          recentReview <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(Ok("Review"))
           currentUser  <- users.current.toRight(Ok("Review"))
           _ <- {
             if (recentReview.userId == currentUser.id.value) {
@@ -259,12 +268,12 @@ final class Reviews @Inject()(forms: OreForms)(
           UserActionLogger.log(
             request,
             LoggedAction.VersionReviewStateChanged,
-            version.id.value,
+            version.id,
             newState.toString,
             oldState.toString,
           )
         )
-        _ <- EitherT.right[Result](service.update(version.copy(reviewState = newState)))
+        _ <- EitherT.right[Result](service.update(version)(_.copy(reviewState = newState)))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }

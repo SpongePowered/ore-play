@@ -5,6 +5,7 @@ import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import db.table.ModelTable
+import models.admin.VersionVisibilityChange
 import models.project.{Channel, Project, ReviewState, Version}
 import models.user.User
 
@@ -28,10 +29,10 @@ class VersionTable(tag: Tag)
   def signatureFileName = column[String]("signature_file_name")
 
   override def * =
-    mkProj(
+    (
+      id.?,
+      createdAt.?,
       (
-        id.?,
-        createdAt.?,
         projectId,
         versionString,
         dependencies,
@@ -48,5 +49,5 @@ class VersionTable(tag: Tag)
         fileName,
         signatureFileName
       )
-    )(mkTuple[Version]())
+    ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
 }

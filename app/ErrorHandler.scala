@@ -27,7 +27,7 @@ object ErrorHandler {
       router: Provider[Router],
       val messagesApi: MessagesApi
   )(implicit config: OreConfig)
-      extends DefaultHttpErrorHandler
+      extends DefaultHttpErrorHandler(env, conf, sourceMapper, router)
       with I18nSupport {
 
     override def onProdServerError(request: RequestHeader, exception: UsefulException): Future[Result] = {

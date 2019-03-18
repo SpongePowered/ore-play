@@ -12,7 +12,7 @@ import play.api.i18n.Lang
 import play.api.libs.json.{JsValue, Json}
 
 import models.querymodels.ViewTag
-import db.{ObjId, ObjectTimestamp}
+import db.{Model, ObjId, ObjTimestamp}
 import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
@@ -74,7 +74,14 @@ trait DoobieOreProtocol {
 
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
     Meta[Long].timap(ObjId.apply[A])(_.value)
-  implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].timap(ObjectTimestamp.apply)(_.value)
+  implicit val objTimestampMeta: Meta[ObjTimestamp] = Meta[Timestamp].timap(ObjTimestamp.apply)(_.value)
+
+  implicit def modelRead[A](implicit raw: Read[(ObjId[A], ObjTimestamp, A)]): Read[Model[A]] = raw.map {
+    case (id, time, obj) => Model(id, time, obj)
+  }
+  implicit def modelWrite[A](implicit raw: Write[(ObjId[A], ObjTimestamp, A)]): Write[Model[A]] = raw.contramap {
+    case Model(id, createdAt, obj) => (id, createdAt, obj)
+  }
 
   implicit val intervalMeta: Meta[PGInterval] = Meta.Advanced.other[PGInterval]("interval")
   implicit val finiteDurationPut: Put[FiniteDuration] = intervalMeta.put.contramap[FiniteDuration] { a =>

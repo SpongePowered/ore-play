@@ -2,7 +2,7 @@ package db.impl.table
 
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
-import db.{DbRef, Model}
+import db.DbRef
 import models.statistic.StatEntry
 import models.user.User
 
@@ -15,7 +15,7 @@ import com.github.tminglei.slickpg.InetString
   * @param name         Table name
   * @param modelIdName  Column name of model ID field
   */
-abstract class StatTable[S <: Model, M <: StatEntry[S]](tag: Tag, name: String, modelIdName: String)
+abstract class StatTable[S, M <: StatEntry[S]](tag: Tag, name: String, modelIdName: String)
     extends ModelTable[M](tag, name) {
 
   /** The model ID of the statistic subject */

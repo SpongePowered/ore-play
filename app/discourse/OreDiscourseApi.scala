@@ -5,7 +5,7 @@ import java.nio.file.Path
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-import db.ModelService
+import db.{Model, ModelService}
 import models.project.{Project, Version}
 import models.user.User
 import ore.OreConfig
@@ -74,8 +74,8 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @return        True if successful
     */
   def createProjectTopic(
-      project: Project
-  )(implicit service: ModelService, config: OreConfig): IO[Project] = {
+      project: Model[Project]
+  )(implicit service: ModelService, config: OreConfig): IO[Model[Project]] = {
     if (!this.isEnabled)
       IO.pure(project)
     else {
@@ -102,7 +102,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
                                 |Topic ID: ${topic.topicId}
                                 |Post ID: ${topic.postId}""".stripMargin)
         project <- EitherT.right[(List[String], String)](
-          service.update(project.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
+          service.update(project)(_.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
         )
       } yield project
 
@@ -132,7 +132,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @return         True if successful
     */
   def updateProjectTopic(
-      project: Project
+      project: Model[Project]
   )(implicit service: ModelService, config: OreConfig): IO[Boolean] = {
     if (!this.isEnabled)
       IO.pure(true)
@@ -166,12 +166,12 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
 
       val res = for {
         // Set flag so that if we are interrupted we will remember to do it later
-        _       <- EitherT.right[Boolean](service.update(project.copy(isTopicDirty = true)))
+        _       <- EitherT.right[Boolean](service.update(project)(_.copy(isTopicDirty = true)))
         content <- EitherT.right[Boolean](Templates.projectTopic(project))
         _       <- updateTopicProgram.leftSemiflatMap(logErrorsAs(_, as = false))
         _       <- updatePostProgram(content).leftSemiflatMap(logErrorsAs(_, as = false))
         _ = MDCLogger.debug(s"Project topic updated for ${project.url}.")
-        _ <- EitherT.right[Boolean](service.update(project.copy(isTopicDirty = false)))
+        _ <- EitherT.right[Boolean](service.update(project)(_.copy(isTopicDirty = false)))
       } yield true
 
       res.merge
@@ -206,7 +206,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @param version Version of project
     * @return
     */
-  def postVersionRelease(project: Project, version: Version, content: Option[String])(
+  def postVersionRelease(project: Model[Project], version: Version, content: Option[String])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): EitherT[IO, List[String], DiscoursePost] = {
@@ -246,7 +246,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @param project  Project to delete topic for
     * @return         True if deleted
     */
-  def deleteProjectTopic(project: Project)(implicit service: ModelService): IO[Project] = {
+  def deleteProjectTopic(project: Model[Project])(implicit service: ModelService): IO[Model[Project]] = {
     if (!this.isEnabled)
       IO.pure(project)
     else {
@@ -255,7 +255,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
       def logFailure(): Unit = Logger.warn(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")
 
       val deleteForums = deleteTopicF(admin, project.topicId.get).onError { case _ => IO(logFailure()) }
-      deleteForums *> service.update(project.copy(topicId = None, postId = None))
+      deleteForums *> service.update(project)(_.copy(topicId = None, postId = None))
     }
   }
 
@@ -283,7 +283,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
 
     /** Generates the content for a project topic. */
     def projectTopic(
-        project: Project
+        project: Model[Project]
     )(implicit config: OreConfig, service: ModelService): IO[String] = project.homePage.map { page =>
       readAndFormatFile(
         topicTemplatePath,

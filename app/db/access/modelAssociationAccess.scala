@@ -3,49 +3,89 @@ package db.access
 import scala.language.higherKinds
 
 import db.impl.OrePostgresDriver.api._
-import db.table.AssociativeTable
-import db.{AssociationQuery, Model, ModelQuery, ModelService}
+import db.table.{AssociativeTable, ModelTable}
+import db.{AssociationQuery, Model, ModelCompanion, ModelService}
 
 import cats.effect.IO
 import cats.syntax.all._
 
-trait ModelAssociationAccess[Assoc <: AssociativeTable[P, C], P <: Model { type M = P }, C <: Model { type M = C }, F[
-    _
-]] {
+trait ModelAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, PT <: ModelTable[P], CT <: ModelTable[C], F[_]] {
 
-  def addAssoc(parent: P, child: C): F[Unit]
+  def addAssoc(parent: Model[P], child: Model[C]): F[Unit]
 
-  def removeAssoc(parent: P, child: C): F[Unit]
+  def removeAssoc(parent: Model[P], child: Model[C]): F[Unit]
 
-  def contains(parent: P, child: C): F[Boolean]
+  def contains(parent: Model[P], child: Model[C]): F[Boolean]
 
-  def deleteAllFromParent(parent: P): F[Unit]
+  def deleteAllFromParent(parent: Model[P]): F[Unit]
 
-  def deleteAllFromChild(child: C): F[Unit]
+  def deleteAllFromChild(child: Model[C]): F[Unit]
 
-  def allQueryFromParent(parent: P): Query[C#T, C, Seq]
+  def allQueryFromParent(parent: Model[P]): Query[CT, Model[C], Seq]
 
-  def allFromParent(parent: P): F[Seq[C]]
+  def allFromParent(parent: Model[P]): F[Seq[Model[C]]]
 
-  def allQueryFromChild(child: C): Query[P#T, P, Seq]
+  def allQueryFromChild(child: Model[C]): Query[PT, Model[P], Seq]
 
-  def allFromChild(child: C): F[Seq[P]]
+  def allFromChild(child: Model[C]): F[Seq[Model[P]]]
+
+  def applyChild(child: Model[C]): ChildAssociationAccess[Assoc, P, C, PT, CT, F] =
+    new ChildAssociationAccess(child, this)
+  def applyParent(parent: Model[P]): ParentAssociationAccess[Assoc, P, C, PT, CT, F] =
+    new ParentAssociationAccess(parent, this)
+}
+
+class ParentAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, PT <: ModelTable[P], CT <: ModelTable[C], F[_]](
+    parent: Model[P],
+    val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
+) {
+
+  def addAssoc(child: Model[C]): F[Unit] = base.addAssoc(parent, child)
+
+  def removeAssoc(child: Model[C]): F[Unit] = base.removeAssoc(parent, child)
+
+  def contains(child: Model[C]): F[Boolean] = base.contains(parent, child)
+
+  def deleteAllFromParent: F[Unit] = base.deleteAllFromParent(parent)
+
+  def allQueryFromParent: Query[CT, Model[C], Seq] = base.allQueryFromParent(parent)
+
+  def allFromParent: F[Seq[Model[C]]] = base.allFromParent(parent)
+}
+
+class ChildAssociationAccess[Assoc <: AssociativeTable[P, C], P, C, PT <: ModelTable[P], CT <: ModelTable[C], F[_]](
+    child: Model[C],
+    val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
+) {
+  def addAssoc(parent: Model[P]): F[Unit] = base.addAssoc(parent, child)
+
+  def removeAssoc(parent: Model[P]): F[Unit] = base.removeAssoc(parent, child)
+
+  def contains(parent: Model[P]): F[Boolean] = base.contains(parent, child)
+
+  def deleteAllFromChild: F[Unit] = base.deleteAllFromChild(child)
+
+  def allQueryFromChild: Query[PT, Model[P], Seq] = base.allQueryFromChild(child)
+
+  def allFromChild: F[Seq[Model[P]]] = base.allFromChild(child)
 }
 
 class ModelAssociationAccessImpl[
     Assoc <: AssociativeTable[P, C],
-    P <: Model { type M = P }: ModelQuery,
-    C <: Model { type M = C }: ModelQuery
-](
+    P,
+    C,
+    PT <: ModelTable[P],
+    CT <: ModelTable[C]
+](val pCompanion: ModelCompanion.Aux[P, PT], val cCompanion: ModelCompanion.Aux[C, CT])(
     implicit
     query: AssociationQuery[Assoc, P, C],
     service: ModelService
-) extends ModelAssociationAccess[Assoc, P, C, IO] {
+) extends ModelAssociationAccess[Assoc, P, C, PT, CT, IO] {
 
-  def addAssoc(parent: P, child: C): IO[Unit] =
-    service.runDBIO(query.baseQuery += ((parent.id.value, child.id.value))).void
+  def addAssoc(parent: Model[P], child: Model[C]): IO[Unit] =
+    service.runDBIO(query.baseQuery += ((parent.id, child.id))).void
 
-  def removeAssoc(parent: P, child: C): IO[Unit] =
+  def removeAssoc(parent: Model[P], child: Model[C]): IO[Unit] =
     service
       .runDBIO(
         query.baseQuery
@@ -54,31 +94,31 @@ class ModelAssociationAccessImpl[
       )
       .void
 
-  def contains(parent: P, child: C): IO[Boolean] = service.runDBIO(
+  def contains(parent: Model[P], child: Model[C]): IO[Boolean] = service.runDBIO(
     (query.baseQuery
       .filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === child.id.value)
       .length > 0).result
   )
 
-  override def deleteAllFromParent(parent: P): IO[Unit] =
+  override def deleteAllFromParent(parent: Model[P]): IO[Unit] =
     service.runDBIO(query.baseQuery.filter(query.parentRef(_) === parent.id.value).delete).void
 
-  override def deleteAllFromChild(child: C): IO[Unit] =
+  override def deleteAllFromChild(child: Model[C]): IO[Unit] =
     service.runDBIO(query.baseQuery.filter(query.childRef(_) === child.id.value).delete).void
 
-  override def allQueryFromParent(parent: P): Query[C#T, C, Seq] =
+  override def allQueryFromParent(parent: Model[P]): Query[CT, Model[C], Seq] =
     for {
       assoc <- query.baseQuery if query.parentRef(assoc) === parent.id.value
-      child <- ModelQuery[C].baseQuery if query.childRef(assoc) === child.id
+      child <- cCompanion.baseQuery if query.childRef(assoc) === child.id
     } yield child
 
-  def allFromParent(parent: P): IO[Seq[C]] = service.runDBIO(allQueryFromParent(parent).result)
+  def allFromParent(parent: Model[P]): IO[Seq[Model[C]]] = service.runDBIO(allQueryFromParent(parent).result)
 
-  override def allQueryFromChild(child: C): Query[P#T, P, Seq] =
+  override def allQueryFromChild(child: Model[C]): Query[PT, Model[P], Seq] =
     for {
       assoc  <- query.baseQuery if query.childRef(assoc) === child.id.value
-      parent <- ModelQuery[P].baseQuery if query.parentRef(assoc) === parent.id
+      parent <- pCompanion.baseQuery if query.parentRef(assoc) === parent.id
     } yield parent
 
-  def allFromChild(child: C): IO[Seq[P]] = service.runDBIO(allQueryFromChild(child).result)
+  def allFromChild(child: Model[C]): IO[Seq[Model[P]]] = service.runDBIO(allQueryFromChild(child).result)
 }

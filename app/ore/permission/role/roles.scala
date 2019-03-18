@@ -1,8 +1,11 @@
 package ore.permission.role
 
+import java.sql.Timestamp
+import java.time.Instant
+
 import scala.collection.immutable
 
-import db.ObjId
+import db.{Model, ObjId, ObjTimestamp}
 import models.user.role.DbRole
 import ore.Color
 import ore.Color._
@@ -20,16 +23,20 @@ sealed abstract case class Role(
     isAssignable: Boolean = true
 ) extends StringEnumEntry {
 
-  def toDbRole: DbRole = DbRole(
-    id = ObjId(roleId.toLong),
-    name = value,
-    category = category,
-    trust = trust,
-    title = title,
-    color = color.hex,
-    isAssignable = isAssignable,
-    rank = rankOpt
-  )
+  def toDbRole: Model[DbRole] =
+    DbRole.asDbModel(
+      DbRole(
+        name = value,
+        category = category,
+        trust = trust,
+        title = title,
+        color = color.hex,
+        isAssignable = isAssignable,
+        rank = rankOpt
+      ),
+      ObjId(roleId.toLong),
+      ObjTimestamp(Timestamp.from(Instant.EPOCH))
+    )
 
   def rankOpt: Option[Int] = None
 }

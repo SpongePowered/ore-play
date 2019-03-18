@@ -6,6 +6,7 @@ import javax.inject.Inject
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
 import db.impl.schema.{
@@ -17,7 +18,7 @@ import db.impl.schema.{
   VersionTable,
   VersionTagTable
 }
-import db.{DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project._
 import models.user.User
 import models.user.role.ProjectUserRole
@@ -104,11 +105,11 @@ trait OreRestfulApi extends OreWrites {
       u <- TableQuery[UserTable] if r.userId === u.id
     } yield (r, u)
 
-  def writeMembers(members: Seq[(ProjectUserRole, User)]): Seq[JsObject] = {
+  def writeMembers(members: Seq[(Model[ProjectUserRole], Model[User])]): Seq[JsObject] = {
     val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.role))
     members.map {
       case (_, user) =>
-        val roles                      = allRoles(user.id.value)
+        val roles                      = allRoles(user.id)
         val trustOrder: Ordering[Role] = Ordering.by(_.trust)
         obj(
           "userId"   -> user.id.value,
@@ -120,8 +121,8 @@ trait OreRestfulApi extends OreWrites {
   }
 
   private def writeProjects(
-      projects: Seq[(Project, Version, Channel)]
-  ): IO[Seq[(Project, JsObject)]] = {
+      projects: Seq[(Model[Project], Model[Version], Model[Channel])]
+  ): IO[Seq[(Model[Project], JsObject)]] = {
     val projectIds = projects.map(_._1.id.value)
     val versionIds = projects.map(_._2.id.value)
 
@@ -141,13 +142,13 @@ trait OreRestfulApi extends OreWrites {
             p,
             obj(
               "pluginId"    -> p.pluginId,
-              "createdAt"   -> p.createdAt.value.toString,
+              "createdAt"   -> p.createdAt.toString,
               "name"        -> p.name,
               "owner"       -> p.ownerName,
               "description" -> p.description,
               "href"        -> ('/' + p.ownerName + '/' + p.slug),
               "members"     -> writeMembers(members.getOrElse(p.id.value, Seq.empty)),
-              "channels"    -> toJson(chans.getOrElse(p.id.value, Seq.empty)),
+              "channels"    -> toJson(chans.getOrElse(p.id.value, Seq.empty).map(_.obj)),
               "recommended" -> toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.value, Seq.empty))),
               "category"    -> obj("title" -> p.category.title, "icon" -> p.category.icon),
               "views"       -> p.viewCount,
@@ -159,13 +160,19 @@ trait OreRestfulApi extends OreWrites {
     }
   }
 
-  def writeVersion(v: Version, p: Project, c: Channel, author: Option[String], tags: Seq[VersionTag]): JsObject = {
+  def writeVersion(
+      v: Model[Version],
+      p: Project,
+      c: Channel,
+      author: Option[String],
+      tags: Seq[Model[VersionTag]]
+  ): JsObject = {
     val dependencies: List[JsObject] = v.dependencies.map { dependency =>
       obj("pluginId" -> dependency.pluginId, "version" -> dependency.version)
     }
     val json = obj(
       "id"            -> v.id.value,
-      "createdAt"     -> v.createdAt.value.toString,
+      "createdAt"     -> v.createdAt.toString,
       "name"          -> v.versionString,
       "dependencies"  -> dependencies,
       "pluginId"      -> p.pluginId,
@@ -203,7 +210,7 @@ trait OreRestfulApi extends OreWrites {
       p <- TableQuery[ProjectTableMain]
       v <- TableQuery[VersionTable] if p.recommendedVersionId === v.id
       c <- TableQuery[ChannelTable] if v.channelId === c.id
-      if Visibility.isPublicFilter[Project](p)
+      if Visibility.isPublicFilter[ProjectTableMain](p)
     } yield (p, v, c)
 
   /**
@@ -318,7 +325,7 @@ trait OreRestfulApi extends OreWrites {
   )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).semiflatMap { project =>
       for {
-        pages <- project.pages.sorted(_.name)
+        pages <- service.runDBIO(project.pages(ModelView.raw(Page)).sortBy(_.name).result)
       } yield {
         val seq      = pages.filter(_.parentId == parentId)
         val pageById = pages.map(p => (p.id.value, p)).toMap
@@ -331,7 +338,7 @@ trait OreRestfulApi extends OreWrites {
                 "name"      -> page.name,
                 "parentId"  -> page.parentId,
                 "slug"      -> page.slug,
-                "fullSlug"  -> page.fullSlug(page.parentId.flatMap(pageById.get))
+                "fullSlug"  -> page.fullSlug(page.parentId.flatMap(pageById.get).map(_.obj))
             )
           )
         )
@@ -339,7 +346,7 @@ trait OreRestfulApi extends OreWrites {
     }
   }
 
-  private def queryStars(users: Seq[User]) =
+  private def queryStars(users: Seq[Model[User]]) =
     for {
       s <- TableQuery[ProjectStarsTable] if s.userId.inSetBind(users.map(_.id.value))
       p <- TableQuery[ProjectTableMain] if s.projectId === p.id
@@ -361,7 +368,9 @@ trait OreRestfulApi extends OreWrites {
       writtenUsers <- writeUsers(users)
     } yield toJson(writtenUsers)
 
-  def writeUsers(userList: Seq[User])(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[JsObject]] = {
+  def writeUsers(
+      userList: Seq[Model[User]]
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[JsObject]] = {
     implicit def config: OreConfig = this.config
     import cats.instances.vector._
 
@@ -373,14 +382,14 @@ trait OreRestfulApi extends OreWrites {
       allProjects     <- service.runDBIO(query.result)
       stars           <- service.runDBIO(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
       jsonProjects    <- writeProjects(allProjects)
-      userGlobalRoles <- userList.toVector.parTraverse(u => u.globalRoles.allFromParent(u))
+      userGlobalRoles <- userList.toVector.parTraverse(_.globalRoles.allFromParent)
     } yield {
       val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
       userList.zip(userGlobalRoles).map {
         case (user, globalRoles) =>
           obj(
             "id"        -> user.id.value,
-            "createdAt" -> user.createdAt.value.toString,
+            "createdAt" -> user.createdAt.toString,
             "username"  -> user.name,
             "roles"     -> globalRoles.map(_.title),
             "starred"   -> toJson(stars.getOrElse(user.id.value, Seq.empty)),
@@ -420,12 +429,13 @@ trait OreRestfulApi extends OreWrites {
       version: String
   )(implicit service: ModelService): OptionT[IO, JsValue] = {
     ProjectBase().withPluginId(pluginId).flatMap { project =>
-      project.versions
+      project
+        .versions(ModelView.now(Version))
         .find(
           v => v.versionString.toLowerCase === version.toLowerCase && v.visibility === (Visibility.Public: Visibility)
         )
         .semiflatMap { v =>
-          v.tags.map { tags =>
+          service.runDBIO(v.tags(ModelView.raw(VersionTag)).result).map { tags =>
             obj("pluginId" -> pluginId, "version" -> version, "tags" -> tags.map(toJson(_))): JsValue
           }
         }

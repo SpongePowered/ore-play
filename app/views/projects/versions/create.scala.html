@@ -3,7 +3,7 @@
 
 @import controllers.project.{routes => projectRoutes}
 @import controllers.sugar.Requests.OreRequest
-@import db.{ObjId, ObjectTimestamp}
+@import db.{ObjId, ObjTimestamp}
 @import models.project.Channel
 @import ore.OreConfig
 @import ore.project.factory.PendingVersion
@@ -112,7 +112,7 @@
                                         <td>
                                             <div class="pull-right" id="upload-platform-tags">
                                             @for(t <- version.dependenciesAsGhostTags) {
-                                                @projects.tag(t(ObjId(0L), ObjectTimestamp(Timestamp.from(Instant.now()))).asViewTag)
+                                                @projects.tag(t.asViewTag)
                                             }
                                             </div>
                                         </td>

@@ -1,5 +1,5 @@
 name := "ore"
-version := "1.7.1"
+version := "1.8.1"
 
 lazy val `ore` = (project in file(".")).enablePlugins(PlayScala)
 
@@ -46,7 +46,7 @@ scalacOptions ++= Seq(
 )
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9")
 addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full))
-addCompilerPlugin(scalafixSemanticdb("4.1.2"))
+addCompilerPlugin(scalafixSemanticdb("4.1.4"))
 
 routesGenerator := InjectedRoutesGenerator
 routesImport ++= Seq(
@@ -68,8 +68,8 @@ lazy val doobieVersion = "0.6.0"
 
 libraryDependencies ++= Seq(caffeine, ws, guice)
 
-lazy val flexmarkVersion     = "0.40.16"
-lazy val bouncycastleVersion = "1.60"
+lazy val flexmarkVersion     = "0.40.18"
+lazy val bouncycastleVersion = "1.61"
 lazy val playSlickVersion    = "4.0.0"
 lazy val slickPgVersion      = "0.17.1"
 
@@ -82,7 +82,7 @@ libraryDependencies ++= Seq(
   "com.github.tminglei"        %% "slick-pg"                      % slickPgVersion,
   "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
   "com.typesafe.scala-logging" %% "scala-logging"                 % "3.9.2",
-  "io.sentry"                  % "sentry-logback"                 % "1.7.17",
+  "io.sentry"                  % "sentry-logback"                 % "1.7.21",
   "org.bouncycastle"           % "bcprov-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"           % "bcpkix-jdk15on"                 % bouncycastleVersion,
   "org.bouncycastle"           % "bcpg-jdk15on"                   % bouncycastleVersion,
@@ -90,7 +90,7 @@ libraryDependencies ++= Seq(
   "com.beachape"               %% "enumeratum"                    % "1.5.13",
   "com.beachape"               %% "enumeratum-slick"              % "1.5.15",
   "com.chuusai"                %% "shapeless"                     % "2.3.3",
-  "org.typelevel"              %% "cats-core"                     % "1.5.0",
+  "org.typelevel"              %% "cats-core"                     % "1.6.0",
   "com.github.mpilquist"       %% "simulacrum"                    % "0.15.0",
   "org.tpolecat"               %% "doobie-core"                   % doobieVersion,
   "org.tpolecat"               %% "doobie-postgres"               % doobieVersion,
@@ -103,7 +103,7 @@ libraryDependencies ++= Seq(
   "com.vladsch.flexmark"       % "flexmark-ext-typographic"       % flexmarkVersion,
   "com.vladsch.flexmark"       % "flexmark-ext-wikilink"          % flexmarkVersion,
   "org.webjars.npm"            % "jquery"                         % "2.2.4",
-  "org.webjars"                % "font-awesome"                   % "5.6.3",
+  "org.webjars"                % "font-awesome"                   % "5.7.2",
   "org.webjars.npm"            % "filesize"                       % "3.6.1",
   "org.webjars.npm"            % "moment"                         % "2.24.0",
   "org.webjars.npm"            % "clipboard"                      % "2.0.4",

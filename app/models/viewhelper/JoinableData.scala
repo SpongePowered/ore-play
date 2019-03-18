@@ -9,14 +9,14 @@ import ore.permission.EditSettings
 import ore.permission.role.RoleCategory
 import ore.user.Member
 
-trait JoinableData[R <: UserRoleModel, M <: Member[R], T <: Joinable[M, T] with Model] {
+trait JoinableData[R <: UserRoleModel[R], T <: Joinable] {
 
-  def joinable: T
-  def members: Seq[(R, User)]
+  def joinable: Model[T]
+  def members: Seq[(Model[R], Model[User])]
 
   def roleCategory: RoleCategory
 
-  def filteredMembers(implicit request: OreRequest[_]): Seq[(R, User)] = {
+  def filteredMembers(implicit request: OreRequest[_]): Seq[(Model[R], Model[User])] = {
     val hasEditSettings = request.headerData.globalPerm(EditSettings)
     val userIsOwner     = request.currentUser.map(_.id.value).contains(joinable.ownerId)
     if (hasEditSettings || userIsOwner)

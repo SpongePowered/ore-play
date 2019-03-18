@@ -5,7 +5,9 @@
 @import ore.OreConfig
 @import util.StringUtils._
 
-@(project: Project, version: Version, visibilityChanges: Seq[(VersionVisibilityChange, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@import db.Model
+
+@(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @versionRoutes = @{controllers.project.routes.Versions}
 
@@ -38,7 +40,7 @@
 						@visibilityChanges.reverse.map { case (entry, createdBy) =>
 						<tr>
 							<td>@entry.visibility</td>
-							<td>@prettifyDateAndTime(entry.createdAt.value)</td>
+							<td>@prettifyDateAndTime(entry.createdAt)</td>
 							<td>@entry.renderComment</td>
 							@if(createdBy.isDefined) {
 								<td>@createdBy.get.name</td>

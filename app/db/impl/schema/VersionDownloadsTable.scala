@@ -8,5 +8,8 @@ import models.statistic.VersionDownload
 class VersionDownloadsTable(tag: Tag)
     extends StatTable[Version, VersionDownload](tag, "project_version_downloads", "version_id") {
 
-  override def * = mkProj((id.?, createdAt.?, modelId, address, cookie, userId.?))(mkTuple[VersionDownload]())
+  override def * =
+    (id.?, createdAt.?, (modelId, address, cookie, userId.?)) <> (mkApply((VersionDownload.apply _).tupled), mkUnapply(
+      VersionDownload.unapply
+    ))
 }

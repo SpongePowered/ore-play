@@ -1,13 +1,16 @@
 package models.project
 
-import db.access.ModelAccess
+import scala.language.higherKinds
+
+import db.access.QueryView
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
-import db.impl.schema.ChannelTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.impl.schema.{ChannelTable, VersionTable}
+import db.{Model, DbRef, DefaultModelCompanion, ModelQuery}
 import ore.Color
 import ore.Color._
 import ore.project.ProjectOwned
+import util.syntax._
 
 import slick.lifted.TableQuery
 
@@ -15,8 +18,6 @@ import slick.lifted.TableQuery
   * Represents a release channel for Project Versions. Each project gets it's
   * own set of channels.
   *
-  * @param id           Unique identifier
-  * @param createdAt    Instant of creation
   * @param isNonReviewed Whether this channel should be excluded from the staff
   *                     approval queue
   * @param name        Name of channel
@@ -24,40 +25,21 @@ import slick.lifted.TableQuery
   * @param projectId    ID of project this channel belongs to
   */
 case class Channel(
-    id: ObjId[Channel],
-    createdAt: ObjectTimestamp,
     projectId: DbRef[Project],
     name: String,
     color: Color,
-    isNonReviewed: Boolean
-) extends Model
-    with Named {
-
-  override type T = ChannelTable
-  override type M = Channel
+    isNonReviewed: Boolean = false
+) extends Named {
 
   def isReviewed: Boolean = !isNonReviewed
-
-  /**
-    * Returns all Versions in this channel.
-    *
-    * @return All versions
-    */
-  def versions(implicit service: ModelService): ModelAccess[Version] = service.access(_.channelId === id.value)
 }
 
-object Channel {
-  def partial(
-      projectId: DbRef[Project],
-      name: String,
-      color: Color,
-      isNonReviewed: Boolean = false
-  ): InsertFunc[Channel] = (id, time) => Channel(id, time, projectId, name, color, isNonReviewed)
+object Channel extends DefaultModelCompanion[Channel, ChannelTable](TableQuery[ChannelTable]) {
 
   implicit val channelsAreOrdered: Ordering[Channel] = (x: Channel, y: Channel) => x.name.compare(y.name)
 
   implicit val query: ModelQuery[Channel] =
-    ModelQuery.from[Channel](TableQuery[ChannelTable], _.copy(_, _))
+    ModelQuery.from(this)
 
   implicit val isProjectOwned: ProjectOwned[Channel] = (a: Channel) => a.projectId
 
@@ -67,4 +49,14 @@ object Channel {
   val Colors: Seq[Color] =
     Seq(Purple, Violet, Magenta, Blue, Aqua, Cyan, Green, DarkGreen, Chartreuse, Amber, Orange, Red)
 
+  implicit class ChannelModelOps(private val self: Model[Channel]) extends AnyVal {
+
+    /**
+      * Returns all Versions in this channel.
+      *
+      * @return All versions
+      */
+    def versions[V[_, _]: QueryView](view: V[VersionTable, Model[Version]]): V[VersionTable, Model[Version]] =
+      view.filterView(_.channelId === self.id.value)
+  }
 }
