@@ -113,7 +113,7 @@ GET     /:user/settings/pgp/delete                                  @controllers
 POST    /:author/:slug                                              @controllers.project.Projects.showFirstVersionCreator(author, slug)
 GET     /:author/:slug                                              @controllers.project.Projects.show(author, slug)
 GET     /:author/:slug/stars                                        @controllers.project.Projects.showStargazers(author, slug, page: Option[Int])
-POST    /:author/:slug/stars/:starred                               @controllers.project.Projects.setStarred(author, slug, starred: Boolean)
+POST    /:author/:slug/stars/toggle                                 @controllers.project.Projects.toggleStarred(author, slug)
 POST    /:author/:slug/flag                                         @controllers.project.Projects.flag(author, slug)
 POST    /:author/:slug/visible/:visibility                          @controllers.project.Projects.setVisible(author, slug, visibility: Int)
 POST    /:author/:slug/watch/:watching                              @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
