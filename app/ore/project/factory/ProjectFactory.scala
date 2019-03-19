@@ -14,7 +14,7 @@ import play.api.i18n.Messages
 import db.access.ModelView
 import db.impl.access.ProjectBase
 import db.impl.OrePostgresDriver.api._
-import db.{Model, DbRef, ModelService}
+import db.{DbRef, Model, ModelService}
 import discourse.OreDiscourseApi
 import models.project._
 import models.user.role.ProjectUserRole
@@ -25,7 +25,7 @@ import ore.project.io._
 import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
-import util.OreMDC
+import util.{OreMDC, StringUtils}
 import util.StringUtils._
 
 import akka.actor.ActorSystem
@@ -211,7 +211,7 @@ trait ProjectFactory {
 
       Right(
         PendingVersion(
-          versionString = metaData.version.get,
+          versionString = StringUtils.slugify(metaData.version.get),
           dependencyIds = metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList,
           description = metaData.description,
           projectId = projectId,
