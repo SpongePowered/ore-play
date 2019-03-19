@@ -16,6 +16,7 @@ import db.{Model, ModelService}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.PageTable
+import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
 import models.project.{Page, Project}
@@ -43,6 +44,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     config: OreConfig,
     service: ModelService,
     auth: SpongeAuthApi,
+    forums: OreDiscourseApi
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Pages
@@ -220,7 +222,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
                       createdPage.id,
                       newPage,
                       oldPage
-                    ) *> service.update(createdPage)(_.copy(contents = newPage))
+                    ) *> createdPage.updateContentsWithForum(newPage)
                   }
                 }
                 .as(Redirect(self.show(author, slug, page)))
