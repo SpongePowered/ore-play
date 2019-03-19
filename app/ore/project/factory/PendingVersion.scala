@@ -100,6 +100,7 @@ case class PendingVersion(
     hash = hash,
     authorId = authorId,
     fileName = fileName,
-    signatureFileName = signatureFileName
+    signatureFileName = signatureFileName,
+    createForumPost = createForumPost
   )
 }

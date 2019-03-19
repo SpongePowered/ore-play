@@ -346,18 +346,15 @@ trait ProjectFactory {
         IO.raiseError(new IllegalArgumentException("Version already exists."))
       else IO.unit
       // Create version
-      newVersion <- service.insert(pending.asVersion(project.id, channel.id))
-      tags       <- addTags(pending, newVersion)
+      version <- service.insert(pending.asVersion(project.id, channel.id))
+      tags    <- addTags(pending, version)
       // Notify watchers
-      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
-      _ <- uploadPlugin(project, pending.plugin, newVersion).fold(e => IO.raiseError(new Exception(e)), IO.pure)
-      _ <- if (project.topicId.isDefined && pending.createForumPost)
-        this.forums
-          .postVersionRelease(project, newVersion, newVersion.description)
-          .leftMap(_.mkString("\n"))
-          .fold(e => IO.raiseError(new Exception(e)), _ => IO.unit)
-      else IO.unit
-    } yield (newVersion, channel, tags)
+      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(version, project))
+      _ <- uploadPlugin(project, pending.plugin, version).fold(e => IO.raiseError(new Exception(e)), IO.pure)
+      withTopicId <- if (project.topicId.isDefined && pending.createForumPost)
+        this.forums.createVersionPost(project, version)
+      else IO.pure(version)
+    } yield (withTopicId, channel, tags)
   }
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version])(

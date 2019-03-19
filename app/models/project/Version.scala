@@ -58,6 +58,9 @@ case class Version(
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
+    createForumPost: Boolean = true,
+    postId: Option[Int] = None,
+    isPostDirty: Boolean = false,
 ) extends Describable
     with Downloadable
     with Hideable {

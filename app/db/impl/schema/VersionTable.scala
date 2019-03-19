@@ -27,6 +27,9 @@ class VersionTable(tag: Tag)
   def approvedAt        = column[Timestamp]("approved_at")
   def fileName          = column[String]("file_name")
   def signatureFileName = column[String]("signature_file_name")
+  def createForumPost   = column[Boolean]("create_forum_post")
+  def postId            = column[Option[Int]]("post_id")
+  def isPostDirty       = column[Boolean]("is_post_dirty")
 
   override def * =
     (
@@ -47,7 +50,10 @@ class VersionTable(tag: Tag)
         approvedAt.?,
         visibility,
         fileName,
-        signatureFileName
+        signatureFileName,
+        createForumPost,
+        postId,
+        isPostDirty
       )
     ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
 }
