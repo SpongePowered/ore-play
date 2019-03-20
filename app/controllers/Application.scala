@@ -100,7 +100,7 @@ final class Application @Inject()(forms: OreForms)(
 
     val projectNumQ = TableQuery[ProjectTableMain].filter(_.visibility === (Visibility.Public: Visibility)).size
 
-    val prijectListF = service
+    val projectListF = service
       .runDbCon(
         AppQueries
           .getHomeProjects(
@@ -118,7 +118,7 @@ final class Application @Inject()(forms: OreForms)(
       )
     val projectNumF = service.runDBIO(projectNumQ.result)
 
-    (prijectListF, projectNumF).parMapN { (data, projectNum) =>
+    (projectListF, projectNumF).parMapN { (data, projectNum) =>
       val catList =
         if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
       Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance, projectNum))
