@@ -1,5 +1,6 @@
-import play.api.Configuration
+import java.time.LocalDate
 
+import play.api.Configuration
 import scala.concurrent.duration._
 
 import db.query.AppQueries
@@ -55,7 +56,7 @@ class AppQueriesSpec extends DbSpec {
   }
 
   test("GetStats") {
-    check(AppQueries.getStats(0, 0))
+    check(AppQueries.getStats(LocalDate.now(), LocalDate.now()))
   }
 
   /* Relies on a view and as such can't test NULL stuff reliably

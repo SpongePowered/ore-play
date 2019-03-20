@@ -14,7 +14,7 @@ GET     /admin/flags                                                @controllers
 GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: DbRef[Flag], resolved: Boolean)
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
-GET     /admin/stats                                                @controllers.Application.showStats()
+GET     /admin/stats                                                @controllers.Application.showStats(from: Option[String], to: Option[String])
 GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[DbRef[User]], projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]], actionFilter: Option[Int], subjectFilter: Option[DbRef[_]])
 
 GET     /statusz                                                    @controllers.ApiController.showStatusZ()

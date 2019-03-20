@@ -1,14 +1,16 @@
 package controllers
 
 import java.sql.Timestamp
-import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.time.{Instant, LocalDate}
 import java.util.Date
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
+import scala.util.{Success, Try}
 
 import play.api.cache.AsyncCacheApi
-import play.api.mvc.{Action, ActionBuilder, AnyContent}
+import play.api.mvc.{Action, ActionBuilder, AnyContent, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
@@ -256,11 +258,22 @@ final class Application @Inject()(forms: OreForms)(
     * Show stats
     * @return
     */
-  def showStats(): Action[AnyContent] =
+  def showStats(from: Option[String], to: Option[String]): Action[AnyContent] =
     Authenticated.andThen(PermissionAction[AuthRequest](ViewStats)).asyncF { implicit request =>
-      service.runDbCon(AppQueries.getStats(0, 10).to[List]).map { stats =>
-        Ok(views.users.admin.stats(stats))
+      def parseTime(time: Option[String], default: LocalDate) =
+        time.map(s => Try(LocalDate.parse(s)).toOption).getOrElse(Some(default))
+
+      val res = for {
+        fromTime <- parseTime(from, LocalDate.now().minus(10, ChronoUnit.DAYS))
+        toTime   <- parseTime(to, LocalDate.now())
+        if fromTime.isBefore(toTime)
+      } yield {
+        service.runDbCon(AppQueries.getStats(fromTime, toTime).to[List]).map { stats =>
+          Ok(views.users.admin.stats(stats, fromTime, toTime))
+        }
       }
+
+      res.getOrElse(IO.pure(BadRequest))
     }
 
   def showLog(
