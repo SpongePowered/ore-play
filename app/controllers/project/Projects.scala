@@ -422,7 +422,6 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def toggleStarred(author: String, slug: String): Action[AnyContent] =
     AuthedProjectAction(author, slug).asyncF { implicit request =>
-      println("Foo")
       if (request.project.ownerId != request.user.id.value)
         request.data.project.toggleStarredBy(request.user).as(Ok)
       else
