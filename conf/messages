@@ -219,6 +219,8 @@ org.plural          =   Organizations
 
 version                         =   Version
 version.description             =   Description
+version.filename                =   File name
+version.fileSize                =   File size
 version.delete.cannotLast       =   Every project must have at least one version
 version.delete.alreadyDeleted   =   This version has already been deleted
 version.dependency.notOnOre     =   This plugin is not available for download on Ore
