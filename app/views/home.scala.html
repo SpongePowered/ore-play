@@ -15,7 +15,7 @@ sorted according to different criteria.
 @import views.html.helper.CSPNonce
 @(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
-        orderWithRelevance: Boolean)(implicit messages: Messages, flash: Flash,
+        orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
 
 @randomSponsor = @{
@@ -72,6 +72,7 @@ sorted according to different criteria.
                     <div class="col-xs-10 text">
                         <div class="headline">Ore</div>
                         <div>A Minecraft package repository</div>
+                        <div>Home to @totalProjects different projects</div>
                     </div>
                 </div>
             </div>
