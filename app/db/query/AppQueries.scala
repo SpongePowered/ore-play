@@ -194,7 +194,7 @@ object AppQueries extends DoobieOreProtocol {
           |            AND (CAST(resolved_at AS DATE) >= day OR resolved_at IS NULL))                   AS flags_created,
           |       (SELECT COUNT(*) FROM project_flags WHERE CAST(resolved_at AS DATE) = day)            AS flags_resolved,
           |       CAST(day AS DATE)
-          |  FROM (SELECT generate_series($startDate, $endDate, INTERVAL '1 DAY') AS day) dates
+          |  FROM (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
           |  ORDER BY day ASC;""".stripMargin.query[Stats]
   }
 
