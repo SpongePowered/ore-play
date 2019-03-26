@@ -25,6 +25,7 @@ import ore.user.notification.NotificationType
 
 import cats.data.{NonEmptyList => NEL}
 import com.github.tminglei.slickpg.InetString
+import com.typesafe.scalalogging.Logger
 import doobie._
 import doobie.implicits._
 import doobie.postgres._
@@ -34,8 +35,48 @@ import org.postgresql.util.{PGInterval, PGobject}
 
 trait DoobieOreProtocol {
 
-  def createLogger(name: String): LogHandler = {
-    val logger = play.api.Logger(name)
+  //Like the debug logger, but a bit more compact, and doesn't log arguments, for security sake
+  implicit val timingsLogHandler: LogHandler = createTimingsLogger
+
+  def createTimingsLogger: LogHandler = {
+    val timingsLogger = Logger("Timings")
+
+    LogHandler {
+      case util.log.Success(sql, _, exec, processing) =>
+        if ((exec + processing).toMillis > 500) {
+          timingsLogger.warn(
+            s"""|Successful Statement Execution:
+                |   ${sql.lines.dropWhile(_.trim.isEmpty).map(_.trim).mkString(" ")}
+                |   elapsed = ${exec.toMillis} ms exec + ${processing.toMillis} ms processing (${(exec + processing).toMillis} ms total)""".stripMargin
+          )
+        } else {
+          timingsLogger.info(
+            s"""|Successful Statement Execution:
+                |   ${sql.lines.dropWhile(_.trim.isEmpty).map(_.trim).mkString(" ")}
+                |   elapsed = ${exec.toMillis} ms exec + ${processing.toMillis} ms processing (${(exec + processing).toMillis} ms total)""".stripMargin
+          )
+        }
+      case util.log.ProcessingFailure(sql, _, exec, processing, failure) =>
+        timingsLogger.error(
+          s"""|Failed Resultset Processing:
+              |   ${sql.lines.dropWhile(_.trim.isEmpty).mkString("\n  ")}
+              |   elapsed = ${exec.toMillis} ms exec + ${processing.toMillis} ms processing (failed) (${(exec + processing).toMillis} ms total)
+              |   failure = ${failure.getMessage}""".stripMargin,
+          failure
+        )
+      case util.log.ExecFailure(sql, _, exec, failure) =>
+        timingsLogger.error(
+          s"""Failed Statement Execution:
+             |   ${sql.lines.dropWhile(_.trim.isEmpty).mkString("\n  ")}
+             |   elapsed = ${exec.toMillis} ms exec (failed)
+             |   failure = ${failure.getMessage}""".stripMargin,
+          failure
+        )
+    }
+  }
+
+  def createDebugLogger(name: String): LogHandler = {
+    val logger = Logger(name)
 
     LogHandler {
       case util.log.Success(sql, args, exec, processing) =>

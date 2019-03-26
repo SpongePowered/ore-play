@@ -19,7 +19,8 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{Model, DbRef, ModelService}
+import db.impl.schema.ProjectTableMain
+import db.{DbRef, Model, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
@@ -333,13 +334,14 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Project icon
     */
   def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF {
-    // TODO maybe instead of redirect cache this on ore?
-    projects
-      .withSlug(author, slug)
-      .map { project =>
-        projects.fileManager.getIconPath(project)(OreMDC.NoMDC) match {
-          case None           => Redirect(User.avatarUrl(project.ownerName))
-          case Some(iconPath) => showImage(iconPath)
+    val query =
+      TableQuery[ProjectTableMain].filter(p => p.ownerName === author && p.slug === slug).map(_.name).result.headOption
+
+    OptionT(service.runDBIO(query))
+      .map { projectName =>
+        projects.fileManager.getIconPath(author, projectName)(OreMDC.NoMDC) match {
+          case None           => Redirect(User.avatarUrl(author)).withHeaders(CACHE_CONTROL -> s"max-age=${10.minutes.toSeconds}")
+          case Some(iconPath) => showImage(iconPath).withHeaders(CACHE_CONTROL              -> s"max-age=${10.minutes.toSeconds}")
         }
       }
       .getOrElse(NotFound)
@@ -350,7 +352,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     val lastModifiedHash = MessageDigest.getInstance("MD5").digest(lastModified)
     val hashString       = Base64.getEncoder.encodeToString(lastModifiedHash)
     Ok.sendPath(path)
-      .withHeaders(ETAG -> s""""$hashString"""", CACHE_CONTROL -> s"max-age=${1.hour.toSeconds.toString}")
+      .withHeaders(ETAG -> s""""$hashString"""", CACHE_CONTROL -> s"max-age=${1.hour.toSeconds}")
   }
 
   /**
@@ -533,7 +535,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     implicit request =>
       val project     = request.project
       val fileManager = projects.fileManager
-      fileManager.getIconPath(project).foreach(Files.delete)
+      fileManager.getIconPath(project.ownerName, project.name).foreach(Files.delete)
       fileManager.getPendingIconPath(project).foreach(Files.delete)
       //todo data
       Files.delete(fileManager.getPendingIconDir(project.ownerName, project.name))
