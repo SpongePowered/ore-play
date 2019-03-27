@@ -12,9 +12,10 @@ import play.api.i18n.Lang
 import play.api.libs.json.{JsValue, Json}
 
 import models.querymodels.{APIV2VersionTag, ViewTag}
-import db.{Model, ObjId, ObjTimestamp}
+import db.{DbRef, Model, ObjId, ObjTimestamp}
+import models.api.ApiKey
 import models.project.{ReviewState, TagColor, Visibility}
-import models.user.{LoggedAction, LoggedActionContext}
+import models.user.{LoggedAction, LoggedActionContext, User}
 import ore.Color
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
@@ -27,11 +28,13 @@ import ore.user.notification.NotificationType
 import cats.data.{NonEmptyList => NEL}
 import com.github.tminglei.slickpg.InetString
 import doobie._
+import doobie.enum.JdbcType
 import doobie.implicits._
 import doobie.postgres._
 import doobie.postgres.implicits._
 import enumeratum.values.{ValueEnum, ValueEnumEntry}
 import org.postgresql.util.{PGInterval, PGobject}
+import shapeless._
 
 trait DoobieOreProtocol {
 
@@ -150,7 +153,27 @@ trait DoobieOreProtocol {
     Meta[InetAddress].timap(address => InetString(address.toString))(str => InetAddress.getByName(str.value))
 
   implicit val permissionMeta: Meta[Permission] =
-    Meta[String].imap[Permission](Permission.fromBinString(_).get)(_.toBinString)
+    Meta.Advanced.one[Permission](
+      JdbcType.Bit,
+      NEL.one("bit"),
+      (r, i) => {
+        val s = r.getString(i)
+        if (s == null) null.asInstanceOf[Permission]
+        else Permission.fromBinString(s).get
+      },
+      (p, i, a) => {
+        val obj = new PGobject
+        obj.setType("bit")
+        obj.setValue(a.toBinString)
+        p.setObject(i, obj)
+      },
+      (p, i, a) => {
+        val obj = new PGobject
+        obj.setType("bit")
+        obj.setValue(a.toBinString)
+        p.updateObject(i, obj)
+      }
+    )
 
   implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumString[RoleCategory](
     name = "ROLE_CATEGORY",
@@ -196,5 +219,33 @@ trait DoobieOreProtocol {
     viewTagListRead.map(_.map(t => APIV2VersionTag(t.name, t.data, t.color)))
   implicit val apiV2TagWrite: Write[List[APIV2VersionTag]] =
     viewTagListWrite.contramap(_.map(t => ViewTag(t.name, t.data, t.color)))
+
+  implicit val userModelRead: Read[Model[User]] =
+    Read[ObjId[User] :: ObjTimestamp :: Option[String] :: String :: Option[String] :: Option[String] :: Option[
+      Timestamp
+    ] :: List[Prompt] :: Option[String] :: Option[Timestamp] :: Boolean :: Option[Lang] :: HNil].map {
+      case id :: createdAt :: fullName :: name :: email :: tagline :: joinDate :: readPrompts :: pgpPubKey :: lastPgpPubKeyUpdate :: isLocked :: lang :: HNil =>
+        Model(
+          id,
+          createdAt,
+          User(
+            id,
+            fullName,
+            name,
+            email,
+            tagline,
+            joinDate,
+            readPrompts,
+            pgpPubKey,
+            lastPgpPubKeyUpdate,
+            isLocked,
+            lang
+          )
+        )
+    }
+
+  implicit val apiKeyRead: Read[ApiKey] = Read[DbRef[User] :: String :: Permission :: Boolean :: HNil].map {
+    case ownerId :: token :: permissions :: isUiKey :: HNil => ApiKey(ownerId, token, permissions, isUiKey)
+  }
 }
 object DoobieOreProtocol extends DoobieOreProtocol

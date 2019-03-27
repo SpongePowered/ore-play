@@ -2,6 +2,7 @@ package db.query
 
 import java.sql.Timestamp
 
+import controllers.sugar.Requests.ApiAuthInfo
 import db.DbRef
 import db.impl.access.UserBase.UserOrdering
 import models.project.Project
@@ -166,5 +167,16 @@ object UserQueries extends DoobieOreProtocol {
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
           |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = $organizationId
           |  WHERE u.id = $userId;""".stripMargin.query[Permission]
+
+  def getApiAuthInfo(token: String): doobie.Query0[ApiAuthInfo] =
+    sql"""|SELECT u.*,
+          |       ak.owner_id,
+          |       ak.token,
+          |       ak.raw_key_permissions,
+          |       coalesce(gt.permission, B'0'::BIT(64)) & ak.raw_key_permissions
+          |  FROM api_keys ak
+          |         JOIN users u ON ak.owner_id = u.id
+          |         LEFT JOIN global_trust gt ON gt.user_id = u.id
+          |  WHERE ak.token = $token""".stripMargin.query[ApiAuthInfo]
 
 }

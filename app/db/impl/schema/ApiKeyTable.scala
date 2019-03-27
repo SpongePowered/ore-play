@@ -7,11 +7,14 @@ import models.api.ApiKey
 import models.user.User
 import ore.permission.Permission
 
-class ApiKeyTable(tag: Tag) extends ModelTable[ApiKey](tag, "api_key") {
-  def ownerId    = column[DbRef[User]]("owner_id")
-  def token      = column[String]("token")
-  def permission = column[Permission]("permission")
+class ApiKeyTable(tag: Tag) extends ModelTable[ApiKey](tag, "api_keys") {
+  def ownerId           = column[DbRef[User]]("owner_id")
+  def token             = column[String]("token")
+  def rawKeyPermissions = column[Permission]("raw_key_permissions")
+  def isUiKey           = column[Boolean]("is_ui_key")
 
   override def * =
-    (id.?, createdAt.?, (ownerId, token, permission)) <> (mkApply((ApiKey.apply _).tupled), mkUnapply(ApiKey.unapply))
+    (id.?, createdAt.?, (ownerId, token, rawKeyPermissions, isUiKey)) <> (mkApply((ApiKey.apply _).tupled), mkUnapply(
+      ApiKey.unapply
+    ))
 }

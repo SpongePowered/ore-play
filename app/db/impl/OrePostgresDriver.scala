@@ -1,5 +1,7 @@
 package db.impl
 
+import java.sql.{JDBCType, PreparedStatement, ResultSet}
+
 import play.api.i18n.Lang
 
 import models.project.{ReviewState, TagColor, Visibility}
@@ -18,6 +20,7 @@ import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
 import com.github.tminglei.slickpg.window.PgWindowFuncSupport
 import enumeratum.values.SlickValueEnumSupport
+import org.postgresql.util.PGobject
 import slick.jdbc.JdbcType
 
 /**
@@ -60,10 +63,31 @@ trait OrePostgresDriver
     implicit val langTypeMapper: BaseColumnType[Lang] =
       MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)
 
-    implicit val permissionTypeMapper: BaseColumnType[Permission] = MappedJdbcType.base[Permission, String](
-      _.toBinString,
-      Permission.fromBinString(_).get
-    )
+    implicit val permissionTypeMapper: BaseColumnType[Permission] = new DriverJdbcType[Permission] {
+      override def sqlType: Int = java.sql.Types.BIT
+
+      override def setValue(v: Permission, p: PreparedStatement, idx: Int): Unit = {
+        val obj = new PGobject
+        obj.setType("bit")
+        obj.setValue(v.toBinString)
+        p.setObject(idx, obj)
+      }
+
+      override def getValue(r: ResultSet, idx: Int): Permission = {
+        val str = r.getString(idx)
+        if (str == null) null.asInstanceOf[Permission]
+        else Permission.fromBinString(str).get
+      }
+
+      override def updateValue(v: Permission, r: ResultSet, idx: Int): Unit = {
+        val obj = new PGobject
+        obj.setType("bit")
+        obj.setValue(v.toBinString)
+        r.updateObject(idx, obj)
+      }
+
+      override def hasLiteralForm: Boolean = false
+    }
 
     /*
     implicit def dbRefBaseType[A]: BaseColumnType[DbRef[A]] = longColumnType.asInstanceOf[BaseColumnType[DbRef[A]]]

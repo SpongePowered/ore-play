@@ -13,6 +13,8 @@ sorted according to different criteria.
 @import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
 @import views.html.helper.CSPNonce
+@import views.html.helper.CSRF
+@import ore.permission.Permission
 @(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
@@ -72,6 +74,12 @@ sorted according to different criteria.
                     <div class="col-xs-10 text">
                         <div class="headline">Ore</div>
                         <div>A Minecraft package repository</div>
+                        @if(request.headerData.globalPerm(Permission.All) && config.isDebug) {
+                            <form action="@routes.Application.migrate()" method="post" id="migrate-form">
+                                @CSRF.formField
+                                <button type="submit" form="migrate-form" class="btn btn-danger">Migrate</button>
+                            </form>
+                        }
                     </div>
                 </div>
             </div>

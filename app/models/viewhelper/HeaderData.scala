@@ -2,15 +2,18 @@ package models.viewhelper
 
 import play.api.mvc.Request
 
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
-import db.{Model, DbRef, ModelService}
+import db.{DbRef, Model, ModelService}
+import models.api.ApiKey
 import models.project.{ReviewState, Visibility}
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
 
 import cats.data.OptionT
+import cats.syntax.all._
 import cats.effect.{ContextShift, IO}
 import slick.lifted.TableQuery
 
@@ -19,6 +22,7 @@ import slick.lifted.TableQuery
   */
 case class HeaderData(
     currentUser: Option[Model[User]] = None,
+    uiApiKey: Option[Model[ApiKey]] = None,
     globalPermissions: Permission = Permission.None,
     hasNotice: Boolean = false,
     hasUnreadNotifications: Boolean = false,
@@ -76,8 +80,10 @@ object HeaderData {
 
   private def getHeaderData(
       user: Model[User]
-  )(implicit service: ModelService) = {
-    user.permissionsIn(GlobalScope).flatMap { perms =>
+  )(implicit service: ModelService, cs: ContextShift[IO]) = {
+    val apiKeyF = ModelView.now(ApiKey).find(k => k.ownerId === user.id.value && k.isUiKey)
+
+    (user.permissionsIn(GlobalScope), apiKeyF.value).parMapN { (perms, apiKey) =>
       val query = Query.apply(
         (
           TableQuery[NotificationTable].filter(n => n.userId === user.id.value && !n.read).exists,
@@ -92,6 +98,7 @@ object HeaderData {
         case (unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>
           HeaderData(
             Some(user),
+            apiKey,
             perms,
             unreadNotif || unresolvedFlags || hasProjectApprovals || hasReviewQueue,
             unreadNotif,
@@ -100,6 +107,6 @@ object HeaderData {
             hasReviewQueue
           )
       }
-    }
+    }.flatten
   }
 }

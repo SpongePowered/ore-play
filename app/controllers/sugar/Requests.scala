@@ -2,28 +2,41 @@ package controllers.sugar
 
 import play.api.mvc.{Request, WrappedRequest}
 
-import db.Model
+import db.{Model, ModelService}
+import models.api.ApiKey
 import models.project.Project
 import models.user.{Organization, User}
 import models.viewhelper._
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
+import util.syntax._
+
+import cats.effect.IO
 
 /**
   * Contains the custom WrappedRequests used by Ore.
   */
 object Requests {
 
-  case class ApiAuthInfo(user: Model[User], permissions: Permission)
+  case class ApiAuthInfo(user: Model[User], key: Model[ApiKey], globalPerms: Permission)
 
   case class ApiRequest[A](apiInfo: Option[ApiAuthInfo], request: Request[A]) extends WrappedRequest[A](request) {
     def user: Option[Model[User]] = apiInfo.map(_.user)
-    def permission: Permission    = apiInfo.map(_.permissions).getOrElse(Permission.ViewPublicInfo)
+
+    def globalPermissions: Permission = apiInfo.fold(Permission.ViewPublicInfo)(_.globalPerms)
+
+    def permissionsIn[B: HasScope](b: B)(implicit service: ModelService): IO[Permission] =
+      if (b.scope == GlobalScope) IO.pure(globalPermissions)
+      else apiInfo.fold(IO.pure(Permission.ViewPublicInfo))(_.key.permissionsIn(b))
   }
 
   case class AuthApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) {
-    def user: Model[User]      = apiInfo.user
-    def permission: Permission = apiInfo.permissions
+    def user: Model[User] = apiInfo.user
+
+    def globalPermissions: Permission = apiInfo.globalPerms
+
+    def permissionIn[B: HasScope](b: B)(implicit service: ModelService): IO[Permission] =
+      if (b.scope == GlobalScope) IO.pure(apiInfo.globalPerms) else apiInfo.key.permissionsIn(b)
   }
 
   /**

@@ -2,6 +2,8 @@ package controllers
 
 import scala.language.higherKinds
 
+import javax.inject.Inject
+
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
@@ -9,13 +11,9 @@ import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest, AuthApiRequest}
+import controllers.sugar.Requests.{ApiRequest, AuthApiRequest}
 import db.ModelService
-import db.access.ModelView
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.UserTable
-import db.query.APIV2Queries
-import models.api.ApiKey
+import db.query.{APIV2Queries, UserQueries}
 import models.querymodels.APIV2Project
 import ore.permission.Permission
 import ore.project.{Category, ProjectSortingStrategy}
@@ -28,9 +26,8 @@ import cats.effect.IO
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
-import slick.lifted.TableQuery
 
-class ApiV2Controller(
+class ApiV2Controller @Inject()(
     implicit val ec: ExecutionContext,
     env: OreEnv,
     config: OreConfig,
@@ -58,18 +55,9 @@ class ApiV2Controller(
 
       token
         .fold(EitherT.rightT[IO, Result](ApiRequest(None, request))) { token =>
-          OptionT(
-            service
-              .runDBIO(
-                ModelView
-                  .later(ApiKey)
-                  .find(_.token === token)
-                  .join(TableQuery[UserTable])
-                  .on(_.ownerId === _.id)
-                  .result
-                  .headOption
-              )
-          ).map(t => ApiRequest(Some(ApiAuthInfo(t._2, t._1.permissions)), request)).toRight(Unauthorized: Result)
+          OptionT(service.runDbCon(UserQueries.getApiAuthInfo(token).option))
+            .map(info => ApiRequest(Some(info), request))
+            .toRight(Unauthorized: Result)
         }
         .value
         .unsafeToFuture()
@@ -128,7 +116,7 @@ class ApiV2Controller(
             tags.toList.flatMap(_.split(",").toList),
             q,
             owner,
-            request.permission.has(Permission.SeeHidden),
+            request.globalPermissions.has(Permission.SeeHidden),
             request.user.map(_.id),
             sortStrat.getOrElse(ProjectSortingStrategy.Default),
             relevance.getOrElse(true),
@@ -148,7 +136,7 @@ class ApiV2Controller(
           Nil,
           None,
           None,
-          request.permission.has(Permission.SeeHidden),
+          request.globalPermissions.has(Permission.SeeHidden),
           request.user.map(_.id),
           ProjectSortingStrategy.Default,
           orderWithRelevance = false,

@@ -16,6 +16,7 @@ GET     /admin/health                                               @controllers
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
 GET     /admin/stats                                                @controllers.Application.showStats(from: Option[String], to: Option[String])
 GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[DbRef[User]], projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]], actionFilter: Option[Int], subjectFilter: Option[DbRef[_]])
+POST    /admin/migrate                                              @controllers.Application.migrate()
 
 GET     /statusz                                                    @controllers.ApiV1Controller.showStatusZ()
 

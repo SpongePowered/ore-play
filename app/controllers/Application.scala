@@ -7,22 +7,23 @@ import java.util.Date
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Success, Try}
+import scala.util.Try
 
 import play.api.cache.AsyncCacheApi
-import play.api.mvc.{Action, ActionBuilder, AnyContent, Result}
+import play.api.mvc.{Action, ActionBuilder, AnyContent}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.query.AppQueries
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.ProjectTableMain
+import db.impl.schema.{ApiKeyTable, ProjectTableMain, UserTable}
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
 import db.{DbRef, Model, ModelCompanion, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
+import models.api.ApiKey
 import models.user.role._
 import models.user.{LoggedAction, LoggedActionModel, Organization, User, UserActionLogger}
 import models.viewhelper.OrganizationData
@@ -32,6 +33,7 @@ import ore.project.{Category, ProjectSortingStrategy}
 import ore.user.MembershipDossier
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.OreMDC
 import util.syntax._
 import views.{html => views}
 
@@ -40,6 +42,7 @@ import cats.data.OptionT
 import cats.effect.IO
 import cats.instances.vector._
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Main entry point for application.
@@ -56,6 +59,9 @@ final class Application @Inject()(forms: OreForms)(
 ) extends OreBaseController {
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
+
+  private val Logger    = scalalogging.Logger("ApplicationController")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Show external link warning page.
@@ -441,4 +447,19 @@ final class Application @Inject()(forms: OreForms)(
           Ok(views.users.admin.visibility(needsApproval, waitingProject))
         }
     }
+
+  def migrate(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](Permission.All)).asyncF {
+    Logger.info("Starting migration")
+    val missingUIKeyQuery = TableQuery[UserTable]
+      .joinLeft(TableQuery[ApiKeyTable].filter(_.isUiKey))
+      .on(_.id === _.ownerId)
+      .filter(_._2.isEmpty)
+      .map(_._1)
+
+    //We use a normal traverse to not exhaust the pool
+    service
+      .runDBIO(missingUIKeyQuery.result)
+      .flatMap(users => users.toVector.traverse(user => service.insert(ApiKey.uiKey(user.id))))
+      .as(Ok("Migration successful"))
+  }
 }
