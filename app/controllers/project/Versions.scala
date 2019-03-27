@@ -21,6 +21,7 @@ import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.UserTable
 import db.{Model, DbRef, ModelService}
+import discourse.OreDiscourseApi
 import form.OreForms
 import models.admin.VersionVisibilityChange
 import models.project._
@@ -56,7 +57,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     messagesApi: MessagesApi,
     env: OreEnv,
     config: OreConfig,
-    service: ModelService
+    service: ModelService,
+    forums: OreDiscourseApi
 ) extends OreBaseController {
 
   private val fileManager = projects.fileManager
@@ -104,7 +106,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         version <- getVersion(request.project, versionString)
         oldDescription = version.description.getOrElse("")
         newDescription = request.body.trim
-        _ <- EitherT.right[Result](service.update(version)(_.copy(description = Some(newDescription))))
+        _ <- EitherT.right[Result](version.updateDescriptionWithForum(request.project, newDescription))
         _ <- EitherT.right[Result](
           UserActionLogger.log(
             request.request,
