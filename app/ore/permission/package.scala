@@ -23,6 +23,9 @@ package object permission {
       */
     def fromLong(long: Long): Long @@ Permission.type = apply(long)
 
+    def fromBinString(str: String): Option[Long @@ Permission.type] =
+      scodec.bits.BitVector.fromBin(str).map(_.toLong(signed = false)).map(fromLong)
+
     val None = Permission(0)
     val All  = Permission(0xFFFFFFFFFFFFFFFFL)
 
@@ -113,5 +116,7 @@ package object permission {
       * Check if this permission grants any permissions.
       */
     def isNone: Boolean = permission == 0
+
+    def toBinString: String = scodec.bits.BitVector.fromLong(permission).toBin
   }
 }

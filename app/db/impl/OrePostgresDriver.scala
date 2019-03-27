@@ -61,8 +61,8 @@ trait OrePostgresDriver
       MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)
 
     implicit val permissionTypeMapper: BaseColumnType[Permission] = MappedJdbcType.base[Permission, String](
-      perm => "B" + java.lang.Long.toUnsignedString(perm, 2),
-      str => Permission.fromLong(java.lang.Long.parseUnsignedLong(str, 2))
+      _.toBinString,
+      Permission.fromBinString(_).get
     )
 
     /*

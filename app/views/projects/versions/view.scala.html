@@ -95,7 +95,7 @@
                                 <i class="fas fa-trash"></i> @messages("general.delete")
                             </a>
                         } else {
-                            @if(sp.perms(Permission.CreateVersion)) {
+                            @if(sp.perms(Permission.DeleteVersion)) {
                                 @if(v.p.publicVersions == 1) {
                                     <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                     title="@messages("version.delete.cannotLast")">

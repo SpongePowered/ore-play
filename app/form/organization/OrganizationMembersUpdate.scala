@@ -60,8 +60,8 @@ case class OrganizationMembersUpdate(
 
     val roleObjUpsF = roleUps.traverse { role =>
       Role.organizationRoles
-        .find(_.title == role)
-        .fold(IO.raiseError[Role](new Exception("supplied invalid role type")))(IO.pure)
+        .find(_.value == role)
+        .fold(IO.raiseError[Role](new Exception(s"Supplied invalid role type: $role")))(IO.pure)
     }
 
     val updateExisting = (roleObjUpsF, orgUsersF).tupled.flatMap {

@@ -16,8 +16,8 @@ SET permission = (1::BIT(64) << 32) | (1::BIT(64) << 35)
 WHERE r.name = 'Web_Dev';
 
 UPDATE roles r
-SET permission = (1::BIT(64) << 4) | (1::BIT(64) << 5) | (1::BIT(64) << 6) | (1::BIT(64) << 14) | (1::BIT(64) << 12) |
-                 (1::BIT(64) << 13) | (1::BIT(64) << 15) | (1::BIT(64) << 9)
+SET permission = (1::BIT(64) << 4) | (1::BIT(64) << 5) | (1::BIT(64) << 6) | (1::BIT(64) << 10) | (1::BIT(64) << 14) |
+                 (1::BIT(64) << 12) | (1::BIT(64) << 13) | (1::BIT(64) << 15) | (1::BIT(64) << 9)
 WHERE r.name = 'Project_Owner';
 UPDATE roles r
 SET permission = (1::BIT(64) << 12) | (1::BIT(64) << 13) | (1::BIT(64) << 15) | (1::BIT(64) << 9)
@@ -27,13 +27,19 @@ SET permission = (1::BIT(64) << 9)
 WHERE r.name = 'Project_Editor';
 
 UPDATE roles r
-SET permission = (1::BIT(64) << 4) | (1::BIT(64) << 5) | (1::BIT(64) << 6) | (1::BIT(64) << 14) | (1::BIT(64) << 12) |
-                 (1::BIT(64) << 13) | (1::BIT(64) << 15) | (1::BIT(64) << 9) | (1::BIT(64) << 21)
-WHERE r.name = 'Organization_Admin'
-   OR r.name = 'Organization_Owner'
+SET permission = (1::BIT(64) << 6) | (1::BIT(64) << 5) | (1::BIT(64) << 1) | (1::BIT(64) << 10) | (1::BIT(64) << 14) |
+                 (1::BIT(64) << 8) | (1::BIT(64) << 4) | (1::BIT(64) << 12) | (1::BIT(64) << 13) | (1::BIT(64) << 15) |
+                 (1::BIT(64) << 9) | (1::BIT(64) << 21)
+WHERE r.name = 'Organization_Owner'
    OR r.name = 'Organization';
 UPDATE roles r
-SET permission = (1::BIT(64) << 12) | (1::BIT(64) << 13) | (1::BIT(64) << 15) | (1::BIT(64) << 9) | (1::BIT(64) << 21)
+SET permission = (1::BIT(64) << 5) | (1::BIT(64) << 1) | (1::BIT(64) << 10) | (1::BIT(64) << 14) | (1::BIT(64) << 8) |
+                 (1::BIT(64) << 4) | (1::BIT(64) << 12) | (1::BIT(64) << 13) | (1::BIT(64) << 15) | (1::BIT(64) << 9) |
+                 (1::BIT(64) << 21)
+WHERE r.name = 'Organization_Admin';
+UPDATE roles r
+SET permission = (1::BIT(64) << 8) | (1::BIT(64) << 4) | (1::BIT(64) << 12) | (1::BIT(64) << 13) | (1::BIT(64) << 15) |
+                 (1::BIT(64) << 9) | (1::BIT(64) << 21)
 WHERE r.name = 'Organization_Developer';
 UPDATE roles r
 SET permission = (1::BIT(64) << 9) | (1::BIT(64) << 21)

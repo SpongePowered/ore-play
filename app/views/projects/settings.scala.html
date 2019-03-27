@@ -167,19 +167,21 @@
                     </div>
 
                         <!-- Delete -->
-                    <div class="setting">
-                        <div class="setting-description">
-                            <h4 class="danger">Delete</h4>
-                            <p>Once you delete a project, it cannot be recovered.</p>
-                        </div>
-                        <div class="setting-content">
-                            <button class="btn btn-delete btn-danger" data-toggle="modal"
-                            data-target="#modal-delete">
-                                Delete
-                            </button>
-                        </div>
+                    @if(sp.perms(Permission.DeleteProject)) {
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4 class="danger">Delete</h4>
+                                <p>Once you delete a project, it cannot be recovered.</p>
+                            </div>
+                            <div class="setting-content">
+                                <button class="btn btn-delete btn-danger" data-toggle="modal"
+                                data-target="#modal-delete">
+                                    Delete
+                                </button>
+                            </div>
                         <div class="clearfix"></div>
                     </div>
+                    }
 
                     @if(request.headerData.globalPerm(Permission.HardDeleteProject)) {
                         <div class="setting striped">

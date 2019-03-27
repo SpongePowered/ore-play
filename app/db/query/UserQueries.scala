@@ -146,22 +146,22 @@ object UserQueries extends DoobieOreProtocol {
   }
 
   def globalPermission(userId: DbRef[User]): Query0[Permission] =
-    sql"""|SELECT gt.permission | B'0'::BIT(64)
+    sql"""|SELECT coalesce(gt.permission, B'0'::BIT(64))
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
           |  WHERE u.id = $userId""".stripMargin.query[Permission]
 
   def projectPermission(userId: DbRef[User], projectId: DbRef[Project]): Query0[Permission] =
-    sql"""|SELECT gt.permission | pt.permission | ot.permission | B'0'::BIT(64)
+    sql"""|SELECT coalesce(gt.permission, B'0'::BIT(64)) | coalesce(pt.permission, B'0'::BIT(64)) | coalesce(ot.permission, B'0'::BIT(64))
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
-          |         LEFT JOIN project_trust pt ON pt.user_id = u.id AND pt.project_id = $projectId
-          |         LEFT JOIN projects p ON p.id = pt.project_id
+          |         LEFT JOIN projects p ON p.id = $projectId
+          |         LEFT JOIN project_trust pt ON pt.user_id = u.id AND pt.project_id = p.id
           |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = p.owner_id
           |  WHERE u.id = $userId;""".stripMargin.query[Permission]
 
   def organizationPermission(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Permission] =
-    sql"""|SELECT gt.permission | ot.permission | B'0'::BIT(64)
+    sql"""|SELECT coalesce(gt.permission, B'0'::BIT(64)) | coalesce(ot.permission, B'0'::BIT(64))
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
           |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = $organizationId
