@@ -19,6 +19,7 @@ import db.impl.schema.{
   VersionVisibilityChangeTable
 }
 import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
+import discourse.OreDiscourseApi
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
@@ -58,6 +59,9 @@ case class Version(
     visibility: Visibility = Visibility.Public,
     fileName: String,
     signatureFileName: String,
+    createForumPost: Boolean = true,
+    postId: Option[Int] = None,
+    isPostDirty: Boolean = false,
 ) extends Describable
     with Downloadable
     with Hideable {
@@ -228,5 +232,16 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
 
     def mostRecentReviews[V[_, _]: QueryView](view: V[ReviewTable, Model[Review]]): V[ReviewTable, Model[Review]] =
       reviewEntries(view).sortView(_.createdAt)
+
+    def updateDescriptionWithForum(
+        project: Model[Project],
+        description: String
+    )(implicit service: ModelService, forums: OreDiscourseApi): IO[Model[Version]] = {
+      for {
+        updated <- service.update(self)(_.copy(description = Some(description)))
+        _ <- if (project.topicId.isDefined && self.postId.isDefined) forums.updateVersionPost(project, updated)
+        else IO.pure(false)
+      } yield updated
+    }
   }
 }

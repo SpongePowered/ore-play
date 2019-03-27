@@ -296,20 +296,16 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
       * @param user User to set starred state of
       * @param starred True if should star
       */
-    def setStarredBy(
-        user: Model[User],
-        starred: Boolean
-    )(implicit service: ModelService): IO[Project] = {
-      checkNotNull(user, "null user", "")
+    def toggleStarredBy(
+        user: Model[User]
+    )(implicit service: ModelService): IO[Project] =
       for {
         contains <- self.stars.contains(user)
-        res <- if (starred != contains) {
-          if (contains)
-            self.stars.removeAssoc(user) *> service.update(self)(_.copy(starCount = self.starCount - 1))
-          else self.stars.addAssoc(user) *> service.update(self)(_.copy(starCount = self.starCount + 1))
-        } else IO.pure(self)
+        res <- if (contains)
+          self.stars.removeAssoc(user) *> service.update(self)(_.copy(starCount = self.starCount - 1))
+        else
+          self.stars.addAssoc(user) *> service.update(self)(_.copy(starCount = self.starCount + 1))
       } yield res
-    }
 
     /**
       * Returns the record of unique Project views.

@@ -8,12 +8,13 @@ import play.api.Logger
 import db.ModelFilter._
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.ProjectTableMain
+import db.impl.schema.{ProjectTableMain, VersionTable}
 import db.{ModelFilter, ModelService}
-import models.project.{Project, Visibility}
+import models.project.{Project, Version, Visibility}
 import ore.OreConfig
 
 import akka.actor.Scheduler
+import cats.effect.{ContextShift, IO}
 
 /**
   * Task to periodically retry failed Discourse requests.
@@ -24,14 +25,28 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
     config: OreConfig
 ) extends Runnable {
 
+  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+
   val Logger: Logger = this.api.Logger
 
-  private val topicFilter   = ModelFilter(Project)(_.topicId.isEmpty)
-  private val dirtyFilter   = ModelFilter(Project)(_.isTopicDirty)
-  private val visibleFilter = Visibility.isPublicFilter[ProjectTableMain]
+  private val projectTopicFilter = ModelFilter(Project)(_.topicId.isEmpty)
+  private val projectDirtyFilter = ModelFilter(Project)(_.isTopicDirty)
+  private val visibleFilter      = Visibility.isPublicFilter[ProjectTableMain]
 
-  private val toCreateProjects   = ModelView.raw(Project).filter(topicFilter && visibleFilter)
-  private val dirtyTopicProjects = ModelView.raw(Project).filter(dirtyFilter && visibleFilter)
+  private val toCreateProjects   = ModelView.raw(Project).filter(projectTopicFilter && visibleFilter)
+  private val dirtyTopicProjects = ModelView.raw(Project).filter(projectDirtyFilter && visibleFilter)
+
+  private val versionsQueryBase = for {
+    (version, project) <- TableQuery[VersionTable].join(TableQuery[ProjectTableMain]).on(_.projectId === _.id)
+    if version.createForumPost
+    if visibleFilter(project)
+  } yield (project, version)
+
+  private val versionTopicFilter = ModelFilter(Version)(_.postId.isEmpty)
+  private val versionDirtyFilter = ModelFilter(Version)(_.isPostDirty)
+
+  private val toCreateVersions  = versionsQueryBase.filter(v => versionTopicFilter(v._2))
+  private val dirtyPostVersions = versionsQueryBase.filter(v => versionDirtyFilter(v._2))
 
   /**
     * Starts the recovery task to be run at the specified interval.
@@ -52,6 +67,16 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
     service.runDBIO(dirtyTopicProjects.result).unsafeToFuture().foreach { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} topics...")
       toUpdate.foreach(this.api.updateProjectTopic(_).unsafeToFuture())
+    }
+
+    service.runDBIO(toCreateVersions.result).unsafeToFuture().foreach { toCreate =>
+      Logger.debug(s"Creating ${toCreate.size} posts...")
+      toCreate.foreach(t => this.api.createVersionPost(t._1, t._2).unsafeToFuture())
+    }
+
+    service.runDBIO(dirtyPostVersions.result).unsafeToFuture().foreach { toUpdate =>
+      Logger.debug(s"Updating ${toUpdate.size} posts...")
+      toUpdate.foreach(t => this.api.updateVersionPost(t._1, t._2).unsafeToFuture())
     }
 
     Logger.debug("Done")

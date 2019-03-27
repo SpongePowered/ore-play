@@ -7,7 +7,7 @@
 @import models.project.Channel
 @import ore.OreConfig
 @import ore.project.factory.PendingVersion
-@import util.StringUtils
+@import util.{FileUtils, StringUtils}
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
 @import views.html.helper.CSPNonce
@@ -59,6 +59,14 @@
                                             @projectDescription.getOrElse(messages("version.create.noDescription"))
                                         }
                                         </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>@messages("version.filename")</strong></td>
+                                        <td>@version.fileName</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>@messages("version.fileSize")</strong></td>
+                                        <td>@FileUtils.formatFileSize(version.fileSize)</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Channel</strong></td>

@@ -2,16 +2,11 @@ package models.project
 
 import java.sql.Timestamp
 
-import play.api.mvc.Cookie
-
-import controllers.sugar.Bakery
 import db.impl.model.common.Expirable
 import db.impl.schema.DownloadWarningsTable
 import db.{DbRef, DefaultModelCompanion, ModelQuery}
-import models.project.DownloadWarning.COOKIE
 
 import com.github.tminglei.slickpg.InetString
-import com.google.common.base.Preconditions._
 import slick.lifted.TableQuery
 
 /**
@@ -31,18 +26,7 @@ case class DownloadWarning(
     address: InetString,
     isConfirmed: Boolean = false,
     downloadId: Option[DbRef[UnsafeDownload]]
-) extends Expirable {
-
-  /**
-    * Creates a cookie that should be given to the client.
-    *
-    * @return Cookie for client
-    */
-  def cookie(implicit bakery: Bakery): Cookie = {
-    checkNotNull(this.token, "null token", "")
-    bakery.bake(COOKIE + "_" + this.versionId, this.token)
-  }
-}
+) extends Expirable
 
 object DownloadWarning
     extends DefaultModelCompanion[DownloadWarning, DownloadWarningsTable](TableQuery[DownloadWarningsTable]) {
@@ -50,9 +34,6 @@ object DownloadWarning
   implicit val query: ModelQuery[DownloadWarning] =
     ModelQuery.from(this)
 
-  /**
-    * Cookie identifier name.
-    */
-  val COOKIE = "_warning"
+  def cookieKey(versionId: DbRef[Version]) = s"_warning_$versionId"
 
 }

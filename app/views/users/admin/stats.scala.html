@@ -4,7 +4,10 @@
 @import ore.OreConfig
 @import models.querymodels.Stats
 @import views.html.helper.CSPNonce
-@(stats: List[Stats])(implicit messages: Messages,
+@import java.time.LocalDate
+@import java.time.temporal.ChronoUnit
+
+@(stats: List[Stats], fromTime: LocalDate, toTime: LocalDate)(implicit messages: Messages,
         request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @scripts = {
@@ -43,19 +46,19 @@
                     responsive: true,
                     type: 'line',
                     data: {
-                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString)))),
+                        labels: @Html(Json.stringify(Json.toJson(stats.map(_.day.toString).takeRight(30)))),
                         datasets: [{
                             label: "Total Downloads",
                             backgroundColor: "cornflowerblue",
                             borderColor: "dodgerblue",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(stats.map(_.totalDownloads))))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.totalDownloads).takeRight(30))))
                         }, {
                             label: "Unsafe Downloads",
                             backgroundColor: "lightseagreen",
                             borderColor: "darkseagreen",
                             fill: false,
-                            data: @Html(Json.stringify(Json.toJson(stats.map(_.unsafeDownloads))))
+                            data: @Html(Json.stringify(Json.toJson(stats.map(_.unsafeDownloads).takeRight(30))))
                         }]
                     },
                     options: {
@@ -93,10 +96,25 @@
                 });
             });
     </script>
+    <script @CSPNonce.attr type="text/javascript" src="@routes.Assets.versioned("javascripts/stats.js")"></script>
 }
 
 @bootstrap.layout("Stats", scripts) {
     <div class="row">
+        <div class="col-md-12">
+            <div class="form-inline">
+                <div class="form-group">
+                    <label for="fromDate">From:</label>
+                    <input id="fromDate" type="date" class="form-control" value="@fromTime.toString" max="@LocalDate.now().minus(1, ChronoUnit.DAYS)">
+                </div>
+                <div class="form-group">
+                    <label for="toDate">To:</label>
+                    <input id="toDate" type="date" class="form-control" value="@toTime.toString" max="@LocalDate.now().toString">
+                </div>
+            <button id="dateGoButton" class="btn btn-default">Go</button>
+            </div>
+        </div>
+
         <div class="col-md-12">
             <div class="panel panel-default">
                 <div class="panel-heading">

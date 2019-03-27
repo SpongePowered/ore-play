@@ -15,7 +15,7 @@ sorted according to different criteria.
 @import views.html.helper.CSPNonce
 @(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
-        orderWithRelevance: Boolean)(implicit messages: Messages, flash: Flash,
+        orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig)
 
 @randomSponsor = @{
@@ -95,7 +95,7 @@ sorted according to different criteria.
         <!-- Project table -->
         <div class="col-md-9">
             <div class="project-search input-group">
-                <input type="text" class="form-control" placeholder="Search in projects...">
+                <input type="text" class="form-control" placeholder="Search in @totalProjects projects, proudly made by the community...">
                 <span class="input-group-btn">
                     <button class="btn yellow" type="button">Search</button>
                 </span>
@@ -174,7 +174,7 @@ sorted according to different criteria.
                         categoryString,
                         query,
                         orderingOption,
-                        Some(page),
+                        None,
                         None, None,
                         relevanceOption)"
                     class="list-group-item @if(platform.isEmpty && platformCategory.isEmpty) { active }">
@@ -186,7 +186,7 @@ sorted according to different criteria.
                             categoryString,
                             query,
                             orderingOption,
-                            Some(page),
+                            None,
                             Some(pc.name),
                             None,
                             relevanceOption)"
@@ -201,7 +201,7 @@ sorted according to different criteria.
                                         categoryString,
                                         query,
                                         orderingOption,
-                                        Some(page),
+                                        None,
                                         None,
                                         Some(p.name),
                                         relevanceOption)"

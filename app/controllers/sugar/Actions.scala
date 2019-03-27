@@ -102,8 +102,7 @@ trait Actions extends Calls with ActionHelpers {
     * @return An [[ProjectRequest]]
     */
   def ProjectPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthedProjectRequest, AuthedProjectRequest] = PermissionAction[AuthedProjectRequest](p)
 
   /**
@@ -114,8 +113,7 @@ trait Actions extends Calls with ActionHelpers {
     * @return [[OrganizationRequest]]
     */
   def OrganizationPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthedOrganizationRequest, AuthedOrganizationRequest] =
     PermissionAction[AuthedOrganizationRequest](p)
 

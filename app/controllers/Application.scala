@@ -1,23 +1,26 @@
 package controllers
 
 import java.sql.Timestamp
-import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.time.{Instant, LocalDate}
 import java.util.Date
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
+import scala.util.{Success, Try}
 
 import play.api.cache.AsyncCacheApi
-import play.api.mvc.{Action, ActionBuilder, AnyContent}
+import play.api.mvc.{Action, ActionBuilder, AnyContent, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.query.AppQueries
 import db.impl.OrePostgresDriver.api._
+import db.impl.schema.ProjectTableMain
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
-import db.{Model, ModelCompanion, DbRef, ModelQuery, ModelService}
+import db.{DbRef, Model, ModelCompanion, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
 import models.user.role._
@@ -97,7 +100,9 @@ final class Application @Inject()(forms: OreForms)(
     val pageNum  = math.max(page.getOrElse(1), 1)
     val offset   = (pageNum - 1) * pageSize
 
-    service
+    val projectNumQ = TableQuery[ProjectTableMain].filter(_.visibility === (Visibility.Public: Visibility)).size
+
+    val projectListF = service
       .runDbCon(
         AppQueries
           .getHomeProjects(
@@ -113,11 +118,13 @@ final class Application @Inject()(forms: OreForms)(
           )
           .to[Vector]
       )
-      .map { data =>
-        val catList =
-          if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
-        Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance))
-      }
+    val projectNumF = service.runDBIO(projectNumQ.result)
+
+    (projectListF, projectNumF).parMapN { (data, projectNum) =>
+      val catList =
+        if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
+      Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance, projectNum))
+    }
   }
 
   /**
@@ -256,11 +263,22 @@ final class Application @Inject()(forms: OreForms)(
     * Show stats
     * @return
     */
-  def showStats(): Action[AnyContent] =
+  def showStats(from: Option[String], to: Option[String]): Action[AnyContent] =
     Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewStats)).asyncF { implicit request =>
-      service.runDbCon(AppQueries.getStats(0, 10).to[List]).map { stats =>
-        Ok(views.users.admin.stats(stats))
+      def parseTime(time: Option[String], default: LocalDate) =
+        time.map(s => Try(LocalDate.parse(s)).toOption).getOrElse(Some(default))
+
+      val res = for {
+        fromTime <- parseTime(from, LocalDate.now().minus(10, ChronoUnit.DAYS))
+        toTime   <- parseTime(to, LocalDate.now())
+        if fromTime.isBefore(toTime)
+      } yield {
+        service.runDbCon(AppQueries.getStats(fromTime, toTime).to[List]).map { stats =>
+          Ok(views.users.admin.stats(stats, fromTime, toTime))
+        }
       }
+
+      res.getOrElse(IO.pure(BadRequest))
     }
 
   def showLog(

@@ -39,6 +39,30 @@
     border-bottom: 1px solid $lighter;
     padding-bottom: 5px;
   }
+
+  .headeranchor {
+    display: none;
+    text-decoration: none;
+  }
+
+  h1:hover, h2:hover, h3:hover {
+    .headeranchor {
+      display: inline-block;
+      font-size: 16px;
+      margin-left: -18px;
+      width: 18px;
+    }
+  }
+
+  h4:hover, h5:hover, h6:hover {
+    .headeranchor {
+      display: inline-block;
+      font-size: 12px;
+      margin-left: -12px;
+      width: 12px;
+    }
+  }
+
 }
 
 button.open:hover {

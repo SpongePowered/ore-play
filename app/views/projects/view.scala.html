@@ -17,6 +17,11 @@ Base template for Project overview.
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDetail.js")"></script>
+    <script @CSPNonce.attr>
+            var projectOwner = "@p.project.ownerName";
+            var projectSlug = "@p.project.slug";
+            var alreadyStarred = @sp.starred;
+    </script>
     @additionalScripts
 }
 
@@ -151,12 +156,6 @@ Base template for Project overview.
 
                         @if(!p.project.isDeleted) {
                             @if(request.currentUser.exists(u => !p.project.isOwner(u))) {
-                                <script @CSPNonce.attr>
-                                        var projectOwner = "@p.project.ownerName";
-                                        var projectSlug = "@p.project.slug";
-                                        var alreadyStarred = @sp.starred;
-                                </script>
-
                                 <button class="btn btn-default btn-star">
                                     <i id="icon-star" @if(sp.starred) {
                                         class="fas fa-star"

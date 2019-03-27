@@ -206,19 +206,70 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @param version Version of project
     * @return
     */
-  def postVersionRelease(project: Model[Project], version: Version, content: Option[String])(
+  def createVersionPost(project: Model[Project], version: Model[Version])(
       implicit service: ModelService,
       cs: ContextShift[IO]
-  ): EitherT[IO, List[String], DiscoursePost] = {
+  ): IO[Model[Version]] = {
     import cats.instances.list._
     if (!this.isEnabled)
-      EitherT.leftT[IO, DiscoursePost](Nil: List[String])
+      IO.pure(version)
     else {
       checkArgument(version.projectId == project.id.value, "invalid version project pair", "")
-      EitherT.liftF(project.owner.user).flatMap { user =>
-        postDiscussionReply(project, user, content = Templates.versionRelease(project, version, content))
-          .leftSemiflatMap(errors => project.logger.flatMap(logger => errors.parTraverse(logger.err)).as(errors))
+      EitherT
+        .liftF(project.owner.user)
+        .flatMap { user =>
+          postDiscussionReply(
+            project,
+            user,
+            content = Templates.versionRelease(project, version, version.description)
+          )
+        }
+        .leftSemiflatMap(errors => project.logger.flatMap(logger => errors.parTraverse(logger.err)).as(version))
+        .semiflatMap(post => service.update(version)(_.copy(postId = Some(post.postId))))
+        .merge
+    }
+  }
+
+  def updateVersionPost(project: Model[Project], version: Model[Version])(
+      implicit service: ModelService
+  ): IO[Boolean] = {
+    if (!this.isEnabled)
+      IO.pure(true)
+    else {
+      checkArgument(project.topicId.isDefined, "undefined topic id", "")
+      checkArgument(version.postId.isDefined, "undefined post id", "")
+
+      val topicId   = project.topicId
+      val postId    = version.postId
+      val title     = Templates.projectTitle(project)
+      val ownerName = project.ownerName
+
+      implicit val mdc: DiscourseMDC = DiscourseMDC(ownerName, topicId, title)
+
+      def logErrorsAs(errors: List[String], as: Boolean): IO[Boolean] = {
+        val message =
+          s"""|Request to update project topic was successful but Discourse responded with errors:
+              |Project: ${project.url}
+              |Topic ID: $topicId
+              |Title: $title
+              |Errors: ${errors.toString}""".stripMargin
+        MDCLogger.warn(message)
+        project.logger.flatMap(_.err(message)).as(as)
       }
+
+      val updatePostProgram = (content: String) =>
+        updatePostF(username = ownerName, postId = postId.get, content = content)
+
+      val res = for {
+        // Set flag so that if we are interrupted we will remember to do it later
+        _ <- EitherT.right[Boolean](service.update(version)(_.copy(isPostDirty = true)))
+        content = Templates.versionRelease(project, version, version.description)
+        _ <- updatePostProgram(content).leftSemiflatMap(logErrorsAs(_, as = false))
+        _ = MDCLogger.debug(s"Version post updated for ${project.url}.")
+        _ <- EitherT.right[Boolean](service.update(version)(_.copy(isPostDirty = false)))
+      } yield true
+
+      res.merge
     }
   }
 
