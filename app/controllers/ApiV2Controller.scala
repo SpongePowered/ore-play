@@ -1,19 +1,23 @@
 package controllers
+
 import scala.language.higherKinds
 
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
 import play.api.libs.json.{Json, Writes}
-import play.api.mvc.{Action, ActionRefiner, AnyContent, Request, Result}
+import play.api.mvc._
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest, AuthApiRequest}
 import db.ModelService
 import db.access.ModelView
-import db.impl.schema.UserTable
 import db.impl.OrePostgresDriver.api._
+import db.impl.schema.UserTable
 import db.query.APIV2Queries
+import models.api.ApiKey
+import models.querymodels.APIV2Project
+import ore.permission.Permission
 import ore.project.{Category, ProjectSortingStrategy}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -21,9 +25,9 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import cats.Traverse
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
-import cats.syntax.all._
-import cats.instances.option._
 import cats.instances.list._
+import cats.instances.option._
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 class ApiV2Controller(
@@ -45,7 +49,13 @@ class ApiV2Controller(
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
-      val token = request.headers.get(AUTHORIZATION).flatMap(_.split(" ", 2).drop(1).headOption)
+      val token = request.headers
+        .get(AUTHORIZATION)
+        .map(_.split(" ", 2))
+        .filter(_.length == 2)
+        .map(arr => arr.head -> arr(1))
+        .collect { case ("ApiKey", key) => key }
+
       token
         .fold(EitherT.rightT[IO, Result](ApiRequest(None, request))) { token =>
           OptionT(
@@ -55,11 +65,11 @@ class ApiV2Controller(
                   .later(ApiKey)
                   .find(_.token === token)
                   .join(TableQuery[UserTable])
-                  .on(_.userId === _.id)
+                  .on(_.ownerId === _.id)
                   .result
                   .headOption
               )
-          ).map(t => ApiRequest(Some(ApiAuthInfo(t._2, t._1.permission)), request)).toRight(Unauthorized: Result)
+          ).map(t => ApiRequest(Some(ApiAuthInfo(t._2, t._1.permissions)), request)).toRight(Unauthorized: Result)
         }
         .value
         .unsafeToFuture()
@@ -106,7 +116,7 @@ class ApiV2Controller(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    apiEitherDbAction { request =>
+    apiEitherDbAction[APIV2Project] { request =>
       for {
         cats      <- parseOpt(categories.toList, Category.fromApiName, "Unknown category")
         sortStrat <- parseOpt(sort, ProjectSortingStrategy.fromApiName, "Unknown sort strategy")
@@ -118,7 +128,7 @@ class ApiV2Controller(
             tags.toList.flatMap(_.split(",").toList),
             q,
             owner,
-            request.permission.hasPermission(Permission.SeeHidden),
+            request.permission.has(Permission.SeeHidden),
             request.user.map(_.id),
             sortStrat.getOrElse(ProjectSortingStrategy.Default),
             relevance.getOrElse(true),
@@ -138,7 +148,7 @@ class ApiV2Controller(
           Nil,
           None,
           None,
-          request.permission.hasPermission(Permission.SeeHidden),
+          request.permission.has(Permission.SeeHidden),
           request.user.map(_.id),
           ProjectSortingStrategy.Default,
           orderWithRelevance = false,
@@ -153,7 +163,7 @@ class ApiV2Controller(
       _ =>
         APIV2Queries
           .projectMembers(pluginId, limitOrDefault(limit, 25), offset)
-          .map(mem => mem.copy(roles = mem.roles.sortBy(_.trust)))
+          .map(mem => mem.copy(roles = mem.roles.sortBy(_.permissions: Long)))
           .to[Vector]
     )
 

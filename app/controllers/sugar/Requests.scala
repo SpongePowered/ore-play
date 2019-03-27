@@ -6,6 +6,7 @@ import db.Model
 import models.project.Project
 import models.user.{Organization, User}
 import models.viewhelper._
+import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 
 /**
@@ -17,7 +18,7 @@ object Requests {
 
   case class ApiRequest[A](apiInfo: Option[ApiAuthInfo], request: Request[A]) extends WrappedRequest[A](request) {
     def user: Option[Model[User]] = apiInfo.map(_.user)
-    def permission: Permission    = apiInfo.map(_.permissions).getOrElse(Permission.Default)
+    def permission: Permission    = apiInfo.map(_.permissions).getOrElse(Permission.ViewPublicInfo)
   }
 
   case class AuthApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) {
