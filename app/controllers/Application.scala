@@ -304,7 +304,7 @@ final class Application @Inject()(forms: OreForms)(
   }
 
   def UserAdminAction: ActionBuilder[AuthRequest, AnyContent] =
-    Authenticated.andThen(PermissionAction(UserAdmin))
+    Authenticated.andThen(PermissionAction(Permission.EditAllUserSettings))
 
   def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncF { implicit request =>
     users

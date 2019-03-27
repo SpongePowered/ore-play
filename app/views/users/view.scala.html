@@ -101,7 +101,7 @@
                             }
                         }
 
-                        @if(request.headerData.globalPerm(UserAdmin)) {
+                        @if(request.headerData.globalPerm(Permission.EditAllUserSettings)) {
                             <a class="user-settings" href="@routes.Application.userAdmin(u.user.name)">
                                 <i class="fas fa-wrench" data-toggle="tooltip"
                                 data-placement="top" title="User Admin"></i>
@@ -152,7 +152,7 @@
 
     @content
 
-    @if(u.isCurrent || request.headerData.globalPerm(UserAdmin)) {
+    @if(u.isCurrent || request.headerData.globalPerm(Permission.EditAllUserSettings)) {
     <div class="modal fade" id="modal-pgp-edit" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
         <div class="modal-dialog" role="document">
             <div class="modal-content">

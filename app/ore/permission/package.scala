@@ -26,9 +26,9 @@ package object permission {
     val None = Permission(0)
     val All  = Permission(0xFFFFFFFFFFFFFFFFL)
 
-    val ViewPublicInfo   = Permission(1L << 0)
-    val EditUserSettings = Permission(1L << 1)
-    val EditApiKeys      = Permission(1L << 2)
+    val ViewPublicInfo      = Permission(1L << 0)
+    val EditOwnUserSettings = Permission(1L << 1)
+    val EditApiKeys         = Permission(1L << 2)
 
     private val EditSubjectSettings = Permission(1L << 4)
     val ManageSubjectMembers        = Permission(1L << 5)
@@ -68,6 +68,7 @@ package object permission {
     val ChangeRawVisibility = Permission(1L << 40)
     val HardDeleteProject   = Permission(1L << 41)
     val HardDeleteVersion   = Permission(1L << 42)
+    val EditAllUserSettings = Permission(1L << 43)
   }
 
   implicit class PermissionSyntax(private val permission: Permission) extends AnyVal {

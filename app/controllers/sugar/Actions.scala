@@ -72,7 +72,7 @@ trait Actions extends Calls with ActionHelpers {
     */
   def PermissionAction[R[_] <: ScopedRequest[_]](
       p: Permission
-  )(implicit ec: ExecutionContext, cs: ContextShift[IO], hasScope: HasScope[R[_]]): ActionRefiner[R, R] =
+  )(implicit ec: ExecutionContext, hasScope: HasScope[R[_]]): ActionRefiner[R, R] =
     new ActionRefiner[R, R] {
       def executionContext: ExecutionContext = ec
 
@@ -211,7 +211,11 @@ trait Actions extends Calls with ActionHelpers {
 
       def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
         users
-          .requestPermission(request.user, username, Permission.EditUserSettings)(auth, cs, OreMDC.RequestMDC(request))
+          .requestPermission(request.user, username, Permission.EditOwnUserSettings)(
+            auth,
+            cs,
+            OreMDC.RequestMDC(request)
+          )
           .transform {
             case None    => Some(Unauthorized) // No Permission
             case Some(_) => None // Permission granted => No Filter
@@ -324,9 +328,7 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User])(
-      implicit cs: ContextShift[IO]
-  ) = {
+  private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User]) = {
     if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
       user.permissionsIn(project).map(_.has(Permission.EditProjectSettings))
     } else {

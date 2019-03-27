@@ -35,6 +35,8 @@ import org.postgresql.util.{PGInterval, PGobject}
 
 trait DoobieOreProtocol {
 
+  implicit val logger = createLogger("Database")
+
   def createLogger(name: String): LogHandler = {
     val logger = play.api.Logger(name)
 
@@ -148,8 +150,8 @@ trait DoobieOreProtocol {
     Meta[InetAddress].timap(address => InetString(address.toString))(str => InetAddress.getByName(str.value))
 
   implicit val permissionMeta: Meta[Permission] =
-    Meta[String].imap[Permission](str => Permission.fromLong(java.lang.Long.parseLong(str, 2)))(
-      perm => java.lang.Long.toBinaryString(perm)
+    Meta[String].imap[Permission](str => Permission.fromLong(java.lang.Long.parseUnsignedLong(str, 2)))(
+      perm => java.lang.Long.toUnsignedString(perm, 2)
     )
 
   implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumString[RoleCategory](

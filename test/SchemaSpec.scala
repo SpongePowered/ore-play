@@ -178,7 +178,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("DbRole") {
-    check(sql"""SELECT name, category, trust, title, color, is_assignable, rank FROM roles""".query[DbRole])
+    check(sql"""SELECT name, category, permission, title, color, is_assignable, rank FROM roles""".query[DbRole])
   }
 
   test("UserGlobalRoles") {

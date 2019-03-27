@@ -76,7 +76,7 @@ object HeaderData {
 
   private def getHeaderData(
       user: Model[User]
-  )(implicit service: ModelService, cs: ContextShift[IO]) = {
+  )(implicit service: ModelService) = {
     user.permissionsIn(GlobalScope).flatMap { perms =>
       val query = Query.apply(
         (
