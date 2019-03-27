@@ -14,7 +14,7 @@ GET     /admin/flags                                                @controllers
 GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: DbRef[Flag], resolved: Boolean)
 GET     /admin/health                                               @controllers.Application.showHealth()
 GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
-GET     /admin/stats                                                @controllers.Application.showStats()
+GET     /admin/stats                                                @controllers.Application.showStats(from: Option[String], to: Option[String])
 GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[DbRef[User]], projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]], actionFilter: Option[Int], subjectFilter: Option[DbRef[_]])
 
 GET     /statusz                                                    @controllers.ApiV1Controller.showStatusZ()
@@ -126,7 +126,7 @@ GET     /:user/settings/pgp/delete                                  @controllers
 POST    /:author/:slug                                              @controllers.project.Projects.showFirstVersionCreator(author, slug)
 GET     /:author/:slug                                              @controllers.project.Projects.show(author, slug)
 GET     /:author/:slug/stars                                        @controllers.project.Projects.showStargazers(author, slug, page: Option[Int])
-POST    /:author/:slug/stars/:starred                               @controllers.project.Projects.setStarred(author, slug, starred: Boolean)
+POST    /:author/:slug/stars/toggle                                 @controllers.project.Projects.toggleStarred(author, slug)
 POST    /:author/:slug/flag                                         @controllers.project.Projects.flag(author, slug)
 POST    /:author/:slug/visible/:visibility                          @controllers.project.Projects.setVisible(author, slug, visibility: Int)
 POST    /:author/:slug/watch/:watching                              @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
@@ -185,9 +185,9 @@ POST    /:author/:slug/versions/:version/hardDelete                 @controllers
 POST    /:author/:slug/versions/:version/restore                    @controllers.project.Versions.restore(author, slug, version)
 POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
 
-GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean])
+GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean], dummy: Option[String])
 +nocsrf
-POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token)
+POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token: Option[String], dummy: Option[String])
 
 GET     /:author/:slug/versions/recommended/download                @controllers.project.Versions.downloadRecommended(author, slug, token: Option[String])
 GET     /:author/:slug/versions/recommended/signature               @controllers.project.Versions.downloadRecommendedSignature(author, slug)

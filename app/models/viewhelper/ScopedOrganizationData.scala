@@ -2,13 +2,12 @@ package models.viewhelper
 
 import db.{Model, ModelService}
 import models.user.{Organization, User}
-import ore.permission._
+import ore.permission.Permission
 
-import cats.Parallel
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 
-case class ScopedOrganizationData(permissions: Map[Permission, Boolean] = Map.empty)
+case class ScopedOrganizationData(permissions: Permission = Permission.None)
 
 object ScopedOrganizationData {
 
@@ -17,14 +16,9 @@ object ScopedOrganizationData {
   def cacheKey(orga: Model[Organization], user: Model[User]) = s"""organization${orga.id}foruser${user.id}"""
 
   def of[A](currentUser: Option[Model[User]], orga: Model[Organization])(
-      implicit service: ModelService,
-      cs: ContextShift[IO]
+      implicit service: ModelService
   ): IO[ScopedOrganizationData] =
-    currentUser.fold(IO.pure(noScope)) { user =>
-      Parallel.parMap2(user.trustIn(orga), user.globalRoles.allFromParent) { (trust, globalRoles) =>
-        ScopedOrganizationData(user.can.asMap(trust, globalRoles.toSet)(EditSettings))
-      }
-    }
+    currentUser.fold(IO.pure(noScope))(_.permissionsIn(orga).map(ScopedOrganizationData(_)))
 
   def of[A](currentUser: Option[Model[User]], orga: Option[Model[Organization]])(
       implicit service: ModelService,

@@ -20,7 +20,7 @@ import models.project.{Project, Visibility}
 import models.user.{Organization, SignOn, User}
 import models.viewhelper._
 import ore.permission.scope.{GlobalScope, HasScope}
-import ore.permission.{EditPages, EditSettings, HideProjects, Permission}
+import ore.permission.Permission
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.{IOUtils, OreMDC}
 
@@ -72,7 +72,7 @@ trait Actions extends Calls with ActionHelpers {
     */
   def PermissionAction[R[_] <: ScopedRequest[_]](
       p: Permission
-  )(implicit ec: ExecutionContext, cs: ContextShift[IO], hasScope: HasScope[R[_]]): ActionRefiner[R, R] =
+  )(implicit ec: ExecutionContext, hasScope: HasScope[R[_]]): ActionRefiner[R, R] =
     new ActionRefiner[R, R] {
       def executionContext: ExecutionContext = ec
 
@@ -86,7 +86,7 @@ trait Actions extends Calls with ActionHelpers {
       def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
         implicit val r: R[A] = request
 
-        request.user.can(p).in(request).unsafeToFuture().flatMap { perm =>
+        request.user.permissionsIn(request).map(_.has(p)).unsafeToFuture().flatMap { perm =>
           log(success = perm, request)
           if (!perm) onUnauthorized.map(Left.apply)
           else Future.successful(Right(request))
@@ -102,8 +102,7 @@ trait Actions extends Calls with ActionHelpers {
     * @return An [[ProjectRequest]]
     */
   def ProjectPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthedProjectRequest, AuthedProjectRequest] = PermissionAction[AuthedProjectRequest](p)
 
   /**
@@ -114,8 +113,7 @@ trait Actions extends Calls with ActionHelpers {
     * @return [[OrganizationRequest]]
     */
   def OrganizationPermissionAction(p: Permission)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthedOrganizationRequest, AuthedOrganizationRequest] =
     PermissionAction[AuthedOrganizationRequest](p)
 
@@ -205,13 +203,17 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  def userAction(username: String)(implicit ec: ExecutionContext, cs: ContextShift[IO]): ActionFilter[AuthRequest] =
+  def userEditAction(username: String)(implicit ec: ExecutionContext, cs: ContextShift[IO]): ActionFilter[AuthRequest] =
     new ActionFilter[AuthRequest] {
       def executionContext: ExecutionContext = ec
 
       def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
         users
-          .requestPermission(request.user, username, EditSettings)(auth, cs, OreMDC.RequestMDC(request))
+          .requestPermission(request.user, username, Permission.EditOwnUserSettings)(
+            auth,
+            cs,
+            OreMDC.RequestMDC(request)
+          )
           .transform {
             case None    => Some(Unauthorized) // No Permission
             case Some(_) => None // Permission granted => No Filter
@@ -313,7 +315,7 @@ trait Actions extends Calls with ActionHelpers {
         .fromOption[IO](user)
         .semiflatMap { user =>
           val check1 = canEditAndNeedChangeOrApproval(project, user)
-          val check2 = user.can(HideProjects).in(GlobalScope)
+          val check2 = user.permissionsIn(GlobalScope).map(_.has(Permission.SeeHidden))
 
           IOUtils.raceBoolean(check1, check2)
         }
@@ -324,11 +326,9 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User])(
-      implicit cs: ContextShift[IO]
-  ) = {
+  private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User]) = {
     if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
-      user.can(EditPages).in(project)
+      user.permissionsIn(project).map(_.has(Permission.EditProjectSettings))
     } else {
       IO.pure(false)
     }

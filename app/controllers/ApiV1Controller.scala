@@ -2,15 +2,14 @@ package controllers
 
 import java.sql.Timestamp
 import java.util.{Base64, Date, UUID}
+
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
-
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.Messages
 import play.api.libs.json._
 import play.api.mvc._
-
 import controllers.sugar.Bakery
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
@@ -21,7 +20,6 @@ import models.api.ProjectApiKey
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, Organization, User, UserActionLogger}
 import ore.permission.role.Role
-import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.project.factory.ProjectFactory
 import ore.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType._
@@ -31,13 +29,13 @@ import security.CryptoUtils
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.StatusZ
 import _root_.util.syntax._
-
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
+import ore.permission.Permission
 
 /**
   * Ore API (v1)
@@ -91,7 +89,7 @@ final class ApiV1Controller @Inject()(
   }
 
   def createKey(pluginId: String): Action[AnyContent] =
-    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(EditApiKeys)).asyncF {
+    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(Permission.EditApiKeys)).asyncF {
       implicit request =>
         val projectId = request.data.project.id.value
         val res = for {
@@ -123,23 +121,24 @@ final class ApiV1Controller @Inject()(
     }
 
   def revokeKey(pluginId: String): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(EditApiKeys)).asyncF { implicit request =>
-      val res = for {
-        optKey <- forms.ProjectApiKeyRevoke.bindOptionT[IO]
-        key    <- optKey
-        if key.projectId == request.data.project.id.value
-        _ <- OptionT.liftF(service.delete(key))
-        _ <- OptionT.liftF(
-          UserActionLogger.log(
-            request.request,
-            LoggedAction.ProjectSettingsChanged,
-            request.data.project.id,
-            s"${request.user.name} removed an ApiKey",
-            ""
+    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(Permission.EditApiKeys)).asyncF {
+      implicit request =>
+        val res = for {
+          optKey <- forms.ProjectApiKeyRevoke.bindOptionT[IO]
+          key    <- optKey
+          if key.projectId == request.data.project.id.value
+          _ <- OptionT.liftF(service.delete(key))
+          _ <- OptionT.liftF(
+            UserActionLogger.log(
+              request.request,
+              LoggedAction.ProjectSettingsChanged,
+              request.data.project.id,
+              s"${request.user.name} removed an ApiKey",
+              ""
+            )
           )
-        )
-      } yield Ok
-      res.getOrElse(BadRequest)
+        } yield Ok
+        res.getOrElse(BadRequest)
     }
 
   /**
@@ -175,7 +174,7 @@ final class ApiV1Controller @Inject()(
       limit: Option[Int],
       offset: Option[Int]
   ): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(PermissionAction(ReviewProjects)).asyncF {
+    AuthedProjectActionById(pluginId).andThen(PermissionAction(Permission.Reviewer)).asyncF {
       this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)
     }
 

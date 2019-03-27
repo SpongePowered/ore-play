@@ -15,13 +15,13 @@ import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{Model, DbRef, ModelService}
+import db.{DbRef, Model, ModelService}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, ReviewState, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
-import ore.permission.ReviewProjects
-import ore.permission.role.{Role, Trust}
+import ore.permission.Permission
+import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -48,7 +48,7 @@ final class Reviews @Inject()(forms: OreForms)(
 ) extends OreBaseController {
 
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewProjects)).andThen(ProjectAction(author, slug)).asyncEitherT {
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).andThen(ProjectAction(author, slug)).asyncEitherT {
       implicit request =>
         for {
           version <- getVersion(request.project, versionString)
@@ -66,7 +66,7 @@ final class Reviews @Inject()(forms: OreForms)(
     }
 
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT { implicit request =>
       getProjectVersion(author, slug, versionString).semiflatMap { version =>
         val review = Review(
           version.id,
@@ -80,7 +80,7 @@ final class Reviews @Inject()(forms: OreForms)(
   }
 
   def reopenReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
         review  <- version.mostRecentReviews(ModelView.now(Review)).one.toRight(notFound)
@@ -104,7 +104,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   def stopReview(author: String, slug: String, versionString: String): Action[String] = {
     Authenticated
-      .andThen(PermissionAction(ReviewProjects))
+      .andThen(PermissionAction(Permission.Reviewer))
       .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
@@ -119,7 +119,7 @@ final class Reviews @Inject()(forms: OreForms)(
   }
 
   def approveReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT { implicit request =>
       for {
         project <- getProject(author, slug)
         version <- getVersion(project, versionString)
@@ -137,8 +137,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private def queryNotificationUsers(
       projectId: Rep[DbRef[Project]],
-      userId: Rep[DbRef[User]],
-      noRole: Rep[Option[Role]]
+      userId: Rep[DbRef[User]]
   ): Query[(Rep[DbRef[User]], Rep[Option[Role]]), (DbRef[User], Option[Role]), Seq] = {
     // Query Orga Members
     val q1 = for {
@@ -151,7 +150,7 @@ final class Reviews @Inject()(forms: OreForms)(
     // Query version author
     val q2 = for {
       user <- TableQuery[UserTable] if user.id === userId
-    } yield (user.id, noRole)
+    } yield (user.id, None: Rep[Option[Role]])
 
     q1 ++ q2 // Union
   }
@@ -164,10 +163,10 @@ final class Reviews @Inject()(forms: OreForms)(
       requestUser: Model[User]
   ): IO[Unit] = {
     val usersF =
-      service.runDBIO(notificationUsersQuery((project.id, version.authorId, None)).result).map { list =>
+      service.runDBIO(notificationUsersQuery((project.id, version.authorId)).result).map { list =>
         list.collect {
-          case (res, Some(level)) if level.trust >= Trust.Lifted => res
-          case (res, None)                                       => res
+          case (res, Some(role)) if role.permissions.has(Permission.EditVersion) => res
+          case (res, None)                                                       => res
         }
       }
 
@@ -188,7 +187,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   def takeoverReview(author: String, slug: String, versionString: String): Action[String] = {
     Authenticated
-      .andThen(PermissionAction(ReviewProjects))
+      .andThen(PermissionAction(Permission.Reviewer))
       .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
@@ -224,7 +223,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   def editReview(author: String, slug: String, versionString: String, reviewId: DbRef[Review]): Action[String] = {
     Authenticated
-      .andThen(PermissionAction(ReviewProjects))
+      .andThen(PermissionAction(Permission.Reviewer))
       .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
@@ -235,7 +234,7 @@ final class Reviews @Inject()(forms: OreForms)(
   }
 
   def addMessage(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncEitherT(parse.form(forms.ReviewDescription)) {
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT(parse.form(forms.ReviewDescription)) {
       implicit request =>
         for {
           version      <- getProjectVersion(author, slug, versionString)
@@ -251,7 +250,7 @@ final class Reviews @Inject()(forms: OreForms)(
   }
 
   def backlogToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.Reviewer)).asyncEitherT { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
         oldState <- EitherT.cond[IO](

@@ -14,7 +14,7 @@ import play.api.i18n.Messages
 import db.access.ModelView
 import db.impl.access.ProjectBase
 import db.impl.OrePostgresDriver.api._
-import db.{Model, DbRef, ModelService}
+import db.{DbRef, Model, ModelService}
 import discourse.OreDiscourseApi
 import models.project._
 import models.user.role.ProjectUserRole
@@ -25,7 +25,7 @@ import ore.project.io._
 import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
-import util.OreMDC
+import util.{OreMDC, StringUtils}
 import util.StringUtils._
 
 import akka.actor.ActorSystem
@@ -211,7 +211,7 @@ trait ProjectFactory {
 
       Right(
         PendingVersion(
-          versionString = metaData.version.get,
+          versionString = StringUtils.slugify(metaData.version.get),
           dependencyIds = metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList,
           description = metaData.description,
           projectId = projectId,
@@ -346,18 +346,15 @@ trait ProjectFactory {
         IO.raiseError(new IllegalArgumentException("Version already exists."))
       else IO.unit
       // Create version
-      newVersion <- service.insert(pending.asVersion(project.id, channel.id))
-      tags       <- addTags(pending, newVersion)
+      version <- service.insert(pending.asVersion(project.id, channel.id))
+      tags    <- addTags(pending, version)
       // Notify watchers
-      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
-      _ <- uploadPlugin(project, pending.plugin, newVersion).fold(e => IO.raiseError(new Exception(e)), IO.pure)
-      _ <- if (project.topicId.isDefined && pending.createForumPost)
-        this.forums
-          .postVersionRelease(project, newVersion, newVersion.description)
-          .leftMap(_.mkString("\n"))
-          .fold(e => IO.raiseError(new Exception(e)), _ => IO.unit)
-      else IO.unit
-    } yield (newVersion, channel, tags)
+      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(version, project))
+      _ <- uploadPlugin(project, pending.plugin, version).fold(e => IO.raiseError(new Exception(e)), IO.pure)
+      withTopicId <- if (project.topicId.isDefined && pending.createForumPost)
+        this.forums.createVersionPost(project, version)
+      else IO.pure(version)
+    } yield (withTopicId, channel, tags)
   }
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version])(

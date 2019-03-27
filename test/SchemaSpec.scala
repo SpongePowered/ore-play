@@ -61,9 +61,12 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Version") {
-    check(sql"""|SELECT project_id, version_string, dependencies, channel_id, file_size, hash,
-                |author_id, description, downloads, review_state, reviewer_id, approved_at, visibility, file_name,
-                |signature_file_name FROM project_versions""".stripMargin.query[Version])
+    check(
+      sql"""|SELECT project_id, version_string, dependencies, channel_id, file_size, hash,
+            |author_id, description, downloads, review_state, reviewer_id, approved_at, visibility, file_name,
+            |signature_file_name, create_forum_post, post_id, is_post_dirty FROM project_versions""".stripMargin
+        .query[Version]
+    )
   }
 
   test("DownloadWarning") {
@@ -177,9 +180,11 @@ class SchemaSpec extends DbSpec {
     check(sql"""SELECT s_id, s_name FROM v_logged_actions""".query[LoggedSubject])
   }
 
+  /* We can't check this one as we use String for BIT(N) for the permission field, but doobie doesn't like that
   test("DbRole") {
-    check(sql"""SELECT name, category, trust, title, color, is_assignable, rank FROM roles""".query[DbRole])
+    check(sql"""SELECT name, category, permission, title, color, is_assignable, rank FROM roles""".query[DbRole])
   }
+   */
 
   test("UserGlobalRoles") {
     check(sql"""SELECT user_id, role_id FROM user_global_roles""".query[(DbRef[User], DbRef[DbRole])])

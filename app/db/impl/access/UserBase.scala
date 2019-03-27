@@ -57,7 +57,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
       if (user == toCheck) OptionT.pure[IO](user) // Same user
       else
         toCheck.toMaybeOrganization(ModelView.now(Organization)).flatMap { orga =>
-          OptionT.liftF(user.can(perm).in(orga)).collect {
+          OptionT.liftF(user.permissionsIn(orga).map(_.has(perm))).collect {
             case true => toCheck // Has Orga perm
           }
         }

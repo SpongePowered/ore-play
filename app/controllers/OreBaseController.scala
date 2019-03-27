@@ -15,7 +15,7 @@ import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
 import models.project.{Project, Version, Visibility}
-import ore.permission.ReviewProjects
+import ore.permission.Permission
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 
@@ -72,7 +72,7 @@ abstract class OreBaseController(
   ): EitherT[IO, Result, Model[Version]] =
     project
       .versions(ModelView.now(Version))
-      .find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
+      .find(versionFindFunc(versionString, request.headerData.globalPerm(Permission.SeeHidden)))
       .toRight(notFound)
 
   /**
@@ -177,7 +177,8 @@ abstract class OreBaseController(
     * @param username User to check
     * @return [[OreAction]] if has permission
     */
-  def UserAction(username: String): ActionBuilder[AuthRequest, AnyContent] = Authenticated.andThen(userAction(username))
+  def UserEditAction(username: String): ActionBuilder[AuthRequest, AnyContent] =
+    Authenticated.andThen(userEditAction(username))
 
   /**
     * Represents an action that requires a user to reenter their password.
@@ -191,5 +192,5 @@ abstract class OreBaseController(
       username: String,
       sso: Option[String],
       sig: Option[String]
-  ): ActionBuilder[AuthRequest, AnyContent] = UserAction(username).andThen(verifiedAction(sso, sig))
+  ): ActionBuilder[AuthRequest, AnyContent] = UserEditAction(username).andThen(verifiedAction(sso, sig))
 }

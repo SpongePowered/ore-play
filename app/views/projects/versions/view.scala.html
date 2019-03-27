@@ -1,11 +1,11 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.project.{ReviewState, Visibility}
 @import models.viewhelper.{ScopedProjectData, VersionData}
-@import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
 @import ore.{OreConfig, Platform}
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
+@import ore.permission.Permission
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -46,7 +46,7 @@
 
                     @if(v.v.reviewState.isChecked) {
                         <div>
-                            @if(request.headerData.globalPerm(ReviewProjects)) {
+                            @if(request.headerData.globalPerm(Permission.Reviewer)) {
                                 @v.approvedBy.zip(v.v.approvedAt).map { t =>
                                     <i class="minor">
                                         @Html(messages("version.approved.info", t._1, prettifyDate(t._2)))
@@ -69,7 +69,7 @@
 
                     <div>
 
-                        @if(!v.isRecommended && sp.perms(EditVersions) && !v.v.isDeleted) {
+                        @if(!v.isRecommended && sp.perms(Permission.EditVersion) && !v.v.isDeleted) {
                             @form(action = versionRoutes.setRecommended(
                                 v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
                                 @CSRF.formField
@@ -79,7 +79,7 @@
                             }
                         }
 
-                        @if(request.headerData.globalPerm(ReviewProjects)) {
+                        @if(request.headerData.globalPerm(Permission.Reviewer)) {
                             @if(v.v.reviewState.isChecked) {
                                 <a href="@v.fullSlug/reviews" class="btn btn-info">@messages("review.log")</a>
                             } else {
@@ -95,7 +95,7 @@
                                 <i class="fas fa-trash"></i> @messages("general.delete")
                             </a>
                         } else {
-                            @if(sp.perms(UploadVersions)) {
+                            @if(sp.perms(Permission.DeleteVersion)) {
                                 @if(v.p.publicVersions == 1) {
                                     <a class="btn btn-danger" disabled data-toggle="tooltip" data-placement="top"
                                     title="@messages("version.delete.cannotLast")">
@@ -125,7 +125,7 @@
                             </ul>
                         </div>
 
-                        @if(request.hasUser && request.headerData.globalPerm(ViewLogs)) {
+                        @if(request.hasUser && request.headerData.globalPerm(Permission.ViewLogs)) {
                             <div class="dropdown dropdown-menu-right" style="display: inline-block">
                                 <button class="btn btn-alert dropdown-toggle" type="button" id="admin-version-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                     Admin actions
@@ -133,11 +133,11 @@
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
                                     <li><a href="@appRoutes.showLog(None, None, None, Some(v.v.id), None, None, None)">User Action Logs</a></li>
-                                    @if(request.headerData.globalPerm(ReviewProjects)) {
+                                    @if(request.headerData.globalPerm(Permission.Reviewer)) {
                                         @if(v.v.visibility == Visibility.SoftDelete) {
                                             <li><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>
                                         }
-                                        @if(request.headerData.globalPerm(HardRemoveVersion) && !v.isRecommended) {
+                                        @if(request.headerData.globalPerm(Permission.HardDeleteVersion) && !v.isRecommended) {
                                             <li><a href="#" data-toggle="modal" data-target="#modal-harddelete" style="color: darkred">Hard delete</a></li>
                                         }
                                     }
@@ -169,7 +169,7 @@
                     saveCall = versionRoutes.saveDescription(
                         v.p.project.ownerName, v.p.project.slug, v.v.versionString
                     ),
-                    enabled = sp.perms(EditVersions),
+                    enabled = sp.perms(Permission.EditPage),
                     raw = v.v.description.getOrElse(""),
                     cooked = v.v.descriptionHtml,
                     subject = "Version"
@@ -225,7 +225,7 @@
         }
     </div>
 
-    @if(sp.perms(UploadVersions) && v.p.publicVersions != 1) {
+    @if(sp.perms(Permission.DeleteVersion) && v.p.publicVersions != 1) {
         <div class="modal fade" id="modal-delete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -255,7 +255,7 @@
         </div>
     }
 
-    @if(request.headerData.globalPerm(ReviewProjects)) {
+    @if(request.headerData.globalPerm(Permission.Reviewer)) {
         @if(v.v.visibility == Visibility.SoftDelete) {
             <div class="modal fade" id="modal-restore" tabindex="-1" role="dialog" aria-labelledby="label-delete">
                 <div class="modal-dialog" role="document">
@@ -284,7 +284,7 @@
                 </div>
             </div>
         }
-        @if(request.headerData.globalPerm(HardRemoveVersion)) {
+        @if(request.headerData.globalPerm(Permission.HardDeleteVersion)) {
             <div class="modal fade" id="modal-harddelete" tabindex="-1" role="dialog" aria-labelledby="label-delete">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">

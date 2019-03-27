@@ -4,7 +4,7 @@
 
 @roles = @{
     Role.values.filter(role => role.category == roleCategory && role.isAssignable)
-            .toList.sortBy(_.trust).reverse
+            .toList.sortBy(_.permissions: Long).reverse
 }
 
 <select id="@id" form="@form" class="@classes" @if(hidden) { style="display: none;" }>

@@ -1,6 +1,4 @@
 @import models.user.role.UserRoleModel
-@import ore.permission.EditSettings
-@import ore.permission.role.Trust.Absolute
 @import ore.user.Member
 @import ore.{Joinable, OreConfig}
 @import views.html.helper.{CSRF, form}
@@ -9,14 +7,14 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.JoinableData
 @import ore.permission.Permission
-@(j: JoinableData[_ <: UserRoleModel[_], _ <: Joinable], perms: Map[Permission, Boolean], editable: Boolean = false, removeCall: Call = null,
+@(j: JoinableData[_ <: UserRoleModel[_], _ <: Joinable], perms: Permission, editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 
 <!-- TODO: Pagination -->
 
 @if(j.members.nonEmpty) {
 
-    @if(editable && perms.getOrElse(EditSettings, false)) {
+    @if(editable && perms.has(Permission.ManageSubjectMembers)) {
         <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
         <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
 
@@ -69,7 +67,7 @@
         <div class="panel-heading">
             <h3 class="pull-left panel-title">@messages("project.settings.members")</h3>
 
-            @if(perms.getOrElse(EditSettings, false)) {
+            @if(perms.has(Permission.ManageSubjectMembers)) {
                 <div class="pull-right">
                     @if(!editable && settingsCall != null) {
                         <a href="@settingsCall"
@@ -100,7 +98,7 @@
                 @user.name
                 </a>
                     <p style="display: none;" class="role-id">@role.id</p>
-                    @if(editable && perms.getOrElse(EditSettings, false) && !role.role.trust.equals(Absolute)) {
+                    @if(editable && perms.has(Permission.ManageSubjectMembers) && !role.role.permissions.has(Permission.IsOrganizationOwner)) {
                         <a href="#">
                             <i style="padding-left:5px" class="fas fa-trash" data-toggle="modal" data-target="#modal-user-delete"></i>
                         </a>
@@ -119,7 +117,7 @@
             }
 
             <!-- User search -->
-            @if(perms.getOrElse(EditSettings, false)) {
+            @if(perms.has(Permission.ManageSubjectMembers)) {
                 <li class="list-group-item">
                     @users.invite.userSearch()
                 </li>
