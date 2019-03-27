@@ -20,11 +20,10 @@ Documentation page within Project overview.
   page: Page,
   parentPage: Option[Page],
   pageCount: Int,
-  forceHideEditor: Boolean = false,
   editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @canEditPages = @{
-    sp.perms(EditPages) && !forceHideEditor
+    sp.perms(EditPages)
 }
 
 @scripts = {

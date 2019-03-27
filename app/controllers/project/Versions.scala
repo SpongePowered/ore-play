@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.libs.json.Json
-import play.api.mvc.{Action, AnyContent, Request, Result}
+import play.api.mvc.{Action, AnyContent, Result}
 import play.filters.csrf.CSRF
 
 import controllers.OreBaseController
@@ -20,7 +20,7 @@ import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.UserTable
-import db.{Model, DbRef, ModelService}
+import db.{DbRef, Model, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import models.admin.VersionVisibilityChange
@@ -40,8 +40,8 @@ import views.html.projects.{versions => views}
 
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
-import cats.syntax.all._
 import cats.instances.option._
+import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
 
@@ -591,7 +591,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               project.slug,
               version.name,
               Some(UploadedFile.value),
-              api = Some(false)
+              api = Some(false),
+              Some("dummy")
             )
           )
         )
@@ -604,19 +605,25 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     if (version.reviewState == ReviewState.Reviewed)
       IO.pure(true)
     else {
-      // check for confirmation
-      OptionT
-        .fromOption[IO](req.cookies.get(DownloadWarning.COOKIE + "_" + version.id).map(_.value).orElse(token))
-        .flatMap { tkn =>
-          ModelView.now(DownloadWarning).find { warn =>
-            (warn.token === tkn) &&
-            (warn.versionId === version.id.value) &&
-            (warn.address === InetString(StatTracker.remoteAddress)) &&
-            warn.isConfirmed
+      val hasSessionConfirm = req.session.get(DownloadWarning.cookieKey(version.id)).contains("confirmed")
+
+      if (hasSessionConfirm) {
+        IO.pure(true)
+      } else {
+        // check confirmation for API
+        OptionT
+          .fromOption[IO](token)
+          .flatMap { tkn =>
+            ModelView.now(DownloadWarning).find { warn =>
+              (warn.token === tkn) &&
+              (warn.versionId === version.id.value) &&
+              (warn.address === InetString(StatTracker.remoteAddress)) &&
+              warn.isConfirmed
+            }
           }
-        }
-        .semiflatMap(warn => if (warn.hasExpired) service.delete(warn).as(false) else IO.pure(true))
-        .exists(identity)
+          .semiflatMap(warn => if (warn.hasExpired) service.delete(warn).as(false) else IO.pure(true))
+          .exists(identity)
+      }
     }
   }
 
@@ -642,6 +649,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param author Project author
     * @param slug   Project slug
     * @param target Target version
+    * @param dummy  A parameter to get around Chrome's cache
     * @return       Confirmation view
     */
   def showDownloadConfirm(
@@ -649,7 +657,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       slug: String,
       target: String,
       downloadType: Option[Int],
-      api: Option[Boolean]
+      api: Option[Boolean],
+      dummy: Option[String]
   ): Action[AnyContent] = {
     ProjectAction(author, slug).asyncEitherT { implicit request =>
       val dlType              = downloadType.flatMap(DownloadType.withValueOpt).getOrElse(DownloadType.UploadedFile)
@@ -667,7 +676,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           val address    = InetString(StatTracker.remoteAddress)
           // remove old warning attached to address that are expired (or duplicated for version)
           val removeWarnings = service.deleteWhere(DownloadWarning) { warning =>
-            (warning.address === address && warning.expiration < new Timestamp(new Date().getTime)) || warning.versionId === version.id.value
+            (warning.address === address || warning.expiration < new Timestamp(new Date().getTime)) && warning.versionId === version.id.value
           }
           // create warning
           val addWarning = service.insert(
@@ -675,26 +684,28 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               expiration = expiration,
               token = token,
               versionId = version.id,
-              address = InetString(StatTracker.remoteAddress),
+              address = address,
               downloadId = None
             )
           )
 
-          val isPartial = version.reviewState == ReviewState.PartiallyReviewed
-          val apiMsg =
-            if (isPartial) "version.download.confirmPartial.body.api" else "version.download.confirm.body.api"
+          val isPartial   = version.reviewState == ReviewState.PartiallyReviewed
+          val apiMsgKey   = if (isPartial) "version.download.confirmPartial.api" else "version.download.confirm.body.api"
+          lazy val apiMsg = this.messagesApi(apiMsgKey)
 
           if (api.getOrElse(false)) {
-            (removeWarnings *> addWarning).as {
+            (removeWarnings *> addWarning).as(
               MultipleChoices(
                 Json.obj(
-                  "message" -> this.messagesApi(apiMsg).split('\n'),
-                  "post"    -> self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
-                  "url"     -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
-                  "token"   -> token
+                  "message" -> apiMsg,
+                  "post" -> self
+                    .confirmDownload(author, slug, target, Some(dlType.value), Some(token), None)
+                    .absoluteURL(),
+                  "url"   -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
+                  "token" -> token
                 )
               )
-            }
+            )
           } else {
             val userAgent = request.headers.get("User-Agent").map(_.toLowerCase)
 
@@ -704,19 +715,21 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                   .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
               )
             } else if (userAgent.exists(_.startsWith("curl/"))) {
-              IO.pure(
+              (removeWarnings *> addWarning).as(
                 MultipleChoices(
-                  this.messagesApi(
-                    apiMsg,
-                    self.confirmDownload(author, slug, target, Some(dlType.value), token).absoluteURL(),
+                  apiMsg + "\n" + this.messagesApi(
+                    "version.download.confirm.curl",
+                    self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
                     CSRF.getToken.get.value
                   ) + "\n"
                 ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
               )
             } else {
-              (removeWarnings *> addWarning, version.channel.map(_.isNonReviewed)).parMapN { (warn, nonReviewed) =>
-                MultipleChoices(views.unsafeDownload(project, version, nonReviewed, dlType, token))
-                  .withCookies(warn.cookie)
+              version.channel.map(_.isNonReviewed).map { nonReviewed =>
+                //We return Ok here to make sure Chrome sets the cookie
+                //https://bugs.chromium.org/p/chromium/issues/detail?id=696204
+                Ok(views.unsafeDownload(project, version, nonReviewed, dlType))
+                  .addingToSession(DownloadWarning.cookieKey(version.id) -> "set")
               }
             }
           }
@@ -729,7 +742,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       slug: String,
       target: String,
       downloadType: Option[Int],
-      token: String
+      token: Option[String],
+      dummy: Option[String] //A parameter to get around Chrome's cache
   ): Action[AnyContent] = {
     ProjectAction(author, slug).asyncEitherT { implicit request =>
       getVersion(request.data.project, target)
@@ -740,14 +754,16 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           confirmDownload0(version.id, downloadType, token)
             .toRight(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload"))
         }
-        .map { dl =>
-          dl.downloadType match {
-            case UploadedFile => Redirect(self.download(author, slug, target, Some(token)))
-            case JarFile      => Redirect(self.downloadJar(author, slug, target, Some(token)))
-            // Note: Shouldn't get here in the first place since sig files
-            // don't need confirmation, but added as a failsafe.
-            case SignatureFile => Redirect(self.downloadSignature(author, slug, target))
-          }
+        .map {
+          case (dl, optNewSession) =>
+            val newSession = optNewSession.getOrElse(request.session)
+            dl.downloadType match {
+              case UploadedFile => Redirect(self.download(author, slug, target, token)).withSession(newSession)
+              case JarFile      => Redirect(self.downloadJar(author, slug, target, token)).withSession(newSession)
+              // Note: Shouldn't get here in the first place since sig files
+              // don't need confirmation, but added as a failsafe.
+              case SignatureFile => Redirect(self.downloadSignature(author, slug, target)).withSession(newSession)
+            }
         }
     }
   }
@@ -755,43 +771,53 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   /**
     * Confirms the download and prepares the unsafe download.
     */
-  private def confirmDownload0(versionId: DbRef[Version], downloadType: Option[Int], token: String)(
-      implicit requestHeader: Request[_],
-      mdc: OreMDC
-  ): OptionT[IO, UnsafeDownload] = {
+  private def confirmDownload0(versionId: DbRef[Version], downloadType: Option[Int], optToken: Option[String])(
+      implicit request: OreRequest[_]
+  ): OptionT[IO, (Model[UnsafeDownload], Option[play.api.mvc.Session])] = {
     val addr = InetString(StatTracker.remoteAddress)
     val dlType = downloadType
       .flatMap(DownloadType.withValueOpt)
       .getOrElse(DownloadType.UploadedFile)
-    // find warning
-    ModelView
-      .now(DownloadWarning)
-      .find { warn =>
-        (warn.address === addr) &&
-        (warn.token === token) &&
-        (warn.versionId === versionId) &&
-        !warn.isConfirmed &&
-        warn.downloadId.?.isEmpty
-      }
-      .semiflatMap { warn =>
-        val isInvalid = warn.hasExpired
-        // warning has expired
-        val remove = if (isInvalid) service.delete(warn).void else IO.unit
 
-        remove.as((warn, isInvalid))
-      }
-      .filterNot(_._2)
-      .map(_._1)
-      .semiflatMap { warn =>
-        // warning confirmed and redirect to download
-        for {
-          user <- users.current.value
-          unsafeDownload <- service.insert(
-            UnsafeDownload(userId = user.map(_.id.value), address = addr, downloadType = dlType)
-          )
-          _ <- service.update(warn)(_.copy(isConfirmed = true, downloadId = Some(unsafeDownload.id)))
-        } yield unsafeDownload
-      }
+    val user = request.currentUser
+
+    val insertDownload = service.insert(
+      UnsafeDownload(userId = user.map(_.id.value), address = addr, downloadType = dlType)
+    )
+
+    optToken match {
+      case None =>
+        val cookieKey    = DownloadWarning.cookieKey(versionId)
+        val sessionIsSet = request.session.get(cookieKey).contains("set")
+
+        if (sessionIsSet) {
+          val newSession = request.session + (cookieKey -> "confirmed")
+          OptionT.liftF(insertDownload.tupleRight(Some(newSession)))
+        } else {
+          OptionT.none[IO, (Model[UnsafeDownload], Option[play.api.mvc.Session])]
+        }
+      case Some(token) =>
+        // find warning
+        ModelView
+          .now(DownloadWarning)
+          .find { warn =>
+            (warn.address === addr) &&
+            (warn.token === token) &&
+            (warn.versionId === versionId) &&
+            !warn.isConfirmed &&
+            warn.downloadId.?.isEmpty
+          }
+          .flatMapF { warn =>
+            if (warn.hasExpired) service.delete(warn).as(None) else IO.pure(Some(warn))
+          }
+          .semiflatMap { warn =>
+            // warning confirmed and redirect to download
+            for {
+              unsafeDownload <- insertDownload
+              _              <- service.update(warn)(_.copy(isConfirmed = true, downloadId = Some(unsafeDownload.id)))
+            } yield (unsafeDownload, None)
+          }
+    }
   }
 
   /**
@@ -846,7 +872,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 project.slug,
                 version.name,
                 Some(JarFile.value),
-                api = Some(api)
+                api = Some(api),
+                None
               )
             )
           )
@@ -918,7 +945,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       getVersion(project, versionString).semiflatMap { version =>
         optToken
           .map { token =>
-            confirmDownload0(version.id, Some(JarFile.value), token).value *>
+            confirmDownload0(version.id, Some(JarFile.value), Some(token)).value *>
               sendJar(project, version, optToken, api = true)
           }
           .getOrElse(sendJar(project, version, optToken, api = true))

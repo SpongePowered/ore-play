@@ -162,7 +162,7 @@ The main header displayed on each layout.
 
                         @if(request.headerData.globalPerm(ViewStats)) {
                             <li>
-                                <a href="@routes.Application.showStats()">
+                                <a href="@routes.Application.showStats(None, None)">
                                     <i class="fas fa-chart-area mr-1"></i>
                                     <span>
                                         @messages("user.stats")
