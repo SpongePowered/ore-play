@@ -15,7 +15,7 @@ import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.ApiRequest
+import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import db.ModelService
 import db.access.ModelView
 import db.query.{APIV2Queries, UserQueries}
@@ -68,9 +68,15 @@ class ApiV2Controller @Inject()(
         .fold(EitherT.leftT[IO, ApiRequest[A]](unAuth)) { token =>
           OptionT(service.runDbCon(UserQueries.getApiAuthInfo(token).option))
             .toRight(unAuth)
-            .ensure(
-              Unauthorized(Json.obj("message" -> "Api session expired")).withHeaders(WWW_AUTHENTICATE -> authUrl)
-            )(_.expires.after(service.theTime))
+            .flatMap { info =>
+              if (info.expires.after(service.theTime)) {
+                EitherT
+                  .left[ApiAuthInfo](service.deleteWhere(ApiSession)(_.token === token))
+                  .leftMap { _ =>
+                    Unauthorized(Json.obj("message" -> "Api session expired")).withHeaders(WWW_AUTHENTICATE -> authUrl)
+                  }
+              } else EitherT.rightT[IO, Result](info)
+            }
             .map(info => ApiRequest(info, request))
         }
         .value
