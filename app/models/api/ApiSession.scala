@@ -1,5 +1,6 @@
 package models.api
-import java.sql.Timestamp
+
+import java.time.Instant
 
 import db.impl.schema.ApiKeySessionTable
 import db.{DbRef, DefaultModelCompanion, ModelQuery}
@@ -11,7 +12,7 @@ case class ApiSession(
     token: String,
     keyId: Option[DbRef[ApiKey]],
     userId: Option[DbRef[User]],
-    expires: Timestamp
+    expires: Instant
 )
 object ApiSession extends DefaultModelCompanion[ApiSession, ApiKeySessionTable](TableQuery[ApiKeySessionTable]) {
   implicit val query: ModelQuery[ApiSession] = ModelQuery.from(this)

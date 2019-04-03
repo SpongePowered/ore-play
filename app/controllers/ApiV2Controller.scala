@@ -2,8 +2,7 @@ package controllers
 
 import scala.language.higherKinds
 
-import java.sql.Timestamp
-import java.time.{LocalDateTime, ZoneOffset}
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 import javax.inject.Inject
 
@@ -72,7 +71,7 @@ class ApiV2Controller @Inject()(
           OptionT(service.runDbCon(UserQueries.getApiAuthInfo(token).option))
             .toRight(unAuth)
             .flatMap { info =>
-              if (info.expires.after(service.theTime)) {
+              if (info.expires.isBefore(Instant.now())) {
                 EitherT
                   .left[ApiAuthInfo](service.deleteWhere(ApiSession)(_.token === token))
                   .leftMap { _ =>
@@ -137,7 +136,7 @@ class ApiV2Controller @Inject()(
     }
 
   def authenticate(): Action[AnyContent] = OreAction.asyncEitherT { implicit request =>
-    def expiration(duration: FiniteDuration) = Timestamp.from(service.theTime.toInstant.plusSeconds(duration.toSeconds))
+    def expiration(duration: FiniteDuration) = service.theTime.toInstant.plusSeconds(duration.toSeconds)
 
     lazy val sessionExpiration       = expiration(config.ore.api.sessionExpiration)
     lazy val publicSessionExpiration = expiration(config.ore.api.publicSessionExpiration)
@@ -169,7 +168,7 @@ class ApiV2Controller @Inject()(
           Ok(
             Json.obj(
               "session" -> key.token,
-              "expires" -> LocalDateTime.ofInstant(key.expires.toInstant, ZoneOffset.UTC),
+              "expires" -> LocalDateTime.ofInstant(key.expires, ZoneOffset.UTC),
               "type"    -> tpe
             )
           )

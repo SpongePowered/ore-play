@@ -1,6 +1,6 @@
 package controllers.sugar
 
-import java.sql.Timestamp
+import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
 
@@ -20,7 +20,7 @@ import cats.effect.IO
   */
 object Requests {
 
-  case class ApiAuthInfo(user: Option[Model[User]], key: Option[ApiKey], expires: Timestamp, globalPerms: Permission)
+  case class ApiAuthInfo(user: Option[Model[User]], key: Option[ApiKey], expires: Instant, globalPerms: Permission)
 
   case class ApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) {
     def user: Option[Model[User]] = apiInfo.user

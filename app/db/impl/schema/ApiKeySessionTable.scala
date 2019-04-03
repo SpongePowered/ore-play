@@ -1,6 +1,6 @@
 package db.impl.schema
 
-import java.sql.Timestamp
+import java.time.Instant
 
 import db.DbRef
 import db.impl.OrePostgresDriver.api._
@@ -12,7 +12,7 @@ class ApiKeySessionTable(tag: Tag) extends ModelTable[ApiSession](tag, "api_sess
   def token   = column[String]("token")
   def keyId   = column[Option[DbRef[ApiKey]]]("key_id")
   def userId  = column[Option[DbRef[User]]]("user_id")
-  def expires = column[Timestamp]("expires")
+  def expires = column[Instant]("expires")
 
   override def * =
     (id.?, createdAt.?, (token, keyId, userId, expires)) <> (mkApply((ApiSession.apply _).tupled), mkUnapply(
