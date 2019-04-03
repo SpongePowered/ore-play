@@ -62,6 +62,7 @@ object Role extends StringEnum[Role] {
         2,
         RoleCategory.Global,
         Perm(
+          Perm.IsStaff,
           Perm.Reviewer,
           Perm.ModNotesAndFlags,
           Perm.SeeHidden,

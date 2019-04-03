@@ -33,9 +33,9 @@ package object permission {
     val EditOwnUserSettings = Permission(1L << 1)
     val EditApiKeys         = Permission(1L << 2)
 
-    private val EditSubjectSettings = Permission(1L << 4)
-    val ManageSubjectMembers        = Permission(1L << 5)
-    private val IsSubjectOwner      = Permission(1L << 6)
+    val EditSubjectSettings  = Permission(1L << 4)
+    val ManageSubjectMembers = Permission(1L << 5)
+    val IsSubjectOwner       = Permission(1L << 6)
 
     val CreateProject        = Permission(1L << 8)
     val EditPage             = Permission(1L << 9)
@@ -58,7 +58,7 @@ package object permission {
     val ModNotesAndFlags = Permission(1L << 24)
     val SeeHidden        = Permission(1L << 25)
     val IsStaff          = Permission(1L << 26)
-    val Reviewer         = Permission(1L << 27) ++ IsStaff
+    val Reviewer         = Permission(1L << 27)
 
     val ViewHealth = Permission(1L << 32)
     val ViewIp     = Permission(1L << 33)

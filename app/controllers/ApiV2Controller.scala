@@ -24,7 +24,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationTable, ProjectTableMain}
 import models.api.{ApiKey, ApiSession}
 import models.querymodels.APIV2Project
-import ore.permission.Permission
+import ore.permission.{NamedPermission, Permission}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope}
 import ore.project.{Category, ProjectSortingStrategy}
 import ore.{OreConfig, OreEnv}
@@ -176,6 +176,19 @@ class ApiV2Controller @Inject()(
       }
       .toRight(Unauthorized.withHeaders(WWW_AUTHENTICATE -> routes.ApiV2Controller.authenticate().absoluteURL()))
   }
+
+  def createKey(permissions: Seq[String]): Action[AnyContent] =
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncF { implicit request =>
+      import cats.instances.option._
+      import cats.instances.vector._
+
+      permissions.toVector.traverse(NamedPermission.withNameOption).fold(IO.pure(BadRequest: Result)) { perms =>
+        val perm = Permission(perms.map(_.permission): _*)
+        service
+          .insert(ApiKey(request.user.get.id, UUID.randomUUID().toString, perm))
+          .map(key => Ok(Json.obj("key" -> key.token)))
+      }
+    }
 
   def listProjects(
       q: Option[String],
