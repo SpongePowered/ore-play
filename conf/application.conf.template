@@ -144,7 +144,7 @@ ore {
 
     api {
       public-session-expiration = 3h
-      session-expiration = 2w
+      session-expiration = 14d
     }
 }
 
