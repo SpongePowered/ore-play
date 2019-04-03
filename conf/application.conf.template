@@ -93,7 +93,7 @@ ore {
     debug-level =  3
 
     homepage {
-        update-interval = 2h
+        update-interval = 10m
     }
 
     channels {

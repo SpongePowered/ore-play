@@ -642,15 +642,15 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         available <- EitherT.right[Result](projects.isNamespaceAvailable(author, slugify(newName)))
         _ <- EitherT
           .cond[IO](available, (), Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
-        _ <- EitherT.right[Result](projects.rename(project, newName))
         _ <- EitherT.right[Result] {
-          UserActionLogger.log(
-            request.request,
-            LoggedAction.ProjectRenamed,
-            request.project.id,
-            s"$author/$newName",
-            s"$author/$oldName"
-          )
+          projects.rename(project, newName) *>
+            UserActionLogger.log(
+              request.request,
+              LoggedAction.ProjectRenamed,
+              request.project.id,
+              s"$author/$newName",
+              s"$author/$oldName"
+            ) *> projects.refreshHomePage(MDCLogger)
         }
       } yield Redirect(self.show(author, project.slug))
     }
@@ -715,7 +715,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             Visibility.New.nameKey
           )
 
-          visibility *> log.void
+          visibility *> (log, projects.refreshHomePage(MDCLogger)).parTupled.void
         } else IO.unit
 
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
