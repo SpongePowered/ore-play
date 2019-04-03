@@ -17,13 +17,12 @@ import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.query.AppQueries
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{ApiKeyTable, ProjectTableMain, UserTable}
+import db.impl.schema.ProjectTableMain
 import models.project._
 import models.querymodels.{FlagActivity, ReviewActivity}
 import db.{DbRef, Model, ModelCompanion, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
-import models.api.ApiKey
 import models.user.role._
 import models.user.{LoggedAction, LoggedActionModel, Organization, User, UserActionLogger}
 import models.viewhelper.OrganizationData
@@ -33,7 +32,6 @@ import ore.project.{Category, ProjectSortingStrategy}
 import ore.user.MembershipDossier
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.OreMDC
 import util.syntax._
 import views.{html => views}
 
@@ -42,7 +40,6 @@ import cats.data.OptionT
 import cats.effect.IO
 import cats.instances.vector._
 import cats.syntax.all._
-import com.typesafe.scalalogging
 
 /**
   * Main entry point for application.

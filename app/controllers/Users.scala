@@ -17,7 +17,6 @@ import db.query.UserQueries
 import db.{DbRef, Model, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
-import models.api.ApiKey
 import models.project.Version
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
@@ -90,7 +89,7 @@ class Users @Inject()(
           .getOrCreate(
             this.fakeUser.username,
             this.fakeUser,
-            ifInsert = _.globalRoles.addAssoc(Role.OreAdmin.toDbRole).void
+            ifInsert = fakeUser => fakeUser.globalRoles.addAssoc(Role.OreAdmin.toDbRole).void
           )
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {

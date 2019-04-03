@@ -28,7 +28,6 @@ var KEY_MINUS = 173;
 var CATEGORY_STRING = CATEGORY_STRING || null;
 var SORT_STRING = SORT_STRING || null;
 var csrf = null;
-var apiKey = null;
 
 /*
  * ==================================================

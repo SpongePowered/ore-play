@@ -4,7 +4,7 @@ import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
-import db.{DbRef, Model, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project.{ReviewState, Visibility}
 import models.user.User
 import ore.permission._

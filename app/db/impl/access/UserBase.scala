@@ -8,7 +8,6 @@ import play.api.mvc.Request
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.{Model, ModelService}
-import models.api.ApiKey
 import models.user.{Organization, Session, User}
 import ore.OreConfig
 import ore.permission.Permission
@@ -37,7 +36,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     */
   def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, Model[User]] =
     ModelView.now(User).find(equalsIgnoreCase(_.name, username)).orElse {
-      auth.getUser(username).map(User.fromSponge).semiflatMap(service.insert(_))
+      auth.getUser(username).map(User.fromSponge).semiflatMap(res => service.insert(res))
     }
 
   /**

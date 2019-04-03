@@ -44,7 +44,6 @@
     <logger name="org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator" level="ERROR" />
 
     <!-- Ore loggers -->
-    <logger name="ApplicationController" level="INFO" />
     <logger name="Bootstrap" level="INFO" />
     <logger name="Discourse" level="INFO" />
     <logger name="Database"  level="INFO" />

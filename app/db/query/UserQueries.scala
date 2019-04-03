@@ -3,9 +3,8 @@ package db.query
 import java.sql.Timestamp
 
 import controllers.sugar.Requests.ApiAuthInfo
-import db.{DbRef, Model}
+import db.DbRef
 import db.impl.access.UserBase.UserOrdering
-import models.api.ApiKey
 import models.project.Project
 import models.querymodels.ProjectListEntry
 import models.user.{Organization, User}

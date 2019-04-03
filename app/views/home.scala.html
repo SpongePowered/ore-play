@@ -13,8 +13,6 @@ sorted according to different criteria.
 @import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
 @import views.html.helper.CSPNonce
-@import views.html.helper.CSRF
-@import ore.permission.Permission
 @(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
