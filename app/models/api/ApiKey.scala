@@ -1,7 +1,5 @@
 package models.api
 
-import java.util.UUID
-
 import db.impl.schema.ApiKeyTable
 import db.query.UserQueries
 import db.{DbRef, DefaultModelCompanion, ModelQuery, ModelService}
@@ -17,8 +15,7 @@ import slick.lifted.TableQuery
 case class ApiKey(
     ownerId: DbRef[User],
     token: String,
-    private val rawKeyPermissions: Permission,
-    isUiKey: Boolean
+    private val rawKeyPermissions: Permission
 ) {
 
   def permissionsIn[A: HasScope](a: A)(implicit service: ModelService): IO[Permission] = {
@@ -32,8 +29,6 @@ case class ApiKey(
   }
 }
 object ApiKey extends DefaultModelCompanion[ApiKey, ApiKeyTable](TableQuery[ApiKeyTable]) {
-  def uiKey(ownerId: DbRef[User]) = ApiKey(ownerId, UUID.randomUUID().toString, Permission.All, isUiKey = true)
-
   implicit val query: ModelQuery[ApiKey] = ModelQuery.from(this)
 
   implicit val isUserOwned: UserOwned[ApiKey] = (a: ApiKey) => a.ownerId

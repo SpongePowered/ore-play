@@ -2,8 +2,12 @@ package controllers
 
 import scala.language.higherKinds
 
+import java.sql.Timestamp
+import java.time.{LocalDateTime, ZoneOffset}
+import java.util.UUID
 import javax.inject.Inject
 
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
@@ -11,9 +15,12 @@ import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import controllers.sugar.Requests.{ApiRequest, AuthApiRequest}
+import controllers.sugar.Requests.ApiRequest
 import db.ModelService
+import db.access.ModelView
 import db.query.{APIV2Queries, UserQueries}
+import db.impl.OrePostgresDriver.api._
+import models.api.{ApiKey, ApiSession}
 import models.querymodels.APIV2Project
 import ore.permission.Permission
 import ore.project.{Category, ProjectSortingStrategy}
@@ -46,53 +53,92 @@ class ApiV2Controller @Inject()(
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
-      val token = request.headers
+      val optToken = request.headers
         .get(AUTHORIZATION)
         .map(_.split(" ", 2))
         .filter(_.length == 2)
         .map(arr => arr.head -> arr(1))
-        .collect { case ("ApiKey", key) => key }
+        .collect { case ("ApiSession", session) => session }
 
-      token
-        .fold(EitherT.rightT[IO, Result](ApiRequest(None, request))) { token =>
+      lazy val authUrl = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+      lazy val unAuth =
+        Unauthorized.withHeaders(WWW_AUTHENTICATE -> authUrl)
+
+      optToken
+        .fold(EitherT.leftT[IO, ApiRequest[A]](unAuth)) { token =>
           OptionT(service.runDbCon(UserQueries.getApiAuthInfo(token).option))
-            .map(info => ApiRequest(Some(info), request))
-            .toRight(Unauthorized: Result)
+            .toRight(unAuth)
+            .ensure(
+              Unauthorized(Json.obj("message" -> "Api session expired")).withHeaders(WWW_AUTHENTICATE -> authUrl)
+            )(_.expires.after(service.theTime))
+            .map(info => ApiRequest(info, request))
         }
         .value
         .unsafeToFuture()
     }
   }
 
-  def authApiAction: ActionRefiner[ApiRequest, AuthApiRequest] = new ActionRefiner[ApiRequest, AuthApiRequest] {
-    def executionContext: ExecutionContext = ec
-    override protected def refine[A](request: ApiRequest[A]): Future[Either[Result, AuthApiRequest[A]]] = {
-      Future.successful(
-        request.apiInfo.fold[Either[Result, AuthApiRequest[A]]](Left(Unauthorized)) { info =>
-          Right(AuthApiRequest(info, request))
-        }
-      )
-    }
-  }
+  def ApiAction: ActionBuilder[ApiRequest, AnyContent] = Action.andThen(apiAction)
 
   def apiOptDbAction[A: Writes](
       action: ApiRequest[AnyContent] => doobie.ConnectionIO[Option[A]]
   ): Action[AnyContent] =
-    Action.andThen(apiAction).asyncF { request =>
+    ApiAction.asyncF { request =>
       service.runDbCon(action(request)).map(_.fold(NotFound: Result)(a => Ok(Json.toJson(a))))
     }
 
   def apiEitherDbAction[A: Writes](
       action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[Vector[A]]]
   ): Action[AnyContent] =
-    Action.andThen(apiAction).asyncF { request =>
+    ApiAction.asyncF { request =>
       action(request).bimap(IO.pure, service.runDbCon).map(_.map(a => Ok(Json.toJson(a)))).merge
     }
 
   def apiDbAction[A: Writes](action: ApiRequest[AnyContent] => doobie.ConnectionIO[Vector[A]]): Action[AnyContent] =
-    Action.andThen(apiAction).asyncF { request =>
+    ApiAction.asyncF { request =>
       service.runDbCon(action(request)).map(xs => Ok(Json.toJson(xs)))
     }
+
+  def authenticate(): Action[AnyContent] = OreAction.asyncEitherT { implicit request =>
+    def expiration(duration: FiniteDuration) = Timestamp.from(service.theTime.toInstant.plusSeconds(duration.toSeconds))
+
+    lazy val sessionExpiration       = expiration(config.ore.api.sessionExpiration)
+    lazy val publicSessionExpiration = expiration(config.ore.api.publicSessionExpiration)
+
+    val optApiKey = request.headers
+      .get(AUTHORIZATION)
+      .map(_.split(" ", 2))
+      .filter(_.length == 2)
+      .map(arr => arr.head -> arr(1))
+      .collect { case ("ApiKey", key) => key }
+
+    val uuidToken = UUID.randomUUID().toString
+
+    val sessionToInsert = (request.currentUser, optApiKey) match {
+      case (_, Some(key)) =>
+        ModelView.now(ApiKey).find(_.token === key).map { key =>
+          "key" -> ApiSession(uuidToken, Some(key.id), Some(key.ownerId), sessionExpiration)
+        }
+      case (Some(user), None) =>
+        OptionT.pure[IO]("user" -> ApiSession(uuidToken, None, Some(user.id), sessionExpiration))
+      case (None, None) =>
+        OptionT.pure[IO]("public" -> ApiSession(uuidToken, None, None, publicSessionExpiration))
+    }
+
+    sessionToInsert
+      .semiflatMap(t => service.insert(t._2).tupleLeft(t._1))
+      .map {
+        case (tpe, key) =>
+          Ok(
+            Json.obj(
+              "session" -> key.token,
+              "expires" -> LocalDateTime.ofInstant(key.expires.toInstant, ZoneOffset.UTC),
+              "type"    -> tpe
+            )
+          )
+      }
+      .toRight(Unauthorized.withHeaders(WWW_AUTHENTICATE -> routes.ApiV2Controller.authenticate().absoluteURL()))
+  }
 
   def listProjects(
       q: Option[String],

@@ -90,11 +90,7 @@ class Users @Inject()(
           .getOrCreate(
             this.fakeUser.username,
             this.fakeUser,
-            ifInsert = fakeUser => {
-              val setRole     = fakeUser.globalRoles.addAssoc(Role.OreAdmin.toDbRole)
-              val addUiApiKey = service.insert(ApiKey.uiKey(fakeUser.id))
-              (setRole *> addUiApiKey).void
-            }
+            ifInsert = _.globalRoles.addAssoc(Role.OreAdmin.toDbRole).void
           )
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {

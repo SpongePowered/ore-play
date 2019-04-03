@@ -244,8 +244,45 @@ trait DoobieOreProtocol {
         )
     }
 
-  implicit val apiKeyRead: Read[ApiKey] = Read[DbRef[User] :: String :: Permission :: Boolean :: HNil].map {
-    case ownerId :: token :: permissions :: isUiKey :: HNil => ApiKey(ownerId, token, permissions, isUiKey)
+  implicit val userModelOptRead: Read[Option[Model[User]]] =
+    Read[Option[ObjId[User]] :: Option[ObjTimestamp] :: Option[String] :: Option[String] :: Option[String] :: Option[
+      String
+    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[String] :: Option[Timestamp] :: Option[Boolean] :: Option[
+      Lang
+    ] :: HNil].map {
+      case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: pgpPubKey :: lastPgpPubKeyUpdate :: Some(
+            isLocked
+          ) :: lang :: HNil =>
+        Some(
+          Model(
+            id,
+            createdAt,
+            User(
+              id,
+              fullName,
+              name,
+              email,
+              tagline,
+              joinDate,
+              readPrompts,
+              pgpPubKey,
+              lastPgpPubKeyUpdate,
+              isLocked,
+              lang
+            )
+          )
+        )
+      case _ => None
+    }
+
+  implicit val apiKeyRead: Read[ApiKey] = Read[DbRef[User] :: String :: Permission :: HNil].map {
+    case ownerId :: token :: permissions :: HNil => ApiKey(ownerId, token, permissions)
   }
+
+  implicit val apiKeyOptRead: Read[Option[ApiKey]] =
+    Read[Option[DbRef[User]] :: Option[String] :: Option[Permission] :: HNil].map {
+      case Some(ownerId) :: Some(token) :: Some(permissions) :: HNil => Some(ApiKey(ownerId, token, permissions))
+      case _                                                         => None
+    }
 }
 object DoobieOreProtocol extends DoobieOreProtocol

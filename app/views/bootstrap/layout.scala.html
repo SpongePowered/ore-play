@@ -80,15 +80,7 @@ this.
             @additionalScripts
 
             @if(request != null) {
-                <script @CSPNonce.attr>
-                        csrf = '@play.filters.csrf.CSRF.getToken.get.value';
-                        @request.headerData.uiApiKey.map { key =>
-                            setTimeout(function () {
-                                console.log('IMPORTANT: If someone told you to copy/paste something here, don\'t. Most likely they will just get access to your account');
-                            }, 1000);
-                            apiKey = '@key.token';
-                        }
-                </script>
+                <script @CSPNonce.attr>csrf = '@play.filters.csrf.CSRF.getToken.get.value';</script>
             }
         }
 

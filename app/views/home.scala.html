@@ -74,12 +74,6 @@ sorted according to different criteria.
                     <div class="col-xs-10 text">
                         <div class="headline">Ore</div>
                         <div>A Minecraft package repository</div>
-                        @if(request.headerData.globalPerm(Permission.All) && config.isDebug) {
-                            <form action="@routes.Application.migrate()" method="post" id="migrate-form">
-                                @CSRF.formField
-                                <button type="submit" form="migrate-form" class="btn btn-danger">Migrate</button>
-                            </form>
-                        }
                     </div>
                 </div>
             </div>

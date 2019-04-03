@@ -1,5 +1,7 @@
 package controllers.sugar
 
+import java.sql.Timestamp
+
 import play.api.mvc.{Request, WrappedRequest}
 
 import db.{Model, ModelService}
@@ -18,25 +20,16 @@ import cats.effect.IO
   */
 object Requests {
 
-  case class ApiAuthInfo(user: Model[User], key: Model[ApiKey], globalPerms: Permission)
+  case class ApiAuthInfo(user: Option[Model[User]], key: Option[ApiKey], expires: Timestamp, globalPerms: Permission)
 
-  case class ApiRequest[A](apiInfo: Option[ApiAuthInfo], request: Request[A]) extends WrappedRequest[A](request) {
-    def user: Option[Model[User]] = apiInfo.map(_.user)
-
-    def globalPermissions: Permission = apiInfo.fold(Permission.ViewPublicInfo)(_.globalPerms)
-
-    def permissionsIn[B: HasScope](b: B)(implicit service: ModelService): IO[Permission] =
-      if (b.scope == GlobalScope) IO.pure(globalPermissions)
-      else apiInfo.fold(IO.pure(Permission.ViewPublicInfo))(_.key.permissionsIn(b))
-  }
-
-  case class AuthApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) {
-    def user: Model[User] = apiInfo.user
+  case class ApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) {
+    def user: Option[Model[User]] = apiInfo.user
 
     def globalPermissions: Permission = apiInfo.globalPerms
 
     def permissionIn[B: HasScope](b: B)(implicit service: ModelService): IO[Permission] =
-      if (b.scope == GlobalScope) IO.pure(apiInfo.globalPerms) else apiInfo.key.permissionsIn(b)
+      if (b.scope == GlobalScope) IO.pure(apiInfo.globalPerms)
+      else apiInfo.key.fold(IO.pure(globalPermissions))(_.permissionsIn(b))
   }
 
   /**

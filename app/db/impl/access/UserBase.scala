@@ -37,12 +37,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     */
   def withName(username: String)(implicit auth: SpongeAuthApi, mdc: OreMDC): OptionT[IO, Model[User]] =
     ModelView.now(User).find(equalsIgnoreCase(_.name, username)).orElse {
-      auth.getUser(username).map(User.fromSponge).semiflatMap { res =>
-        for {
-          insertedUser <- service.insert(res)
-          _            <- service.insert(ApiKey.uiKey(insertedUser.id))
-        } yield insertedUser
-      }
+      auth.getUser(username).map(User.fromSponge).semiflatMap(service.insert(_))
     }
 
   /**

@@ -60,9 +60,6 @@ final class Application @Inject()(forms: OreForms)(
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
 
-  private val Logger    = scalalogging.Logger("ApplicationController")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
-
   /**
     * Show external link warning page.
     *
@@ -446,19 +443,4 @@ final class Application @Inject()(forms: OreForms)(
         Ok(views.users.admin.visibility(needsApproval, waitingProject))
       }
     }
-
-  def migrate(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](Permission.All)).asyncF {
-    Logger.info("Starting migration")
-    val missingUIKeyQuery = TableQuery[UserTable]
-      .joinLeft(TableQuery[ApiKeyTable].filter(_.isUiKey))
-      .on(_.id === _.ownerId)
-      .filter(_._2.isEmpty)
-      .map(_._1)
-
-    //We use a normal traverse to not exhaust the pool
-    service
-      .runDBIO(missingUIKeyQuery.result)
-      .flatMap(users => users.toVector.traverse(user => service.insert(ApiKey.uiKey(user.id))))
-      .as(Ok("Migration successful"))
-  }
 }
