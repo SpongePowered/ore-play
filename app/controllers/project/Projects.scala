@@ -665,7 +665,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def setVisible(author: String, slug: String, visibility: Int): Action[AnyContent] = {
     AuthedProjectAction(author, slug, requireUnlock = true)
-      .andThen(ProjectPermissionAction(Permission.ChangeRawVisibility))
+      .andThen(ProjectPermissionAction(Permission.Reviewer))
       .asyncF { implicit request =>
         val newVisibility = Visibility.withValue(visibility)
         val forumVisbility =
