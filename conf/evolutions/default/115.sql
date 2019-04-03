@@ -61,7 +61,7 @@ GROUP BY gr.user_id;
 CREATE OR REPLACE VIEW project_trust AS
 SELECT pm.project_id, pm.user_id, coalesce(bit_or(r.permission), B'0'::bit(64)) AS permission
 FROM project_members pm
-       JOIN user_project_roles rp ON pm.project_id = rp.project_id AND pm.user_id = rp.user_id
+       JOIN user_project_roles rp ON pm.project_id = rp.project_id AND pm.user_id = rp.user_id AND rp.is_accepted
        JOIN roles r ON rp.role_type = r.name
 GROUP BY pm.project_id, pm.user_id;
 
@@ -69,7 +69,7 @@ CREATE OR REPLACE VIEW organization_trust AS
 SELECT om.organization_id, om.user_id, coalesce(bit_or(r.permission), B'0'::bit(64)) AS permission
 FROM organization_members om
        JOIN user_organization_roles ro
-            ON om.organization_id = ro.organization_id AND om.user_id = ro.user_id
+            ON om.organization_id = ro.organization_id AND om.user_id = ro.user_id AND ro.is_accepted
        JOIN roles r ON ro.role_type = r.name
 GROUP BY om.organization_id, om.user_id;
 
