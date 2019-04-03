@@ -25,7 +25,7 @@ class OrganizationMember(val organization: Model[Organization], val userId: DbRe
     * @return Top role
     */
   override def headRole(implicit service: ModelService): IO[Model[OrganizationUserRole]] =
-    this.roles.map(role => role.maxBy(_.role.trust))
+    this.roles.map(_.maxBy(_.role.permissions: Long)) //This is terrible, but probably works
 
 }
 object OrganizationMember {

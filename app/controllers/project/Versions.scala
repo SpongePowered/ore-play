@@ -27,7 +27,7 @@ import models.admin.VersionVisibilityChange
 import models.project._
 import models.user.{LoggedAction, User, UserActionLogger}
 import models.viewhelper.VersionData
-import ore.permission.{EditVersions, HardRemoveVersion, ReviewProjects, UploadVersions, ViewLogs}
+import ore.permission.Permission
 import ore.project.factory.{PendingProject, ProjectFactory}
 import ore.project.io.DownloadType._
 import ore.project.io.{DownloadType, PluginFile, PluginUpload}
@@ -68,10 +68,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   private def VersionEditAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditVersions))
+    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.EditVersion))
 
   private def VersionUploadAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(UploadVersions))
+    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.CreateVersion))
 
   /**
     * Shows the specified version view page.
@@ -158,7 +158,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def approve(author: String, slug: String, versionString: String, partial: Boolean): Action[AnyContent] = {
     AuthedProjectAction(author, slug, requireUnlock = true)
-      .andThen(ProjectPermissionAction(ReviewProjects))
+      .andThen(ProjectPermissionAction(Permission.Reviewer))
       .asyncEitherT { implicit request =>
         val newState = if (partial) ReviewState.PartiallyReviewed else ReviewState.Reviewed
         for {
@@ -205,7 +205,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           .count { v =>
             val inChannel = v.channelId.inSetBind(visibleIds)
             val isVisible =
-              if (request.headerData.globalPerm(ReviewProjects)) true: Rep[Boolean]
+              if (request.headerData.globalPerm(Permission.SeeHidden)) true: Rep[Boolean]
               else v.visibility === (Visibility.Public: Visibility)
             inChannel && isVisible
           }
@@ -477,7 +477,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def delete(author: String, slug: String, versionString: String): Action[String] = {
     Authenticated
-      .andThen(PermissionAction[AuthRequest](HardRemoveVersion))
+      .andThen(PermissionAction[AuthRequest](Permission.HardDeleteVersion))
       .asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
         val comment = request.body
         getProjectVersion(author, slug, versionString)
@@ -504,19 +504,21 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def softDelete(author: String, slug: String, versionString: String): Action[String] =
-    VersionEditAction(author, slug).asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
-      val comment = request.body
-      getVersion(request.project, versionString)
-        .semiflatMap(version => projects.prepareDeleteVersion(version).as(version))
-        .semiflatMap { version =>
-          version.setVisibility(Visibility.SoftDelete, comment, request.user.id).as(version)
-        }
-        .semiflatMap { version =>
-          UserActionLogger
-            .log(request.request, LoggedAction.VersionDeleted, version.id, s"SoftDelete: $comment", "")
-        }
-        .map(_ => Redirect(self.showList(author, slug, None)))
-    }
+    AuthedProjectAction(author, slug, requireUnlock = true)
+      .andThen(ProjectPermissionAction(Permission.DeleteVersion))
+      .asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
+        val comment = request.body
+        getVersion(request.project, versionString)
+          .semiflatMap(version => projects.prepareDeleteVersion(version).as(version))
+          .semiflatMap { version =>
+            version.setVisibility(Visibility.SoftDelete, comment, request.user.id).as(version)
+          }
+          .semiflatMap { version =>
+            UserActionLogger
+              .log(request.request, LoggedAction.VersionDeleted, version.id, s"SoftDelete: $comment", "")
+          }
+          .map(_ => Redirect(self.showList(author, slug, None)))
+      }
 
   /**
     * Restore the specified version.
@@ -526,8 +528,9 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Home page
     */
   def restore(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](ReviewProjects)).asyncEitherT(parse.form(forms.NeedsChanges)) {
-      implicit request =>
+    Authenticated
+      .andThen(PermissionAction[AuthRequest](Permission.Reviewer))
+      .asyncEitherT(parse.form(forms.NeedsChanges)) { implicit request =>
         val comment = request.body
         getProjectVersion(author, slug, versionString)
           .semiflatMap(version => version.setVisibility(Visibility.Public, comment, request.user.id).as(version))
@@ -535,12 +538,14 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id, s"Restore: $comment", "")
           }
           .map(_ => Redirect(self.showList(author, slug, None)))
-    }
+      }
   }
 
   def showLog(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](ViewLogs)).andThen(ProjectAction(author, slug)).asyncEitherT {
-      implicit request =>
+    Authenticated
+      .andThen(PermissionAction[AuthRequest](Permission.ViewLogs))
+      .andThen(ProjectAction(author, slug))
+      .asyncEitherT { implicit request =>
         for {
           version <- getVersion(request.project, versionString)
           visChanges <- EitherT.right[Result](
@@ -560,7 +565,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               Model.unwrapNested[Seq[(Model[VersionVisibilityChange], Option[User])]](visChanges)
             )
           )
-    }
+      }
   }
 
   /**

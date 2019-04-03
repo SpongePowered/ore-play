@@ -8,7 +8,8 @@ import models.project.Project
 import models.querymodels.ProjectListEntry
 import models.user.{Organization, User}
 import ore.OreConfig
-import ore.permission.role.{Role, Trust}
+import ore.permission.Permission
+import ore.permission.role.Role
 import ore.project.ProjectSortingStrategy
 
 import doobie._
@@ -79,7 +80,7 @@ object UserQueries extends DoobieOreProtocol {
       case UserOrdering.UserName => fr"ORDER BY" ++ sortUserName
       case UserOrdering.Projects => fr"ORDER BY sq.count" ++ sort ++ thenSortUserName
       case UserOrdering.Role =>
-        fr"ORDER BY sq.trust" ++ sort ++ fr"NULLS LAST" ++ fr", sq.role" ++ sort ++ thenSortUserName
+        fr"ORDER BY sq.permission::BIGINT" ++ sort ++ fr"NULLS LAST" ++ fr", sq.role" ++ sort ++ thenSortUserName
     }
   }
 
@@ -101,10 +102,10 @@ object UserQueries extends DoobieOreProtocol {
             |               u.join_date,
             |               u.created_at,
             |               r.name                                                      AS role,
-            |               r.trust,
+            |               r.permission,
             |               (SELECT COUNT(*) FROM projects WHERE owner_id = u.id)       AS count,
             |               CASE WHEN dr.rank IS NULL THEN NULL ELSE dr.name END        AS donator_role,
-            |               row_number() OVER (PARTITION BY u.id ORDER BY r.trust DESC, dr.rank ASC NULLS LAST) AS row
+            |               row_number() OVER (PARTITION BY u.id ORDER BY r.permission::BIGINT DESC, dr.rank ASC NULLS LAST) AS row
             |          FROM projects p
             |                 JOIN users u ON p.owner_id = u.id
             |                 LEFT JOIN user_global_roles gr ON gr.user_id = u.id
@@ -131,8 +132,8 @@ object UserQueries extends DoobieOreProtocol {
             |               r.name                                                  AS role,
             |               u.join_date,
             |               u.created_at,
-            |               r.trust,
-            |               rank() OVER (PARTITION BY u.name ORDER BY r.trust DESC) AS rank
+            |               r.permission,
+            |               rank() OVER (PARTITION BY u.name ORDER BY r.permission::BIGINT DESC) AS rank
             |          FROM users u
             |                 JOIN user_global_roles ugr ON u.id = ugr.user_id
             |                 JOIN roles r ON ugr.role_id = r.id
@@ -144,26 +145,26 @@ object UserQueries extends DoobieOreProtocol {
     fragments.query[(String, Role, Option[Timestamp], Timestamp)]
   }
 
-  def globalTrust(userId: DbRef[User]): Query0[Trust] =
-    sql"""|SELECT coalesce(gt.trust, 0)
+  def globalPermission(userId: DbRef[User]): Query0[Permission] =
+    sql"""|SELECT coalesce(gt.permission, B'0'::BIT(64))
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
-          |  WHERE u.id = $userId""".stripMargin.query[Trust]
+          |  WHERE u.id = $userId""".stripMargin.query[Permission]
 
-  def projectTrust(userId: DbRef[User], projectId: DbRef[Project]): Query0[Trust] =
-    sql"""|SELECT greatest(gt.trust, pt.trust, ot.trust, 0)
+  def projectPermission(userId: DbRef[User], projectId: DbRef[Project]): Query0[Permission] =
+    sql"""|SELECT coalesce(gt.permission, B'0'::BIT(64)) | coalesce(pt.permission, B'0'::BIT(64)) | coalesce(ot.permission, B'0'::BIT(64))
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
-          |         LEFT JOIN project_trust pt ON pt.user_id = u.id AND pt.project_id = $projectId
-          |         LEFT JOIN projects p ON p.id = pt.project_id
+          |         LEFT JOIN projects p ON p.id = $projectId
+          |         LEFT JOIN project_trust pt ON pt.user_id = u.id AND pt.project_id = p.id
           |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = p.owner_id
-          |  WHERE u.id = $userId;""".stripMargin.query[Trust]
+          |  WHERE u.id = $userId;""".stripMargin.query[Permission]
 
-  def organizationTrust(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Trust] =
-    sql"""|SELECT greatest(gt.trust, ot.trust, 0)
+  def organizationPermission(userId: DbRef[User], organizationId: DbRef[Organization]): Query0[Permission] =
+    sql"""|SELECT coalesce(gt.permission, B'0'::BIT(64)) | coalesce(ot.permission, B'0'::BIT(64))
           |  FROM users u
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
           |         LEFT JOIN organization_trust ot ON ot.user_id = u.id AND ot.organization_id = $organizationId
-          |  WHERE u.id = $userId;""".stripMargin.query[Trust]
+          |  WHERE u.id = $userId;""".stripMargin.query[Permission]
 
 }

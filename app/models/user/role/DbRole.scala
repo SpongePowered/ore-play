@@ -5,14 +5,15 @@ import java.time.Instant
 
 import db.impl.schema.DbRoleTable
 import db.{Model, ModelCompanionPartial, ModelQuery, ObjId, ObjTimestamp}
-import ore.permission.role.{Role, RoleCategory, Trust}
+import ore.permission.Permission
+import ore.permission.role.{Role, RoleCategory}
 
 import slick.lifted.TableQuery
 
 case class DbRole(
     name: String,
     category: RoleCategory,
-    trust: Trust,
+    permissions: Permission,
     title: String,
     color: String,
     isAssignable: Boolean,

@@ -4,7 +4,7 @@ The main header displayed on each layout.
 @import controllers.project.{routes => projectRoutes}
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@import ore.permission._
+@import ore.permission.Permission
 @(authEnabled: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 
@@ -83,7 +83,7 @@ The main header displayed on each layout.
                     <i class="icon fas fa-users"></i>
                 </li>
 
-                @if(request.headerData.globalPerm(ReviewProjects)) {
+                @if(request.headerData.globalPerm(Permission.IsStaff)) {
                     <li class="nav-icon staff-icon" @tooltip(messages("project.viewStaff"))>
                         <i class="icon fas fa-user-tie"></i>
                     </li>
@@ -118,7 +118,7 @@ The main header displayed on each layout.
                             </a>
                         </li>
 
-                        @if(request.headerData.globalPerm(ReviewFlags)) {
+                        @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
                             <li>
                                 <a href="@routes.Application.showFlags()">
                                     <i class="fas fa-flag mr-1"></i>
@@ -132,7 +132,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.headerData.globalPerm(ReviewVisibility)) {
+                        @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
                             <li>
                                 <a href="@routes.Application.showProjectVisibility()">
                                     <i class="fas fa-thumbs-up mr-1"></i>
@@ -146,7 +146,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.headerData.globalPerm(ReviewProjects)) {
+                        @if(request.headerData.globalPerm(Permission.Reviewer)) {
                             <li>
                                 <a href="@routes.Application.showQueue()">
                                     <i class="far fa-thumbs-up mr-1"></i>
@@ -160,7 +160,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.headerData.globalPerm(ViewStats)) {
+                        @if(request.headerData.globalPerm(Permission.ViewStats)) {
                             <li>
                                 <a href="@routes.Application.showStats(None, None)">
                                     <i class="fas fa-chart-area mr-1"></i>
@@ -171,7 +171,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.headerData.globalPerm(ViewHealth)) {
+                        @if(request.headerData.globalPerm(Permission.ViewHealth)) {
                             <li>
                                 <a href="@routes.Application.showHealth()">
                                     <i class="fas fa-heartbeat mr-1"></i>
@@ -182,7 +182,7 @@ The main header displayed on each layout.
                             </li>
                         }
 
-                        @if(request.headerData.globalPerm(ViewLogs)) {
+                        @if(request.headerData.globalPerm(Permission.ViewLogs)) {
                             <li>
                                 <a href="@routes.Application.showLog(None, None, None, None, None, None, None)">
                                     <i class="fas fa-list mr-1"></i>

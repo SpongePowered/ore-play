@@ -6,7 +6,6 @@ import db.{Model, DbRef, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole}
 import models.user.{Organization, User}
-import ore.permission._
 import ore.permission.role.RoleCategory
 import util.syntax._
 
@@ -27,7 +26,6 @@ case class OrganizationData(
 }
 
 object OrganizationData {
-  val noPerms: Map[Permission, Boolean] = Map(EditSettings -> false)
 
   def cacheKey(orga: Model[Organization]): String = "organization" + orga.id
 

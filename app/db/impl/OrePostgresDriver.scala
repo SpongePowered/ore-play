@@ -5,7 +5,8 @@ import play.api.i18n.Lang
 import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
-import ore.permission.role.{Role, RoleCategory, Trust}
+import ore.permission.Permission
+import ore.permission.role.{Role, RoleCategory}
 import ore.project.io.DownloadType
 import ore.project.{Category, FlagReason}
 import ore.rest.ProjectApiKeyType
@@ -54,11 +55,15 @@ trait OrePostgresDriver
     implicit def loggedActionContextMapper[Ctx]: BaseColumnType[LoggedActionContext[Ctx]] =
       mappedColumnTypeForValueEnum(LoggedActionContext)
         .asInstanceOf[BaseColumnType[LoggedActionContext[Ctx]]] // scalafix:ok
-    implicit val trustTypeMapper: BaseColumnType[Trust]             = mappedColumnTypeForValueEnum(Trust)
     implicit val reviewStateTypeMapper: BaseColumnType[ReviewState] = mappedColumnTypeForValueEnum(ReviewState)
 
     implicit val langTypeMapper: BaseColumnType[Lang] =
       MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)
+
+    implicit val permissionTypeMapper: BaseColumnType[Permission] = MappedJdbcType.base[Permission, String](
+      _.toBinString,
+      Permission.fromBinString(_).get
+    )
 
     /*
     implicit def dbRefBaseType[A]: BaseColumnType[DbRef[A]] = longColumnType.asInstanceOf[BaseColumnType[DbRef[A]]]

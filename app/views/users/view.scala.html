@@ -1,18 +1,18 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
-@import ore.permission.{EditSettings, ReviewFlags, ReviewProjects, UserAdmin, ViewActivity}
 @import ore.user.Prompt
 @import util.StringUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.{modal, prompt, userAvatar}
 @import views.html.helper.CSPNonce
+@import ore.permission.Permission
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
     u.isOrga &&
     o.exists { case (_, scopedData) =>
-        scopedData.permissions.getOrElse(EditSettings, false)
+        scopedData.permissions.has(Permission.EditOrganizationSettings)
     }
 }
 
@@ -92,8 +92,8 @@
                             </span>
                         }
 
-                        @if(u.hasUser && u.userPerm(ViewActivity)) {
-                            @if(u.userPerm(ReviewFlags) || u.userPerm(ReviewProjects)) {
+                        @if(u.hasUser) {
+                            @if(u.userPerm.has(Permission.ModNotesAndFlags) || u.userPerm.has(Permission.Reviewer)) {
                                 <a class="user-settings" href="@routes.Application.showActivities(u.user.name)">
                                     <i class="fas fa-calendar" data-toggle="tooltip"
                                     data-placement="top" title="Activity"></i>
@@ -101,7 +101,7 @@
                             }
                         }
 
-                        @if(request.headerData.globalPerm(UserAdmin)) {
+                        @if(request.headerData.globalPerm(Permission.EditAllUserSettings)) {
                             <a class="user-settings" href="@routes.Application.userAdmin(u.user.name)">
                                 <i class="fas fa-wrench" data-toggle="tooltip"
                                 data-placement="top" title="User Admin"></i>
@@ -129,7 +129,7 @@
 
             <!-- Roles -->
             <ul class="user-roles">
-            @defining(u.globalRoles.toSeq.sortBy(_.trust).lastOption) { roleOpt =>
+            @defining(u.globalRoles.toSeq.sortBy(_.permissions: Long).lastOption) { roleOpt =>
                 @roleOpt.map { role =>
                     <li class="user-role channel" style="background-color: @role.color.hex">@role.title</li>
                 }
@@ -152,7 +152,7 @@
 
     @content
 
-    @if(u.isCurrent || request.headerData.globalPerm(UserAdmin)) {
+    @if(u.isCurrent || request.headerData.globalPerm(Permission.EditAllUserSettings)) {
     <div class="modal fade" id="modal-pgp-edit" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
         <div class="modal-dialog" role="document">
             <div class="modal-content">

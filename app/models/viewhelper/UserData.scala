@@ -29,8 +29,8 @@ case class UserData(
     projectCount: Int,
     orgas: Seq[(Model[Organization], Model[User], Model[OrganizationUserRole], Model[User])],
     globalRoles: Set[Role],
-    userPerm: Map[Permission, Boolean],
-    orgaPerm: Map[Permission, Boolean]
+    userPerm: Permission,
+    orgaPerm: Permission
 ) {
 
   def global: HeaderData = headerData
@@ -74,16 +74,13 @@ object UserData {
   def perms(user: Model[User])(
       implicit cs: ContextShift[IO],
       service: ModelService
-  ): IO[(Set[Role], Map[Permission, Boolean], Map[Permission, Boolean])] = {
+  ): IO[(Set[Role], Permission, Permission)] = {
     (
-      user.trustIn(GlobalScope),
-      user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.trustIn(_)).value,
+      user.permissionsIn(GlobalScope),
+      user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.permissionsIn(_)).value,
       user.globalRoles.allFromParent,
-    ).parMapN { (userTrust, orgTrust, globalRoles) =>
-      val userPerms = user.can.asMap(userTrust, globalRoles.toSet)(ViewActivity, ReviewFlags, ReviewProjects)
-      val orgaPerms = user.can.asMap(orgTrust, Some(globalRoles.toSet))(EditSettings)
-
-      (globalRoles.map(_.toRole).toSet, userPerms, orgaPerms)
+    ).parMapN { (userPerms, orgaPerms, globalRoles) =>
+      (globalRoles.map(_.toRole).toSet, userPerms, orgaPerms.getOrElse(Permission.None))
     }
   }
 }

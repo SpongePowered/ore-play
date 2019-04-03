@@ -7,10 +7,10 @@ Base template for Project overview.
 @import models.project.Visibility
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.{EditPages, EditSettings, ReviewFlags, ViewLogs}
 @import ore.project.FlagReason
 @import views.html.helper.{CSRF, form}
 @import views.html.helper.CSPNonce
+@import ore.permission.Permission
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @appRoutes = @{controllers.routes.Application}
@@ -44,13 +44,13 @@ Base template for Project overview.
                     <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
                     @if(p.visibility == Visibility.New) {
                         @messages("visibility.notice." + p.visibility.nameKey)
-                        @if(sp.perms(EditPages)) {
+                        @if(sp.perms(Permission.EditProjectSettings)) {
                             <br>
                             @messages("visibility.notice.author." + p.visibility.nameKey)
                             <a class="btn btn-success pull-right" href="@p.fullSlug/manage/publish" style="margin-top: -.5em">Publish</a>
                         }
                     } else { @if(p.visibility == Visibility.NeedsChanges) {
-                        @if(sp.perms(EditPages)) {
+                        @if(sp.perms(Permission.EditPage)) {
                             <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                         }
                         <strong>@messages("visibility.notice." + p.visibility.nameKey)</strong>
@@ -114,7 +114,7 @@ Base template for Project overview.
                                 </li>
                             }
 
-                            @if(sp.perms(EditSettings)) {
+                            @if(sp.perms(Permission.EditProjectSettings)) {
                                 @* Show manager if permitted *@
                                 <li id="settings" class="">
                                     <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
@@ -245,25 +245,25 @@ Base template for Project overview.
                             </div>
                         }
 
-                        @if(request.hasUser && (request.headerData.globalPerm(ReviewFlags) || request.headerData.globalPerm(ViewLogs))) {
+                        @if(request.hasUser && (request.headerData.globalPerm(Permission.ModNotesAndFlags) || request.headerData.globalPerm(Permission.ViewLogs))) {
                             <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                 Admin actions
                                 <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu" aria-labelledby="admin-actions">
-                                @if(request.headerData.globalPerm(ReviewFlags)) {
+                                @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
                                     <li><a href="@Projects.showFlags(p.project.ownerName, p.project.slug)">
                                         Flag history (@p.flagCount) </a></li>
                                 }
-                                @if(request.headerData.globalPerm(ReviewFlags)) {
+                                @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
                                     <li><a href="@Projects.showNotes(p.project.ownerName, p.project.slug)">
                                         Staff notes (@p.noteCount) </a></li>
                                 }
-                                @if(request.headerData.globalPerm(ViewLogs)) {
+                                @if(request.headerData.globalPerm(Permission.ViewLogs)) {
                                     <li><a href="@appRoutes.showLog(None, None, Some(p.project.id), None, None, None, None)">
                                         User Action Logs</a></li>
                                 }
-                                @if(request.headerData.globalPerm(ViewLogs)) {
+                                @if(request.headerData.globalPerm(Permission.ViewLogs)) {
                                     <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
                                         System Logs (@p.projectLogSize) </a></li>
                                 }

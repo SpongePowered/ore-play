@@ -16,7 +16,7 @@ import db.impl.schema.{ChannelTable, VersionTable}
 import form.OreForms
 import form.project.ChannelData
 import models.project.Channel
-import ore.permission.EditChannels
+import ore.permission.Permission
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
@@ -42,7 +42,7 @@ class Channels @Inject()(forms: OreForms)(
   private val self = controllers.project.routes.Channels
 
   private def ChannelEditAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditChannels))
+    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.EditChannel))
 
   /**
     * Displays a view of the specified Project's Channels.

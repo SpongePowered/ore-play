@@ -110,7 +110,7 @@ trait OreRestfulApi extends OreWrites {
     members.map {
       case (_, user) =>
         val roles                      = allRoles(user.id)
-        val trustOrder: Ordering[Role] = Ordering.by(_.trust)
+        val trustOrder: Ordering[Role] = Ordering.by(_.permissions: Long) //This is terrible, but probably works
         obj(
           "userId"   -> user.id.value,
           "name"     -> user.name,

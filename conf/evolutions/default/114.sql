@@ -1,4 +1,5 @@
 # --- !Ups
+
 ALTER TABLE project_versions
   ADD COLUMN create_forum_post BOOLEAN NOT NULL DEFAULT FALSE,
   ADD COLUMN post_id INT,

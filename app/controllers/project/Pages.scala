@@ -21,7 +21,7 @@ import form.OreForms
 import form.project.PageSaveForm
 import models.project.{Page, Project}
 import models.user.{LoggedAction, UserActionLogger}
-import ore.permission.EditPages
+import ore.permission.Permission
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.StringUtils._
@@ -51,7 +51,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
   private val self = controllers.project.routes.Pages
 
   private def PageEditAction(author: String, slug: String) =
-    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(EditPages))
+    AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.EditPage))
 
   private val childPageQuery = {
     def childPageQueryFunction(parentSlug: Rep[String], childSlug: Rep[String]) = {

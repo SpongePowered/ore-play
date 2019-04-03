@@ -10,7 +10,6 @@ import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
 
-import cats.Parallel
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import slick.lifted.TableQuery
@@ -20,7 +19,7 @@ import slick.lifted.TableQuery
   */
 case class HeaderData(
     currentUser: Option[Model[User]] = None,
-    private val globalPermissions: Map[Permission, Boolean] = Map.empty,
+    globalPermissions: Permission = Permission.None,
     hasNotice: Boolean = false,
     hasUnreadNotifications: Boolean = false,
     unresolvedFlags: Boolean = false,
@@ -35,28 +34,12 @@ case class HeaderData(
 
   def isCurrentUser(userId: DbRef[User]): Boolean = currentUser.map(_.id.value).contains(userId)
 
-  def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
+  def globalPerm(perm: Permission): Boolean = globalPermissions.has(perm)
 }
 
 object HeaderData {
 
-  private val globalPerms = Seq(
-    ReviewFlags,
-    ReviewVisibility,
-    ReviewProjects,
-    ViewStats,
-    ViewHealth,
-    ViewLogs,
-    HideProjects,
-    HardRemoveProject,
-    HardRemoveVersion,
-    UserAdmin,
-    HideProjects
-  )
-
-  val noPerms: Map[Permission, Boolean] = globalPerms.map(_ -> false).toMap
-
-  val unAuthenticated: HeaderData = HeaderData(None, noPerms)
+  val unAuthenticated: HeaderData = HeaderData()
 
   def cacheKey(user: Model[User]) = s"""user${user.id}"""
 
@@ -93,14 +76,15 @@ object HeaderData {
 
   private def getHeaderData(
       user: Model[User]
-  )(implicit service: ModelService, cs: ContextShift[IO]) = {
-    perms(user).flatMap { perms =>
+  )(implicit service: ModelService) = {
+    user.permissionsIn(GlobalScope).flatMap { perms =>
       val query = Query.apply(
         (
           TableQuery[NotificationTable].filter(n => n.userId === user.id.value && !n.read).exists,
-          if (perms(ReviewFlags)) flagQueue else false.bind,
-          if (perms(ReviewVisibility)) projectApproval(user) else false.bind,
-          if (perms(ReviewProjects)) reviewQueue else false.bind
+          if (perms.has(Permission.ModNotesAndFlags)) flagQueue else false.bind,
+          if (perms.has(Permission.ModNotesAndFlags ++ Permission.SeeHidden)) projectApproval(user)
+          else false.bind,
+          if (perms.has(Permission.Reviewer)) reviewQueue else false.bind
         )
       )
 
@@ -118,9 +102,4 @@ object HeaderData {
       }
     }
   }
-
-  def perms(user: Model[User])(implicit service: ModelService, cs: ContextShift[IO]): IO[Map[Permission, Boolean]] =
-    Parallel.parMap2(user.trustIn(GlobalScope), user.globalRoles.allFromParent)(
-      (t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*)
-    )
 }

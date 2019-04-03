@@ -14,13 +14,13 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
 import db.impl.schema.UserTable
 import db.query.UserQueries
-import db.{Model, DbRef, ModelService}
+import db.{DbRef, Model, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
 import models.project.Version
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData}
-import ore.permission.{HideProjects, ReviewProjects}
+import ore.permission.Permission
 import ore.permission.role.Role
 import ore.project.ProjectSortingStrategy
 import ore.user.notification.{InviteFilter, NotificationFilter}
@@ -163,7 +163,7 @@ class Users @Inject()(
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
 
-    val canHideProjects = request.headerData.globalPerm(HideProjects)
+    val canHideProjects = request.headerData.globalPerm(Permission.SeeHidden)
 
     users
       .withName(username)
@@ -219,7 +219,7 @@ class Users @Inject()(
     * @return           View of user page
     */
   def saveTagline(username: String): Action[String] =
-    UserAction(username).asyncEitherT(parse.form(forms.UserTagline)) { implicit request =>
+    UserEditAction(username).asyncEitherT(parse.form(forms.UserTagline)) { implicit request =>
       val maxLen = this.config.ore.users.maxTaglineLen
 
       for {
@@ -248,7 +248,7 @@ class Users @Inject()(
     * @return JSON response
     */
   def savePgpPublicKey(username: String): Action[PGPPublicKeySubmission] =
-    UserAction(username).asyncF(parse.form(forms.UserPgpPubKey, onErrors = FormError(ShowUser(username)))) {
+    UserEditAction(username).asyncF(parse.form(forms.UserPgpPubKey, onErrors = FormError(ShowUser(username)))) {
       implicit request =>
         val keyInfo = request.body.info
         val user    = request.user
@@ -330,7 +330,7 @@ class Users @Inject()(
     * Shows a list of [[models.user.User]]s that have Ore staff roles.
     */
   def showStaff(sort: Option[String], page: Option[Int]): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(ReviewProjects)).asyncF { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.IsStaff)).asyncF { implicit request =>
       val ordering = sort.getOrElse(UserOrdering.Role)
       val p        = page.getOrElse(1)
 

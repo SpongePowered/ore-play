@@ -56,12 +56,4 @@ trait HideableOps[M, MVisibilityChange <: VisibilityChange, MVisibilityChangeTab
   def lastVisibilityChange[QOptRet, SRet[_]](
       view: ModelView[QOptRet, SRet, MVisibilityChangeTable, Model[MVisibilityChange]]
   ): QOptRet = visibilityChangesByDate(view).filterView(_.resolvedAt.?.isEmpty).one
-
-  def lastChangeRequest[QOptRet, SRet[_]](
-      view: ModelView[QOptRet, SRet, MVisibilityChangeTable, Model[MVisibilityChange]]
-  ): QOptRet =
-    visibilityChanges(view)
-      .modifyingQuery(_.sortBy(_.createdAt.desc))
-      .filterView(_.visibility === (Visibility.NeedsChanges: Visibility))
-      .one
 }

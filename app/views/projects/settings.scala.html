@@ -2,11 +2,11 @@
 @import models.api.ProjectApiKey
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.{HardRemoveProject, HideProjects}
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
 @import db.Model
 @import views.html.helper.CSPNonce
+@import ore.permission.Permission
 @(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -34,7 +34,7 @@
             <div class="panel panel-default panel-settings">
                 <div class="panel-heading">
                     <h3 class="panel-title pull-left">@messages("project.settings")</h3>
-                    @if(request.headerData.globalPerm(HideProjects)) {
+                    @if(request.headerData.globalPerm(Permission.SeeHidden)) {
                         @projects.helper.btnHide(p.project.namespace, p.project.visibility)
 
                         <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog" aria-labelledby="modal-visibility-comment">
@@ -119,34 +119,36 @@
                         </form>
                     </div>
 
-                    <div class="setting">
-                        <div class="setting-description">
-                            <h4>@messages("project.settings.deployKey")</h4>
-                            <p>
-                                @messages("project.settings.deployKey.info")
-                                <a href="#"><i class="fas fa-question-circle"></i></a>
-                            </p>
+                    @if(sp.perms(Permission.EditApiKeys)) {
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>@messages("project.settings.deployKey")</h4>
+                                <p>
+                                    @messages("project.settings.deployKey.info")
+                                    <a href="#"><i class="fas fa-question-circle"></i></a>
+                                </p>
+                                @deploymentKey.map { key =>
+                                <input class="form-control input-key" type="text" value="@key.value" readonly />
+                                }.getOrElse {
+                                    <input class="form-control input-key" type="text" value="" readonly />
+                                }
+                            </div>
+                            <div class="setting-content">
                             @deploymentKey.map { key =>
-                            <input class="form-control input-key" type="text" value="@key.value" readonly />
-                            }.getOrElse {
-                                <input class="form-control input-key" type="text" value="" readonly />
-                            }
-                        </div>
-                        <div class="setting-content">
-                        @deploymentKey.map { key =>
-                        <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id">
-                            <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
-                            <span class="text">@messages("project.settings.revokeKey")</span>
-                        </button>
-                        }.getOrElse {
-                            <button class="btn btn-info btn-block btn-key-gen">
+                            <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id">
                                 <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
-                                <span class="text">@messages("project.settings.genKey")</span>
+                                <span class="text">@messages("project.settings.revokeKey")</span>
                             </button>
-                        }
+                            }.getOrElse {
+                                <button class="btn btn-info btn-block btn-key-gen">
+                                    <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                    <span class="text">@messages("project.settings.genKey")</span>
+                                </button>
+                            }
+                            </div>
+                            <div class="clearfix"></div>
                         </div>
-                        <div class="clearfix"></div>
-                    </div>
+                    }
 
                         <!-- Rename -->
                     <div class="setting">
@@ -167,21 +169,23 @@
                     </div>
 
                         <!-- Delete -->
-                    <div class="setting">
-                        <div class="setting-description">
-                            <h4 class="danger">Delete</h4>
-                            <p>Once you delete a project, it cannot be recovered.</p>
-                        </div>
-                        <div class="setting-content">
-                            <button class="btn btn-delete btn-danger" data-toggle="modal"
-                            data-target="#modal-delete">
-                                Delete
-                            </button>
-                        </div>
+                    @if(sp.perms(Permission.DeleteProject)) {
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4 class="danger">Delete</h4>
+                                <p>Once you delete a project, it cannot be recovered.</p>
+                            </div>
+                            <div class="setting-content">
+                                <button class="btn btn-delete btn-danger" data-toggle="modal"
+                                data-target="#modal-delete">
+                                    Delete
+                                </button>
+                            </div>
                         <div class="clearfix"></div>
                     </div>
+                    }
 
-                    @if(request.headerData.globalPerm(HardRemoveProject)) {
+                    @if(request.headerData.globalPerm(Permission.HardDeleteProject)) {
                         <div class="setting striped">
                             <div class="setting-description">
                                 <h4 class="danger">Hard Delete</h4>
