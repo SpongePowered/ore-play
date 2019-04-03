@@ -174,7 +174,11 @@ object UserQueries extends DoobieOreProtocol {
           |       ak.token,
           |       ak.raw_key_permissions,
           |       aks.expires,
-          |       coalesce(gt.permission, 1::BIT(64)) & coalesce(ak.raw_key_permissions, B'0'::BIT(64))
+          |       CASE
+          |         WHEN u.id IS NULL THEN 1::BIT(64)
+          |         ELSE (coalesce(gt.permission, B'0'::BIT(64)) | 1::BIT(64) | (1::BIT(64) << 1) | (1::BIT(64) << 2)) &
+          |             coalesce(ak.raw_key_permissions, (-1)::BIT(64))
+          |         END
           |  FROM api_sessions aks
           |         LEFT JOIN api_keys ak ON aks.key_id = ak.id
           |         LEFT JOIN users u ON aks.user_id = u.id

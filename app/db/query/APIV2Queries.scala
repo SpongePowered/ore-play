@@ -37,24 +37,22 @@ object APIV2Queries extends DoobieOreProtocol {
 
     val base =
       sql"""|SELECT p.created_at,
-       |       p.plugin_id,
-       |       p.name,
-       |       p.owner_name,
-       |       p.slug,
-       |       p.version_string,
-       |       array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL)                              AS tag_names,
-       |       array_agg(p.tag_data) FILTER ( WHERE p.tag_data IS NOT NULL)                              AS tag_names,
-       |       array_agg(p.tag_color) FILTER ( WHERE p.tag_color IS NOT NULL)                            AS tag_names,
-       |       p.views,
-       |       p.downloads,
-       |       p.stars,
-       |       p.category,
-       |       p.description,
-       |       p.last_updated,
-       |       p.visibility, """ ++ userActionsTaken ++
-        fr"""|       EXISTS(SELECT * FROM project_stars s WHERE s.project_id = p.id AND s.user_id = 19023)    AS user_stared,
-             |       EXISTS(SELECT * FROM project_watchers s WHERE s.project_id = p.id AND s.user_id = 19023) AS user_watching,
-             |       ps.homepage,
+            |       p.plugin_id,
+            |       p.name,
+            |       p.owner_name,
+            |       p.slug,
+            |       p.version_string,
+            |       array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL)                              AS tag_names,
+            |       array_agg(p.tag_data) FILTER ( WHERE p.tag_data IS NOT NULL)                              AS tag_datas,
+            |       array_agg(p.tag_color) FILTER ( WHERE p.tag_color IS NOT NULL)                            AS tag_colors,
+            |       p.views,
+            |       p.downloads,
+            |       p.stars,
+            |       p.category,
+            |       p.description,
+            |       coalesce(p.last_updated, p.created_at) as last_updated,
+            |       p.visibility, """.stripMargin ++ userActionsTaken ++
+        fr"""|       ps.homepage,
              |       ps.issues,
              |       ps.source,
              |       ps.license_name,
@@ -98,7 +96,7 @@ object APIV2Queries extends DoobieOreProtocol {
       }
     } else order.fragment
 
-    (base ++ filters ++ ordering ++ groupBy ++ fr"LIMIT $limit OFFSET $offset").query[APIV2Project]
+    (base ++ filters ++ groupBy ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2Project]
   }
 
   def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2ProjectMember] =
@@ -144,7 +142,8 @@ object APIV2Queries extends DoobieOreProtocol {
         .map(t => Fragments.or(Fragments.in(fr"pvt.name || pvt.data", t), Fragments.in(fr"pvt.name", t)))
     )
 
-    (base ++ filters ++ fr"GROUP BY pv.id, u.id LIMIT $limit OFFSET $offset").stripMargin.query[APIV2Version]
+    (base ++ filters ++ fr"GROUP BY pv.id, u.id ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset").stripMargin
+      .query[APIV2Version]
   }
 
   def userQuery(name: String): Query0[APIV2User] =

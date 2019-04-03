@@ -10,7 +10,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.{JsArray, JsString, JsValue, Json, Writes}
 import play.api.mvc._
 
 import controllers.ApiV2Controller.APIScope
@@ -24,7 +24,7 @@ import db.impl.schema.{OrganizationTable, ProjectTableMain}
 import models.api.{ApiKey, ApiSession}
 import models.querymodels.APIV2Project
 import ore.permission.{NamedPermission, Permission}
-import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope}
+import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.project.{Category, ProjectSortingStrategy}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -62,21 +62,18 @@ class ApiV2Controller @Inject()(
         .map(arr => arr.head -> arr(1))
         .collect { case ("ApiSession", session) => session }
 
-      lazy val authUrl = routes.ApiV2Controller.authenticate().absoluteURL()(request)
-      lazy val unAuth =
-        Unauthorized.withHeaders(WWW_AUTHENTICATE -> authUrl)
+      lazy val authUrl         = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+      def unAuth(msg: JsValue) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
       optToken
-        .fold(EitherT.leftT[IO, ApiRequest[A]](unAuth)) { token =>
+        .fold(EitherT.leftT[IO, ApiRequest[A]](unAuth(Json.obj("error" -> "No session specified")))) { token =>
           OptionT(service.runDbCon(UserQueries.getApiAuthInfo(token).option))
-            .toRight(unAuth)
+            .toRight(unAuth(Json.obj("error" -> "Invalid session")))
             .flatMap { info =>
               if (info.expires.isBefore(Instant.now())) {
                 EitherT
                   .left[ApiAuthInfo](service.deleteWhere(ApiSession)(_.token === token))
-                  .leftMap { _ =>
-                    Unauthorized(Json.obj("message" -> "Api session expired")).withHeaders(WWW_AUTHENTICATE -> authUrl)
-                  }
+                  .leftMap(_ => unAuth(Json.obj("message" -> "Api session expired")))
               } else EitherT.rightT[IO, Result](info)
             }
             .map(info => ApiRequest(info, request))
@@ -86,25 +83,27 @@ class ApiV2Controller @Inject()(
     }
   }
 
+  def apiScopeToRealScope(scope: APIScope): OptionT[IO, Scope] = scope match {
+    case APIScope.GlobalScope => OptionT.pure[IO](GlobalScope)
+    case APIScope.ProjectScope(pluginId) =>
+      OptionT(
+        service.runDBIO(TableQuery[ProjectTableMain].filter(_.pluginId === pluginId).map(_.id).result.headOption)
+      ).map(id => ProjectScope(id))
+    case APIScope.OrganizationScope(organizationName) =>
+      OptionT(
+        service.runDBIO(
+          TableQuery[OrganizationTable].filter(_.name === organizationName).map(_.id).result.headOption
+        )
+      ).map(id => OrganizationScope(id))
+  }
+
   def permApiAction(perms: Permission, scope: APIScope): ActionFilter[ApiRequest] = new ActionFilter[ApiRequest] {
     override protected def executionContext: ExecutionContext = ec
 
     override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] = {
       //Techically we could make this faster by first checking if the global perms have the needed perms,
       //but then we wouldn't get the 404 on a non existent scope.
-      val scopePerms = scope match {
-        case APIScope.GlobalScope => OptionT.liftF(request.permissionIn(GlobalScope))
-        case APIScope.ProjectScope(pluginId) =>
-          OptionT(
-            service.runDBIO(TableQuery[ProjectTableMain].filter(_.pluginId === pluginId).map(_.id).result.headOption)
-          ).semiflatMap(id => request.permissionIn(ProjectScope(id)))
-        case APIScope.OrganizationScope(organizationName) =>
-          OptionT(
-            service.runDBIO(
-              TableQuery[OrganizationTable].filter(_.name === organizationName).map(_.id).result.headOption
-            )
-          ).semiflatMap(id => request.permissionIn(OrganizationScope(id)))
-      }
+      val scopePerms = apiScopeToRealScope(scope).semiflatMap(request.permissionIn(_))
 
       scopePerms.toRight(NotFound).ensure(Forbidden)(_.has(perms)).swap.toOption.value.unsafeToFuture()
     }
@@ -173,21 +172,75 @@ class ApiV2Controller @Inject()(
             )
           )
       }
-      .toRight(Unauthorized.withHeaders(WWW_AUTHENTICATE -> routes.ApiV2Controller.authenticate().absoluteURL()))
+      .toRight(
+        Unauthorized(Json.obj("error" -> "Invalid api key"))
+          .withHeaders(WWW_AUTHENTICATE -> routes.ApiV2Controller.authenticate().absoluteURL())
+      )
   }
 
   def createKey(permissions: Seq[String]): Action[AnyContent] =
     ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncF { implicit request =>
-      import cats.instances.option._
-      import cats.instances.vector._
+      NamedPermission
+        .parseNamed(permissions)
+        .fold(IO.pure(BadRequest(Json.obj("error" -> "Invalid permission name")))) { perms =>
+          val perm = Permission(perms.map(_.permission): _*)
+          service
+            .insert(ApiKey(request.user.get.id, UUID.randomUUID().toString, perm))
+            .map(key => Ok(Json.obj("key" -> key.token)))
+        }
+    }
 
-      permissions.toVector.traverse(NamedPermission.withNameOption).fold(IO.pure(BadRequest: Result)) { perms =>
-        val perm = Permission(perms.map(_.permission): _*)
-        service
-          .insert(ApiKey(request.user.get.id, UUID.randomUUID().toString, perm))
-          .map(key => Ok(Json.obj("key" -> key.token)))
+  def createApiScope(pluginId: Option[String], organizationName: Option[String]): Either[Result, (String, APIScope)] =
+    (pluginId, organizationName) match {
+      case (Some(_), Some(_)) =>
+        Left(BadRequest(Json.obj("error" -> "Can't check for project and organization permissions at the same time")))
+      case (Some(plugId), None)  => Right("project"      -> APIScope.ProjectScope(plugId))
+      case (None, Some(orgName)) => Right("organization" -> APIScope.OrganizationScope(orgName))
+      case (None, None)          => Right("global"       -> APIScope.GlobalScope)
+    }
+
+  def permissionsInCreatedApiScope(pluginId: Option[String], organizationName: Option[String])(
+      implicit request: ApiRequest[_]
+  ): EitherT[IO, Result, (String, Permission)] =
+    EitherT
+      .fromEither[IO](createApiScope(pluginId, organizationName))
+      .flatMap(t => apiScopeToRealScope(t._2).tupleLeft(t._1).toRight(NotFound: Result))
+      .semiflatMap(t => request.permissionIn(t._2).tupleLeft(t._1))
+
+  def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncEitherT { implicit request =>
+      permissionsInCreatedApiScope(pluginId, organizationName).map {
+        case (tpe, perms) =>
+          Ok(
+            Json.obj(
+              "type" -> tpe,
+              "permissions" -> JsArray(NamedPermission.values.collect {
+                case perm if perms.has(perm.permission) => JsString(perm.entryName)
+              })
+            )
+          )
       }
     }
+
+  def has(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])(
+      check: (Seq[NamedPermission], Permission) => Boolean
+  ): Action[AnyContent] =
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncEitherT { implicit request =>
+      NamedPermission
+        .parseNamed(permissions)
+        .fold(EitherT.leftT[IO, Result](BadRequest(Json.obj("error" -> "Invalid permission name")))) { namedPerms =>
+          permissionsInCreatedApiScope(pluginId, organizationName).map {
+            case (tpe, perms) =>
+              Ok(Json.obj("type" -> tpe, "check" -> check(namedPerms, perms)))
+          }
+        }
+    }
+
+  def hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
+    has(permissions, pluginId, organizationName)((seq, perm) => seq.forall(p => perm.has(p.permission)))
+
+  def hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
+    has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(p => perm.has(p.permission)))
 
   def listProjects(
       q: Option[String],

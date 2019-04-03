@@ -60,8 +60,13 @@ GET     /api/v1/projects/:plugin/tags/:versionName                  @controllers
 GET     /api/v1/tags/:tagId                                         @controllers.ApiV1Controller.tagColor(tagId)
 
 # ---------- API (v2) ----------
++nocsrf
 POST    /api/v2/authenticate                                        @controllers.ApiV2Controller.authenticate()
++nocsrf
 POST    /api/v2/keys                                                @controllers.ApiV2Controller.createKey(permissions: Seq[String])
+GET     /api/v2/permissions                                         @controllers.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
+GET     /api/v2/permissions/hasAll                                  @controllers.ApiV2Controller.hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
+GET     /api/v2/permissions/hasAny                                  @controllers.ApiV2Controller.hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
 GET     /api/v2/projects                                            @controllers.ApiV2Controller.listProjects(q: Option[String], categories: Seq[String], tags: Seq[String], owner: Option[String], sort: Option[String], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
 GET     /api/v2/projects/:pluginId                                  @controllers.ApiV2Controller.showProject(pluginId)
 GET     /api/v2/projects/:pluginId/members                          @controllers.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)

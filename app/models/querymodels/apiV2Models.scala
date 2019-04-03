@@ -23,7 +23,7 @@ case class APIV2Project(
     name: String,
     namespace: ProjectNamespace,
     recommendedVersion: Option[String],
-    recommendedVersionTags: List[APIV2VersionTag],
+    recommendedVersionTags: Option[List[APIV2VersionTag]],
     views: Long,
     downloads: Long,
     stars: Long,

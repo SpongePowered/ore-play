@@ -4,10 +4,13 @@ import models.project.Project
 import models.user.Organization
 
 sealed trait Scope
-object Scope {
+object Scope extends LowPriorityScope {
   implicit val globalScopeHasScope: HasScope[GlobalScope.type]        = (a: GlobalScope.type) => a
   implicit val projectScopeHasScope: HasScope[ProjectScope]           = (a: ProjectScope) => a
   implicit val organizationScopeHasScope: HasScope[OrganizationScope] = (a: OrganizationScope) => a
+}
+trait LowPriorityScope {
+  implicit val scopeHasScope: HasScope[Scope] = (a: Scope) => a
 }
 
 case object GlobalScope                               extends Scope

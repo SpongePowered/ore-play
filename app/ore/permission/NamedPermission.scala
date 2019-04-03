@@ -42,4 +42,11 @@ object NamedPermission extends Enum[NamedPermission] {
   case object EditAllUserSettings extends NamedPermission(Permission.EditAllUserSettings)
 
   override def values: immutable.IndexedSeq[NamedPermission] = findValues
+
+  def parseNamed(names: Seq[String]): Option[Vector[NamedPermission]] = {
+    import cats.syntax.all._
+    import cats.instances.vector._
+    import cats.instances.option._
+    names.toVector.traverse(NamedPermission.withNameOption)
+  }
 }

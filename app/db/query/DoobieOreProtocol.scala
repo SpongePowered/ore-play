@@ -220,6 +220,13 @@ trait DoobieOreProtocol {
   implicit val apiV2TagWrite: Write[List[APIV2VersionTag]] =
     viewTagListWrite.contramap(_.map(t => ViewTag(t.name, t.data, t.color)))
 
+  implicit val apiV2TagOptRead: Read[Option[List[APIV2VersionTag]]] =
+    Read[(Option[List[String]], Option[List[String]], Option[List[TagColor]])].map {
+      case (Some(name), Some(data), Some(color)) =>
+        Some(name.zip(data).zip(color).map(t => APIV2VersionTag(t._1._1, t._1._2, t._2)))
+      case _ => None
+    }
+
   implicit val userModelRead: Read[Model[User]] =
     Read[ObjId[User] :: ObjTimestamp :: Option[String] :: String :: Option[String] :: Option[String] :: Option[
       Timestamp
