@@ -438,14 +438,13 @@ final class Application @Inject()(forms: OreForms)(
     }
 
   def showProjectVisibility(): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewProjectVisibilityLog)).asyncF {
-      implicit request =>
-        (
-          service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),
-          service.runDbCon(AppQueries.getVisibilityWaitingProject.to[Vector])
-        ).mapN { (needsApproval, waitingProject) =>
-          Ok(views.users.admin.visibility(needsApproval, waitingProject))
-        }
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.Reviewer)).asyncF { implicit request =>
+      (
+        service.runDbCon(AppQueries.getVisibilityNeedsApproval.to[Vector]),
+        service.runDbCon(AppQueries.getVisibilityWaitingProject.to[Vector])
+      ).mapN { (needsApproval, waitingProject) =>
+        Ok(views.users.admin.visibility(needsApproval, waitingProject))
+      }
     }
 
   def migrate(): Action[AnyContent] = Authenticated.andThen(PermissionAction[AuthRequest](Permission.All)).asyncF {

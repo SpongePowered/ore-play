@@ -87,7 +87,7 @@ object Role extends StringEnum[Role] {
         "Ore_Dev",
         8,
         RoleCategory.Global,
-        Perm(Perm.ViewStats, Perm.ViewLogs, Perm.ViewHealth, Perm.ChangeRawVisibility),
+        Perm(Perm.ViewStats, Perm.ViewLogs, Perm.ViewHealth, Perm.ManualValueChanges),
         "Ore Developer",
         Orange
       )

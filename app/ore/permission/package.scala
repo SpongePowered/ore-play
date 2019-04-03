@@ -60,15 +60,12 @@ package object permission {
     val IsStaff          = Permission(1L << 26)
     val Reviewer         = Permission(1L << 27) ++ IsStaff
 
-    val ViewHealth                       = Permission(1L << 32)
-    val ViewIp                           = Permission(1L << 33)
-    val ViewStats                        = Permission(1L << 34)
-    val ViewLogs                         = Permission(1L << 35)
-    private val ViewSubjectVisibilityLog = Permission(1L << 36)
-    val ViewProjectVisibilityLog         = ViewSubjectVisibilityLog
-    val ViewVersionVisibilityLog         = ViewSubjectVisibilityLog
+    val ViewHealth = Permission(1L << 32)
+    val ViewIp     = Permission(1L << 33)
+    val ViewStats  = Permission(1L << 34)
+    val ViewLogs   = Permission(1L << 35)
 
-    val ChangeRawVisibility = Permission(1L << 40)
+    val ManualValueChanges  = Permission(1L << 40)
     val HardDeleteProject   = Permission(1L << 41)
     val HardDeleteVersion   = Permission(1L << 42)
     val EditAllUserSettings = Permission(1L << 43)
