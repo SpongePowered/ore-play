@@ -14,15 +14,18 @@ import play.api.cache.AsyncCacheApi
 import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 
+import controllers.ApiV2Controller.APIScope
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import db.ModelService
 import db.access.ModelView
 import db.query.{APIV2Queries, UserQueries}
 import db.impl.OrePostgresDriver.api._
+import db.impl.schema.{OrganizationTable, ProjectTableMain}
 import models.api.{ApiKey, ApiSession}
 import models.querymodels.APIV2Project
 import ore.permission.Permission
+import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope}
 import ore.project.{Category, ProjectSortingStrategy}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -84,24 +87,52 @@ class ApiV2Controller @Inject()(
     }
   }
 
-  def ApiAction: ActionBuilder[ApiRequest, AnyContent] = Action.andThen(apiAction)
+  def permApiAction(perms: Permission, scope: APIScope): ActionFilter[ApiRequest] = new ActionFilter[ApiRequest] {
+    override protected def executionContext: ExecutionContext = ec
 
-  def apiOptDbAction[A: Writes](
+    override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] = {
+      //Techically we could make this faster by first checking if the global perms have the needed perms,
+      //but then we wouldn't get the 404 on a non existent scope.
+      val scopePerms = scope match {
+        case APIScope.GlobalScope => OptionT.liftF(request.permissionIn(GlobalScope))
+        case APIScope.ProjectScope(pluginId) =>
+          OptionT(
+            service.runDBIO(TableQuery[ProjectTableMain].filter(_.pluginId === pluginId).map(_.id).result.headOption)
+          ).semiflatMap(id => request.permissionIn(ProjectScope(id)))
+        case APIScope.OrganizationScope(organizationName) =>
+          OptionT(
+            service.runDBIO(
+              TableQuery[OrganizationTable].filter(_.name === organizationName).map(_.id).result.headOption
+            )
+          ).semiflatMap(id => request.permissionIn(OrganizationScope(id)))
+      }
+
+      scopePerms.toRight(NotFound).ensure(Forbidden)(_.has(perms)).swap.toOption.value.unsafeToFuture()
+    }
+  }
+
+  def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
+    Action.andThen(apiAction).andThen(permApiAction(perms, scope))
+
+  def apiOptDbAction[A: Writes](perms: Permission, scope: APIScope)(
       action: ApiRequest[AnyContent] => doobie.ConnectionIO[Option[A]]
   ): Action[AnyContent] =
-    ApiAction.asyncF { request =>
+    ApiAction(perms, scope).asyncF { request =>
       service.runDbCon(action(request)).map(_.fold(NotFound: Result)(a => Ok(Json.toJson(a))))
     }
 
-  def apiEitherDbAction[A: Writes](
+  def apiEitherDbAction[A: Writes](perms: Permission, scope: APIScope)(
       action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[Vector[A]]]
   ): Action[AnyContent] =
-    ApiAction.asyncF { request =>
+    ApiAction(perms, scope).asyncF { request =>
       action(request).bimap(IO.pure, service.runDbCon).map(_.map(a => Ok(Json.toJson(a)))).merge
     }
 
-  def apiDbAction[A: Writes](action: ApiRequest[AnyContent] => doobie.ConnectionIO[Vector[A]]): Action[AnyContent] =
-    ApiAction.asyncF { request =>
+  def apiDbAction[A: Writes](
+      perms: Permission,
+      scope: APIScope
+  )(action: ApiRequest[AnyContent] => doobie.ConnectionIO[Vector[A]]): Action[AnyContent] =
+    ApiAction(perms, scope).asyncF { request =>
       service.runDbCon(action(request)).map(xs => Ok(Json.toJson(xs)))
     }
 
@@ -156,7 +187,7 @@ class ApiV2Controller @Inject()(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    apiEitherDbAction[APIV2Project] { request =>
+    apiEitherDbAction[APIV2Project](Permission.ViewPublicInfo, APIScope.GlobalScope) { request =>
       for {
         cats      <- parseOpt(categories.toList, Category.fromApiName, "Unknown category")
         sortStrat <- parseOpt(sort, ProjectSortingStrategy.fromApiName, "Unknown sort strategy")
@@ -180,7 +211,7 @@ class ApiV2Controller @Inject()(
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
-    apiOptDbAction { request =>
+    apiOptDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { request =>
       APIV2Queries
         .projectQuery(
           Some(pluginId),
@@ -199,13 +230,12 @@ class ApiV2Controller @Inject()(
     }
 
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
-    apiDbAction(
-      _ =>
-        APIV2Queries
-          .projectMembers(pluginId, limitOrDefault(limit, 25), offset)
-          .map(mem => mem.copy(roles = mem.roles.sortBy(_.permissions: Long)))
-          .to[Vector]
-    )
+    apiDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
+      APIV2Queries
+        .projectMembers(pluginId, limitOrDefault(limit, 25), offset)
+        .map(mem => mem.copy(roles = mem.roles.sortBy(_.permissions: Long)))
+        .to[Vector]
+    }
 
   def listVersions(
       pluginId: String,
@@ -213,23 +243,33 @@ class ApiV2Controller @Inject()(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    apiDbAction(
-      _ =>
-        APIV2Queries
-          .versionQuery(
-            pluginId,
-            None,
-            tags.toList,
-            limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong),
-            offset
-          )
-          .to[Vector]
-    )
+    apiDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
+      APIV2Queries
+        .versionQuery(
+          pluginId,
+          None,
+          tags.toList,
+          limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong),
+          offset
+        )
+        .to[Vector]
+    }
 
   def showVersion(pluginId: String, name: String): Action[AnyContent] =
-    apiOptDbAction(_ => APIV2Queries.versionQuery(pluginId, Some(name), Nil, 1, 0).option)
+    apiOptDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
+      APIV2Queries.versionQuery(pluginId, Some(name), Nil, 1, 0).option
+    }
 
   def deployVersion(pluginId: String, name: String): Action[AnyContent] = TODO
 
-  def showUser(user: String): Action[AnyContent] = apiOptDbAction(_ => APIV2Queries.userQuery(user).option)
+  def showUser(user: String): Action[AnyContent] =
+    apiOptDbAction(Permission.ViewPublicInfo, APIScope.GlobalScope)(_ => APIV2Queries.userQuery(user).option)
+}
+object ApiV2Controller {
+  sealed trait APIScope
+  object APIScope {
+    case object GlobalScope                                extends APIScope
+    case class ProjectScope(pluginId: String)              extends APIScope
+    case class OrganizationScope(organizationName: String) extends APIScope
+  }
 }
