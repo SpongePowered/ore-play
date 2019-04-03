@@ -60,7 +60,6 @@ GET     /api/v1/projects/:plugin/tags/:versionName                  @controllers
 GET     /api/v1/tags/:tagId                                         @controllers.ApiV1Controller.tagColor(tagId)
 
 # ---------- API (v2) ----------
-+nocsrf
 POST    /api/v2/authenticate                                        @controllers.ApiV2Controller.authenticate()
 +nocsrf
 POST    /api/v2/keys                                                @controllers.ApiV2Controller.createKey(permissions: Seq[String])
