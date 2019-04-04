@@ -115,5 +115,7 @@ package object permission {
     def isNone: Boolean = permission == 0
 
     def toBinString: String = scodec.bits.BitVector.fromLong(permission).toBin
+
+    def toNamedSeq: Seq[NamedPermission] = NamedPermission.values.filter(perm => has(perm.permission))
   }
 }

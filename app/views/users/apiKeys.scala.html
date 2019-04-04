@@ -1,0 +1,76 @@
+@import controllers.sugar.Requests.OreRequest
+@import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
+@import ore.OreConfig
+@import ore.user.Prompt
+@import util.StringUtils._
+@import views.html.helper.{CSRF, form}
+@import views.html.utils.{modal, prompt, userAvatar}
+@import views.html.helper.CSPNonce
+@import ore.permission.{Permission, NamedPermission}
+@import models.api.ApiKey
+
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], keys: Seq[ApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+
+@scripts = {
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/apiKeysManagement.js")"></script>
+}
+
+@users.view(u, o, additionalScripts = scripts) {
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Create new key</h2>
+            <form>
+                <div class="row">
+                    <div class="col-md-6">
+                    @for(perm <- NamedPermission.values.take(NamedPermission.values.length / 2)) {
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" id="perm.@perm.entryName"> @perm.entryName
+                            </label>
+                        </div>
+                    }
+                    </div>
+                    <div class="col-md-6">
+                    @for(perm <- NamedPermission.values.drop(NamedPermission.values.length / 2)) {
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" id="perm.@perm.entryName"> @perm.entryName
+                            </label>
+                        </div>
+                    }
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="keyName">Name:</label>
+                    <input type="text" class="form-control" id="keyName">
+                </div>
+                <button type="submit" class="btn btn-default">Create key</button>
+            </form>
+        </div>
+
+        <div class="col-md-6">
+            <h2>Existing keys</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Key</th>
+                        <th>Permissions</th>
+                        <th>Delete</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for(key <- keys) {
+                    <tr>
+                        <th>@key.name.getOrElse("<No name>")</th>
+                        <th>@key.token</th>
+                        <th>@key.namedRawPermissions.map(_.entryName).mkString(", ")</th>
+                        <th><button class="btn btn-danger">Delete key</button></th>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

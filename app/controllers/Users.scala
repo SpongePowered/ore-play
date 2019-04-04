@@ -12,14 +12,15 @@ import controllers.sugar.Bakery
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
-import db.impl.schema.UserTable
+import db.impl.schema.{ApiKeyTable, UserTable}
 import db.query.UserQueries
 import db.{DbRef, Model, ModelService}
 import form.{OreForms, PGPPublicKeySubmission}
 import mail.{EmailFactory, Mailer}
+import models.api.ApiKey
 import models.project.Version
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
-import models.viewhelper.{OrganizationData, ScopedOrganizationData}
+import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 import ore.permission.Permission
 import ore.permission.role.Role
 import ore.project.ProjectSortingStrategy
@@ -407,4 +408,29 @@ class Users @Inject()(
     }
   }
 
+  def editApiKeys(username: String): Action[AnyContent] =
+    Authenticated.asyncF { implicit request =>
+      if (request.user.name == username) {
+        for {
+          t1 <- (
+            getOrga(username).value,
+            UserData.of(request, request.user),
+            service.runDBIO(TableQuery[ApiKeyTable].filter(_.ownerId === request.user.id.value).result)
+          ).parTupled
+          (orga, userData, keys) = t1
+          t2 <- (
+            OrganizationData.of(orga).value,
+            ScopedOrganizationData.of(request.currentUser, orga).value
+          ).parTupled
+          (orgaData, scopedOrgaData) = t2
+        } yield
+          Ok(
+            views.users.apiKeys(
+              userData,
+              orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
+              Model.unwrapNested(keys)
+            )
+          )
+      } else IO.pure(Forbidden)
+    }
 }

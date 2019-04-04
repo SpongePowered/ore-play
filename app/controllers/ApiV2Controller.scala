@@ -193,16 +193,27 @@ class ApiV2Controller @Inject()(
       )
   }
 
-  def createKey(permissions: Seq[String]): Action[AnyContent] =
+  def createKey(name: Option[String], permissions: Seq[String]): Action[AnyContent] =
     ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncF { implicit request =>
       NamedPermission
         .parseNamed(permissions)
         .fold(IO.pure(BadRequest(Json.obj("error" -> "Invalid permission name")))) { perms =>
           val perm = Permission(perms.map(_.permission): _*)
           service
-            .insert(ApiKey(request.user.get.id, UUID.randomUUID().toString, perm))
+            .insert(ApiKey(name.filter(_.nonEmpty), request.user.get.id, UUID.randomUUID().toString, perm))
             .map(key => Ok(Json.obj("key" -> key.token)))
         }
+    }
+
+  def deleteKey(key: String): Action[AnyContent] =
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncEitherT { implicit request =>
+      EitherT
+        .fromOption[IO](request.user, BadRequest(Json.obj("error" -> "Public keys can't be used to delete")))
+        .flatMap { user =>
+          ModelView.now(ApiKey).find(k => k.token === key && k.ownerId === user.id.value).toRight(NotFound: Result)
+        }
+        .semiflatMap(service.delete(_))
+        .as(NoContent)
     }
 
   def createApiScope(pluginId: Option[String], organizationName: Option[String]): Either[Result, (String, APIScope)] =
@@ -228,10 +239,8 @@ class ApiV2Controller @Inject()(
         case (tpe, perms) =>
           Ok(
             Json.obj(
-              "type" -> tpe,
-              "permissions" -> JsArray(NamedPermission.values.collect {
-                case perm if perms.has(perm.permission) => JsString(perm.entryName)
-              })
+              "type"        -> tpe,
+              "permissions" -> JsArray(perms.toNamedSeq.map(p => JsString(p.entryName)))
             )
           )
       }

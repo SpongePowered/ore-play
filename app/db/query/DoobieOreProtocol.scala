@@ -282,14 +282,15 @@ trait DoobieOreProtocol {
       case _ => None
     }
 
-  implicit val apiKeyRead: Read[ApiKey] = Read[DbRef[User] :: String :: Permission :: HNil].map {
-    case ownerId :: token :: permissions :: HNil => ApiKey(ownerId, token, permissions)
+  implicit val apiKeyRead: Read[ApiKey] = Read[Option[String] :: DbRef[User] :: String :: Permission :: HNil].map {
+    case name :: ownerId :: token :: permissions :: HNil => ApiKey(name, ownerId, token, permissions)
   }
 
   implicit val apiKeyOptRead: Read[Option[ApiKey]] =
-    Read[Option[DbRef[User]] :: Option[String] :: Option[Permission] :: HNil].map {
-      case Some(ownerId) :: Some(token) :: Some(permissions) :: HNil => Some(ApiKey(ownerId, token, permissions))
-      case _                                                         => None
+    Read[Option[String] :: Option[DbRef[User]] :: Option[String] :: Option[Permission] :: HNil].map {
+      case name :: Some(ownerId) :: Some(token) :: Some(permissions) :: HNil =>
+        Some(ApiKey(name, ownerId, token, permissions))
+      case _ => None
     }
 }
 object DoobieOreProtocol extends DoobieOreProtocol

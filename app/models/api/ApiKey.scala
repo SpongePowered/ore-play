@@ -4,7 +4,7 @@ import db.impl.schema.ApiKeyTable
 import db.query.UserQueries
 import db.{DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.user.User
-import ore.permission.Permission
+import ore.permission.{NamedPermission, Permission}
 import ore.permission.scope.{GlobalScope, HasScope, OrganizationScope, ProjectScope}
 import ore.user.UserOwned
 import util.syntax._
@@ -13,6 +13,7 @@ import cats.effect.IO
 import slick.lifted.TableQuery
 
 case class ApiKey(
+    name: Option[String],
     ownerId: DbRef[User],
     token: String,
     private val rawKeyPermissions: Permission
@@ -27,6 +28,8 @@ case class ApiKey(
 
     service.runDbCon(query.unique).map(userPerms => Permission.fromLong(userPerms & rawKeyPermissions))
   }
+
+  def namedRawPermissions: Seq[NamedPermission] = rawKeyPermissions.toNamedSeq
 }
 object ApiKey extends DefaultModelCompanion[ApiKey, ApiKeyTable](TableQuery[ApiKeyTable]) {
   implicit val query: ModelQuery[ApiKey] = ModelQuery.from(this)

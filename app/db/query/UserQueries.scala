@@ -170,6 +170,7 @@ object UserQueries extends DoobieOreProtocol {
 
   def getApiAuthInfo(token: String): doobie.Query0[ApiAuthInfo] =
     sql"""|SELECT u.*,
+          |       ak.name,
           |       ak.owner_id,
           |       ak.token,
           |       ak.raw_key_permissions,

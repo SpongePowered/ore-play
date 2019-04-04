@@ -47,7 +47,7 @@
     padding: 3px;
   }
 
-  .action-lock-account:hover, .action-pgp:hover, .user-settings svg:hover {
+  .action-lock-account:hover, .action-pgp:hover, .action-api, .user-settings svg:hover {
     background-color: gray;
     -webkit-transition: all 0.5s ease;
     -moz-transition: all 0.5s ease;
@@ -57,7 +57,8 @@
   }
 
   svg { cursor: pointer; }
-  .user-settings { color: #333; }
+
+  .action-api, .user-settings { color: #333; }
 }
 
 textarea[name="pgp-pub-key"] {

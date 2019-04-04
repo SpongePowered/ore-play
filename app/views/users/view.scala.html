@@ -83,6 +83,10 @@
                             @if(!u.currentUser.get.readPrompts.contains(Prompt.PGP)) {
                                 @prompt(Prompt.PGP, "popover-pgp")
                             }
+
+                            <a class="action-api" href="@routes.Users.editApiKeys(u.user.name)">
+                                <i class="fas fa-key" data-toggle="tooltip" data-placement="top" title="API Keys"></i>
+                            </a>
                         }
 
                         @if(!u.isCurrent && u.user.pgpPubKey.isDefined) {
