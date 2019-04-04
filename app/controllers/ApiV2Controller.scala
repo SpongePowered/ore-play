@@ -134,9 +134,26 @@ class ApiV2Controller @Inject()(
       service.runDbCon(action(request)).map(xs => Ok(Json.toJson(xs)))
     }
 
-  def authenticate(): Action[AnyContent] = OreAction.asyncEitherT { implicit request =>
-    def expiration(duration: FiniteDuration) = service.theTime.toInstant.plusSeconds(duration.toSeconds)
+  def expiration(duration: FiniteDuration) = service.theTime.toInstant.plusSeconds(duration.toSeconds)
 
+  def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
+    val sessionExpiration = expiration(config.ore.api.sessionExpiration)
+    val uuidToken         = UUID.randomUUID().toString
+    val tpe               = "user"
+    val sessionToInsert   = ApiSession(uuidToken, None, Some(request.user.id), sessionExpiration)
+
+    service.insert(sessionToInsert).map { key =>
+      Ok(
+        Json.obj(
+          "session" -> key.token,
+          "expires" -> LocalDateTime.ofInstant(key.expires, ZoneOffset.UTC),
+          "type"    -> tpe
+        )
+      )
+    }
+  }
+
+  def authenticate(): Action[AnyContent] = OreAction.asyncEitherT { implicit request =>
     lazy val sessionExpiration       = expiration(config.ore.api.sessionExpiration)
     lazy val publicSessionExpiration = expiration(config.ore.api.publicSessionExpiration)
 
@@ -149,14 +166,12 @@ class ApiV2Controller @Inject()(
 
     val uuidToken = UUID.randomUUID().toString
 
-    val sessionToInsert = (request.currentUser, optApiKey) match {
-      case (_, Some(key)) =>
+    val sessionToInsert = optApiKey match {
+      case Some(key) =>
         ModelView.now(ApiKey).find(_.token === key).map { key =>
           "key" -> ApiSession(uuidToken, Some(key.id), Some(key.ownerId), sessionExpiration)
         }
-      case (Some(user), None) =>
-        OptionT.pure[IO]("user" -> ApiSession(uuidToken, None, Some(user.id), sessionExpiration))
-      case (None, None) =>
+      case None =>
         OptionT.pure[IO]("public" -> ApiSession(uuidToken, None, None, publicSessionExpiration))
     }
 
