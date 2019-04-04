@@ -134,7 +134,7 @@ class ApiV2Controller @Inject()(
       service.runDbCon(action(request)).map(xs => Ok(Json.toJson(xs)))
     }
 
-  def expiration(duration: FiniteDuration) = service.theTime.toInstant.plusSeconds(duration.toSeconds)
+  private def expiration(duration: FiniteDuration) = service.theTime.toInstant.plusSeconds(duration.toSeconds)
 
   def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     val sessionExpiration = expiration(config.ore.api.sessionExpiration)
