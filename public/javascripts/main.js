@@ -28,6 +28,7 @@ var KEY_MINUS = 173;
 var CATEGORY_STRING = CATEGORY_STRING || null;
 var SORT_STRING = SORT_STRING || null;
 var csrf = null;
+var isLoggedIn = false;
 
 /*
  * ==================================================
@@ -95,6 +96,105 @@ function slugify(name) {
 
 function toggleSpinner(e) {
     return e.toggleClass('fa-spinner').toggleClass('fa-spin');
+}
+
+function apiV2Request(url, method, data, isRetry) {
+    return getApiSession().then(function (session) {
+        return new Promise(function (resolve, reject) {
+            if(!data) {
+                data = {};
+            }
+
+            var allData = Object.assign(data, {csrfToken: csrf});
+            $.ajax({
+                url: '/api/v2/' + url,
+                method: method,
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify(allData),
+                headers: {'Authorization': 'ApiSession ' + session}
+            }).done(function (data) {
+                resolve(data);
+            }).fail(function (xhr) {
+                if (xhr.response && xhr.response.error === 'Api session expired') {
+                    if (isRetry === true) {
+                        reject('Api session expired twice')
+                    } else {
+                        invalidateApiSession();
+                        apiV2Request(url, method, data, true).then(function (data) {
+                            resolve(data);
+                        }).catch(function (error) {
+                            reject(error);
+                        });
+                    }
+                } else {
+                    reject(xhr.statusText)
+                }
+            })
+        })
+    });
+}
+
+function getApiSession() {
+    return new Promise(function (resolve, reject) {
+        var session;
+        if (isLoggedIn) {
+            session = localStorage.getItem('api_session');
+            if (session === null) {
+                return $.ajax({
+                    url: '/api/v2/authenticate/user',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        csrfToken: csrf
+                    }
+                }).done(function (data) {
+                    if (data.type !== 'user') {
+                        reject('Expected user session from user authentication');
+                    } else {
+                        localStorage.setItem('api_session', data.session);
+                        resolve(data.session);
+                    }
+                }).fail(function (xhr) {
+                    reject(xhr.statusText)
+                })
+            } else {
+                resolve(session);
+            }
+        } else {
+            session = localStorage.getItem('public_api_session');
+            if (session === null) {
+                $.ajax({
+                    url: '/api/v2/authenticate',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        csrfToken: csrf
+                    }
+                }).done(function (data) {
+                    if (data.type !== 'public') {
+                        reject('Expected public session from public authentication')
+                    } else {
+                        localStorage.setItem('public_api_session', data.session);
+                        resolve(data.session);
+                    }
+                }).fail(function (xhr) {
+                    reject(xhr.statusText)
+                })
+            } else {
+                resolve(session);
+            }
+        }
+    });
+}
+
+function invalidateApiSession() {
+    if (isLoggedIn) {
+        localStorage.removeItem('api_session')
+    }
+    else {
+        localStorage.removeItem('public_api_session')
+    }
 }
 
 /*

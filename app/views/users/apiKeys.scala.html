@@ -19,7 +19,7 @@
     <div class="row">
         <div class="col-md-6">
             <h2>Create new key</h2>
-            <form>
+            <div id="api-create-key-form">
                 <div class="row">
                     <div class="col-md-6">
                     @for(perm <- NamedPermission.values.take(NamedPermission.values.length / 2)) {
@@ -45,8 +45,8 @@
                     <label for="keyName">Name:</label>
                     <input type="text" class="form-control" id="keyName">
                 </div>
-                <button type="submit" class="btn btn-default">Create key</button>
-            </form>
+                <button id="button-create-new-key" class="btn btn-default">Create key</button>
+            </div>
         </div>
 
         <div class="col-md-6">
@@ -60,13 +60,13 @@
                         <th>Delete</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="api-key-rows">
                 @for(key <- keys) {
-                    <tr>
+                    <tr class="api-key-row">
                         <th>@key.name.getOrElse("<No name>")</th>
-                        <th>@key.token</th>
+                        <th class="api-key-row-token">@key.token</th>
                         <th>@key.namedRawPermissions.map(_.entryName).mkString(", ")</th>
-                        <th><button class="btn btn-danger">Delete key</button></th>
+                        <th><button class="btn btn-danger api-key-row-delete-button">Delete key</button></th>
                     </tr>
                 }
                 </tbody>

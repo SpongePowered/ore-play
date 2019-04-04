@@ -64,9 +64,9 @@ GET     /api/v1/tags/:tagId                                         @controllers
 POST    /api/v2/authenticate                                        @controllers.ApiV2Controller.authenticate()
 POST    /api/v2/authenticate/user                                   @controllers.ApiV2Controller.authenticateUser()
 +nocsrf
-POST    /api/v2/keys                                                @controllers.ApiV2Controller.createKey(name: Option[String], permissions: Seq[String])
+POST    /api/v2/keys                                                @controllers.ApiV2Controller.createKey()
 +nocsrf
-DELETE  /api/v2/keys                                                @controllers.ApiV2Controller.deleteKey(key: String)
+DELETE  /api/v2/keys                                                @controllers.ApiV2Controller.deleteKey()
 GET     /api/v2/permissions                                         @controllers.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
 GET     /api/v2/permissions/hasAll                                  @controllers.ApiV2Controller.hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
 GET     /api/v2/permissions/hasAny                                  @controllers.ApiV2Controller.hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])

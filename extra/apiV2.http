@@ -26,16 +26,29 @@ Cookie: _oretoken={{ore_session}}
 > {% client.global.set("api_session", response.body.session); %}
 
 ### Create a new key
-POST http://localhost:9000/api/v2/keys?permissions=edit_all_user_settings
+POST http://localhost:9000/api/v2/keys
 Authorization: ApiSession {{api_session}}
 Accept: application/json
+Content-Type: application/json
+
+{
+  "permissions": [
+    "edit_all_user_settings"
+  ],
+  "name": "Foo"
+}
 
 > {% client.global.set("api_key", response.body.key); %}
 
 ### Delete a key
-DELETE http://localhost:9000/api/v2/keys?key={{api_key}}
+DELETE http://localhost:9000/api/v2/keys
 Authorization: ApiSession {{api_session}}
 Accept: application/json
+Content-Type: application/json
+
+{
+  "key": "{{api_key}}"
+}
 
 > {% client.global.clear("api_key"); %}
 

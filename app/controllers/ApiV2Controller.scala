@@ -10,10 +10,10 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
-import play.api.libs.json.{JsArray, JsString, JsValue, Json, Writes}
+import play.api.libs.json.{JsArray, JsString, JsValue, Json, OFormat, Writes}
 import play.api.mvc._
 
-import controllers.ApiV2Controller.APIScope
+import controllers.ApiV2Controller.{APIScope, CreatedKey, DeleteKey}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import db.ModelService
@@ -73,7 +73,7 @@ class ApiV2Controller @Inject()(
               if (info.expires.isBefore(Instant.now())) {
                 EitherT
                   .left[ApiAuthInfo](service.deleteWhere(ApiSession)(_.token === token))
-                  .leftMap(_ => unAuth(Json.obj("message" -> "Api session expired")))
+                  .leftMap(_ => unAuth(Json.obj("error" -> "Api session expired")))
               } else EitherT.rightT[IO, Result](info)
             }
             .map(info => ApiRequest(info, request))
@@ -193,24 +193,27 @@ class ApiV2Controller @Inject()(
       )
   }
 
-  def createKey(name: Option[String], permissions: Seq[String]): Action[AnyContent] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncF { implicit request =>
+  def createKey(): Action[CreatedKey] =
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parse.json[CreatedKey]).asyncF { implicit request =>
       NamedPermission
-        .parseNamed(permissions)
+        .parseNamed(request.body.permissions)
         .fold(IO.pure(BadRequest(Json.obj("error" -> "Invalid permission name")))) { perms =>
           val perm = Permission(perms.map(_.permission): _*)
           service
-            .insert(ApiKey(name.filter(_.nonEmpty), request.user.get.id, UUID.randomUUID().toString, perm))
+            .insert(ApiKey(request.body.name.filter(_.nonEmpty), request.user.get.id, UUID.randomUUID().toString, perm))
             .map(key => Ok(Json.obj("key" -> key.token)))
         }
     }
 
-  def deleteKey(key: String): Action[AnyContent] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncEitherT { implicit request =>
+  def deleteKey(): Action[DeleteKey] =
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parse.json[DeleteKey]).asyncEitherT { implicit request =>
       EitherT
         .fromOption[IO](request.user, BadRequest(Json.obj("error" -> "Public keys can't be used to delete")))
         .flatMap { user =>
-          ModelView.now(ApiKey).find(k => k.token === key && k.ownerId === user.id.value).toRight(NotFound: Result)
+          ModelView
+            .now(ApiKey)
+            .find(k => k.token === request.body.key && k.ownerId === user.id.value)
+            .toRight(NotFound: Result)
         }
         .semiflatMap(service.delete(_))
         .as(NoContent)
@@ -360,5 +363,15 @@ object ApiV2Controller {
     case object GlobalScope                                extends APIScope
     case class ProjectScope(pluginId: String)              extends APIScope
     case class OrganizationScope(organizationName: String) extends APIScope
+  }
+
+  case class CreatedKey(name: Option[String], permissions: Seq[String])
+  object CreatedKey {
+    implicit val format: OFormat[CreatedKey] = Json.format[CreatedKey]
+  }
+
+  case class DeleteKey(key: String)
+  object DeleteKey {
+    implicit val format: OFormat[DeleteKey] = Json.format[DeleteKey]
   }
 }
