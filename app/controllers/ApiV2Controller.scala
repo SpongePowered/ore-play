@@ -151,7 +151,7 @@ class ApiV2Controller @Inject()(
   private def expiration(duration: FiniteDuration) = service.theTime.toInstant.plusSeconds(duration.toSeconds)
 
   def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
-    val sessionExpiration = expiration(config.ore.api.sessionExpiration)
+    val sessionExpiration = expiration(config.ore.api.session.expiration)
     val uuidToken         = UUID.randomUUID().toString
     val tpe               = "user"
     val sessionToInsert   = ApiSession(uuidToken, None, Some(request.user.id), sessionExpiration)
@@ -168,8 +168,8 @@ class ApiV2Controller @Inject()(
   }
 
   def authenticate(): Action[AnyContent] = OreAction.asyncEitherT { implicit request =>
-    lazy val sessionExpiration       = expiration(config.ore.api.sessionExpiration)
-    lazy val publicSessionExpiration = expiration(config.ore.api.publicSessionExpiration)
+    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
+    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
 
     val optApiKey = request.headers
       .get(AUTHORIZATION)

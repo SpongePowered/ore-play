@@ -8,6 +8,7 @@ import db.impl.DbUpdateTask
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.project.ProjectTask
+import ore.user.UserTask
 
 import com.typesafe.scalalogging
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -20,6 +21,7 @@ abstract class Bootstrap(
     forums: OreDiscourseApi,
     config: OreConfig,
     projectTask: ProjectTask,
+    userTask: UserTask,
     dbUpdateTask: DbUpdateTask,
     ec: ExecutionContext
 ) {
@@ -37,6 +39,7 @@ abstract class Bootstrap(
 
   this.projectTask.start()
   this.dbUpdateTask.start()
+  this.userTask.start()
 
   if (this.config.security.requirePgp)
     Security.addProvider(new BouncyCastleProvider)
@@ -51,6 +54,7 @@ class BootstrapImpl @Inject()(
     forums: OreDiscourseApi,
     config: OreConfig,
     projectTask: ProjectTask,
+    userTask: UserTask,
     dbUpdateTask: DbUpdateTask,
     ec: ExecutionContext
-) extends Bootstrap(modelService, forums, config, projectTask, dbUpdateTask, ec)
+) extends Bootstrap(modelService, forums, config, projectTask, userTask, dbUpdateTask, ec)

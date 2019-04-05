@@ -143,8 +143,12 @@ ore {
     }
 
     api {
-      public-session-expiration = 3h
-      session-expiration = 14d
+        session {
+            public-expiration = 3h
+            expiration = 14d
+
+            check-interval = 5m
+        }
     }
 }
 

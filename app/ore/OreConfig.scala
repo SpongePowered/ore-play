@@ -110,9 +110,16 @@ final class OreConfig @Inject()(config: Configuration) {
     }
 
     object api extends ConfigCategory {
-      val raw: Configuration                      = ore.raw.get[Configuration]("api")
-      val publicSessionExpiration: FiniteDuration = raw.get[FiniteDuration]("public-session-expiration")
-      val sessionExpiration: FiniteDuration       = raw.get[FiniteDuration]("session-expiration")
+      val raw: Configuration = ore.raw.get[Configuration]("api")
+
+      object session extends ConfigCategory {
+        val raw: Configuration = api.raw.get[Configuration]("session")
+
+        val publicExpiration: FiniteDuration = raw.get[FiniteDuration]("public-expiration")
+        val expiration: FiniteDuration       = raw.get[FiniteDuration]("expiration")
+
+        val checkInterval: FiniteDuration = raw.get[FiniteDuration]("check-interval")
+      }
     }
   }
 
@@ -191,6 +198,7 @@ final class OreConfig @Inject()(config: Configuration) {
   ore.orgs.load()
   ore.queue.load()
   ore.api.load()
+  ore.api.session.load()
   forums.load()
   forums.api.load()
   sponge.load()
