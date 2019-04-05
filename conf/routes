@@ -71,10 +71,12 @@ GET     /api/v2/permissions                                         @controllers
 GET     /api/v2/permissions/hasAll                                  @controllers.ApiV2Controller.hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
 GET     /api/v2/permissions/hasAny                                  @controllers.ApiV2Controller.hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
 GET     /api/v2/projects                                            @controllers.ApiV2Controller.listProjects(q: Option[String], categories: Seq[String], tags: Seq[String], owner: Option[String], sort: Option[String], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+GET     /api/v2/projects/count                                      @controllers.ApiV2Controller.countProjects(q: Option[String], categories: Seq[String], tags: Seq[String], owner: Option[String])
 GET     /api/v2/projects/:pluginId                                  @controllers.ApiV2Controller.showProject(pluginId)
 GET     /api/v2/projects/:pluginId/members                          @controllers.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
 
 GET     /api/v2/projects/:pluginId/versions                         @controllers.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /api/v2/projects/:pluginId/versions/count                   @controllers.ApiV2Controller.countVersions(pluginId, tags: Seq[String])
 GET     /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.showVersion(pluginId, name)
 POST    /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.deployVersion(pluginId, name)
 
@@ -188,7 +190,7 @@ POST    /:author/:slug/channels/:channel/delete                     @controllers
 
 # ---------- Versions ----------
 
-GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug, channels: Option[String])
+GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug)
 
 POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version, partial: Boolean = false)
 POST    /:author/:slug/versions/:version/approvePartial             @controllers.project.Versions.approve(author, slug, version, partial: Boolean = true)

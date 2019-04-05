@@ -112,6 +112,13 @@ class ApiV2Controller @Inject()(
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     Action.andThen(apiAction).andThen(permApiAction(perms, scope))
 
+  def apiDbAction[A: Writes](perms: Permission, scope: APIScope)(
+      action: ApiRequest[AnyContent] => doobie.ConnectionIO[A]
+  ): Action[AnyContent] =
+    ApiAction(perms, scope).asyncF { request =>
+      service.runDbCon(action(request)).map(a => Ok(Json.toJson(a)))
+    }
+
   def apiOptDbAction[A: Writes](perms: Permission, scope: APIScope)(
       action: ApiRequest[AnyContent] => doobie.ConnectionIO[Option[A]]
   ): Action[AnyContent] =
@@ -120,13 +127,20 @@ class ApiV2Controller @Inject()(
     }
 
   def apiEitherDbAction[A: Writes](perms: Permission, scope: APIScope)(
+      action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[A]]
+  ): Action[AnyContent] =
+    ApiAction(perms, scope).asyncF { request =>
+      action(request).bimap(IO.pure, service.runDbCon(_).map(a => Ok(Json.toJson(a)))).merge
+    }
+
+  def apiEitherVecDbAction[A: Writes](perms: Permission, scope: APIScope)(
       action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[Vector[A]]]
   ): Action[AnyContent] =
     ApiAction(perms, scope).asyncF { request =>
       action(request).bimap(IO.pure, service.runDbCon).map(_.map(a => Ok(Json.toJson(a)))).merge
     }
 
-  def apiDbAction[A: Writes](
+  def apiVecDbAction[A: Writes](
       perms: Permission,
       scope: APIScope
   )(action: ApiRequest[AnyContent] => doobie.ConnectionIO[Vector[A]]): Action[AnyContent] =
@@ -279,7 +293,7 @@ class ApiV2Controller @Inject()(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    apiEitherDbAction[APIV2Project](Permission.ViewPublicInfo, APIScope.GlobalScope) { request =>
+    apiEitherVecDbAction[APIV2Project](Permission.ViewPublicInfo, APIScope.GlobalScope) { request =>
       for {
         cats      <- parseOpt(categories.toList, Category.fromApiName, "Unknown category")
         sortStrat <- parseOpt(sort, ProjectSortingStrategy.fromApiName, "Unknown sort strategy")
@@ -321,8 +335,34 @@ class ApiV2Controller @Inject()(
         .option
     }
 
+  def countProjects(
+      q: Option[String],
+      categories: Seq[String],
+      tags: Seq[String],
+      owner: Option[String],
+  ): Action[AnyContent] = apiEitherDbAction(Permission.ViewPublicInfo, APIScope.GlobalScope) { request =>
+    for {
+      cats <- parseOpt(categories.toList, Category.fromApiName, "Unknown category")
+    } yield {
+      APIV2Queries
+        .projectCountQuery(
+          None,
+          cats,
+          tags.toList.flatMap(_.split(",").toList),
+          q,
+          owner,
+          request.globalPermissions.has(Permission.SeeHidden),
+          request.user.map(_.id)
+        )
+        .unique
+        .map { count =>
+          Json.obj("count" -> count)
+        }
+    }
+  }
+
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
-    apiDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
+    apiVecDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
       APIV2Queries
         .projectMembers(pluginId, limitOrDefault(limit, 25), offset)
         .map(mem => mem.copy(roles = mem.roles.sortBy(_.permissions: Long)))
@@ -335,7 +375,7 @@ class ApiV2Controller @Inject()(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    apiDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
+    apiVecDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
       APIV2Queries
         .versionQuery(
           pluginId,
@@ -345,6 +385,16 @@ class ApiV2Controller @Inject()(
           offset
         )
         .to[Vector]
+    }
+
+  def countVersions(
+      pluginId: String,
+      tags: Seq[String],
+  ): Action[AnyContent] =
+    apiDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
+      APIV2Queries.versionCountQuery(pluginId, tags.toList).unique.map { count =>
+        Json.obj("count" -> count)
+      }
     }
 
   def showVersion(pluginId: String, name: String): Action[AnyContent] =

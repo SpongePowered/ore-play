@@ -99,6 +99,7 @@ case class APIV2Version(
     createdAt: LocalDateTime,
     name: String,
     dependenciesIds: List[String],
+    visibility: Visibility,
     description: Option[String],
     downloads: Int,
     fileSize: Long,
@@ -121,6 +122,11 @@ object APIV2Version {
           "version"   -> data.lift(1)
         )
       },
+      "visibility" -> obj(
+        "name"     -> version.visibility.nameKey,
+        "modal"    -> version.visibility.showModal,
+        "cssClass" -> version.visibility.cssClass
+      ),
       "description"  -> version.description,
       "downloads"    -> version.downloads,
       "file_size"    -> version.fileSize,

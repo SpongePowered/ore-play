@@ -116,7 +116,7 @@ function apiV2Request(url, method, data, isRetry) {
             }).done(function (data) {
                 resolve(data);
             }).fail(function (xhr) {
-                if (xhr.response && xhr.response.error === 'Api session expired') {
+                if (xhr.responseJSON && (xhr.responseJSON.error === 'Api session expired' || xhr.responseJSON.error === 'Invalid session')) {
                     if (isRetry === true) {
                         reject('Api session expired twice')
                     } else {

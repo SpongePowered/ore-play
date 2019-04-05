@@ -17,7 +17,7 @@ object APIV2Queries extends DoobieOreProtocol {
 
   implicit val localDateTimeMeta: Meta[LocalDateTime] = Meta[Timestamp].timap(_.toLocalDateTime)(Timestamp.valueOf)
 
-  def projectQuery(
+  def projectSelectFrag(
       pluginId: Option[String],
       category: List[Category],
       tags: List[String],
@@ -25,11 +25,7 @@ object APIV2Queries extends DoobieOreProtocol {
       owner: Option[String],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]],
-      order: ProjectSortingStrategy,
-      orderWithRelevance: Boolean,
-      limit: Long,
-      offset: Long
-  ): Query0[APIV2Project] = {
+  ): Fragment = {
     val userActionsTaken = currentUserId.fold(fr"FALSE, FALSE,") { id =>
       fr"""|EXISTS(SELECT * FROM project_stars s WHERE s.project_id = p.id AND s.user_id = $id)    AS user_stared,
            |EXISTS(SELECT * FROM project_watchers s WHERE s.project_id = p.id AND s.user_id = $id) AS user_watching,""".stripMargin
@@ -93,6 +89,22 @@ object APIV2Queries extends DoobieOreProtocol {
       visibilityFrag
     )
 
+    base ++ filters ++ groupBy
+  }
+
+  def projectQuery(
+      pluginId: Option[String],
+      category: List[Category],
+      tags: List[String],
+      query: Option[String],
+      owner: Option[String],
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]],
+      order: ProjectSortingStrategy,
+      orderWithRelevance: Boolean,
+      limit: Long,
+      offset: Long
+  ): Query0[APIV2Project] = {
     val ordering = if (orderWithRelevance && query.nonEmpty) {
       val relevance = query.fold(fr"1") { q =>
         fr"ts_rank(p.search_words, websearch_to_tsquery($q)) DESC"
@@ -107,7 +119,21 @@ object APIV2Queries extends DoobieOreProtocol {
       }
     } else order.fragment
 
-    (base ++ filters ++ groupBy ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2Project]
+    val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
+    (select ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2Project]
+  }
+
+  def projectCountQuery(
+      pluginId: Option[String],
+      category: List[Category],
+      tags: List[String],
+      query: Option[String],
+      owner: Option[String],
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]],
+  ): Query0[Int] = {
+    val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
+    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Int]
   }
 
   def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2ProjectMember] =
@@ -119,17 +145,16 @@ object APIV2Queries extends DoobieOreProtocol {
           |  WHERE p.plugin_id = $pluginId
           |  GROUP BY u.name LIMIT $limit OFFSET $offset""".stripMargin.query[APIV2ProjectMember]
 
-  def versionQuery(
+  def versionSelectFrag(
       pluginId: String,
       versionName: Option[String],
       tags: List[String],
-      limit: Long,
-      offset: Long
-  ): Query0[APIV2Version] = {
+  ): Fragment = {
     val base =
       sql"""|SELECT pv.created_at,
             |       pv.version_string,
             |       pv.dependencies,
+            |       pv.visibility,
             |       pv.description,
             |       pv.downloads,
             |       pv.file_size,
@@ -163,9 +188,21 @@ object APIV2Queries extends DoobieOreProtocol {
         }
     )
 
-    (base ++ filters ++ fr"GROUP BY pv.id, u.id, pc.id ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset").stripMargin
-      .query[APIV2Version]
+    base ++ filters ++ fr"GROUP BY pv.id, u.id, pc.id"
   }
+
+  def versionQuery(
+      pluginId: String,
+      versionName: Option[String],
+      tags: List[String],
+      limit: Long,
+      offset: Long
+  ): Query0[APIV2Version] =
+    (versionSelectFrag(pluginId, versionName, tags) ++ fr"ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset")
+      .query[APIV2Version]
+
+  def versionCountQuery(pluginId: String, tags: List[String]): Query0[Int] =
+    (sql"SELECT COUNT(*) FROM " ++ fragParens(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Int]
 
   def userQuery(name: String): Query0[APIV2User] =
     sql"""|SELECT u.created_at, u.name, u.tagline, u.join_date, array_agg(r.name)

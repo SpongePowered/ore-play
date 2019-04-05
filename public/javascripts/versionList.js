@@ -22,17 +22,17 @@
  */
 
 var PLUGIN_ID = null;
-var CHANNEL_STRING = '';
 var VERSIONS_PER_PAGE = 10;
 var PROJECT_OWNER = null;
 var PROJECT_SLUG = null;
-var TOTAL_VERSIONS = 0;
 var TEXT_NOT_APPROVED = "";
 var TEXT_PARTIALLY_APPROVED = "";
 var TEXT_NOT_APPROVED_CHANNEL = "";
 var SHOW_HIDDEN = false;
 
+var channels = [];
 var page = 0;
+var totalVersions = null;
 
 /*
  * ==================================================
@@ -54,52 +54,56 @@ function loadVersions(increment, scrollTop) {
     var versionList = $('.version-table');
 
     var offset = (page + increment - 1) * VERSIONS_PER_PAGE;
-    var versionPart = SHOW_HIDDEN ? '/versionsAll' : '/versions';
-    var url = '/api/v1/projects/' + PLUGIN_ID + versionPart + '?offset=' + offset;
-    if (CHANNEL_STRING) url += '&channels=' + CHANNEL_STRING;
+    var url = 'projects/' + PLUGIN_ID + '/versions' + '?offset=' + offset;
+    for (var urlChannel of channels) {
+        url += '&tags=Channel:' + urlChannel
+    }
 
-    $.ajax({
-        url: url,
-        dataType: 'json',
-        success: function (versions) {
-            var versionTable = $(".version-table tbody");
-            versionTable.empty();
+    apiV2Request(url).then(function (versions) {
+        var versionTable = $(".version-table tbody");
+        versionTable.empty();
 
-            versions.forEach(function (version) {
-                var row = $("<tr>");
+        versions.forEach(function (version) {
+            var row = $("<tr>");
 
-                var visibility = version.visibility;
-                if(visibility) {
-                    row.addClass(visibility.css)
+            var visibility = version.visibility;
+            if(visibility) {
+                row.addClass(visibility.cssClass)
+            }
+
+            // ==> Base Info (channel, name)
+            var baseInfo = $("<td>");
+            baseInfo.addClass("base-info");
+
+            var nameElement = $("<div>");
+            nameElement.addClass("name");
+            var nameLink = $("<a>");
+            nameLink.text(version.name);
+            var href = projectOwner + '/' + projectSlug + '/versions/' + version.name;
+            nameLink.attr("href", href);
+            nameElement.append(nameLink);
+            baseInfo.append(nameElement);
+
+            for (var tag of version.tags) {
+                if(tag.name === 'Channel') {
+                    var channel = tag.data;
+                    var channelElement = $("<span>");
+                    channelElement.addClass("channel");
+                    channelElement.text(channel);
+                    channelElement.css("background", tag.color.background);
+                    baseInfo.append(channelElement);
                 }
+            }
 
-                // ==> Base Info (channel, name)
-                var baseInfo = $("<td>");
-                baseInfo.addClass("base-info");
+            row.append(baseInfo);
 
-                var nameElement = $("<div>");
-                nameElement.addClass("name");
-                var nameLink = $("<a>");
-                nameLink.text(version.name);
-                nameLink.attr("href", version.href);
-                nameElement.append(nameLink);
-                baseInfo.append(nameElement);
+            // => Tags
 
-                var channel = version.channel;
-                var channelElement = $("<span>");
-                channelElement.addClass("channel");
-                channelElement.text(channel.name);
-                channelElement.css("background", channel.color);
-                baseInfo.append(channelElement);
-
-                row.append(baseInfo);
-
-                // => Tags
-
-                var tags = $("<td>");
-                tags.addClass("version-tags");
-                version.tags.forEach(function (tag) {
-                    var hasData = (tag.data !== "" && tag.data !== "null" && tag.data != null);
+            var tags = $("<td>");
+            tags.addClass("version-tags");
+            version.tags.forEach(function (tag) {
+                if(tag.name !== 'Channel') {
+                    var hasData = (tag.data !== "");
 
                     var tagContainer = $("<div>");
                     tagContainer.addClass("tags");
@@ -110,9 +114,9 @@ function loadVersions(increment, scrollTop) {
                     var tagElement = $("<span>");
                     tagElement.addClass("tag");
                     tagElement.text(tag.name);
-                    tagElement.css("background", tag.backgroundColor);
-                    tagElement.css("border-color", tag.backgroundColor);
-                    tagElement.css("color", tag.foregroundColor);
+                    tagElement.css("background", tag.color.background);
+                    tagElement.css("border-color", tag.color.background);
+                    tagElement.css("color", tag.color.foreground);
                     tagContainer.append(tagElement);
 
                     if(hasData) {
@@ -123,112 +127,142 @@ function loadVersions(increment, scrollTop) {
                     }
 
                     tags.append(tagContainer);
-                });
-
-                row.append(tags);
-
-                // => Information One (created, size)
-
-                var infoOne = $("<td>");
-                infoOne.addClass("information-one");
-
-                var createdContainer = $("<div>");
-                createdContainer.append("<i class='fas fa-calendar'></i>");
-
-                var created = $("<span>");
-                created.text(moment(version.createdAt).format("MMM D, YYYY"));
-                createdContainer.append(created);
-
-                infoOne.append(createdContainer);
-
-
-                var sizeContainer = $("<div>");
-                sizeContainer.append("<i class='far fa-file'></i>");
-
-                var size = $("<span>");
-                size.text(filesize(version.fileSize));
-                sizeContainer.append(size);
-
-                infoOne.append(sizeContainer);
-                row.append(infoOne);
-
-                // => Information Two (author, download count)
-
-                var infoTwo = $("<td>");
-                infoTwo.addClass("information-two");
-
-                if(version.author != null) {
-                    var authorContainer = $("<div>");
-                    authorContainer.addClass("author");
-                    authorContainer.append("<i class='fas fa-key'></i>");
-
-                    var author = $("<span>");
-                    author.text(version.author);
-                    author.attr("title", "This version is signed by " + version.author);
-                    author.attr("data-toggle", "tooltip");
-                    author.attr("data-placement", "bottom");
-
-                    authorContainer.append(author);
-                    infoTwo.append(authorContainer);
                 }
-
-                var downloadContainer = $("<div>");
-                downloadContainer.append("<i class='fas fa-download'></i>");
-                var downloads = $("<span>");
-                downloads.text(version.downloads + " Downloads");
-                downloadContainer.append(downloads);
-                infoTwo.append(downloadContainer);
-
-                row.append(infoTwo);
-
-                // => Download
-
-                var download = $("<td>");
-                download.addClass("download");
-
-                var downloadLink = $("<a>");
-                downloadLink.addClass("download-link");
-                downloadLink.attr('href', version.href +  '/download/');
-
-                downloadLink.append("<i class='fas fa-2x fa-download'></i>");
-
-                if(version.reviewState !== "Reviewed") {
-                    var text;
-                    if (channel.nonReviewed) {
-                        text = TEXT_NOT_APPROVED_CHANNEL;
-                    }
-                    else if (version.reviewState === "PartiallyReviewed") {
-                        text = TEXT_PARTIALLY_APPROVED;
-                    }
-                    else {
-                        text = TEXT_NOT_APPROVED;
-                    }
-
-                    var warning = $("<i>");
-                    warning.attr("title", text);
-                    warning.attr("data-toggle", "tooltip");
-                    warning.attr("data-placement", "bottom");
-
-                    if(version.reviewState === "PartiallyReviewed") {
-                        warning.addClass("fas fa-check");
-                    }
-                    else {
-                        warning.addClass("fas fa-exclamation-circle");
-                    }
-
-                    downloadLink.append(warning);
-                }
-
-                download.append(downloadLink);
-                row.append(download);
-
-                versionTable.append(row);
             });
 
-            // Sets the new page number
-            page += increment;
-            var totalPages = Math.ceil(TOTAL_VERSIONS / VERSIONS_PER_PAGE);
+            row.append(tags);
 
+            // => Information One (created, size)
+
+            var infoOne = $("<td>");
+            infoOne.addClass("information-one");
+
+            var createdContainer = $("<div>");
+            createdContainer.append("<i class='fas fa-calendar'></i>");
+
+            var created = $("<span>");
+            created.text(moment(version.created_at).format("MMM D, YYYY"));
+            createdContainer.append(created);
+
+            infoOne.append(createdContainer);
+
+
+            var sizeContainer = $("<div>");
+            sizeContainer.append("<i class='far fa-file'></i>");
+
+            var size = $("<span>");
+            size.text(filesize(version.file_size));
+            sizeContainer.append(size);
+
+            infoOne.append(sizeContainer);
+            row.append(infoOne);
+
+            // => Information Two (author, download count)
+
+            var infoTwo = $("<td>");
+            infoTwo.addClass("information-two");
+
+            if(version.author != null) {
+                var authorContainer = $("<div>");
+                authorContainer.addClass("author");
+                authorContainer.append("<i class='fas fa-key'></i>");
+
+                var author = $("<span>");
+                author.text(version.author);
+                author.attr("title", "This version is signed by " + version.author);
+                author.attr("data-toggle", "tooltip");
+                author.attr("data-placement", "bottom");
+
+                authorContainer.append(author);
+                infoTwo.append(authorContainer);
+            }
+
+            var downloadContainer = $("<div>");
+            downloadContainer.append("<i class='fas fa-download'></i>");
+            var downloads = $("<span>");
+            downloads.text(version.downloads + " Downloads");
+            downloadContainer.append(downloads);
+            infoTwo.append(downloadContainer);
+
+            row.append(infoTwo);
+
+            // => Download
+
+            var download = $("<td>");
+            download.addClass("download");
+
+            var downloadLink = $("<a>");
+            downloadLink.addClass("download-link");
+            downloadLink.attr('href', href +  '/download/');
+
+            downloadLink.append("<i class='fas fa-2x fa-download'></i>");
+
+            if(version.review_state !== "Reviewed") {
+                var text;
+                if (channel && channel.nonReviewed) {
+                    text = TEXT_NOT_APPROVED_CHANNEL;
+                }
+                else if (version.reviewState === "PartiallyReviewed") {
+                    text = TEXT_PARTIALLY_APPROVED;
+                }
+                else {
+                    text = TEXT_NOT_APPROVED;
+                }
+
+                var warning = $("<i>");
+                warning.attr("title", text);
+                warning.attr("data-toggle", "tooltip");
+                warning.attr("data-placement", "bottom");
+
+                if(version.reviewState === "PartiallyReviewed") {
+                    warning.addClass("fas fa-check");
+                }
+                else {
+                    warning.addClass("fas fa-exclamation-circle");
+                }
+
+                downloadLink.append(warning);
+            }
+
+            download.append(downloadLink);
+            row.append(download);
+
+            versionTable.append(row);
+        });
+
+        // Sets the new page number
+
+        var totalVersionsPromise;
+        if(totalVersions) {
+            totalVersionsPromise = Promise.resolve({count: totalVersions});
+        }
+        else {
+            var countUrl = 'projects/' + PLUGIN_ID + '/versions/count';
+
+            if(channels.length) {
+                countUrl += '?';
+            }
+
+            for (var urlChannel of channels) {
+                countUrl += 'tags=Channel:' + urlChannel + "&"
+            }
+
+            if(channels.length) {
+                countUrl = countUrl.substr(0, countUrl.length - 1)
+            }
+
+            totalVersionsPromise = apiV2Request(countUrl);
+        }
+
+        page += increment;
+
+        totalVersionsPromise.then(function(totalVersionsResponse) {
+            totalVersions = totalVersionsResponse.count;
+            var totalPages = Math.ceil(totalVersions / VERSIONS_PER_PAGE);
+
+            console.log(totalVersionsResponse);
+            console.log(page);
+            console.log(totalPages);
             if(totalPages > 1) {
 
                 // Sets up the pagination
@@ -303,7 +337,7 @@ function loadVersions(increment, scrollTop) {
 
                 var next = $("<li>");
                 next.addClass("next");
-                if(TOTAL_VERSIONS / VERSIONS_PER_PAGE <= page) {
+                if(totalVersions / VERSIONS_PER_PAGE <= page) {
                     next.addClass("disabled");
                 }
                 next.append("<a>&raquo;</a>");
@@ -312,7 +346,7 @@ function loadVersions(increment, scrollTop) {
 
                 // Prev & Next Buttons
                 pagination.find('.next').click(function () {
-                    if (TOTAL_VERSIONS / VERSIONS_PER_PAGE > page) {
+                    if (totalVersions / VERSIONS_PER_PAGE > page) {
                         loadVersions(1, true);
                     }
                 });
@@ -331,19 +365,23 @@ function loadVersions(increment, scrollTop) {
                     }
                 });
             }
-
-            // Sets tooltips up
-            $('.version-list [data-toggle="tooltip"]').tooltip({
-                container: 'body'
-            });
-
-            $(".loading").hide();
-            versionList.show();
-            $(".panel-pagination").show();
-
-            if(scrollTop === true) {
-                $("html, body").animate({ scrollTop: $('.version-table').offset().top - 130 }, 250);
+            else {
+                $(".version-panel .pagination").empty();
             }
+
+            $(".panel-pagination").show();
+        });
+
+        // Sets tooltips up
+        $('.version-list [data-toggle="tooltip"]').tooltip({
+            container: 'body'
+        });
+
+        $(".loading").hide();
+        versionList.show();
+
+        if(scrollTop === true) {
+            $("html, body").animate({ scrollTop: $('.version-table').offset().top - 130 }, 250);
         }
     });
 }
@@ -360,39 +398,33 @@ $(function () {
     // Setup channel list
 
     $('.list-channel').find('li').find('input').on('change', function () {
-        var channelString = CHANNEL_STRING;
         var channelName = $(this).closest('.list-group-item').find('.channel').text();
         if ($(this).is(":checked")) {
-            if (channelString.length) channelString += ',';
-            channelString += channelName;
+            channels.push(channelName);
         } else {
-            channelString = '';
+            channels = [];
             var checked = $('.list-channel').find('li').find('input:checked');
             checked.each(function (i) {
-                channelString += $(this).closest('.list-group-item').find('.channel').text();
-                if (i < checked.length - 1) channelString += ',';
+                channels.push($(this).closest('.list-group-item').find('.channel').text());
             });
         }
 
-        var url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/versions';
-        if (channelString.length) url += '?channels=' + channelString;
-
-        go(url);
+        totalVersions = null;
+        page = 0;
+        loadVersions(1, false);
     });
 
     $('.channels-all').on('change', function () {
-        var channelString = '';
+        channels = [];
         if (!$(this).is(":checked")) {
             var checked = $('.list-channel').find('li').find('input');
-            checked.each(function (i) {
-                channelString += $(this).closest('.list-group-item').find('.channel').text();
-                if (i < checked.length - 1) channelString += ',';
+            checked.each(function () {
+                channels.push($(this).closest('.list-group-item').find('.channel').text());
             });
         }
 
-        var url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/versions';
-        if (channelString.length) url += '?channels=' + channelString;
-
-        go(url);
+        totalVersions = null;
+        page = 0;
+        loadVersions(1, false);
     });
 });

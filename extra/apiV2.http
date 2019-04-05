@@ -62,6 +62,11 @@ GET http://localhost:9000/api/v2/projects
 Authorization: ApiSession {{api_session}}
 Accept: application/json
 
+### Project list count
+GET http://localhost:9000/api/v2/projects/count
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
 ### Get single project
 GET http://localhost:9000/api/v2/projects/nucleus
 Authorization: ApiSession {{api_session}}
@@ -74,6 +79,11 @@ Accept: application/json
 
 ### Get project versions
 GET http://localhost:9000/api/v2/projects/nucleus/versions
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+### Get project versions count
+GET http://localhost:9000/api/v2/projects/nucleus/versions/count
 Authorization: ApiSession {{api_session}}
 Accept: application/json
 

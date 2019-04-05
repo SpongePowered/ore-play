@@ -190,46 +190,23 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     *
     * @param author   Owner of project
     * @param slug     Project slug
-    * @param channels Visible channels
     * @return View of project
     */
-  def showList(author: String, slug: String, channels: Option[String]): Action[AnyContent] = {
+  def showList(author: String, slug: String): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
-      val dbio = for {
-        allChannels <- request.project.channels(ModelView.raw(Channel)).result
-        visibleNames = channels.fold(allChannels.map(_.name.toLowerCase))(_.toLowerCase.split(',').toSeq)
-        visible      = allChannels.filter(ch => visibleNames.contains(ch.name.toLowerCase))
-        visibleIds   = visible.map(_.id.value)
-        versionCount <- request.project
-          .versions(ModelView.later(Version))
-          .count { v =>
-            val inChannel = v.channelId.inSetBind(visibleIds)
-            val isVisible =
-              if (request.headerData.globalPerm(Permission.SeeHidden)) true: Rep[Boolean]
-              else v.visibility === (Visibility.Public: Visibility)
-            inChannel && isVisible
-          }
-          .result
-      } yield {
-        val visibleNamesForView = if (visibleNames == allChannels.map(_.name.toLowerCase)) Nil else visibleNames
+      val allChannelsDBIO = request.project.channels(ModelView.raw(Channel)).result
 
-        (allChannels, versionCount, visibleNamesForView)
-      }
-
-      service.runDBIO(dbio).flatMap {
-        case (allChannels, versionCount, visibleNamesForView) =>
-          this.stats
-            .projectViewed(
-              Ok(
-                views.list(
-                  request.data,
-                  request.scoped,
-                  Model.unwrapNested(allChannels),
-                  versionCount,
-                  visibleNamesForView
-                )
+      service.runDBIO(allChannelsDBIO).flatMap { allChannels =>
+        this.stats
+          .projectViewed(
+            Ok(
+              views.list(
+                request.data,
+                request.scoped,
+                Model.unwrapNested(allChannels)
               )
             )
+          )
       }
     }
   }
@@ -492,7 +469,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 s"$version.visibility"
               )
           }
-          .map(_ => Redirect(self.showList(author, slug, None)))
+          .map(_ => Redirect(self.showList(author, slug)))
       }
   }
 
@@ -517,7 +494,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             UserActionLogger
               .log(request.request, LoggedAction.VersionDeleted, version.id, s"SoftDelete: $comment", "")
           }
-          .map(_ => Redirect(self.showList(author, slug, None)))
+          .map(_ => Redirect(self.showList(author, slug)))
       }
 
   /**
@@ -537,7 +514,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           .semiflatMap { version =>
             UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id, s"Restore: $comment", "")
           }
-          .map(_ => Redirect(self.showList(author, slug, None)))
+          .map(_ => Redirect(self.showList(author, slug)))
       }
   }
 
