@@ -99,7 +99,7 @@ case class APIV2Version(
     createdAt: LocalDateTime,
     name: String,
     dependenciesIds: List[String],
-    description: String,
+    description: Option[String],
     downloads: Int,
     fileSize: Long,
     md5Hash: String,

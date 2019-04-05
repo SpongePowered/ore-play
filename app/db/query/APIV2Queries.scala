@@ -42,16 +42,17 @@ object APIV2Queries extends DoobieOreProtocol {
             |       p.owner_name,
             |       p.slug,
             |       p.version_string,
-            |       array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL)                              AS tag_names,
-            |       array_agg(p.tag_data) FILTER ( WHERE p.tag_data IS NOT NULL)                              AS tag_datas,
-            |       array_agg(p.tag_color) FILTER ( WHERE p.tag_color IS NOT NULL)                            AS tag_colors,
+            |       array_remove(array_append(array_agg(p.tag_name), CASE WHEN pc IS NULL THEN NULL ELSE 'Channel'::VARCHAR(255) END),
+            |                    NULL)                                                 AS tag_names,
+            |       array_remove(array_append(array_agg(p.tag_data), pc.name), NULL)   AS tag_datas,
+            |       array_remove(array_append(array_agg(p.tag_color), pc.color + 9), NULL) AS tag_colors,
             |       p.views,
             |       p.downloads,
             |       p.stars,
             |       p.category,
             |       p.description,
-            |       coalesce(p.last_updated, p.created_at) as last_updated,
-            |       p.visibility, """.stripMargin ++ userActionsTaken ++
+            |       coalesce(p.last_updated, p.created_at)                             AS last_updated,
+            |       p.visibility,""".stripMargin ++ userActionsTaken ++
         fr"""|       ps.homepage,
              |       ps.issues,
              |       ps.source,
@@ -59,10 +60,11 @@ object APIV2Queries extends DoobieOreProtocol {
              |       ps.license_url,
              |       ps.forum_sync
              |  FROM home_projects p
-             |         JOIN project_settings ps ON p.id = ps.project_id """.stripMargin
+             |         JOIN project_settings ps ON p.id = ps.project_id
+             |         LEFT JOIN project_channels pc ON p.recommended_version_channel_id = pc.id""".stripMargin
     val groupBy =
       fr"""|GROUP BY p.created_at, p.plugin_id, p.name, p.owner_name, p.slug, p.version_string, p.views, p.downloads, p.stars,
-           |           p.category, p.description, p.last_updated, p.visibility, p.id, ps.id""".stripMargin
+           |           p.category, p.description, p.last_updated, p.visibility, p.id, ps.id, pc.id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
@@ -76,7 +78,16 @@ object APIV2Queries extends DoobieOreProtocol {
       NonEmptyList.fromList(category).map(Fragments.in(fr"p.category", _)),
       NonEmptyList
         .fromList(tags)
-        .map(t => Fragments.or(Fragments.in(fr"p.tag_name || p.tag_data", t), Fragments.in(fr"p.tag_name", t))),
+        .map { t =>
+          fragParens(
+            Fragments.or(
+              Fragments.in(fr"p.tag_name || ':' || p.tag_data", t),
+              Fragments.in(fr"p.tag_name", t),
+              Fragments.in(fr"'Channel:' || pc.name", t),
+              Fragments.in(fr"'Channel'", t)
+            )
+          )
+        },
       query.map(q => fr"p.search_words @@ websearch_to_tsquery($q)"),
       owner.map(o => fr"p.owner_name = $o"),
       visibilityFrag
@@ -126,23 +137,33 @@ object APIV2Queries extends DoobieOreProtocol {
             |       pv.file_name,
             |       u.name,
             |       pv.review_state,
-            |       array_agg(pvt.name),
-            |       array_agg(pvt.data),
-            |       array_agg(pvt.color)
-            |  FROM projects p
-            |         JOIN project_versions pv ON p.id = pv.project_id
-            |         LEFT JOIN users u ON pv.author_id = u.id
-            |         LEFT JOIN project_version_tags pvt ON pv.id = pvt.version_id """.stripMargin
+            |       array_append(array_agg(pvt.name) FILTER ( WHERE pvt.name IS NOT NULL ), 'Channel')  AS tag_names,
+            |       array_append(array_agg(pvt.data) FILTER ( WHERE pvt.data IS NOT NULL ), pc.name)    AS tag_datas,
+            |       array_append(array_agg(pvt.color) FILTER ( WHERE pvt.color IS NOT NULL ), pc.color + 9) AS tag_colors
+            |    FROM projects p
+            |             JOIN project_versions pv ON p.id = pv.project_id
+            |             LEFT JOIN users u ON pv.author_id = u.id
+            |             LEFT JOIN project_version_tags pvt ON pv.id = pvt.version_id
+            |             LEFT JOIN project_channels pc ON pv.channel_id = pc.id """.stripMargin
 
     val filters = Fragments.whereAndOpt(
       Some(fr"p.plugin_id = $pluginId"),
       versionName.map(v => fr"pv.version_string = $v"),
       NonEmptyList
         .fromList(tags)
-        .map(t => Fragments.or(Fragments.in(fr"pvt.name || pvt.data", t), Fragments.in(fr"pvt.name", t)))
+        .map { t =>
+          fragParens(
+            Fragments.or(
+              Fragments.in(fr"pvt.name || ':' || pvt.data", t),
+              Fragments.in(fr"pvt.name", t),
+              Fragments.in(fr"'Channel:' || pc.name", t),
+              Fragments.in(fr"'Channel'", t)
+            )
+          )
+        }
     )
 
-    (base ++ filters ++ fr"GROUP BY pv.id, u.id ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset").stripMargin
+    (base ++ filters ++ fr"GROUP BY pv.id, u.id, pc.id ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset").stripMargin
       .query[APIV2Version]
   }
 
