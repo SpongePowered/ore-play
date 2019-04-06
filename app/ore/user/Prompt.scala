@@ -10,5 +10,4 @@ object Prompt extends IntEnum[Prompt] {
   val values: immutable.IndexedSeq[Prompt] = findValues
 
   case object ChangeAvatar extends Prompt(0, "prompt.changeAvatar.title", "prompt.changeAvatar.message")
-  case object PGP          extends Prompt(1, "prompt.pgp.title", "prompt.pgp.message")
 }

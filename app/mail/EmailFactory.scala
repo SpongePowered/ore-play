@@ -14,7 +14,6 @@ final class EmailFactory @Inject()(
 )(implicit config: OreConfig)
     extends I18nSupport {
 
-  val PgpUpdated      = "email.pgpUpdate"
   val AccountUnlocked = "email.accountUnlock"
 
   def create(user: User, id: String)(implicit request: OreRequest[_]): Email = {

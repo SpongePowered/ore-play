@@ -58,7 +58,6 @@ case class Version(
     approvedAt: Option[Timestamp] = None,
     visibility: Visibility = Visibility.Public,
     fileName: String,
-    signatureFileName: String,
     createForumPost: Boolean = true,
     postId: Option[Int] = None,
     isPostDirty: Boolean = false,

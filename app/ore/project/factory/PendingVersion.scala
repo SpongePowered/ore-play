@@ -33,7 +33,6 @@ case class PendingVersion(
     fileSize: Long,
     hash: String,
     fileName: String,
-    signatureFileName: String,
     authorId: DbRef[User],
     projectUrl: String,
     channelName: String,
@@ -100,7 +99,6 @@ case class PendingVersion(
     hash = hash,
     authorId = authorId,
     fileName = fileName,
-    signatureFileName = signatureFileName,
     createForumPost = createForumPost
   )
 }

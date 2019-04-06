@@ -6,7 +6,6 @@ import play.api.libs.json._
 import db.Model
 import models.api.ProjectApiKey
 import models.project._
-import security.pgp.PGPPublicKeyInfo
 
 /**
   * Contains implicit JSON [[Writes]] for the Ore API.
@@ -51,16 +50,5 @@ trait OreWrites {
       "foregroundColor" -> tagColor.foreground
     )
   }
-
-  implicit val pgpPublicKeyInfoWrites: Writes[PGPPublicKeyInfo] = (key: PGPPublicKeyInfo) => {
-    obj(
-      "raw"       -> key.raw,
-      "userName"  -> key.userName,
-      "email"     -> key.email,
-      "id"        -> key.id,
-      "createdAt" -> key.createdAt.toString
-    )
-  }
-
 }
 object OreWrites extends OreWrites

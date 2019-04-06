@@ -95,11 +95,6 @@ error.version.illegalVersion    =   The name of this version is not allowed.
 error.version.duplicate         =   Found a duplicate file in project. Plugin files may only be uploaded once.
 error.version.noDependency.sponge = This project is marked as a Sponge plugin but your uploaded file contains no dependency to Sponge. Please add a dependency to spongeapi and re-upload.
 error.version.noDependency.forge = This project is marked as a Forge mod but your uploaded file contains no dependency to Forge. Please add a dependency to forge and re-upload.
-error.invalidKey                =   Invalid key.
-error.pgp.noEmail               =   You must have an email associated with your account to upload a PGP public key.
-error.pgp.invalidEmail          =   The email associated with the uploaded key does not match the email associated with your Sponge account.
-error.pgp.noPubKey              =   You must upload a PGP Public Key to upload files to Ore. <a href="https://docs.spongepowered.org/stable/en/ore/publish.html">Learn more</a>
-error.pgp.keyChangeCooldown     =   You must wait a minimum of 3 days after changing your public key to upload files.
 error.user.locked               =   Your account is locked.
 error.ore.timeout               =   Timeout
 error.ore.timeout.title         =   Ore took too long to respond.
@@ -109,10 +104,6 @@ error.notFound.message          =   The URI "{0}" could not be found
 error.required.comment          =   A comment is required
 
 error.plugin.fileExtension      =   Plugin file must be either a JAR or ZIP file.
-error.plugin.sig.fileExtension  =   Signature file must be either a SIG or ASC file.
-error.plugin.noPubKey           =   No PGP public key found and PGP is required.
-error.plugin.pubKey.cooldown    =   Cannot yet use public key.
-error.plugin.sig.failed         =   Signature verification failed.
 error.plugin.metaNotFound       =   No plugin meta file found.
 error.plugin.unexpected         =   An unexpected error occurred, please try again later.
 error.plugin.jarNotFound        =   Could not find a JAR file in the top level of ZIP file.
@@ -180,7 +171,6 @@ project.create.destination      =   Project will be created at {0}
 project.create.infoText.head    =   A project contains your downloads and the documentation for your plugin.
 project.create.infoText.guidelines = Before continuing, please review the <a href="https://docs.spongepowered.org/stable/en/ore/guidelines.html">Ore Submission Guidelines</a>.
 project.create.infoText.bottom  =   Begin by uploading your plugin JAR file with a valid <i>mcmod.info</i> file in the first level or a ZIP file with your valid plugin JAR in the first level. Plugins with missing or incomplete metadata files will not be accepted.
-project.create.infoText.pgp     =   To upload files to Ore, you must first add a PGP Public Key to your account and all files must be uploaded with a corresponding signature. <a href="https://docs.spongepowered.org/master/en/ore/publish.html">Learn more</a>
 project.create.issue-input      =   Issue tracker URL
 project.create.source-input     =   Source code URL
 project.icon                    =   Project icon
@@ -316,12 +306,6 @@ user.queue.approve          =   Approve
 user.queue.approvePartial   =   Approve Partial
 user.queue.open             =   Approval queue
 user.queue.progress         =   In Review
-user.pgp.edit               =   PGP Public Key
-user.pgp.pubKey             =   PGP Public Key
-user.pgp.pubKey.info        =   Paste your PGP public key in it's entirety to the text box below. The submitted key must be associated with the email that is associated with your Sponge account.
-user.pgp.help               =   Need help?
-user.pgp.delete             =   Delete PGP Public Key
-user.pgp.delete.confirm     =   Are you sure you want to delete your public key? You will not be able to upload new files to Ore. If you upload a new key you will still not be able to upload new files for three days.
 user.lock                   =   Lock account
 user.lock.confirm           =   Are you sure you want to lock your account? You will not be able to upload files or modify any existing projects.
 user.unlock                 =   Unlock account
@@ -358,12 +342,8 @@ notification.project.reviewed       =   {0} {1} has been reviewed and is approve
 prompt.confirm = Got it!
 prompt.changeAvatar.title = Change your avatar!
 prompt.changeAvatar.message = Welcome to your new organization! Start by changing your avatar by clicking on it.
-prompt.pgp.title = Upload a PGP public key.
-prompt.pgp.message = Upload your PGP public key to start uploading to Ore!
 
 email.signature = Best regards,<br/>The team at SpongePowered
-email.pgpUpdate.subject = New PGP key uploaded
-email.pgpUpdate.body = We have detected that you've recently uploaded a new PGP public key to your Ore profile. If you did not make this change, please change your password immediately and take the necessary precautions to secure your account, such as enabling two-factor authentication. Thank you.
 email.accountUnlock.subject = User account unlocked
 email.accountUnlock.body = We have detected that you've recently unlocked your account with us on Ore. If you did not make this change, please change your password immediately and take the necessary precautions to secure your account, such as enabling two-factor authentication. Thank you.
 

@@ -207,18 +207,6 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     */
   lazy val UserTagline = Form(single("tagline" -> text))
 
-  lazy val keyConstraint: Constraint[PGPPublicKeySubmission] =
-    Constraint(_.validateKey().fold(e => Invalid(e), _ => Valid))
-
-  /**
-    * Submits a PGP public key update.
-    */
-  lazy val UserPgpPubKey = Form(
-    mapping(
-      "pgp-pub-key" -> text
-    )(PGPPublicKeySubmission.apply)(PGPPublicKeySubmission.unapply).verifying(keyConstraint)
-  )
-
   /**
     * Submits a new Version.
     */

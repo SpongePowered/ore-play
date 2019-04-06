@@ -47,7 +47,7 @@
     padding: 3px;
   }
 
-  .action-lock-account:hover, .action-pgp:hover, .action-api, .user-settings svg:hover {
+  .action-lock-account:hover, .action-api, .user-settings svg:hover {
     background-color: gray;
     -webkit-transition: all 0.5s ease;
     -moz-transition: all 0.5s ease;
@@ -59,75 +59,6 @@
   svg { cursor: pointer; }
 
   .action-api, .user-settings { color: #333; }
-}
-
-textarea[name="pgp-pub-key"] {
-  resize: none;
-}
-
-#form-pgp .modal-body {
-  padding-bottom: 0;
-}
-
-#modal-pgp {
-
-  .modal-title {
-    a {
-      font-size: 14px;
-      color: gray;
-    }
-
-    a:hover {
-      color: #1A619E;
-      -webkit-transition: all 0.5s ease;
-      -moz-transition: all 0.5s ease;
-      -ms-transition: all 0.5s ease;
-      -o-transition: all 0.5s ease;
-      transition: all 0.5s ease;
-    }
-  }
-
-  .setting-pgp {
-
-    .tooltip-inner {
-      max-width: none;
-      white-space: nowrap;
-    }
-
-    table td:last-child {
-      text-align: right;
-    }
-
-    pre {
-      background: none;
-      border: none;
-      padding: 0;
-      margin: 0;
-      color: gray;
-    }
-
-    .row:last-child {
-      padding-top: 5px;
-    }
-
-    .pgp-header {
-      margin-bottom: 5px;
-      position: relative;
-      .dates {
-        font-size: 11px;
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        text-align: right;
-      }
-
-      h4 {
-        position: absolute;
-        left: 0;
-        bottom: 0;
-      }
-    }
-  }
 }
 
 .organization-avatar {
@@ -336,11 +267,6 @@ textarea[name="pgp-pub-key"] {
 .popover-avatar {
   left: 105px;
   top: -11px;
-}
-
-.popover-pgp {
-  top: -5px;
-  left: 275px;
 }
 
 #new-page {

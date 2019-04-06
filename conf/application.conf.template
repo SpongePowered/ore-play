@@ -62,8 +62,6 @@ play {
 security {
     secure = false
     secure = ${?SECURE}
-    requirePgp         =   true
-    keyChangeCooldown  =   259200000
     unsafeDownload.maxAge = 600000 # 10 minutes
 
     api {

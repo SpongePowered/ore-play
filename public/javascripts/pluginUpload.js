@@ -70,13 +70,6 @@ function failurePlugin(message) {
     clearIcon(control.find('[data-fa-i2svg]')).addClass('fa-times');
 }
 
-function failureSig(message) {
-    failure(message);
-    var alert = getAlert();
-    var control = alert.find('.file-upload');
-    clearIcon(control.find('[data-fa-i2svg]')).addClass('fa-pencil-alt');
-}
-
 function reset() {
     var alert = getAlert();
     alert.hide();
@@ -91,11 +84,6 @@ function reset() {
     bs.find('[data-fa-i2svg]').removeClass('fa-exclamation-circle').addClass('fa-file-archive').tooltip('destroy');
 
     return alert;
-}
-
-function addSig(e) {
-    e.preventDefault();
-    $('#pluginSig').click();
 }
 
 /*
@@ -123,10 +111,13 @@ $(function() {
             return;
         }
 
+        var success = true;
         if (fileSize > MAX_FILE_SIZE) {
             failurePlugin('That file is too big. Plugins may be no larger than ' + filesize(MAX_FILE_SIZE) + '.');
+            success = false;
         } else if (!fileName.endsWith('.zip') && !fileName.endsWith('.jar')) {
             failurePlugin('Only JAR and ZIP files are accepted.');
+            success = false;
         }
 
         fileName = fileName.substr(fileName.lastIndexOf('\\') + 1, fileName.length);
@@ -134,31 +125,20 @@ $(function() {
         alert.find('.file-size').text(filesize(this.files[0].size));
         alert.fadeIn('slow');
 
-        $('.btn-sign').removeClass('btn-success').addClass('btn-info').on('click', addSig);
-    });
+        if(success) {
+            var alertInner = alert.find('.alert');
+            var button = alert.find('button');
+            var icon = button.find('[data-fa-i2svg]');
 
-    $('#pluginSig').on('change', function() {
-        console.log('sig changed');
-        var fileName = $(this).val().trim();
-        var alert = getAlert();
-        var alertInner = alert.find('.alert');
-        var button = alert.find('button');
-        var icon = button.find('[data-fa-i2svg]');
+            alertInner.removeClass('alert-info alert-danger').addClass('alert-success');
+            button.removeClass('btn-info').addClass('btn-success');
 
-        if(fileName) {
-            if (!fileName.endsWith('.sig') && !fileName.endsWith('.asc')) {
-                failureSig('Only SIG and ASC files are accepted for signatures.');
-            } else {
-                alertInner.removeClass('alert-info alert-danger').addClass('alert-success');
-                button.removeClass('btn-info').addClass('btn-success').off('click', addSig);
+            icon.addClass('fa-upload');
 
-                icon.addClass('fa-upload');
-
-                var newTitle = 'Upload plugin';
-                button.tooltip('hide')
-                    .attr('data-original-title', newTitle)
-                    .tooltip('fixTitle');
-            }
+            var newTitle = 'Upload plugin';
+            button.tooltip('hide')
+                .attr('data-original-title', newTitle)
+                .tooltip('fixTitle');
         }
     });
 });

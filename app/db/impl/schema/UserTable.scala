@@ -15,15 +15,13 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
   // Override to remove auto increment
   override def id = column[DbRef[User]]("id", O.PrimaryKey)
 
-  def fullName            = column[String]("full_name")
-  def email               = column[String]("email")
-  def pgpPubKey           = column[String]("pgp_pub_key")
-  def lastPgpPubKeyUpdate = column[Timestamp]("last_pgp_pub_key_update")
-  def isLocked            = column[Boolean]("is_locked")
-  def tagline             = column[String]("tagline")
-  def joinDate            = column[Timestamp]("join_date")
-  def readPrompts         = column[List[Prompt]]("read_prompts")
-  def lang                = column[Lang]("language")
+  def fullName    = column[String]("full_name")
+  def email       = column[String]("email")
+  def isLocked    = column[Boolean]("is_locked")
+  def tagline     = column[String]("tagline")
+  def joinDate    = column[Timestamp]("join_date")
+  def readPrompts = column[List[Prompt]]("read_prompts")
+  def lang        = column[Lang]("language")
 
   override def * = {
     val applyFunc: (
@@ -36,13 +34,11 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
             Option[String],
             Option[Timestamp],
             List[Prompt],
-            Option[String],
-            Option[Timestamp],
             Boolean,
             Option[Lang]
         )
     ) => Model[User] = {
-      case (id, time, fullName, name, email, tagline, joinDate, prompts, pgpKey, keyLastUpdate, locked, lang) =>
+      case (id, time, fullName, name, email, tagline, joinDate, prompts, locked, lang) =>
         Model(
           ObjId.unsafeFromOption(id),
           ObjTimestamp.unsafeFromOption(time),
@@ -54,8 +50,6 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
             tagline,
             joinDate,
             prompts,
-            pgpKey,
-            keyLastUpdate,
             locked,
             lang
           )
@@ -72,8 +66,6 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
           Option[String],
           Option[Timestamp],
           List[Prompt],
-          Option[String],
-          Option[Timestamp],
           Boolean,
           Option[Lang]
       )
@@ -89,8 +81,6 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
             tagline,
             joinDate,
             readPrompts,
-            pgpPubKey,
-            lastPgpPubKeyUpdate,
             isLocked,
             lang
           )
@@ -105,8 +95,6 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
             tagline,
             joinDate,
             readPrompts,
-            pgpPubKey,
-            lastPgpPubKeyUpdate,
             isLocked,
             lang
           )
@@ -122,8 +110,6 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
       tagline.?,
       joinDate.?,
       readPrompts,
-      pgpPubKey.?,
-      lastPgpPubKeyUpdate.?,
       isLocked,
       lang.?
     ) <> (applyFunc, unapplyFunc)

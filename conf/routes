@@ -36,9 +36,7 @@ POST    /api/projects/:pluginId/versions/:name                      @controllers
 GET     /api/projects/:pluginId/pages                               @controllers.ApiV1Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
 
 GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
-GET     /api/projects/:pluginId/versions/recommended/signature      @controllers.project.Versions.downloadRecommendedSignatureById(pluginId)
 GET     /api/projects/:pluginId/versions/:name/download             @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
-GET     /api/projects/:pluginId/versions/:name/signature            @controllers.project.Versions.downloadSignatureById(pluginId, name)
 
 GET     /api/users                                                  @controllers.ApiV1Controller.listUsers(limit: Option[Int], offset: Option[Int])
 GET     /api/users/:user                                            @controllers.ApiV1Controller.showUser(user)
@@ -132,8 +130,6 @@ POST    /prompts/read/:id                                           @controllers
 GET     /:user                                                      @controllers.Users.showProjects(user, page: Option[Int])
 POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)
 POST    /:user/settings/lock/:locked                                @controllers.Users.setLocked(user, locked: Boolean, sso: Option[String], sig: Option[String])
-POST    /:user/settings/pgp                                         @controllers.Users.savePgpPublicKey(user)
-GET     /:user/settings/pgp/delete                                  @controllers.Users.deletePgpPublicKey(user, sso: Option[String], sig: Option[String])
 GET     /:user/settings/apiKeys                                     @controllers.Users.editApiKeys(user)
 # -------- End Users --------
 
@@ -204,9 +200,7 @@ GET     /:author/:slug/versions/:version/confirm                    @controllers
 POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token: Option[String], dummy: Option[String])
 
 GET     /:author/:slug/versions/recommended/download                @controllers.project.Versions.downloadRecommended(author, slug, token: Option[String])
-GET     /:author/:slug/versions/recommended/signature               @controllers.project.Versions.downloadRecommendedSignature(author, slug)
 GET     /:author/:slug/versions/:version/download                   @controllers.project.Versions.download(author, slug, version, token: Option[String])
-GET     /:author/:slug/versions/:version/signature                  @controllers.project.Versions.downloadSignature(author, slug, version)
 
 GET     /:author/:slug/versions/recommended/jar                     @controllers.project.Versions.downloadRecommendedJar(author, slug, token: Option[String])
 GET     /:author/:slug/versions/:version/jar                        @controllers.project.Versions.downloadJar(author, slug, version, token: Option[String])

@@ -1,7 +1,6 @@
 package ore.project.factory
 
 import java.nio.file.Files._
-import java.nio.file.StandardCopyOption
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
@@ -24,7 +23,6 @@ import ore.project.NotifyWatchersTask
 import ore.project.io._
 import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
-import security.pgp.PGPVerifier
 import util.{OreMDC, StringUtils}
 import util.StringUtils._
 
@@ -45,14 +43,11 @@ trait ProjectFactory {
   def fileManager: ProjectFiles = this.projects.fileManager
   def cacheApi: SyncCacheApi
   def actorSystem: ActorSystem
-  val pgp: PGPVerifier              = new PGPVerifier
   val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
   implicit def config: OreConfig
   implicit def forums: OreDiscourseApi
   implicit def env: OreEnv = this.fileManager.env
-
-  val isPgpEnabled: Boolean = this.config.security.requirePgp
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -63,52 +58,32 @@ trait ProjectFactory {
     * @return Loaded PluginFile
     */
   def processPluginUpload(uploadData: PluginUpload, owner: Model[User])(
-      implicit messages: Messages,
-      mdc: OreMDC
+      implicit messages: Messages
   ): EitherT[IO, String, PluginFileWithData] = {
-    val pluginFileName    = uploadData.pluginFileName
-    val signatureFileName = uploadData.signatureFileName
+    val pluginFileName = uploadData.pluginFileName
 
     // file extension constraints
     if (!pluginFileName.endsWith(".zip") && !pluginFileName.endsWith(".jar"))
       EitherT.leftT("error.plugin.fileExtension")
-    else if (!signatureFileName.endsWith(".sig") && !signatureFileName.endsWith(".asc"))
-      EitherT.leftT("error.plugin.sig.fileExtension")
     // check user's public key validity
-    else if (owner.pgpPubKey.isEmpty)
-      EitherT.leftT("error.plugin.noPubKey")
-    else if (!owner.isPgpPubKeyReady)
-      EitherT.leftT("error.plugin.pubKey.cooldown")
     else {
-      val pluginPath = uploadData.pluginFile.path
-      val sigPath    = uploadData.signatureFile.path
+      // move uploaded files to temporary directory while the project creation
+      // process continues
+      val tmpDir = this.env.tmp.resolve(owner.name)
+      if (notExists(tmpDir))
+        createDirectories(tmpDir)
 
-      // verify detached signature
-      if (!this.pgp.verifyDetachedSignature(pluginPath, sigPath, owner.pgpPubKey.get))
-        EitherT.leftT("error.plugin.sig.failed")
-      else {
-        // move uploaded files to temporary directory while the project creation
-        // process continues
-        val tmpDir = this.env.tmp.resolve(owner.name)
-        if (notExists(tmpDir))
-          createDirectories(tmpDir)
+      val newPluginPath = uploadData.pluginFile.moveFileTo(tmpDir.resolve(pluginFileName), replace = true)
 
-        val signatureFileExtension = signatureFileName.substring(signatureFileName.lastIndexOf("."))
-        val newSignatureFileName   = pluginFileName + signatureFileExtension
-        val newPluginPath          = uploadData.pluginFile.moveFileTo(tmpDir.resolve(pluginFileName), replace = true)
-        val newSigPath             = uploadData.signatureFile.moveFileTo(tmpDir.resolve(newSignatureFileName), replace = true)
-
-        // create and load a new PluginFile instance for further processing
-        val plugin = new PluginFile(newPluginPath, newSigPath, owner)
-        plugin.loadMeta
-      }
+      // create and load a new PluginFile instance for further processing
+      val plugin = new PluginFile(newPluginPath, owner)
+      plugin.loadMeta
     }
   }
 
   def processSubsequentPluginUpload(uploadData: PluginUpload, owner: Model[User], project: Model[Project])(
       implicit messages: Messages,
-      cs: ContextShift[IO],
-      mdc: OreMDC
+      cs: ContextShift[IO]
   ): EitherT[IO, String, PendingVersion] =
     this
       .processPluginUpload(uploadData, owner)
@@ -153,9 +128,7 @@ trait ProjectFactory {
     */
   def getUploadError(user: User): Option[String] =
     Seq(
-      (isPgpEnabled && user.pgpPubKey.isEmpty) -> "error.pgp.noPubKey",
-      (isPgpEnabled && !user.isPgpPubKeyReady) -> "error.pgp.keyChangeCooldown",
-      user.isLocked                            -> "error.user.locked"
+      user.isLocked -> "error.user.locked"
     ).find(_._1).map(_._2)
 
   /**
@@ -218,7 +191,6 @@ trait ProjectFactory {
           fileSize = path.toFile.length,
           hash = plugin.md5,
           fileName = path.getFileName.toString,
-          signatureFileName = plugin.signaturePath.getFileName.toString,
           authorId = plugin.user.id,
           projectUrl = projectUrl,
           channelName = channelName,
@@ -382,23 +354,19 @@ trait ProjectFactory {
   private def uploadPlugin(project: Project, plugin: PluginFileWithData, version: Version): EitherT[IO, String, Unit] =
     EitherT(
       IO {
-        val oldPath    = plugin.path
-        val oldSigPath = plugin.signaturePath
+        val oldPath = plugin.path
 
         val versionDir = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
         val newPath    = versionDir.resolve(oldPath.getFileName)
-        val newSigPath = versionDir.resolve(oldSigPath.getFileName)
 
-        if (exists(newPath) || exists(newSigPath))
+        if (exists(newPath))
           Left("error.plugin.fileName")
         else {
           if (!exists(newPath.getParent))
             createDirectories(newPath.getParent)
 
           move(oldPath, newPath)
-          move(oldSigPath, newSigPath)
           deleteIfExists(oldPath)
-          deleteIfExists(oldSigPath)
           Right(())
         }
       }

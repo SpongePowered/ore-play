@@ -7,7 +7,7 @@ import util.StringUtils
 
 import cats.effect.IO
 
-class PluginFileWithData(val path: Path, val signaturePath: Path, val user: Model[User], val data: PluginFileData) {
+class PluginFileWithData(val path: Path, val user: Model[User], val data: PluginFileData) {
 
   def delete: IO[Unit] = IO(Files.delete(path))
 

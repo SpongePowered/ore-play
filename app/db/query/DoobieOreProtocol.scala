@@ -232,8 +232,8 @@ trait DoobieOreProtocol {
   implicit val userModelRead: Read[Model[User]] =
     Read[ObjId[User] :: ObjTimestamp :: Option[String] :: String :: Option[String] :: Option[String] :: Option[
       Timestamp
-    ] :: List[Prompt] :: Option[String] :: Option[Timestamp] :: Boolean :: Option[Lang] :: HNil].map {
-      case id :: createdAt :: fullName :: name :: email :: tagline :: joinDate :: readPrompts :: pgpPubKey :: lastPgpPubKeyUpdate :: isLocked :: lang :: HNil =>
+    ] :: List[Prompt] :: Boolean :: Option[Lang] :: HNil].map {
+      case id :: createdAt :: fullName :: name :: email :: tagline :: joinDate :: readPrompts :: isLocked :: lang :: HNil =>
         Model(
           id,
           createdAt,
@@ -245,8 +245,6 @@ trait DoobieOreProtocol {
             tagline,
             joinDate,
             readPrompts,
-            pgpPubKey,
-            lastPgpPubKeyUpdate,
             isLocked,
             lang
           )
@@ -256,10 +254,8 @@ trait DoobieOreProtocol {
   implicit val userModelOptRead: Read[Option[Model[User]]] =
     Read[Option[ObjId[User]] :: Option[ObjTimestamp] :: Option[String] :: Option[String] :: Option[String] :: Option[
       String
-    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[String] :: Option[Timestamp] :: Option[Boolean] :: Option[
-      Lang
-    ] :: HNil].map {
-      case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: pgpPubKey :: lastPgpPubKeyUpdate :: Some(
+    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[Boolean] :: Option[Lang] :: HNil].map {
+      case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: Some(
             isLocked
           ) :: lang :: HNil =>
         Some(
@@ -274,8 +270,6 @@ trait DoobieOreProtocol {
               tagline,
               joinDate,
               readPrompts,
-              pgpPubKey,
-              lastPgpPubKeyUpdate,
               isLocked,
               lang
             )

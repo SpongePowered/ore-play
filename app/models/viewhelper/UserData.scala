@@ -1,8 +1,5 @@
 package models.viewhelper
 
-import play.api.mvc.Call
-
-import controllers.routes
 import controllers.sugar.Requests.OreRequest
 import db.{Model, ModelService}
 import db.access.ModelView
@@ -16,7 +13,6 @@ import ore.permission.role.Role
 import ore.permission.scope.GlobalScope
 
 import cats.effect.{ContextShift, IO}
-import cats.instances.option._
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -39,14 +35,6 @@ case class UserData(
   def currentUser: Option[Model[User]] = global.currentUser
 
   def isCurrent: Boolean = currentUser.contains(user)
-
-  def pgpFormCall: Call =
-    user.pgpPubKey
-      .as(routes.Users.verify(Some(routes.Users.deletePgpPublicKey(user.name, None, None).path)))
-      .getOrElse(routes.Users.savePgpPublicKey(user.name))
-
-  def pgpFormClass: String = user.pgpPubKey.as("pgp-delete").getOrElse("")
-
 }
 
 object UserData {

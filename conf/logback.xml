@@ -48,7 +48,6 @@
     <logger name="Discourse" level="INFO" />
     <logger name="Database"  level="INFO" />
     <logger name="DataHelper" level="INFO" />
-    <logger name="PGP" level="INFO" />
     <logger name="Mailer" level="INFO" />
     <logger name="SpongeAuth" level="INFO" />
     <logger name="Permissions" level="INFO" />
@@ -61,7 +60,6 @@
     <logger name="ApiV2" level="INFO" />
     <logger name="Projects" level="INFO" />
     <logger name="Versions" level="INFO" />
-    <logger name="Users" level="INFO" />
     <logger name="ProjectSettings" level="INFO" />
     <logger name="ProjectFiles" level="INFO" />
 </configuration>

@@ -21,7 +21,7 @@ import cats.effect.{IO, Resource}
   *
   * @param path Path to uploaded file
   */
-class PluginFile(val path: Path, val signaturePath: Path, val user: Model[User]) {
+class PluginFile(val path: Path, val user: Model[User]) {
 
   /**
     * Reads the temporary file's plugin meta file and returns the result.
@@ -79,7 +79,7 @@ class PluginFile(val path: Path, val signaturePath: Path, val user: Model[User])
               val fileData = new PluginFileData(data)
 
               if (!fileData.isValidPlugin) Left(messages("error.plugin.incomplete", "id or version"))
-              else Right(new PluginFileWithData(path, signaturePath, user, fileData))
+              else Right(new PluginFileWithData(path, user, fileData))
             }
           }
         }

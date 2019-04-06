@@ -742,9 +742,6 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             dl.downloadType match {
               case UploadedFile => Redirect(self.download(author, slug, target, token)).withSession(newSession)
               case JarFile      => Redirect(self.downloadJar(author, slug, target, token)).withSession(newSession)
-              // Note: Shouldn't get here in the first place since sig files
-              // don't need confirmation, but added as a failsafe.
-              case SignatureFile => Redirect(self.downloadSignature(author, slug, target)).withSession(newSession)
             }
         }
     }
@@ -867,7 +864,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               if (fileName.endsWith(".jar"))
                 IO.pure(Ok.sendPath(path))
               else {
-                val pluginFile = new PluginFile(path, signaturePath = null, projectOwner)
+                val pluginFile = new PluginFile(path, projectOwner)
                 val jarName    = fileName.substring(0, fileName.lastIndexOf('.')) + ".jar"
                 val jarPath    = this.fileManager.env.tmp.resolve(project.ownerName).resolve(jarName)
 
@@ -953,78 +950,4 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .semiflatMap(sendJar(data.project, _, token, api = true))
     }
   }
-
-  /**
-    * Sends the specified Project Version signature file to the client.
-    *
-    * @param author         Project owner
-    * @param slug           Project slug
-    * @param versionString  Version string
-    * @return               Sent file
-    */
-  def downloadSignature(author: String, slug: String, versionString: String): Action[AnyContent] =
-    ProjectAction(author, slug).asyncEitherT { implicit request =>
-      val project = request.project
-      getVersion(project, versionString).map(sendSignatureFile(_, project))
-    }
-
-  /**
-    * Downloads the signature file for the specified version.
-    *
-    * @param pluginId       Project unique plugin ID
-    * @param versionString  Version name
-    * @return               Sent file
-    */
-  def downloadSignatureById(pluginId: String, versionString: String): Action[AnyContent] =
-    ProjectAction(pluginId).asyncEitherT { implicit request =>
-      val project = request.project
-      getVersion(project, versionString).map(sendSignatureFile(_, project))
-    }
-
-  /**
-    * Downloads the signature file for the Project's recommended version.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return       Sent file
-    */
-  def downloadRecommendedSignature(author: String, slug: String): Action[AnyContent] =
-    ProjectAction(author, slug).asyncEitherT { implicit request =>
-      request.project
-        .recommendedVersion(ModelView.now(Version))
-        .sequence
-        .subflatMap(identity)
-        .toRight(NotFound)
-        .map(sendSignatureFile(_, request.project))
-    }
-
-  /**
-    * Downloads the signature file for the Project's recommended version.
-    *
-    * @param pluginId Project unique plugin ID
-    * @return         Sent file
-    */
-  def downloadRecommendedSignatureById(pluginId: String): Action[AnyContent] = ProjectAction(pluginId).asyncEitherT {
-    implicit request =>
-      request.project
-        .recommendedVersion(ModelView.now(Version))
-        .sequence
-        .subflatMap(identity)
-        .toRight(NotFound)
-        .map(sendSignatureFile(_, request.project))
-  }
-
-  private def sendSignatureFile(version: Version, project: Project)(implicit request: OreRequest[_]): Result = {
-    if (project.visibility == Visibility.SoftDelete) {
-      notFound
-    } else {
-      val path =
-        this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(version.signatureFileName)
-      if (notExists(path)) {
-        Logger.warn("project version missing signature file")
-        notFound
-      } else Ok.sendPath(path)
-    }
-  }
-
 }

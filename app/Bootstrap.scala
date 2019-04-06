@@ -1,4 +1,3 @@
-import java.security.Security
 import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.ExecutionContext
@@ -11,7 +10,6 @@ import ore.project.ProjectTask
 import ore.user.UserTask
 
 import com.typesafe.scalalogging
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 /**
   * Handles initialization logic for the application.
@@ -40,9 +38,6 @@ abstract class Bootstrap(
   this.projectTask.start()
   this.dbUpdateTask.start()
   this.userTask.start()
-
-  if (this.config.security.requirePgp)
-    Security.addProvider(new BouncyCastleProvider)
 
   Logger.info(s"Ore Initialized (${System.currentTimeMillis() - time}ms).")
 

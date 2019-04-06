@@ -121,10 +121,6 @@ case object LoggedAction extends IntEnum[LoggedAction[_]] {
 
   case object UserTaglineChanged
       extends LoggedAction(14, "UserTaglineChanged", LoggedActionContext.User, "The user tagline changed")
-  case object UserPgpKeySaved
-      extends LoggedAction(15, "UserPgpKeySaved", LoggedActionContext.User, "The user saved a PGP Public Key")
-  case object UserPgpKeyRemoved
-      extends LoggedAction(16, "UserPgpKeyRemoved", LoggedActionContext.User, "The user removed a PGP Public Key")
   val values: immutable.IndexedSeq[LoggedAction[_]] = findValues
 }
 

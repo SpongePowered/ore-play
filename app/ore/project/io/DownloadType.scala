@@ -21,9 +21,4 @@ object DownloadType extends IntEnum[DownloadType] {
     * The download was for just the JAR file of the upload.
     */
   case object JarFile extends DownloadType(1)
-
-  /**
-    * The download was for the signature file of the upload.
-    */
-  case object SignatureFile extends DownloadType(2)
 }

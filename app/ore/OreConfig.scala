@@ -150,8 +150,6 @@ final class OreConfig @Inject()(config: Configuration) {
   object security extends ConfigCategory {
     val raw: Configuration         = root.get[Configuration]("security")
     val secure: Boolean            = raw.get[Boolean]("secure")
-    val requirePgp: Boolean        = raw.get[Boolean]("requirePgp")
-    val keyChangeCooldown: Long    = raw.get[Long]("keyChangeCooldown")
     val unsafeDownloadMaxAge: Long = raw.get[Long]("unsafeDownload.maxAge")
 
     object api extends ConfigCategory {

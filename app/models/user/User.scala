@@ -18,7 +18,6 @@ import ore.OreConfig
 import ore.permission._
 import ore.permission.scope._
 import ore.user.Prompt
-import security.pgp.PGPPublicKeyInfo
 import security.spauth.SpongeUser
 import util.syntax._
 
@@ -43,8 +42,6 @@ case class User(
     tagline: Option[String] = None,
     joinDate: Option[Timestamp] = None,
     readPrompts: List[Prompt] = Nil,
-    pgpPubKey: Option[String] = None,
-    lastPgpPubKeyUpdate: Option[Timestamp] = None,
     isLocked: Boolean = false,
     lang: Option[Lang] = None
 ) extends Named {
@@ -53,26 +50,6 @@ case class User(
   //checkArgument(tagline.forall(_.length <= config.users.get[Int]("max-tagline-len")), "tagline too long", "")
 
   def avatarUrl(implicit config: OreConfig): String = User.avatarUrl(name)
-
-  /**
-    * Decodes this user's raw PGP public key and returns information about the
-    * key.
-    *
-    * @return Public key information
-    */
-  def pgpPubKeyInfo: Option[PGPPublicKeyInfo] = this.pgpPubKey.flatMap(PGPPublicKeyInfo.decode(_).toOption)
-
-  /**
-    * Returns true if this user's PGP Public Key is ready for use.
-    *
-    * @return True if key is ready for use
-    */
-  def isPgpPubKeyReady(implicit config: OreConfig, service: ModelService): Boolean =
-    this.pgpPubKey.isDefined && this.lastPgpPubKeyUpdate.forall { lastUpdate =>
-      val cooldown = config.security.keyChangeCooldown
-      val minTime  = new Timestamp(lastUpdate.getTime + cooldown)
-      minTime.before(service.theTime)
-    }
 
   /**
     * Returns this user's current language, or the default language if none
@@ -102,9 +79,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
     lang = user.lang,
     tagline = None,
     joinDate = None,
-    readPrompts = Nil,
-    pgpPubKey = None,
-    lastPgpPubKeyUpdate = None
+    readPrompts = Nil
   )
 
   implicit val query: ModelQuery[User] =

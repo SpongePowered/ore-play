@@ -24,14 +24,6 @@
 
 @bootstrap.layout(u.user.name, scripts) {
 
-    @flash.get("pgp-updated").map { _ =>
-        <script @CSPNonce.attr>
-                $(function() {
-                    $('#modal-pgp-edit').modal('show');
-                });
-        </script>
-    }
-
         <!-- Updated by JS -->
     <div class="alert alert-success alert-dismissable" role="alert" style="display: none;">
         <button type="button" class="close" data-dismiss="alert" aria-label="@messages("general.close")">
@@ -75,25 +67,9 @@
                                 data-placement="top" title="@messages("user.lock")"></i>
                             </span>
 
-                            <span data-toggle="modal" data-target="#modal-pgp-edit">
-                                <i class="fas fa-key action-pgp" data-toggle="tooltip"
-                                data-placement="top" title="@messages("user.pgp.pubKey")"></i>
-                            </span>
-
-                            @if(!u.currentUser.get.readPrompts.contains(Prompt.PGP)) {
-                                @prompt(Prompt.PGP, "popover-pgp")
-                            }
-
                             <a class="action-api" href="@routes.Users.editApiKeys(u.user.name)">
                                 <i class="fas fa-key" data-toggle="tooltip" data-placement="top" title="API Keys"></i>
                             </a>
-                        }
-
-                        @if(!u.isCurrent && u.user.pgpPubKey.isDefined) {
-                            <span data-toggle="modal" data-target="#modal-pgp-show">
-                                <i class="fas fa-key action-pgp" data-toggle="tooltip"
-                                data-placement="top" title="@messages("user.pgp.pubKey")"></i>
-                            </span>
                         }
 
                         @if(u.hasUser) {
@@ -155,101 +131,6 @@
     </div>
 
     @content
-
-    @if(u.isCurrent || request.headerData.globalPerm(Permission.EditAllUserSettings)) {
-    <div class="modal fade" id="modal-pgp-edit" tabindex="-1" role="dialog" aria-labelledby="label-pgp">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="@messages("general.close")">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-
-                    <h4 class="modal-title">
-                        @messages("user.pgp.pubKey")
-                        <a href="https://docs.spongepowered.org/stable/en/ore/publish.html" data-toggle="tooltip"
-                           data-placement="right" title="@messages("general.learnMore")">
-                            <i class="fas fa-question-circle"></i>
-                        </a>
-                    </h4>
-                </div>
-
-                @form(action = u.pgpFormCall, 'id -> "form-pgp", 'class -> u.pgpFormClass) {
-                    @CSRF.formField
-                    <div class="modal-body">
-                        <div class="alert alert-danger" style="display: none;">
-                            <span class="error"></span>
-                        </div>
-
-                        <div class="setting setting-no-border setting-pgp">
-                            <div class="row pgp-header">
-                                <h4>@messages("user.pgp.pubKey")</h4>
-                                @u.user.pgpPubKeyInfo.map { keyInfo =>
-                                    <div class="dates minor">
-                                        <i>Created on @prettifyDate(keyInfo.createdAt)</i><br/>
-                                        @keyInfo.expirationDate.map { expirationDate =>
-                                            <i>Expires on @prettifyDate(expirationDate)</i>
-                                        }
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="row">
-                                @u.user.pgpPubKeyInfo.map { keyInfo =>
-                                    <table width="100%">
-                                        <tr>
-                                            <td><strong>ID</strong></td>
-                                            <td><pre>@keyInfo.id</pre></td>
-                                        </tr>
-                                        <tr>
-                                            <td><strong>Name</strong></td>
-                                            <td>@keyInfo.userName</td>
-                                        </tr>
-                                        <tr>
-                                            <td><strong>Email</strong></td>
-                                            <td><a href="mailto:@keyInfo.email">@keyInfo.email</a></td>
-                                        </tr>
-                                    </table>
-                                }
-
-                                @if(u.user.pgpPubKey.isEmpty) {
-                                    <p>@messages("user.pgp.pubKey.info")</p>
-                                }
-
-                                @if(u.user.pgpPubKey.isEmpty) {
-                                    <textarea class="form-control" name="pgp-pub-key" rows="10"></textarea>
-                                    <i class="pull-right"><a href="#TODO">@messages("user.pgp.help")</a></i>
-                                }
-                            </div>
-                        </div>
-                        <div class="clearfix"></div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">
-                        @messages("general.close")
-                        </button>
-                        @if(u.user.pgpPubKey.isEmpty) {
-                            <button type="submit" class="btn btn-primary">
-                            @messages("general.save")
-                            </button>
-                        } else {
-                            <button type="submit" class="btn btn-danger">
-                            @messages("general.delete")
-                            </button>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-    }
-
-    @modal("modal-pgp-show", "label-pgp-show", "user.pgp.pubKey") {
-        @if(u.user.pgpPubKey.isDefined) {
-            <pre style="text-align: center">@u.user.pgpPubKey.get</pre>
-        }
-    }
 
     @modal("modal-lock", "label-lock", if (u.user.isLocked) "user.unlock" else "user.lock") {
         <div class="modal-body">
