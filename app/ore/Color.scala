@@ -2,12 +2,17 @@ package ore
 
 import scala.collection.immutable
 
+import models.project.TagColor
+
 import enumeratum.values._
 
 /**
   * Colors used in Ore.
   */
-sealed abstract class Color(val value: Int, val hex: String) extends IntEnumEntry
+sealed abstract class Color(val value: Int, val hex: String) extends IntEnumEntry {
+  def toTagColor: TagColor = TagColor.withValue(value + 9)
+}
+
 object Color extends IntEnum[Color] {
 
   val values: immutable.IndexedSeq[Color] = findValues

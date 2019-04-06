@@ -95,8 +95,8 @@ trait ProjectFactory {
 
         val signatureFileExtension = signatureFileName.substring(signatureFileName.lastIndexOf("."))
         val newSignatureFileName   = pluginFileName + signatureFileExtension
-        val newPluginPath          = copy(pluginPath, tmpDir.resolve(pluginFileName), StandardCopyOption.REPLACE_EXISTING)
-        val newSigPath             = copy(sigPath, tmpDir.resolve(newSignatureFileName), StandardCopyOption.REPLACE_EXISTING)
+        val newPluginPath          = uploadData.pluginFile.moveFileTo(tmpDir.resolve(pluginFileName), replace = true)
+        val newSigPath             = uploadData.signatureFile.moveFileTo(tmpDir.resolve(newSignatureFileName), replace = true)
 
         // create and load a new PluginFile instance for further processing
         val plugin = new PluginFile(newPluginPath, newSigPath, owner)

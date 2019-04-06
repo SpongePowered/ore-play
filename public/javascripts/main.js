@@ -105,13 +105,23 @@ function apiV2Request(url, method, data, isRetry) {
                 data = {};
             }
 
-            var allData = Object.assign(data, {csrfToken: csrf});
+            var isFormData = data instanceof FormData;
+            var allData;
+            if(isFormData) {
+                data.append('csrfToken', csrf);
+                allData = data;
+            }
+            else {
+                allData = Object.assign(data, {csrfToken: csrf});
+            }
+
             $.ajax({
                 url: '/api/v2/' + url,
                 method: method,
                 dataType: 'json',
-                contentType: 'application/json',
-                data: JSON.stringify(allData),
+                contentType: isFormData ? false : 'application/json',
+                data: isFormData ? allData : JSON.stringify(allData),
+                processData: isFormData ? false : undefined,
                 headers: {'Authorization': 'ApiSession ' + session}
             }).done(function (data) {
                 resolve(data);

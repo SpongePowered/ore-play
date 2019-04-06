@@ -78,6 +78,7 @@ GET     /api/v2/projects/:pluginId/members                          @controllers
 GET     /api/v2/projects/:pluginId/versions                         @controllers.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
 GET     /api/v2/projects/:pluginId/versions/count                   @controllers.ApiV2Controller.countVersions(pluginId, tags: Seq[String])
 GET     /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.showVersion(pluginId, name)
++nocsrf
 POST    /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.deployVersion(pluginId, name)
 
 #GET     /api/v2/projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])

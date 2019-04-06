@@ -2,41 +2,54 @@ package controllers
 
 import scala.language.higherKinds
 
+import java.nio.file.Path
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 import javax.inject.Inject
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 import play.api.cache.AsyncCacheApi
-import play.api.libs.json.{JsArray, JsString, JsValue, Json, OFormat, Writes}
+import play.api.libs.Files
+import play.api.libs.json.JsonConfiguration.Aux
+import play.api.libs.json._
 import play.api.mvc._
 
-import controllers.ApiV2Controller.{APIScope, CreatedKey, DeleteKey}
+import controllers.ApiV2Controller.{APIScope, CreatedKey, DeleteKey, DeployVersionInfo}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
-import db.ModelService
+import db.{Model, ModelService}
 import db.access.ModelView
 import db.query.{APIV2Queries, UserQueries}
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationTable, ProjectTableMain}
 import models.api.{ApiKey, ApiSession}
-import models.querymodels.APIV2Project
+import models.project.{Page, Version}
+import models.querymodels.{APIV2Project, APIV2Version, APIV2VersionTag}
+import models.user.User
 import ore.permission.{NamedPermission, Permission}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
+import ore.project.factory.ProjectFactory
+import ore.project.io.PluginUpload
 import ore.project.{Category, ProjectSortingStrategy}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import _root_.util.{IOUtils, OreMDC}
 
+import akka.stream.Materializer
+import akka.stream.scaladsl.FileIO
+import akka.util.ByteString
 import cats.Traverse
 import cats.data.{EitherT, OptionT}
-import cats.effect.IO
+import cats.effect.{IO, Sync}
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
-class ApiV2Controller @Inject()(
+class ApiV2Controller @Inject()(factory: ProjectFactory)(
     implicit val ec: ExecutionContext,
     env: OreEnv,
     config: OreConfig,
@@ -44,8 +57,11 @@ class ApiV2Controller @Inject()(
     bakery: Bakery,
     auth: SpongeAuthApi,
     sso: SingleSignOnConsumer,
-    cache: AsyncCacheApi
+    cache: AsyncCacheApi,
+    mat: Materializer
 ) extends OreBaseController {
+
+  private val Logger = scalalogging.Logger.takingImplicit[OreMDC]("ApiV2")
 
   private def limitOrDefault(limit: Option[Long], default: Long) = math.min(limit.getOrElse(default), default)
 
@@ -402,12 +418,109 @@ class ApiV2Controller @Inject()(
       APIV2Queries.versionQuery(pluginId, Some(name), Nil, 1, 0).option
     }
 
-  def deployVersion(pluginId: String, name: String): Action[AnyContent] = TODO
+  //Not sure if FileIO us AsynchronousFileChannel, if it doesn't we can fix this later if it becomes a problem
+  private def readFileAsync(file: Path): IO[String] =
+    IO.fromFuture(IO(FileIO.fromPath(file).fold(ByteString.empty)(_ ++ _).map(_.utf8String).runFold("")(_ + _)))
+
+  //TODO: Currently won't work until we deal with PGP stuff
+  def deployVersion(pluginId: String, versionName: String): Action[MultipartFormData[Files.TemporaryFile]] =
+    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncEitherT {
+      implicit request =>
+        type TempFile = MultipartFormData.FilePart[Files.TemporaryFile]
+        val checkAlreadyExists = EitherT(
+          ModelView
+            .now(Version)
+            .exists(_.versionString === versionName)
+            .ifM(IO.pure(Left(Conflict(Json.obj("error" -> "Version already exists")))), IO.pure(Right(())))
+        )
+
+        val acquire = OptionT(IO(request.body.file("plugin-info")))
+        val use     = (filePart: TempFile) => OptionT.liftF(readFileAsync(filePart.ref))
+        val release = (filePart: TempFile) =>
+          OptionT.liftF(
+            IO(java.nio.file.Files.deleteIfExists(filePart.ref))
+              .runAsync(IOUtils.logCallback("Error deleting file upload", Logger))
+              .toIO
+        )
+
+        val pluginInfoFromFileF = Sync.catsOptionTSync[IO].bracket(acquire)(use)(release)
+
+        val fileF = EitherT
+          .fromEither[IO](request.body.file("plugin-file").toRight(JsString("No plugin file specified")))
+          .leftMap(js => BadRequest(Json.obj("error" -> js)))
+        val dataF = OptionT
+          .fromOption[IO](request.body.dataParts.get("plugin-info").flatMap(_.headOption))
+          .orElse(pluginInfoFromFileF)
+          .toRight(JsString("No or invalid plugin info specified"))
+          .subflatMap(s => Try(Json.parse(s)).toEither.leftMap(_ => JsString("Invalid json string")))
+          .subflatMap(_.validate[DeployVersionInfo].asEither.leftMap(JsError.toJson))
+          .ensure(JsString("Description too short"))(_.description.forall(_.length < Page.minLength))
+          .ensure(JsString("Description too long"))(_.description.forall(_.length > Page.maxLength))
+          .leftMap(js => BadRequest(Json.obj("error" -> js)))
+
+        def uploadErrors(user: Model[User]) = {
+          import user.obj.langOrDefault
+          EitherT.fromEither[IO](
+            factory
+              .getUploadError(user)
+              .map(e => BadRequest(Json.obj("user_error" -> messagesApi(e))))
+              .toLeft(())
+          )
+        }
+
+        for {
+          user            <- EitherT.fromOption[IO](request.user, BadRequest(Json.obj("error" -> "No user found for session")))
+          _               <- checkAlreadyExists
+          _               <- uploadErrors(user)
+          project         <- projects.withPluginId(pluginId).toRight(NotFound: Result)
+          projectSettings <- EitherT.right[Result](project.settings)
+          data            <- dataF
+          file            <- fileF
+          pendingVersion <- factory
+            .processSubsequentPluginUpload(PluginUpload(file.ref, file.filename, ???, ???), user, project)
+            .leftMap(s => BadRequest(Json.obj("user_error" -> s)))
+            .map { v =>
+              v.copy(
+                createForumPost = data.createForumPost.getOrElse(projectSettings.forumSync),
+                channelName = data.tags.getOrElse("Channel", v.channelName),
+                description = data.description
+              )
+            }
+          t <- EitherT.right[Result](pendingVersion.complete(project, factory))
+          (version, channel, tags) = t
+        } yield {
+          val normalApiTags = tags.map(tag => APIV2VersionTag(tag.name, tag.data, tag.color)).toList
+          val channelApiTag = APIV2VersionTag(
+            "Channel",
+            channel.name,
+            channel.color.toTagColor
+          )
+          val apiTags = channelApiTag :: normalApiTags
+          val apiVersion = APIV2Version(
+            LocalDateTime.ofInstant(version.createdAt.toInstant, ZoneOffset.UTC),
+            version.versionString,
+            version.dependencyIds,
+            version.visibility,
+            version.description,
+            version.downloadCount,
+            version.fileSize,
+            version.hash,
+            version.fileName,
+            Some(user.name),
+            version.reviewState,
+            apiTags
+          )
+
+          Ok(Json.toJson(apiVersion))
+        }
+    }
 
   def showUser(user: String): Action[AnyContent] =
     apiOptDbAction(Permission.ViewPublicInfo, APIScope.GlobalScope)(_ => APIV2Queries.userQuery(user).option)
 }
 object ApiV2Controller {
+  implicit val jsonConfig: Aux[Json.MacroOptions] = JsonConfiguration(JsonNaming.SnakeCase)
+
   sealed trait APIScope
   object APIScope {
     case object GlobalScope                                extends APIScope
@@ -417,11 +530,21 @@ object ApiV2Controller {
 
   case class CreatedKey(name: Option[String], permissions: Seq[String])
   object CreatedKey {
-    implicit val format: OFormat[CreatedKey] = Json.format[CreatedKey]
+    implicit val format: OFormat[CreatedKey] = Json.configured(jsonConfig).format[CreatedKey]
   }
 
   case class DeleteKey(key: String)
   object DeleteKey {
-    implicit val format: OFormat[DeleteKey] = Json.format[DeleteKey]
+    implicit val format: OFormat[DeleteKey] = Json.configured(jsonConfig).format[DeleteKey]
+  }
+
+  case class DeployVersionInfo(
+      recommended: Option[Boolean],
+      createForumPost: Option[Boolean],
+      description: Option[String],
+      tags: Map[String, String]
+  )
+  object DeployVersionInfo {
+    implicit val format: OFormat[DeployVersionInfo] = Json.configured(jsonConfig).format[DeployVersionInfo]
   }
 }

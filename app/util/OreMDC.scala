@@ -14,12 +14,14 @@ sealed trait OreMDC
 object OreMDC {
   case object NoMDC                             extends OreMDC
   case class RequestMDC(request: OreRequest[_]) extends OreMDC
+  case class ApiMDC(request: ApiRequest[_])     extends OreMDC
 
   object Implicits {
     implicit val noCtx: OreMDC = NoMDC
   }
 
   implicit def oreRequestToCtx[A <: OreRequest[_]](implicit request: A): OreMDC = RequestMDC(request)
+  implicit def ApiRequestToCtx[A <: ApiRequest[_]](implicit request: A): OreMDC = ApiMDC(request)
 
   implicit val canLogOreMDCCtx: CanLog[OreMDC] = new CanLog[OreMDC] {
 
@@ -56,6 +58,9 @@ object OreMDC {
             case req: OrganizationRequest[_] => putOrg(req.data.orga)
             case _                           =>
           }
+
+        case ApiMDC(request) =>
+          request.user.foreach(putUser)
 
         case NoMDC =>
       }

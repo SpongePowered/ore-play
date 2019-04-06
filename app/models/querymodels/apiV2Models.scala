@@ -101,7 +101,7 @@ case class APIV2Version(
     dependenciesIds: List[String],
     visibility: Visibility,
     description: Option[String],
-    downloads: Int,
+    downloads: Long,
     fileSize: Long,
     md5Hash: String,
     fileName: String,
