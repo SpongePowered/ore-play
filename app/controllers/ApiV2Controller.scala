@@ -326,7 +326,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory)(
             sortStrat.getOrElse(ProjectSortingStrategy.Default),
             relevance.getOrElse(true),
             limitOrDefault(limit, config.ore.projects.initLoad),
-            0
+            offset
           )
           .to[Vector]
       }

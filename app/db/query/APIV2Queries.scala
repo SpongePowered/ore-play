@@ -60,7 +60,7 @@ object APIV2Queries extends DoobieOreProtocol {
              |         LEFT JOIN project_channels pc ON p.recommended_version_channel_id = pc.id""".stripMargin
     val groupBy =
       fr"""|GROUP BY p.created_at, p.plugin_id, p.name, p.owner_name, p.slug, p.version_string, p.views, p.downloads, p.stars,
-           |           p.category, p.description, p.last_updated, p.visibility, p.id, ps.id, pc.id""".stripMargin
+           |           p.category, p.description, p.last_updated, p.visibility, p.id, ps.id, pc.id, p.search_words""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None

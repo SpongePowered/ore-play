@@ -77,7 +77,7 @@ object APIV2Project {
           "name" -> project.licenseName,
           "url"  -> project.licenseUrl
         ),
-        "forumSync" -> project.forumSync
+        "forum_sync" -> project.forumSync
       ),
   )
 }
