@@ -27,7 +27,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationTable, ProjectTableMain}
 import models.api.{ApiKey, ApiSession}
 import models.project.{Page, Version}
-import models.querymodels.{APIV2Project, APIV2Version, APIV2VersionTag}
+import models.querymodels.{APIV2Version, APIV2VersionTag}
 import models.user.User
 import ore.permission.{NamedPermission, Permission}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
@@ -309,27 +309,55 @@ class ApiV2Controller @Inject()(factory: ProjectFactory)(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    apiEitherVecDbAction[APIV2Project](Permission.ViewPublicInfo, APIScope.GlobalScope) { request =>
-      for {
+    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { request =>
+      val res = for {
         cats      <- parseOpt(categories.toList, Category.fromApiName, "Unknown category")
         sortStrat <- parseOpt(sort, ProjectSortingStrategy.fromApiName, "Unknown sort strategy")
       } yield {
-        APIV2Queries
+        val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
+        val getProjects = APIV2Queries
           .projectQuery(
             None,
             cats,
-            tags.toList.flatMap(_.split(",").toList),
+            tags.toList,
             q,
             owner,
             request.globalPermissions.has(Permission.SeeHidden),
             request.user.map(_.id),
             sortStrat.getOrElse(ProjectSortingStrategy.Default),
             relevance.getOrElse(true),
-            limitOrDefault(limit, config.ore.projects.initLoad),
+            realLimit,
             offset
           )
           .to[Vector]
+
+        val countProjects = APIV2Queries
+          .projectCountQuery(
+            None,
+            cats,
+            tags.toList,
+            q,
+            owner,
+            request.globalPermissions.has(Permission.SeeHidden),
+            request.user.map(_.id)
+          )
+          .unique
+
+        (service.runDbCon(getProjects), service.runDbCon(countProjects)).parMapN { (projects, count) =>
+          Ok(
+            Json.obj(
+              "pagination" -> Json.obj(
+                "limit"  -> realLimit,
+                "offset" -> offset,
+                "count"  -> count
+              ),
+              "projects" -> projects
+            )
+          )
+        }
       }
+
+      res.leftMap(IO.pure).merge
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
@@ -351,32 +379,6 @@ class ApiV2Controller @Inject()(factory: ProjectFactory)(
         .option
     }
 
-  def countProjects(
-      q: Option[String],
-      categories: Seq[String],
-      tags: Seq[String],
-      owner: Option[String],
-  ): Action[AnyContent] = apiEitherDbAction(Permission.ViewPublicInfo, APIScope.GlobalScope) { request =>
-    for {
-      cats <- parseOpt(categories.toList, Category.fromApiName, "Unknown category")
-    } yield {
-      APIV2Queries
-        .projectCountQuery(
-          None,
-          cats,
-          tags.toList.flatMap(_.split(",").toList),
-          q,
-          owner,
-          request.globalPermissions.has(Permission.SeeHidden),
-          request.user.map(_.id)
-        )
-        .unique
-        .map { count =>
-          Json.obj("count" -> count)
-        }
-    }
-  }
-
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
     apiVecDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
       APIV2Queries
@@ -391,25 +393,31 @@ class ApiV2Controller @Inject()(factory: ProjectFactory)(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    apiVecDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
-      APIV2Queries
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+      val realLimit = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
+      val getVersions = APIV2Queries
         .versionQuery(
           pluginId,
           None,
           tags.toList,
-          limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong),
+          realLimit,
           offset
         )
         .to[Vector]
-    }
 
-  def countVersions(
-      pluginId: String,
-      tags: Seq[String],
-  ): Action[AnyContent] =
-    apiDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
-      APIV2Queries.versionCountQuery(pluginId, tags.toList).unique.map { count =>
-        Json.obj("count" -> count)
+      val countVersions = APIV2Queries.versionCountQuery(pluginId, tags.toList).unique
+
+      (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
+        Ok(
+          Json.obj(
+            "pagination" -> Json.obj(
+              "limit"  -> realLimit,
+              "offset" -> offset,
+              "count"  -> count
+            ),
+            "versions" -> versions
+          )
+        )
       }
     }
 
