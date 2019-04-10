@@ -186,4 +186,16 @@ object UserQueries extends DoobieOreProtocol {
           |         LEFT JOIN global_trust gt ON gt.user_id = u.id
           |  WHERE aks.token = $token""".stripMargin.query[ApiAuthInfo]
 
+  def allPossibleProjectPermissions(userId: DbRef[User]): doobie.Query0[Permission] =
+    sql"""|SELECT coalesce(bit_or(r.permission), B'0'::BIT(64))
+          |    FROM user_project_roles upr
+          |             JOIN roles r ON upr.role_type = r.name
+          |    WHERE upr.user_id = $userId""".stripMargin.query[Permission]
+
+  def allPossibleOrgPermissions(userId: DbRef[User]): doobie.Query0[Permission] =
+    sql"""|SELECT coalesce(bit_or(r.permission), B'0'::BIT(64))
+          |    FROM user_organization_roles uor
+          |             JOIN roles r ON uor.role_type = r.name
+          |    WHERE uor.user_id = $userId""".stripMargin.query[Permission]
+
 }

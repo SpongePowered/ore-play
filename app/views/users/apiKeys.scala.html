@@ -9,7 +9,7 @@
 @import ore.permission.{Permission, NamedPermission}
 @import models.api.ApiKey
 
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], keys: Seq[ApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], keys: Seq[ApiKey], perms: Seq[NamedPermission])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/apiKeysManagement.js")"></script>
@@ -22,7 +22,7 @@
             <div id="api-create-key-form">
                 <div class="row">
                     <div class="col-md-6">
-                    @for(perm <- NamedPermission.values.take(NamedPermission.values.length / 2)) {
+                    @for(perm <- perms.take(NamedPermission.values.length / 2)) {
                         <div class="checkbox">
                             <label>
                                 <input type="checkbox" id="perm.@perm.entryName"> @perm.entryName
@@ -31,7 +31,7 @@
                     }
                     </div>
                     <div class="col-md-6">
-                    @for(perm <- NamedPermission.values.drop(NamedPermission.values.length / 2)) {
+                    @for(perm <- perms.drop(NamedPermission.values.length / 2)) {
                         <div class="checkbox">
                             <label>
                                 <input type="checkbox" id="perm.@perm.entryName"> @perm.entryName
