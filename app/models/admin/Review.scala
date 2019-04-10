@@ -8,10 +8,10 @@ import play.api.libs.json._
 import play.twirl.api.Html
 
 import db.impl.schema.ReviewTable
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
-import models.project.{Page, Project, Version}
+import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
+import models.project.{Project, Version}
 import models.user.User
-import ore.OreConfig
+import ore.markdown.MarkdownRenderer
 import _root_.util.StringUtils
 
 import cats.effect.IO
@@ -44,10 +44,10 @@ case class Review(
   * This modal is needed to convert the json
   */
 case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
-  def getTime(implicit messages: Messages): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
-  def isTakeover: Boolean                          = action.equalsIgnoreCase("takeover")
-  def isStop: Boolean                              = action.equalsIgnoreCase("stop")
-  def render(implicit oreConfig: OreConfig): Html  = Page.render(message)
+  def getTime(implicit messages: Messages): String      = StringUtils.prettifyDateAndTime(new Timestamp(time))
+  def isTakeover: Boolean                               = action.equalsIgnoreCase("takeover")
+  def isStop: Boolean                                   = action.equalsIgnoreCase("stop")
+  def render(implicit renderer: MarkdownRenderer): Html = renderer.render(message)
 }
 object Message {
   implicit val messageReads: Reads[Message] =

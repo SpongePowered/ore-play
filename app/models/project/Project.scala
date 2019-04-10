@@ -21,6 +21,7 @@ import models.querymodels.ProjectNamespace
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectUserRole
+import ore.markdown.MarkdownRenderer
 import ore.permission.role.Role
 import ore.permission.scope.HasScope
 import ore.project.{Category, FlagReason, ProjectMember}
@@ -101,8 +102,8 @@ case class Project(
   * This modal is needed to convert the json
   */
 case class Note(message: String, user: DbRef[User], time: Long = System.currentTimeMillis()) {
-  def printTime(implicit oreConfig: Messages): String = StringUtils.prettifyDateAndTime(new Timestamp(time))
-  def render(implicit oreConfig: OreConfig): Html     = Page.render(message)
+  def printTime(implicit oreConfig: Messages): String   = StringUtils.prettifyDateAndTime(new Timestamp(time))
+  def render(implicit renderer: MarkdownRenderer): Html = renderer.render(message)
 }
 object Note {
   implicit val noteWrites: Writes[Note] = (note: Note) =>

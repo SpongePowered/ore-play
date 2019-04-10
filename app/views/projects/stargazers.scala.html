@@ -6,7 +6,8 @@
 @import ore.OreConfig
 @import models.user.User
 
-@(p: ProjectData, sp: ScopedProjectData, users: Seq[User], page: Int, pageSize: Int)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
+@import ore.markdown.MarkdownRenderer
+@(p: ProjectData, sp: ScopedProjectData, users: Seq[User], page: Int, pageSize: Int)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @columns = @{
     3

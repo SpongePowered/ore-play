@@ -2,37 +2,22 @@ package models.project
 
 import scala.language.higherKinds
 
-import java.net.{URI, URISyntaxException}
-
 import play.twirl.api.Html
 
+import db._
 import db.access.{ModelView, QueryView}
 import db.impl.OrePostgresDriver.api._
 import db.impl.model.common.Named
 import db.impl.schema.{PageTable, ProjectTableMain}
-import db._
 import discourse.OreDiscourseApi
 import ore.OreConfig
+import ore.markdown.MarkdownRenderer
 import ore.project.ProjectOwned
 import util.StringUtils._
 import util.syntax._
-import java.util
 
 import cats.effect.IO
 import com.google.common.base.Preconditions._
-import com.vladsch.flexmark.ast.MailLink
-import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
-import com.vladsch.flexmark.ext.autolink.AutolinkExtension
-import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
-import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
-import com.vladsch.flexmark.ext.tables.TablesExtension
-import com.vladsch.flexmark.ext.typographic.TypographicExtension
-import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
-import com.vladsch.flexmark.html.renderer._
-import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
-import com.vladsch.flexmark.parser.Parser
-import com.vladsch.flexmark.util.ast.Node
-import com.vladsch.flexmark.util.options.MutableDataSet
 import slick.lifted.TableQuery
 
 /**
@@ -64,7 +49,13 @@ case class Page private (
     *
     * @return HTML representation
     */
-  def html(project: Option[Project])(implicit config: OreConfig): Html = renderPage(this, project)
+  def html(project: Option[Project])(implicit renderer: MarkdownRenderer): Html = {
+    val settings = MarkdownRenderer.RenderSettings(
+      linkEscapeChars = Some(" +<>"),
+      linkPrefix = project.map(p => s"/${p.ownerName}/${p.slug}/pages/")
+    )
+    renderer.render(contents, settings)
+  }
 
   /**
     * Returns true if this is the home page.
@@ -113,112 +104,6 @@ object Page extends DefaultModelCompanion[Page, PageTable](TableQuery[PageTable]
     ModelQuery.from(this)
 
   implicit val isProjectOwned: ProjectOwned[Page] = (a: Page) => a.projectId
-
-  private object ExternalLinkResolver {
-
-    // scalafix:off
-    class Factory(config: OreConfig) extends LinkResolverFactory {
-      override def getAfterDependents: util.Set[Class[_ <: LinkResolverFactory]] = null
-
-      override def getBeforeDependents: util.Set[Class[_ <: LinkResolverFactory]] = null
-
-      override def affectsGlobalScope(): Boolean = false
-
-      override def create(context: LinkResolverContext) = new ExternalLinkResolver(this.config)
-    }
-    // scalafix:on
-  }
-
-  private class ExternalLinkResolver(config: OreConfig) extends LinkResolver {
-    override def resolveLink(node: Node, context: LinkResolverContext, link: ResolvedLink): ResolvedLink = {
-      if (link.getLinkType == LinkType.IMAGE || node.isInstanceOf[MailLink]) { //scalafix:ok
-        link
-      } else {
-        link.withStatus(LinkStatus.VALID).withUrl(wrapExternal(link.getUrl))
-      }
-    }
-
-    private def wrapExternal(urlString: String) = {
-      try {
-        val uri  = new URI(urlString)
-        val host = uri.getHost
-        if (uri.getScheme != null && host == null) { // scalafix:ok
-          if (uri.getScheme == "mailto") {
-            urlString
-          } else {
-            controllers.routes.Application.linkOut(urlString).toString
-          }
-        } else {
-          val trustedUrlHosts = this.config.app.trustedUrlHosts
-          val checkSubdomain = (trusted: String) =>
-            trusted(0) == '.' && (host.endsWith(trusted) || host == trusted.substring(1))
-          if (host == null || trustedUrlHosts.exists(trusted => trusted == host || checkSubdomain(trusted))) { // scalafix:ok
-            urlString
-          } else {
-            controllers.routes.Application.linkOut(urlString).toString
-          }
-        }
-      } catch {
-        case _: URISyntaxException => controllers.routes.Application.linkOut(urlString).toString
-      }
-    }
-  }
-
-  //TODO: Move this to it's own class and make it a val
-  private var linkResolver: Option[LinkResolverFactory] = None // scalafix:ok
-
-  private lazy val (markdownParser, htmlRenderer) = {
-    val options = new MutableDataSet()
-      .set[java.lang.Boolean](HtmlRenderer.SUPPRESS_HTML, true)
-      .set[java.lang.String](AnchorLinkExtension.ANCHORLINKS_TEXT_PREFIX, "<i class=\"fas fa-link\"></i>")
-      .set[java.lang.String](AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "headeranchor")
-      .set[java.lang.Boolean](AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
-
-      // GFM table compatibility
-      .set[java.lang.Boolean](TablesExtension.COLUMN_SPANS, false)
-      .set[java.lang.Boolean](TablesExtension.APPEND_MISSING_COLUMNS, true)
-      .set[java.lang.Boolean](TablesExtension.DISCARD_EXTRA_COLUMNS, true)
-      .set[java.lang.Boolean](TablesExtension.HEADER_SEPARATOR_COLUMN_MATCH, true)
-      .set(
-        Parser.EXTENSIONS,
-        java.util.Arrays.asList(
-          AutolinkExtension.create(),
-          AnchorLinkExtension.create(),
-          StrikethroughExtension.create(),
-          TaskListExtension.create(),
-          TablesExtension.create(),
-          TypographicExtension.create(),
-          WikiLinkExtension.create()
-        )
-      )
-
-    (
-      Parser.builder(options).build(),
-      HtmlRenderer
-        .builder(options)
-        .linkResolverFactory(linkResolver.get)
-        .build()
-    )
-  }
-
-  def render(markdown: String)(implicit config: OreConfig): Html = {
-    // htmlRenderer is lazy loaded so linkResolver will exist upon loading
-    if (linkResolver.isEmpty)
-      linkResolver = Some(new ExternalLinkResolver.Factory(config))
-    Html(htmlRenderer.render(markdownParser.parse(markdown)))
-  }
-
-  def renderPage(page: Page, project: Option[Project])(implicit config: OreConfig): Html = {
-    if (linkResolver.isEmpty)
-      linkResolver = Some(new ExternalLinkResolver.Factory(config))
-
-    val options = new MutableDataSet().set[String](WikiLinkExtension.LINK_ESCAPE_CHARS, " +<>")
-
-    if (project.isDefined)
-      options.set[String](WikiLinkExtension.LINK_PREFIX, s"/${project.get.ownerName}/${project.get.slug}/pages/")
-
-    Html(htmlRenderer.withOptions(options).render(markdownParser.parse(page.contents)))
-  }
 
   /**
     * The name of each Project's homepage.

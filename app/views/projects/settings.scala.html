@@ -7,7 +7,8 @@
 @import db.Model
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
-@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@import ore.markdown.MarkdownRenderer
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

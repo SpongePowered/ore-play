@@ -7,7 +7,8 @@
 
 @import db.Model
 
-@(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@import ore.markdown.MarkdownRenderer
+@(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
 
 @versionRoutes = @{controllers.project.routes.Versions}
 

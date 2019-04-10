@@ -21,6 +21,7 @@ import form.OreForms
 import form.project.PageSaveForm
 import models.project.{Page, Project}
 import models.user.{LoggedAction, UserActionLogger}
+import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -45,7 +46,8 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     config: OreConfig,
     service: ModelService,
     auth: SpongeAuthApi,
-    forums: OreDiscourseApi
+    forums: OreDiscourseApi,
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Pages
@@ -165,7 +167,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     * @return Rendered content
     */
   def showPreview(): Action[JsValue] = Action(parse.json) { implicit request =>
-    Ok(Page.render((request.body \ "raw").as[String]))
+    Ok(renderer.render((request.body \ "raw").as[String]))
   }
 
   /**

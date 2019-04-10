@@ -5,8 +5,9 @@
 @import ore.permission.Permission
 @import models.querymodels.ProjectNeedsApproval
 @import models.project.Page
+@import ore.markdown.MarkdownRenderer
 @(needsApproval: Seq[ProjectNeedsApproval],
- waitingProjects: Seq[ProjectNeedsApproval])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+ waitingProjects: Seq[ProjectNeedsApproval])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -30,7 +31,7 @@
                         </span>
                         <p>
                             <strong>Request:</strong>
-                            @Page.render(project.comment)
+                            @renderer.render(project.comment)
                         </p>
                     </div>
                     <div class="col-xs-12 col-md-4">

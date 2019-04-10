@@ -11,6 +11,7 @@ import models.project._
 import models.user.User
 import models.user.role.ProjectUserRole
 import ore.OreConfig
+import ore.markdown.MarkdownRenderer
 import ore.permission.role.RoleCategory
 import util.syntax._
 
@@ -44,7 +45,8 @@ case class ProjectData(
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
-  def renderVisibilityChange(implicit config: OreConfig): Option[Html] = lastVisibilityChange.map(_.renderComment)
+  def renderVisibilityChange(implicit renderer: MarkdownRenderer): Option[Html] =
+    lastVisibilityChange.map(_.renderComment)
 
   def roleCategory: RoleCategory = RoleCategory.Project
 }

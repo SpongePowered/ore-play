@@ -26,6 +26,7 @@ import models.admin.Review
 import models.user.role._
 import models.user.{LoggedAction, LoggedActionModel, Organization, User, UserActionLogger}
 import models.viewhelper.OrganizationData
+import ore.markdown.MarkdownRenderer
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
 import ore.project.{Category, ProjectSortingStrategy}
@@ -52,7 +53,8 @@ final class Application @Inject()(forms: OreForms)(
     env: OreEnv,
     config: OreConfig,
     cache: AsyncCacheApi,
-    service: ModelService
+    service: ModelService,
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))

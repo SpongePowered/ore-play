@@ -8,7 +8,8 @@ Discussion page within Project overview.
 
 @import org.spongepowered.play.discourse.DiscourseApi
 @import views.html.helper.CSPNonce
-@(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
+@import ore.markdown.MarkdownRenderer
+@(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

@@ -14,13 +14,14 @@ Documentation page within Project overview.
 @import db.Model
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
+@import ore.markdown.MarkdownRenderer
 @(p: ProjectData,
   sp: ScopedProjectData,
   rootPages: Seq[(Model[Page], Seq[Page])],
   page: Page,
   parentPage: Option[Page],
   pageCount: Int,
-  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
+  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @canEditPages = @{
     sp.perms(Permission.EditPage)

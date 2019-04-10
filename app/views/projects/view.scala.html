@@ -11,7 +11,8 @@ Base template for Project overview.
 @import views.html.helper.{CSRF, form}
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
-@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
+@import ore.markdown.MarkdownRenderer
+@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @appRoutes = @{controllers.routes.Application}
 
@@ -126,8 +127,7 @@ Base template for Project overview.
                             @p.settings.issues.map { issues =>
                                 <li id="issues">
                                     <a title="@issues" target="_blank" rel="noopener"
-                                    href="@Projects.showIssues(
-                                        p.project.ownerName, p.project.slug)">
+                                    href="@Projects.showIssues(p.project.ownerName, p.project.slug)">
                                         <i class="fas fa-bug"></i> Issues <i class="fas fa-external-link-alt"></i></a>
                                 </li>
                             }

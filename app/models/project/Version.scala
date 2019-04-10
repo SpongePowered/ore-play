@@ -18,12 +18,12 @@ import db.impl.schema.{
   VersionTagTable,
   VersionVisibilityChangeTable
 }
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
+import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
 import discourse.OreDiscourseApi
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
-import ore.OreConfig
+import ore.markdown.MarkdownRenderer
 import ore.project.{Dependency, ProjectOwned}
 import util.FileUtils
 import util.syntax._
@@ -91,8 +91,8 @@ case class Version(
     *
     * @return Description in html
     */
-  def descriptionHtml(implicit config: OreConfig): Html =
-    this.description.map(str => Page.render(str)).getOrElse(Html(""))
+  def descriptionHtml(implicit renderer: MarkdownRenderer): Html =
+    this.description.fold(Html(""))(renderer.render)
 
   /**
     * Returns the base URL for this Version.

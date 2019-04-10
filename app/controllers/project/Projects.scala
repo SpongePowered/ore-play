@@ -19,7 +19,7 @@ import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{Model, DbRef, ModelService}
+import db.{DbRef, Model, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
@@ -29,6 +29,7 @@ import models.project.{Flag, Note, Page, Visibility}
 import models.user._
 import models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
+import ore.markdown.MarkdownRenderer
 import ore.permission._
 import ore.project.factory.ProjectFactory
 import ore.project.io.{PluginUpload, ProjectFiles}
@@ -61,7 +62,8 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     messagesApi: MessagesApi,
     env: OreEnv,
     config: OreConfig,
-    service: ModelService
+    service: ModelService,
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   implicit val fileManager: ProjectFiles = factory.fileManager
@@ -313,7 +315,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def showIssues(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug) { implicit request =>
     request.data.settings.issues match {
       case None       => notFound
-      case Some(link) => Redirect(link)
+      case Some(link) => Redirect(controllers.routes.Application.linkOut(link))
     }
   }
 
@@ -327,7 +329,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   def showSource(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug) { implicit request =>
     request.data.settings.source match {
       case None       => notFound
-      case Some(link) => Redirect(link)
+      case Some(link) => Redirect(controllers.routes.Application.linkOut(link))
     }
   }
 

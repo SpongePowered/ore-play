@@ -7,9 +7,9 @@ import play.twirl.api.Html
 import db.impl.model.common.VisibilityChange
 import db.impl.schema.VersionVisibilityChangeTable
 import db.{DbRef, DefaultModelCompanion, ModelQuery}
-import models.project.{Page, Version, Visibility}
+import models.project.{Version, Visibility}
 import models.user.User
-import ore.OreConfig
+import ore.markdown.MarkdownRenderer
 
 import slick.lifted.TableQuery
 
@@ -23,7 +23,7 @@ case class VersionVisibilityChange(
 ) extends VisibilityChange {
 
   /** Render the comment as Html */
-  def renderComment(implicit config: OreConfig): Html = Page.render(comment)
+  def renderComment(implicit renderer: MarkdownRenderer): Html = renderer.render(comment)
 }
 object VersionVisibilityChange
     extends DefaultModelCompanion[VersionVisibilityChange, VersionVisibilityChangeTable](

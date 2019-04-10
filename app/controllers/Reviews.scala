@@ -20,6 +20,7 @@ import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, ReviewState, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
+import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
@@ -44,7 +45,8 @@ final class Reviews @Inject()(forms: OreForms)(
     env: OreEnv,
     cache: AsyncCacheApi,
     config: OreConfig,
-    service: ModelService
+    service: ModelService,
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =

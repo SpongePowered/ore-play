@@ -27,6 +27,7 @@ import models.admin.VersionVisibilityChange
 import models.project._
 import models.user.{LoggedAction, User, UserActionLogger}
 import models.viewhelper.VersionData
+import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
 import ore.project.factory.{PendingProject, ProjectFactory}
 import ore.project.io.DownloadType._
@@ -58,7 +59,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     env: OreEnv,
     config: OreConfig,
     service: ModelService,
-    forums: OreDiscourseApi
+    forums: OreDiscourseApi,
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private val fileManager = projects.fileManager

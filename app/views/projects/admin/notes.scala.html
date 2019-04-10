@@ -5,11 +5,10 @@
 @import models.user.User
 @import ore.OreConfig
 @import util.StringUtils._
-
-
-@* @notes = @{ project.getNotes().sortWith((first, second) => first.time > second.time) }*@
 @import views.html.helper.CSPNonce
-@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@import ore.markdown.MarkdownRenderer
+
+@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
 
 
 @projectRoutes = @{controllers.project.routes.Projects}

@@ -6,7 +6,8 @@
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
 @import ore.permission.Permission
-@(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
+@import ore.markdown.MarkdownRenderer
+@(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
