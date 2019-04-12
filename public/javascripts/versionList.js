@@ -33,6 +33,13 @@ var SHOW_HIDDEN = false;
 var channels = [];
 var page = 0;
 
+var visibilityCssClasses = {
+    new: "project-new",
+    needsChanges: "striped project-needsChanges",
+    needsApproval: "striped project-needsChanges",
+    softDelete: "striped project-hidden"
+};
+
 /*
  * ==================================================
  * =                Helper functions                =
@@ -62,12 +69,12 @@ function loadVersions(increment, scrollTop) {
         var versionTable = $(".version-table tbody");
         versionTable.empty();
 
-        response.versions.forEach(function (version) {
+        response.result.forEach(function (version) {
             var row = $("<tr>");
 
             var visibility = version.visibility;
-            if(visibility) {
-                row.addClass(visibility.cssClass)
+            if(visibilityCssClasses[visibility]) {
+                row.addClass(visibilityCssClasses[visibility])
             }
 
             // ==> Base Info (channel, name)
@@ -102,11 +109,9 @@ function loadVersions(increment, scrollTop) {
             tags.addClass("version-tags");
             version.tags.forEach(function (tag) {
                 if(tag.name !== 'Channel') {
-                    var hasData = (tag.data !== "");
-
                     var tagContainer = $("<div>");
                     tagContainer.addClass("tags");
-                    if(hasData) {
+                    if(tag.data) {
                         tagContainer.addClass("has-addons");
                     }
 
@@ -118,7 +123,7 @@ function loadVersions(increment, scrollTop) {
                     tagElement.css("color", tag.color.foreground);
                     tagContainer.append(tagElement);
 
-                    if(hasData) {
+                    if(tag.data) {
                         var tagDataElement = $("<span>");
                         tagDataElement.addClass("tag");
                         tagDataElement.text(tag.data);
@@ -150,7 +155,7 @@ function loadVersions(increment, scrollTop) {
             sizeContainer.append("<i class='far fa-file'></i>");
 
             var size = $("<span>");
-            size.text(filesize(version.file_size));
+            size.text(filesize(version.file_info.size_bytes));
             sizeContainer.append(size);
 
             infoOne.append(sizeContainer);
@@ -161,7 +166,7 @@ function loadVersions(increment, scrollTop) {
             var infoTwo = $("<td>");
             infoTwo.addClass("information-two");
 
-            if(version.author != null) {
+            if(version.author) {
                 var authorContainer = $("<div>");
                 authorContainer.addClass("author");
                 authorContainer.append("<i class='fas fa-key'></i>");
@@ -179,7 +184,7 @@ function loadVersions(increment, scrollTop) {
             var downloadContainer = $("<div>");
             downloadContainer.append("<i class='fas fa-download'></i>");
             var downloads = $("<span>");
-            downloads.text(version.downloads + " Downloads");
+            downloads.text(version.stats.downloads + " Downloads");
             downloadContainer.append(downloads);
             infoTwo.append(downloadContainer);
 
@@ -196,12 +201,12 @@ function loadVersions(increment, scrollTop) {
 
             downloadLink.append("<i class='fas fa-2x fa-download'></i>");
 
-            if(version.review_state !== "Reviewed") {
+            if(version.review_state !== "reviewed") {
                 var text;
                 if (channel && channel.nonReviewed) {
                     text = TEXT_NOT_APPROVED_CHANNEL;
                 }
-                else if (version.reviewState === "PartiallyReviewed") {
+                else if (version.reviewState === "partially_reviewed") {
                     text = TEXT_PARTIALLY_APPROVED;
                 }
                 else {
@@ -213,7 +218,7 @@ function loadVersions(increment, scrollTop) {
                 warning.attr("data-toggle", "tooltip");
                 warning.attr("data-placement", "bottom");
 
-                if(version.reviewState === "PartiallyReviewed") {
+                if(version.reviewState === "partially_reviewed") {
                     warning.addClass("fas fa-check");
                 }
                 else {

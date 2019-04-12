@@ -67,6 +67,7 @@ lazy val flexmarkVersion     = "0.40.18"
 lazy val bouncycastleVersion = "1.61"
 lazy val playSlickVersion    = "4.0.0"
 lazy val slickPgVersion      = "0.17.1"
+lazy val circeVersion        = "0.11.1"
 
 lazy val `ore` = (project in file("."))
   .enablePlugins(PlayScala)
@@ -101,6 +102,9 @@ lazy val `ore` = (project in file("."))
       "com.github.mpilquist"       %% "simulacrum"                    % "0.15.0",
       "org.tpolecat"               %% "doobie-core"                   % doobieVersion,
       "org.tpolecat"               %% "doobie-postgres"               % doobieVersion,
+      "io.circe"                   %% "circe-core"                    % circeVersion,
+      "io.circe"                   %% "circe-generic-extras"          % circeVersion,
+      "io.circe"                   %% "circe-parser"                  % circeVersion,
       "com.vladsch.flexmark"       % "flexmark"                       % flexmarkVersion,
       "com.vladsch.flexmark"       % "flexmark-ext-autolink"          % flexmarkVersion,
       "com.vladsch.flexmark"       % "flexmark-ext-anchorlink"        % flexmarkVersion,

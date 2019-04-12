@@ -4,6 +4,8 @@ import java.sql.Timestamp
 import java.time.LocalDateTime
 
 import db.DbRef
+import models.project.TagColor
+import models.protocols.APIV2
 import models.querymodels._
 import models.user.User
 import ore.project.{Category, ProjectSortingStrategy}
@@ -14,6 +16,18 @@ import doobie.implicits._
 import doobie.postgres.implicits._
 
 object APIV2Queries extends DoobieOreProtocol {
+
+  implicit val apiV2TagRead: Read[List[APIV2QueryVersionTag]] =
+    viewTagListRead.map(_.map(t => APIV2QueryVersionTag(t.name, t.data, t.color)))
+  implicit val apiV2TagWrite: Write[List[APIV2QueryVersionTag]] =
+    viewTagListWrite.contramap(_.map(t => ViewTag(t.name, t.data, t.color)))
+
+  implicit val apiV2TagOptRead: Read[Option[List[APIV2QueryVersionTag]]] =
+    Read[(Option[List[String]], Option[List[String]], Option[List[TagColor]])].map {
+      case (Some(name), Some(data), Some(color)) =>
+        Some(name.zip(data).zip(color).map(t => APIV2QueryVersionTag(t._1._1, t._1._2, t._2)))
+      case _ => None
+    }
 
   implicit val localDateTimeMeta: Meta[LocalDateTime] = Meta[Timestamp].timap(_.toLocalDateTime)(Timestamp.valueOf)
 
@@ -104,7 +118,7 @@ object APIV2Queries extends DoobieOreProtocol {
       orderWithRelevance: Boolean,
       limit: Long,
       offset: Long
-  ): Query0[APIV2Project] = {
+  ): Query0[APIV2.Project] = {
     val ordering = if (orderWithRelevance && query.nonEmpty) {
       val relevance = query.fold(fr"1") { q =>
         fr"ts_rank(p.search_words, websearch_to_tsquery($q)) DESC"
@@ -120,7 +134,7 @@ object APIV2Queries extends DoobieOreProtocol {
     } else order.fragment
 
     val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
-    (select ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2Project]
+    (select ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2QueryProject].map(_.asProtocol)
   }
 
   def projectCountQuery(
@@ -136,14 +150,16 @@ object APIV2Queries extends DoobieOreProtocol {
     (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
   }
 
-  def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2ProjectMember] =
+  def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2.ProjectMember] =
     sql"""|SELECT u.name, array_agg(r.name)
           |  FROM projects p
           |         JOIN user_project_roles upr ON p.id = upr.project_id
           |         JOIN users u ON upr.user_id = u.id
           |         JOIN roles r ON upr.role_type = r.name
           |  WHERE p.plugin_id = $pluginId
-          |  GROUP BY u.name LIMIT $limit OFFSET $offset""".stripMargin.query[APIV2ProjectMember]
+          |  GROUP BY u.name ORDER BY max(r.permission::BIGINT) DESC LIMIT $limit OFFSET $offset""".stripMargin
+      .query[APIV2QueryProjectMember]
+      .map(_.asProtocol)
 
   def versionSelectFrag(
       pluginId: String,
@@ -197,19 +213,20 @@ object APIV2Queries extends DoobieOreProtocol {
       tags: List[String],
       limit: Long,
       offset: Long
-  ): Query0[APIV2Version] =
+  ): Query0[APIV2.Version] =
     (versionSelectFrag(pluginId, versionName, tags) ++ fr"ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset")
-      .query[APIV2Version]
+      .query[APIV2QueryVersion]
+      .map(_.asProtocol)
 
   def versionCountQuery(pluginId: String, tags: List[String]): Query0[Long] =
     (sql"SELECT COUNT(*) FROM " ++ fragParens(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Long]
 
-  def userQuery(name: String): Query0[APIV2User] =
+  def userQuery(name: String): Query0[APIV2.User] =
     sql"""|SELECT u.created_at, u.name, u.tagline, u.join_date, array_agg(r.name)
           |  FROM users u
           |         JOIN user_global_roles ugr ON u.id = ugr.user_id
           |         JOIN roles r ON ugr.role_id = r.id
           |  WHERE u.name = $name
-          |  GROUP BY u.id""".stripMargin.query[APIV2User]
+          |  GROUP BY u.id""".stripMargin.query[APIV2QueryUser].map(_.asProtocol)
 
 }
