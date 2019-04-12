@@ -23,7 +23,7 @@ import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
 import db.query.{APIV2Queries, UserQueries}
 import db.{Model, ModelService}
-import models.api.{ApiKey, ApiSession}
+import models.api.ApiSession
 import models.project.{Page, Version}
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2QueryVersionTag}
@@ -33,6 +33,7 @@ import ore.permission.{NamedPermission, Permission}
 import ore.project.factory.ProjectFactory
 import ore.project.io.PluginUpload
 import ore.project.{Category, ProjectSortingStrategy}
+import ore.user.FakeUser
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.{IOUtils, OreMDC}
@@ -51,7 +52,7 @@ import io.circe._
 import io.circe.generic.extras._
 import io.circe.syntax._
 
-class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler)(
+class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
     implicit val ec: ExecutionContext,
     env: OreEnv,
     config: OreConfig,
@@ -189,7 +190,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   private val ApiKeyHeaderRegex =
     s"""ApiKey ($uuidRegex).($uuidRegex)""".r
 
-  def authenticate(): Action[AnyContent] = OreAction.asyncEitherT { implicit request =>
+  def authenticateKeyPublic(): Action[AnyContent] = Action.asyncEitherT { implicit request =>
     lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
     lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
 
@@ -225,6 +226,30 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           .withHeaders(WWW_AUTHENTICATE -> routes.ApiV2Controller.authenticate().absoluteURL())
       )
   }
+
+  def authenticateDev(): Action[AnyContent] = Action.asyncF {
+    if (fakeUser.isEnabled) {
+      config.checkDebug()
+
+      val sessionExpiration = expiration(config.ore.api.session.expiration)
+      val uuidToken         = UUID.randomUUID().toString
+      val sessionToInsert   = ApiSession(uuidToken, None, Some(fakeUser.id), sessionExpiration)
+
+      service.insert(sessionToInsert).map { key =>
+        Ok(
+          ReturnedApiSession(
+            key.token,
+            LocalDateTime.ofInstant(key.expires, ZoneOffset.UTC),
+            "dev"
+          )
+        )
+      }
+    } else {
+      IO.pure(Forbidden)
+    }
+  }
+
+  def authenticate(fake: Boolean): Action[AnyContent] = if (fake) authenticateDev() else authenticateKeyPublic()
 
   def createKey(): Action[KeyToCreate] =
     ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncF {

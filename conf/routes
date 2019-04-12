@@ -61,7 +61,7 @@ GET     /api/v1/tags/:tagId                                         @controllers
 
 # ---------- API (v2) ----------
 +nocsrf
-POST    /api/v2/authenticate                                        @controllers.ApiV2Controller.authenticate()
+POST    /api/v2/authenticate                                        @controllers.ApiV2Controller.authenticate(fake: Boolean ?= false)
 POST    /api/v2/authenticate/user                                   @controllers.ApiV2Controller.authenticateUser()
 +nocsrf
 POST    /api/v2/keys                                                @controllers.ApiV2Controller.createKey()

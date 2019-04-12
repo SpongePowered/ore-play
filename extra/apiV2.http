@@ -25,6 +25,12 @@ Cookie: _oretoken={{ore_session}}
 
 > {% client.global.set("api_session", response.body.session); %}
 
+### Authenticate fake
+POST http://localhost:9000/api/v2/authenticate?fake=true
+Accept: application/json
+
+> {% client.global.set("api_session", response.body.session); %}
+
 ### Create a new key
 POST http://localhost:9000/api/v2/keys
 Authorization: ApiSession {{api_session}}
