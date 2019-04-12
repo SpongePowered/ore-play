@@ -131,9 +131,9 @@ object APIV2Queries extends DoobieOreProtocol {
       owner: Option[String],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]],
-  ): Query0[Int] = {
+  ): Query0[Long] = {
     val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Int]
+    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
   }
 
   def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2ProjectMember] =
@@ -201,8 +201,8 @@ object APIV2Queries extends DoobieOreProtocol {
     (versionSelectFrag(pluginId, versionName, tags) ++ fr"ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset")
       .query[APIV2Version]
 
-  def versionCountQuery(pluginId: String, tags: List[String]): Query0[Int] =
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Int]
+  def versionCountQuery(pluginId: String, tags: List[String]): Query0[Long] =
+    (sql"SELECT COUNT(*) FROM " ++ fragParens(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Long]
 
   def userQuery(name: String): Query0[APIV2User] =
     sql"""|SELECT u.created_at, u.name, u.tagline, u.join_date, array_agg(r.name)
