@@ -29,6 +29,8 @@ case class ApiKey(
     service.runDbCon(query.unique).map(userPerms => Permission.fromLong(userPerms & rawKeyPermissions))
   }
 
+  def isSubKey(perms: Permission): Boolean = rawKeyPermissions.has(perms)
+
   def namedRawPermissions: Seq[NamedPermission] = rawKeyPermissions.toNamedSeq
 }
 object ApiKey extends DefaultModelCompanion[ApiKey, ApiKeyTable](TableQuery[ApiKeyTable]) {

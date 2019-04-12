@@ -20,7 +20,7 @@ import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import controllers.sugar.{Bakery, CircePlayController}
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{OrganizationTable, ProjectTableMain}
+import db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
 import db.query.{APIV2Queries, UserQueries}
 import db.{Model, ModelService}
 import models.api.{ApiKey, ApiSession}
@@ -234,13 +234,26 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
         (permsVal, nameVal)
           .mapN { (perms, name) =>
-            val perm            = Permission(perms.map(_.permission): _*)
-            val tokenIdentifier = UUID.randomUUID().toString
-            val token           = UUID.randomUUID().toString
+            val perm     = Permission(perms.map(_.permission): _*)
+            val isSubKey = request.apiInfo.key.forall(_.isSubKey(perm))
 
-            service
-              .runDbCon(APIV2Queries.createApiKey(name, request.user.get.id, tokenIdentifier, token, perm).run)
-              .map(_ => Ok(CreatedApiKey(s"$tokenIdentifier.$token", perm.toNamedSeq)))
+            if (!isSubKey) {
+              IO.pure(BadRequest(ApiError("Not enough permissions to create that key")))
+            } else {
+              val tokenIdentifier = UUID.randomUUID().toString
+              val token           = UUID.randomUUID().toString
+              val ownerId         = request.user.get.id.value
+
+              val nameTaken =
+                TableQuery[ApiKeyTable].filter(t => t.name === name && t.ownerId === ownerId).exists.result
+
+              val ifTaken = IO.pure(Conflict(ApiError("Name already taken")))
+              val ifFree = service
+                .runDbCon(APIV2Queries.createApiKey(name, ownerId, tokenIdentifier, token, perm).run)
+                .map(_ => Ok(CreatedApiKey(s"$tokenIdentifier.$token", perm.toNamedSeq)))
+
+              service.runDBIO(nameTaken).ifM(ifTaken, ifFree)
+            }
           }
           .leftMap((ApiErrors.apply _).andThen(BadRequest.apply(_)).andThen(IO.pure(_)))
           .merge

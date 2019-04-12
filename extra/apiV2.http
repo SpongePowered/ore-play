@@ -33,6 +33,7 @@ Content-Type: application/json
 
 {
   "permissions": [
+    "edit_api_keys",
     "edit_all_user_settings"
   ],
   "name": "Foo"
