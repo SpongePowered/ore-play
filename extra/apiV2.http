@@ -41,14 +41,10 @@ Content-Type: application/json
 > {% client.global.set("api_key", response.body.key); %}
 
 ### Delete a key
-DELETE http://localhost:9000/api/v2/keys
+DELETE http://localhost:9000/api/v2/keys?name=Foo
 Authorization: ApiSession {{api_session}}
 Accept: application/json
 Content-Type: application/json
-
-{
-  "key": "{{api_key}}"
-}
 
 > {% client.global.clear("api_key"); %}
 

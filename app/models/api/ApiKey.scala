@@ -13,9 +13,9 @@ import cats.effect.IO
 import slick.lifted.TableQuery
 
 case class ApiKey(
-    name: Option[String],
+    name: String,
     ownerId: DbRef[User],
-    token: String,
+    tokenIdentifier: String,
     private val rawKeyPermissions: Permission
 ) {
 

@@ -41,7 +41,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.FileIO
 import akka.util.ByteString
 import cats.Traverse
-import cats.data.{EitherT, OptionT}
+import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.{IO, Sync}
 import cats.instances.list._
 import cats.instances.option._
@@ -185,24 +185,25 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     }
   }
 
+  private val uuidRegex = """[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"""
+  private val ApiKeyHeaderRegex =
+    s"""ApiKey ($uuidRegex).($uuidRegex)""".r
+
   def authenticate(): Action[AnyContent] = OreAction.asyncEitherT { implicit request =>
     lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
     lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
 
-    val optApiKey = request.headers
-      .get(AUTHORIZATION)
-      .map(_.split(" ", 2))
-      .filter(_.length == 2)
-      .map(arr => arr.head -> arr(1))
-      .collect { case ("ApiKey", key) => key }
+    val authHeader = request.headers.get(AUTHORIZATION)
 
     val uuidToken = UUID.randomUUID().toString
 
-    val sessionToInsert = optApiKey match {
-      case Some(key) =>
-        ModelView.now(ApiKey).find(_.token === key).map { key =>
-          "key" -> ApiSession(uuidToken, Some(key.id), Some(key.ownerId), sessionExpiration)
+    val sessionToInsert = authHeader match {
+      case Some(ApiKeyHeaderRegex(identifier, token)) =>
+        OptionT(service.runDbCon(APIV2Queries.findApiKey(identifier, token).option)).map {
+          case (keyId, keyOwnerId) =>
+            "key" -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
         }
+      case Some(_) => OptionT.none[IO, (String, ApiSession)]
       case None =>
         OptionT.pure[IO]("public" -> ApiSession(uuidToken, None, None, publicSessionExpiration))
     }
@@ -225,34 +226,36 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       )
   }
 
-  def createKey(): Action[CreatedKey] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[CreatedKey]).asyncF {
+  def createKey(): Action[KeyToCreate] =
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncF {
       implicit request =>
-        NamedPermission
-          .parseNamed(request.body.permissions)
-          .fold(IO.pure(BadRequest(ApiError("Invalid permission name")))) { perms =>
-            val perm = Permission(perms.map(_.permission): _*)
+        val permsVal = NamedPermission.parseNamed(request.body.permissions).toValidNel("Invalid permission name")
+        val nameVal  = Some(request.body.name).filter(_.nonEmpty).toValidNel("Name was empty")
+
+        (permsVal, nameVal)
+          .mapN { (perms, name) =>
+            val perm            = Permission(perms.map(_.permission): _*)
+            val tokenIdentifier = UUID.randomUUID().toString
+            val token           = UUID.randomUUID().toString
+
             service
-              .insert(
-                ApiKey(request.body.name.filter(_.nonEmpty), request.user.get.id, UUID.randomUUID().toString, perm)
-              )
-              .map(key => Ok(JsApiKey(key.token)))
+              .runDbCon(APIV2Queries.createApiKey(name, request.user.get.id, tokenIdentifier, token, perm).run)
+              .map(_ => Ok(CreatedApiKey(s"$tokenIdentifier.$token", perm.toNamedSeq)))
           }
+          .leftMap((ApiErrors.apply _).andThen(BadRequest.apply(_)).andThen(IO.pure(_)))
+          .merge
     }
 
-  def deleteKey(): Action[JsApiKey] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[JsApiKey]).asyncEitherT {
-      implicit request =>
-        EitherT
-          .fromOption[IO](request.user, BadRequest(ApiError("Public keys can't be used to delete")))
-          .flatMap { user =>
-            ModelView
-              .now(ApiKey)
-              .find(k => k.token === request.body.key && k.ownerId === user.id.value)
-              .toRight(NotFound: Result)
+  def deleteKey(name: String): Action[AnyContent] =
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncEitherT { implicit request =>
+      EitherT
+        .fromOption[IO](request.user, BadRequest(ApiError("Public keys can't be used to delete")))
+        .semiflatMap { user =>
+          service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run).map {
+            case 0 => NotFound: Result
+            case _ => NoContent: Result
           }
-          .semiflatMap(service.delete(_))
-          .as(NoContent)
+        }
     }
 
   def createApiScope(pluginId: Option[String], organizationName: Option[String]): Either[Result, (String, APIScope)] =
@@ -533,10 +536,11 @@ object ApiV2Controller {
   }
 
   @ConfiguredJsonCodec case class ApiError(error: String)
+  @ConfiguredJsonCodec case class ApiErrors(errors: NonEmptyList[String])
   @ConfiguredJsonCodec case class UserError(userError: String)
 
-  @ConfiguredJsonCodec case class CreatedKey(name: Option[String], permissions: Seq[String])
-  @ConfiguredJsonCodec case class JsApiKey(key: String)
+  @ConfiguredJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
+  @ConfiguredJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
 
   @ConfiguredJsonCodec case class DeployVersionInfo(
       recommended: Option[Boolean],

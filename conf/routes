@@ -66,7 +66,7 @@ POST    /api/v2/authenticate/user                                   @controllers
 +nocsrf
 POST    /api/v2/keys                                                @controllers.ApiV2Controller.createKey()
 +nocsrf
-DELETE  /api/v2/keys                                                @controllers.ApiV2Controller.deleteKey()
+DELETE  /api/v2/keys                                                @controllers.ApiV2Controller.deleteKey(name)
 GET     /api/v2/permissions                                         @controllers.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
 GET     /api/v2/permissions/hasAll                                  @controllers.ApiV2Controller.hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
 GET     /api/v2/permissions/hasAny                                  @controllers.ApiV2Controller.hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])

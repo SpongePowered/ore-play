@@ -56,6 +56,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Key</th>
+                        <th>Key identifier</th>
                         <th>Permissions</th>
                         <th>Delete</th>
                     </tr>
@@ -63,8 +64,9 @@
                 <tbody id="api-key-rows">
                 @for(key <- keys) {
                     <tr class="api-key-row">
-                        <th>@key.name.getOrElse("<No name>")</th>
-                        <th class="api-key-row-token">@key.token</th>
+                        <th class="api-key-name">@key.name</th>
+                        <th></th>
+                        <th>@key.tokenIdentifier</th>
                         <th>@key.namedRawPermissions.map(_.entryName).mkString(", ")</th>
                         <th><button class="btn btn-danger api-key-row-delete-button">Delete key</button></th>
                     </tr>

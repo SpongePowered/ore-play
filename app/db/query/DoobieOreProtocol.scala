@@ -244,12 +244,12 @@ trait DoobieOreProtocol {
   implicit val userModelOptRead: Read[Option[Model[User]]] =
     Read[Option[ObjId[User]] :: Option[ObjTimestamp] :: Option[String] :: Option[String] :: Option[String] :: Option[
       String
-    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[String] :: Option[Timestamp] :: Option[Boolean] :: Option[
-      Lang
+    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[Boolean] :: Option[Lang] :: Option[String] :: Option[
+      Timestamp
     ] :: HNil].map {
-      case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: pgpPubKey :: lastPgpPubKeyUpdate :: Some(
+      case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: Some(
             isLocked
-          ) :: lang :: HNil =>
+          ) :: lang :: pgpPubKey :: lastPgpPubKeyUpdate :: HNil =>
         Some(
           Model(
             id,
@@ -272,13 +272,13 @@ trait DoobieOreProtocol {
       case _ => None
     }
 
-  implicit val apiKeyRead: Read[ApiKey] = Read[Option[String] :: DbRef[User] :: String :: Permission :: HNil].map {
+  implicit val apiKeyRead: Read[ApiKey] = Read[String :: DbRef[User] :: String :: Permission :: HNil].map {
     case name :: ownerId :: token :: permissions :: HNil => ApiKey(name, ownerId, token, permissions)
   }
 
   implicit val apiKeyOptRead: Read[Option[ApiKey]] =
     Read[Option[String] :: Option[DbRef[User]] :: Option[String] :: Option[Permission] :: HNil].map {
-      case name :: Some(ownerId) :: Some(token) :: Some(permissions) :: HNil =>
+      case Some(name) :: Some(ownerId) :: Some(token) :: Some(permissions) :: HNil =>
         Some(ApiKey(name, ownerId, token, permissions))
       case _ => None
     }

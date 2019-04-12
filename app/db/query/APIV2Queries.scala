@@ -4,10 +4,12 @@ import java.sql.Timestamp
 import java.time.LocalDateTime
 
 import db.DbRef
+import models.api.ApiKey
 import models.project.TagColor
 import models.protocols.APIV2
 import models.querymodels._
 import models.user.User
+import ore.permission.Permission
 import ore.project.{Category, ProjectSortingStrategy}
 
 import cats.data.NonEmptyList
@@ -30,6 +32,23 @@ object APIV2Queries extends DoobieOreProtocol {
     }
 
   implicit val localDateTimeMeta: Meta[LocalDateTime] = Meta[Timestamp].timap(_.toLocalDateTime)(Timestamp.valueOf)
+
+  def findApiKey(identifier: String, token: String): Query0[(DbRef[ApiKey], DbRef[User])] =
+    sql"""SELECT k.id, k.owner_id FROM api_keys k WHERE k.token_identifier = $identifier AND k.token = crypt($token, k.token)"""
+      .query[(DbRef[ApiKey], DbRef[User])]
+
+  def createApiKey(
+      name: String,
+      ownerId: DbRef[User],
+      tokenIdentifier: String,
+      token: String,
+      perms: Permission
+  ): doobie.Update0 =
+    sql"""|INSERT INTO api_keys (created_at, name, owner_id, token_identifier, token, raw_key_permissions)
+          |VALUES (now(), $name, $ownerId, $tokenIdentifier, crypt($token, gen_salt('bf')), $perms)""".stripMargin.update
+
+  def deleteApiKey(name: String, ownerId: DbRef[User]): doobie.Update0 =
+    sql"""DELETE FROM api_keys k WHERE k.name = $name AND k.owner_id = $ownerId""".update
 
   def projectSelectFrag(
       pluginId: Option[String],
