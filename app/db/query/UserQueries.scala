@@ -169,21 +169,44 @@ object UserQueries extends DoobieOreProtocol {
           |  WHERE u.id = $userId;""".stripMargin.query[Permission]
 
   def getApiAuthInfo(token: String): doobie.Query0[ApiAuthInfo] =
-    sql"""|SELECT u.*,
+    sql"""|SELECT u.id,
+          |       u.created_at,
+          |       u.full_name,
+          |       u.name,
+          |       u.email,
+          |       u.tagline,
+          |       u.join_date,
+          |       u.read_prompts,
+          |       u.pgp_pub_key,
+          |       u.last_pgp_pub_key_update,
+          |       u.is_locked,
+          |       u.language,
           |       ak.name,
           |       ak.owner_id,
           |       ak.token,
           |       ak.raw_key_permissions,
           |       aks.expires,
           |       CASE
-          |         WHEN u.id IS NULL THEN 1::BIT(64)
-          |         ELSE (coalesce(gt.permission, B'0'::BIT(64)) | 1::BIT(64) | (1::BIT(64) << 1) | (1::BIT(64) << 2)) &
-          |             coalesce(ak.raw_key_permissions, (-1)::BIT(64))
-          |         END
-          |  FROM api_sessions aks
-          |         LEFT JOIN api_keys ak ON aks.key_id = ak.id
-          |         LEFT JOIN users u ON aks.user_id = u.id
-          |         LEFT JOIN global_trust gt ON gt.user_id = u.id
+          |           WHEN u.id IS NULL THEN 1::BIT(64)
+          |           ELSE (coalesce(gt.permission, B'0'::BIT(64)) | 1::BIT(64) | (1::BIT(64) << 1) | (1::BIT(64) << 2)) &
+          |                coalesce(ak.raw_key_permissions, (-1)::BIT(64))
+          |           END
+          |    FROM api_sessions aks
+          |             LEFT JOIN api_keys ak ON aks.key_id = ak.id
+          |             LEFT JOIN users u ON aks.user_id = u.id
+          |             LEFT JOIN global_trust gt ON gt.user_id = u.id
           |  WHERE aks.token = $token""".stripMargin.query[ApiAuthInfo]
+
+  def allPossibleProjectPermissions(userId: DbRef[User]): doobie.Query0[Permission] =
+    sql"""|SELECT coalesce(bit_or(r.permission), B'0'::BIT(64))
+          |    FROM user_project_roles upr
+          |             JOIN roles r ON upr.role_type = r.name
+          |    WHERE upr.user_id = $userId""".stripMargin.query[Permission]
+
+  def allPossibleOrgPermissions(userId: DbRef[User]): doobie.Query0[Permission] =
+    sql"""|SELECT coalesce(bit_or(r.permission), B'0'::BIT(64))
+          |    FROM user_organization_roles uor
+          |             JOIN roles r ON uor.role_type = r.name
+          |    WHERE uor.user_id = $userId""".stripMargin.query[Permission]
 
 }

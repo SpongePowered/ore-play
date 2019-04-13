@@ -13,9 +13,9 @@ import cats.effect.IO
 import slick.lifted.TableQuery
 
 case class ApiKey(
-    name: Option[String],
+    name: String,
     ownerId: DbRef[User],
-    token: String,
+    tokenIdentifier: String,
     private val rawKeyPermissions: Permission
 ) {
 
@@ -28,6 +28,8 @@ case class ApiKey(
 
     service.runDbCon(query.unique).map(userPerms => Permission.fromLong(userPerms & rawKeyPermissions))
   }
+
+  def isSubKey(perms: Permission): Boolean = rawKeyPermissions.has(perms)
 
   def namedRawPermissions: Seq[NamedPermission] = rawKeyPermissions.toNamedSeq
 }

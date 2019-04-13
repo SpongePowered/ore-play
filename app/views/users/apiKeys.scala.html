@@ -9,7 +9,7 @@
 @import ore.permission.{Permission, NamedPermission}
 @import models.api.ApiKey
 
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], keys: Seq[ApiKey])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], keys: Seq[ApiKey], perms: Seq[NamedPermission])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/apiKeysManagement.js")"></script>
@@ -22,7 +22,7 @@
             <div id="api-create-key-form">
                 <div class="row">
                     <div class="col-md-6">
-                    @for(perm <- NamedPermission.values.take(NamedPermission.values.length / 2)) {
+                    @for(perm <- perms.take(NamedPermission.values.length / 2)) {
                         <div class="checkbox">
                             <label>
                                 <input type="checkbox" id="perm.@perm.entryName"> @perm.entryName
@@ -31,7 +31,7 @@
                     }
                     </div>
                     <div class="col-md-6">
-                    @for(perm <- NamedPermission.values.drop(NamedPermission.values.length / 2)) {
+                    @for(perm <- perms.drop(NamedPermission.values.length / 2)) {
                         <div class="checkbox">
                             <label>
                                 <input type="checkbox" id="perm.@perm.entryName"> @perm.entryName
@@ -56,6 +56,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Key</th>
+                        <th>Key identifier</th>
                         <th>Permissions</th>
                         <th>Delete</th>
                     </tr>
@@ -63,8 +64,9 @@
                 <tbody id="api-key-rows">
                 @for(key <- keys) {
                     <tr class="api-key-row">
-                        <th>@key.name.getOrElse("<No name>")</th>
-                        <th class="api-key-row-token">@key.token</th>
+                        <th class="api-key-name">@key.name</th>
+                        <th></th>
+                        <th>@key.tokenIdentifier</th>
                         <th>@key.namedRawPermissions.map(_.entryName).mkString(", ")</th>
                         <th><button class="btn btn-danger api-key-row-delete-button">Delete key</button></th>
                     </tr>

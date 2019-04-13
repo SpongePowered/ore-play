@@ -21,6 +21,7 @@ addons:
 
 before_script:
   - psql -c "ALTER USER travis WITH PASSWORD 'travis';"
+  - psql -c "CREATE EXTENSION pgcrypto;"
   - cp conf/application.conf.template conf/application.conf
 
 env:
