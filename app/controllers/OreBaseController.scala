@@ -10,13 +10,12 @@ import play.api.mvc._
 
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
 import controllers.sugar.{Actions, Bakery, Requests}
-import db.ModelService
-import db.access.ModelAccess
+import db.{Model, ModelService}
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
 import models.project.{Project, Version, Visibility}
-import models.user.SignOn
-import ore.permission.ReviewProjects
+import ore.permission.Permission
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 
@@ -38,8 +37,6 @@ abstract class OreBaseController(
     with Actions
     with I18nSupport {
 
-  override val signOns: ModelAccess[SignOn] = this.service.access[SignOn]()
-
   override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
 
   implicit def ec: ExecutionContext
@@ -53,7 +50,7 @@ abstract class OreBaseController(
     * @param request  Incoming request
     * @return         NotFound or project
     */
-  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[IO, Result, Project] =
+  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[IO, Result, Model[Project]] =
     projects.withSlug(author, slug).toRight(notFound)
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
@@ -70,11 +67,12 @@ abstract class OreBaseController(
     * @param request        Incoming request
     * @return               NotFound or function result
     */
-  def getVersion(project: Project, versionString: String)(
+  def getVersion(project: Model[Project], versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Version] =
-    project.versions
-      .find(versionFindFunc(versionString, request.headerData.globalPerm(ReviewProjects)))
+  ): EitherT[IO, Result, Model[Version]] =
+    project
+      .versions(ModelView.now(Version))
+      .find(versionFindFunc(versionString, request.headerData.globalPerm(Permission.SeeHidden)))
       .toRight(notFound)
 
   /**
@@ -89,7 +87,7 @@ abstract class OreBaseController(
     */
   def getProjectVersion(author: String, slug: String, versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Version] =
+  ): EitherT[IO, Result, Model[Version]] =
     for {
       project <- getProject(author, slug)
       version <- getVersion(project, versionString)
@@ -179,7 +177,8 @@ abstract class OreBaseController(
     * @param username User to check
     * @return [[OreAction]] if has permission
     */
-  def UserAction(username: String): ActionBuilder[AuthRequest, AnyContent] = Authenticated.andThen(userAction(username))
+  def UserEditAction(username: String): ActionBuilder[AuthRequest, AnyContent] =
+    Authenticated.andThen(userEditAction(username))
 
   /**
     * Represents an action that requires a user to reenter their password.
@@ -193,5 +192,5 @@ abstract class OreBaseController(
       username: String,
       sso: Option[String],
       sig: Option[String]
-  ): ActionBuilder[AuthRequest, AnyContent] = UserAction(username).andThen(verifiedAction(sso, sig))
+  ): ActionBuilder[AuthRequest, AnyContent] = UserEditAction(username).andThen(verifiedAction(sso, sig))
 }

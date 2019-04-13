@@ -14,5 +14,7 @@ class OrganizationRoleTable(tag: Tag)
   def organizationId = column[DbRef[Organization]]("organization_id")
 
   override def * =
-    mkProj((id.?, createdAt.?, userId, organizationId, roleType, isAccepted))(mkTuple[OrganizationUserRole]())
+    (id.?, createdAt.?, (userId, organizationId, roleType, isAccepted)) <> (mkApply(
+      (OrganizationUserRole.apply _).tupled
+    ), mkUnapply(OrganizationUserRole.unapply))
 }

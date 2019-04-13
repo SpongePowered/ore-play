@@ -15,13 +15,13 @@ import org.scalatest.junit.JUnitRunner
 class SchemaSpec extends DbSpec {
 
   test("Project") {
-    check(sql"""|SELECT id, created_at, plugin_id, owner_name, owner_id, name, slug, recommended_version_id,
+    check(sql"""|SELECT plugin_id, owner_name, owner_id, name, slug, recommended_version_id,
                 |category, description, stars, views, downloads, topic_id, post_id, is_topic_dirty, visibility,
                 |last_updated, notes FROM projects""".stripMargin.query[Project])
   }
 
   test("Project settings") {
-    check(sql"""|SELECT id, created_at, project_id, homepage, issues, source, license_name, license_url,
+    check(sql"""|SELECT project_id, homepage, issues, source, license_name, license_url,
                 |forum_sync FROM project_settings""".stripMargin.query[ProjectSettings])
   }
 
@@ -30,8 +30,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Project views") {
-    check(sql"""|SELECT id, created_at, project_id, address, cookie,
-                |user_id from project_views""".stripMargin.query[ProjectView])
+    check(sql"""|SELECT project_id, address, cookie, user_id from project_views""".stripMargin.query[ProjectView])
   }
 
   test("Project stars") {
@@ -39,80 +38,90 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Project log") {
-    check(sql"""SELECT id, created_at, project_id FROM project_logs""".query[ProjectLog])
+    check(sql"""SELECT project_id FROM project_logs""".query[ProjectLog])
   }
 
   test("Project log entry") {
-    check(sql"""|SELECT id, created_at, log_id, tag, message, occurrences,
+    check(sql"""|SELECT log_id, tag, message, occurrences,
                 |last_occurrence FROM project_log_entries""".stripMargin.query[ProjectLogEntry])
   }
 
   test("Page") {
-    check(sql"""|SELECT id, created_at, project_id, parent_id, name, slug,
+    check(sql"""|SELECT project_id, parent_id, name, slug,
                 |is_deletable, contents FROM project_pages""".stripMargin.query[Page])
   }
 
   test("Channel") {
-    check(sql"""|SELECT id, created_at, project_id, name, color,
+    check(sql"""|SELECT project_id, name, color,
                 |is_non_reviewed FROM project_channels""".stripMargin.query[Channel])
   }
 
-  test("Tag") {
-    check(sql"""SELECT id, version_id, name, data, color FROM project_version_tags""".query[VersionTag])
+  test("VersionTag") {
+    check(sql"""SELECT version_id, name, data, color FROM project_version_tags""".query[VersionTag])
   }
 
   test("Version") {
-    check(sql"""|SELECT id, created_at, project_id, version_string, dependencies, channel_id, file_size, hash,
-                |author_id, description, downloads, review_state, reviewer_id, approved_at, visibility, file_name,
-                |signature_file_name FROM project_versions
-       """.stripMargin.query[Version])
-  }
-
-  test("DownloadWarning") {
-    check(sql"""|SELECT id, created_at, expiration, token, version_id, address, is_confirmed, download_id
-                |FROM project_version_download_warnings""".stripMargin.query[DownloadWarning])
-  }
-
-  test("UnsafeDownload") {
-    check(sql"""|SELECT id, created_at, user_id, address, download_type
-                |FROM project_version_unsafe_downloads""".stripMargin.query[UnsafeDownload])
-  }
-
-  test("VersionDownloads") {
-    check(sql"""|SELECT id, created_at, version_id, address, cookie, user_id
-                |FROM project_version_downloads""".stripMargin.query[VersionDownload])
-  }
-
-  test("User") {
     check(
-      sql"""|SELECT id, created_at, full_name, name, email, tagline, join_date, read_prompts, pgp_pub_key,
-            |last_pgp_pub_key_update, is_locked, language FROM users""".stripMargin.query[User]
+      sql"""|SELECT project_id, version_string, dependencies, channel_id, file_size, hash,
+            |author_id, description, downloads, review_state, reviewer_id, approved_at, visibility, file_name,
+            |signature_file_name, create_forum_post, post_id, is_post_dirty FROM project_versions""".stripMargin
+        .query[Version]
     )
   }
 
+  test("DownloadWarning") {
+    check(sql"""|SELECT expiration, token, version_id, address, is_confirmed,
+                |download_id FROM project_version_download_warnings""".stripMargin.query[DownloadWarning])
+  }
+
+  test("UnsafeDownload") {
+    check(
+      sql"""|SELECT user_id, address, download_type FROM project_version_unsafe_downloads""".stripMargin
+        .query[UnsafeDownload]
+    )
+  }
+
+  test("VersionDownloads") {
+    check(
+      sql"""|SELECT version_id, address, cookie, user_id FROM project_version_downloads""".stripMargin
+        .query[VersionDownload]
+    )
+  }
+
+  /* Can't check this because id in user is private
+  test("User") {
+    check(
+      sql"""|SELECT id, full_name, name, email, tagline, join_date, read_prompts, pgp_pub_key,
+            |last_pgp_pub_key_update, is_locked, language FROM users""".stripMargin.query[User]
+    )
+  }
+   */
+
   test("Session") {
-    check(sql"""SELECT id, created_at, expiration, username, token FROM user_sessions""".query[Session])
+    check(sql"""SELECT expiration, username, token FROM user_sessions""".query[Session])
   }
 
   test("SignOn") {
-    check(sql"""SELECT id, created_at, nonce, is_completed FROM user_sign_ons""".query[SignOn])
+    check(sql"""SELECT nonce, is_completed FROM user_sign_ons""".query[SignOn])
   }
 
+  /* Can't check this because id in org is private
   test("Organization") {
-    check(sql"""SELECT id, created_at, name, user_id FROM organizations""".query[Organization])
+    check(sql"""SELECT id, name, user_id FROM organizations""".query[Organization])
   }
+   */
 
   test("OrganizationMember") {
     check(sql"""SELECT user_id, organization_id FROM organization_members""".query[(DbRef[User], DbRef[Organization])])
   }
 
   test("OrganizationRole") {
-    check(sql"""|SELECT id, created_at, user_id, organization_id, role_type,
+    check(sql"""|SELECT user_id, organization_id, role_type,
                 |is_accepted FROM user_organization_roles""".stripMargin.query[OrganizationUserRole])
   }
 
   test("ProjectRole") {
-    check(sql"""|SELECT id, created_at, user_id, project_id, role_type,
+    check(sql"""|SELECT user_id, project_id, role_type,
                 |is_accepted FROM user_project_roles""".stripMargin.query[ProjectUserRole])
   }
 
@@ -123,39 +132,37 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Notifiation") {
-    check(sql"""|SELECT id, created_at, user_id, origin_id, notification_type, message_args, action,
+    check(sql"""|SELECT user_id, origin_id, notification_type, message_args, action,
                 |read FROM notifications""".stripMargin.query[Notification])
   }
 
   test("Flag") {
-    check(sql"""|SELECT id, created_at, project_id, user_id, reason, comment, is_resolved, resolved_at, resolved_by
-                |FROM project_flags""".stripMargin.query[Flag])
+    check(sql"""|SELECT project_id, user_id, reason, comment, is_resolved, resolved_at,
+                |resolved_by FROM project_flags""".stripMargin.query[Flag])
   }
 
   test("ProjectApiKey") {
-    check(sql"""SELECT id, created_at, project_id, key_type, value FROM project_api_keys""".query[ProjectApiKey])
+    check(sql"""SELECT project_id, key_type, value FROM project_api_keys""".query[ProjectApiKey])
   }
 
   test("Review") {
-    check(
-      sql"""SELECT id, created_at, version_id, user_id, ended_at, comment FROM project_version_reviews""".query[Review]
-    )
+    check(sql"""SELECT version_id, user_id, ended_at, comment FROM project_version_reviews""".query[Review])
   }
 
   test("ProjectVisibilityChange") {
-    check(sql"""|SELECT id, created_at, created_by, project_id, comment, resolved_at, resolved_by, visibility 
-                |FROM project_visibility_changes""".stripMargin.query[ProjectVisibilityChange])
+    check(sql"""|SELECT created_by, project_id, comment, resolved_at, resolved_by,
+                |visibility FROM project_visibility_changes""".stripMargin.query[ProjectVisibilityChange])
   }
 
   test("LoggedAction") {
     check(
-      sql"""|SELECT id, created_at, user_id, address, action, action_context, action_context_id, new_state, old_state
-            |FROM logged_actions""".stripMargin.query[LoggedActionModel[Any]]
+      sql"""|SELECT user_id, address, action, action_context, action_context_id, new_state,
+            |old_state FROM logged_actions""".stripMargin.query[LoggedActionModel[Any]]
     )
   }
 
   test("VersionVisibilityChange") {
-    check(sql"""|SELECT id, created_at, created_by, version_id, comment, resolved_at, resolved_by, visibility 
+    check(sql"""|SELECT created_by, version_id, comment, resolved_at, resolved_by, visibility
                 |FROM project_version_visibility_changes""".stripMargin.query[VersionVisibilityChange])
   }
 
@@ -173,9 +180,11 @@ class SchemaSpec extends DbSpec {
     check(sql"""SELECT s_id, s_name FROM v_logged_actions""".query[LoggedSubject])
   }
 
+  /* We can't check this one as we use String for BIT(N) for the permission field, but doobie doesn't like that
   test("DbRole") {
-    check(sql"""SELECT id, name, category, trust, title, color, is_assignable, rank FROM roles""".query[DbRole])
+    check(sql"""SELECT name, category, permission, title, color, is_assignable, rank FROM roles""".query[DbRole])
   }
+   */
 
   test("UserGlobalRoles") {
     check(sql"""SELECT user_id, role_id FROM user_global_roles""".query[(DbRef[User], DbRef[DbRole])])

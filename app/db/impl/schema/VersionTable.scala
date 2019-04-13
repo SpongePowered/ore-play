@@ -5,6 +5,7 @@ import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import db.table.ModelTable
+import models.admin.VersionVisibilityChange
 import models.project.{Channel, Project, ReviewState, Version}
 import models.user.User
 
@@ -26,12 +27,15 @@ class VersionTable(tag: Tag)
   def approvedAt        = column[Timestamp]("approved_at")
   def fileName          = column[String]("file_name")
   def signatureFileName = column[String]("signature_file_name")
+  def createForumPost   = column[Boolean]("create_forum_post")
+  def postId            = column[Option[Int]]("post_id")
+  def isPostDirty       = column[Boolean]("is_post_dirty")
 
   override def * =
-    mkProj(
+    (
+      id.?,
+      createdAt.?,
       (
-        id.?,
-        createdAt.?,
         projectId,
         versionString,
         dependencies,
@@ -46,7 +50,10 @@ class VersionTable(tag: Tag)
         approvedAt.?,
         visibility,
         fileName,
-        signatureFileName
+        signatureFileName,
+        createForumPost,
+        postId,
+        isPostDirty
       )
-    )(mkTuple[Version]())
+    ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
 }

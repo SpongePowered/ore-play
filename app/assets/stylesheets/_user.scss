@@ -258,12 +258,10 @@ textarea[name="pgp-pub-key"] {
 
 .btn-mark-read:hover {
   background-color: #5cb85c;
-  color: white;
-  -webkit-transition: all .2s ease-out;
-  -moz-transition: all .2s ease-out;
-  -ms-transition: all .2s ease-out;
-  -o-transition: all .2s ease-out;
-  transition: all .2s ease-out;
+
+  svg {
+    color: white;
+  }
 }
 
 .dismiss {

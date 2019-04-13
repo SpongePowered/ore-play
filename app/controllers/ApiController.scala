@@ -12,16 +12,16 @@ import play.api.libs.json._
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import db.access.ModelAccess
+import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectApiKeyTable
 import db.{DbRef, ModelService}
 import form.OreForms
 import models.api.ProjectApiKey
-import models.project.{Page, Project}
-import models.user.{LoggedAction, UserActionLogger}
+import models.project.{Page, Project, Version}
+import models.user.{LoggedAction, Organization, User, UserActionLogger}
+import ore.permission.Permission
 import ore.permission.role.Role
-import ore.permission.{EditApiKeys, ReviewProjects}
 import ore.project.factory.ProjectFactory
 import ore.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType._
@@ -38,7 +38,6 @@ import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import slick.lifted.Compiled
 
 /**
   * Ore API (v1)
@@ -60,8 +59,7 @@ final class ApiController @Inject()(
 ) extends OreBaseController
     with OreWrites {
 
-  val files                                      = new ProjectFiles(this.env)
-  val projectApiKeys: ModelAccess[ProjectApiKey] = this.service.access[ProjectApiKey]()
+  val files = new ProjectFiles(this.env)
 
   private val Logger = scalalogging.Logger("SSO")
 
@@ -102,7 +100,7 @@ final class ApiController @Inject()(
   }
 
   def createKey(version: String, pluginId: String): Action[AnyContent] =
-    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(EditApiKeys)).asyncF {
+    Action.andThen(AuthedProjectActionById(pluginId)).andThen(ProjectPermissionAction(Permission.EditApiKeys)).asyncF {
       implicit request =>
         version match {
           case "v1" =>
@@ -111,11 +109,11 @@ final class ApiController @Inject()(
               keyType <- forms.ProjectApiKeyCreate.bindOptionT[IO]
               if keyType == Deployment
               exists <- OptionT
-                .liftF(this.projectApiKeys.exists(k => k.projectId === projectId && k.keyType === keyType))
+                .liftF(ModelView.now(ProjectApiKey).exists(k => k.projectId === projectId && k.keyType === keyType))
               if !exists
               pak <- OptionT.liftF(
-                this.projectApiKeys.add(
-                  ProjectApiKey.partial(
+                service.insert(
+                  ProjectApiKey(
                     projectId = projectId,
                     keyType = keyType,
                     value = UUID.randomUUID().toString.replace("-", "")
@@ -138,27 +136,28 @@ final class ApiController @Inject()(
     }
 
   def revokeKey(version: String, pluginId: String): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(EditApiKeys)).asyncF { implicit request =>
-      version match {
-        case "v1" =>
-          val res = for {
-            optKey <- forms.ProjectApiKeyRevoke.bindOptionT[IO]
-            key    <- optKey
-            if key.projectId == request.data.project.id.value
-            _ <- OptionT.liftF(service.delete(key))
-            _ <- OptionT.liftF(
-              UserActionLogger.log(
-                request.request,
-                LoggedAction.ProjectSettingsChanged,
-                request.data.project.id.value,
-                s"${request.user.name} removed an ApiKey",
-                ""
+    AuthedProjectActionById(pluginId).andThen(ProjectPermissionAction(Permission.EditApiKeys)).asyncF {
+      implicit request =>
+        version match {
+          case "v1" =>
+            val res = for {
+              optKey <- forms.ProjectApiKeyRevoke.bindOptionT[IO]
+              key    <- optKey
+              if key.projectId == request.data.project.id.value
+              _ <- OptionT.liftF(service.delete(key))
+              _ <- OptionT.liftF(
+                UserActionLogger.log(
+                  request.request,
+                  LoggedAction.ProjectSettingsChanged,
+                  request.data.project.id,
+                  s"${request.user.name} removed an ApiKey",
+                  ""
+                )
               )
-            )
-          } yield Ok
-          res.getOrElse(BadRequest)
-        case _ => IO.pure(NotFound)
-      }
+            } yield Ok
+            res.getOrElse(BadRequest)
+          case _ => IO.pure(NotFound)
+        }
     }
 
   /**
@@ -202,7 +201,7 @@ final class ApiController @Inject()(
       limit: Option[Int],
       offset: Option[Int]
   ): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(PermissionAction(ReviewProjects)).asyncF {
+    AuthedProjectActionById(pluginId).andThen(PermissionAction(Permission.SeeHidden)).asyncF {
       version match {
         case "v1" =>
           this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)
@@ -245,7 +244,7 @@ final class ApiController @Inject()(
             .flatMap {
               case (formData, formChannel) =>
                 val apiKeyTable = TableQuery[ProjectApiKeyTable]
-                def queryApiKey(deployment: Rep[ProjectApiKeyType], key: Rep[String], pId: Rep[DbRef[Project]]) = {
+                def queryApiKey(deployment: ProjectApiKeyType, key: String, pId: DbRef[Project]) = {
                   val query = for {
                     k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
                   } yield {
@@ -254,18 +253,22 @@ final class ApiController @Inject()(
                   query.exists
                 }
 
-                val compiled = Compiled(queryApiKey _)
-
-                val apiKeyExists: IO[Boolean] =
-                  this.service.runDBIO(compiled((Deployment, formData.apiKey, project.id.value)).result)
+                val query = Query.apply(
+                  (
+                    queryApiKey(Deployment, formData.apiKey, project.id),
+                    project.versions(ModelView.later(Version)).exists(_.versionString === name)
+                  )
+                )
 
                 EitherT
-                  .liftF(apiKeyExists)
-                  .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(identity)
-                  .semiflatMap(_ => project.versions.exists(_.versionString === name))
-                  .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists)
+                  .liftF(service.runDBIO(query.result.head))
+                  .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
+                  .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
                   .semiflatMap(_ => project.owner.user)
-                  .semiflatMap(user => user.toMaybeOrganization.semiflatMap(_.owner.user).getOrElse(user))
+                  .semiflatMap(
+                    user =>
+                      user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.owner.user).getOrElse(user)
+                  )
                   .flatMap { owner =>
                     val pluginUpload = this.factory
                       .getUploadError(owner)
@@ -291,14 +294,14 @@ final class ApiController @Inject()(
                     case (newProject, newVersion, channel, tags) =>
                       val update =
                         if (formData.recommended)
-                          service.update(
-                            newProject.copy(
-                              recommendedVersionId = Some(newVersion.id.value),
+                          service.update(project)(
+                            _.copy(
+                              recommendedVersionId = Some(newVersion.id),
                               lastUpdated = new Timestamp(new Date().getTime)
                             )
                           )
                         else
-                          service.update(newProject.copy(lastUpdated = new Timestamp(new Date().getTime)))
+                          service.update(project)(_.copy(lastUpdated = new Timestamp(new Date().getTime)))
 
                       update.as(Created(api.writeVersion(newVersion, newProject, channel, None, tags)))
                   }
@@ -388,7 +391,7 @@ final class ApiController @Inject()(
       .map(t => Uri.Query(Base64.getMimeDecoder.decode(t._1))) //_1 is sso
       .semiflatMap { q =>
         Logger.debug("Sync Payload: " + q)
-        users.get(q.get("external_id").get.toLong).value.tupleLeft(q)
+        ModelView.now(User).get(q.get("external_id").get.toLong).value.tupleLeft(q)
       }
       .semiflatMap {
         case (query, optUser) =>
@@ -406,14 +409,14 @@ final class ApiController @Inject()(
               }
 
               val updateRoles = globalRoles.fold(IO.unit) { roles =>
-                user.globalRoles.deleteAllFromParent(user) *> roles
+                user.globalRoles.deleteAllFromParent *> roles
                   .map(_.toDbRole)
-                  .traverse(user.globalRoles.addAssoc(user, _))
+                  .traverse(user.globalRoles.addAssoc)
                   .void
               }
 
-              service.update(
-                user.copy(
+              service.update(user)(
+                _.copy(
                   email = email.orElse(user.email),
                   name = username.getOrElse(user.name),
                   fullName = fullName.orElse(user.fullName)

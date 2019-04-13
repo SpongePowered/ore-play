@@ -11,12 +11,13 @@ Page used for uploading and creating new projects.
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
 @import db.ObjId
-@import db.ObjectTimestamp
+@import db.ObjTimestamp
 @import java.sql.Timestamp
 @import java.time.Instant
+@import db.Model
 @import views.html.helper.CSPNonce
 
-@(createProjectOrgas: Seq[Organization], user: User)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(createProjectOrgas: Seq[Model[Organization]],user: Model[User])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

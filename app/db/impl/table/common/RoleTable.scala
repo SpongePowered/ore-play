@@ -7,7 +7,7 @@ import models.user.User
 import models.user.role.UserRoleModel
 import ore.permission.role.Role
 
-trait RoleTable[R <: UserRoleModel] extends ModelTable[R] {
+trait RoleTable[R <: UserRoleModel[R]] extends ModelTable[R] {
 
   def userId     = column[DbRef[User]]("user_id")
   def roleType   = column[Role]("role_type")

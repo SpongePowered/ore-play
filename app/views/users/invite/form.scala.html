@@ -2,7 +2,9 @@
 @import ore.OreConfig
 @import ore.permission.role.RoleCategory
 @import views.html.utils.userAvatar
-@(owner: User, loadedUsers: Seq[User] = Seq(), roleCategory: RoleCategory)(implicit messages: Messages, config: OreConfig)
+@import db.Model
+
+@(owner: User, loadedUsers: Seq[Model[User]] = Seq(), roleCategory: RoleCategory)(implicit messages: Messages, config: OreConfig)
 
 <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
 <script type="text/javascript" src="@routes.Assets.versioned("javascripts/membersConfig.js")"></script>
@@ -45,7 +47,7 @@
             @loadedUsers.map { user =>
                 <tr>
                     <td>
-                        <input form="form-continue" type="hidden" value="@user.id.value" />
+                        <input form="form-continue" type="hidden" value="@user.id" />
                         @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
                         <a target="_blank" rel="noopener" href="@routes.Users.showProjects(user.name, None)">
                             @user.name

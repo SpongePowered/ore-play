@@ -5,8 +5,8 @@ Versions page within Project overview.
 @import models.project.Channel
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.{EditChannels, ReviewProjects, UploadVersions}
 @import views.html.helper.CSPNonce
+@import ore.permission.Permission
 @(p: ProjectData,
         sp: ScopedProjectData,
         channels: Seq[Channel],
@@ -30,7 +30,7 @@ Versions page within Project overview.
             TEXT_NOT_APPROVED = '@messages("version.download.confirm.reviewedChannel")';
             TEXT_PARTIALLY_APPROVED = '@messages("version.download.confirmPartial.reviewedChannel")';
             TEXT_NOT_APPROVED_CHANNEL = '@messages("version.download.confirm.nonReviewedChannel")';
-            SHOW_HIDDEN = @request.headerData.globalPerm(ReviewProjects);
+            SHOW_HIDDEN = @request.headerData.globalPerm(Permission.SeeHidden);
     </script>
 }
 
@@ -42,7 +42,7 @@ Versions page within Project overview.
 
                 <div class="panel-heading">
                     <h4 class="panel-title pull-left">@messages("project.versions")</h4>
-                    @if(sp.perms(UploadVersions)) {
+                    @if(sp.perms(Permission.CreateVersion)) {
                         <a href="@versionRoutes.showCreator(p.project.ownerName, p.project.slug)" class="btn yellow">
                         @messages("project.version.new")
                         </a>
@@ -83,7 +83,7 @@ Versions page within Project overview.
                         </li>
                     }
 
-                    @if(sp.perms(EditChannels)) {
+                    @if(sp.perms(Permission.EditChannel)) {
                         <li class="list-group-item text-right">
                             <a class="btn yellow btn-xs" href="@channelRoutes.showList(p.project.ownerName, p.project.slug)">
                                 Edit

@@ -3,11 +3,11 @@
 
 @import controllers.project.{routes => projectRoutes}
 @import controllers.sugar.Requests.OreRequest
-@import db.{ObjId, ObjectTimestamp}
+@import db.{ObjId, ObjTimestamp}
 @import models.project.Channel
 @import ore.OreConfig
 @import ore.project.factory.PendingVersion
-@import util.StringUtils
+@import util.{FileUtils, StringUtils}
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
 @import views.html.helper.CSPNonce
@@ -61,6 +61,14 @@
                                         </td>
                                     </tr>
                                     <tr>
+                                        <td><strong>@messages("version.filename")</strong></td>
+                                        <td>@version.fileName</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>@messages("version.fileSize")</strong></td>
+                                        <td>@FileUtils.formatFileSize(version.fileSize)</td>
+                                    </tr>
+                                    <tr>
                                         <td><strong>Channel</strong></td>
                                         <td class="form-inline">
                                             @* Show channel selector if old project, editor if new project *@
@@ -112,7 +120,7 @@
                                         <td>
                                             <div class="pull-right" id="upload-platform-tags">
                                             @for(t <- version.dependenciesAsGhostTags) {
-                                                @projects.tag(t(ObjId(0L), ObjectTimestamp(Timestamp.from(Instant.now()))).asViewTag)
+                                                @projects.tag(t.asViewTag)
                                             }
                                             </div>
                                         </td>

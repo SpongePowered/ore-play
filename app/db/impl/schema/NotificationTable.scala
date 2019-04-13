@@ -18,7 +18,7 @@ class NotificationTable(tag: Tag) extends ModelTable[Notification](tag, "notific
   def read             = column[Boolean]("read")
 
   override def * =
-    mkProj((id.?, createdAt.?, userId, originId, notificationType, messageArgs, action.?, read))(
-      mkTuple[Notification]()
-    )
+    (id.?, createdAt.?, (userId, originId, notificationType, messageArgs, action.?, read)) <> (mkApply(
+      (Notification.apply _).tupled
+    ), mkUnapply(Notification.unapply))
 }

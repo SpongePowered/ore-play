@@ -1,4 +1,6 @@
 package util
+
+import db.access.QueryView
 import ore.organization.OrganizationOwned
 import ore.permission.scope.HasScope
 import ore.project.ProjectOwned
@@ -9,3 +11,4 @@ package object syntax
     with OrganizationOwned.ToOrganizationOwnedOps
     with ProjectOwned.ToProjectOwnedOps
     with UserOwned.ToUserOwnedOps
+    with QueryView.ToQueryFilterableOps

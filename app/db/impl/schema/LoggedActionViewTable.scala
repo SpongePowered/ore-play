@@ -2,7 +2,7 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{DbRef, ObjId, ObjectTimestamp}
+import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.table.ModelTable
 import models.admin.{LoggedActionViewModel, LoggedProject, LoggedProjectPage, LoggedProjectVersion, LoggedSubject}
@@ -60,51 +60,55 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
       filterPage: Option[DbRef[Page]],
       filterSubject: Option[DbRef[_]],
       filterAction: Option[Int]
-  ) = LoggedActionViewModel[Ctx](
+  ) = Model(
     ObjId.unsafeFromOption(id),
-    ObjectTimestamp.unsafeFromOption(createdAt),
-    userId,
-    address,
-    action,
-    actionContext,
-    actionContextId,
-    newState,
-    oldState,
-    uId,
-    uName,
-    loggedProject,
-    loggedProjectVersion,
-    loggedProjectPage,
-    loggedSubject,
-    filterProject,
-    filterVersion,
-    filterPage,
-    filterSubject,
-    filterAction
+    ObjTimestamp.unsafeFromOption(createdAt),
+    LoggedActionViewModel[Ctx](
+      userId,
+      address,
+      action,
+      actionContext,
+      actionContextId,
+      newState,
+      oldState,
+      uId,
+      uName,
+      loggedProject,
+      loggedProjectVersion,
+      loggedProjectPage,
+      loggedSubject,
+      filterProject,
+      filterVersion,
+      filterPage,
+      filterSubject,
+      filterAction
+    )
   )
 
-  private def rawUnapply(m: LoggedActionViewModel[Ctx]) = m match {
-    case LoggedActionViewModel(
+  private def rawUnapply(m: Model[LoggedActionViewModel[Ctx]]) = m match {
+    case Model(
         id,
         createdAt,
-        userId,
-        address,
-        action,
-        actionContext,
-        actionContextId,
-        newState,
-        oldState,
-        uId,
-        uName,
-        loggedProject,
-        loggedProjectVersion,
-        loggedProjectPage,
-        loggedSubject,
-        filterProject,
-        filterVersion,
-        filterPage,
-        filterSubject,
-        filterAction
+        LoggedActionViewModel(
+          userId,
+          address,
+          action,
+          actionContext,
+          actionContextId,
+          newState,
+          oldState,
+          uId,
+          uName,
+          loggedProject,
+          loggedProjectVersion,
+          loggedProjectPage,
+          loggedSubject,
+          filterProject,
+          filterVersion,
+          filterPage,
+          filterSubject,
+          filterAction
+        )
         ) =>
       Some(
         (
@@ -155,7 +159,7 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
       filterPage.?,
       filterSubject.?,
       filterAction.?
-    ) <> ((rawApply _).tupled, rawUnapply _)
+    ) <> ((rawApply _).tupled, rawUnapply)
   }
 
   def loggedProjectProjection =

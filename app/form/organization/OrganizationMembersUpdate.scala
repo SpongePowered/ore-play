@@ -1,9 +1,8 @@
 package form.organization
 
-import db.{DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
-import ore.OreConfig
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import util.syntax._
@@ -27,7 +26,7 @@ case class OrganizationMembersUpdate(
     roleUps: List[String]
 ) extends TOrganizationRoleSetBuilder {
 
-  def saveTo(organization: Organization)(
+  def saveTo(organization: Model[Organization])(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[Unit] = {
@@ -37,14 +36,14 @@ case class OrganizationMembersUpdate(
 
     // Add new roles
     val dossier = organization.memberships
-    val orgId   = organization.id.value
+    val orgId   = organization.id
     val addRoles = this
       .build()
       .toVector
       .parTraverse_ { role =>
-        val addRole = dossier.addRole(organization, role.userId, role.copy(organizationId = orgId).asFunc)
+        val addRole = dossier.addRole(organization, role.userId, role.copy(organizationId = orgId))
         val sendNotif = service.insert(
-          Notification.partial(
+          Notification(
             userId = role.userId,
             originId = orgId,
             notificationType = NotificationType.OrganizationInvite,
@@ -61,8 +60,8 @@ case class OrganizationMembersUpdate(
 
     val roleObjUpsF = roleUps.traverse { role =>
       Role.organizationRoles
-        .find(_.title == role)
-        .fold(IO.raiseError[Role](new Exception("supplied invalid role type")))(IO.pure)
+        .find(_.value == role)
+        .fold(IO.raiseError[Role](new Exception(s"Supplied invalid role type: $role")))(IO.pure)
     }
 
     val updateExisting = (roleObjUpsF, orgUsersF).tupled.flatMap {
@@ -73,7 +72,7 @@ case class OrganizationMembersUpdate(
 
         userMemRole.toVector.parTraverse_ {
           case Some(((_, mem), role)) =>
-            mem.headRole.flatMap(headRole => service.update(headRole.copy(role = role)))
+            mem.headRole.flatMap(headRole => service.update(headRole)(_.copy(role = role)))
           case None => IO.unit
         }
     }

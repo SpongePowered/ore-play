@@ -2,9 +2,11 @@ package ore.user.notification
 
 import scala.collection.immutable
 
-import db.ModelService
+import db.{Model, ModelService}
+import db.access.ModelView
+import db.impl.OrePostgresDriver.api._
 import models.user.User
-import models.user.role.UserRoleModel
+import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 
 import cats.Parallel
 import cats.effect.{ContextShift, IO}
@@ -17,9 +19,11 @@ sealed abstract class InviteFilter(
     val value: Int,
     val name: String,
     val title: String,
-    val filter: ContextShift[IO] => ModelService => User => IO[Seq[UserRoleModel]]
+    val filter: ContextShift[IO] => ModelService => Model[User] => IO[Seq[Model[UserRoleModel[_]]]]
 ) extends IntEnumEntry {
-  def apply(user: User)(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[UserRoleModel]] =
+  def apply(
+      user: Model[User]
+  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[Model[UserRoleModel[_]]]] =
     filter(cs)(service)(user)
 }
 
@@ -36,8 +40,10 @@ object InviteFilter extends IntEnum[InviteFilter] {
           implicit service =>
             user =>
               Parallel.parMap2(
-                user.projectRoles.filterNot(_.isAccepted),
-                user.organizationRoles.filterNot(_.isAccepted)
+                service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result),
+                service.runDBIO(
+                  user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result
+                )
               )(_ ++ _)
       )
 
@@ -46,7 +52,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
         1,
         "projects",
         "notification.invite.projects",
-        _ => implicit service => user => user.projectRoles.filterNot(_.isAccepted)
+        _ =>
+          implicit service =>
+            user => service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result)
       )
 
   case object Organizations
@@ -54,6 +62,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
         2,
         "organizations",
         "notification.invite.organizations",
-        _ => implicit service => user => user.organizationRoles.filterNot(_.isAccepted)
+        _ =>
+          implicit service =>
+            user =>
+              service.runDBIO(user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result)
       )
 }

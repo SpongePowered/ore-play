@@ -11,8 +11,10 @@ import scala.util.matching.Regex
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
+import db.access.ModelView
 import db.impl.access.ProjectBase
-import db.{DbRef, InsertFunc, ModelService}
+import db.impl.OrePostgresDriver.api._
+import db.{DbRef, Model, ModelService}
 import discourse.OreDiscourseApi
 import form.project.ProjectCreateForm
 import models.project._
@@ -21,7 +23,7 @@ import ore.project.NotifyWatchersTask
 import ore.project.io._
 import ore.{Color, OreConfig, OreEnv, Platform}
 import security.pgp.PGPVerifier
-import util.OreMDC
+import util.{OreMDC, StringUtils}
 import util.StringUtils._
 
 import akka.actor.ActorSystem
@@ -58,7 +60,7 @@ trait ProjectFactory {
     * @param owner      Upload owner
     * @return Loaded PluginFile
     */
-  def processPluginUpload(uploadData: PluginUpload, owner: User)(
+  def processPluginUpload(uploadData: PluginUpload, owner: Model[User])(
       implicit messages: Messages,
       mdc: OreMDC
   ): EitherT[IO, String, PluginFileWithData] = {
@@ -101,7 +103,7 @@ trait ProjectFactory {
     }
   }
 
-  def processSubsequentPluginUpload(uploadData: PluginUpload, owner: User, project: Project)(
+  def processSubsequentPluginUpload(uploadData: PluginUpload, owner: Model[User], project: Model[Project])(
       implicit messages: Messages,
       cs: ContextShift[IO],
       mdc: OreMDC
@@ -112,15 +114,21 @@ trait ProjectFactory {
       .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
       .flatMapF { plugin =>
         for {
-          t <- (project.channels.all, project.settings).parTupled
-          (channels, settings) = t
+          t <- (
+            project
+              .channels(ModelView.now(Channel))
+              .one
+              .getOrElseF(IO.raiseError(new IllegalStateException("No channel found for project"))),
+            project.settings
+          ).parTupled
+          (headChannel, settings) = t
           version = this.startVersion(
             plugin,
             project.pluginId,
-            project.id.unsafeToOption,
+            Some(project.id),
             project.url,
             settings.forumSync,
-            channels.head.name
+            headChannel.name
           )
           modelExists <- version match {
             case Right(v) => v.exists
@@ -148,16 +156,16 @@ trait ProjectFactory {
       user.isLocked                            -> "error.user.locked"
     ).find(_._1).map(_._2)
 
-  def createProject(owner: User, settings: ProjectCreateForm)(
+  def createProject(owner: Model[User], settings: ProjectCreateForm)(
       implicit cs: ContextShift[IO]
   ): EitherT[IO, String, (Project, ProjectSettings)] = {
     val name = settings.name
     val slug = slugify(name)
 
-    val project = Project.partial(
+    val project = Project(
       pluginId = settings.pluginId,
       ownerName = owner.name,
-      ownerId = owner.id.value,
+      ownerId = owner.id,
       name = name,
       slug = slug,
       category = settings.category,
@@ -165,9 +173,8 @@ trait ProjectFactory {
       visibility = Visibility.New,
     )
 
-    val projectSettings: DbRef[Project] => InsertFunc[ProjectSettings] = ProjectSettings.partial()
-    val channel: DbRef[Project] => InsertFunc[Channel] =
-      Channel.partial(_, config.defaultChannelName, config.defaultChannelColor)
+    val projectSettings: DbRef[Project] => ProjectSettings = ProjectSettings(_)
+    val channel: DbRef[Project] => Channel                 = Channel(_, config.defaultChannelName, config.defaultChannelColor)
 
     for {
       t <- EitherT.liftF(
@@ -210,7 +217,7 @@ trait ProjectFactory {
 
       Right(
         PendingVersion(
-          versionString = metaData.version.get,
+          versionString = StringUtils.slugify(metaData.version.get),
           dependencyIds = metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList,
           description = metaData.description,
           projectId = projectId,
@@ -218,7 +225,7 @@ trait ProjectFactory {
           hash = plugin.md5,
           fileName = path.getFileName.toString,
           signatureFileName = plugin.signaturePath.getFileName.toString,
-          authorId = plugin.user.id.value,
+          authorId = plugin.user.id,
           projectUrl = projectUrl,
           channelName = channelName,
           channelColor = this.config.defaultChannelColor,
@@ -250,15 +257,14 @@ trait ProjectFactory {
     * @param color   Channel color
     * @return New channel
     */
-  def createChannel(project: Project, name: String, color: Color): IO[Channel] = {
-    checkNotNull(project, "null project", "")
-    checkNotNull(name, "null name", "")
+  def createChannel(project: Model[Project], name: String, color: Color): IO[Model[Channel]] = {
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
-    checkNotNull(color, "null color", "")
     for {
-      channelCount <- project.channels.size
-      _ = checkState(channelCount < this.config.ore.projects.maxChannels, "channel limit reached", "")
-      channel <- this.service.access[Channel]().add(Channel.partial(project.id.value, name, color))
+      limitReached <- service.runDBIO(
+        (project.channels(ModelView.later(Channel)).size < config.ore.projects.maxChannels).result
+      )
+      _ = checkState(limitReached, "channel limit reached", "")
+      channel <- service.insert(Channel(project.id, name, color))
     } yield channel
   }
 
@@ -269,9 +275,12 @@ trait ProjectFactory {
     * @return New version
     */
   def createVersion(
-      project: Project,
+      project: Model[Project],
       pending: PendingVersion
-  )(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[(Project, Version, Channel, Seq[VersionTag])] = {
+  )(
+      implicit ec: ExecutionContext,
+      cs: ContextShift[IO]
+  ): IO[(Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] = {
 
     for {
       // Create channel if not exists
@@ -281,47 +290,43 @@ trait ProjectFactory {
         IO.raiseError(new IllegalArgumentException("Version already exists."))
       else IO.unit
       // Create version
-      newVersion <- {
-        val newVersion = pending.asFunc(project.id.value, channel.id.value)
-        this.service.access[Version]().add(newVersion)
-      }
-      tags <- addTags(pending, newVersion)
+      version <- service.insert(pending.asVersion(project.id, channel.id))
+      tags    <- addTags(pending, version)
       // Notify watchers
-      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(newVersion, project))
-      _ <- uploadPlugin(project, pending.plugin, newVersion).fold(e => IO.raiseError(new Exception(e)), IO.pure)
+      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(version, project))
+      _ <- uploadPlugin(project, pending.plugin, version).fold(e => IO.raiseError(new Exception(e)), IO.pure)
       firstTimeUploadProject <- {
         if (project.visibility == Visibility.New) {
-          val setVisibility = project.setVisibility(Visibility.Public, "First upload", project.ownerId).map(_._1)
+          val setVisibility = project.setVisibility(Visibility.Public, "First upload", version.authorId).map(_._1)
           if (project.topicId.isEmpty) this.forums.createProjectTopic(project) *> setVisibility else setVisibility
         } else IO.pure(project)
       }
-      _ <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)
+      withTopicId <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)
         this.forums
-          .postVersionRelease(firstTimeUploadProject, newVersion, newVersion.description)
-          .leftMap(_.mkString("\n"))
-          .fold(e => IO.raiseError(new Exception(e)), _ => IO.unit)
-      else IO.unit
-    } yield (firstTimeUploadProject, newVersion, channel, tags)
+          .createVersionPost(firstTimeUploadProject, version)
+      else IO.pure(version)
+    } yield (firstTimeUploadProject, withTopicId, channel, tags)
   }
 
-  private def addTags(pendingVersion: PendingVersion, newVersion: Version)(
+  private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version])(
       implicit cs: ContextShift[IO]
-  ): IO[Seq[VersionTag]] =
+  ): IO[Seq[Model[VersionTag]]] =
     (
-      pendingVersion.plugin.data.createTags(newVersion.id.value),
+      pendingVersion.plugin.data.createTags(newVersion.id),
       addDependencyTags(newVersion)
     ).parMapN(_ ++ _)
 
-  private def addDependencyTags(version: Version): IO[Seq[VersionTag]] =
+  private def addDependencyTags(version: Model[Version]): IO[Seq[Model[VersionTag]]] =
     Platform
       .createPlatformTags(
-        version.id.value,
+        version.id,
         // filter valid dependency versions
         version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
       )
 
-  private def getOrCreateChannel(pending: PendingVersion, project: Project) =
-    project.channels
+  private def getOrCreateChannel(pending: PendingVersion, project: Model[Project]) =
+    project
+      .channels(ModelView.now(Channel))
       .find(equalsIgnoreCase(_.name, pending.channelName))
       .getOrElseF(createChannel(project, pending.channelName, pending.channelColor))
 

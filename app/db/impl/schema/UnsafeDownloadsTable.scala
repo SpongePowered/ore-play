@@ -15,5 +15,8 @@ class UnsafeDownloadsTable(tag: Tag) extends ModelTable[UnsafeDownload](tag, "pr
   def address      = column[InetString]("address")
   def downloadType = column[DownloadType]("download_type")
 
-  override def * = mkProj((id.?, createdAt.?, userId.?, address, downloadType))(mkTuple[UnsafeDownload]())
+  override def * =
+    (id.?, createdAt.?, (userId.?, address, downloadType)) <> (mkApply((UnsafeDownload.apply _).tupled), mkUnapply(
+      UnsafeDownload.unapply
+    ))
 }

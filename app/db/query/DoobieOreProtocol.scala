@@ -12,11 +12,12 @@ import play.api.i18n.Lang
 import play.api.libs.json.{JsValue, Json}
 
 import models.querymodels.ViewTag
-import db.{ObjId, ObjectTimestamp}
+import db.{Model, ObjId, ObjTimestamp}
 import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
-import ore.permission.role.{Role, RoleCategory, Trust}
+import ore.permission.Permission
+import ore.permission.role.{Role, RoleCategory}
 import ore.project.io.DownloadType
 import ore.project.{Category, FlagReason}
 import ore.rest.ProjectApiKeyType
@@ -33,6 +34,8 @@ import enumeratum.values.{ValueEnum, ValueEnumEntry}
 import org.postgresql.util.{PGInterval, PGobject}
 
 trait DoobieOreProtocol {
+
+  //implicit val logger = createLogger("Database")
 
   def createLogger(name: String): LogHandler = {
     val logger = play.api.Logger(name)
@@ -74,7 +77,14 @@ trait DoobieOreProtocol {
 
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
     Meta[Long].timap(ObjId.apply[A])(_.value)
-  implicit val objectTimestampMeta: Meta[ObjectTimestamp] = Meta[Timestamp].timap(ObjectTimestamp.apply)(_.value)
+  implicit val objTimestampMeta: Meta[ObjTimestamp] = Meta[Timestamp].timap(ObjTimestamp.apply)(_.value)
+
+  implicit def modelRead[A](implicit raw: Read[(ObjId[A], ObjTimestamp, A)]): Read[Model[A]] = raw.map {
+    case (id, time, obj) => Model(id, time, obj)
+  }
+  implicit def modelWrite[A](implicit raw: Write[(ObjId[A], ObjTimestamp, A)]): Write[Model[A]] = raw.contramap {
+    case Model(id, createdAt, obj) => (id, createdAt, obj)
+  }
 
   implicit val intervalMeta: Meta[PGInterval] = Meta.Advanced.other[PGInterval]("interval")
   implicit val finiteDurationPut: Put[FiniteDuration] = intervalMeta.put.contramap[FiniteDuration] { a =>
@@ -133,12 +143,14 @@ trait DoobieOreProtocol {
     enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]] // scalafix:ok
   implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
     enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]] // scalafix:ok
-  implicit val trustMeta: Meta[Trust]             = enumeratumMeta(Trust)
   implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
 
   implicit val langMeta: Meta[Lang] = Meta[String].timap(Lang.apply)(_.toLocale.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =
     Meta[InetAddress].timap(address => InetString(address.toString))(str => InetAddress.getByName(str.value))
+
+  implicit val permissionMeta: Meta[Permission] =
+    Meta[String].imap[Permission](Permission.fromBinString(_).get)(_.toBinString)
 
   implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumString[RoleCategory](
     name = "ROLE_CATEGORY",

@@ -19,7 +19,7 @@ class DownloadWarningsTable(tag: Tag) extends ModelTable[DownloadWarning](tag, "
   def isConfirmed = column[Boolean]("is_confirmed")
 
   override def * =
-    mkProj((id.?, createdAt.?, expiration, token, versionId, address, isConfirmed, downloadId.?))(
-      mkTuple[DownloadWarning]()
-    )
+    (id.?, createdAt.?, (expiration, token, versionId, address, isConfirmed, downloadId.?)) <> (mkApply(
+      (DownloadWarning.apply _).tupled
+    ), mkUnapply(DownloadWarning.unapply))
 }

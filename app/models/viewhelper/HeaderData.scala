@@ -4,13 +4,12 @@ import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
-import db.{DbRef, ModelService}
+import db.{Model, DbRef, ModelService}
 import models.project.{ReviewState, Visibility}
 import models.user.User
 import ore.permission._
 import ore.permission.scope.GlobalScope
 
-import cats.Parallel
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import slick.lifted.TableQuery
@@ -19,8 +18,8 @@ import slick.lifted.TableQuery
   * Holds global user specific data - When a User is not authenticated a dummy is used
   */
 case class HeaderData(
-    currentUser: Option[User] = None,
-    private val globalPermissions: Map[Permission, Boolean] = Map.empty,
+    currentUser: Option[Model[User]] = None,
+    globalPermissions: Permission = Permission.None,
     hasNotice: Boolean = false,
     hasUnreadNotifications: Boolean = false,
     unresolvedFlags: Boolean = false,
@@ -35,30 +34,14 @@ case class HeaderData(
 
   def isCurrentUser(userId: DbRef[User]): Boolean = currentUser.map(_.id.value).contains(userId)
 
-  def globalPerm(perm: Permission): Boolean = globalPermissions.getOrElse(perm, false)
+  def globalPerm(perm: Permission): Boolean = globalPermissions.has(perm)
 }
 
 object HeaderData {
 
-  private val globalPerms = Seq(
-    ReviewFlags,
-    ReviewVisibility,
-    ReviewProjects,
-    ViewStats,
-    ViewHealth,
-    ViewLogs,
-    HideProjects,
-    HardRemoveProject,
-    HardRemoveVersion,
-    UserAdmin,
-    HideProjects
-  )
+  val unAuthenticated: HeaderData = HeaderData()
 
-  val noPerms: Map[Permission, Boolean] = globalPerms.map(_ -> false).toMap
-
-  val unAuthenticated: HeaderData = HeaderData(None, noPerms)
-
-  def cacheKey(user: User) = s"""user${user.id.value}"""
+  def cacheKey(user: Model[User]) = s"""user${user.id}"""
 
   def of[A](request: Request[A])(
       implicit service: ModelService,
@@ -81,7 +64,7 @@ object HeaderData {
     }
   }
 
-  private def projectApproval(user: User) =
+  private def projectApproval(user: Model[User]) =
     TableQuery[ProjectTableMain]
       .filter(p => p.userId === user.id.value && p.visibility === (Visibility.NeedsApproval: Visibility))
       .exists
@@ -92,15 +75,16 @@ object HeaderData {
   private val flagQueue: Rep[Boolean] = TableQuery[FlagTable].filter(_.isResolved === false).exists
 
   private def getHeaderData(
-      user: User
-  )(implicit service: ModelService, cs: ContextShift[IO]) = {
-    perms(user).flatMap { perms =>
+      user: Model[User]
+  )(implicit service: ModelService) = {
+    user.permissionsIn(GlobalScope).flatMap { perms =>
       val query = Query.apply(
         (
           TableQuery[NotificationTable].filter(n => n.userId === user.id.value && !n.read).exists,
-          if (perms(ReviewFlags)) flagQueue else false.bind,
-          if (perms(ReviewVisibility)) projectApproval(user) else false.bind,
-          if (perms(ReviewProjects)) reviewQueue else false.bind
+          if (perms.has(Permission.ModNotesAndFlags)) flagQueue else false.bind,
+          if (perms.has(Permission.ModNotesAndFlags ++ Permission.SeeHidden)) projectApproval(user)
+          else false.bind,
+          if (perms.has(Permission.Reviewer)) reviewQueue else false.bind
         )
       )
 
@@ -118,9 +102,4 @@ object HeaderData {
       }
     }
   }
-
-  def perms(user: User)(implicit service: ModelService, cs: ContextShift[IO]): IO[Map[Permission, Boolean]] =
-    Parallel.parMap2(user.trustIn(GlobalScope), user.globalRoles.allFromParent(user))(
-      (t, r) => user.can.asMap(t, r.toSet)(globalPerms: _*)
-    )
 }

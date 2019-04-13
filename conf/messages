@@ -222,6 +222,8 @@ org.plural          =   Organizations
 
 version                         =   Version
 version.description             =   Description
+version.filename                =   File name
+version.fileSize                =   File size
 version.delete.cannotLast       =   Every project must have at least one version
 version.delete.alreadyDeleted   =   This version has already been deleted
 version.dependency.notOnOre     =   This plugin is not available for download on Ore
@@ -257,15 +259,17 @@ version.download.confirm.download               =   Download it at my own risk
 version.download.confirm.body.api = \
   This version has not been reviewed by our moderation staff and may not be safe for download.\n\
   Disclaimer: We disclaim all responsibility for any harm to your server or system should you choose not to heed this \
-  warning.\n\
-  Please POST to the attached link to acknowledge this disclaimer and continue to the download.
+  warning.
 
-version.download.confirmPartial.body.api = \
+version.download.confirmPartial.api = \
   This version has only been partially reviewed by our moderation staff and may not be safe for download.\
   While the core plugin has been reviewed, other resources like shaded libraries have not. \n\
   Disclaimer: We disclaim all responsibility for any harm to your server or system should you choose not to heed this \
-  warning.\n\
-  Please POST to the attached link to acknowledge this disclaimer and continue to the download.
+  warning.
+
+version.download.confirm.curl = \
+  Please POST to the attached link to acknowledge this disclaimer and continue to the download. \
+  curl -O -J -L -d -X "{0}&csrfToken={1}"
 
 version.download.confirm.wget = Sorry, but Ore does not support the use of wget. \
   Please use the following curl instead:\n\

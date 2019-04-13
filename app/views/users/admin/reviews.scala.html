@@ -3,8 +3,9 @@
 @import models.project.{Project, ReviewState, Version}
 @import ore.OreConfig
 @import util.StringUtils._
+@import db.Model
 @import views.html.helper.CSPNonce
-@(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Review, Option[String])], project: Project, version: Version)(implicit messages: Messages,
+@(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Model[Review], Option[String])], project: Project, version: Model[Version])(implicit messages: Messages,
         request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -26,7 +27,7 @@
                 <a href="@routes.Users.showProjects(project.ownerName, None)">
                     <strong>@project.ownerName</strong>
                 </a>
-                released this version on @prettifyDate(version.createdAt.value)
+                released this version on @prettifyDate(version.createdAt)
             </p>
             @if(!version.reviewState.isChecked) {
                 <div class="pull-right">
@@ -91,7 +92,7 @@
                     @defining((t._1, t._2)) { case (item, name) =>
                         @if(item.endedAt.isDefined) {
                             @if(reviews.size > (reviews.size - index)) {
-                                @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt.value))) {
+                                @if(prettifyDateAndTime(item.endedAt.get).equalsIgnoreCase(prettifyDateAndTime(reviews.reverse(reviews.size - index - 1)._1.createdAt))) {
                                     <tr>
                                         <td>@prettifyDateAndTime(item.endedAt.get)</td>
                                         <td>
@@ -174,7 +175,7 @@
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-default">@messages("general.cancel")</button>
-                    <button class="btn btn-review-stop-submit btn-primary"><i class="fas fa-times-circle-o"></i> @messages("review.stop")</button>
+                    <button class="btn btn-review-stop-submit btn-primary"><i class="fas fa-stop-circle"></i> @messages("review.stop")</button>
                 </div>
             </div>
         </div>

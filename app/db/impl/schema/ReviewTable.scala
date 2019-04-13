@@ -18,5 +18,8 @@ class ReviewTable(tag: Tag) extends ModelTable[Review](tag, "project_version_rev
   def endedAt   = column[Timestamp]("ended_at")
   def comment   = column[JsValue]("comment")
 
-  override def * = mkProj((id.?, createdAt.?, versionId, userId, endedAt.?, comment))(mkTuple[Review]())
+  override def * =
+    (id.?, createdAt.?, (versionId, userId, endedAt.?, comment)) <> (mkApply((Review.apply _).tupled), mkUnapply(
+      Review.unapply
+    ))
 }

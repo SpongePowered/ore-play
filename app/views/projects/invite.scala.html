@@ -7,7 +7,9 @@
 @import ore.permission.role.RoleCategory
 @import views.html.helper.{CSRF, form}
 @import models.project.Project
-@(owner: User, pending: Project, userList: List[User], registeredUsers: Int)(implicit messages: Messages, request: OreRequest[_],
+@import db.Model
+
+@(owner: User, pending: Project, userList: List[Model[User]], registeredUsers: Int)(implicit messages: Messages, request: OreRequest[_],
         config: OreConfig, flash: Flash)
 
 @projects.helper.panelCreate(messages("project.create"), 3) {

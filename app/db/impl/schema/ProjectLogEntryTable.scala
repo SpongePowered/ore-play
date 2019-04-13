@@ -16,5 +16,7 @@ class ProjectLogEntryTable(tg: Tag) extends ModelTable[ProjectLogEntry](tg, "pro
   def lastOccurrence = column[Timestamp]("last_occurrence")
 
   override def * =
-    mkProj((id.?, createdAt.?, logId, tag, message, occurrences, lastOccurrence))(mkTuple[ProjectLogEntry]())
+    (id.?, createdAt.?, (logId, tag, message, occurrences, lastOccurrence)) <> (mkApply(
+      (ProjectLogEntry.apply _).tupled
+    ), mkUnapply(ProjectLogEntry.unapply))
 }

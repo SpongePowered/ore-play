@@ -1,8 +1,11 @@
 package db.query
 
+import java.sql.Timestamp
+import java.time.LocalDate
+
 import scala.concurrent.duration.FiniteDuration
 
-import db.DbRef
+import db.{DbRef, Model}
 import models.admin.LoggedActionViewModel
 import models.project.{Page, Project, ReviewState, Version}
 import models.querymodels._
@@ -11,6 +14,7 @@ import ore.project.{Category, ProjectSortingStrategy}
 
 import cats.syntax.all._
 import doobie._
+import doobie.implicits._
 import doobie.implicits._
 
 object AppQueries extends DoobieOreProtocol {
@@ -125,7 +129,8 @@ object AppQueries extends DoobieOreProtocol {
           |                 LEFT JOIN project_version_reviews r ON v.id = r.version_id
           |                 LEFT JOIN users ru ON ru.id = r.user_id
           |          WHERE v.review_state = $reviewStateId
-          |            AND p.visibility != 5) sq
+          |            AND p.visibility != 5
+          |            AND v.visibility != 5) sq
           |  WHERE row = 1
           |  ORDER BY sq.project_name DESC, sq.version_string DESC""".stripMargin.query[UnsortedQueueEntry]
   }
@@ -177,21 +182,21 @@ object AppQueries extends DoobieOreProtocol {
           |  LIMIT 20""".stripMargin.query[FlagActivity]
   }
 
-  def getStats(skippedDays: Int, daysBack: Int): Query0[Stats] = {
-    sql"""|SELECT (SELECT COUNT(*) FROM project_version_reviews WHERE CAST(ended_at AS DATE) = day)            AS review_count,
-          |       (SELECT COUNT(*) FROM project_versions WHERE CAST(created_at AS DATE) = day)                 AS created_projects,
-          |       (SELECT COUNT(*) FROM project_version_downloads WHERE CAST(created_at AS DATE) = day)        AS download_count,
+  def getStats(startDate: LocalDate, endDate: LocalDate): Query0[Stats] = {
+    sql"""|SELECT (SELECT COUNT(*) FROM project_version_reviews WHERE CAST(ended_at AS DATE) = day)     AS review_count,
+          |       (SELECT COUNT(*) FROM project_versions WHERE CAST(created_at AS DATE) = day)          AS created_projects,
+          |       (SELECT COUNT(*) FROM project_version_downloads WHERE CAST(created_at AS DATE) = day) AS download_count,
           |       (SELECT COUNT(*)
           |          FROM project_version_unsafe_downloads
-          |          WHERE CAST(created_at AS DATE) = day)                                                     AS unsafe_download_count,
+          |          WHERE CAST(created_at AS DATE) = day)                                              AS unsafe_download_count,
           |       (SELECT COUNT(*)
           |          FROM project_flags
           |          WHERE CAST(created_at AS DATE) <= day
-          |            AND (CAST(resolved_at AS DATE) >= day OR resolved_at IS NULL))                          AS flags_created,
-          |       (SELECT COUNT(*) FROM project_flags WHERE CAST(resolved_at AS DATE) = day)                   AS flags_resolved,
+          |            AND (CAST(resolved_at AS DATE) >= day OR resolved_at IS NULL))                   AS flags_created,
+          |       (SELECT COUNT(*) FROM project_flags WHERE CAST(resolved_at AS DATE) = day)            AS flags_resolved,
           |       CAST(day AS DATE)
-          |  FROM (SELECT CURRENT_DATE - (INTERVAL '1 day' * generate_series($skippedDays :: INT, $daysBack :: INT)) AS day) dates
-          |  ORDER BY day ASC""".stripMargin.query[Stats]
+          |  FROM (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
+          |  ORDER BY day ASC;""".stripMargin.query[Stats]
   }
 
   def getLog(
@@ -202,7 +207,7 @@ object AppQueries extends DoobieOreProtocol {
       pageFilter: Option[DbRef[Page]],
       actionFilter: Option[Int],
       subjectFilter: Option[DbRef[_]]
-  ): Query0[LoggedActionViewModel[Any]] = {
+  ): Query0[Model[LoggedActionViewModel[Any]]] = {
     val pageSize = 50L
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
@@ -216,7 +221,7 @@ object AppQueries extends DoobieOreProtocol {
       subjectFilter.map(id => fr"la.filter_subject = $id")
     ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
 
-    frags.query[LoggedActionViewModel[Any]]
+    frags.query[Model[LoggedActionViewModel[Any]]]
   }
 
   val getVisibilityNeedsApproval: Query0[ProjectNeedsApproval] = {

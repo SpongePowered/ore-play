@@ -1,10 +1,10 @@
 package models.viewhelper
 
-import db.ModelService
-import models.project.Project
+import db.access.ModelView
+import db.{Model, ModelService}
+import models.project.{Flag, Project}
 import models.user.User
-import ore.permission._
-import util.syntax._
+import ore.permission.{Permission, _}
 
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
@@ -14,35 +14,33 @@ import cats.syntax.all._
   */
 object ScopedProjectData {
 
-  def cacheKey(project: Project, user: User) = s"""project${project.id.value}foruser${user.id.value}"""
+  def cacheKey(project: Model[Project], user: Model[User]) = s"""project${project.id}foruser${user.id}"""
 
   def of(
-      currentUser: Option[User],
-      project: Project
+      currentUser: Option[Model[User]],
+      project: Model[Project]
   )(implicit service: ModelService, cs: ContextShift[IO]): IO[ScopedProjectData] = {
     currentUser
       .map { user =>
         (
-          project.owner.user
-            .flatMap(_.toMaybeOrganization.value)
-            .flatMap(orgaOwner => user.can(PostAsOrganization) in orgaOwner),
-          user.hasUnresolvedFlagFor(project),
-          project.stars.contains(user, project),
-          project.watchers.contains(project, user),
-          user.trustIn(project),
-          user.globalRoles.allFromParent(user)
+          user.hasUnresolvedFlagFor(project, ModelView.now(Flag)),
+          project.stars.contains(user),
+          project.watchers.contains(user),
+          user.permissionsIn(project)
         ).parMapN {
           case (
-              canPostAsOwnerOrga,
               uProjectFlags,
               starred,
               watching,
-              projectTrust,
-              globalRoles
+              projectPerms
               ) =>
-            val perms   = EditPages :: EditSettings :: EditChannels :: EditVersions :: UploadVersions :: ReviewProjects :: Nil
-            val permMap = user.can.asMap(projectTrust, globalRoles.toSet)(perms: _*)
-            ScopedProjectData(canPostAsOwnerOrga, uProjectFlags, starred, watching, permMap)
+            ScopedProjectData(
+              projectPerms.has(Permission.PostAsOrganization),
+              uProjectFlags,
+              starred,
+              watching,
+              projectPerms
+            )
         }
       }
       .getOrElse(IO.pure(noScope))
@@ -56,9 +54,9 @@ case class ScopedProjectData(
     uProjectFlags: Boolean = false,
     starred: Boolean = false,
     watching: Boolean = false,
-    permissions: Map[Permission, Boolean] = Map.empty
+    permissions: Permission = Permission.None
 ) {
 
-  def perms(perm: Permission): Boolean = permissions.getOrElse(perm, false)
+  def perms(perm: Permission): Boolean = permissions.has(perm)
 
 }

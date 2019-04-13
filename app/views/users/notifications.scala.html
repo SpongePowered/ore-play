@@ -7,7 +7,9 @@
 
 @import cats.data.{NonEmptyList => NEL}
 
-@(notifications: Seq[(Notification, User)], invites: Seq[(UserRoleModel, Visitable)], notificationFilter: NotificationFilter,
+@import db.Model
+
+@(notifications: Seq[(Model[Notification], User)], invites: Seq[(Model[UserRoleModel[_]], Visitable)], notificationFilter: NotificationFilter,
         inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @notificationFilterOption(option: NotificationFilter) = @{
@@ -78,13 +80,15 @@
                     <ul class="list-group">
                     @notifications.map { case (notification, origin) =>
                     <li class="list-group-item notification" data-action="@notification.action.getOrElse("none")"
-                    data-id="@notification.id.value">
+                    data-id="@notification.id">
 
                         @userAvatar(Some(origin.name), origin.avatarUrl, clazz = "user-avatar-s")
                         @formatNotification(notification)
 
                         @if(!notification.isRead) {
-                            <i class="btn-mark-read minor pull-right fas fa-lg fa-check"></i>
+                            <span class="btn-mark-read">
+                                <i class="minor pull-right fas fa- sm fa-check"></i>
+                            </span>
                         }
                     </li>
                     }
@@ -111,7 +115,7 @@
                 </div>
             </div>
             <div class="row">
-                    <!-- Invites content -->
+                <!-- Invites content -->
                 <div class="col-xs-12">
 
                 @for(((invite, subject), i) <- invites.zipWithIndex) {
@@ -120,7 +124,7 @@
                         }
 
                     <div class="invite col-xs-12 col-md-6">
-                        <div class="invite-content" data-id="@invite.id.value"
+                        <div class="invite-content" data-id="@invite.id"
                         data-type="@subject.getClass.getSimpleName.toLowerCase">
                             <span class="minor">
                                 <i class="dismiss pull-left fas fa-times" style="display: none;"></i>

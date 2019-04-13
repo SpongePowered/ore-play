@@ -2,10 +2,8 @@ package models.project
 
 import scala.collection.immutable
 
-import db.ModelFilter
-import db.ModelFilter._
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Hideable
+import db.impl.table.common.VisibilityColumn
 
 import enumeratum.values._
 
@@ -27,6 +25,5 @@ object Visibility extends IntEnum[Visibility] {
 
   def isPublic(visibility: Visibility): Boolean = visibility == Public
 
-  def isPublicFilter[H <: Hideable]: H#T => Rep[Boolean] =
-    ModelFilter[H](_.visibility === (Public: Visibility))
+  def isPublicFilter[T <: VisibilityColumn[_]]: T => Rep[Boolean] = _.visibility === (Public: Visibility)
 }

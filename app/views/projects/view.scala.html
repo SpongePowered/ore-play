@@ -7,16 +7,21 @@ Base template for Project overview.
 @import models.project.Visibility
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.permission.{EditPages, EditSettings, ReviewFlags, ViewLogs}
 @import ore.project.FlagReason
 @import views.html.helper.{CSRF, form}
 @import views.html.helper.CSPNonce
+@import ore.permission.Permission
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig)
 
 @appRoutes = @{controllers.routes.Application}
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDetail.js")"></script>
+    <script @CSPNonce.attr>
+            var projectOwner = "@p.project.ownerName";
+            var projectSlug = "@p.project.slug";
+            var alreadyStarred = @sp.starred;
+    </script>
     @additionalScripts
 }
 
@@ -38,7 +43,7 @@ Base template for Project overview.
                 <div class="col-xs-12">
                     <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
                     @if(p.visibility == Visibility.NeedsChanges) {
-                        @if(sp.perms(EditPages)) {
+                        @if(sp.perms(Permission.EditPage)) {
                             <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                         }
                         <strong>@messages("visibility.notice." + p.visibility.nameKey)</strong>
@@ -103,7 +108,7 @@ Base template for Project overview.
                                 </li>
                             }
 
-                            @if(sp.perms(EditSettings)) {
+                            @if(sp.perms(Permission.EditProjectSettings)) {
                                 @* Show manager if permitted *@
                                 <li id="settings" class="">
                                     <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
@@ -145,12 +150,6 @@ Base template for Project overview.
 
                         @if(!p.project.isDeleted) {
                             @if(request.currentUser.exists(u => !p.project.isOwner(u))) {
-                                <script @CSPNonce.attr>
-                                        var projectOwner = "@p.project.ownerName";
-                                        var projectSlug = "@p.project.slug";
-                                        var alreadyStarred = @sp.starred;
-                                </script>
-
                                 <button class="btn btn-default btn-star">
                                     <i id="icon-star" @if(sp.starred) {
                                         class="fas fa-star"
@@ -240,25 +239,25 @@ Base template for Project overview.
                             </div>
                         }
 
-                        @if(request.hasUser && (request.headerData.globalPerm(ReviewFlags) || request.headerData.globalPerm(ViewLogs))) {
+                        @if(request.hasUser && (request.headerData.globalPerm(Permission.ModNotesAndFlags) || request.headerData.globalPerm(Permission.ViewLogs))) {
                             <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                                 Admin actions
                                 <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu" aria-labelledby="admin-actions">
-                                @if(request.headerData.globalPerm(ReviewFlags)) {
+                                @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
                                     <li><a href="@Projects.showFlags(p.project.ownerName, p.project.slug)">
                                         Flag history (@p.flagCount) </a></li>
                                 }
-                                @if(request.headerData.globalPerm(ReviewFlags)) {
+                                @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
                                     <li><a href="@Projects.showNotes(p.project.ownerName, p.project.slug)">
                                         Staff notes (@p.noteCount) </a></li>
                                 }
-                                @if(request.headerData.globalPerm(ViewLogs)) {
-                                    <li><a href="@appRoutes.showLog(None, None, Some(p.project.id.value), None, None, None, None)">
+                                @if(request.headerData.globalPerm(Permission.ViewLogs)) {
+                                    <li><a href="@appRoutes.showLog(None, None, Some(p.project.id), None, None, None, None)">
                                         User Action Logs</a></li>
                                 }
-                                @if(request.headerData.globalPerm(ViewLogs)) {
+                                @if(request.headerData.globalPerm(Permission.ViewLogs)) {
                                     <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
                                         System Logs (@p.projectLogSize) </a></li>
                                 }

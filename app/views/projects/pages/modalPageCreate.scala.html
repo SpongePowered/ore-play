@@ -1,7 +1,8 @@
 @import models.project.{Page, Project}
 @import ore.OreConfig
+@import db.Model
 @import views.html.helper.CSPNonce
-@(model: Project, rootPages: Seq[Page])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
+@(model: Project, rootPages: Seq[Model[Page]])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
 
 <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pageEdit.js")"></script>
 <script @CSPNonce.attr>
@@ -43,7 +44,7 @@
                         <select class="form-control select-parent">
                             <option selected value="-1">&lt;none&gt;</option>
                             @rootPages.filter(_.name != Page.homeName).map { page =>
-                              <option value="@page.id.value" data-slug="@page.slug">@page.name</option>
+                              <option value="@page.id" data-slug="@page.slug">@page.name</option>
                             }
                         </select>
                     </div>

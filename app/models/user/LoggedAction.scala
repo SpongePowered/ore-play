@@ -1,21 +1,24 @@
 package models.user
 
+import scala.language.higherKinds
+
 import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.schema.LoggedActionTable
-import db.{DbRef, InsertFunc, Model, ModelQuery, ModelService, ObjId, ObjectTimestamp}
+import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
 import ore.StatTracker
 import ore.user.UserOwned
 
-import cats.effect.IO
+import cats.{Monad, ~>}
+import cats.effect.{Clock, IO}
+import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
+import slick.dbio.DBIO
 import slick.lifted.TableQuery
 
-case class LoggedActionModel[Ctx](
-    id: ObjId[LoggedActionModel[Ctx]],
-    createdAt: ObjectTimestamp,
+case class LoggedActionModel[Ctx] private (
     userId: DbRef[User],
     address: InetString,
     action: LoggedAction[Ctx],
@@ -23,30 +26,12 @@ case class LoggedActionModel[Ctx](
     actionContextId: DbRef[Ctx],
     newState: String,
     oldState: String
-) extends Model {
-
-  override type T = LoggedActionTable[Ctx]
-  override type M = LoggedActionModel[Ctx]
-}
-object LoggedActionModel {
-
-  def partial[Ctx](
-      userId: DbRef[User],
-      address: InetString,
-      action: LoggedAction[Ctx],
-      actionContext: LoggedActionContext[Ctx],
-      actionContextId: DbRef[Ctx],
-      newState: String,
-      oldState: String
-  ): InsertFunc[LoggedActionModel[Ctx]] =
-    (id, time) =>
-      LoggedActionModel(id, time, userId, address, action, actionContext, actionContextId, newState, oldState)
+)
+object LoggedActionModel
+    extends DefaultModelCompanion[LoggedActionModel[Any], LoggedActionTable[Any]](TableQuery[LoggedActionTable[Any]]) {
 
   implicit def query[Ctx]: ModelQuery[LoggedActionModel[Ctx]] =
-    ModelQuery.from[LoggedActionModel[Ctx]](
-      TableQuery[LoggedActionTable[Ctx]],
-      (obj, _, time) => obj.copy(createdAt = time)
-    )
+    ModelQuery.from(this).asInstanceOf[ModelQuery[LoggedActionModel[Ctx]]]
 
   implicit val isUserOwned: UserOwned[LoggedActionModel[_]] = (a: LoggedActionModel[_]) => a.userId
 }
@@ -151,10 +136,10 @@ object UserActionLogger {
       actionContextId: DbRef[Ctx],
       newState: String,
       oldState: String
-  )(implicit service: ModelService): IO[LoggedActionModel[Ctx]] =
+  )(implicit service: ModelService): IO[Model[LoggedActionModel[Ctx]]] =
     service.insert(
-      LoggedActionModel.partial(
-        request.user.id.value,
+      LoggedActionModel(
+        request.user.id,
         InetString(StatTracker.remoteAddress(request)),
         action,
         action.context,
@@ -163,5 +148,25 @@ object UserActionLogger {
         oldState
       )
     )
+
+  def logF[Ctx, F[_]: Monad: Clock](
+      request: AuthRequest[_],
+      action: LoggedAction[Ctx],
+      actionContextId: DbRef[Ctx],
+      newState: String,
+      oldState: String
+  )(runDBIO: DBIO ~> F): F[Model[LoggedActionModel[Ctx]]] = {
+    LoggedActionModel.insert(
+      LoggedActionModel(
+        request.user.id,
+        InetString(StatTracker.remoteAddress(request)),
+        action,
+        action.context,
+        actionContextId,
+        newState,
+        oldState
+      ).asInstanceOf[LoggedActionModel[Any]]
+    )(runDBIO)
+  }.map(_.asInstanceOf[Model[LoggedActionModel[Ctx]]])
 
 }

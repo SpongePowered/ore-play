@@ -5,23 +5,23 @@
 @import models.user.User
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
-@import ore.permission.EditSettings
 @import ore.permission.role.Role
 @import views.html.projects.{list => projectList}
 @import views.html.utils.userAvatar
 @import models.querymodels.ProjectListEntry
+@import ore.permission.Permission
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry], starred: Seq[(Project, Option[Version])],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
-@canEditOrgSettings = @{
+@canEditOrgMembers = @{
     u.isOrga &&
     o.exists { case (_, scopedData) =>
-        scopedData.permissions.getOrElse(EditSettings, false)
+        scopedData.permissions.has(Permission.ManageOrganizationMembers)
     }
 }
 
 @scripts = {
-  @if(u.isOrga && o.isDefined && canEditOrgSettings) {
+  @if(u.isOrga && o.isDefined && canEditOrgMembers) {
       <script type="text/javascript" src="@routes.Assets.versioned("javascripts/orgInvites.js")"></script>
   }
 }
@@ -39,7 +39,7 @@
         </div>
 
         <div class="col-md-4">
-            @if(u.isOrga && o.isDefined && canEditOrgSettings) {
+            @if(u.isOrga && o.isDefined && canEditOrgMembers) {
                 <div class="panel-stars panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("project.manager")</h3>

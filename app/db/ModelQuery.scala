@@ -2,8 +2,10 @@ package db
 
 import slick.lifted.Query
 
-trait ModelQuery[A <: Model] {
-  def baseQuery: Query[A#T, A, Seq]
+trait ModelQuery[A] {
+  val companion: ModelCompanion[A]
+
+  def baseQuery: Query[companion.T, Model[A], Seq] = companion.baseQuery
 
   /**
     * Returns a copy of this model with an updated ID and timestamp.
@@ -12,15 +14,13 @@ trait ModelQuery[A <: Model] {
     * @param theTime  Timestamp
     * @return         Copy of model
     */
-  def copyWith(model: A)(id: ObjId[A], theTime: ObjectTimestamp): A
+  def asDbModel(model: A)(id: ObjId[A], theTime: ObjTimestamp): Model[A] = companion.asDbModel(model, id, theTime)
 }
 object ModelQuery {
-  def apply[A <: Model](implicit query: ModelQuery[A]): ModelQuery[A] = query
+  def apply[A](implicit query: ModelQuery[A]): ModelQuery[A] = query
 
-  def from[A <: Model](query: Query[A#T, A, Seq], copy: (A, ObjId[A], ObjectTimestamp) => A): ModelQuery[A] =
+  def from[A](model: ModelCompanion[A]): ModelQuery[A] =
     new ModelQuery[A] {
-      override def baseQuery = query
-
-      override def copyWith(model: A)(id: ObjId[A], theTime: ObjectTimestamp): A = copy(model, id, theTime)
+      override val companion: ModelCompanion[A] = model
     }
 }

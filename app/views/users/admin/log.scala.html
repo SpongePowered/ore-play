@@ -10,7 +10,8 @@
 @import ore.OreConfig
 @import util.StringUtils._
 
-@(actions: Seq[LoggedActionViewModel[_]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
+@import db.Model
+@(actions: Seq[Model[LoggedActionViewModel[_]]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],
         actionFilter: Option[Int], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
@@ -75,7 +76,7 @@
                                 @if(canViewIP) {
                                     <td>@action.address.value</td>
                                 }
-                                <td>@prettifyDateAndTime(action.createdAt.value)</td>
+                                <td>@prettifyDateAndTime(action.createdAt)</td>
                                 <td>
                                     @action.action
                                 <small class="filter-action">(<a href="@appRoutes.showLog(Some(page), userFilter, projectFilter, versionFilter, pageFilter, Some(action.action.value), subjectFilter)">@action.action.value</a>)</small>
