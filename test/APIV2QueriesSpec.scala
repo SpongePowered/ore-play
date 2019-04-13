@@ -2,6 +2,7 @@ import play.api.Configuration
 
 import db.query.APIV2Queries
 import ore.OreConfig
+import ore.permission.Permission
 import ore.project.Category
 
 import org.junit.runner.RunWith
@@ -13,6 +14,18 @@ class APIV2QueriesSpec extends DbSpec {
   implicit val config: OreConfig = new OreConfig(
     Configuration.load(getClass.getClassLoader, System.getProperties, Map.empty, allowMissingApplicationConf = false)
   )
+
+  test("FindApiKey") {
+    check(APIV2Queries.findApiKey("Foo", "Bar"))
+  }
+
+  test("CreateApiKey") {
+    check(APIV2Queries.createApiKey("Foo", 0L, "Bar", "Baz", Permission.None))
+  }
+
+  test("DeleteApiKey") {
+    check(APIV2Queries.deleteApiKey("Foo", 0L))
+  }
 
   /* Uses views
   test("ProjectQuery") {
