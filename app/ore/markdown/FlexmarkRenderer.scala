@@ -48,14 +48,13 @@ class FlexmarkRenderer @Inject()(config: OreConfig) extends MarkdownRenderer {
     )
 
   private val markdownParser = Parser.builder(options).build()
+  private val htmlRenderer = HtmlRenderer
+    .builder(options)
+    .linkResolverFactory(new FlexmarkRenderer.ExternalLinkResolver.Factory(config))
+    .build()
 
   override def render(s: String, settings: MarkdownRenderer.RenderSettings): Html = {
     val options = new MutableDataSet(this.options)
-
-    val htmlRenderer = HtmlRenderer
-      .builder(options)
-      .linkResolverFactory(new FlexmarkRenderer.ExternalLinkResolver.Factory(config))
-      .build()
 
     settings.linkEscapeChars.foreach { chars =>
       options.set[String](WikiLinkExtension.LINK_ESCAPE_CHARS, chars)
@@ -65,7 +64,7 @@ class FlexmarkRenderer @Inject()(config: OreConfig) extends MarkdownRenderer {
       options.set[String](WikiLinkExtension.LINK_PREFIX, prefix)
     }
 
-    Html(htmlRenderer.render(markdownParser.parse(s)))
+    Html(htmlRenderer.withOptions(options).render(markdownParser.parse(s)))
   }
 }
 object FlexmarkRenderer {
