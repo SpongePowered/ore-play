@@ -177,8 +177,6 @@ object UserQueries extends DoobieOreProtocol {
           |       u.tagline,
           |       u.join_date,
           |       u.read_prompts,
-          |       u.pgp_pub_key,
-          |       u.last_pgp_pub_key_update,
           |       u.is_locked,
           |       u.language,
           |       ak.name,
