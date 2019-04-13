@@ -40,5 +40,17 @@ class UserQueriesSpec extends DbSpec {
   test("OrganizationTrust") {
     check(UserQueries.organizationTrust(0L, 0L))
   }
- */
+   */
+
+  test("GetApiAuthInfo") {
+    check(UserQueries.getApiAuthInfo(""))
+  }
+
+  test("AllPossibleProjectPermissions") {
+    check(UserQueries.allPossibleProjectPermissions(0L))
+  }
+
+  test("AllPossibleOrgPermissions") {
+    check(UserQueries.allPossibleOrgPermissions(0L))
+  }
 }

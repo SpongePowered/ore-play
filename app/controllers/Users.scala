@@ -12,7 +12,7 @@ import controllers.sugar.Bakery
 import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.UserBase.UserOrdering
-import db.impl.schema.{ApiKeyTable, UserTable}
+import db.impl.schema.{ApiKeyTable, DbRoleTable, ProjectRoleTable, UserTable}
 import db.query.UserQueries
 import db.{DbRef, Model, ModelService}
 import form.OreForms
@@ -20,7 +20,7 @@ import mail.{EmailFactory, Mailer}
 import models.project.Version
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
-import ore.permission.Permission
+import ore.permission.{NamedPermission, Permission}
 import ore.permission.role.Role
 import ore.project.ProjectSortingStrategy
 import ore.user.notification.{InviteFilter, NotificationFilter}
@@ -30,7 +30,7 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.OreMDC
 import views.{html => views}
 
-import cats.data.EitherT
+import cats.data.{EitherT, OptionT}
 import cats.effect.{IO, Timer}
 import cats.instances.list._
 import cats.syntax.all._
@@ -364,12 +364,17 @@ class Users @Inject()(
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2
+          totalPerms <- (
+            service.runDbCon(UserQueries.allPossibleProjectPermissions(request.user.id).unique),
+            service.runDbCon(UserQueries.allPossibleOrgPermissions(request.user.id).unique)
+          ).parMapN(_.add(_).add(userData.userPerm))
         } yield
           Ok(
             views.users.apiKeys(
               userData,
               orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-              Model.unwrapNested(keys)
+              Model.unwrapNested(keys),
+              totalPerms.toNamedSeq
             )
           )
       } else IO.pure(Forbidden)

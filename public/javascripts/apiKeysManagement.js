@@ -1,6 +1,6 @@
-function deleteKey(token, row) {
+function deleteKey(name, row) {
     return function () {
-        apiV2Request('keys', 'DELETE', {key: token}).then(function () {
+        apiV2Request('keys?name=' + name, 'DELETE').then(function () {
             row.remove();
         });
     }
@@ -9,8 +9,8 @@ function deleteKey(token, row) {
 $(function () {
     $('.api-key-row').each(function () {
         var row = $(this);
-        var token = row.find('.api-key-row-token').text();
-        row.find('.api-key-row-delete-button').click(deleteKey(token, row));
+        var name = row.find('.api-key-name').text();
+        row.find('.api-key-row-delete-button').click(deleteKey(name, row));
     });
 
     $('#button-create-new-key').click(function () {
@@ -21,11 +21,12 @@ $(function () {
         var name = $('#keyName').val();
 
         if (checked.length === 0) {
-            console.log("No perms checked")
+            //TODO: Display error alert
         } else {
             var hasName = name.length !== 0;
             if (!hasName) {
-                name = null;
+                //TODO: Display error alert
+                return;
             }
 
             var data = {
@@ -45,10 +46,11 @@ $(function () {
                 var row = $('<tr>');
                 var token = newKey.key;
 
-                row.append($('<th>').text(hasName ? name : '<Unknown name>'));
-                row.append($('<th>').addClass('api-key-row-token').text(token));
+                row.append($('<th>').text(name));
+                row.append($('<th>').text(token));
+                row.append($('<th>'));
                 row.append($('<th>').text(namedPerms));
-                row.append($('<th>').append($('<button>').addClass('btn btn-danger api-key-row-delete-button').text('Delete key').click(deleteKey(token, row))));
+                row.append($('<th>').append($('<button>').addClass('btn btn-danger api-key-row-delete-button').text('Delete key').click(deleteKey(name, row))));
 
                 $('#api-key-rows:last-child').append(row);
             })

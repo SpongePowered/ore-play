@@ -3,10 +3,12 @@ CREATE TABLE api_keys
 (
     id                  BIGSERIAL PRIMARY KEY NOT NULL,
     created_at          TIMESTAMP             NOT NULL,
-    name                VARCHAR(255),
+    name                VARCHAR(255)          NOT NULL,
     owner_id            BIGINT                NOT NULL REFERENCES users,
-    token               VARCHAR(255)          NOT NULL UNIQUE,
-    raw_key_permissions BIT(64)               NOT NULL
+    token_identifier    VARCHAR(255)          NOT NULL UNIQUE,
+    token               TEXT                  NOT NULL,
+    raw_key_permissions BIT(64)               NOT NULL,
+    UNIQUE (owner_id, name)
 );
 
 CREATE TABLE api_sessions
@@ -14,7 +16,7 @@ CREATE TABLE api_sessions
     id         BIGSERIAL PRIMARY KEY NOT NULL,
     created_at TIMESTAMP             NOT NULL,
     token      VARCHAR(255)          NOT NULL,
-    key_id     BIGINT REFERENCES api_keys,
+    key_id     BIGINT REFERENCES api_keys ON DELETE CASCADE,
     user_id    BIGINT REFERENCES users,
     expires    TIMESTAMP             NOT NULL
 );
