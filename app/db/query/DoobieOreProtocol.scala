@@ -242,7 +242,9 @@ trait DoobieOreProtocol {
   implicit val userModelOptRead: Read[Option[Model[User]]] =
     Read[Option[ObjId[User]] :: Option[ObjTimestamp] :: Option[String] :: Option[String] :: Option[String] :: Option[
       String
-    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[Boolean] :: Option[Lang] :: HNil].map {
+    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[Boolean] :: Option[
+      Lang
+    ] :: HNil].map {
       case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: Some(
             isLocked
           ) :: lang :: HNil =>

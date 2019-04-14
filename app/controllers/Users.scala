@@ -17,7 +17,8 @@ import db.query.UserQueries
 import db.{DbRef, Model, ModelService}
 import form.OreForms
 import mail.{EmailFactory, Mailer}
-import models.project.Version
+import models.api.ApiKey
+import models.project.{Project, Version}
 import models.user.{LoggedAction, Notification, SignOn, User, UserActionLogger}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 import ore.permission.{NamedPermission, Permission}

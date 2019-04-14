@@ -169,11 +169,11 @@ function loadVersions(increment, scrollTop) {
             if(version.author) {
                 var authorContainer = $("<div>");
                 authorContainer.addClass("author");
-                authorContainer.append("<i class='fas fa-user'></i>");
+                authorContainer.append("<i class='fas fa-key'></i>");
 
                 var author = $("<span>");
                 author.text(version.author);
-                author.attr("title", "This version is signed by " + version.author);
+                author.attr("title", "This version was uploaded by " + version.author);
                 author.attr("data-toggle", "tooltip");
                 author.attr("data-placement", "bottom");
 
