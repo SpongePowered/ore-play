@@ -593,10 +593,25 @@ object ApiV2Controller {
       @JsonKey("type") tpe: String
   )
 
-  @ConfiguredJsonCodec case class PaginatedResult[A](
+  case class PaginatedResult[A](
       pagination: Pagination,
       result: A
   )
+  object PaginatedResult {
+    implicit def encodePaginatedResult[A: Encoder]: Encoder[PaginatedResult[A]] =
+      (a: PaginatedResult[A]) =>
+        Json.obj(
+          "pagination" -> a.pagination.asJson,
+          "result"     -> a.result.asJson
+      )
+
+    implicit def decodePaginatedResult[A: Decoder]: Decoder[PaginatedResult[A]] =
+      (c: HCursor) =>
+        for {
+          pagination <- c.get[Pagination]("pagination")
+          result     <- c.get[A]("result")
+        } yield PaginatedResult(pagination, result)
+  }
 
   @ConfiguredJsonCodec case class Pagination(
       limit: Long,
