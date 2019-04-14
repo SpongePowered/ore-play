@@ -116,6 +116,7 @@ Page used for uploading and creating new projects.
                 @CSRF.formField
                 <label class="btn btn-default pull-left" for="pluginFile">
                     <input id="pluginFile" name="pluginFile" type="file" style="display: none;">
+                    <input id="pluginSig" name="pluginSig" type="file" style="display: none;">
                     @messages("project.create.selectFile")
                 </label>
             }
