@@ -85,7 +85,7 @@ function loadVersions(increment, scrollTop) {
             nameElement.addClass("name");
             var nameLink = $("<a>");
             nameLink.text(version.name);
-            var href = projectOwner + '/' + projectSlug + '/versions/' + version.name;
+            var href = 'versions/' + version.name;
             nameLink.attr("href", href);
             nameElement.append(nameLink);
             baseInfo.append(nameElement);
