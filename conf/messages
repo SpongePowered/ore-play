@@ -329,6 +329,19 @@ user.unlock.confirm         =   Are you sure you want to unlock your account?
 user.enterPassword          =   Enter your password to continue:
 user.stats                  =   Stats
 
+user.apiKeys.createNew             = Create new key
+user.apiKeys.createKeyBtn          = Create key
+user.apiKeys.existingKeys          = Existing keys
+user.apiKeys.keyName               = Name
+user.apiKeys.keyToken              = Key
+user.apiKeys.keyIdentifier         = Key identifier
+user.apiKeys.keyPermissions        = Permissions
+user.apiKeys.keyDeleteColumn       = Delete
+user.apiKeys.keyDeleteButton       = Delete key
+user.apiKeys.error.noPermsSet      = No permissions specified
+user.apiKeys.error.noNameSet       = No name specified
+user.apiKeys.error.nameAlreadyUsed = Name already used
+
 organization.avatarFailed   =   Failed to request token for changing the organization avatar.
 
 notification.invite                 =   You have been invited to join the {0}

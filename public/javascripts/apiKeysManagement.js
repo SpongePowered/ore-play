@@ -1,9 +1,20 @@
+var NO_PERMS_SET = null;
+var NO_NAME_SET = null;
+var NAMED_USED = null;
+var DELETE_KEY = null;
+
 function deleteKey(name, row) {
     return function () {
         apiV2Request('keys?name=' + name, 'DELETE').then(function () {
             row.remove();
         });
     }
+}
+
+function showError(error) {
+    var alert = $('#keyAlert');
+    alert.text(error);
+    alert.show();
 }
 
 $(function () {
@@ -21,11 +32,16 @@ $(function () {
         var name = $('#keyName').val();
 
         if (checked.length === 0) {
-            //TODO: Display error alert
+            showError(NO_PERMS_SET);
         } else {
             var hasName = name.length !== 0;
             if (!hasName) {
-                //TODO: Display error alert
+                showError(NO_NAME_SET);
+                return;
+            }
+            var nameTaken = $('.api-key-name:contains(' + name + ')').size();
+            if (nameTaken !== 0) {
+                showError(NAMED_USED);
                 return;
             }
 
@@ -35,6 +51,7 @@ $(function () {
             };
 
             apiV2Request('keys', 'POST', data).then(function (newKey) {
+                $('#keyAlert').hide();
                 var namedPerms = '';
 
                 for (let perm of checked) {
@@ -50,7 +67,7 @@ $(function () {
                 row.append($('<th>').text(token));
                 row.append($('<th>'));
                 row.append($('<th>').text(namedPerms));
-                row.append($('<th>').append($('<button>').addClass('btn btn-danger api-key-row-delete-button').text('Delete key').click(deleteKey(name, row))));
+                row.append($('<th>').append($('<button>').addClass('btn btn-danger api-key-row-delete-button').text(DELETE_KEY).click(deleteKey(name, row))));
 
                 $('#api-key-rows:last-child').append(row);
             })
