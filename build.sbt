@@ -62,12 +62,11 @@ lazy val playCommonSettings = Seq(
   pipelineStages := Seq(digest, gzip)
 )
 
-lazy val doobieVersion       = "0.6.0"
-lazy val flexmarkVersion     = "0.40.18"
-lazy val bouncycastleVersion = "1.61"
-lazy val playSlickVersion    = "4.0.0"
-lazy val slickPgVersion      = "0.17.1"
-lazy val circeVersion        = "0.11.1"
+lazy val doobieVersion    = "0.6.0"
+lazy val flexmarkVersion  = "0.40.18"
+lazy val playSlickVersion = "4.0.0"
+lazy val slickPgVersion   = "0.17.1"
+lazy val circeVersion     = "0.11.1"
 
 lazy val `ore` = (project in file("."))
   .enablePlugins(PlayScala)

@@ -13,12 +13,20 @@
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/apiKeysManagement.js")"></script>
+    <script @CSPNonce.attr>
+            NO_PERMS_SET = '@messages("user.apiKeys.error.noPermsSet")';
+            NO_NAME_SET = '@messages("user.apiKeys.error.noNameSet")';
+            NAMED_USED = '@messages("user.apiKeys.error.nameAlreadyUsed")';
+            DELETE_KEY = '@messages("user.apiKeys.keyDeleteButton")';
+    </script>
 }
 
 @users.view(u, o, additionalScripts = scripts) {
+    <div id="keyAlert" class="alert alert-danger" role="alert" style="display: none;"></div>
+
     <div class="row">
         <div class="col-md-6">
-            <h2>Create new key</h2>
+            <h2>@messages("user.apiKeys.createNew")</h2>
             <div id="api-create-key-form">
                 <div class="row">
                     <div class="col-md-6">
@@ -42,23 +50,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="keyName">Name:</label>
+                    <label for="keyName">@messages("user.apiKeys.keyName"):</label>
                     <input type="text" class="form-control" id="keyName">
                 </div>
-                <button id="button-create-new-key" class="btn btn-default">Create key</button>
+                <button id="button-create-new-key" class="btn btn-default">@messages("user.apiKeys.createKeyBtn")</button>
             </div>
         </div>
 
         <div class="col-md-6">
-            <h2>Existing keys</h2>
+            <h2>@messages("user.apiKeys.existingKeys")</h2>
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Key</th>
-                        <th>Key identifier</th>
-                        <th>Permissions</th>
-                        <th>Delete</th>
+                        <th>@messages("user.apiKeys.keyName")</th>
+                        <th>@messages("user.apiKeys.keyToken")</th>
+                        <th>@messages("user.apiKeys.keyIdentifier")</th>
+                        <th>@messages("user.apiKeys.keyPermissions")</th>
+                        <th>@messages("user.apiKeys.keyDeleteColumn")</th>
                     </tr>
                 </thead>
                 <tbody id="api-key-rows">
@@ -68,7 +76,7 @@
                         <th></th>
                         <th>@key.tokenIdentifier</th>
                         <th>@key.namedRawPermissions.map(_.entryName).mkString(", ")</th>
-                        <th><button class="btn btn-danger api-key-row-delete-button">Delete key</button></th>
+                        <th><button class="btn btn-danger api-key-row-delete-button">@messages("user.apiKeys.keyDeleteButton")</button></th>
                     </tr>
                 }
                 </tbody>

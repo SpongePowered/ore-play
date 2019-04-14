@@ -169,7 +169,7 @@ function loadVersions(increment, scrollTop) {
             if(version.author) {
                 var authorContainer = $("<div>");
                 authorContainer.addClass("author");
-                authorContainer.append("<i class='fas fa-user'></i>");
+                authorContainer.append("<i class='fas fa-key'></i>");
 
                 var author = $("<span>");
                 author.text(version.author);
