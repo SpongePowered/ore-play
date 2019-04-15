@@ -1,35 +1,11 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * By Walker Crouse (windy) and contributors
- * (C) SpongePowered 2016-2017 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Powers the user page.
- *
- * ==================================================
- */
-
-/*
- * ==================================================
- * =               External constants               =
- * ==================================================
- */
+//=====> EXTERNAL CONSTANTS
 
 var USERNAME = null;
 var STARS_PER_PAGE = 5;
 var currentStarsPage = 1;
 
-/*
- * ==================================================
- * =                Helper functions                =
- * ==================================================
- */
+
+//=====> HELPER FUNCTIONS
 
 function getStarsPanel() {
     return $('.panel-stars');
@@ -179,11 +155,8 @@ function setupAvatarForm() {
     });
 }
 
-/*
- * ==================================================
- * =                   Doc ready                    =
- * ==================================================
- */
+
+//=====> DOCUMENT READY
 
 $(function() {
     var footer = getStarsFooter();

@@ -1,8 +1,13 @@
+//=====> EXTERNAL CONSTANTS
+
 var pluginId = null;
 var keyGenText = null;
 var keyRevokeText = null;
 
 var KEY_TYPE_DEPLOYMENT = 0;
+
+
+//=====> HELPER FUNCTIONS
 
 function bindKeyGen(e) {
     e.click(function() {
@@ -53,6 +58,9 @@ function bindKeyRevoke(e) {
         })
     });
 }
+
+
+//=====> DOCUMENT READY
 
 $(function() {
     bindKeyGen($('.btn-key-gen'));

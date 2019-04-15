@@ -1,5 +1,4 @@
-"use strict";
-
+//=====> HELPER FUNCTIONS
 
 function update(thing, action, data) {
     return $.ajax({
@@ -23,6 +22,9 @@ function loadingButton(button) {
         button.append(children);
     };
 }
+
+
+//=====> DOCUMENT READY
 
 $(function() {
     var globalRoleSelect = $('#add-global-role-select')

@@ -1,3 +1,5 @@
+//=====> DOCUMENT READY
+
 $(function() {
     $('#dateGoButton').click(function() {
         var from = $('#fromDate').val();

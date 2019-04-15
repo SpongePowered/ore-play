@@ -1,51 +1,19 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * By Walker Crouse (windy) and contributors
- * (C) SpongePowered 2016-2017 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Main application file
- *
- * ==================================================
- */
+//=====> CONSTANTS
 
 var KEY_ENTER = 13;
 var KEY_PLUS = 61;
 var KEY_MINUS = 173;
 
-/*
- * ==================================================
- * =               External constants               =
- * ==================================================
- */
+
+//=====> EXTERNAL CONSTANTS
 
 var CATEGORY_STRING = CATEGORY_STRING || null;
 var SORT_STRING = SORT_STRING || null;
 var csrf = null;
 var isLoggedIn = false;
 
-/*
- * ==================================================
- * =                  Key bindings                  =
- * ==================================================
- */
 
-var KEY_S = 83;                             // Search
-var KEY_H = 72;                             // Home
-var KEY_C = 67;                             // Create project
-var KEY_ESC = 27;                           // De-focus
-
-/*
- * ==================================================
- * =                  Clipboard                     =
- * ==================================================
- */
+//=====> SETUP
 
 var clipboardManager = new ClipboardJS('.copy-url');
 clipboardManager.on('success', function(e) {
@@ -55,11 +23,8 @@ clipboardManager.on('success', function(e) {
     }, 2200);
 });
 
-/*
- * ==================================================
- * =                Helper functions                =
- * ==================================================
- */
+
+//=====> HELPER FUNCTIONS
 
 function shouldExecuteHotkey(event) {
     return !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey;
@@ -207,11 +172,8 @@ function invalidateApiSession() {
     }
 }
 
-/*
- * ==================================================
- * =                   Doc ready                    =
- * ==================================================
- */
+
+//=====> DOCUMENT READY
 
 // Initialize highlighting
 hljs.initHighlightingOnLoad();
@@ -246,44 +208,6 @@ $(function() {
         go(url);
     });
 
-    var body = $('body');
-    body.keydown(function(event) {
-        var target = $(event.target);
-        var searchIcon = $('.search-icon');
-        if (shouldExecuteHotkey(event)) {
-            if (target.is('body')) {
-                switch (event.keyCode) {
-                    case KEY_S:
-                        event.preventDefault();
-                        searchIcon.click();
-                        break;
-                    case KEY_H:
-                        event.preventDefault();
-                        window.location = '/';
-                        break;
-                    case KEY_C:
-                        event.preventDefault();
-                        window.location = '/new';
-                        break;
-                    case KEY_PLUS:
-                        break;
-                    case KEY_MINUS:
-                        break;
-                    default:
-                        break;
-                }
-            } else if (target.is('.project-search input')) {
-                switch (event.keyCode) {
-                    case KEY_ESC:
-                        event.preventDefault();
-                        searchIcon.click();
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-    });
 
     $(".link-go-back").click(function () {
         window.history.back();
@@ -318,15 +242,11 @@ $("a[href^='#']").click(function () {
     return scrollToAnchor(this.hash);
 });
 
-/*
- * ==================================================
- * =                 Service Worker                 =
- * ==================================================
- *
- * The service worker has been removed in commit 9ab90b5f4a5728587fc08176e316edbe88dfce9e.
- * This code ensures that the service worker is removed from the browser.
- *
- */
+
+//=====> SERVICE WORKER
+
+// The service worker has been removed in commit 9ab90b5f4a5728587fc08176e316edbe88dfce9e.
+// This code ensures that the service worker is removed from the browser.
 
 if (window.navigator && navigator.serviceWorker) {
     if ('getRegistrations' in navigator.serviceWorker) {

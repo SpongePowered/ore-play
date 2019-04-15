@@ -1,35 +1,11 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * By Walker Crouse (windy) and contributors
- * (C) SpongePowered 2016-2017 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Handles new page creation.
- *
- * ==================================================
- */
-
-/*
- * ==================================================
- * =               External constants               =
- * ==================================================
- */
+//=====> EXTERNAL CONSTANTS
 
 var KEY_ENTER = 13;
 var PROJECT_OWNER = null;
 var PROJECT_SLUG = null;
 
-/*
- * ==================================================
- * =                   Doc ready                    =
- * ==================================================
- */
+
+//=====> DOCUMENT READY
 
 $(function() {
     var modal = $('#new-page');

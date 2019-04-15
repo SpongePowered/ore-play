@@ -1,25 +1,4 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * By Walker Crouse (windy) and contributors
- * (C) SpongePowered 2016-2017 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Powers the orga invites page.
- *
- * ==================================================
- */
-
-/*
- * ==================================================
- * =                Helper functions                =
- * ==================================================
- */
+//=====> HELPER FUNCTIONS
 
 function replyToInvite(id, behalf, reply, success, error) {
     var url = '/invite/' + id + '/' + reply + '/' + behalf;
@@ -53,11 +32,8 @@ function setupInvites() {
     });
 }
 
-/*
- * ==================================================
- * =                   Doc ready                    =
- * ==================================================
- */
+
+//=====> DOCUMENT READY
 
 $(function() {
     setupInvites();

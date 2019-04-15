@@ -1,34 +1,10 @@
-/*
- * ==================================================
- *  _____             _
- * |     |___ ___    |_|___
- * |  |  |  _| -_|_  | |_ -|
- * |_____|_| |___|_|_| |___|
- *                 |___|
- *
- * By Walker Crouse (windy) and contributors
- * (C) SpongePowered 2016-2017 MIT License
- * https://github.com/SpongePowered/Ore
- *
- * Handles project channel management
- *
- * ==================================================
- */
-
-/*
- * ==================================================
- * =               External constants               =
- * ==================================================
- */
+//=====> EXTERNAL CONSTANTS
 
 var PROJECT_OWNER = null;
 var PROJECT_SLUG = null;
 
-/*
- * ==================================================
- * =                Helper functions                =
- * ==================================================
- */
+
+//=====> HELPER FUNCTIONS
 
 function rgbToHex(rgb) {
     var parts = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
@@ -177,11 +153,8 @@ function initColorPicker() {
     });
 }
 
-/*
- * ==================================================
- * =                   Doc ready                    =
- * ==================================================
- */
+
+//=====> DOCUMENT READY
 
 $(function() {
     initModal();

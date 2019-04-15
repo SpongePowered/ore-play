@@ -1,7 +1,12 @@
+//=====> EXTERNAL CONSTANTS
+
 var NO_PERMS_SET = null;
 var NO_NAME_SET = null;
 var NAMED_USED = null;
 var DELETE_KEY = null;
+
+
+//=====> HELPER FUNCTIONS
 
 function deleteKey(name, row) {
     return function () {
@@ -16,6 +21,9 @@ function showError(error) {
     alert.text(error);
     alert.show();
 }
+
+
+//=====> DOCUMENT READY
 
 $(function () {
     $('.api-key-row').each(function () {

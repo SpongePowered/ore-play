@@ -1,5 +1,10 @@
+//=====> EXTERNAL CONSTANTS
+
 var pluginId = null;
 var namespace = null;
+
+
+//=====> HELPER FUNCTIONS
 
 function bindExpand(e) {
     e.click(function() {
@@ -51,6 +56,9 @@ function bindCollapse(e) {
         bindExpand($(this));
     });
 }
+
+
+//=====> DOCUMENT READY
 
 $(function() {
     bindExpand($('.page-expand'));
