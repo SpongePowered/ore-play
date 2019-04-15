@@ -242,25 +242,4 @@ $(function() {
 
         increment *= -1;
     });
-
-    // hotkeys
-    var body = $('body');
-    body.keydown(function(event) {
-        var target = $(event.target);
-        if (target.is('body') && shouldExecuteHotkey(event)) {
-            var navBar = $('.project-navbar');
-            switch (event.keyCode) {
-                case KEY_PLUS:
-                    event.preventDefault();
-                    switchTabTo(getActiveTab().next(), navBar.find('li:first'));
-                    break;
-                case KEY_MINUS:
-                    event.preventDefault();
-                    switchTabTo(getActiveTab().prev(), navBar.find('#discussion'));
-                    break;
-                default:
-                    break;
-            }
-        }
-    });
 });

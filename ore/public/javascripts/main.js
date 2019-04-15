@@ -1,10 +1,3 @@
-//=====> CONSTANTS
-
-var KEY_ENTER = 13;
-var KEY_PLUS = 61;
-var KEY_MINUS = 173;
-
-
 //=====> EXTERNAL CONSTANTS
 
 var CATEGORY_STRING = CATEGORY_STRING || null;
@@ -25,10 +18,6 @@ clipboardManager.on('success', function(e) {
 
 
 //=====> HELPER FUNCTIONS
-
-function shouldExecuteHotkey(event) {
-    return !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey;
-}
 
 function sanitize(html) {
     return $('<textarea>').html(html).text();
@@ -194,7 +183,7 @@ $(function() {
 
     var searchBar = $('.project-search');
     searchBar.find('input').on('keypress', function(event) {
-        if (event.keyCode === KEY_ENTER) {
+        if (event.keyCode === 13) {
             event.preventDefault();
             $(this).next().find('.btn').click();
         }
