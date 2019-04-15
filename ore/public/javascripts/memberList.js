@@ -1,8 +1,4 @@
-/*
- * ==================================================
- * =                Helper functions                =
- * ==================================================
- */
+//=====> HELPER FUNCTIONS
 
 function updateIndices() {
     var memberList = $('.list-members');
@@ -54,11 +50,8 @@ function initMember(memberRow) {
     });
 }
 
-/*
- * ==================================================
- * =                   DOCUMENT READY                    =
- * ==================================================
- */
+
+//=====> DOCUMENT READY
 
 $(function() {
     initMember($('.list-members').find('.list-group-item'));
