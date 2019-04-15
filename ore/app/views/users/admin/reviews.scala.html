@@ -2,8 +2,8 @@
 @import models.admin.Review
 @import models.project.{Project, ReviewState, Version}
 @import ore.OreConfig
+@import ore.db.Model
 @import util.StringUtils._
-@import db.Model
 @import views.html.helper.CSPNonce
 @import ore.markdown.MarkdownRenderer
 @(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Model[Review], Option[String])], project: Project, version: Model[Version])(implicit messages: Messages,

@@ -2,12 +2,11 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
-import models.admin.{LoggedActionViewModel, LoggedProject, LoggedProjectPage, LoggedProjectVersion, LoggedSubject}
+import models.admin._
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, LoggedActionContext, User}
+import ore.db.{DbRef, Model, ObjId, ObjTimestamp}
 
 import com.github.tminglei.slickpg.InetString
 

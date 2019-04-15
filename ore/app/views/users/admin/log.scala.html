@@ -2,15 +2,14 @@
 @import controllers.routes.{Users => userRoutes}
 @import controllers.routes.{Application => appRoutes}
 @import controllers.sugar.Requests.OreRequest
-@import db.DbRef
 @import models.admin.LoggedActionViewModel
-@import models.project.{Project, Version, Page}
+@import models.project.{Page, Project, Version}
 @import models.user.{LoggedAction, LoggedActionContext}
 @import models.user.{LoggedAction, LoggedActionContext, User}
 @import ore.OreConfig
+@import ore.db.Model
 @import util.StringUtils._
-
-@import db.Model
+@import ore.db.DbRef
 @(actions: Seq[Model[LoggedActionViewModel[_]]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],
         actionFilter: Option[Int], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)

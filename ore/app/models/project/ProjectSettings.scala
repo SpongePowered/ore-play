@@ -3,11 +3,12 @@ package models.project
 import java.nio.file.Files
 import java.nio.file.Files._
 
+import db.impl.DefaultModelCompanion
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectSettingsTable, UserTable}
-import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
 import form.project.ProjectSettingsForm
 import models.user.{Notification, User}
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.permission.role.Role
 import ore.project.factory.PendingProject
 import ore.project.io.ProjectFiles

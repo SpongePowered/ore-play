@@ -1,10 +1,9 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.project.UnsafeDownload
 import models.user.User
+import ore.db.DbRef
 import ore.project.io.DownloadType
 
 import com.github.tminglei.slickpg.InetString

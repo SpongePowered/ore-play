@@ -2,11 +2,10 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.project.{Flag, Project}
 import models.user.User
+import ore.db.DbRef
 import ore.project.FlagReason
 
 class FlagTable(tag: Tag) extends ModelTable[Flag](tag, "project_flags") {

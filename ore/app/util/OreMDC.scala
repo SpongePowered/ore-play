@@ -3,9 +3,9 @@ package util
 import scala.language.implicitConversions
 
 import controllers.sugar.Requests._
-import db.Model
 import models.project.Project
 import models.user.{Organization, User}
+import ore.db.Model
 
 import com.typesafe.scalalogging.CanLog
 import org.slf4j.MDC

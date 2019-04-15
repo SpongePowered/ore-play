@@ -6,23 +6,15 @@ import javax.inject.Inject
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.ProjectBase
-import db.impl.schema.{
-  ChannelTable,
-  ProjectRoleTable,
-  ProjectStarsTable,
-  ProjectTableMain,
-  UserTable,
-  VersionTable,
-  VersionTagTable
-}
-import db.{Model, DbRef, ModelService}
+import db.impl.schema._
 import models.project._
 import models.user.User
 import models.user.role.ProjectUserRole
 import ore.OreConfig
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
 import ore.project.{Category, ProjectSortingStrategy}
 
@@ -35,7 +27,7 @@ import cats.syntax.all._
   */
 trait OreRestfulApiV1 extends OreWrites {
 
-  def service: ModelService
+  implicit def service: ModelService
   def config: OreConfig
 
   /**
@@ -322,8 +314,8 @@ trait OreRestfulApiV1 extends OreWrites {
   def getPages(
       pluginId: String,
       parentId: Option[DbRef[Page]]
-  )(implicit service: ModelService): OptionT[IO, JsValue] = {
-    ProjectBase().withPluginId(pluginId).semiflatMap { project =>
+  )(implicit projectBase: ProjectBase): OptionT[IO, JsValue] = {
+    projectBase.withPluginId(pluginId).semiflatMap { project =>
       for {
         pages <- service.runDBIO(project.pages(ModelView.raw(Page)).sortBy(_.name).result)
       } yield {
@@ -427,8 +419,8 @@ trait OreRestfulApiV1 extends OreWrites {
   def getTags(
       pluginId: String,
       version: String
-  )(implicit service: ModelService): OptionT[IO, JsValue] = {
-    ProjectBase().withPluginId(pluginId).flatMap { project =>
+  )(implicit projectBase: ProjectBase): OptionT[IO, JsValue] = {
+    projectBase.withPluginId(pluginId).flatMap { project =>
       project
         .versions(ModelView.now(Version))
         .find(

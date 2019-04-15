@@ -7,10 +7,11 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.ReviewTable
-import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
 import models.project.{Project, Version}
 import models.user.User
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.markdown.MarkdownRenderer
 import _root_.util.StringUtils
 

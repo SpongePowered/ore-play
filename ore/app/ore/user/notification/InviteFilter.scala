@@ -2,11 +2,11 @@ package ore.user.notification
 
 import scala.collection.immutable
 
-import db.{Model, ModelService}
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import models.user.User
 import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 
 import cats.Parallel
 import cats.effect.{ContextShift, IO}

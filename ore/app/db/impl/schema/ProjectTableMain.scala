@@ -4,12 +4,11 @@ import java.sql.Timestamp
 
 import play.api.libs.json.JsValue
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.{DescriptionColumn, DownloadsColumn, NameColumn, VisibilityColumn}
-import db.table.ModelTable
 import models.project._
 import models.user.User
+import ore.db.DbRef
 import ore.project.Category
 
 trait ProjectTable

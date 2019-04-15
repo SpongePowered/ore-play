@@ -1,10 +1,9 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.AssociativeTable
 import models.project.Project
 import models.user.User
+import ore.db.DbRef
 
 class ProjectWatchersTable(tag: Tag) extends AssociativeTable[Project, User](tag, "project_watchers") {
 

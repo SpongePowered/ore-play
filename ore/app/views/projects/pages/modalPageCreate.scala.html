@@ -1,6 +1,6 @@
 @import models.project.{Page, Project}
 @import ore.OreConfig
-@import db.Model
+@import ore.db.Model
 @import views.html.helper.CSPNonce
 @(model: Project, rootPages: Seq[Model[Page]])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
 

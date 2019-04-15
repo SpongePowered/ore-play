@@ -3,7 +3,7 @@ import java.time.LocalDate
 import play.api.Configuration
 import scala.concurrent.duration._
 
-import db.query.AppQueries
+import db.impl.query.AppQueries
 import ore.OreConfig
 
 import org.junit.runner.RunWith

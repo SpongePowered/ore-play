@@ -1,11 +1,12 @@
 package models.api
 
+import db.impl.DefaultModelCompanion
+import db.impl.query.UserQueries
 import db.impl.schema.ApiKeyTable
-import db.query.UserQueries
-import db.{DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.user.User
-import ore.permission.{NamedPermission, Permission}
+import ore.db.{DbRef, ModelQuery, ModelService}
 import ore.permission.scope.{GlobalScope, HasScope, OrganizationScope, ProjectScope}
+import ore.permission.{NamedPermission, Permission}
 import ore.user.UserOwned
 import util.syntax._
 

@@ -1,4 +1,4 @@
-import db.DbRef
+import ore.db.DbRef
 import models.admin._
 import models.api.ProjectApiKey
 import models.project._

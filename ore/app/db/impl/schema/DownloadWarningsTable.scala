@@ -2,10 +2,9 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.project.{DownloadWarning, UnsafeDownload, Version}
+import ore.db.DbRef
 
 import com.github.tminglei.slickpg.InetString
 

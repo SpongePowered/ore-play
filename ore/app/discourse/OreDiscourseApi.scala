@@ -5,10 +5,10 @@ import java.nio.file.Path
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-import db.{Model, ModelService}
 import models.project.{Project, Version}
 import models.user.User
 import ore.OreConfig
+import ore.db.{Model, ModelService}
 import util.StringUtils._
 import util.syntax._
 

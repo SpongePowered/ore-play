@@ -1,8 +1,8 @@
 package ore.project.io
 import java.nio.file.{Files, Path}
 
-import db.Model
 import models.user.User
+import ore.db.Model
 import util.StringUtils
 
 import cats.effect.IO

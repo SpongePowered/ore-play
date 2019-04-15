@@ -4,13 +4,14 @@ import scala.language.higherKinds
 
 import play.twirl.api.Html
 
-import db._
-import db.access.{ModelView, QueryView}
+import db.impl.DefaultModelCompanion
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Named
+import db.impl.common.Named
 import db.impl.schema.{PageTable, ProjectTableMain}
 import discourse.OreDiscourseApi
 import ore.OreConfig
+import ore.db.access.{ModelView, QueryView}
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.project.ProjectOwned
 import util.StringUtils._

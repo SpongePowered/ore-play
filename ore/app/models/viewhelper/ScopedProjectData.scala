@@ -1,9 +1,9 @@
 package models.viewhelper
 
-import db.access.ModelView
-import db.{Model, ModelService}
 import models.project.{Flag, Project}
 import models.user.User
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.permission.{Permission, _}
 
 import cats.effect.{ContextShift, IO}

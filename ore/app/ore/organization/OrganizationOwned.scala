@@ -2,9 +2,9 @@ package ore.organization
 
 import scala.language.implicitConversions
 
-import db.access.ModelView
-import db.{Model, DbRef, ModelService}
 import models.user.Organization
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 
 import cats.effect.IO
 import simulacrum.typeclass
@@ -23,4 +23,9 @@ import simulacrum.typeclass
       .now(Organization)
       .get(organizationId(a))
       .getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
+}
+object OrganizationOwned {
+
+  implicit def isOrgOwned[A](implicit isOwned: OrganizationOwned[A]): OrganizationOwned[Model[A]] =
+    (a: Model[A]) => isOwned.organizationId(a.obj)
 }

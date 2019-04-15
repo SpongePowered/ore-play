@@ -1,9 +1,10 @@
 package models.admin
 
+import db.impl.ModelCompanionPartial
 import db.impl.schema.LoggedActionViewTable
-import db.{Model, ModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, LoggedActionContext, User}
+import ore.db._
 import ore.user.UserOwned
 
 import com.github.tminglei.slickpg.InetString

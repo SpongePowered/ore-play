@@ -7,22 +7,16 @@ import java.time.Instant
 
 import play.twirl.api.Html
 
-import db.access.{ModelView, QueryView}
+import db.impl.DefaultModelCompanion
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.{Describable, Downloadable, Hideable, HideableOps}
-import db.impl.schema.{
-  ReviewTable,
-  UserTable,
-  VersionDownloadsTable,
-  VersionTable,
-  VersionTagTable,
-  VersionVisibilityChangeTable
-}
-import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
+import db.impl.common.{Describable, Downloadable, Hideable, HideableOps}
+import db.impl.schema._
 import discourse.OreDiscourseApi
 import models.admin.{Review, VersionVisibilityChange}
 import models.statistic.VersionDownload
 import models.user.User
+import ore.db.access.{ModelView, QueryView}
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.project.{Dependency, ProjectOwned}
 import util.FileUtils

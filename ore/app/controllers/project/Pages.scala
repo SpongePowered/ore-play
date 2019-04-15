@@ -12,8 +12,6 @@ import play.utils.UriEncoding
 
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import db.{Model, ModelService}
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.PageTable
 import discourse.OreDiscourseApi
@@ -21,6 +19,8 @@ import form.OreForms
 import form.project.PageSaveForm
 import models.project.{Page, Project}
 import models.user.{LoggedAction, UserActionLogger}
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
 import ore.{OreConfig, OreEnv, StatTracker}
@@ -32,7 +32,6 @@ import cats.data.OptionT
 import cats.effect.IO
 import cats.instances.option._
 import cats.syntax.all._
-import cats.instances.option._
 
 /**
   * Controller for handling Page related actions.

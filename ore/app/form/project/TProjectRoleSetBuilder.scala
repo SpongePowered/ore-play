@@ -1,9 +1,9 @@
 package form.project
 
-import db.DbRef
 import form.RoleSetBuilder
 import models.user.User
 import models.user.role.ProjectUserRole
+import ore.db.DbRef
 import ore.permission.role.Role
 
 /**

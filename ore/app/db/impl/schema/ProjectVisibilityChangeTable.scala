@@ -1,11 +1,10 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.VisibilityChangeColumns
-import db.table.ModelTable
 import models.admin.ProjectVisibilityChange
 import models.project.Project
+import ore.db.DbRef
 
 class ProjectVisibilityChangeTable(tag: Tag)
     extends ModelTable[ProjectVisibilityChange](tag, "project_visibility_changes")

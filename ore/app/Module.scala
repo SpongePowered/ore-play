@@ -1,8 +1,8 @@
-import db.ModelService
 import db.impl.service.OreModelService
 import discourse.{OreDiscourseApi, SpongeForums}
 import mail.{Mailer, SpongeMailer}
 import ore._
+import ore.db.ModelService
 import ore.markdown.{FlexmarkRenderer, MarkdownRenderer}
 import ore.project.factory.{OreProjectFactory, ProjectFactory}
 import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}

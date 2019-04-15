@@ -2,12 +2,11 @@ package db.impl.table.common
 
 import java.sql.Timestamp
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.VisibilityChange
-import db.table.ModelTable
+import db.impl.common.VisibilityChange
 import models.project.Visibility
 import models.user.User
+import ore.db.DbRef
 
 trait VisibilityChangeColumns[M <: VisibilityChange] extends ModelTable[M] {
 

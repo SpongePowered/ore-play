@@ -5,10 +5,11 @@ import java.time.Instant
 
 import scala.collection.immutable
 
-import db.impl.model.common.Named
+import db.impl.ModelCompanionPartial
+import db.impl.common.Named
 import db.impl.schema.VersionTagTable
-import db.{Model, ModelCompanionPartial, DbRef, ModelQuery, ObjId, ObjTimestamp}
 import models.querymodels.ViewTag
+import ore.db._
 
 import enumeratum.values._
 import slick.lifted.TableQuery

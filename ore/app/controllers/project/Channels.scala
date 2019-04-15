@@ -9,13 +9,13 @@ import play.api.mvc.{Action, AnyContent}
 
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import db.ModelService
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ChannelTable, VersionTable}
 import form.OreForms
 import form.project.ChannelData
 import models.project.Channel
+import ore.db.ModelService
+import ore.db.access.ModelView
 import ore.permission.Permission
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}

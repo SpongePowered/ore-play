@@ -1,9 +1,8 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.AssociativeTable
 import models.user.{Organization, User}
+import ore.db.DbRef
 
 class OrganizationMembersTable(tag: Tag) extends AssociativeTable[User, Organization](tag, "organization_members") {
 

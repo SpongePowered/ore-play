@@ -10,11 +10,11 @@ import play.api.mvc._
 
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
 import controllers.sugar.{Actions, Bakery, Requests}
-import db.{Model, ModelService}
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.VersionTable
 import models.project.{Project, Version, Visibility}
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.permission.Permission
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}

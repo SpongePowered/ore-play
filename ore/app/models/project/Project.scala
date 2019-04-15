@@ -10,17 +10,18 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.twirl.api.Html
 
-import db.access.{ChildAssociationAccess, ModelAssociationAccessImpl, ModelView, ParentAssociationAccess, QueryView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.{Describable, Downloadable, Hideable, HideableOps, Named}
+import db.impl.common._
 import db.impl.schema._
-import db._
+import db.impl.{ModelCompanionPartial, OrePostgresDriver}
 import models.admin.{ProjectLog, ProjectVisibilityChange}
 import models.api.ProjectApiKey
 import models.querymodels.ProjectNamespace
 import models.statistic.ProjectView
 import models.user.User
 import models.user.role.ProjectUserRole
+import ore.db.access._
+import ore.db._
 import ore.markdown.MarkdownRenderer
 import ore.permission.role.Role
 import ore.permission.scope.HasScope
@@ -158,10 +159,10 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
     def watchers(
         implicit service: ModelService
     ): ParentAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, IO] =
-      new ModelAssociationAccessImpl(Project, User).applyParent(self)
+      new ModelAssociationAccessImpl(OrePostgresDriver)(Project, User).applyParent(self)
 
     /**
-      * Returns [[db.access.ChildAssociationAccess]] to [[User]]s who have starred this
+      * Returns [[ore.db.access.ChildAssociationAccess]] to [[User]]s who have starred this
       * project.
       *
       * @return Users who have starred this project
@@ -169,8 +170,10 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
     def stars(
         implicit service: ModelService
     ): ChildAssociationAccess[ProjectStarsTable, User, Project, UserTable, ProjectTableMain, IO] =
-      new ModelAssociationAccessImpl[ProjectStarsTable, User, Project, UserTable, ProjectTableMain](User, Project)
-        .applyChild(self)
+      new ModelAssociationAccessImpl[ProjectStarsTable, User, Project, UserTable, ProjectTableMain](OrePostgresDriver)(
+        User,
+        Project
+      ).applyChild(self)
 
     /**
       * Contains all information for [[User]] memberships.

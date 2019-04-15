@@ -5,13 +5,12 @@ import scala.concurrent.duration.FiniteDuration
 
 import play.api.Logger
 
-import db.ModelFilter._
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectTableMain, VersionTable}
-import db.{ModelFilter, ModelService}
 import models.project.{Project, Version, Visibility}
 import ore.OreConfig
+import ore.db.ModelService
+import ore.db.access.ModelView
 
 import akka.actor.Scheduler
 import cats.effect.{ContextShift, IO}

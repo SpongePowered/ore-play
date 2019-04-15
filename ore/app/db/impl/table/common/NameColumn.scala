@@ -1,8 +1,7 @@
 package db.impl.table.common
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Named
-import db.table.ModelTable
+import db.impl.common.Named
 
 /**
   * A table column to represent a models's name.

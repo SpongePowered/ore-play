@@ -2,7 +2,7 @@ package db.impl
 
 import java.sql.Timestamp
 
-import db.{Model, DbRef, ObjId, ObjTimestamp}
+import ore.db.{DbRef, Model, ObjId, ObjTimestamp}
 
 // Alias Slick's Tag type because we have our own Tag type
 package object schema {

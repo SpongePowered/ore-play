@@ -1,7 +1,8 @@
 package models.user
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.SignOnTable
-import db.{DefaultModelCompanion, ModelQuery, ObjId, ObjTimestamp}
+import ore.db.ModelQuery
 
 import slick.lifted.TableQuery
 

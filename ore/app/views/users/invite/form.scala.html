@@ -1,8 +1,8 @@
 @import models.user.User
 @import ore.OreConfig
+@import ore.db.Model
 @import ore.permission.role.RoleCategory
 @import views.html.utils.userAvatar
-@import db.Model
 
 @(owner: User, loadedUsers: Seq[Model[User]] = Seq(), roleCategory: RoleCategory)(implicit messages: Messages, config: OreConfig)
 

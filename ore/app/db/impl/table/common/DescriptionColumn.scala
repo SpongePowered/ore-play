@@ -1,8 +1,7 @@
 package db.impl.table.common
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Describable
-import db.table.ModelTable
+import db.impl.common.Describable
 
 /**
   * Represents a column in a [[ModelTable]] that holds a description.

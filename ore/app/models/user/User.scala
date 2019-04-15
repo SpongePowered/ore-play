@@ -6,15 +6,16 @@ import java.sql.Timestamp
 
 import play.api.i18n.Lang
 
-import db._
-import db.access.{ChildAssociationAccess, ModelAssociationAccessImpl, ModelView, ParentAssociationAccess, QueryView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Named
+import db.impl.common.Named
+import db.impl.query.UserQueries
 import db.impl.schema._
-import db.query.UserQueries
+import db.impl.{ModelCompanionPartial, OrePostgresDriver}
 import models.project.{Flag, Project, Visibility}
 import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 import ore.OreConfig
+import ore.db.access._
+import ore.db._
 import ore.permission._
 import ore.permission.scope._
 import ore.user.Prompt
@@ -113,7 +114,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
     def globalRoles(
         implicit service: ModelService
     ): ParentAssociationAccess[UserGlobalRolesTable, User, DbRole, UserTable, DbRoleTable, IO] =
-      new ModelAssociationAccessImpl(User, DbRole).applyParent(self)
+      new ModelAssociationAccessImpl(OrePostgresDriver)(User, DbRole).applyParent(self)
 
     /**
       * Returns the [[Organization]]s that this User belongs to.
@@ -123,7 +124,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
     def organizations(
         implicit service: ModelService
     ): ParentAssociationAccess[OrganizationMembersTable, User, Organization, UserTable, OrganizationTable, IO] =
-      new ModelAssociationAccessImpl(User, Organization).applyParent(self)
+      new ModelAssociationAccessImpl(OrePostgresDriver)(User, Organization).applyParent(self)
 
     /**
       * Returns the [[Project]]s that this User is watching.
@@ -133,7 +134,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
     def watching(
         implicit service: ModelService
     ): ChildAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, IO] =
-      new ModelAssociationAccessImpl(Project, User).applyChild(self)
+      new ModelAssociationAccessImpl(OrePostgresDriver)(Project, User).applyChild(self)
 
     /**
       * Sets the "watching" status on the specified project.

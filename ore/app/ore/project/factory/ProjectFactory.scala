@@ -10,20 +10,20 @@ import scala.util.matching.Regex
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
-import db.access.ModelView
-import db.impl.access.ProjectBase
 import db.impl.OrePostgresDriver.api._
-import db.{DbRef, Model, ModelService}
+import db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
 import models.project._
 import models.user.role.ProjectUserRole
 import models.user.{Notification, User}
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
 import ore.project.NotifyWatchersTask
 import ore.project.io._
 import ore.user.notification.NotificationType
 import ore.{Color, OreConfig, OreEnv, Platform}
-import util.{OreMDC, StringUtils}
+import util.StringUtils
 import util.StringUtils._
 
 import akka.actor.ActorSystem
@@ -47,7 +47,7 @@ trait ProjectFactory {
 
   implicit def config: OreConfig
   implicit def forums: OreDiscourseApi
-  implicit def env: OreEnv = this.fileManager.env
+  implicit def env: OreEnv
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -379,5 +379,6 @@ class OreProjectFactory @Inject()(
     override val config: OreConfig,
     override val forums: OreDiscourseApi,
     override val cacheApi: SyncCacheApi,
-    override val actorSystem: ActorSystem
+    override val actorSystem: ActorSystem,
+    override val env: OreEnv
 ) extends ProjectFactory

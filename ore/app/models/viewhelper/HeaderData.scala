@@ -3,10 +3,10 @@ package models.viewhelper
 import play.api.mvc.Request
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{FlagTable, NotificationTable, ProjectTableMain, SessionTable, UserTable, VersionTable}
-import db.{Model, DbRef, ModelService}
+import db.impl.schema._
 import models.project.{ReviewState, Visibility}
 import models.user.User
+import ore.db.{DbRef, Model, ModelService}
 import ore.permission._
 import ore.permission.scope.GlobalScope
 

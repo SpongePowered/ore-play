@@ -3,11 +3,10 @@ package db.impl.schema
 import java.sql.Timestamp
 import java.time.Instant
 
-import db.{Model, DbRef, ObjId, ObjTimestamp}
-import db.impl.table.common.NameColumn
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
+import db.impl.table.common.NameColumn
 import models.project.{TagColor, Version, VersionTag}
+import ore.db.{DbRef, Model, ObjId, ObjTimestamp}
 
 class VersionTagTable(tag: Tag)
     extends ModelTable[VersionTag](tag, "project_version_tags")

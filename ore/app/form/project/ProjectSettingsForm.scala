@@ -1,7 +1,7 @@
 package form.project
 
-import db.DbRef
 import models.user.User
+import ore.db.DbRef
 
 /**
   * Represents the configurable Project settings that can be submitted via a

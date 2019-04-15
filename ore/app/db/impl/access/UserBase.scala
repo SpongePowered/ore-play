@@ -5,11 +5,11 @@ import java.util.{Date, UUID}
 
 import play.api.mvc.Request
 
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{Model, ModelService}
 import models.user.{Organization, Session, User}
 import ore.OreConfig
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.permission.Permission
 import security.spauth.SpongeAuthApi
 import util.OreMDC
@@ -22,7 +22,7 @@ import cats.syntax.all._
 /**
   * Represents a central location for all Users.
   */
-class UserBase(implicit val service: ModelService, config: OreConfig) {
+class UserBase(implicit val service: ModelService) {
 
   implicit val self: UserBase = this
 
@@ -92,8 +92,8 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
     *
     * @return     Newly created session
     */
-  def createSession(user: User): IO[Model[Session]] = {
-    val maxAge     = this.config.play.sessionMaxAge
+  def createSession(user: User)(implicit config: OreConfig): IO[Model[Session]] = {
+    val maxAge     = config.play.sessionMaxAge
     val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
     val token      = UUID.randomUUID().toString
     service.insert(Session(expiration, user.name, token))
@@ -131,7 +131,7 @@ class UserBase(implicit val service: ModelService, config: OreConfig) {
 object UserBase {
   def apply()(implicit userBase: UserBase): UserBase = userBase
 
-  implicit def fromService(implicit service: ModelService): UserBase = service.userBase
+  implicit def fromService(implicit service: ModelService): UserBase = new UserBase()
 
   trait UserOrdering
   object UserOrdering {

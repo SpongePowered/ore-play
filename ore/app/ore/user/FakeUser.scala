@@ -6,9 +6,9 @@ import java.sql.Timestamp
 import java.util.Date
 import javax.inject.Inject
 
-import db.{DbRef, ObjId}
 import models.user.User
 import ore.OreConfig
+import ore.db.{DbRef, ObjId}
 
 /**
   * Represents a "fake" User object for bypassing the standard authentication

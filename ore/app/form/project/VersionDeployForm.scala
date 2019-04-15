@@ -1,7 +1,7 @@
 package form.project
 
-import db.Model
 import models.project.Channel
+import ore.db.Model
 
 import cats.data.OptionT
 import cats.effect.IO

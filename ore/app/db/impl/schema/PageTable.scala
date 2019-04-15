@@ -1,10 +1,9 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.NameColumn
-import db.table.ModelTable
 import models.project.{Page, Project}
+import ore.db.DbRef
 
 class PageTable(tag: Tag) extends ModelTable[Page](tag, "project_pages") with NameColumn[Page] {
 

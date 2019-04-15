@@ -9,6 +9,7 @@ import play.api.db.slick.DatabaseConfigProvider
 import play.api.inject.ApplicationLifecycle
 
 import db.impl.OrePostgresDriver.api._
+import ore.db.ModelService
 import ore.{OreConfig, OreEnv}
 
 import cats.effect.{ContextShift, IO}
@@ -30,7 +31,7 @@ class OreModelService @Inject()(
     db: DatabaseConfigProvider,
     lifecycle: ApplicationLifecycle
 )(implicit ec: ExecutionContext)
-    extends OreDBOs(env, config) {
+    extends ModelService {
 
   // Implement ModelService
   lazy val DB = db.get[JdbcProfile]

@@ -9,13 +9,13 @@ import play.api.i18n.{Lang, MessagesApi}
 import play.api.mvc.{Action, AnyContent}
 
 import controllers.sugar.Bakery
-import db.access.ModelView
-import db.{DbRef, ModelService}
 import db.impl.OrePostgresDriver.api._
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import models.user.Organization
 import models.user.role.OrganizationUserRole
+import ore.db.access.ModelView
+import ore.db.{DbRef, ModelService}
 import ore.permission.Permission
 import ore.user.MembershipDossier
 import ore.user.MembershipDossier._

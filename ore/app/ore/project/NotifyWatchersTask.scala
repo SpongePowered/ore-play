@@ -3,9 +3,9 @@ package ore.project
 import scala.concurrent.ExecutionContext
 
 import db.impl.OrePostgresDriver.api._
-import db.{Model, DbRef, ModelService}
 import models.project.{Project, Version}
 import models.user.{Notification, User}
+import ore.db.{DbRef, Model, ModelService}
 import ore.user.notification.NotificationType
 
 import cats.data.NonEmptyList

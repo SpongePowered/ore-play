@@ -2,9 +2,10 @@ package models.project
 
 import java.sql.Timestamp
 
-import db.impl.model.common.Expirable
+import db.impl.DefaultModelCompanion
+import db.impl.common.Expirable
 import db.impl.schema.DownloadWarningsTable
-import db.{DbRef, DefaultModelCompanion, ModelQuery}
+import ore.db.{DbRef, ModelQuery}
 
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery

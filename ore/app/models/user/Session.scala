@@ -2,10 +2,11 @@ package models.user
 
 import java.sql.Timestamp
 
+import db.impl.DefaultModelCompanion
 import db.impl.access.UserBase
-import db.impl.model.common.Expirable
+import db.impl.common.Expirable
 import db.impl.schema.SessionTable
-import db.{Model, DefaultModelCompanion, ModelQuery}
+import ore.db.{Model, ModelQuery}
 import security.spauth.SpongeAuthApi
 import util.OreMDC
 

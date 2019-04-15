@@ -11,9 +11,7 @@ import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.data.{FieldMapping, Form, FormError, Mapping}
 
 import controllers.sugar.Requests.ProjectRequest
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{Model, DbRef, ModelService}
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
 import models.api.ProjectApiKey
@@ -22,6 +20,8 @@ import models.project.{Channel, Page}
 import models.user.Organization
 import models.user.role.ProjectUserRole
 import ore.OreConfig
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 import ore.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyType
 

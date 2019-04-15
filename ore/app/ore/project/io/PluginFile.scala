@@ -9,8 +9,8 @@ import scala.collection.JavaConverters._
 
 import play.api.i18n.Messages
 
-import db.Model
 import models.user.User
+import ore.db.Model
 import ore.user.UserOwned
 
 import cats.data.EitherT

@@ -1,6 +1,6 @@
 import play.api.Configuration
 
-import db.query.APIV2Queries
+import db.impl.query.APIV2Queries
 import ore.OreConfig
 import ore.permission.Permission
 import ore.project.Category

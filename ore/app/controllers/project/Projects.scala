@@ -17,9 +17,7 @@ import play.api.mvc.{Action, AnyContent, MultipartFormData, Result}
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{DbRef, Model, ModelService}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
@@ -29,6 +27,8 @@ import models.project.{Flag, Note, Page, Visibility}
 import models.user._
 import models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission._
 import ore.project.factory.ProjectFactory
@@ -45,8 +45,8 @@ import views.html.{projects => views}
 
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
-import cats.syntax.all._
 import cats.instances.option._
+import cats.syntax.all._
 import com.typesafe.scalalogging
 
 /**

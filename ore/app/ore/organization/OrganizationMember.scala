@@ -1,8 +1,8 @@
 package ore.organization
 
-import db.{Model, DbRef, ModelService}
 import models.user.role.OrganizationUserRole
 import models.user.{Organization, User}
+import ore.db.{DbRef, Model, ModelService}
 import ore.user.{Member, UserOwned}
 
 import cats.effect.IO

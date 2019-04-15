@@ -1,7 +1,7 @@
 package form.project
 
-import db.DbRef
 import models.user.User
+import ore.db.DbRef
 
 /**
   * Concrete counterpart of [[TProjectRoleSetBuilder]].

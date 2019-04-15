@@ -3,9 +3,10 @@ package models.project
 import java.sql.Timestamp
 import java.time.Instant
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.FlagTable
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.user.User
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.project.{FlagReason, ProjectOwned}
 import ore.user.UserOwned
 

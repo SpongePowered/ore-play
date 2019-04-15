@@ -1,7 +1,6 @@
 package db.impl.schema
 
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.user.SignOn
 
 class SignOnTable(tag: Tag) extends ModelTable[SignOn](tag, "user_sign_ons") {

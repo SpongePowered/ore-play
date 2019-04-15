@@ -5,14 +5,15 @@ import scala.language.higherKinds
 import scala.collection.immutable
 
 import controllers.sugar.Requests.AuthRequest
+import db.impl.DefaultModelCompanion
 import db.impl.schema.LoggedActionTable
-import db.{DbRef, DefaultModelCompanion, Model, ModelQuery, ModelService}
 import ore.StatTracker
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.user.UserOwned
 
-import cats.{Monad, ~>}
 import cats.effect.{Clock, IO}
 import cats.syntax.all._
+import cats.{Monad, ~>}
 import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
 import slick.dbio.DBIO

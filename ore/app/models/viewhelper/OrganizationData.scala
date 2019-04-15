@@ -2,10 +2,10 @@ package models.viewhelper
 
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, ProjectTableMain}
-import db.{Model, DbRef, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole}
 import models.user.{Organization, User}
+import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.RoleCategory
 import util.syntax._
 

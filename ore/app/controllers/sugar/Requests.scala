@@ -4,11 +4,11 @@ import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
 
-import db.{Model, ModelService}
 import models.api.ApiKey
 import models.project.Project
 import models.user.{Organization, User}
 import models.viewhelper._
+import ore.db.{Model, ModelService}
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 import util.syntax._

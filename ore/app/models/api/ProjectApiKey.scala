@@ -1,8 +1,9 @@
 package models.api
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.ProjectApiKeyTable
-import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.Project
+import ore.db.{DbRef, ModelQuery}
 import ore.project.ProjectOwned
 import ore.rest.ProjectApiKeyType
 

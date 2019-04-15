@@ -3,10 +3,9 @@ package db.impl.schema
 import java.sql.Timestamp
 import java.time.Instant
 
-import db.{DbRef, Model, ObjId, ObjTimestamp}
-import db.table.ModelTable
 import db.impl.OrePostgresDriver.api._
 import models.user.role.DbRole
+import ore.db.{DbRef, Model, ObjId, ObjTimestamp}
 import ore.permission.Permission
 import ore.permission.role.RoleCategory
 

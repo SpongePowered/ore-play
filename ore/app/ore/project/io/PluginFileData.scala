@@ -6,8 +6,8 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
-import db.{Model, DbRef, ModelService}
 import models.project.{TagColor, Version, VersionTag}
+import ore.db.{DbRef, Model, ModelService}
 import ore.project.Dependency
 
 import cats.effect.IO
@@ -27,8 +27,8 @@ class PluginFileData(data: Seq[DataValue]) {
       case (key, values) =>
         // combine dependency lists that may come from different files
         if (values.lengthCompare(1) > 0) {
-          import cats.syntax.all._
           import cats.instances.vector._
+          import cats.syntax.all._
 
           val (otherValues, depSeq) = values.toVector.partitionEither {
             case DependencyDataValue(_, deps) => Right(deps)

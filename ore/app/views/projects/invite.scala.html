@@ -4,10 +4,10 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.user.User
 @import ore.OreConfig
+@import ore.db.Model
 @import ore.permission.role.RoleCategory
 @import ore.project.factory.PendingProject
 @import views.html.helper.{CSRF, form}
-@import db.Model
 @(owner: User, pending: PendingProject, userList: List[Model[User]], registeredUsers: Int)(implicit messages: Messages, request: OreRequest[_],
         config: OreConfig, flash: Flash)
 

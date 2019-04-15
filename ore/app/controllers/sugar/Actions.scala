@@ -12,15 +12,16 @@ import play.api.mvc._
 
 import controllers.routes
 import controllers.sugar.Requests._
-import db.{Model, ModelService}
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import models.project.{Project, Visibility}
 import models.user.{Organization, SignOn, User}
 import models.viewhelper._
-import ore.permission.scope.{GlobalScope, HasScope}
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.permission.Permission
+import ore.permission.scope.{GlobalScope, HasScope}
+import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.{IOUtils, OreMDC}
 
@@ -38,6 +39,8 @@ trait Actions extends Calls with ActionHelpers {
   def sso: SingleSignOnConsumer
   def bakery: Bakery
   implicit def auth: SpongeAuthApi
+  implicit def env: OreEnv
+  implicit def config: OreConfig
 
   def users: UserBase                 = UserBase()
   def projects: ProjectBase           = ProjectBase()

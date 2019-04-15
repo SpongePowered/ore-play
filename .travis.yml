@@ -45,4 +45,4 @@ before_cache:
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION ore/test
-  - ./scalafmt ore/app ore/test build.sbt --test --non-interactive
+  - ./scalafmt ore/app ore/test db/src build.sbt --test --non-interactive

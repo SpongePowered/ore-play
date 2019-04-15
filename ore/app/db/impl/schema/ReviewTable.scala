@@ -4,12 +4,11 @@ import java.sql.Timestamp
 
 import play.api.libs.json.JsValue
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.admin.Review
 import models.project.Version
 import models.user.User
+import ore.db.DbRef
 
 class ReviewTable(tag: Tag) extends ModelTable[Review](tag, "project_version_reviews") {
 

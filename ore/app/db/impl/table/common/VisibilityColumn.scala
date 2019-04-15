@@ -1,8 +1,7 @@
 package db.impl.table.common
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.{Hideable, VisibilityChange}
-import db.table.ModelTable
+import db.impl.common.Hideable
 import models.project.Visibility
 
 /**

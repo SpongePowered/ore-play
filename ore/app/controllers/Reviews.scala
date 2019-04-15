@@ -12,14 +12,14 @@ import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
-import db.{DbRef, Model, ModelService}
 import form.OreForms
 import models.admin.{Message, Review}
 import models.project.{Project, ReviewState, Version}
 import models.user.{LoggedAction, Notification, User, UserActionLogger}
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
 import ore.permission.role.Role
@@ -30,8 +30,8 @@ import views.{html => views}
 
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.IO
-import cats.syntax.all._
 import cats.instances.option._
+import cats.syntax.all._
 import slick.lifted.{Rep, TableQuery}
 
 /**

@@ -2,8 +2,9 @@ package models.admin
 
 import java.sql.Timestamp
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.ProjectLogEntryTable
-import db.{DbRef, DefaultModelCompanion, ModelQuery}
+import ore.db.{DbRef, ModelQuery}
 
 import slick.lifted.TableQuery
 

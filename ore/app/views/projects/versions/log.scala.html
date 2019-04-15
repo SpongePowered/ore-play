@@ -3,10 +3,8 @@
 @import models.project.{Project, Version}
 @import models.user.User
 @import ore.OreConfig
+@import ore.db.Model
 @import util.StringUtils._
-
-@import db.Model
-
 @import ore.markdown.MarkdownRenderer
 @(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
 

@@ -4,11 +4,12 @@ import java.sql.Timestamp
 
 import play.twirl.api.Html
 
-import db.impl.model.common.VisibilityChange
+import db.impl.DefaultModelCompanion
+import db.impl.common.VisibilityChange
 import db.impl.schema.ProjectVisibilityChangeTable
-import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.{Project, Visibility}
 import models.user.User
+import ore.db.{DbRef, ModelQuery}
 import ore.markdown.MarkdownRenderer
 
 import slick.lifted.TableQuery

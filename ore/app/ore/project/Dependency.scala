@@ -1,8 +1,8 @@
 package ore.project
 
-import db.Model
 import db.impl.access.ProjectBase
 import models.project.Project
+import ore.db.Model
 
 import cats.data.OptionT
 import cats.effect.IO

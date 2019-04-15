@@ -3,8 +3,9 @@ package models.user.role
 import java.sql.Timestamp
 import java.time.Instant
 
+import db.impl.ModelCompanionPartial
 import db.impl.schema.DbRoleTable
-import db.{Model, ModelCompanionPartial, ModelQuery, ObjId, ObjTimestamp}
+import ore.db.{Model, ModelQuery, ObjId, ObjTimestamp}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
 

@@ -1,8 +1,9 @@
 package models.user
 
-import db.access.ModelView
+import db.impl.DefaultModelCompanion
 import db.impl.schema.NotificationTable
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 

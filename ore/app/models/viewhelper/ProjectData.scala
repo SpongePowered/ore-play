@@ -2,15 +2,14 @@ package models.viewhelper
 
 import play.twirl.api.Html
 
-import db.{Model, ModelService}
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectRoleTable, UserTable}
 import models.admin.{ProjectLogEntry, ProjectVisibilityChange}
 import models.project._
 import models.user.User
 import models.user.role.ProjectUserRole
-import ore.OreConfig
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission.role.RoleCategory
 import util.syntax._

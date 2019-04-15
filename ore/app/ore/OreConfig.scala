@@ -5,11 +5,11 @@ import javax.inject.{Inject, Singleton}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 
-import play.api.{ConfigLoader, Configuration, Logger}
+import play.api.{ConfigLoader, Configuration}
 
-import db.DbRef
 import models.project.Channel
 import models.user.User
+import ore.db.DbRef
 import util.StringUtils._
 
 import org.spongepowered.plugin.meta.version.ComparableVersion

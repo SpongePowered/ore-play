@@ -1,10 +1,10 @@
 package form.project
 
-import db.{Model, ModelService}
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ChannelTable
 import models.project.{Channel, Project}
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.project.factory.ProjectFactory
 import ore.{Color, OreConfig}
 import util.StringUtils._

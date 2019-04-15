@@ -2,21 +2,14 @@ package ore.user
 
 import scala.language.{higherKinds, implicitConversions}
 
-import db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView}
 import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{
-  OrganizationMembersTable,
-  OrganizationRoleTable,
-  ProjectMembersTable,
-  ProjectRoleTable,
-  UserTable
-}
+import db.impl.schema._
 import db.impl.table.common.RoleTable
-import db.table.AssociativeTable
-import db.{AssociationQuery, Model, ModelCompanion, DbRef, ModelQuery, ModelService}
 import models.project.Project
 import models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 import models.user.{Organization, User}
+import ore.db.access.{ModelAssociationAccess, ModelAssociationAccessImpl, ModelView}
+import ore.db._
 import ore.organization.OrganizationMember
 import ore.project.ProjectMember
 import util.syntax._
@@ -119,7 +112,7 @@ object MembershipDossier {
     type RoleTypeTable = RoleTypeTable0
 
     private def association: ModelAssociationAccess[MembersTable, User, M0, UserTable, model.T, IO] =
-      new ModelAssociationAccessImpl(User, model)
+      new ModelAssociationAccessImpl(db.impl.OrePostgresDriver)(User, model)
 
     private def addMember(model: Model[M0], user: Model[User]) =
       association.addAssoc(user, model)

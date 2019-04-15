@@ -7,12 +7,12 @@ import java.sql.Timestamp
 import java.util.Date
 
 import db.impl.OrePostgresDriver.api._
+import db.impl.query.AppQueries
 import db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
-import db.query.AppQueries
-import db.{Model, ModelService}
-import db.access.ModelView
 import discourse.OreDiscourseApi
-import models.project.{Channel, Page, Project, Version, Visibility}
+import models.project._
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.project.io.ProjectFiles
 import ore.{OreConfig, OreEnv}
 import util.StringUtils._
@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
-class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreConfig) {
+class ProjectBase(implicit val service: ModelService, env: OreEnv) {
 
   val fileManager = new ProjectFiles(this.env)
 
@@ -67,11 +67,11 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
     *
     * @return Stale projects
     */
-  def stale: IO[Seq[Model[Project]]] =
+  def stale(implicit config: OreConfig): IO[Seq[Model[Project]]] =
     service.runDBIO(
       ModelView
         .raw(Project)
-        .filter(_.lastUpdated > new Timestamp(new Date().getTime - this.config.ore.projects.staleAge.toMillis))
+        .filter(_.lastUpdated > new Timestamp(new Date().getTime - config.ore.projects.staleAge.toMillis))
         .result
     )
 
@@ -150,10 +150,10 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
   def rename(
       project: Model[Project],
       name: String
-  )(implicit forums: OreDiscourseApi): IO[Boolean] = {
+  )(implicit forums: OreDiscourseApi, config: OreConfig): IO[Boolean] = {
     val newName = compact(name)
     val newSlug = slugify(newName)
-    checkArgument(this.config.isValidProjectName(name), "invalid name", "")
+    checkArgument(config.isValidProjectName(name), "invalid name", "")
     for {
       isAvailable <- this.isNamespaceAvailable(project.ownerName, newSlug)
       _ = checkArgument(isAvailable, "slug not available", "")
@@ -272,5 +272,5 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv, config: OreCo
 object ProjectBase {
   def apply()(implicit projectBase: ProjectBase): ProjectBase = projectBase
 
-  implicit def fromService(implicit service: ModelService): ProjectBase = service.projectBase
+  implicit def fromService(implicit service: ModelService, env: OreEnv): ProjectBase = new ProjectBase()
 }

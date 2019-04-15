@@ -1,8 +1,8 @@
 package form.organization
 
-import db.DbRef
 import models.user.User
 import models.user.role.OrganizationUserRole
+import ore.db.DbRef
 
 /**
   * Builds a set of [[OrganizationUserRole]]s from input data.

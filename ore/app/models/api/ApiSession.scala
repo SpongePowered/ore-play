@@ -2,9 +2,10 @@ package models.api
 
 import java.time.Instant
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.ApiKeySessionTable
-import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.user.User
+import ore.db.{DbRef, ModelQuery}
 
 import slick.lifted.TableQuery
 

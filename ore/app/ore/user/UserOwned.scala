@@ -2,9 +2,9 @@ package ore.user
 
 import scala.language.implicitConversions
 
-import db.access.ModelView
-import db.{Model, DbRef, ModelService}
 import models.user.User
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 
 import cats.effect.IO
 import simulacrum.typeclass
@@ -18,4 +18,9 @@ import simulacrum.typeclass
   /** Returns the User */
   def user(a: A)(implicit service: ModelService): IO[Model[User]] =
     ModelView.now(User).get(userId(a)).getOrElseF(IO.raiseError(new NoSuchElementException("None on get")))
+}
+object UserOwned {
+
+  implicit def isUserOwned[A](implicit isOwned: UserOwned[A]): UserOwned[Model[A]] =
+    (a: Model[A]) => isOwned.userId(a.obj)
 }

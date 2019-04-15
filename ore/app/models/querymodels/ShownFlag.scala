@@ -1,7 +1,7 @@
 package models.querymodels
 
-import db.DbRef
 import models.project.{Flag, Visibility}
+import ore.db.DbRef
 import ore.project.FlagReason
 
 case class ShownFlag(

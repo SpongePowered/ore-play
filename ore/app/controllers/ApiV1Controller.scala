@@ -2,23 +2,25 @@ package controllers
 
 import java.sql.Timestamp
 import java.util.{Base64, Date, UUID}
-
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
+
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.Messages
 import play.api.libs.json._
 import play.api.mvc._
+
 import controllers.sugar.Bakery
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.ProjectApiKeyTable
-import db.{DbRef, ModelService}
 import form.OreForms
 import models.api.ProjectApiKey
 import models.project.{Page, Project, Version}
 import models.user.{LoggedAction, Organization, User, UserActionLogger}
+import ore.db.access.ModelView
+import ore.db.{DbRef, ModelService}
+import ore.permission.Permission
 import ore.permission.role.Role
 import ore.project.factory.ProjectFactory
 import ore.project.io.{PluginUpload, ProjectFiles}
@@ -29,13 +31,13 @@ import security.CryptoUtils
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.StatusZ
 import _root_.util.syntax._
+
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import ore.permission.Permission
 
 /**
   * Ore API (v1)

@@ -1,13 +1,11 @@
 package db.impl.schema
 import java.sql.Timestamp
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
-import db.table.ModelTable
-import models.admin.VersionVisibilityChange
 import models.project.{Channel, Project, ReviewState, Version}
 import models.user.User
+import ore.db.DbRef
 
 class VersionTable(tag: Tag)
     extends ModelTable[Version](tag, "project_versions")

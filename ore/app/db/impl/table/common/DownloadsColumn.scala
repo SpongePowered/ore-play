@@ -1,8 +1,7 @@
 package db.impl.table.common
 
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Downloadable
-import db.table.ModelTable
+import db.impl.common.Downloadable
 
 /**
   * Represents a [[ModelTable]] column for keeping track of downloads.

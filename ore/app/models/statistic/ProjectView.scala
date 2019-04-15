@@ -1,12 +1,13 @@
 package models.statistic
 
 import controllers.sugar.Requests.ProjectRequest
+import db.impl.DefaultModelCompanion
 import db.impl.access.UserBase
 import db.impl.schema.ProjectViewsTable
-import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.project.Project
 import models.user.User
 import ore.StatTracker._
+import ore.db.{DbRef, ModelQuery}
 import security.spauth.SpongeAuthApi
 
 import cats.effect.IO

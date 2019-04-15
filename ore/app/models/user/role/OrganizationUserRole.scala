@@ -1,9 +1,10 @@
 package models.user.role
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.OrganizationRoleTable
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.user.{Organization, User}
 import ore.Visitable
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.organization.OrganizationOwned
 import ore.permission.role.Role
 import ore.user.UserOwned

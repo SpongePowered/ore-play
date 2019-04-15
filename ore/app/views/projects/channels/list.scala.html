@@ -2,9 +2,9 @@
 @import models.project.Channel
 @import models.viewhelper.ProjectData
 @import ore.OreConfig
+@import ore.db.Model
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
-@import db.Model
 @import views.html.helper.CSPNonce
 @(p: ProjectData, channels: Seq[(Model[Channel], Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

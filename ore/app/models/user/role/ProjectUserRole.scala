@@ -1,10 +1,11 @@
 package models.user.role
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.ProjectRoleTable
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.project.Project
 import models.user.User
 import ore.Visitable
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.permission.role.Role
 import ore.permission.scope.ProjectScope
 import ore.project.ProjectOwned

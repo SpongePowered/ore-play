@@ -3,11 +3,10 @@ import java.sql.Timestamp
 
 import play.api.i18n.Lang
 
-import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.NameColumn
-import db.table.ModelTable
 import models.user.User
+import ore.db.{DbRef, Model, ObjId, ObjTimestamp}
 import ore.user.Prompt
 
 class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn[User] {

@@ -1,10 +1,9 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.api.ProjectApiKey
 import models.project.Project
+import ore.db.DbRef
 import ore.rest.ProjectApiKeyType
 
 class ProjectApiKeyTable(tag: Tag) extends ModelTable[ProjectApiKey](tag, "project_api_keys") {

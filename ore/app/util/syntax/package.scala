@@ -1,6 +1,6 @@
 package util
 
-import db.access.QueryView
+import ore.db.access.QueryView
 import ore.organization.OrganizationOwned
 import ore.permission.scope.HasScope
 import ore.project.ProjectOwned

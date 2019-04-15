@@ -1,10 +1,10 @@
 package db.impl.access
 
-import db.access.ModelView
-import db.{Model, DbRef, ModelService, ObjId}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
 import ore.OreConfig
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService, ObjId}
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import security.spauth.SpongeAuthApi
@@ -15,7 +15,7 @@ import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.typesafe.scalalogging
 
-class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
+class OrganizationBase(implicit val service: ModelService) {
 
   private val Logger    = scalalogging.Logger("Organizations")
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
@@ -32,7 +32,12 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole]
-  )(implicit auth: SpongeAuthApi, cs: ContextShift[IO], mdc: OreMDC): EitherT[IO, List[String], Model[Organization]] = {
+  )(
+      implicit auth: SpongeAuthApi,
+      cs: ContextShift[IO],
+      mdc: OreMDC,
+      config: OreConfig
+  ): EitherT[IO, List[String], Model[Organization]] = {
     import cats.instances.vector._
     MDCLogger.debug("Creating Organization...")
     MDCLogger.debug("Name     : " + name)
@@ -45,7 +50,7 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
     // By default we use "<org>@ore.spongepowered.org".
     MDCLogger.debug("Creating on SpongeAuth...")
     // Replace all invalid characters to not throw invalid email error when trying to create org with invalid username
-    val dummyEmail   = name.replaceAll("[^a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]", "") + '@' + this.config.ore.orgs.dummyEmailDomain
+    val dummyEmail   = name.replaceAll("[^a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]", "") + '@' + config.ore.orgs.dummyEmailDomain
     val spongeResult = auth.createDummyUser(name, dummyEmail)
 
     // Check for error
@@ -119,5 +124,5 @@ class OrganizationBase(implicit val service: ModelService, config: OreConfig) {
 object OrganizationBase {
   def apply()(implicit organizationBase: OrganizationBase): OrganizationBase = organizationBase
 
-  implicit def fromService(implicit service: ModelService): OrganizationBase = service.organizationBase
+  implicit def fromService(implicit service: ModelService): OrganizationBase = new OrganizationBase()
 }

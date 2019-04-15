@@ -4,8 +4,8 @@
 @import models.user.{Organization, User}
 @import models.viewhelper.{OrganizationData, UserData}
 @import ore.OreConfig
+@import ore.db.Model
 @import ore.permission.role.Role
-@import db.Model
 @(user: UserData, orga: Option[OrganizationData], userProjectRoles: Seq[(Project, Model[ProjectUserRole])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @prefix = @{"Edit " + (if(user.isOrga) "Organization" else "User") + ": "}

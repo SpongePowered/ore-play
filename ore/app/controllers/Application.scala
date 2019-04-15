@@ -14,18 +14,18 @@ import play.api.mvc.{Action, ActionBuilder, AnyContent}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import db.access.ModelView
-import db.query.AppQueries
 import db.impl.OrePostgresDriver.api._
+import db.impl.query.AppQueries
 import db.impl.schema.ProjectTableMain
-import models.project._
-import models.querymodels.{FlagActivity, ReviewActivity}
-import db.{DbRef, Model, ModelCompanion, ModelQuery, ModelService}
 import form.OreForms
 import models.admin.Review
+import models.project._
+import models.querymodels.{FlagActivity, ReviewActivity}
 import models.user.role._
-import models.user.{LoggedAction, LoggedActionModel, Organization, User, UserActionLogger}
+import models.user._
 import models.viewhelper.OrganizationData
+import ore.db.access.ModelView
+import ore.db._
 import ore.markdown.MarkdownRenderer
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}

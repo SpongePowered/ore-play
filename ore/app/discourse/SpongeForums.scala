@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 
 import play.api.libs.ws.WSClient
 
-import db.ModelService
+import ore.db.ModelService
 import ore.{OreConfig, OreEnv}
 
 import akka.actor.{ActorSystem, Scheduler}

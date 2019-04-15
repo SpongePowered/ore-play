@@ -18,16 +18,16 @@ import play.api.mvc._
 import controllers.ApiV2Controller._
 import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import controllers.sugar.{Bakery, CircePlayController}
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
+import db.impl.query.{APIV2Queries, UserQueries}
 import db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
-import db.query.{APIV2Queries, UserQueries}
-import db.{Model, ModelService}
 import models.api.ApiSession
 import models.project.{Page, Version}
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2QueryVersionTag}
 import models.user.User
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
 import ore.project.factory.ProjectFactory

@@ -1,9 +1,8 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.project.{Project, ProjectSettings}
+import ore.db.DbRef
 
 class ProjectSettingsTable(tag: Tag) extends ModelTable[ProjectSettings](tag, "project_settings") {
 

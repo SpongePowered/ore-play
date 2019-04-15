@@ -7,15 +7,14 @@ import play.api.mvc.{RequestHeader, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
-import db.ModelFilter._
-import db.access.ModelView
-import db.impl.OrePostgresDriver.api._
-import db.impl.table.StatTable
-import db.{Model, ModelCompanion, DbRef, ModelQuery, ModelService}
+import _root_.db.impl.OrePostgresDriver.api._
+import _root_.db.impl.table.StatTable
 import models.project.{Project, Version}
 import models.statistic.{ProjectView, StatEntry, VersionDownload}
 import models.user.User
 import ore.StatTracker.COOKIE_NAME
+import ore.db.access.ModelView
+import ore.db._
 import security.spauth.SpongeAuthApi
 import util.{IOUtils, OreMDC}
 

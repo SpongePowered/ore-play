@@ -1,8 +1,8 @@
 package models.querymodels
 import java.sql.Timestamp
 
-import db.DbRef
 import models.admin.Review
+import ore.db.DbRef
 
 case class ReviewActivity(
     endedAt: Option[Timestamp],

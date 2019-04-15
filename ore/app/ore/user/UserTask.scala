@@ -8,10 +8,10 @@ import scala.concurrent.duration.FiniteDuration
 
 import play.api.inject.ApplicationLifecycle
 
-import db.ModelService
 import db.impl.OrePostgresDriver.api._
 import models.api.ApiSession
 import ore.OreConfig
+import ore.db.ModelService
 import util.OreMDC
 
 import akka.actor.ActorSystem

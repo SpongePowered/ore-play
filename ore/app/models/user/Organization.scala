@@ -1,10 +1,11 @@
 package models.user
 
+import db.impl.ModelCompanionPartial
 import db.impl.access.UserBase
-import db.impl.model.common.Named
+import db.impl.common.Named
 import db.impl.schema.{OrganizationRoleTable, OrganizationTable}
-import db._
 import models.user.role.OrganizationUserRole
+import ore.db._
 import ore.organization.OrganizationMember
 import ore.permission.role.Role
 import ore.permission.scope.HasScope

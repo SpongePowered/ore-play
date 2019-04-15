@@ -1,7 +1,7 @@
 package models.user.role
 
-import db.{Model, ModelService}
 import ore.Visitable
+import ore.db.{Model, ModelService}
 import ore.permission.role.Role
 
 import cats.effect.IO

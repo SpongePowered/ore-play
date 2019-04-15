@@ -1,12 +1,13 @@
 package db.impl
 
-import java.sql.{JDBCType, PreparedStatement, ResultSet}
+import java.sql.{PreparedStatement, ResultSet}
 
 import play.api.i18n.Lang
 
 import models.project.{ReviewState, TagColor, Visibility}
 import models.user.{LoggedAction, LoggedActionContext}
 import ore.Color
+import ore.db.OreProfile
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
 import ore.project.io.DownloadType
@@ -27,20 +28,26 @@ import slick.jdbc.JdbcType
   * Custom Postgres driver to support array data and custom type mappings.
   */
 trait OrePostgresDriver
-    extends ExPostgresProfile
+    extends OreProfile
+    with ExPostgresProfile
     with PgArraySupport
     with PgAggFuncSupport
     with PgWindowFuncSupport
     with PgNetSupport
     with PgPlayJsonSupport
     with PgEnumSupport
-    with SlickValueEnumSupport {
+    with SlickValueEnumSupport { self =>
 
   override val api: OreDriver.type = OreDriver
 
   def pgjson = "jsonb"
 
   object OreDriver extends API with ArrayImplicits with NetImplicits with JsonImplicits {
+    type ModelTable[M]          = self.ModelTable[M]
+    type AssociativeTable[A, B] = self.AssociativeTable[A, B]
+    type ModelFilter[T]         = self.ModelFilter[T]
+    val ModelFilter: self.ModelFilter.type = self.ModelFilter
+
     implicit val colorTypeMapper: BaseColumnType[Color]           = mappedColumnTypeForValueEnum(Color)
     implicit val tagColorTypeMapper: BaseColumnType[TagColor]     = mappedColumnTypeForValueEnum(TagColor)
     implicit val roleTypeTypeMapper: BaseColumnType[Role]         = mappedColumnTypeForValueEnum(Role)

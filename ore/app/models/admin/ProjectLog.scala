@@ -2,11 +2,12 @@ package models.admin
 
 import scala.language.higherKinds
 
-import db.access.{ModelView, QueryView}
+import db.impl.DefaultModelCompanion
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectLogEntryTable, ProjectLogTable}
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery, ModelService}
 import models.project.Project
+import ore.db.access.{ModelView, QueryView}
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import util.syntax._
 
 import cats.effect.IO

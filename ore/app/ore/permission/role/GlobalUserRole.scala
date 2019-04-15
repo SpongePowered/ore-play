@@ -1,7 +1,7 @@
 package ore.permission.role
 
-import db.DbRef
 import models.user.User
+import ore.db.DbRef
 import ore.permission.scope.GlobalScope
 import ore.user.UserOwned
 

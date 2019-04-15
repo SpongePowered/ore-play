@@ -2,13 +2,14 @@ package models.project
 
 import scala.language.higherKinds
 
-import db.access.QueryView
+import db.impl.DefaultModelCompanion
 import db.impl.OrePostgresDriver.api._
-import db.impl.model.common.Named
+import db.impl.common.Named
 import db.impl.schema.{ChannelTable, VersionTable}
-import db.{Model, DbRef, DefaultModelCompanion, ModelQuery}
 import ore.Color
 import ore.Color._
+import ore.db.access.QueryView
+import ore.db.{DbRef, Model, ModelQuery}
 import ore.project.ProjectOwned
 import util.syntax._
 

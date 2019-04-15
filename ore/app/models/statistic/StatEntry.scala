@@ -1,8 +1,8 @@
 package models.statistic
 
-import db.access.ModelView
-import db.{Model, DbRef, ModelService}
 import models.user.User
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 
 import cats.data.OptionT
 import cats.effect.IO

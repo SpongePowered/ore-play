@@ -1,8 +1,9 @@
 package models.project
 
+import db.impl.DefaultModelCompanion
 import db.impl.schema.UnsafeDownloadsTable
-import db.{DbRef, DefaultModelCompanion, ModelQuery}
 import models.user.User
+import ore.db.{DbRef, ModelQuery}
 import ore.project.io.DownloadType
 
 import com.github.tminglei.slickpg.InetString

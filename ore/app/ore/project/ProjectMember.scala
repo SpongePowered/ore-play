@@ -1,9 +1,9 @@
 package ore.project
 
-import db.{Model, DbRef, ModelService}
 import models.project.Project
 import models.user.User
 import models.user.role.ProjectUserRole
+import ore.db.{DbRef, Model, ModelService}
 import ore.user.{Member, UserOwned}
 
 import cats.effect.IO

@@ -2,9 +2,9 @@ package ore.user
 
 import scala.language.implicitConversions
 
-import db.{Model, ModelService}
 import models.user.User
 import models.user.role.UserRoleModel
+import ore.db.{Model, ModelService}
 
 import cats.effect.IO
 

@@ -2,10 +2,9 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
-import db.table.ModelTable
 import models.admin.{ProjectLog, ProjectLogEntry}
+import ore.db.DbRef
 
 class ProjectLogEntryTable(tg: Tag) extends ModelTable[ProjectLogEntry](tg, "project_log_entries") {
 

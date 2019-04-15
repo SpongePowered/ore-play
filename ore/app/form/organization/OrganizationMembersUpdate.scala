@@ -1,8 +1,8 @@
 package form.organization
 
-import db.{Model, DbRef, ModelService}
 import models.user.role.OrganizationUserRole
 import models.user.{Notification, Organization, User}
+import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
 import ore.user.notification.NotificationType
 import util.syntax._
@@ -30,9 +30,9 @@ case class OrganizationMembersUpdate(
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[Unit] = {
+    import cats.instances.list._
     import cats.instances.option._
     import cats.instances.vector._
-    import cats.instances.list._
 
     // Add new roles
     val dossier = organization.memberships

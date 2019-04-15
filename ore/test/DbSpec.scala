@@ -6,7 +6,7 @@ import scala.concurrent.ExecutionContext
 import play.api.db.Databases
 import play.api.db.evolutions.Evolutions
 
-import db.query.DoobieOreProtocol
+import db.impl.query.DoobieOreProtocol
 
 import cats.effect.{ContextShift, IO}
 import doobie.Transactor

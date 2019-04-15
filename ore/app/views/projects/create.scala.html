@@ -10,12 +10,12 @@ Page used for uploading and creating new projects.
 @import ore.project.factory.PendingProject
 @import views.html.helper.{CSRF, form}
 @import views.html.utils
-@import db.ObjId
-@import db.ObjTimestamp
 @import java.sql.Timestamp
 @import java.time.Instant
-@import db.Model
+
+@import ore.db.ObjId
 @import views.html.helper.CSPNonce
+@import ore.db.Model
 @(createProjectOrgas: Seq[Model[Organization]],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

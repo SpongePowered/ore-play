@@ -7,12 +7,11 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import db.ModelFilter._
-import db.access.ModelView
 import db.impl.OrePostgresDriver.api._
-import db.{ModelFilter, ModelService}
 import models.project.{Project, Visibility}
 import ore.OreConfig
+import ore.db.ModelService
+import ore.db.access.ModelView
 
 import akka.actor.ActorSystem
 import cats.effect.{ContextShift, IO}

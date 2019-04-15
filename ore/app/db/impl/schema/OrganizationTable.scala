@@ -2,11 +2,10 @@ package db.impl.schema
 
 import java.sql.Timestamp
 
-import db.{Model, DbRef, ObjId, ObjTimestamp}
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.NameColumn
-import db.table.ModelTable
 import models.user.{Organization, User}
+import ore.db.{DbRef, Model, ObjId, ObjTimestamp}
 
 class OrganizationTable(tag: Tag) extends ModelTable[Organization](tag, "organizations") with NameColumn[Organization] {
 

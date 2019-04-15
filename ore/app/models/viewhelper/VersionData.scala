@@ -1,11 +1,12 @@
 package models.viewhelper
 
 import controllers.sugar.Requests.ProjectRequest
-import db.{Model, ModelService}
-import db.access.ModelView
+import db.impl.access.ProjectBase
 import models.project.{Channel, Project, Version}
 import models.user.User
 import ore.Platform
+import ore.db.access.ModelView
+import ore.db.{Model, ModelService}
 import ore.project.Dependency
 
 import cats.effect.{ContextShift, IO}
@@ -36,6 +37,7 @@ case class VersionData(
 object VersionData {
   def of[A](request: ProjectRequest[A], version: Model[Version])(
       implicit service: ModelService,
+      projectBase: ProjectBase,
       cs: ContextShift[IO]
   ): IO[VersionData] = {
     import cats.instances.list._

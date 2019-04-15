@@ -1,11 +1,10 @@
 package db.impl.schema
 
-import db.DbRef
 import db.impl.OrePostgresDriver.api._
 import db.impl.table.common.RoleTable
-import db.table.ModelTable
 import models.user.Organization
 import models.user.role.OrganizationUserRole
+import ore.db.DbRef
 
 class OrganizationRoleTable(tag: Tag)
     extends ModelTable[OrganizationUserRole](tag, "user_organization_roles")
