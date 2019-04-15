@@ -68,7 +68,7 @@ lazy val playSlickVersion = "4.0.0"
 lazy val slickPgVersion   = "0.17.1"
 lazy val circeVersion     = "0.11.1"
 
-lazy val `ore` = (project in file("."))
+lazy val `ore` = project
   .enablePlugins(PlayScala)
   .settings(
     commonSettings,
@@ -123,3 +123,5 @@ lazy val `ore` = (project in file("."))
       "org.tpolecat"           %% "doobie-scalatest"   % doobieVersion % Test
     )
   )
+
+lazy val oreAll = project.in(file(".")).aggregate(ore)
