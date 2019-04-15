@@ -1,7 +1,31 @@
 package ore.db
 
+// GENERATED CODE. DO NOT EDIT!
 import ore.db.Model.{SuperLowPriorityUnwrappers, Unwrapper}
 
+/*
+(1 to 22).map { i =>
+  val (tpesSeq, impsSeq, transformsSeq) = (1 to i).map { j =>
+    val tpe = ('A' + j - 1).toChar.toString
+    val outTpe = tpe + "O"
+    val imp = s"el${j}Unwrapper: Unwrapper.Aux[$tpe, $outTpe]"
+    val transform = s"el${j}Unwrapper(t._$j)"
+    ((tpe, outTpe), imp, transform)
+  }.unzip3
+  val inTpes = tpesSeq.map(_._1).mkString(", ")
+  val outTpes = tpesSeq.map(_._2).mkString(", ")
+  val tpes = tpesSeq.flatMap(t => Seq(t._1, t._2)).mkString(", ")
+  val imps = impsSeq.mkString(", ")
+  val transforms = transformsSeq.mkString(", ")
+  s"""implicit def unwrapTuple$i[$tpes](implicit $imps): Unwrapper.Aux[Tuple$i[$inTpes], Tuple$i[$outTpes]] = new Unwrapper[Tuple$i[$inTpes]] {
+     |  override type Out = Tuple$i[$outTpes]
+     |  override def apply(t: Tuple$i[$inTpes]) = Tuple$i($transforms)
+     |}""".stripMargin
+}.foreach { s =>
+  println(s)
+  println()
+}
+ */
 trait TupleUnwrappers extends SuperLowPriorityUnwrappers {
   implicit def unwrapTuple1[A, AO](implicit el1Unwrapper: Unwrapper.Aux[A, AO]): Unwrapper.Aux[Tuple1[A], Tuple1[AO]] =
     new Unwrapper[Tuple1[A]] {
