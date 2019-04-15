@@ -1,3 +1,7 @@
+//=====> CONSTANTS
+
+const KEY_ENTER = 13;
+
 //=====> EXTERNAL CONSTANTS
 
 var CATEGORY_STRING = CATEGORY_STRING || null;
@@ -183,7 +187,7 @@ $(function() {
 
     var searchBar = $('.project-search');
     searchBar.find('input').on('keypress', function(event) {
-        if (event.keyCode === 13) {
+        if (event.keyCode === KEY_ENTER) {
             event.preventDefault();
             $(this).next().find('.btn').click();
         }
