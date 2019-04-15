@@ -33,18 +33,13 @@ Running Ore is relatively simple.
 
 **With SBT**
 * Download and install the latest [SBT](http://www.scala-sbt.org/download.html) version.
-* Execute `sbt run` in the project root.
+* Execute `sbt ore/run` in the project root.
 
 **With IntelliJ Community Edition**
 * Install the Scala plugin.
 * Import the `build.sbt` file.
-* Create a new SBT Task run configuration. Enter `run` in the Tasks field.
-* Run it.
-
-**With IntelliJ Ultimate Edition:**
-* Install the Scala plugin.
-* Import the `build.sbt` file.
-* Create a new Play 2 App run configuration.
+* Create a new SBT Task run configuration. Enter `ore/run` in the Tasks field.
+* Untick the box that says `Use sbt shell`
 * Run it.
 
 ### Using Hydra
