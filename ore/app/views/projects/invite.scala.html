@@ -8,7 +8,7 @@
 @import ore.permission.role.RoleCategory
 @import ore.project.factory.PendingProject
 @import views.html.helper.{CSRF, form}
-@(owner: User, pending: PendingProject, userList: List[Model[User]], registeredUsers: Int)(implicit messages: Messages, request: OreRequest[_],
+@(owner: User, pending: PendingProject, userList: List[Model[User]])(implicit messages: Messages, request: OreRequest[_],
         config: OreConfig, flash: Flash)
 
 @projects.helper.panelCreate(messages("project.create"), 3) {
@@ -18,7 +18,7 @@
         <div class="minor create-blurb">
             <p>@messages("project.members.infoText.head")</p>
             <p>
-                @Html(messages("project.members.infoText.bottom", registeredUsers))
+                @Html(messages("project.members.infoText.bottom", userList.size))
             </p>
         </div>
 

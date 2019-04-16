@@ -172,10 +172,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                       pendingProject.free *> newPending.cache *>
                         pendingProject.pendingVersion.free *> newPending.pendingVersion.cache,
                       authors.filter(_ != request.user.name).parTraverse(users.withName(_).value),
-                      this.forums.countUsers(authors),
                       newPending.owner
-                    ).parMapN { (_, users, registered, owner) =>
-                      Ok(views.invite(owner, newPending, users.flatten, registered))
+                    ).parMapN { (_, users, owner) =>
+                      Ok(views.invite(owner, newPending, users.flatten))
                     }
                 }
               }
@@ -272,7 +271,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
     implicit request =>
-      forums.isAvailableF.flatMap { isAvailable =>
+      forums.api.isAvailable.flatMap { isAvailable =>
         this.stats.projectViewed(Ok(views.discuss(request.data, request.scoped, isAvailable)))
       }
   }
@@ -300,8 +299,8 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               .flatMap(posterName => users.requestPermission(request.user, posterName, Permission.PostAsOrganization))
               .getOrElse(request.user)
           }
-          errors <- this.forums.postDiscussionReply(request.project, poster, formData.content).swap.getOrElse(Nil)
-        } yield Redirect(self.showDiscussion(author, slug)).withErrors(errors)
+          errors <- this.forums.postDiscussionReply(request.project, poster, formData.content).swap.toOption.value
+        } yield Redirect(self.showDiscussion(author, slug)).withErrors(errors.toList)
       }
     }
 

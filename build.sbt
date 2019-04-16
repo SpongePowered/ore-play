@@ -62,6 +62,7 @@ lazy val playCommonSettings = Seq(
   pipelineStages := Seq(digest, gzip)
 )
 
+lazy val catsVersion      = "1.6.0"
 lazy val doobieVersion    = "0.6.0"
 lazy val flexmarkVersion  = "0.42.0"
 lazy val playSlickVersion = "4.0.0"
@@ -78,21 +79,30 @@ lazy val db = project.settings(
   )
 )
 
+lazy val discourse = project.settings(
+  commonSettings,
+  name := "ore-discourse",
+  libraryDependencies ++= Seq(
+    "org.typelevel"     %% "cats-core"            % catsVersion,
+    "org.typelevel"     %% "cats-effect"          % "1.2.0",
+    "io.circe"          %% "circe-core"           % circeVersion,
+    "io.circe"          %% "circe-generic-extras" % circeVersion,
+    "io.circe"          %% "circe-parser"         % circeVersion,
+    "com.typesafe.akka" %% "akka-http-core"       % "10.1.8",
+    "com.typesafe.akka" %% "akka-stream"          % "2.5.19",
+    "de.heikoseeberger" %% "akka-http-circe"      % "1.25.2",
+  )
+)
+
 lazy val `ore` = project
   .enablePlugins(PlayScala)
-  .dependsOn(db)
+  .dependsOn(db, discourse)
   .settings(
     commonSettings,
     playCommonSettings,
     name := "ore",
-    resolvers ++= Seq(
-      "sponge".at("https://repo.spongepowered.org/maven"),
-      "scalaz-bintray".at("https://dl.bintray.com/scalaz/releases"),
-      "Akka Snapshot Repository".at("http://repo.akka.io/snapshots/")
-    ),
     libraryDependencies ++= Seq(caffeine, ws, guice),
     libraryDependencies ++= Seq(
-      "org.spongepowered"          % "play-discourse"                 % "4.0.0",
       "org.spongepowered"          % "plugin-meta"                    % "0.4.1",
       "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
       "com.typesafe.play"          %% "play-slick-evolutions"         % playSlickVersion,
@@ -105,7 +115,7 @@ lazy val `ore` = project
       "javax.mail"                 % "mail"                           % "1.4.7",
       "com.beachape"               %% "enumeratum"                    % "1.5.13",
       "com.beachape"               %% "enumeratum-slick"              % "1.5.15",
-      "org.typelevel"              %% "cats-core"                     % "1.6.0",
+      "org.typelevel"              %% "cats-core"                     % catsVersion,
       "com.github.mpilquist"       %% "simulacrum"                    % "0.15.0",
       "io.circe"                   %% "circe-core"                    % circeVersion,
       "io.circe"                   %% "circe-generic-extras"          % circeVersion,
@@ -133,4 +143,4 @@ lazy val `ore` = project
     )
   )
 
-lazy val oreAll = project.in(file(".")).aggregate(db, ore)
+lazy val oreAll = project.in(file(".")).aggregate(db, ore, discourse)

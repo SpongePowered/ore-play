@@ -6,13 +6,13 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import play.api.libs.ws.WSClient
-
-import ore.db.ModelService
+import ore.discourse.AkkaDiscourseApi
+import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
 import ore.{OreConfig, OreEnv}
 
 import akka.actor.{ActorSystem, Scheduler}
-import cats.effect.IO
+import akka.stream.Materializer
+import cats.effect.{Concurrent, ContextShift, IO}
 
 /**
   * [[OreDiscourseApi]] implementation.
@@ -20,31 +20,37 @@ import cats.effect.IO
 @Singleton
 class SpongeForums @Inject()(
     env: OreEnv,
-    config: OreConfig,
-    actorSystem: ActorSystem,
-    val bootstrapService: ModelService,
-    val bootstrapConfig: OreConfig,
-    override val ws: WSClient
-)(implicit ec: ExecutionContext)
-    extends OreDiscourseApi()(IO.contextShift(ec), IO.timer(ec)) {
+    config: OreConfig
+)(implicit ec: ExecutionContext, system: ActorSystem, mat: Materializer)
+    extends OreDiscourseApi(
+      AkkaDiscourseApi[IO](
+        AkkaDiscourseSettings(
+          config.forums.api.key,
+          config.forums.api.admin,
+          config.forums.api.isAvailableReset,
+          config.forums.baseUrl
+        )
+      )({
+        implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+        Concurrent[IO]
+      }, IO.timer(ec), system, mat).unsafeRunSync()
+    )(
+      IO.contextShift(ec)
+    ) {
 
-  private val conf = this.config.forums
-  private val api  = conf.api
+  private val conf    = this.config.forums
+  private val confApi = conf.api
 
-  val isEnabled: Boolean = api.enabled
-  isDebugMode = this.config.ore.debug
+  val isEnabled: Boolean = confApi.enabled
 
-  override val key: String       = this.api.key
-  override val admin: String     = this.api.admin
-  override val timeout: Duration = this.api.timeout
-  override val url: String       = this.conf.baseUrl
-  override val baseUrl: String   = this.config.app.baseUrl
+  override val admin: String   = this.confApi.admin
+  override val baseUrl: String = this.config.app.baseUrl
 
   override val categoryDefault: Int                 = this.conf.categoryDefault
   override val categoryDeleted: Int                 = this.conf.categoryDeleted
   override val topicTemplatePath: Path              = this.env.conf.resolve("discourse/project_topic.md")
   override val versionReleasePostTemplatePath: Path = this.env.conf.resolve("discourse/version_post.md")
-  override val scheduler: Scheduler                 = this.actorSystem.scheduler
+  override val scheduler: Scheduler                 = this.system.scheduler
   override val retryRate: FiniteDuration            = this.conf.retryRate
 
 }

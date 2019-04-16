@@ -3,8 +3,6 @@ package discourse
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-import play.api.Logger
-
 import db.impl.OrePostgresDriver.api._
 import db.impl.schema.{ProjectTableMain, VersionTable}
 import models.project.{Project, Version, Visibility}
@@ -14,6 +12,7 @@ import ore.db.access.ModelView
 
 import akka.actor.Scheduler
 import cats.effect.{ContextShift, IO}
+import com.typesafe.scalalogging
 
 /**
   * Task to periodically retry failed Discourse requests.
@@ -26,7 +25,7 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  val Logger: Logger = this.api.Logger
+  val Logger: scalalogging.Logger = this.api.Logger
 
   private val projectTopicFilter = ModelFilter(Project)(_.topicId.isEmpty)
   private val projectDirtyFilter = ModelFilter(Project)(_.isTopicDirty)

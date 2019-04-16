@@ -131,11 +131,11 @@ final class OreConfig @Inject()(config: Configuration) {
     val retryRate: FiniteDuration = raw.get[FiniteDuration]("retryRate")
 
     object api extends ConfigCategory {
-      val raw: Configuration      = forums.raw.get[Configuration]("api")
-      val enabled: Boolean        = raw.get[Boolean]("enabled")
-      val key: String             = raw.get[String]("key")
-      val admin: String           = raw.get[String]("admin")
-      val timeout: FiniteDuration = raw.get[FiniteDuration]("timeout")
+      val raw: Configuration               = forums.raw.get[Configuration]("api")
+      val enabled: Boolean                 = raw.get[Boolean]("enabled")
+      val key: String                      = raw.get[String]("key")
+      val admin: String                    = raw.get[String]("admin")
+      val isAvailableReset: FiniteDuration = raw.get[FiniteDuration]("is-available-reset")
     }
   }
 

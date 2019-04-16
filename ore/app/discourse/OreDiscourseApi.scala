@@ -9,6 +9,7 @@ import models.project.{Project, Version}
 import models.user.User
 import ore.OreConfig
 import ore.db.{Model, ModelService}
+import ore.discourse.{DiscourseApi, DiscoursePost}
 import util.StringUtils._
 import util.syntax._
 
@@ -18,8 +19,6 @@ import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
 import com.google.common.base.Preconditions.checkArgument
 import com.typesafe.scalalogging
-import org.spongepowered.play.discourse.DiscourseApi
-import org.spongepowered.play.discourse.model.DiscoursePost
 
 /**
   * An implementation of [[DiscourseApi]] suited to Ore's needs.
@@ -28,7 +27,7 @@ import org.spongepowered.play.discourse.model.DiscoursePost
   * singleton, otherwise countless threads will be spawned from this object's
   * [[RecoveryTask]].
   */
-abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) extends DiscourseApiF[IO] {
+abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextShift[IO]) {
 
   def isEnabled: Boolean
 
@@ -53,7 +52,11 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
   /** The base URL for this instance */
   def baseUrl: String
 
-  private val MDCLogger = scalalogging.Logger.takingImplicit[DiscourseMDC](Logger.logger)
+  /** An admin account to fall back to if no user is specified as poster */
+  def admin: String
+
+  private val MDCLogger           = scalalogging.Logger.takingImplicit[DiscourseMDC]("Discourse")
+  protected[discourse] val Logger = scalalogging.Logger(MDCLogger.underlying)
 
   /**
     * Initializes and starts this API instance.
@@ -84,36 +87,41 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
       implicit val mdc: DiscourseMDC = DiscourseMDC(project.ownerName, None, title)
 
       val createTopicProgram = (content: String) =>
-        createTopicF(poster = project.ownerName, title = title, content = content, categoryId = Some(categoryDefault))
+        api.createTopic(
+          poster = project.ownerName,
+          title = title,
+          content = content,
+          categoryId = Some(categoryDefault)
+      )
 
       def sanityCheck(check: Boolean, msg: => String) = if (!check) IO.raiseError(new Exception(msg)) else IO.unit
 
       val res = for {
-        content <- EitherT.right[(List[String], String)](Templates.projectTopic(project))
+        content <- EitherT.right[(String, String)](Templates.projectTopic(project))
         topic   <- createTopicProgram(content).leftMap((_, content))
         // Topic created!
         // Catch some unexpected cases (should never happen)
-        _ <- EitherT.right[(List[String], String)](sanityCheck(topic.isTopic, "project post isn't topic?"))
-        _ <- EitherT.right[(List[String], String)](
+        _ <- EitherT.right[(String, String)](sanityCheck(topic.isTopic, "project post isn't topic?"))
+        _ <- EitherT.right[(String, String)](
           sanityCheck(topic.username == project.ownerName, "project post user isn't owner?")
         )
         _ = MDCLogger.debug(s"""|New project topic:
                                 |Project: ${project.url}
                                 |Topic ID: ${topic.topicId}
                                 |Post ID: ${topic.postId}""".stripMargin)
-        project <- EitherT.right[(List[String], String)](
+        project <- EitherT.right[(String, String)](
           service.update(project)(_.copy(topicId = Some(topic.topicId), postId = Some(topic.postId)))
         )
       } yield project
 
       res
         .leftSemiflatMap {
-          case (errors, _) =>
+          case (error, _) =>
             // Request went through but Discourse responded with errors
             // Don't schedule a retry because this will just keep happening
             val message =
               s"""|Request to create topic for project '${project.url}' was successful but Discourse responded with errors:
-                  |Errors: ${errors.mkString(", ")}""".stripMargin
+                  |Errors: $error""".stripMargin
             MDCLogger.warn(message)
             project.logger.flatMap(_.err(message)).as(project)
         }
@@ -147,22 +155,22 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
 
       implicit val mdc: DiscourseMDC = DiscourseMDC(ownerName, topicId, title)
 
-      def logErrorsAs(errors: List[String], as: Boolean): IO[Boolean] = {
+      def logErrorsAs(error: String, as: Boolean): IO[Boolean] = {
         val message =
           s"""|Request to update project topic was successful but Discourse responded with errors:
               |Project: ${project.url}
               |Topic ID: $topicId
               |Title: $title
-              |Errors: ${errors.toString}""".stripMargin
+              |Errors: $error""".stripMargin
         MDCLogger.warn(message)
         project.logger.flatMap(_.err(message)).as(as)
       }
 
       val updateTopicProgram =
-        updateTopicF(username = ownerName, topicId = topicId.get, title = Some(title), categoryId = None)
+        api.updateTopic(poster = ownerName, topicId = topicId.get, title = Some(title), categoryId = None)
 
       val updatePostProgram = (content: String) =>
-        updatePostF(username = ownerName, postId = postId.get, content = content)
+        api.updatePost(poster = ownerName, postId = postId.get, content = content)
 
       val res = for {
         // Set flag so that if we are interrupted we will remember to do it later
@@ -186,15 +194,17 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     * @param content  Post content
     * @return         List of errors Discourse returns
     */
-  def postDiscussionReply(project: Project, user: User, content: String): EitherT[IO, List[String], DiscoursePost] = {
+  def postDiscussionReply(project: Project, user: User, content: String): EitherT[IO, String, DiscoursePost] = {
     if (!this.isEnabled) {
       Logger.warn("Tried to post discussion with API disabled?") // Shouldn't be reachable
-      EitherT.leftT[IO, DiscoursePost](Nil: List[String])
+      EitherT.leftT[IO, DiscoursePost]("Tried to post discussion with API disabled")
     } else {
       checkArgument(project.topicId.isDefined, "undefined topic id", "")
       EitherT(
-        createPostF(username = user.name, topicId = project.topicId.get, content = content).value
-          .orElse(IO.pure(Left(List("Could not connect to forums, please try again later."))))
+        api
+          .createPost(poster = user.name, topicId = project.topicId.get, content = content)
+          .value
+          .orElse(IO.pure(Left("Could not connect to forums, please try again later.")))
       )
     }
   }
@@ -210,7 +220,6 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
       implicit service: ModelService,
       cs: ContextShift[IO]
   ): IO[Model[Version]] = {
-    import cats.instances.list._
     if (!this.isEnabled)
       IO.pure(version)
     else {
@@ -224,7 +233,7 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
             content = Templates.versionRelease(project, version, version.description)
           )
         }
-        .leftSemiflatMap(errors => project.logger.flatMap(logger => errors.parTraverse(logger.err)).as(version))
+        .leftSemiflatMap(error => project.logger.flatMap(_.err(error)).as(version))
         .semiflatMap(post => service.update(version)(_.copy(postId = Some(post.postId))))
         .merge
     }
@@ -246,19 +255,19 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
 
       implicit val mdc: DiscourseMDC = DiscourseMDC(ownerName, topicId, title)
 
-      def logErrorsAs(errors: List[String], as: Boolean): IO[Boolean] = {
+      def logErrorsAs(error: String, as: Boolean): IO[Boolean] = {
         val message =
           s"""|Request to update project topic was successful but Discourse responded with errors:
               |Project: ${project.url}
               |Topic ID: $topicId
               |Title: $title
-              |Errors: ${errors.toString}""".stripMargin
+              |Errors: $error""".stripMargin
         MDCLogger.warn(message)
         project.logger.flatMap(_.err(message)).as(as)
       }
 
       val updatePostProgram = (content: String) =>
-        updatePostF(username = ownerName, postId = postId.get, content = content)
+        api.updatePost(poster = ownerName, postId = postId.get, content = content)
 
       val res = for {
         // Set flag so that if we are interrupted we will remember to do it later
@@ -279,7 +288,8 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     else {
       checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
-      updateTopicF(admin, project.topicId.get, None, Some(if (isVisible) categoryDefault else categoryDeleted))
+      api
+        .updateTopic(admin, project.topicId.get, None, Some(if (isVisible) categoryDefault else categoryDeleted))
         .fold(
           errors =>
             IO.raiseError(
@@ -303,25 +313,13 @@ abstract class OreDiscourseApi(implicit cs: ContextShift[IO], timer: Timer[IO]) 
     else {
       checkArgument(project.topicId.isDefined, "undefined topic id", "")
 
-      def logFailure(): Unit = Logger.warn(s"Couldn't delete topic for project: ${project.url}. Rescheduling...")
+      def logFailure(e: String) =
+        IO(Logger.warn(s"Couldn't delete topic for project: ${project.url} because $e. Rescheduling..."))
 
-      val deleteForums = deleteTopicF(admin, project.topicId.get).onError { case _ => IO(logFailure()) }
+      val deleteForums =
+        api.deleteTopic(admin, project.topicId.get).onError { case e => EitherT.liftF(logFailure(e)) }.value
       deleteForums *> service.update(project)(_.copy(topicId = None, postId = None))
     }
-  }
-
-  /**
-    * Returns a future result of the amount of users on Discourse that are in
-    * this list.
-    *
-    * @param users  Users to check
-    * @return       Amount on discourse
-    */
-  def countUsers(users: List[String])(implicit cs: ContextShift[IO]): IO[Int] = {
-    import cats.instances.list._
-    if (!this.isEnabled)
-      IO.pure(0)
-    else users.parTraverse(u => userExistsF(u).orElse(IO.pure(false))).map(_.count(_ == true))
   }
 
   /**
