@@ -4,17 +4,15 @@ const KEY_ENTER = 13;
 
 //=====> EXTERNAL CONSTANTS
 
-var CATEGORY_STRING = CATEGORY_STRING || null;
-var SORT_STRING = SORT_STRING || null;
-var csrf = null;
-var isLoggedIn = false;
+let csrf = null;
+let isLoggedIn = false;
 
 
 //=====> SETUP
 
-var clipboardManager = new ClipboardJS('.copy-url');
+const clipboardManager = new ClipboardJS('.copy-url');
 clipboardManager.on('success', function(e) {
-    var element = $('.btn-download').tooltip({title: 'Copied!', placement: 'bottom', trigger: 'manual'}).tooltip('show');
+    const element = $('.btn-download').tooltip({title: 'Copied!', placement: 'bottom', trigger: 'manual'}).tooltip('show');
     setTimeout(function () {
         element.tooltip('destroy');
     }, 2200);
@@ -63,8 +61,8 @@ function apiV2Request(url, method, data, isRetry) {
                 data = {};
             }
 
-            var isFormData = data instanceof FormData;
-            var allData;
+            const isFormData = data instanceof FormData;
+            let allData;
             if(isFormData) {
                 data.append('csrfToken', csrf);
                 allData = data;
@@ -105,7 +103,7 @@ function apiV2Request(url, method, data, isRetry) {
 
 function getApiSession() {
     return new Promise(function (resolve, reject) {
-        var session;
+        let session;
         if (isLoggedIn) {
             session = localStorage.getItem('api_session');
             if (session === null) {
@@ -176,31 +174,10 @@ $(function() {
 
     initTooltips();
 
-    $('.authors-icon').click(function() { window.location = '/authors'; });
-
-    $('.staff-icon').click(function() { window.location = '/staff'; });
-
     $('.btn-spinner').click(function() {
-        var iconClass = $(this).data('icon');
+        const iconClass = $(this).data('icon');
         toggleSpinner($(this).find('[data-fa-i2svg]').toggle(iconClass));
     });
-
-    var searchBar = $('.project-search');
-    searchBar.find('input').on('keypress', function(event) {
-        if (event.keyCode === KEY_ENTER) {
-            event.preventDefault();
-            $(this).next().find('.btn').click();
-        }
-    });
-
-    searchBar.find('.btn').click(function() {
-        var query = $(this).closest('.input-group').find('input').val();
-        var url = '/?q=' + query;
-        if (CATEGORY_STRING) url += '&categories=' + CATEGORY_STRING;
-        if (SORT_STRING) url += '&sort=' + SORT_STRING;
-        go(url);
-    });
-
 
     $(".link-go-back").click(function () {
         window.history.back();
@@ -209,9 +186,9 @@ $(function() {
 
 // Fix page anchors which were broken by the fixed top navigation
 
-var scrollToAnchor = function (anchor) {
+const scrollToAnchor = function (anchor) {
     if (anchor) {
-        var target = $("a" + anchor);
+        let target = $("a" + anchor);
 
         if (target.length) {
             $('html,body').animate({

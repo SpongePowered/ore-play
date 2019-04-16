@@ -80,12 +80,16 @@ The main header displayed on each layout.
                 </li>
 
                 <li class="nav-icon authors-icon" @tooltip(messages("project.viewAuthors"))>
-                    <i class="icon fas fa-users"></i>
+                    <a href="@routes.Users.showAuthors(None, None)">
+                        <i class="icon fas fa-users"></i>
+                    </a>
                 </li>
 
                 @if(request.headerData.globalPerm(Permission.IsStaff)) {
                     <li class="nav-icon staff-icon" @tooltip(messages("project.viewStaff"))>
-                        <i class="icon fas fa-user-tie"></i>
+                        <a href="@routes.Users.showStaff(None, None)">
+                            <i class="icon fas fa-user-tie"></i>
+                        </a>
                     </li>
                 }
 

@@ -25,8 +25,24 @@ sorted according to different criteria.
     logos(index)
 }
 
+@generateQueryString(categories: Seq[Category]) = @{
+    categories.map(c => c.value).mkString(",")
+}
+
+@generateModifiedQueryString(categories: Seq[Category], modifiedCategory: Category) = @{
+    if (categories.isEmpty) {
+        Some(generateQueryString(Seq(modifiedCategory)))
+    } else if (categories.contains(modifiedCategory)) {
+        Some(generateQueryString((categories.toSet - modifiedCategory).toSeq))
+    } else if (categories.size + 1 == Category.visible.size) {
+        None
+    } else {
+        Some(generateQueryString((categories.toSet + modifiedCategory).toSeq))
+    }
+}
+
 @categoryString = @{
-    visibleCategories.map(_.map(_.value.toString).mkString(","))
+    visibleCategories.flatMap(cat => Some(generateQueryString(cat)))
 }
 
 @orderingOption = @{
@@ -148,18 +164,15 @@ sorted according to different criteria.
                     }
                 </div>
 
-                <table class="table panel-body category-table">
-                    <tbody>
-                    @for(category <- Category.visible) {
-                        <tr data-id="@category.value" @if(visibleCategories.isDefined && visibleCategories.get.contains(category)) { class="selected"} >
-                            <td><i class="fas @category.icon"></i></td>
-                            <td>
-                                <strong>@category.title</strong>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
+                <div class="list-group category-list">
+                @for(category <- Category.visible) {
+                    <a class="list-group-item @if(visibleCategories.isDefined && visibleCategories.get.contains(category)){active}"
+                    href="@routes.Application.showHome(generateModifiedQueryString(visibleCategories.getOrElse(Seq()), category), None, None, None, platformCategory.map(_.name), platform.map(_.name), relevanceOption)">
+                        <i class="fas fa-fw @category.icon"></i>
+                        <strong>@category.title</strong>
+                    </a>
+                }
+                </div>
             </div>
 
             <!-- Platform list -->

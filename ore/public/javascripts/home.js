@@ -46,39 +46,18 @@ $(function() {
         go(url);
     });
 
-    // Setup category table
-    $('.category-table').find('tr').click(function() {
-        var categoryString = '';
-        var id = $(this).data('id');
-        if ($(this).hasClass('selected')) {
-            // Category is already selected
-            var self = $(this);
-            var selected = $('.category-table').find('.selected');
-            selected.each(function(i) {
-                if ($(this).is(self)) return; // Skip the clicked category
-                categoryString += $(this).data('id');
-                if (i < selected.length - 1) categoryString += ',';
-            });
-        } else if (CATEGORY_STRING) {
-            categoryString += CATEGORY_STRING + ',' + $(this).data('id');
-        } else {
-            categoryString += id;
+    const searchBar = $('.project-search');
+    searchBar.find('input').on('keypress', function(event) {
+        if (event.keyCode === KEY_ENTER) {
+            event.preventDefault();
+            $(this).next().find('.btn').click();
         }
-
-        // Build URL
-        var url = '/?';
-        if (categoryString.length > 0) {
-            url += 'categories=' + categoryString;
-            if (SORT_STRING) url += '&sort=' + SORT_STRING;
-            if (ORDER_WITH_RELEVANCE) url += '&relevance=' + ORDER_WITH_RELEVANCE;
-        } else if (SORT_STRING) {
-            url += 'sort=' + SORT_STRING;
-            if (ORDER_WITH_RELEVANCE) url += '&relevance=' + ORDER_WITH_RELEVANCE;
-        } else if (ORDER_WITH_RELEVANCE) {
-            url += 'relevance=' + ORDER_WITH_RELEVANCE;
-        }
-
-        // Fly you fools!
+    });
+    searchBar.find('.btn').click(function() {
+        const query = $(this).closest('.input-group').find('input').val();
+        let url = '/?q=' + query;
+        if (CATEGORY_STRING) url += '&categories=' + CATEGORY_STRING;
+        if (SORT_STRING) url += '&sort=' + SORT_STRING;
         go(url);
     });
 
