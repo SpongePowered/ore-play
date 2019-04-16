@@ -15,6 +15,7 @@ import ore.project.{Category, ProjectSortingStrategy}
 import cats.data.NonEmptyList
 import doobie._
 import doobie.implicits._
+import doobie.postgres.implicits._
 
 object APIV2Queries extends DoobieOreProtocol {
 
