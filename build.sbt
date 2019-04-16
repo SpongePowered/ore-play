@@ -72,10 +72,9 @@ lazy val db = project.settings(
   commonSettings,
   name := "ore-db",
   libraryDependencies ++= Seq(
-    "com.github.tminglei" %% "slick-pg" % slickPgVersion,
-    //"com.github.tminglei" %% "slick-pg_play-json" % slickPgVersion,
-    "org.tpolecat" %% "doobie-core"     % doobieVersion,
-    "org.tpolecat" %% "doobie-postgres" % doobieVersion,
+    "com.typesafe.slick" %% "slick"       % "3.3.0",
+    "org.tpolecat"       %% "doobie-core" % doobieVersion,
+    "com.chuusai"        %% "shapeless"   % "2.3.3",
   )
 )
 
@@ -98,13 +97,14 @@ lazy val `ore` = project
       "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
       "com.typesafe.play"          %% "play-slick-evolutions"         % playSlickVersion,
       "org.postgresql"             % "postgresql"                     % "42.2.5",
+      "com.github.tminglei"        %% "slick-pg"                      % slickPgVersion,
       "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
+      "org.tpolecat"               %% "doobie-postgres"               % doobieVersion,
       "com.typesafe.scala-logging" %% "scala-logging"                 % "3.9.2",
       "io.sentry"                  % "sentry-logback"                 % "1.7.21",
       "javax.mail"                 % "mail"                           % "1.4.7",
       "com.beachape"               %% "enumeratum"                    % "1.5.13",
       "com.beachape"               %% "enumeratum-slick"              % "1.5.15",
-      "com.chuusai"                %% "shapeless"                     % "2.3.3",
       "org.typelevel"              %% "cats-core"                     % "1.6.0",
       "com.github.mpilquist"       %% "simulacrum"                    % "0.15.0",
       "io.circe"                   %% "circe-core"                    % circeVersion,
