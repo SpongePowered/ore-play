@@ -14,8 +14,9 @@ import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import cats.data.EitherT
 import cats.effect.{Async, Concurrent, Timer}
-import cats.effect.concurrent.{MVar, Ref}
+import cats.effect.concurrent.Ref
 import cats.syntax.all._
+import com.typesafe.scalalogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe._
 
@@ -33,6 +34,8 @@ class AkkaDiscourseApi[F[_]: Async: Timer] private (
     "api_username" -> poster.getOrElse(settings.adminUser)
   )
 
+  private val Logger = scalalogging.Logger("DiscourseApi")
+
   private def apiQuery(poster: Option[String]) =
     Uri.Query("api_key" -> settings.apiKey, "api_username" -> poster.getOrElse(settings.adminUser))
 
@@ -48,7 +51,8 @@ class AkkaDiscourseApi[F[_]: Async: Timer] private (
   }
 
   private def makeRequest(request: HttpRequest) =
-    futureToF(Http().singleRequest(request))
+    F.delay(Logger.debug(s"Making request: $request")) *> futureToF(Http().singleRequest(request))
+      .flatTap(res => F.delay(Logger.debug(s"Request response: $res")))
 
   private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]) =
     futureToF(Unmarshal(response).to[A])

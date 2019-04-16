@@ -46,6 +46,7 @@
     <!-- Ore loggers -->
     <logger name="Bootstrap" level="INFO" />
     <logger name="Discourse" level="INFO" />
+    <logger name="DiscourseApi" level="INFO" />
     <logger name="Database"  level="INFO" />
     <logger name="DataHelper" level="INFO" />
     <logger name="Mailer" level="INFO" />

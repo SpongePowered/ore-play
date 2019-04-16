@@ -62,14 +62,15 @@ lazy val playCommonSettings = Seq(
   pipelineStages := Seq(digest, gzip)
 )
 
-lazy val catsVersion      = "1.6.0"
-lazy val doobieVersion    = "0.6.0"
-lazy val flexmarkVersion  = "0.42.0"
-lazy val playSlickVersion = "4.0.0"
-lazy val slickPgVersion   = "0.17.1"
-lazy val circeVersion     = "0.11.1"
-lazy val akkaVersion      = "2.5.19"
-lazy val akkaHttpVersion  = "10.1.7"
+lazy val catsVersion         = "1.6.0"
+lazy val doobieVersion       = "0.6.0"
+lazy val flexmarkVersion     = "0.42.0"
+lazy val playSlickVersion    = "4.0.0"
+lazy val slickPgVersion      = "0.17.1"
+lazy val circeVersion        = "0.11.1"
+lazy val akkaVersion         = "2.5.19"
+lazy val akkaHttpVersion     = "10.1.7"
+lazy val scalaLoggingVersion = "3.9.2"
 
 lazy val db = project.settings(
   commonSettings,
@@ -85,14 +86,15 @@ lazy val discourse = project.settings(
   commonSettings,
   name := "ore-discourse",
   libraryDependencies ++= Seq(
-    "org.typelevel"     %% "cats-core"            % catsVersion,
-    "org.typelevel"     %% "cats-effect"          % "1.2.0",
-    "io.circe"          %% "circe-core"           % circeVersion,
-    "io.circe"          %% "circe-generic-extras" % circeVersion,
-    "io.circe"          %% "circe-parser"         % circeVersion,
-    "com.typesafe.akka" %% "akka-http-core"       % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-stream"          % akkaVersion,
-    "de.heikoseeberger" %% "akka-http-circe"      % "1.24.3",
+    "org.typelevel"              %% "cats-core"            % catsVersion,
+    "org.typelevel"              %% "cats-effect"          % "1.2.0",
+    "io.circe"                   %% "circe-core"           % circeVersion,
+    "io.circe"                   %% "circe-generic-extras" % circeVersion,
+    "io.circe"                   %% "circe-parser"         % circeVersion,
+    "com.typesafe.akka"          %% "akka-http-core"       % akkaHttpVersion,
+    "com.typesafe.akka"          %% "akka-stream"          % akkaVersion,
+    "de.heikoseeberger"          %% "akka-http-circe"      % "1.24.3",
+    "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
   )
 )
 
@@ -103,7 +105,7 @@ lazy val `ore` = project
     commonSettings,
     playCommonSettings,
     name := "ore",
-    libraryDependencies ++= Seq(caffeine, ws, guice),
+    libraryDependencies ++= Seq(caffeine, /*ws, */ guice),
     libraryDependencies ++= Seq(
       "org.spongepowered"          % "plugin-meta"                    % "0.4.1",
       "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
@@ -112,7 +114,7 @@ lazy val `ore` = project
       "com.github.tminglei"        %% "slick-pg"                      % slickPgVersion,
       "com.github.tminglei"        %% "slick-pg_play-json"            % slickPgVersion,
       "org.tpolecat"               %% "doobie-postgres"               % doobieVersion,
-      "com.typesafe.scala-logging" %% "scala-logging"                 % "3.9.2",
+      "com.typesafe.scala-logging" %% "scala-logging"                 % scalaLoggingVersion,
       "io.sentry"                  % "sentry-logback"                 % "1.7.21",
       "javax.mail"                 % "mail"                           % "1.4.7",
       "com.beachape"               %% "enumeratum"                    % "1.5.13",
