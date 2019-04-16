@@ -68,6 +68,8 @@ lazy val flexmarkVersion  = "0.42.0"
 lazy val playSlickVersion = "4.0.0"
 lazy val slickPgVersion   = "0.17.1"
 lazy val circeVersion     = "0.11.1"
+lazy val akkaVersion      = "2.5.19"
+lazy val akkaHttpVersion  = "10.1.7"
 
 lazy val db = project.settings(
   commonSettings,
@@ -88,9 +90,9 @@ lazy val discourse = project.settings(
     "io.circe"          %% "circe-core"           % circeVersion,
     "io.circe"          %% "circe-generic-extras" % circeVersion,
     "io.circe"          %% "circe-parser"         % circeVersion,
-    "com.typesafe.akka" %% "akka-http-core"       % "10.1.8",
-    "com.typesafe.akka" %% "akka-stream"          % "2.5.19",
-    "de.heikoseeberger" %% "akka-http-circe"      % "1.25.2",
+    "com.typesafe.akka" %% "akka-http-core"       % akkaHttpVersion,
+    "com.typesafe.akka" %% "akka-stream"          % akkaVersion,
+    "de.heikoseeberger" %% "akka-http-circe"      % "1.24.3",
   )
 )
 
