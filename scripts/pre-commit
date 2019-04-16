@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-./scalafmt ore/app ore/test db/src/main/scala build.sbt --test --non-interactive
+./scalafmt ore/app ore/test db/src discourse/src build.sbt --test --non-interactive
