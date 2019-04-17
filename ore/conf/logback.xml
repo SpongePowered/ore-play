@@ -44,7 +44,8 @@
     <logger name="org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator" level="ERROR" />
 
     <!-- Akka -->
-    <logger name="akka.http.impl.engine.client.PoolGateway" level="INFO" />
+    <logger name="akka.http.impl.engine.client.PoolGateway" level="ERROR" />
+    <logger name="akka.io.InetAddressDnsResolver" level="ERROR" />
 
     <!-- Ore loggers -->
     <logger name="Bootstrap" level="INFO" />
