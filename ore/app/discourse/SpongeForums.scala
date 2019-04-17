@@ -12,7 +12,7 @@ import ore.{OreConfig, OreEnv}
 
 import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.Materializer
-import cats.effect.{Concurrent, ContextShift, IO}
+import cats.effect.{ContextShift, IO, Timer}
 
 /**
   * [[OreDiscourseApi]] implementation.
@@ -22,19 +22,22 @@ class SpongeForums @Inject()(
     env: OreEnv,
     config: OreConfig
 )(implicit ec: ExecutionContext, system: ActorSystem, mat: Materializer)
-    extends OreDiscourseApi(
+    extends OreDiscourseApi({
+      val forums = config.forums
+      val api    = forums.api
+
+      implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+      implicit val timer: Timer[IO]     = IO.timer(ec)
+
       AkkaDiscourseApi[IO](
         AkkaDiscourseSettings(
-          config.forums.api.key,
-          config.forums.api.admin,
-          config.forums.api.isAvailableReset,
-          config.forums.baseUrl
+          api.key,
+          api.admin,
+          api.isAvailableReset,
+          forums.baseUrl
         )
-      )({
-        implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-        Concurrent[IO]
-      }, IO.timer(ec), system, mat).unsafeRunSync()
-    )(
+      ).unsafeRunSync()
+    })(
       IO.contextShift(ec)
     ) {
 

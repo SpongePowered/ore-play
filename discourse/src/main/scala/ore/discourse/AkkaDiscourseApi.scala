@@ -2,10 +2,8 @@ package ore.discourse
 
 import scala.language.higherKinds
 
-import java.net.ConnectException
-
+import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Future, TimeoutException}
 
 import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
 
@@ -13,16 +11,16 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.stream.Materializer
+import akka.stream.{Materializer, StreamTcpException}
 import cats.data.EitherT
-import cats.effect.{Async, Concurrent, Timer}
 import cats.effect.concurrent.Ref
+import cats.effect.{Concurrent, ContextShift, Timer}
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe._
 
-class AkkaDiscourseApi[F[_]: Async: Timer] private (
+class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     settings: AkkaDiscourseSettings,
     isAvailableRef: Ref[F, Option[Boolean]]
 )(
@@ -41,7 +39,7 @@ class AkkaDiscourseApi[F[_]: Async: Timer] private (
   private def apiQuery(poster: Option[String]) =
     Uri.Query("api_key" -> settings.apiKey, "api_username" -> poster.getOrElse(settings.adminUser))
 
-  private def F: Async[F] = Async[F]
+  private def F: Concurrent[F] = Concurrent[F]
 
   private def apiUri(f: Uri.Path => Uri.Path) = settings.apiUri.withPath(f(settings.apiUri.path))
 
@@ -175,11 +173,10 @@ class AkkaDiscourseApi[F[_]: Async: Timer] private (
         .flatMap(resp => F.delay(resp.discardEntityBytes()))
         .as(true)
         .recover {
-          case _: TimeoutException => false
-          case _: ConnectException => false
+          case _: StreamTcpException => false
         }
 
-    val invalidateState = Timer[F].sleep(settings.isAvailableReset).as(isAvailableRef.set(None)).flatten
+    val invalidateState = F.start(Timer[F].sleep(settings.isAvailableReset).productR(isAvailableRef.set(None))).void
 
     isAvailableRef.access.flatMap {
       case (state, update) =>
@@ -189,7 +186,7 @@ class AkkaDiscourseApi[F[_]: Async: Timer] private (
   }
 }
 object AkkaDiscourseApi {
-  def apply[F[_]: Concurrent: Timer](
+  def apply[F[_]: Concurrent: Timer: ContextShift](
       settings: AkkaDiscourseSettings
   )(implicit system: ActorSystem, mat: Materializer): F[AkkaDiscourseApi[F]] =
     Ref.of[F, Option[Boolean]](None).map(ref => new AkkaDiscourseApi(settings, ref))
