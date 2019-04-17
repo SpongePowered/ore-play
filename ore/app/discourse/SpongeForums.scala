@@ -6,7 +6,7 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import ore.discourse.AkkaDiscourseApi
+import ore.discourse.{AkkaDiscourseApi, DisabledDiscourseApi}
 import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
 import ore.{OreConfig, OreEnv}
 
@@ -26,20 +26,24 @@ class SpongeForums @Inject()(
       val forums = config.forums
       val api    = forums.api
 
-      implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-      implicit val timer: Timer[IO]     = IO.timer(ec)
+      if (forums.api.enabled) {
+        implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+        implicit val timer: Timer[IO]     = IO.timer(ec)
 
-      implicit val sys: ActorSystem = system
-      implicit val m: Materializer  = mat
+        implicit val sys: ActorSystem = system
+        implicit val m: Materializer  = mat
 
-      AkkaDiscourseApi[IO](
-        AkkaDiscourseSettings(
-          api.key,
-          api.admin,
-          api.isAvailableReset,
-          forums.baseUrl
-        )
-      ).unsafeRunSync()
+        AkkaDiscourseApi[IO](
+          AkkaDiscourseSettings(
+            api.key,
+            api.admin,
+            api.isAvailableReset,
+            forums.baseUrl
+          )
+        ).unsafeRunSync()
+      } else {
+        new DisabledDiscourseApi[IO]
+      }
     })(
       IO.contextShift(ec)
     ) {
