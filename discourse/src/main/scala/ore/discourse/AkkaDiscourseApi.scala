@@ -54,7 +54,11 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     F.delay(Logger.debug(before)) *> fa.flatTap(res => F.delay(Logger.debug(after(res))))
 
   private def makeRequestAlways(request: HttpRequest) =
-    debugF(s"Making request: $request", res => s"Request response: $res", futureToF(Http().singleRequest(request)))
+    debugF[HttpResponse](
+      s"Making request: $request",
+      res => s"Request response: $res",
+      futureToF(Http().singleRequest(request))
+    )
 
   private def makeRequest(request: HttpRequest): EitherT[F, String, HttpResponse] =
     EitherT
