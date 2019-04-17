@@ -1,8 +1,7 @@
 package ore.discourse
 
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
 
-import io.circe.Decoder.Result
 import io.circe.{Decoder, HCursor}
 
 case class DiscoursePost(
@@ -11,9 +10,9 @@ case class DiscoursePost(
     userId: Int,
     username: String,
     topicSlug: String,
-    createdAt: LocalDateTime,
-    updatedAt: LocalDateTime,
-    deletedAt: Option[LocalDateTime],
+    createdAt: OffsetDateTime,
+    updatedAt: OffsetDateTime,
+    deletedAt: Option[OffsetDateTime],
     content: String,
     replyCount: Int,
     postNum: Int
@@ -32,9 +31,9 @@ object DiscoursePost {
       userId     <- c.get[Int]("user_id")
       username   <- c.get[String]("username")
       topicSlug  <- c.get[String]("topic_slug")
-      createdAt  <- c.get[LocalDateTime]("created_at")
-      updatedAt  <- c.get[LocalDateTime]("updated_at")
-      deletedAt  <- c.get[Option[LocalDateTime]]("deleted_at")
+      createdAt  <- c.get[OffsetDateTime]("created_at")
+      updatedAt  <- c.get[OffsetDateTime]("updated_at")
+      deletedAt  <- c.get[Option[OffsetDateTime]]("deleted_at")
       content    <- c.get[String]("cooked")
       replyCount <- c.get[Int]("reply_count")
       postNum    <- c.get[Int]("post_number")
