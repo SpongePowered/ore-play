@@ -14,20 +14,24 @@ import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.{Materializer, StreamTcpException}
 import cats.data.EitherT
 import cats.effect.concurrent.Ref
-import cats.effect.{Concurrent, ContextShift, Timer}
+import cats.effect.{Concurrent, ContextShift, Fiber, Timer}
 import cats.syntax.all._
+import cats.effect.syntax.all._
 import com.typesafe.scalalogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe._
 
 class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     settings: AkkaDiscourseSettings,
-    isAvailableRef: Ref[F, Option[Boolean]]
+    isAvailableRef: Ref[F, Option[Either[Boolean, Fiber[F, Boolean]]]],
+    counter: Ref[F, Long]
 )(
     implicit system: ActorSystem,
     mat: Materializer
 ) extends DiscourseApi[F]
     with FailFastCirceSupport {
+
+  private def nextCounter: F[Long] = counter.modify(c => (c + 1, c))
 
   private def startParams(poster: Option[String]) = Seq(
     "api_key"      -> settings.apiKey,
@@ -50,8 +54,13 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     }
   }
 
-  private def debugF[A](before: => String, after: A => String, fa: F[A]): F[A] =
-    F.delay(Logger.debug(before)) *> fa.flatTap(res => F.delay(Logger.debug(after(res))))
+  private def debugF[A](before: => String, after: A => String, fa: F[A]): F[A] = {
+    if (Logger.underlying.isDebugEnabled) {
+      nextCounter.flatMap { c =>
+        F.delay(Logger.debug(s"$c $before")) *> fa.flatTap(res => F.delay(Logger.debug(s"$c ${after(res)}")))
+      }
+    } else fa
+  }
 
   private def makeRequestAlways(request: HttpRequest) =
     debugF[HttpResponse](
@@ -60,21 +69,31 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
       futureToF(Http().singleRequest(request))
     )
 
-  private def makeRequest(request: HttpRequest): EitherT[F, String, HttpResponse] =
+  private def makeRequest(request: HttpRequest): EitherT[F, String, HttpResponse] = {
+    val requestF = makeRequestAlways(request).onError {
+      case _: StreamTcpException => resetIsAvailable
+    }
+
     EitherT
       .right[String](isAvailable)
-      .ifM(EitherT.right(makeRequestAlways(request)), EitherT.leftT("Discourse not available"))
+      .ifM(EitherT.right(requestF), EitherT.leftT("Discourse not available"))
+  }
 
   private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]) =
     futureToF(Unmarshal(response).to[A])
 
   private def gatherStatusErrors(response: HttpResponse) = {
-    if (response.status.isSuccess())
+    if (response.status.isSuccess()) {
       EitherT.rightT[F, String](response)
-    else
+    } else if (response.entity.isKnownEmpty()) {
+      EitherT.left[HttpResponse](
+        F.delay(response.entity.discardBytes()).as(s"Discourse request failed. Response code ${response.status}")
+      )
+    } else {
       EitherT
         .left[HttpResponse](unmarshallResponse[String](response))
-        .leftMap(e => s"Response code ${response.status}: $e")
+        .leftMap(e => s"Discourse request failed. Response code ${response.status}: $e")
+    }
   }
 
   private def gatherJsonErrors[A: Decoder](json: Json) = {
@@ -173,21 +192,36 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
       .semiflatMap(resp => F.delay(resp.discardEntityBytes()))
       .void
 
+  private val resetIsAvailable = for {
+    runner <- isAvailableRef.getAndSet(None).map(_.flatMap(_.toOption))
+    _      <- runner.fold(F.unit)(_.cancel)
+  } yield ()
+
   override def isAvailable: F[Boolean] = {
     val checkIfAvailable =
-      makeRequestAlways(HttpRequest(HttpMethods.GET, settings.apiUri))
+      makeRequestAlways(HttpRequest(HttpMethods.HEAD, settings.apiUri))
         .flatMap(resp => F.delay(resp.discardEntityBytes()))
         .as(true)
         .recover {
           case _: StreamTcpException => false
         }
 
-    val invalidateState = F.start(Timer[F].sleep(settings.isAvailableReset).productR(isAvailableRef.set(None))).void
+    //A fiber which invalidates the state after some time
+    val invalidateState = Timer[F].sleep(settings.isAvailableReset).productR(resetIsAvailable).start
 
     isAvailableRef.access.flatMap {
-      case (state, update) =>
-        val resetAvailableState = checkIfAvailable.flatTap(b => update(Some(b)).ifM(invalidateState, F.unit))
-        state.fold(resetAvailableState)(F.pure)
+      case (Some(value), _) =>
+        //If there is already a value around, or it will be around soon, use that
+        value.fold(F.pure, _.join)
+      case (None, update) =>
+        //A program which will run the availability check, set the result when it finishes, and schedule an invalidation
+        val checkAndSet = checkIfAvailable.flatTap { result =>
+          isAvailableRef.set(Some(Left(result))) *> invalidateState
+        }
+
+        //Starts the fiber, and tries to set the current fiber as the one we just started.
+        //If setting the value succeeds, then we join the fiber. If it fails, we cancel the fiber, and recurse.
+        checkAndSet.start.flatMap(fiber => update(Some(Right(fiber))).ifM(fiber.join, fiber.cancel *> isAvailable))
     }
   }
 }
@@ -195,7 +229,10 @@ object AkkaDiscourseApi {
   def apply[F[_]: Concurrent: Timer: ContextShift](
       settings: AkkaDiscourseSettings
   )(implicit system: ActorSystem, mat: Materializer): F[AkkaDiscourseApi[F]] =
-    Ref.of[F, Option[Boolean]](None).map(ref => new AkkaDiscourseApi(settings, ref))
+    for {
+      counter     <- Ref.of[F, Long](0L)
+      isAvailable <- Ref.of[F, Option[Either[Boolean, Fiber[F, Boolean]]]](None)
+    } yield new AkkaDiscourseApi(settings, isAvailable, counter)
 
   case class AkkaDiscourseSettings(
       apiKey: String,
