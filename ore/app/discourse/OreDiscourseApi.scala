@@ -120,7 +120,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
             // Request went through but Discourse responded with errors
             // Don't schedule a retry because this will just keep happening
             val message =
-              s"""|Request to create topic for project '${project.url}' was successful but Discourse responded with errors:
+              s"""|Request to create topic for project '${project.url}' might have been successful but there were errors along the way:
                   |Errors: $error""".stripMargin
             MDCLogger.warn(message)
             project.logger.flatMap(_.err(message)).as(project)
