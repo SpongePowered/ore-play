@@ -43,6 +43,9 @@
     <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
     <logger name="org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator" level="ERROR" />
 
+    <!-- Akka -->
+    <logger name="akka.http.impl.engine.client.PoolGateway" level="INFO" />
+
     <!-- Ore loggers -->
     <logger name="Bootstrap" level="INFO" />
     <logger name="Discourse" level="INFO" />
