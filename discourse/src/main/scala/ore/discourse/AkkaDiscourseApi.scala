@@ -2,6 +2,8 @@ package ore.discourse
 
 import scala.language.higherKinds
 
+import java.net.ConnectException
+
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, TimeoutException}
 
@@ -174,6 +176,7 @@ class AkkaDiscourseApi[F[_]: Async: Timer] private (
         .as(true)
         .recover {
           case _: TimeoutException => false
+          case _: ConnectException => false
         }
 
     val invalidateState = Timer[F].sleep(settings.isAvailableReset).as(isAvailableRef.set(None)).flatten
