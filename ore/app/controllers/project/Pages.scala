@@ -25,6 +25,7 @@ import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.OreMDC
 import util.StringUtils._
 import views.html.projects.{pages => views}
 
@@ -32,6 +33,7 @@ import cats.data.OptionT
 import cats.effect.IO
 import cats.instances.option._
 import cats.syntax.all._
+import com.typesafe.scalalogging
 
 /**
   * Controller for handling Page related actions.
@@ -50,6 +52,8 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Pages
+
+  private val Logger = scalalogging.Logger.takingImplicit[OreMDC]("Pages")
 
   private def PageEditAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.EditPage))
@@ -226,7 +230,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
                       createdPage.id,
                       newPage,
                       oldPage
-                    ) *> createdPage.updateContentsWithForum(newPage)
+                    ) *> createdPage.updateContentsWithForum(newPage, Logger)
                   }
                 }
                 .as(Redirect(self.show(author, slug, page)))

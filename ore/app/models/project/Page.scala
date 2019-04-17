@@ -14,11 +14,14 @@ import ore.db.access.{ModelView, QueryView}
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.project.ProjectOwned
+import util.IOUtils
 import util.StringUtils._
 import util.syntax._
 
 import cats.effect.IO
+import cats.syntax.all._
 import com.google.common.base.Preconditions._
+import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
 /**
@@ -148,9 +151,10 @@ object Page extends DefaultModelCompanion[Page, PageTable](TableQuery[PageTable]
       *
       * @param contents Markdown contents
       */
-    def updateContentsWithForum(
-        contents: String
-    )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi): IO[Model[Page]] = {
+    def updateContentsWithForum[A](
+        contents: String,
+        logger: LoggerTakingImplicit[A]
+    )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi, mdc: A): IO[Model[Page]] = {
       checkNotNull(contents, "null contents", "")
       checkArgument(
         (self.isHome && contents.length <= maxLength) || contents.length <= maxLengthPage,
@@ -161,8 +165,12 @@ object Page extends DefaultModelCompanion[Page, PageTable](TableQuery[PageTable]
         updated <- service.update(self)(_.copy(contents = contents))
         project <- ProjectOwned[Page].project(self)
         // Contents were updated, update on forums
-        _ <- if (self.name.equals(homeName) && project.topicId.isDefined) forums.updateProjectTopic(project)
-        else IO.pure(false)
+        _ <- if (self.name.equals(homeName) && project.topicId.isDefined)
+          forums
+            .updateProjectTopic(project)
+            .runAsync(IOUtils.logCallback("Failed to update page with forums", logger))
+            .toIO
+        else IO.unit
       } yield updated
     }
 

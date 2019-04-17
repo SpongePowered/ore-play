@@ -67,4 +67,5 @@
     <logger name="Versions" level="INFO" />
     <logger name="ProjectSettings" level="INFO" />
     <logger name="ProjectFiles" level="INFO" />
+    <logger name="Pages" level="INFO" />
 </configuration>
