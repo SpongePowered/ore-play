@@ -1,6 +1,5 @@
 //=====> EXTERNAL CONSTANTS
 
-var KEY_ENTER = 13;
 var PROJECT_OWNER = null;
 var PROJECT_SLUG = null;
 

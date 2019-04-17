@@ -1,8 +1,3 @@
-//=====> CONSTANTS
-
-var KEY_ENTER = 13;
-
-
 //=====> HELPER FUNCTIONS
 
 function initUserSearch(callback) {

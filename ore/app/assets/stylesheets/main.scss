@@ -233,27 +233,22 @@ form {
   margin-right: -4px;
 }
 
-.category-table {
-  tr {
+.category-list {
+  a.list-group-item {
+    svg {
+      margin-right: 0.5rem;
+    }
+
     &:hover {
       cursor: pointer;
       background-color: $mainBackground;
     }
 
-    > td {
-      &:first-child {
-        text-align: center;
-        padding-right: 0;
-      }
-
-      border: none;
-    }
-
-    &.selected {
+    &.active {
+      background: #FFFFFF;
+      border-bottom: 1px solid #dddddd;
+      border-top: 1px solid #dddddd;
       box-shadow: inset -10px 0px 0px 0px $sponge_yellow;
-    }
-    &.selected td:nth-child(2) {
-      box-shadow: inset -10px 0px $sponge_yellow;
     }
   }
 }
