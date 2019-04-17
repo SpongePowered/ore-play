@@ -105,7 +105,7 @@ lazy val `ore` = project
     commonSettings,
     playCommonSettings,
     name := "ore",
-    libraryDependencies ++= Seq(caffeine, /*ws, */ guice),
+    libraryDependencies ++= Seq(caffeine, ws, guice),
     libraryDependencies ++= Seq(
       "org.spongepowered"          % "plugin-meta"                    % "0.4.1",
       "com.typesafe.play"          %% "play-slick"                    % playSlickVersion,
