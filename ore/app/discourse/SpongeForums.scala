@@ -29,6 +29,9 @@ class SpongeForums @Inject()(
       implicit val cs: ContextShift[IO] = IO.contextShift(ec)
       implicit val timer: Timer[IO]     = IO.timer(ec)
 
+      implicit val sys: ActorSystem = system
+      implicit val m: Materializer  = mat
+
       AkkaDiscourseApi[IO](
         AkkaDiscourseSettings(
           api.key,
