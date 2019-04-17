@@ -75,7 +75,15 @@ sorted according to different criteria.
     </script>
 }
 
-@bootstrap.layout(messages("general.title"), scripts) {
+@meta = {
+    <meta property="og:title" content="@messages("general.appName")">
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@config.app.baseUrl">
+    <meta property="og:image" content="@routes.Assets.versioned("images/ore-dark.png")" />
+    <meta property="og:description" content="@messages("general.description")" />
+}
+
+@bootstrap.layout(messages("general.title"), scripts, additionalMeta = meta) {
 
     <!-- Header -->
     <div class="index-header">
