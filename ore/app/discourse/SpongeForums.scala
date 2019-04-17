@@ -37,8 +37,10 @@ class SpongeForums @Inject()(
           AkkaDiscourseSettings(
             api.key,
             api.admin,
-            api.isAvailableReset,
-            forums.baseUrl
+            forums.baseUrl,
+            api.breaker.maxFailures,
+            api.breaker.reset,
+            api.breaker.timeout,
           )
         ).unsafeRunSync()
       } else {

@@ -208,7 +208,12 @@ discourse {
         key                  =   "changeme"
         key                  =   ${?DISCOURSE_API_KEY}
         admin                =   system
-        is-available-reset   =   5m
+
+        breaker {
+            max-failures =   5
+            timeout      =   10s
+            reset        =   5m
+        }
     }
 }
 

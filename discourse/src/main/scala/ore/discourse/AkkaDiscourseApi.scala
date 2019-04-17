@@ -11,19 +11,18 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.stream.{Materializer, StreamTcpException}
+import akka.pattern.CircuitBreaker
+import akka.stream.Materializer
 import cats.data.EitherT
 import cats.effect.concurrent.Ref
-import cats.effect.{Concurrent, ContextShift, Fiber, Timer}
+import cats.effect.{Concurrent, ContextShift, Timer}
 import cats.syntax.all._
-import cats.effect.syntax.all._
 import com.typesafe.scalalogging
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe._
 
 class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     settings: AkkaDiscourseSettings,
-    isAvailableRef: Ref[F, Option[Either[Boolean, Fiber[F, Boolean]]]],
     counter: Ref[F, Long]
 )(
     implicit system: ActorSystem,
@@ -31,14 +30,21 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
 ) extends DiscourseApi[F]
     with FailFastCirceSupport {
 
+  private val Logger = scalalogging.Logger("DiscourseApi")
+
+  private val breaker =
+    CircuitBreaker(system.scheduler, settings.breakerMaxFailures, settings.breakerTimeoutDur, settings.breakerResetDur)
+
+  breaker.onOpen {
+    Logger.error("Lost connection to Discourse. Circuit breaker opened")
+  }
+
   private def nextCounter: F[Long] = counter.modify(c => (c + 1, c))
 
   private def startParams(poster: Option[String]) = Seq(
     "api_key"      -> settings.apiKey,
     "api_username" -> poster.getOrElse(settings.adminUser)
   )
-
-  private val Logger = scalalogging.Logger("DiscourseApi")
 
   private def apiQuery(poster: Option[String]) =
     Uri.Query("api_key" -> settings.apiKey, "api_username" -> poster.getOrElse(settings.adminUser))
@@ -62,22 +68,12 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     } else fa
   }
 
-  private def makeRequestAlways(request: HttpRequest) =
+  private def makeRequest(request: HttpRequest) =
     debugF[HttpResponse](
       s"Making request: $request",
       res => s"Request response: $res",
-      futureToF(Http().singleRequest(request))
+      futureToF(breaker.withCircuitBreaker(Http().singleRequest(request)))
     )
-
-  private def makeRequest(request: HttpRequest): EitherT[F, String, HttpResponse] = {
-    val requestF = makeRequestAlways(request).onError {
-      case _: StreamTcpException => resetIsAvailable
-    }
-
-    EitherT
-      .right[String](isAvailable)
-      .ifM(EitherT.right(requestF), EitherT.leftT("Discourse not available"))
-  }
 
   private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]) =
     futureToF(Unmarshal(response).to[A])
@@ -105,7 +101,8 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
   }
 
   private def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest) =
-    makeRequest(request)
+    EitherT
+      .liftF(makeRequest(request))
       .flatMap(gatherStatusErrors)
       .semiflatMap(unmarshallResponse[Json])
       .subflatMap(gatherJsonErrors[A])
@@ -183,61 +180,33 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
   }
 
   override def deleteTopic(poster: String, topicId: Int): EitherT[F, String, Unit] =
-    makeRequest(
-      HttpRequest(
-        HttpMethods.DELETE,
-        apiUri(_ / "t" / s"$topicId.json").withQuery(apiQuery(Some(poster)))
+    EitherT
+      .liftF(
+        makeRequest(
+          HttpRequest(
+            HttpMethods.DELETE,
+            apiUri(_ / "t" / s"$topicId.json").withQuery(apiQuery(Some(poster)))
+          )
+        )
       )
-    ).flatMap(gatherStatusErrors)
+      .flatMap(gatherStatusErrors)
       .semiflatMap(resp => F.delay(resp.discardEntityBytes()))
       .void
 
-  private val resetIsAvailable = for {
-    runner <- isAvailableRef.getAndSet(None).map(_.flatMap(_.toOption))
-    _      <- runner.fold(F.unit)(_.cancel)
-  } yield ()
-
-  override def isAvailable: F[Boolean] = {
-    val checkIfAvailable =
-      makeRequestAlways(HttpRequest(HttpMethods.HEAD, settings.apiUri))
-        .flatMap(resp => F.delay(resp.discardEntityBytes()))
-        .as(true)
-        .recover {
-          case _: StreamTcpException => false
-        }
-
-    //A fiber which invalidates the state after some time
-    val invalidateState = Timer[F].sleep(settings.isAvailableReset).productR(resetIsAvailable).start
-
-    isAvailableRef.access.flatMap {
-      case (Some(value), _) =>
-        //If there is already a value around, or it will be around soon, use that
-        value.fold(F.pure, _.join)
-      case (None, update) =>
-        //A program which will run the availability check, set the result when it finishes, and schedule an invalidation
-        val checkAndSet = checkIfAvailable.flatTap { result =>
-          isAvailableRef.set(Some(Left(result))) *> invalidateState
-        }
-
-        //Starts the fiber, and tries to set the current fiber as the one we just started.
-        //If setting the value succeeds, then we join the fiber. If it fails, we cancel the fiber, and recurse.
-        checkAndSet.start.flatMap(fiber => update(Some(Right(fiber))).ifM(fiber.join, fiber.cancel *> isAvailable))
-    }
-  }
+  override def isAvailable: F[Boolean] = breaker.isClosed.pure
 }
 object AkkaDiscourseApi {
   def apply[F[_]: Concurrent: Timer: ContextShift](
       settings: AkkaDiscourseSettings
   )(implicit system: ActorSystem, mat: Materializer): F[AkkaDiscourseApi[F]] =
-    for {
-      counter     <- Ref.of[F, Long](0L)
-      isAvailable <- Ref.of[F, Option[Either[Boolean, Fiber[F, Boolean]]]](None)
-    } yield new AkkaDiscourseApi(settings, isAvailable, counter)
+    Ref.of[F, Long](0L).map(counter => new AkkaDiscourseApi(settings, counter))
 
   case class AkkaDiscourseSettings(
       apiKey: String,
       adminUser: String,
-      isAvailableReset: FiniteDuration,
-      apiUri: Uri
+      apiUri: Uri,
+      breakerMaxFailures: Int,
+      breakerResetDur: FiniteDuration,
+      breakerTimeoutDur: FiniteDuration,
   )
 }
