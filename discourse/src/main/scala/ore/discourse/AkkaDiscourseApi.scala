@@ -50,9 +50,16 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     }
   }
 
-  private def makeRequest(request: HttpRequest) =
-    F.delay(Logger.debug(s"Making request: $request")) *> futureToF(Http().singleRequest(request))
-      .flatTap(res => F.delay(Logger.debug(s"Request response: $res")))
+  private def debugF[A](before: => String, after: A => String, fa: F[A]): F[A] =
+    F.delay(Logger.debug(before)) *> fa.flatTap(res => F.delay(Logger.debug(after(res))))
+
+  private def makeRequestAlways(request: HttpRequest) =
+    debugF(s"Making request: $request", res => s"Request response: $res", futureToF(Http().singleRequest(request)))
+
+  private def makeRequest(request: HttpRequest): EitherT[F, String, HttpResponse] =
+    EitherT
+      .right[String](isAvailable)
+      .ifM(EitherT.right(makeRequestAlways(request)), EitherT.leftT("Discourse not available"))
 
   private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]) =
     futureToF(Unmarshal(response).to[A])
@@ -75,8 +82,7 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
   }
 
   private def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest) =
-    EitherT
-      .liftF(makeRequest(request))
+    makeRequest(request)
       .flatMap(gatherStatusErrors)
       .semiflatMap(unmarshallResponse[Json])
       .subflatMap(gatherJsonErrors[A])
@@ -154,22 +160,18 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
   }
 
   override def deleteTopic(poster: String, topicId: Int): EitherT[F, String, Unit] =
-    EitherT
-      .liftF(
-        makeRequest(
-          HttpRequest(
-            HttpMethods.DELETE,
-            apiUri(_ / "t" / s"$topicId.json").withQuery(apiQuery(Some(poster)))
-          )
-        )
+    makeRequest(
+      HttpRequest(
+        HttpMethods.DELETE,
+        apiUri(_ / "t" / s"$topicId.json").withQuery(apiQuery(Some(poster)))
       )
-      .flatMap(gatherStatusErrors)
+    ).flatMap(gatherStatusErrors)
       .semiflatMap(resp => F.delay(resp.discardEntityBytes()))
       .void
 
   override def isAvailable: F[Boolean] = {
     val checkIfAvailable =
-      makeRequest(HttpRequest(HttpMethods.GET, settings.apiUri))
+      makeRequestAlways(HttpRequest(HttpMethods.GET, settings.apiUri))
         .flatMap(resp => F.delay(resp.discardEntityBytes()))
         .as(true)
         .recover {
