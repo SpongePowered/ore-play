@@ -1,10 +1,9 @@
-import db.impl.service.OreModelService
 import discourse.{OreDiscourseApi, SpongeForums}
 import mail.{Mailer, SpongeMailer}
 import ore._
 import ore.db.ModelService
 import ore.markdown.{FlexmarkRenderer, MarkdownRenderer}
-import ore.project.factory.{OreProjectFactory, ProjectFactory}
+import ore.models.project.factory.{OreProjectFactory, ProjectFactory}
 import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
 import security.spauth.{SingleSignOnConsumer, SpongeAuth, SpongeAuthApi, SpongeSingleSignOnConsumer}
 

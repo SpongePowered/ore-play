@@ -12,10 +12,10 @@ import play.api.mvc._
 
 import controllers.routes
 import controllers.sugar.Requests._
-import db.impl.OrePostgresDriver.api._
-import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import models.project.{Project, Visibility}
-import models.user.{Organization, SignOn, User}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.access.{OrganizationBase, ProjectBase, UserBase}
+import ore.models.project.{Project, Visibility}
+import ore.models.user.{Organization, SignOn, User}
 import models.viewhelper._
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}

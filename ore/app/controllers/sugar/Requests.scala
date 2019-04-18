@@ -4,9 +4,9 @@ import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
 
-import models.api.ApiKey
-import models.project.Project
-import models.user.{Organization, User}
+import ore.api.ApiKey
+import ore.models.project.Project
+import ore.models.user.{Organization, User}
 import models.viewhelper._
 import ore.db.{Model, ModelService}
 import ore.permission.Permission

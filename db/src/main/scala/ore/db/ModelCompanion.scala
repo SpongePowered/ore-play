@@ -12,7 +12,7 @@ trait ModelCompanion[M] {
 
   def baseQuery: Query[T, Model[M], Seq]
 
-  def asDbModel(model: M, id: ObjId[M], time: ObjTimestamp): Model[M]
+  def asDbModel(model: M, id: ObjId[M], time: ObjInstant): Model[M]
 
   /**
     * Creates the specified model in it's table.
@@ -20,7 +20,7 @@ trait ModelCompanion[M] {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[F[_]: Monad: Clock](model: M)(runDBIO: DBIO ~> F): F[Model[M]]
+  def insert[F[_]: Monad: Clock](model: M): F[DBIO[Model[M]]]
 
   /**
     * Creates the specified models in it's table.
@@ -28,23 +28,23 @@ trait ModelCompanion[M] {
     * @param models  Models to create
     * @return       Newly created models
     */
-  def bulkInsert[F[_]: Clock](models: Seq[M])(runDBIO: DBIO ~> F)(implicit F: Monad[F]): F[Seq[Model[M]]]
+  def bulkInsert[F[_]: Monad: Clock](models: Seq[M]): F[DBIO[Seq[Model[M]]]]
 
-  def update[F[_]: Monad](model: Model[M])(update: M => M)(runDBIO: DBIO ~> F): F[Model[M]]
+  def update[F[_]: Monad](model: Model[M])(update: M => M): F[DBIO[Model[M]]]
 
   /**
     * Deletes the specified Model.
     *
     * @param model Model to delete
     */
-  def delete[F[_]: Monad](model: Model[M])(runDBIO: DBIO ~> F): F[Int]
+  def delete(model: Model[M]): DBIO[Int]
 
   /**
     * Deletes all the models meeting the specified filter.
     *
     * @param filter     Filter to use
     */
-  def deleteWhere[F[_]: Monad](filter: T => Rep[Boolean])(runDBIO: DBIO ~> F): F[Int]
+  def deleteWhere(filter: T => Rep[Boolean]): DBIO[Int]
 }
 object ModelCompanion {
   type Aux[M, T0 <: OreProfile#ModelTable[M]] = ModelCompanion[M] { type T = T0 }

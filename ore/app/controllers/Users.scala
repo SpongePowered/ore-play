@@ -9,22 +9,22 @@ import play.api.i18n.MessagesApi
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import db.impl.OrePostgresDriver.api._
-import db.impl.access.UserBase.UserOrdering
-import db.impl.query.UserQueries
-import db.impl.schema.{ApiKeyTable, UserTable}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.access.UserBase.UserOrdering
+import ore.db.impl.query.UserQueries
+import ore.db.impl.schema.{ApiKeyTable, UserTable}
 import form.OreForms
 import mail.{EmailFactory, Mailer}
-import models.project.Version
-import models.user._
+import ore.models.project.Version
+import ore.models.user._
 import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.permission.Permission
 import ore.permission.role.Role
-import ore.project.ProjectSortingStrategy
-import ore.user.notification.{InviteFilter, NotificationFilter}
-import ore.user.{FakeUser, Prompt}
+import ore.models.project.ProjectSortingStrategy
+import ore.models.user.notification.{InviteFilter, NotificationFilter}
+import ore.models.user.{FakeUser, Prompt}
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.OreMDC
@@ -147,7 +147,7 @@ class Users @Inject()(
   }
 
   /**
-    * Shows the User's [[models.project.Project]]s page for the user with the
+    * Shows the User's [[ore.models.project.Project]]s page for the user with the
     * specified username.
     *
     * @param username   Username to lookup
@@ -255,8 +255,8 @@ class Users @Inject()(
   }
 
   /**
-    * Shows a list of [[models.user.User]]s that have created a
-    * [[models.project.Project]].
+    * Shows a list of [[ore.models.user.User]]s that have created a
+    * [[ore.models.project.Project]].
     */
   def showAuthors(sort: Option[String], page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
     val ordering = sort.getOrElse(UserOrdering.Projects)
@@ -268,7 +268,7 @@ class Users @Inject()(
   }
 
   /**
-    * Shows a list of [[models.user.User]]s that have Ore staff roles.
+    * Shows a list of [[ore.models.user.User]]s that have Ore staff roles.
     */
   def showStaff(sort: Option[String], page: Option[Int]): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(Permission.IsStaff)).asyncF { implicit request =>
@@ -321,7 +321,7 @@ class Users @Inject()(
   }
 
   /**
-    * Marks a [[models.user.User]]'s notification as read.
+    * Marks a [[ore.models.user.User]]'s notification as read.
     *
     * @param id Notification ID
     * @return   Ok if marked as read, NotFound if notification does not exist
@@ -335,8 +335,8 @@ class Users @Inject()(
   }
 
   /**
-    * Marks a [[ore.user.Prompt]] as read for the authenticated
-    * [[models.user.User]].
+    * Marks a [[ore.models.user.Prompt]] as read for the authenticated
+    * [[ore.models.user.User]].
     *
     * @param id Prompt ID
     * @return   Ok if successful

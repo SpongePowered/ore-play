@@ -2,10 +2,10 @@ package models.querymodels
 
 import java.time.LocalDateTime
 
-import models.project.{ReviewState, TagColor, Visibility}
+import ore.models.project.{ReviewState, TagColor, Visibility}
 import models.protocols.APIV2
 import ore.permission.role.Role
-import ore.project.Category
+import ore.models.project.Category
 
 import cats.syntax.all._
 import cats.instances.option._

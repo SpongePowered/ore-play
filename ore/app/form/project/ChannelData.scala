@@ -1,7 +1,7 @@
 package form.project
 
 import ore.OreConfig
-import ore.project.factory.ProjectFactory
+import ore.models.project.factory.ProjectFactory
 
 /**
   * Concrete counterpart to [[TChannelData]].

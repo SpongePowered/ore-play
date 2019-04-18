@@ -1,8 +1,8 @@
 package models.viewhelper
 
 import controllers.sugar.Requests.OreRequest
-import models.user.User
-import models.user.role.UserRoleModel
+import ore.models.user.User
+import ore.models.user.role.UserRoleModel
 import ore.Joinable
 import ore.db.Model
 import ore.permission.Permission

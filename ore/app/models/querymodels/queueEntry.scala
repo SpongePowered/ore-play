@@ -1,7 +1,7 @@
 package models.querymodels
 import java.sql.Timestamp
 
-import models.user.User
+import ore.models.user.User
 import ore.Color
 import ore.db.DbRef
 

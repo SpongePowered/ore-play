@@ -5,8 +5,8 @@ import scala.language.higherKinds
 import ore.db.{DbRef, Model, ModelCompanion, ModelService}
 
 import cats.arrow.FunctionK
+import cats.~>
 import cats.data.OptionT
-import cats.effect.IO
 import slick.dbio.DBIO
 import slick.jdbc.JdbcProfile
 import slick.lifted.{Query, Rep}
@@ -107,9 +107,9 @@ object ModelView {
       ): ModelView[QueryOptRet, SingleRet, T, M] = fa.modifyingQuery(f)
     }
 
-  def now[M](model: ModelCompanion[M])(
-      implicit service: ModelService
-  ): ModelView[OptionT[IO, Model[M]], IO, model.T, Model[M]] =
+  def now[M, F[_]](model: ModelCompanion[M])(
+      implicit service: ModelService[F]
+  ): ModelView[OptionT[F, Model[M]], F, model.T, Model[M]] =
     defaultNowView(model.profile)(model.baseQuery, _.id, FunctionK.lift(service.runDBIO))
 
   def later[M](model: ModelCompanion[M]): ModelView[Query[model.T, Model[M], Seq], Rep, model.T, Model[M]] =
@@ -125,13 +125,13 @@ object ModelView {
   def defaultNowView[F[_], T, M](profile: JdbcProfile)(
       baseQuery: Query[T, M, Seq],
       idRef: T => Rep[DbRef[M]],
-      runAction: FunctionK[DBIO, F]
+      runAction: DBIO ~> F
   ): ModelView[OptionT[F, M], F, T, M] =
     defaultNowViewUsingLater[F, T, M](profile)(defaultLaterView(profile)(baseQuery, idRef), runAction)
 
   def defaultNowViewUsingLater[F[_], T, M](profile: JdbcProfile)(
       queryView: Later[T, M],
-      runAction: FunctionK[DBIO, F]
+      runAction: DBIO ~> F
   ): ModelView[OptionT[F, M], F, T, M] =
     new DefaultRunningView[F, T, M](profile)(queryView, runAction)
 }

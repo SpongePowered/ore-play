@@ -1,11 +1,5 @@
 package ore.db
 
-import java.sql.Timestamp
-import java.util.Date
-
-import cats.arrow.FunctionK
-import cats.effect.{Clock, IO}
-import cats.~>
 import doobie.ConnectionIO
 import slick.dbio.DBIO
 import slick.lifted.Rep
@@ -13,17 +7,7 @@ import slick.lifted.Rep
 /**
   * Represents a service that creates, deletes, and manipulates Models.
   */
-abstract class ModelService {
-
-  /**
-    * Returns a current Timestamp.
-    *
-    * @return Timestamp of now
-    */
-  def theTime: Timestamp = new Timestamp(new Date().getTime)
-
-  private val runDBIOFunc: DBIO ~> IO   = FunctionK.lift(runDBIO)
-  implicit private val clock: Clock[IO] = Clock.create[IO]
+trait ModelService[F[_]] {
 
   /**
     * Runs the specified DBIO on the DB.
@@ -31,7 +15,7 @@ abstract class ModelService {
     * @param action   Action to run
     * @return         Result
     */
-  def runDBIO[R](action: DBIO[R]): IO[R]
+  def runDBIO[R](action: DBIO[R]): F[R]
 
   /**
     * Runs the specified db program on the DB.
@@ -39,7 +23,7 @@ abstract class ModelService {
     * @param program  Action to run
     * @return         Result
     */
-  def runDbCon[R](program: ConnectionIO[R]): IO[R]
+  def runDbCon[R](program: ConnectionIO[R]): F[R]
 
   /**
     * Creates the specified model in it's table.
@@ -47,7 +31,7 @@ abstract class ModelService {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M](model: M)(implicit query: ModelQuery[M]): IO[Model[M]] = query.companion.insert(model)(runDBIOFunc)
+  def insert[M](model: M)(implicit query: ModelQuery[M]): F[Model[M]]
 
   /**
     * Creates the specified models in it's table.
@@ -55,18 +39,16 @@ abstract class ModelService {
     * @param models  Models to create
     * @return       Newly created models
     */
-  def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[Model[M]]] =
-    query.companion.bulkInsert(models)(runDBIOFunc)
+  def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): F[Seq[Model[M]]]
 
-  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): IO[Model[M]] =
-    query.companion.update(model)(update)(runDBIOFunc)
+  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): F[Model[M]]
 
   /**
     * Deletes the specified Model.
     *
     * @param model Model to delete
     */
-  def delete[M](model: Model[M])(implicit query: ModelQuery[M]): IO[Int] = query.companion.delete(model)(runDBIOFunc)
+  def delete[M](model: Model[M])(implicit query: ModelQuery[M]): F[Int]
 
   /**
     * Deletes all the models meeting the specified filter.
@@ -74,6 +56,5 @@ abstract class ModelService {
     * @param filter     Filter to use
     * @tparam M         Model
     */
-  def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): IO[Int] =
-    model.deleteWhere(filter)(runDBIOFunc)
+  def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): F[Int]
 }

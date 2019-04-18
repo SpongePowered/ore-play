@@ -1,6 +1,6 @@
 package form.project
 
-import models.project.Channel
+import ore.models.project.Channel
 import ore.db.Model
 
 import cats.data.OptionT

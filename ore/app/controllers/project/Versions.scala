@@ -17,21 +17,21 @@ import play.filters.csrf.CSRF
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.UserTable
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.UserTable
 import discourse.OreDiscourseApi
 import form.OreForms
-import models.admin.VersionVisibilityChange
-import models.project._
-import models.user.{LoggedAction, User, UserActionLogger}
+import ore.admin.VersionVisibilityChange
+import ore.models.project._
+import ore.models.user.{LoggedAction, User, UserActionLogger}
 import models.viewhelper.VersionData
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
-import ore.project.factory.{PendingProject, ProjectFactory}
-import ore.project.io.DownloadType._
-import ore.project.io.{DownloadType, PluginFile, PluginUpload}
+import ore.models.project.factory.{PendingProject, ProjectFactory}
+import ore.models.project.io.DownloadType._
+import ore.models.project.io.{DownloadType, PluginFile, PluginUpload}
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.OreMDC

@@ -5,10 +5,10 @@ import java.time.Instant
 
 import scala.collection.immutable
 
-import models.user.role.DbRole
+import ore.models.user.role.DbRole
 import ore.Color
 import ore.Color._
-import ore.db.{Model, ObjId, ObjTimestamp}
+import ore.db.{Model, ObjId, ObjInstant}
 import ore.permission.{Permission => Perm}
 
 import enumeratum.values.{StringEnum, StringEnumEntry}
@@ -35,7 +35,7 @@ sealed abstract case class Role(
         rank = rankOpt
       ),
       ObjId(roleId.toLong),
-      ObjTimestamp(Timestamp.from(Instant.EPOCH))
+      ObjInstant(Timestamp.from(Instant.EPOCH))
     )
 
   def rankOpt: Option[Int] = None

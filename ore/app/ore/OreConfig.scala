@@ -7,8 +7,8 @@ import scala.concurrent.duration._
 
 import play.api.{ConfigLoader, Configuration}
 
-import models.project.Channel
-import models.user.User
+import ore.models.project.Channel
+import ore.models.user.User
 import ore.db.DbRef
 import util.StringUtils._
 

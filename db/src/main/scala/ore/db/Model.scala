@@ -11,7 +11,7 @@ import shapeless._
 
 case class Model[+A](
     id: ObjId[A],
-    createdAt: ObjTimestamp,
+    createdAt: ObjInstant,
     obj: A
 )
 object Model {

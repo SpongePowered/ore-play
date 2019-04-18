@@ -1,10 +1,10 @@
 @*
 Collection of all projects.
 *@
-@import models.project.{Project, Version, VersionTag}
-@import models.user.User
+@import ore.models.project.{Project, Version, VersionTag}
+@import ore.models.user.User
 @import ore.OreConfig
-@import ore.project.Category
+@import ore.models.project.Category
 @import models.querymodels.{ProjectListEntry, ViewTag}
 @import views.html.utils
 @(models: Seq[ProjectListEntry], page: Int, pageSize: Long, call: Int => Call)(implicit config: OreConfig)

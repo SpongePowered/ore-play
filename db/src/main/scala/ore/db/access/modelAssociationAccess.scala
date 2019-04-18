@@ -4,7 +4,7 @@ import scala.language.higherKinds
 
 import ore.db._
 
-import cats.effect.IO
+import cats.Functor
 import cats.syntax.all._
 import slick.jdbc.JdbcProfile
 
@@ -84,18 +84,19 @@ class ModelAssociationAccessImpl[
     P,
     C,
     PT <: OreProfile#ModelTable[P],
-    CT <: OreProfile#ModelTable[C]
+    CT <: OreProfile#ModelTable[C],
+    F[_]: Functor
 ](val profile: JdbcProfile)(val pCompanion: ModelCompanion.Aux[P, PT], val cCompanion: ModelCompanion.Aux[C, CT])(
     implicit
     query: AssociationQuery[Assoc, P, C],
-    service: ModelService
-) extends ModelAssociationAccess[Assoc, P, C, PT, CT, IO] {
+    service: ModelService[F]
+) extends ModelAssociationAccess[Assoc, P, C, PT, CT, F] {
   import profile.api._
 
-  def addAssoc(parent: Model[P], child: Model[C]): IO[Unit] =
+  def addAssoc(parent: Model[P], child: Model[C]): F[Unit] =
     service.runDBIO(query.baseQuery += ((parent.id, child.id))).void
 
-  def removeAssoc(parent: Model[P], child: Model[C]): IO[Unit] =
+  def removeAssoc(parent: Model[P], child: Model[C]): F[Unit] =
     service
       .runDBIO(
         query.baseQuery
@@ -104,16 +105,16 @@ class ModelAssociationAccessImpl[
       )
       .void
 
-  def contains(parent: Model[P], child: Model[C]): IO[Boolean] = service.runDBIO(
+  def contains(parent: Model[P], child: Model[C]): F[Boolean] = service.runDBIO(
     (query.baseQuery
       .filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === child.id.value)
       .length > 0).result
   )
 
-  override def deleteAllFromParent(parent: Model[P]): IO[Unit] =
+  override def deleteAllFromParent(parent: Model[P]): F[Unit] =
     service.runDBIO(query.baseQuery.filter(query.parentRef(_) === parent.id.value).delete).void
 
-  override def deleteAllFromChild(child: Model[C]): IO[Unit] =
+  override def deleteAllFromChild(child: Model[C]): F[Unit] =
     service.runDBIO(query.baseQuery.filter(query.childRef(_) === child.id.value).delete).void
 
   override def allQueryFromParent(parent: Model[P]): Query[CT, Model[C], Seq] =
@@ -122,7 +123,7 @@ class ModelAssociationAccessImpl[
       child <- cCompanion.baseQuery if query.childRef(assoc) === child.id
     } yield child
 
-  def allFromParent(parent: Model[P]): IO[Seq[Model[C]]] = service.runDBIO(allQueryFromParent(parent).result)
+  def allFromParent(parent: Model[P]): F[Seq[Model[C]]] = service.runDBIO(allQueryFromParent(parent).result)
 
   override def allQueryFromChild(child: Model[C]): Query[PT, Model[P], Seq] =
     for {
@@ -130,5 +131,5 @@ class ModelAssociationAccessImpl[
       parent <- pCompanion.baseQuery if query.parentRef(assoc) === parent.id
     } yield parent
 
-  def allFromChild(child: Model[C]): IO[Seq[Model[P]]] = service.runDBIO(allQueryFromChild(child).result)
+  def allFromChild(child: Model[C]): F[Seq[Model[P]]] = service.runDBIO(allQueryFromChild(child).result)
 }

@@ -12,18 +12,18 @@ import play.api.libs.json._
 import play.api.mvc._
 
 import controllers.sugar.Bakery
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.ProjectApiKeyTable
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.ProjectApiKeyTable
 import form.OreForms
-import models.api.ProjectApiKey
-import models.project.{Page, Project, Version}
-import models.user.{LoggedAction, Organization, User, UserActionLogger}
+import ore.api.ProjectApiKey
+import ore.models.project.{Page, Project, Version}
+import ore.models.user.{LoggedAction, Organization, User, UserActionLogger}
 import ore.db.access.ModelView
 import ore.db.{DbRef, ModelService}
 import ore.permission.Permission
 import ore.permission.role.Role
-import ore.project.factory.ProjectFactory
-import ore.project.io.{PluginUpload, ProjectFiles}
+import ore.models.project.factory.ProjectFactory
+import ore.models.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType._
 import ore.rest.{OreRestfulApiV1, OreWrites, ProjectApiKeyType}
 import ore.{OreConfig, OreEnv}

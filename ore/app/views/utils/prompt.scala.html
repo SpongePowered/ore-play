@@ -1,4 +1,4 @@
-@import ore.user.Prompt
+@import ore.models.user.Prompt
 @(prompt: Prompt, id: String = "", position: String = "right")(implicit messages: Messages)
 
 <div class="prompt popover @id @position" data-prompt-id="@prompt.value">

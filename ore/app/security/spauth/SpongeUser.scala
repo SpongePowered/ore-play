@@ -5,7 +5,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Reads._
 import play.api.libs.json._
 
-import models.user.User
+import ore.models.user.User
 import ore.db.DbRef
 import ore.permission.role.Role
 

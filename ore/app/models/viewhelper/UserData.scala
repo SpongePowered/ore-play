@@ -1,11 +1,11 @@
 package models.viewhelper
 
 import controllers.sugar.Requests.OreRequest
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
-import models.project.Project
-import models.user.role.OrganizationUserRole
-import models.user.{Organization, User}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
+import ore.models.project.Project
+import ore.models.user.role.OrganizationUserRole
+import ore.models.user.{Organization, User}
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.permission._

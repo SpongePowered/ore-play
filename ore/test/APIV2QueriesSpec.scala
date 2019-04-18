@@ -3,7 +3,7 @@ import play.api.Configuration
 import db.impl.query.APIV2Queries
 import ore.OreConfig
 import ore.permission.Permission
-import ore.project.Category
+import ore.models.project.Category
 
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner

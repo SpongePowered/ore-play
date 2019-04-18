@@ -11,18 +11,18 @@ import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.data.{FieldMapping, Form, FormError, Mapping}
 
 import controllers.sugar.Requests.ProjectRequest
-import db.impl.OrePostgresDriver.api._
+import ore.db.impl.OrePostgresDriver.api._
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
-import models.api.ProjectApiKey
-import models.project.Page._
-import models.project.{Channel, Page}
-import models.user.Organization
-import models.user.role.ProjectUserRole
+import ore.api.ProjectApiKey
+import ore.models.project.Page._
+import ore.models.project.{Channel, Page}
+import ore.models.user.Organization
+import ore.models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
-import ore.project.factory.ProjectFactory
+import ore.models.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyType
 
 import cats.data.OptionT
@@ -54,7 +54,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   lazy val ProjectMemberRemove = Form(single("username" -> nonEmptyText))
 
   /**
-    * Submits changes to a [[models.project.Project]]'s
+    * Submits changes to a [[ore.models.project.Project]]'s
     * [[ProjectUserRole]]s.
     */
   lazy val ProjectMemberRoles = Form(
@@ -134,7 +134,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   )
 
   /**
-    * Submits an avatar update for an [[models.user.Organization]].
+    * Submits an avatar update for an [[ore.models.user.Organization]].
     */
   lazy val OrganizationUpdateAvatar = Form(
     mapping(

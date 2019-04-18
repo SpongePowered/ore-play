@@ -7,7 +7,7 @@ import java.util.Date
 
 import play.api.i18n.Messages
 
-import db.impl.OrePostgresDriver.api._
+import ore.db.impl.OrePostgresDriver.api._
 
 /**
   * Helper class for handling User input.

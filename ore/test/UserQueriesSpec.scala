@@ -1,7 +1,7 @@
 import play.api.Configuration
 
-import db.impl.query.UserQueries
-import db.impl.access.UserBase.UserOrdering
+import ore.db.impl.query.UserQueries
+import ore.db.impl.access.UserBase.UserOrdering
 import ore.OreConfig
 
 import org.junit.runner.RunWith

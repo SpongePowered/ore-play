@@ -3,8 +3,8 @@ package util
 import scala.language.implicitConversions
 
 import controllers.sugar.Requests._
-import models.project.Project
-import models.user.{Organization, User}
+import ore.models.project.Project
+import ore.models.user.{Organization, User}
 import ore.db.Model
 
 import com.typesafe.scalalogging.CanLog

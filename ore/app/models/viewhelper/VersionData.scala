@@ -1,13 +1,13 @@
 package models.viewhelper
 
 import controllers.sugar.Requests.ProjectRequest
-import db.impl.access.ProjectBase
-import models.project.{Channel, Project, Version}
-import models.user.User
+import ore.db.impl.access.ProjectBase
+import ore.models.project.{Channel, Project, Version}
+import ore.models.user.User
 import ore.Platform
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
-import ore.project.Dependency
+import ore.models.project.Dependency
 
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._

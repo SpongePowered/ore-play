@@ -17,25 +17,25 @@ import play.api.mvc.{Action, AnyContent, MultipartFormData, Result}
 import controllers.OreBaseController
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import db.impl.OrePostgresDriver.api._
+import ore.db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
-import models.admin.ProjectLogEntry
-import models.api.ProjectApiKey
-import models.project.{Flag, Note, Page, Visibility}
-import models.user._
-import models.user.role.ProjectUserRole
+import ore.admin.ProjectLogEntry
+import ore.api.ProjectApiKey
+import ore.models.project.{Flag, Note, Page, Visibility}
+import ore.models.user._
+import ore.models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission._
-import ore.project.factory.ProjectFactory
-import ore.project.io.{PluginUpload, ProjectFiles}
+import ore.models.project.factory.ProjectFactory
+import ore.models.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType
-import ore.user.MembershipDossier
-import ore.user.MembershipDossier._
+import ore.models.user.MembershipDossier
+import ore.models.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.StringUtils._
@@ -333,7 +333,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   }
 
   /**
-    * Shows either a customly uploaded icon for a [[models.project.Project]]
+    * Shows either a customly uploaded icon for a [[ore.models.project.Project]]
     * or the owner's avatar if there is none.
     *
     * @param author Project owner
@@ -396,7 +396,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
 
   /**
-    * Sets whether a [[models.user.User]] is watching a project.
+    * Sets whether a [[ore.models.user.User]] is watching a project.
     *
     * @param author   Project owner
     * @param slug     Project slug
@@ -508,7 +508,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   }
 
   /**
-    * Uploads a new icon to be saved for the specified [[models.project.Project]].
+    * Uploads a new icon to be saved for the specified [[ore.models.project.Project]].
     *
     * @param author Project owner
     * @param slug   Project slug
@@ -549,7 +549,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   }
 
   /**
-    * Displays the specified [[models.project.Project]]'s current pending
+    * Displays the specified [[ore.models.project.Project]]'s current pending
     * icon, if any.
     *
     * @param author Project owner
@@ -565,7 +565,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
 
   /**
-    * Removes a [[ore.project.ProjectMember]] from the specified project.
+    * Removes a [[ore.models.project.ProjectMember]] from the specified project.
     *
     * @param author Project owner
     * @param slug   Project slug

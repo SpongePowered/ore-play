@@ -8,10 +8,10 @@ import play.api.mvc.{RequestHeader, Result}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import _root_.db.impl.OrePostgresDriver.api._
-import _root_.db.impl.table.StatTable
-import models.project.{Project, Version}
-import models.statistic.{ProjectView, StatEntry, VersionDownload}
-import models.user.User
+import ore.db.impl.table.StatTable
+import ore.models.project.{Project, Version}
+import ore.statistic.{ProjectView, StatEntry, VersionDownload}
+import ore.models.user.User
 import ore.StatTracker.COOKIE_NAME
 import ore.db.access.ModelView
 import ore.db._

@@ -2,7 +2,7 @@ package ore.db
 
 import scala.language.implicitConversions
 
-import java.sql.Timestamp
+import java.time.Instant
 
 sealed trait DbInitialized[+A] {
   def value: A
@@ -45,11 +45,11 @@ object ObjId {
   }
 }
 
-sealed trait ObjTimestamp extends DbInitialized[Timestamp] {
+sealed trait ObjInstant extends DbInitialized[Instant] {
 
   override def equals(other: Any): Boolean = other match {
-    case that: ObjTimestamp => value == that.value
-    case _                  => false
+    case that: ObjInstant => value == that.value
+    case _                => false
   }
 
   override def hashCode(): Int = {
@@ -57,22 +57,22 @@ sealed trait ObjTimestamp extends DbInitialized[Timestamp] {
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
-object ObjTimestamp {
-  implicit def unwrapObjTimestamp(objTimestamp: ObjTimestamp): Timestamp = objTimestamp.value
+object ObjInstant {
+  implicit def unwrapObjTimestamp(objTimestamp: ObjInstant): Instant = objTimestamp.value
 
-  object UnsafeUninitialized extends ObjTimestamp {
+  object UnsafeUninitialized extends ObjInstant {
     override def value: Nothing                  = sys.error("Tried to access uninitialized ObjTimestamp. This should be impossible")
     override def unsafeToOption: Option[Nothing] = None
   }
 
-  private class RealObjTimestamp(val value: Timestamp) extends ObjTimestamp {
-    override def unsafeToOption: Option[Timestamp] = Some(value)
+  private class RealObjInstant(val value: Instant) extends ObjInstant {
+    override def unsafeToOption: Option[Instant] = Some(value)
   }
 
-  def apply(timestamp: Timestamp): ObjTimestamp = new RealObjTimestamp(timestamp)
+  def apply(timestamp: Instant): ObjInstant = new RealObjInstant(timestamp)
 
-  def unsafeFromOption(option: Option[Timestamp]): ObjTimestamp = option match {
-    case Some(time) => ObjTimestamp(time)
+  def unsafeFromOption(option: Option[Instant]): ObjInstant = option match {
+    case Some(time) => ObjInstant(time)
     case None       => UnsafeUninitialized
   }
 }

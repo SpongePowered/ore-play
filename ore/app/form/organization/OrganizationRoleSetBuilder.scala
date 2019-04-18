@@ -1,7 +1,7 @@
 package form.organization
 
-import models.user.User
-import models.user.role.OrganizationUserRole
+import ore.models.user.User
+import ore.models.user.role.OrganizationUserRole
 import ore.db.DbRef
 
 /**

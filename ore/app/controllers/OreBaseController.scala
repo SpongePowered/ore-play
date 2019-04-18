@@ -10,9 +10,9 @@ import play.api.mvc._
 
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
 import controllers.sugar.{Actions, Bakery, Requests}
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.VersionTable
-import models.project.{Project, Version, Visibility}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.VersionTable
+import ore.models.project.{Project, Version, Visibility}
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.permission.Permission
@@ -147,7 +147,7 @@ abstract class OreBaseController(
   }
 
   /**
-    * Retrieves an [[models.user.Organization]] and adds it to the request.
+    * Retrieves an [[ore.models.user.Organization]] and adds it to the request.
     *
     * @param organization Organization to retrieve
     * @return             Request with organization if found, NotFound otherwise
@@ -157,7 +157,7 @@ abstract class OreBaseController(
 
   /**
     * Ensures a request is authenticated and retrieves and adds a
-    * [[models.user.Organization]] to the request.
+    * [[ore.models.user.Organization]] to the request.
     *
     * @param organization Organization to retrieve
     * @return             Authenticated request with Organization if found, NotFound otherwise

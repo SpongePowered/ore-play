@@ -1,7 +1,7 @@
 package form
 
-import models.user.User
-import models.user.role.UserRoleModel
+import ore.models.user.User
+import ore.models.user.role.UserRoleModel
 import ore.db.DbRef
 import ore.permission.role.Role
 

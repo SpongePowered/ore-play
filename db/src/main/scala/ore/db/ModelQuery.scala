@@ -15,7 +15,7 @@ trait ModelQuery[A] {
     * @param theTime  Timestamp
     * @return         Copy of model
     */
-  def asDbModel(model: A)(id: ObjId[A], theTime: ObjTimestamp): Model[A] = companion.asDbModel(model, id, theTime)
+  def asDbModel(model: A)(id: ObjId[A], theTime: ObjInstant): Model[A] = companion.asDbModel(model, id, theTime)
 }
 object ModelQuery {
   type Aux[A, T0 <: OreProfile#ModelTable[A]] = ModelQuery[A] { type T = T0 }

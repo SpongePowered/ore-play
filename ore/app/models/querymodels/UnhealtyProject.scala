@@ -1,7 +1,7 @@
 package models.querymodels
 import java.sql.Timestamp
 
-import models.project.Visibility
+import ore.models.project.Visibility
 
 case class UnhealtyProject(
     namespace: ProjectNamespace,

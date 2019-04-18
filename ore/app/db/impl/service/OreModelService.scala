@@ -8,11 +8,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.inject.ApplicationLifecycle
 
-import db.impl.OrePostgresDriver.api._
-import ore.db.ModelService
+import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
+import ore.db.impl.OrePostgresDriver.api._
 import ore.{OreConfig, OreEnv}
 
-import cats.effect.{ContextShift, IO}
+import cats.effect.{Clock, ContextShift, IO}
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
@@ -31,10 +31,12 @@ class OreModelService @Inject()(
     db: DatabaseConfigProvider,
     lifecycle: ApplicationLifecycle
 )(implicit ec: ExecutionContext)
-    extends ModelService {
+    extends ModelService[IO] {
 
   // Implement ModelService
   lazy val DB = db.get[JdbcProfile]
+
+  implicit val clock: Clock[IO] = Clock.create[IO]
 
   implicit val xa: Transactor.Aux[IO, JdbcDataSource] = {
     implicit val cs: ContextShift[IO] = IO.contextShift(ec)
@@ -68,4 +70,19 @@ class OreModelService @Inject()(
   override def runDBIO[R](action: DBIO[R]): IO[R] = IO.fromFuture(IO(DB.db.run(action)))
 
   override def runDbCon[R](program: ConnectionIO[R]): IO[R] = program.transact(xa)
+
+  override def insert[M](model: M)(implicit query: ModelQuery[M]): IO[Model[M]] =
+    query.companion.insert[IO](model).flatMap(runDBIO)
+
+  override def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[Model[M]]] =
+    query.companion.bulkInsert[IO](models).flatMap(runDBIO)
+
+  override def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): IO[Model[M]] =
+    query.companion.update[IO](model)(update).flatMap(runDBIO)
+
+  override def delete[M](model: Model[M])(implicit query: ModelQuery[M]): IO[Int] =
+    runDBIO(query.companion.delete(model))
+
+  override def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): IO[Int] =
+    runDBIO(model.deleteWhere(filter))
 }

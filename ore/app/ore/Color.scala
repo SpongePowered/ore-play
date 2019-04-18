@@ -2,7 +2,7 @@ package ore
 
 import scala.collection.immutable
 
-import models.project.TagColor
+import ore.models.project.TagColor
 
 import enumeratum.values._
 

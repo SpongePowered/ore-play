@@ -1,10 +1,10 @@
 package form.project
 
 import ore.OreConfig
-import ore.project.factory.ProjectFactory
+import ore.models.project.factory.ProjectFactory
 
 /**
-  * Represents submitted [[models.project.Version]] data.
+  * Represents submitted [[ore.models.project.Version]] data.
   *
   * @param channelName      Name of channel
   * @param channelColorHex  Channel color hex

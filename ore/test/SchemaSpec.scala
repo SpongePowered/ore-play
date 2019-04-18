@@ -1,10 +1,10 @@
 import ore.db.DbRef
-import models.admin._
-import models.api.ProjectApiKey
-import models.project._
-import models.statistic.{ProjectView, VersionDownload}
-import models.user._
-import models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
+import ore.admin._
+import ore.api.ProjectApiKey
+import ore.models.project._
+import ore.statistic.{ProjectView, VersionDownload}
+import ore.models.user._
+import ore.models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 
 import doobie.implicits._
 import doobie.postgres.implicits._

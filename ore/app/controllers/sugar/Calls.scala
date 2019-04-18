@@ -3,8 +3,8 @@ package controllers.sugar
 import play.api.mvc.Call
 
 import controllers.routes
-import models.project.Project
-import models.user.User
+import ore.models.project.Project
+import ore.models.user.User
 
 /**
   * Helper class for commonly used calls throughout the application.

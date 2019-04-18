@@ -2,12 +2,11 @@ import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.ExecutionContext
 
-import db.impl.DbUpdateTask
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.db.ModelService
-import ore.project.ProjectTask
-import ore.user.UserTask
+import ore.models.project.ProjectTask
+import ore.models.user.UserTask
 
 import com.typesafe.scalalogging
 

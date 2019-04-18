@@ -3,8 +3,8 @@ package ore
 import scala.collection.immutable
 
 import db.{Model, DbRef, ModelService}
-import models.project.{TagColor, Version, VersionTag}
-import ore.project.Dependency
+import ore.models.project.{TagColor, Version, VersionTag}
+import ore.models.project.Dependency
 
 import cats.effect.IO
 import enumeratum.values._

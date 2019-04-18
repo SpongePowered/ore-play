@@ -26,7 +26,7 @@ $(function() {
         alert.fadeOut();
 
         // Check if user is already defined
-        var user = result.user;
+        var user = ore.models.user;
         if ($('input[value="' + user.id + '"]').length
             || $('.table-members').first('tr').find('strong').text() === user.username) {
             return;

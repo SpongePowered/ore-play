@@ -1,7 +1,7 @@
 package models.viewhelper
 
-import models.project.{Flag, Project}
-import models.user.User
+import ore.models.project.{Flag, Project}
+import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.permission.{Permission, _}

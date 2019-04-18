@@ -3,8 +3,8 @@ package ore.rest
 import play.api.libs.json.Json.obj
 import play.api.libs.json._
 
-import models.api.ProjectApiKey
-import models.project._
+import ore.api.ProjectApiKey
+import ore.models.project._
 import ore.db.Model
 
 /**

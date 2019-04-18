@@ -18,22 +18,23 @@ import play.api.mvc._
 import controllers.ApiV2Controller._
 import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import controllers.sugar.{Bakery, CircePlayController}
-import db.impl.OrePostgresDriver.api._
-import db.impl.query.{APIV2Queries, UserQueries}
-import db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
-import models.api.ApiSession
-import models.project.{Page, Version}
+import ore.db.impl.OrePostgresDriver.api._
+import db.impl.query.APIV2Queries
+import ore.db.impl.query.UserQueries
+import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
+import ore.api.ApiSession
+import ore.models.project.{Page, Version}
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2QueryVersionTag}
-import models.user.User
+import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
-import ore.project.factory.ProjectFactory
-import ore.project.io.PluginUpload
-import ore.project.{Category, ProjectSortingStrategy}
-import ore.user.FakeUser
+import ore.models.project.factory.ProjectFactory
+import ore.models.project.io.PluginUpload
+import ore.models.project.{Category, ProjectSortingStrategy}
+import ore.models.user.FakeUser
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.{IOUtils, OreMDC}

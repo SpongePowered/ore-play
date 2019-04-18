@@ -2,7 +2,7 @@ package ore.db
 
 import scala.language.implicitConversions
 
-import java.sql.Timestamp
+import java.time.Instant
 
 import slick.jdbc.JdbcProfile
 
@@ -17,8 +17,8 @@ trait OreProfile extends JdbcProfile {
     /** The Model's primary key column */
     def id = column[DbRef[M]]("id", O.PrimaryKey, O.AutoInc)
 
-    /** The [[java.sql.Timestamp]] instant of when a Model was created. */
-    def createdAt = column[Timestamp]("created_at")
+    /** The [[java.time.Instant]] of when a Model was created. */
+    def createdAt = column[Instant]("created_at")
   }
 
   /**

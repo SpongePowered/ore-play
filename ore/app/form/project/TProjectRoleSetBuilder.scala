@@ -1,8 +1,8 @@
 package form.project
 
 import form.RoleSetBuilder
-import models.user.User
-import models.user.role.ProjectUserRole
+import ore.models.user.User
+import ore.models.user.role.ProjectUserRole
 import ore.db.DbRef
 import ore.permission.role.Role
 

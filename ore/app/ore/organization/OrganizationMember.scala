@@ -1,14 +1,14 @@
 package ore.organization
 
-import models.user.role.OrganizationUserRole
-import models.user.{Organization, User}
+import ore.models.user.role.OrganizationUserRole
+import ore.models.user.{Organization, User}
 import ore.db.{DbRef, Model, ModelService}
-import ore.user.{Member, UserOwned}
+import ore.models.user.{Member, UserOwned}
 
 import cats.effect.IO
 
 /**
-  * Represents a [[models.user.User]] member of an [[Organization]].
+  * Represents a [[ore.models.user.User]] member of an [[Organization]].
   *
   * @param organization Organization member belongs to
   * @param userId       User ID

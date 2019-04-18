@@ -6,17 +6,17 @@ import javax.inject.Inject
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
-import db.impl.OrePostgresDriver.api._
-import db.impl.access.ProjectBase
-import db.impl.schema._
-import models.project._
-import models.user.User
-import models.user.role.ProjectUserRole
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.access.ProjectBase
+import ore.db.impl.schema._
+import ore.models.project._
+import ore.models.user.User
+import ore.models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
-import ore.project.{Category, ProjectSortingStrategy}
+import ore.models.project.{Category, ProjectSortingStrategy}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}

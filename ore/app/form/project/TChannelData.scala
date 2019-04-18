@@ -1,11 +1,11 @@
 package form.project
 
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.ChannelTable
-import models.project.{Channel, Project}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.ChannelTable
+import ore.models.project.{Channel, Project}
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
-import ore.project.factory.ProjectFactory
+import ore.models.project.factory.ProjectFactory
 import ore.{Color, OreConfig}
 import util.StringUtils._
 

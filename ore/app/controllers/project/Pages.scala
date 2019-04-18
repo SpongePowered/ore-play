@@ -12,13 +12,13 @@ import play.utils.UriEncoding
 
 import controllers.OreBaseController
 import controllers.sugar.Bakery
-import db.impl.OrePostgresDriver.api._
-import db.impl.schema.PageTable
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.PageTable
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
-import models.project.{Page, Project}
-import models.user.{LoggedAction, UserActionLogger}
+import ore.models.project.{Page, Project}
+import ore.models.user.{LoggedAction, UserActionLogger}
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer

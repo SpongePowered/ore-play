@@ -4,16 +4,12 @@ import java.time.LocalDate
 
 import scala.concurrent.duration.FiniteDuration
 
-import models.admin.LoggedActionViewModel
-import models.project.{Page, Project, ReviewState, Version}
-import models.querymodels._
-import models.user.User
+import ore.db.impl.query.DoobieOreProtocol
 import ore.db.{DbRef, Model}
-import ore.project.{Category, ProjectSortingStrategy}
+import ore.models.project.{Page, Project, ReviewState, Version}
+import ore.models.user.User
 
-import cats.syntax.all._
-import doobie._
-import doobie.implicits._
+import doobie.{Fragments, Query0}
 
 object AppQueries extends DoobieOreProtocol {
 

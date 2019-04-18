@@ -3,19 +3,13 @@ package db.impl.query
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
-import models.api.ApiKey
-import models.project.TagColor
-import models.protocols.APIV2
-import models.querymodels._
-import models.user.User
 import ore.db.DbRef
-import ore.permission.Permission
-import ore.project.{Category, ProjectSortingStrategy}
+import ore.db.impl.query.DoobieOreProtocol
+import ore.models.project.TagColor
+import ore.models.user.User
 
 import cats.data.NonEmptyList
 import doobie._
-import doobie.implicits._
-import doobie.postgres.implicits._
 
 object APIV2Queries extends DoobieOreProtocol {
 

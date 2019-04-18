@@ -1,9 +1,9 @@
 package ore
 
 import db.{Model, DbRef, ModelService}
-import models.user.User
-import models.user.role.UserRoleModel
-import ore.user.{Member, MembershipDossier}
+import ore.models.user.User
+import ore.models.user.role.UserRoleModel
+import ore.models.user.{Member, MembershipDossier}
 
 import cats.effect.{ContextShift, IO}
 

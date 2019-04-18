@@ -1,7 +1,7 @@
 package ore.permission.scope
 
-import models.project.Project
-import models.user.Organization
+import ore.models.project.Project
+import ore.models.user.Organization
 import ore.db.DbRef
 
 sealed trait Scope
