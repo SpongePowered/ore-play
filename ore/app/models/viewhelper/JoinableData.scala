@@ -3,8 +3,8 @@ package models.viewhelper
 import controllers.sugar.Requests.OreRequest
 import ore.models.user.User
 import ore.models.user.role.UserRoleModel
-import ore.Joinable
 import ore.db.Model
+import ore.member.Joinable
 import ore.permission.Permission
 import ore.permission.role.RoleCategory
 

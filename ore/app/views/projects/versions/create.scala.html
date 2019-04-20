@@ -7,10 +7,10 @@
 @import ore.models.project.Channel
 @import ore.OreConfig
 @import ore.models.project.factory.PendingVersion
-@import util.{FileUtils, StringUtils}
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
 @import views.html.helper.CSPNonce
+@import ore.util.{FileUtils, StringUtils}
 @(projectName: String, projectSlug: String, ownerName: String, projectDescription: Option[String], isProjectPending: Boolean, forumSync: Boolean, pending: Option[PendingVersion],
   channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

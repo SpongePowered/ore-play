@@ -1,11 +1,13 @@
 package ore.models.statistic
 
+import scala.language.higherKinds
+
 import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 
+import cats.Monad
 import cats.data.OptionT
-import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 
 /**
@@ -38,6 +40,6 @@ abstract class StatEntry[Subject] {
     *
     * @return User of entry
     */
-  def user(implicit service: ModelService): OptionT[IO, Model[User]] =
-    OptionT.fromOption[IO](userId).flatMap(ModelView.now(User).get)
+  def user[F[_]: ModelService: Monad]: OptionT[F, Model[User]] =
+    OptionT.fromOption[F](userId).flatMap(ModelView.now(User).get)
 }

@@ -1,6 +1,7 @@
 package models.querymodels
 import java.sql.Timestamp
 
+import ore.data.project.ProjectNamespace
 import ore.models.project.Visibility
 
 case class UnhealtyProject(

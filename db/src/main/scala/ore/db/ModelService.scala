@@ -1,5 +1,7 @@
 package ore.db
 
+import scala.language.higherKinds
+
 import doobie.ConnectionIO
 import slick.dbio.DBIO
 import slick.lifted.Rep
@@ -31,7 +33,15 @@ trait ModelService[F[_]] {
     * @param model  Model to create
     * @return       Newly created model
     */
-  def insert[M](model: M)(implicit query: ModelQuery[M]): F[Model[M]]
+  def insertRaw[M](companion: ModelCompanion[M])(model: M): F[Model[M]]
+
+  /**
+    * Creates the specified model in it's table.
+    *
+    * @param model  Model to create
+    * @return       Newly created model
+    */
+  def insert[M](model: M)(implicit query: ModelQuery[M]): F[Model[M]] = insertRaw(query.companion)(model)
 
   /**
     * Creates the specified models in it's table.
@@ -57,4 +67,7 @@ trait ModelService[F[_]] {
     * @tparam M         Model
     */
   def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): F[Int]
+}
+object ModelService {
+  def apply[F[_]](implicit service: ModelService[F]): ModelService[F] = service
 }

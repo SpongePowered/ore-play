@@ -2,11 +2,11 @@ package ore.models.project
 
 import scala.concurrent.ExecutionContext
 
+import ore.data.user.notification.NotificationType
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.project.{Project, Version}
 import ore.models.user.{Notification, User}
 import ore.db.{DbRef, Model, ModelService}
-import ore.models.user.notification.NotificationType
 
 import cats.data.NonEmptyList
 

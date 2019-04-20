@@ -8,7 +8,6 @@ import ore.db.impl.schema.ProjectVisibilityChangeTable
 import ore.models.project.{Project, Visibility}
 import ore.models.user.User
 import ore.db.{DbRef, ModelQuery}
-import ore.markdown.MarkdownRenderer
 
 import slick.lifted.TableQuery
 
@@ -19,11 +18,7 @@ case class ProjectVisibilityChange(
     resolvedAt: Option[Instant],
     resolvedBy: Option[DbRef[User]],
     visibility: Visibility
-) extends VisibilityChange {
-
-  /** Render the comment as Html */
-  def renderComment(implicit renderer: MarkdownRenderer): Html = renderer.render(comment)
-}
+) extends VisibilityChange
 object ProjectVisibilityChange
     extends DefaultModelCompanion[ProjectVisibilityChange, ProjectVisibilityChangeTable](
       TableQuery[ProjectVisibilityChangeTable]

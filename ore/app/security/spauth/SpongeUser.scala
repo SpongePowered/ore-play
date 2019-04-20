@@ -6,7 +6,7 @@ import play.api.libs.json.Reads._
 import play.api.libs.json._
 
 import ore.models.user.User
-import ore.db.DbRef
+import ore.db.{DbRef, ObjId}
 import ore.permission.role.Role
 
 /**
@@ -32,6 +32,17 @@ case class SpongeUser(
     if (groups.trim.isEmpty) Nil
     else groups.split(",").flatMap(Role.withValueOpt).toList
   }
+
+  def toUser: User = User(
+    id = ObjId(id),
+    fullName = None,
+    name = username,
+    email = Some(email),
+    lang = lang.map(_.locale),
+    tagline = None,
+    joinDate = None,
+    readPrompts = Nil
+  )
 }
 object SpongeUser {
   implicit val spongeUserReads: Reads[SpongeUser] =

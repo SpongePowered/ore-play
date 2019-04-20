@@ -7,12 +7,12 @@ import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
+import ore.data.project.Category
 import ore.models.project.{Project, ProjectSettings, Version, Visibility}
 import ore.models.user.User
 import ore.models.user.role.ProjectUserRole
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
-import ore.models.project.Category
 import ore.models.project.io.PluginFileWithData
 import ore.{Cacheable, OreConfig}
 

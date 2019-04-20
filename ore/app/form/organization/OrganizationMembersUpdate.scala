@@ -1,10 +1,11 @@
 package form.organization
 
+import ore.data.user.notification.NotificationType
 import ore.models.user.role.OrganizationUserRole
 import ore.models.user.{Notification, Organization, User}
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.organization.Organization
 import ore.permission.role.Role
-import ore.models.user.notification.NotificationType
 import util.syntax._
 
 import cats.data.NonEmptyList

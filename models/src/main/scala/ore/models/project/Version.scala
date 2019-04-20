@@ -2,28 +2,23 @@ package ore.models.project
 
 import scala.language.higherKinds
 
-import java.sql.Timestamp
 import java.time.Instant
-
-import play.twirl.api.Html
 
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.common.{Describable, Downloadable, Hideable, HideableOps}
+import ore.db.impl.common.{Describable, Downloadable, Hideable}
 import ore.db.impl.schema._
-import discourse.OreDiscourseApi
 import ore.models.admin.{Review, VersionVisibilityChange}
 import ore.models.statistic.VersionDownload
 import ore.models.user.User
 import ore.db.access.{ModelView, QueryView}
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.markdown.MarkdownRenderer
-import ore.models.project.{Dependency, ProjectOwned}
-import util.FileUtils
-import util.syntax._
+import ore.syntax._
+import ore.data.project.Dependency
+import ore.util.FileUtils
 
+import cats.{Monad, MonadError, Parallel}
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -56,8 +51,7 @@ case class Version(
     postId: Option[Int] = None,
     isPostDirty: Boolean = false,
 ) extends Describable
-    with Downloadable
-    with Hideable {
+    with Downloadable {
 
   //TODO: Check this in some way
   //checkArgument(description.exists(_.length <= Page.maxLength), "content too long", "")
@@ -74,19 +68,11 @@ case class Version(
     *
     * @return Channel
     */
-  def channel(implicit service: ModelService): IO[Model[Channel]] =
+  def channel[F[_]: ModelService](implicit F: MonadError[F, Throwable]): F[Model[Channel]] =
     ModelView
       .now(Channel)
       .get(this.channelId)
-      .getOrElseF(IO.raiseError(new NoSuchElementException("None of Option")))
-
-  /**
-    * Returns this Version's markdown description in HTML.
-    *
-    * @return Description in html
-    */
-  def descriptionHtml(implicit renderer: MarkdownRenderer): Html =
-    this.description.fold(Html(""))(renderer.render)
+      .getOrElseF(F.raiseError(new NoSuchElementException("None of Option")))
 
   /**
     * Returns the base URL for this Version.
@@ -127,7 +113,7 @@ case class Version(
     */
   def humanFileSize: String = FileUtils.formatFileSize(this.fileSize)
 
-  def reviewById(id: DbRef[Review])(implicit service: ModelService): OptionT[IO, Model[Review]] =
+  def reviewById[F[_]](id: DbRef[Review])(implicit service: ModelService[F]): OptionT[F, Model[Review]] =
     ModelView.now(Review).get(id)
 }
 
@@ -137,24 +123,26 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
 
   implicit val isProjectOwned: ProjectOwned[Version] = (a: Version) => a.projectId
 
-  implicit class VersionModelOps(private val self: Model[Version])
-      extends AnyVal
-      with HideableOps[Version, VersionVisibilityChange, VersionVisibilityChangeTable] {
+  implicit def versionIsHideable[F[_], G[_]](
+      implicit service: ModelService[F],
+      F: Monad[F],
+      par: Parallel[F, G]
+  ): Hideable.Aux[F, Version, VersionVisibilityChange, VersionVisibilityChangeTable] = new Hideable[F, Version] {
+    override type MVisibilityChange      = VersionVisibilityChange
+    override type MVisibilityChangeTable = VersionVisibilityChangeTable
 
-    override def visibilityChanges[V[_, _]: QueryView](
-        view: V[VersionVisibilityChangeTable, Model[VersionVisibilityChange]]
-    ): V[VersionVisibilityChangeTable, Model[VersionVisibilityChange]] =
-      view.filterView(_.versionId === self.id.value)
+    override def visibility(m: Version): Visibility = m.visibility
 
-    override def setVisibility(visibility: Visibility, comment: String, creator: DbRef[User])(
-        implicit service: ModelService,
-        cs: ContextShift[IO]
-    ): IO[(Model[Version], Model[VersionVisibilityChange])] = {
-      val updateOldChange = lastVisibilityChange(ModelView.now(VersionVisibilityChange))
+    override def setVisibility(m: Model[Version])(
+        visibility: Visibility,
+        comment: String,
+        creator: DbRef[User]
+    ): F[(Model[Version], Model[VersionVisibilityChange])] = {
+      val updateOldChange = lastVisibilityChange(m)(ModelView.now(VersionVisibilityChange))
         .semiflatMap { vc =>
           service.update(vc)(
             _.copy(
-              resolvedAt = Some(Timestamp.from(Instant.now())),
+              resolvedAt = Some(Instant.now()),
               resolvedBy = Some(creator)
             )
           )
@@ -164,7 +152,7 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
       val createNewChange = service.insert(
         VersionVisibilityChange(
           Some(creator),
-          self.id,
+          m.id,
           comment,
           None,
           None,
@@ -172,7 +160,7 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
         )
       )
 
-      val updateVersion = service.update(self)(
+      val updateVersion = service.update(m)(
         _.copy(
           visibility = visibility
         )
@@ -180,6 +168,13 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
 
       updateOldChange *> (updateVersion, createNewChange).parTupled
     }
+
+    override def visibilityChanges[V[_, _]: QueryView](m: Model[Version])(
+        view: V[VersionVisibilityChangeTable, Model[VersionVisibilityChange]]
+    ): V[VersionVisibilityChangeTable, Model[VersionVisibilityChange]] = view.filterView(_.versionId === m.id.value)
+  }
+
+  implicit class VersionModelOps(private val self: Model[Version]) extends AnyVal {
 
     def tags[V[_, _]: QueryView](
         view: V[VersionTagTable, Model[VersionTag]]
@@ -199,7 +194,7 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
     /**
       * Adds a download to the amount of unique downloads this Version has.
       */
-    def addDownload(implicit service: ModelService): IO[Model[Version]] =
+    def addDownload[F[_]](implicit service: ModelService[F]): F[Model[Version]] =
       service.update(self)(_.copy(downloadCount = self.downloadCount + 1))
 
     /**
@@ -225,16 +220,5 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
 
     def mostRecentReviews[V[_, _]: QueryView](view: V[ReviewTable, Model[Review]]): V[ReviewTable, Model[Review]] =
       reviewEntries(view).sortView(_.createdAt)
-
-    def updateDescriptionWithForum(
-        project: Model[Project],
-        description: String
-    )(implicit service: ModelService, forums: OreDiscourseApi): IO[Model[Version]] = {
-      for {
-        updated <- service.update(self)(_.copy(description = Some(description)))
-        _ <- if (project.topicId.isDefined && self.postId.isDefined) forums.updateVersionPost(project, updated)
-        else IO.pure(false)
-      } yield updated
-    }
   }
 }

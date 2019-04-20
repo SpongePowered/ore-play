@@ -1,6 +1,6 @@
 package form.project
 
-import ore.models.project.FlagReason
+import ore.data.project.FlagReason
 
 case class FlagForm(reasonId: Int, comment: String) {
 

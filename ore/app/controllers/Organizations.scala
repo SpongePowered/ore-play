@@ -16,8 +16,9 @@ import ore.models.user.Organization
 import ore.models.user.role.OrganizationUserRole
 import ore.db.access.ModelView
 import ore.db.{DbRef, ModelService}
+import ore.member.MembershipDossier
+import ore.models.organization.Organization
 import ore.permission.Permission
-import ore.models.user.MembershipDossier
 import ore.models.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
@@ -121,7 +122,7 @@ class Organizations @Inject()(forms: OreForms)(
     }
 
   /**
-    * Updates an [[ore.models.user.Organization]]'s avatar.
+    * Updates an [[Organization]]'s avatar.
     *
     * @param organization Organization to update avatar of
     * @return             Redirect to auth or bad request
@@ -141,7 +142,7 @@ class Organizations @Inject()(forms: OreForms)(
       }
 
   /**
-    * Removes a member from an [[ore.models.user.Organization]].
+    * Removes a member from an [[Organization]].
     *
     * @param organization Organization to update
     * @return             Redirect to Organization page
@@ -159,7 +160,7 @@ class Organizations @Inject()(forms: OreForms)(
       }
 
   /**
-    * Updates an [[ore.models.user.Organization]]'s members.
+    * Updates an [[Organization]]'s members.
     *
     * @param organization Organization to update
     * @return             Redirect to Organization page

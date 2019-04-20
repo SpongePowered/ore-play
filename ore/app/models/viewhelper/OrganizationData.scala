@@ -4,8 +4,9 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectRoleTable, ProjectTableMain}
 import ore.models.project.Project
 import ore.models.user.role.{OrganizationUserRole, ProjectUserRole}
-import ore.models.user.{Organization, User}
+import ore.models.user.User
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.organization.Organization
 import ore.permission.role.RoleCategory
 import util.syntax._
 

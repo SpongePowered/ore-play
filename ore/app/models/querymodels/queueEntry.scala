@@ -1,8 +1,9 @@
 package models.querymodels
 import java.sql.Timestamp
 
+import ore.data.project.ProjectNamespace
 import ore.models.user.User
-import ore.Color
+import ore.data.{Color, ProjectNamespace}
 import ore.db.DbRef
 
 case class UnsortedQueueEntry(

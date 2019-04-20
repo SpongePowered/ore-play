@@ -2,18 +2,19 @@ package ore.models.admin
 
 import scala.language.higherKinds
 
-import java.sql.Timestamp
 import java.time.Instant
+import java.util.Locale
 
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.ReviewTable
 import ore.models.project.{Project, Version}
 import ore.models.user.User
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.markdown.MarkdownRenderer
-import _root_.util.StringUtils
+import ore.util.StringUtils
 
 import io.circe.Json
+import io.circe.generic.JsonCodec
+import io.circe.syntax._
 import slick.lifted.TableQuery
 
 /**
@@ -36,42 +37,30 @@ case class Review(
     * @return
     */
   def decodeMessages: Seq[Message] =
-    (message \ "messages").asOpt[Seq[Message]].getOrElse(Nil)
+    message.hcursor
+      .getOrElse[Seq[Message]]("messages")(Nil)
+      .toTry
+      .get //Should be safe. If it's not we have bigger problems
 }
 
 /**
   * This modal is needed to convert the json
   */
-case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
-  def getTime(implicit messages: Messages): String      = StringUtils.prettifyDateAndTime(new Timestamp(time))
-  def isTakeover: Boolean                               = action.equalsIgnoreCase("takeover")
-  def isStop: Boolean                                   = action.equalsIgnoreCase("stop")
-  def render(implicit renderer: MarkdownRenderer): Html = renderer.render(message)
-}
-object Message {
-  implicit val messageReads: Reads[Message] =
-    (JsPath \ "message")
-      .read[String]
-      .and((JsPath \ "time").read[Long])
-      .and((JsPath \ "action").read[String])(Message.apply _)
-
-  implicit val messageWrites: Writes[Message] = (message: Message) =>
-    Json.obj(
-      "message" -> message.message,
-      "time"    -> message.time,
-      "action"  -> message.action
-  )
+@JsonCodec case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
+  def getTime(implicit locale: Locale): String = StringUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
+  def isTakeover: Boolean                      = action.equalsIgnoreCase("takeover")
+  def isStop: Boolean                          = action.equalsIgnoreCase("stop")
 }
 
 object Review extends DefaultModelCompanion[Review, ReviewTable](TableQuery[ReviewTable]) {
 
   def ordering: Ordering[(Model[Review], _)] =
     // TODO make simple + check order
-    Ordering.by(_._1.createdAt.getTime)
+    Ordering.by(_._1.createdAt.value)
 
   def ordering2: Ordering[Model[Review]] =
     // TODO make simple + check order
-    Ordering.by(_.createdAt.getTime)
+    Ordering.by(_.createdAt.value)
 
   implicit val query: ModelQuery[Review] =
     ModelQuery.from(this)
@@ -85,8 +74,8 @@ object Review extends DefaultModelCompanion[Review, ReviewTable](TableQuery[Revi
       val messages = self.decodeMessages :+ message
       service.update(self)(
         _.copy(
-          message = JsObject(
-            Seq("messages" -> Json.toJson(messages))
+          message = Json.obj(
+            "messages" := messages
           )
         )
       )

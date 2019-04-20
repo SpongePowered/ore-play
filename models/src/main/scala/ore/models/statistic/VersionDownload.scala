@@ -1,16 +1,11 @@
 package ore.models.statistic
 
-import controllers.sugar.Requests.ProjectRequest
 import ore.db.impl.DefaultModelCompanion
-import ore.db.impl.access.UserBase
 import ore.db.impl.schema.VersionDownloadsTable
+import ore.db.{DbRef, ModelQuery}
 import ore.models.project.Version
 import ore.models.user.User
-import ore.StatTracker._
-import ore.db.{DbRef, Model, ModelQuery}
-import security.spauth.SpongeAuthApi
 
-import cats.effect.IO
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery
 
@@ -32,29 +27,4 @@ object VersionDownload
     extends DefaultModelCompanion[VersionDownload, VersionDownloadsTable](TableQuery[VersionDownloadsTable]) {
 
   implicit val query: ModelQuery[VersionDownload] = ModelQuery.from(this)
-
-  /**
-    * Creates a new VersionDownload to be (or not be) recorded from an incoming
-    * request.
-    *
-    * @param version  Version downloaded
-    * @param request  Request to bind
-    * @return         New VersionDownload
-    */
-  def bindFromRequest(version: Model[Version])(
-      implicit request: ProjectRequest[_],
-      users: UserBase,
-      auth: SpongeAuthApi
-  ): IO[VersionDownload] = {
-    users.current.map(_.id.value).value.map { userId =>
-      VersionDownload(
-        modelId = version.id,
-        address = InetString(remoteAddress),
-        cookie = currentCookie,
-        userId = userId
-      )
-    }
-
-  }
-
 }

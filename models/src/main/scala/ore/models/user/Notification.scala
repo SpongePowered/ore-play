@@ -1,14 +1,15 @@
 package ore.models.user
 
+import scala.language.higherKinds
+
+import ore.data.user.notification.NotificationType
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.NotificationTable
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.models.user.UserOwned
-import ore.models.user.notification.NotificationType
 
+import cats.MonadError
 import cats.data.{NonEmptyList => NEL}
-import cats.effect.IO
 import slick.lifted.TableQuery
 
 /**
@@ -35,8 +36,8 @@ case class Notification(
     *
     * @return User from which this originated from
     */
-  def origin(implicit service: ModelService): IO[Model[User]] =
-    ModelView.now(User).get(this.originId).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
+  def origin[F[_]: ModelService](implicit F: MonadError[F, Throwable]): F[Model[User]] =
+    ModelView.now(User).get(this.originId).getOrElseF(F.raiseError(new NoSuchElementException("Get on None")))
 }
 object Notification extends DefaultModelCompanion[Notification, NotificationTable](TableQuery[NotificationTable]) {
 

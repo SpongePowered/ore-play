@@ -1,12 +1,13 @@
 package ore.db.impl.schema
 
 import java.time.Instant
+import java.util.Locale
 
+import ore.data.Prompt
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.NameColumn
 import ore.models.user.User
 import ore.db.{DbRef, Model, ObjId, ObjInstant}
-import ore.models.user.Prompt
 
 class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn[User] {
 
@@ -19,7 +20,7 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
   def tagline     = column[String]("tagline")
   def joinDate    = column[Instant]("join_date")
   def readPrompts = column[List[Prompt]]("read_prompts")
-  def lang        = column[Lang]("language")
+  def lang        = column[Locale]("language")
 
   override def * = {
     val applyFunc: (
@@ -33,7 +34,7 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
             Option[Instant],
             List[Prompt],
             Boolean,
-            Option[Lang]
+            Option[Locale]
         )
     ) => Model[User] = {
       case (id, time, fullName, name, email, tagline, joinDate, prompts, locked, lang) =>
@@ -65,7 +66,7 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
           Option[Instant],
           List[Prompt],
           Boolean,
-          Option[Lang]
+          Option[Locale]
       )
     ] = {
       case Model(

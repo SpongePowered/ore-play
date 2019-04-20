@@ -13,43 +13,43 @@ trait ModelAssociationAccess[Assoc <: OreProfile#AssociativeTable[P, C], P, C, P
 ], F[_]] {
   import slick.lifted.Query
 
-  def addAssoc(parent: Model[P], child: Model[C]): F[Unit]
+  def addAssoc(parent: DbRef[P], child: DbRef[C]): F[Unit]
 
-  def removeAssoc(parent: Model[P], child: Model[C]): F[Unit]
+  def removeAssoc(parent: DbRef[P], child: DbRef[C]): F[Unit]
 
-  def contains(parent: Model[P], child: Model[C]): F[Boolean]
+  def contains(parent: DbRef[P], child: DbRef[C]): F[Boolean]
 
-  def deleteAllFromParent(parent: Model[P]): F[Unit]
+  def deleteAllFromParent(parent: DbRef[P]): F[Unit]
 
-  def deleteAllFromChild(child: Model[C]): F[Unit]
+  def deleteAllFromChild(child: DbRef[C]): F[Unit]
 
-  def allQueryFromParent(parent: Model[P]): Query[CT, Model[C], Seq]
+  def allQueryFromParent(parent: DbRef[P]): Query[CT, Model[C], Seq]
 
-  def allFromParent(parent: Model[P]): F[Seq[Model[C]]]
+  def allFromParent(parent: DbRef[P]): F[Seq[Model[C]]]
 
-  def allQueryFromChild(child: Model[C]): Query[PT, Model[P], Seq]
+  def allQueryFromChild(child: DbRef[C]): Query[PT, Model[P], Seq]
 
-  def allFromChild(child: Model[C]): F[Seq[Model[P]]]
+  def allFromChild(child: DbRef[C]): F[Seq[Model[P]]]
 
-  def applyChild(child: Model[C]): ChildAssociationAccess[Assoc, P, C, PT, CT, F] =
+  def applyChild(child: DbRef[C]): ChildAssociationAccess[Assoc, P, C, PT, CT, F] =
     new ChildAssociationAccess(child, this)
-  def applyParent(parent: Model[P]): ParentAssociationAccess[Assoc, P, C, PT, CT, F] =
+  def applyParent(parent: DbRef[P]): ParentAssociationAccess[Assoc, P, C, PT, CT, F] =
     new ParentAssociationAccess(parent, this)
 }
 
 class ParentAssociationAccess[Assoc <: OreProfile#AssociativeTable[P, C], P, C, PT <: OreProfile#ModelTable[P], CT <: OreProfile#ModelTable[
   C
 ], F[_]](
-    parent: Model[P],
+    parent: DbRef[P],
     val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
 ) {
   import slick.lifted.Query
 
-  def addAssoc(child: Model[C]): F[Unit] = base.addAssoc(parent, child)
+  def addAssoc(child: DbRef[C]): F[Unit] = base.addAssoc(parent, child)
 
-  def removeAssoc(child: Model[C]): F[Unit] = base.removeAssoc(parent, child)
+  def removeAssoc(child: DbRef[C]): F[Unit] = base.removeAssoc(parent, child)
 
-  def contains(child: Model[C]): F[Boolean] = base.contains(parent, child)
+  def contains(child: DbRef[C]): F[Boolean] = base.contains(parent, child)
 
   def deleteAllFromParent: F[Unit] = base.deleteAllFromParent(parent)
 
@@ -61,16 +61,16 @@ class ParentAssociationAccess[Assoc <: OreProfile#AssociativeTable[P, C], P, C, 
 class ChildAssociationAccess[Assoc <: OreProfile#AssociativeTable[P, C], P, C, PT <: OreProfile#ModelTable[P], CT <: OreProfile#ModelTable[
   C
 ], F[_]](
-    child: Model[C],
+    child: DbRef[C],
     val base: ModelAssociationAccess[Assoc, P, C, PT, CT, F]
 ) {
   import slick.lifted.Query
 
-  def addAssoc(parent: Model[P]): F[Unit] = base.addAssoc(parent, child)
+  def addAssoc(parent: DbRef[P]): F[Unit] = base.addAssoc(parent, child)
 
-  def removeAssoc(parent: Model[P]): F[Unit] = base.removeAssoc(parent, child)
+  def removeAssoc(parent: DbRef[P]): F[Unit] = base.removeAssoc(parent, child)
 
-  def contains(parent: Model[P]): F[Boolean] = base.contains(parent, child)
+  def contains(parent: DbRef[P]): F[Boolean] = base.contains(parent, child)
 
   def deleteAllFromChild: F[Unit] = base.deleteAllFromChild(child)
 
@@ -85,51 +85,52 @@ class ModelAssociationAccessImpl[
     C,
     PT <: OreProfile#ModelTable[P],
     CT <: OreProfile#ModelTable[C],
-    F[_]: Functor
+    F[_]
 ](val profile: JdbcProfile)(val pCompanion: ModelCompanion.Aux[P, PT], val cCompanion: ModelCompanion.Aux[C, CT])(
     implicit
     query: AssociationQuery[Assoc, P, C],
-    service: ModelService[F]
+    service: ModelService[F],
+    F: Functor[F]
 ) extends ModelAssociationAccess[Assoc, P, C, PT, CT, F] {
   import profile.api._
 
-  def addAssoc(parent: Model[P], child: Model[C]): F[Unit] =
-    service.runDBIO(query.baseQuery += ((parent.id, child.id))).void
+  def addAssoc(parent: DbRef[P], child: DbRef[C]): F[Unit] =
+    service.runDBIO(query.baseQuery += ((parent, child))).void
 
-  def removeAssoc(parent: Model[P], child: Model[C]): F[Unit] =
+  def removeAssoc(parent: DbRef[P], child: DbRef[C]): F[Unit] =
     service
       .runDBIO(
         query.baseQuery
-          .filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === child.id.value)
+          .filter(t => query.parentRef(t) === parent && query.childRef(t) === child)
           .delete
       )
       .void
 
-  def contains(parent: Model[P], child: Model[C]): F[Boolean] = service.runDBIO(
+  def contains(parent: DbRef[P], child: DbRef[C]): F[Boolean] = service.runDBIO(
     (query.baseQuery
-      .filter(t => query.parentRef(t) === parent.id.value && query.childRef(t) === child.id.value)
+      .filter(t => query.parentRef(t) === parent && query.childRef(t) === child)
       .length > 0).result
   )
 
-  override def deleteAllFromParent(parent: Model[P]): F[Unit] =
-    service.runDBIO(query.baseQuery.filter(query.parentRef(_) === parent.id.value).delete).void
+  override def deleteAllFromParent(parent: DbRef[P]): F[Unit] =
+    service.runDBIO(query.baseQuery.filter(query.parentRef(_) === parent).delete).void
 
-  override def deleteAllFromChild(child: Model[C]): F[Unit] =
-    service.runDBIO(query.baseQuery.filter(query.childRef(_) === child.id.value).delete).void
+  override def deleteAllFromChild(child: DbRef[C]): F[Unit] =
+    service.runDBIO(query.baseQuery.filter(query.childRef(_) === child).delete).void
 
-  override def allQueryFromParent(parent: Model[P]): Query[CT, Model[C], Seq] =
+  override def allQueryFromParent(parent: DbRef[P]): Query[CT, Model[C], Seq] =
     for {
-      assoc <- query.baseQuery if query.parentRef(assoc) === parent.id.value
+      assoc <- query.baseQuery if query.parentRef(assoc) === parent
       child <- cCompanion.baseQuery if query.childRef(assoc) === child.id
     } yield child
 
-  def allFromParent(parent: Model[P]): F[Seq[Model[C]]] = service.runDBIO(allQueryFromParent(parent).result)
+  def allFromParent(parent: DbRef[P]): F[Seq[Model[C]]] = service.runDBIO(allQueryFromParent(parent).result)
 
-  override def allQueryFromChild(child: Model[C]): Query[PT, Model[P], Seq] =
+  override def allQueryFromChild(child: DbRef[C]): Query[PT, Model[P], Seq] =
     for {
-      assoc  <- query.baseQuery if query.childRef(assoc) === child.id.value
+      assoc  <- query.baseQuery if query.childRef(assoc) === child
       parent <- pCompanion.baseQuery if query.parentRef(assoc) === parent.id
     } yield parent
 
-  def allFromChild(child: Model[C]): F[Seq[Model[P]]] = service.runDBIO(allQueryFromChild(child).result)
+  def allFromChild(child: DbRef[C]): F[Seq[Model[P]]] = service.runDBIO(allQueryFromChild(child).result)
 }

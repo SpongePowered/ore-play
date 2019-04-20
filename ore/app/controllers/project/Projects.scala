@@ -30,15 +30,16 @@ import models.viewhelper.ScopedOrganizationData
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
+import ore.member.{MembershipDossier, ProjectMember}
+import ore.models.organization.Organization
 import ore.permission._
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginUpload, ProjectFiles}
 import ore.rest.ProjectApiKeyType
-import ore.models.user.MembershipDossier
 import ore.models.user.MembershipDossier._
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import _root_.util.StringUtils._
+import ore.util.StringUtils._
 import _root_.util.syntax._
 import util.OreMDC
 import views.html.{projects => views}
@@ -565,7 +566,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
 
   /**
-    * Removes a [[ore.models.project.ProjectMember]] from the specified project.
+    * Removes a [[ProjectMember]] from the specified project.
     *
     * @param author Project owner
     * @param slug   Project slug

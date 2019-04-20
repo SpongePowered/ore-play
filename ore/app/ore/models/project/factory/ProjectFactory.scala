@@ -10,9 +10,11 @@ import scala.util.matching.Regex
 import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
+import db.impl.access.ProjectBase
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.access.ProjectBase
 import discourse.OreDiscourseApi
+import ore.data.user.notification.NotificationType
+import ore.data.{Color, Platform}
 import ore.models.project._
 import ore.models.user.role.ProjectUserRole
 import ore.models.user.{Notification, User}
@@ -21,9 +23,8 @@ import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
 import ore.models.project.NotifyWatchersTask
 import ore.models.project.io._
-import ore.models.user.notification.NotificationType
-import ore.{Color, OreConfig, OreEnv, Platform}
-import util.StringUtils
+import ore.util.StringUtils
+import ore.{OreConfig, OreEnv, Platform}
 import util.StringUtils._
 
 import akka.actor.ActorSystem

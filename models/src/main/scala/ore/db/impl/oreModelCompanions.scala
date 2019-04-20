@@ -55,7 +55,9 @@ trait OreModelCompanion[M] extends ModelCompanion[M] {
 
   def update[F[_]: Monad](model: Model[M])(update: M => M): F[DBIO[Model[M]]] = {
     val updatedModel = model.copy(obj = update(model.obj))
-    baseQuery.filter(_.id === model.id.value).update(updatedModel).pure[F].as(updatedModel)
+    import scala.concurrent.ExecutionContext.Implicits.global //TODO: Use a ec on the same thread
+    val action: DBIO[Int] = baseQuery.filter(_.id === model.id.value).update(updatedModel)
+    action.map(_ => updatedModel).pure[F]
   }
 
   /**

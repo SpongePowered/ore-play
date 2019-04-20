@@ -1,10 +1,16 @@
 package ore.db.impl
 
 import java.sql.{PreparedStatement, ResultSet}
+import java.util.Locale
 
+import ore.data.{Color, DownloadType, Prompt}
+import ore.data.project.{Category, FlagReason}
+import ore.data.user.notification.NotificationType
 import ore.db.OreProfile
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.{LoggedAction, LoggedActionContext}
+import ore.permission.Permission
+import ore.permission.role.{Role, RoleCategory}
 
 import cats.data.{NonEmptyList => NEL}
 import com.github.tminglei.slickpg._
@@ -24,7 +30,7 @@ trait OrePostgresDriver
     with PgAggFuncSupport
     with PgWindowFuncSupport
     with PgNetSupport
-    with PgPlayJsonSupport
+    with PgCirceJsonSupport
     with PgEnumSupport
     with SlickValueEnumSupport { self =>
 
@@ -47,8 +53,6 @@ trait OrePostgresDriver
       mappedColumnTypeForValueEnum(NotificationType)
     implicit val promptTypeMapper: BaseColumnType[Prompt]             = mappedColumnTypeForValueEnum(Prompt)
     implicit val downloadTypeTypeMapper: BaseColumnType[DownloadType] = mappedColumnTypeForValueEnum(DownloadType)
-    implicit val projectApiKeyTypeTypeMapper: BaseColumnType[ProjectApiKeyType] =
-      mappedColumnTypeForValueEnum(ProjectApiKeyType)
     implicit val visibilityTypeMapper: BaseColumnType[Visibility] = mappedColumnTypeForValueEnum(Visibility)
     implicit def loggedActionMapper[Ctx]: BaseColumnType[LoggedAction[Ctx]] =
       mappedColumnTypeForValueEnum(LoggedAction).asInstanceOf[BaseColumnType[LoggedAction[Ctx]]] // scalafix:ok
@@ -57,8 +61,8 @@ trait OrePostgresDriver
         .asInstanceOf[BaseColumnType[LoggedActionContext[Ctx]]] // scalafix:ok
     implicit val reviewStateTypeMapper: BaseColumnType[ReviewState] = mappedColumnTypeForValueEnum(ReviewState)
 
-    implicit val langTypeMapper: BaseColumnType[Lang] =
-      MappedJdbcType.base[Lang, String](_.toLocale.toLanguageTag, Lang.apply)
+    implicit val langTypeMapper: BaseColumnType[Locale] =
+      MappedJdbcType.base[Locale, String](_.toLanguageTag, Locale.forLanguageTag)
 
     implicit val permissionTypeMapper: BaseColumnType[Permission] = new DriverJdbcType[Permission] {
       override def sqlType: Int = java.sql.Types.BIT

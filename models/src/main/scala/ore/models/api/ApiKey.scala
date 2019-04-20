@@ -1,5 +1,7 @@
 package ore.models.api
 
+import scala.language.higherKinds
+
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.query.UserQueries
 import ore.db.impl.schema.ApiKeyTable
@@ -8,9 +10,10 @@ import ore.db.{DbRef, ModelQuery, ModelService}
 import ore.permission.scope.{GlobalScope, HasScope, OrganizationScope, ProjectScope}
 import ore.permission.{NamedPermission, Permission}
 import ore.models.user.UserOwned
-import util.syntax._
+import ore.syntax._
 
-import cats.effect.IO
+import cats.Functor
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 case class ApiKey(
@@ -20,7 +23,7 @@ case class ApiKey(
     private val rawKeyPermissions: Permission
 ) {
 
-  def permissionsIn[A: HasScope](a: A)(implicit service: ModelService): IO[Permission] = {
+  def permissionsIn[A: HasScope, F[_]](a: A)(implicit service: ModelService[F], F: Functor[F]): F[Permission] = {
     val query = a.scope match {
       case GlobalScope              => UserQueries.globalPermission(ownerId)
       case ProjectScope(projectId)  => UserQueries.projectPermission(ownerId, projectId)

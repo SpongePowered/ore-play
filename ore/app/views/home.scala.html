@@ -8,11 +8,14 @@ sorted according to different criteria.
 @import ore.models.project.{Project, Version, VersionTag}
 @import ore.models.user.User
 @import ore.models.project.ProjectSortingStrategy._
-@import ore.models.project.{Category, ProjectSortingStrategy}
-@import ore.{OreConfig, Platform, PlatformCategory}
+@import ore.models.project.ProjectSortingStrategy
+@import ore.OreConfig
 @import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
 @import views.html.helper.CSPNonce
+@import ore.data.Platform
+@import ore.data.PlatformCategory
+@import ore.data.project.Category
 @(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,

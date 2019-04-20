@@ -1,14 +1,17 @@
 package ore.models.user.role
 
-import ore.Visitable
+import scala.language.higherKinds
+
+import ore.db.impl.common.Visitable
 import ore.db.{Model, ModelService}
+import ore.models.organization.Organization
 import ore.permission.role.Role
 
-import cats.effect.IO
+import cats.MonadError
 
 /**
   * Represents a user's [[Role]] in something like a [[ore.models.project.Project]] or
-  * [[ore.models.user.Organization]].
+  * [[Organization]].
   */
 abstract class UserRoleModel[Self] {
 
@@ -27,7 +30,7 @@ abstract class UserRoleModel[Self] {
     *
     * @return Subject of Role
     */
-  def subject(implicit service: ModelService): IO[Model[Visitable]]
+  def subject[F[_]: ModelService](implicit F: MonadError[F, Throwable]): F[Model[Visitable]]
 
   def withRole(role: Role): Self
 

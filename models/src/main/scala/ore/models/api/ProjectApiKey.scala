@@ -5,13 +5,11 @@ import ore.db.impl.schema.ProjectApiKeyTable
 import ore.models.project.Project
 import ore.db.{DbRef, ModelQuery}
 import ore.models.project.ProjectOwned
-import ore.rest.ProjectApiKeyType
 
 import slick.lifted.TableQuery
 
 case class ProjectApiKey(
     projectId: DbRef[Project],
-    keyType: ProjectApiKeyType,
     value: String
 )
 object ProjectApiKey extends DefaultModelCompanion[ProjectApiKey, ProjectApiKeyTable](TableQuery[ProjectApiKeyTable]) {

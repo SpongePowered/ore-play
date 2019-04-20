@@ -8,6 +8,7 @@ import ore.models.user.role.OrganizationUserRole
 import ore.models.user.{Organization, User}
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
+import ore.models.organization.Organization
 import ore.permission._
 import ore.permission.role.Role
 import ore.permission.scope.GlobalScope

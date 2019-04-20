@@ -1,7 +1,9 @@
 package form.organization
 
+import ore.models.organization.Organization
+
 /**
-  * Represents an action of updating an [[ore.models.user.Organization]] avatar.
+  * Represents an action of updating an [[Organization]] avatar.
   *
   * @param method Update method ("by-file" or "by-url")
   * @param url    Avatar URL

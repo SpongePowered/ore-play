@@ -1,7 +1,8 @@
 package models.viewhelper
 
-import ore.models.user.{Organization, User}
+import ore.models.user.User
 import ore.db.{Model, ModelService}
+import ore.models.organization.Organization
 import ore.permission.Permission
 
 import cats.data.OptionT

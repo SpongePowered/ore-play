@@ -6,8 +6,9 @@ import ore.models.project.{Channel, Project}
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.models.project.factory.ProjectFactory
-import ore.{Color, OreConfig}
-import util.StringUtils._
+import ore.OreConfig
+import ore.data.Color
+import ore.util.StringUtils._
 
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO

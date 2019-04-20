@@ -10,7 +10,7 @@ import ore.models.user.User
 import ore.OreConfig
 import ore.db.{Model, ModelService}
 import ore.discourse.{DiscourseApi, DiscoursePost}
-import util.StringUtils._
+import ore.util.StringUtils._
 import util.syntax._
 
 import akka.actor.Scheduler

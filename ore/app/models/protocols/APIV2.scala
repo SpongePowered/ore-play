@@ -2,8 +2,8 @@ package models.protocols
 
 import java.time.LocalDateTime
 
+import ore.data.project.Category
 import ore.models.project.{ReviewState, Visibility}
-import ore.models.project.Category
 
 import io.circe._
 import io.circe.generic.extras._

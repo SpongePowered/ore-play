@@ -1,10 +1,9 @@
 package ore.models.organization
 
-import scala.language.implicitConversions
+import scala.language.{higherKinds, implicitConversions}
 
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
-import ore.models.user.Organization
 
 import cats.MonadError
 import simulacrum.typeclass

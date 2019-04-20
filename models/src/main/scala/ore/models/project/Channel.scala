@@ -6,12 +6,11 @@ import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common.Named
 import ore.db.impl.schema.{ChannelTable, VersionTable}
-import ore.Color
-import ore.Color._
+import ore.data.Color
+import ore.data.Color._
 import ore.db.access.QueryView
 import ore.db.{DbRef, Model, ModelQuery}
-import ore.models.project.ProjectOwned
-import util.syntax._
+import ore.syntax._
 
 import slick.lifted.TableQuery
 

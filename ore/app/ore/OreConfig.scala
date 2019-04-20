@@ -7,6 +7,7 @@ import scala.concurrent.duration._
 
 import play.api.{ConfigLoader, Configuration}
 
+import ore.data.Color
 import ore.models.project.Channel
 import ore.models.user.User
 import ore.db.DbRef

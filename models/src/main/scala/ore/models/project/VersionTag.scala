@@ -1,6 +1,5 @@
 package ore.models.project
 
-import java.sql.Timestamp
 import java.time.Instant
 
 import scala.collection.immutable
@@ -8,7 +7,6 @@ import scala.collection.immutable
 import ore.db.impl.ModelCompanionPartial
 import ore.db.impl.common.Named
 import ore.db.impl.schema.VersionTagTable
-import ore.models.querymodels.ViewTag
 import ore.db._
 
 import enumeratum.values._
@@ -19,17 +17,14 @@ case class VersionTag(
     name: String,
     data: String,
     color: TagColor
-) extends Named {
-
-  def asViewTag: ViewTag = ViewTag(name, data, color)
-}
+) extends Named
 object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](TableQuery[VersionTagTable]) {
 
   override def asDbModel(
       model: VersionTag,
       id: ObjId[VersionTag],
       time: ObjInstant
-  ): Model[VersionTag] = Model(id, ObjInstant(Timestamp.from(Instant.EPOCH)), model)
+  ): Model[VersionTag] = Model(id, ObjInstant(Instant.EPOCH), model)
 
   implicit val query: ModelQuery[VersionTag] = ModelQuery.from(this)
 }

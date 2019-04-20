@@ -3,7 +3,7 @@ import java.nio.file.{Files, Path}
 
 import ore.models.user.User
 import ore.db.Model
-import util.StringUtils
+import ore.util.StringUtils
 
 import cats.effect.IO
 

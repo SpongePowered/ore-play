@@ -4,11 +4,11 @@ import scala.language.higherKinds
 
 import java.time.Instant
 
+import ore.data.project.FlagReason
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.FlagTable
 import ore.models.user.User
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.models.project.{FlagReason, ProjectOwned}
 import ore.models.user.UserOwned
 
 import slick.lifted.TableQuery

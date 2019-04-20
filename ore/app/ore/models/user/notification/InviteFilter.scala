@@ -19,15 +19,16 @@ sealed abstract class InviteFilter(
     val value: Int,
     val name: String,
     val title: String,
-    val filter: ContextShift[IO] => ModelService => Model[User] => IO[Seq[Model[UserRoleModel[_]]]]
+    val filter: InviteFilter.FilterFunc[?]
 ) extends IntEnumEntry {
-  def apply(
+  def apply[F[_]](
       user: Model[User]
-  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[Model[UserRoleModel[_]]]] =
+  )(implicit service: ModelService[F], cs: ContextShift[F]): F[Seq[Model[UserRoleModel[_]]]] =
     filter(cs)(service)(user)
 }
 
 object InviteFilter extends IntEnum[InviteFilter] {
+  type FilterFunc[F[_]] = ContextShift[F] => ModelService[F] => Model[User] => F[Seq[Model[UserRoleModel[_]]]]
 
   val values: immutable.IndexedSeq[InviteFilter] = findValues
 

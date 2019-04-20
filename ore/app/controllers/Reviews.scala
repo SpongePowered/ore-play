@@ -16,6 +16,7 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
 import form.OreForms
 import ore.admin.{Message, Review}
+import ore.data.user.notification.NotificationType
 import ore.models.project.{Project, ReviewState, Version}
 import ore.models.user.{LoggedAction, Notification, User, UserActionLogger}
 import ore.db.access.ModelView
@@ -23,7 +24,6 @@ import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
 import ore.permission.role.Role
-import ore.models.user.notification.NotificationType
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.{html => views}

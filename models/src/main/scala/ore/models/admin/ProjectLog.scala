@@ -2,16 +2,17 @@ package ore.models.admin
 
 import scala.language.higherKinds
 
+import java.time.Instant
+
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectLogEntryTable, ProjectLogTable}
 import ore.models.project.Project
 import ore.db.access.{ModelView, QueryView}
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import util.syntax._
+import ore.syntax._
 
-import cats.effect.{Clock, IO}
-import slick.lifted.TableQuery
+import cats.Monad
 
 /**
   * Represents a log for a [[ore.models.project.Project]].
@@ -44,7 +45,7 @@ object ProjectLog extends DefaultModelCompanion[ProjectLog, ProjectLogTable](Tab
       * @param message  Message to log
       * @return         New entry
       */
-    def err[F[_]](message: String)(implicit service: ModelService[F], clock: Clock[F]): F[Model[ProjectLogEntry]] = {
+    def err[F[_]: Monad](message: String)(implicit service: ModelService[F]): F[Model[ProjectLogEntry]] = {
       val tag = "error"
       entries(ModelView.now(ProjectLogEntry))
         .find(e => e.message === message && e.tag === tag)
@@ -52,13 +53,13 @@ object ProjectLog extends DefaultModelCompanion[ProjectLog, ProjectLogTable](Tab
           service.update(entry)(
             _.copy(
               occurrences = entry.occurrences + 1,
-              lastOccurrence = service.theTime
+              lastOccurrence = Instant.now()
             )
           )
         }
         .getOrElseF {
           service.insert(
-            ProjectLogEntry(self.id, tag, message, lastOccurrence = service.theTime)
+            ProjectLogEntry(self.id, tag, message, lastOccurrence = Instant.now())
           )
         }
     }

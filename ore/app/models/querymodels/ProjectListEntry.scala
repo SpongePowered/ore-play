@@ -1,6 +1,6 @@
 package models.querymodels
+import ore.data.project.{Category, ProjectNamespace}
 import ore.models.project.Visibility
-import ore.models.project.Category
 
 case class ProjectListEntry(
     namespace: ProjectNamespace,

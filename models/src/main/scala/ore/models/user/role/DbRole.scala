@@ -1,6 +1,5 @@
 package ore.models.user.role
 
-import java.sql.Timestamp
 import java.time.Instant
 
 import ore.db.impl.ModelCompanionPartial
@@ -29,7 +28,7 @@ object DbRole extends ModelCompanionPartial[DbRole, DbRoleTable](TableQuery[DbRo
       model: DbRole,
       id: ObjId[DbRole],
       time: ObjInstant
-  ): Model[DbRole] = Model(id, ObjInstant(Timestamp.from(Instant.EPOCH)), model)
+  ): Model[DbRole] = Model(id, ObjInstant(Instant.EPOCH), model)
 
   implicit val query: ModelQuery[DbRole] = ModelQuery.from(this)
 }

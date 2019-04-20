@@ -3,7 +3,7 @@ package security
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-import util.StringUtils
+import ore.util.StringUtils
 
 import com.google.common.base.Preconditions._
 

@@ -33,7 +33,7 @@ import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope
 import ore.permission.{NamedPermission, Permission}
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.PluginUpload
-import ore.models.project.{Category, ProjectSortingStrategy}
+import ore.models.project.ProjectSortingStrategy
 import ore.models.user.FakeUser
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}

@@ -4,8 +4,9 @@ import java.time.Instant
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.NameColumn
-import ore.models.user.{Organization, User}
+import ore.models.user.User
 import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.models.organization.Organization
 
 class OrganizationTable(tag: Tag) extends ModelTable[Organization](tag, "organizations") with NameColumn[Organization] {
 

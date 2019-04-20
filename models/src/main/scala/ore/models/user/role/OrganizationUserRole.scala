@@ -1,19 +1,22 @@
 package ore.models.user.role
 
+import scala.language.higherKinds
+
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.OrganizationRoleTable
-import ore.models.user.{Organization, User}
-import ore.Visitable
+import ore.models.user.User
+import ore.db.impl.common.Visitable
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.organization.OrganizationOwned
+import ore.models.organization.{Organization, OrganizationOwned}
 import ore.permission.role.Role
 import ore.models.user.UserOwned
 
-import cats.effect.IO
+import cats.MonadError
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 /**
-  * Represents a [[UserRoleModel]] within an [[ore.models.user.Organization]].
+  * Represents a [[UserRoleModel]] within an [[Organization]].
   *
   * @param userId         ID of User this role belongs to
   * @param organizationId ID of Organization this role belongs to
@@ -27,8 +30,8 @@ case class OrganizationUserRole(
     isAccepted: Boolean = false
 ) extends UserRoleModel[OrganizationUserRole] {
 
-  override def subject(implicit service: ModelService): IO[Model[Visitable]] =
-    OrganizationOwned[OrganizationUserRole].organization(this)
+  override def subject[F[_]: ModelService](implicit F: MonadError[F, Throwable]): F[Model[Visitable]] =
+    OrganizationOwned[OrganizationUserRole].organization(this).widen[Model[Visitable]]
 
   override def withRole(role: Role): OrganizationUserRole = copy(role = role)
 

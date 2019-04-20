@@ -2,9 +2,8 @@ package ore.models.user
 
 import scala.language.higherKinds
 
-import java.sql.Timestamp
-
-import play.api.i18n.Lang
+import java.time.Instant
+import java.util.Locale
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common.Named
@@ -13,17 +12,16 @@ import ore.db.impl.schema._
 import ore.db.impl.{ModelCompanionPartial, OrePostgresDriver}
 import ore.models.project.{Flag, Project, Visibility}
 import ore.models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
-import ore.OreConfig
 import ore.db.access._
 import ore.db._
 import ore.permission._
 import ore.permission.scope._
-import ore.models.user.Prompt
-import security.spauth.SpongeUser
-import util.syntax._
+import ore.syntax._
+import ore.data.Prompt
+import ore.models.organization.Organization
 
-import cats.effect.IO
-import com.google.common.base.Preconditions._
+import cats.{Functor, Monad}
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 /**
@@ -41,23 +39,11 @@ case class User(
     name: String = "",
     email: Option[String] = None,
     tagline: Option[String] = None,
-    joinDate: Option[Timestamp] = None,
+    joinDate: Option[Instant] = None,
     readPrompts: List[Prompt] = Nil,
     isLocked: Boolean = false,
-    lang: Option[Lang] = None
-) extends Named {
-
-  //TODO: Check this in some way
-  //checkArgument(tagline.forall(_.length <= config.users.get[Int]("max-tagline-len")), "tagline too long", "")
-
-  def avatarUrl(implicit config: OreConfig): String = User.avatarUrl(name)
-
-  /**
-    * Returns this user's current language, or the default language if none
-    * was configured.
-    */
-  implicit def langOrDefault: Lang = lang.getOrElse(Lang.defaultLang)
-}
+    lang: Option[Locale] = None
+) extends Named
 
 object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]) {
 
@@ -66,22 +52,6 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       id: ObjId[User],
       time: ObjInstant
   ): Model[User] = Model(model.id, time, model)
-
-  /**
-    * Copy this User with the information SpongeUser provides.
-    *
-    * @param user Sponge User
-    */
-  def fromSponge(user: SpongeUser): User = User(
-    id = ObjId(user.id),
-    fullName = None,
-    name = user.username,
-    email = Some(user.email),
-    lang = user.lang,
-    tagline = None,
-    joinDate = None,
-    readPrompts = Nil
-  )
 
   implicit val query: ModelQuery[User] =
     ModelQuery.from(this)
@@ -101,9 +71,6 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
   implicit val assocRolesQuery: AssociationQuery[UserGlobalRolesTable, User, DbRole] =
     AssociationQuery.from[UserGlobalRolesTable, User, DbRole](TableQuery[UserGlobalRolesTable])(_.userId, _.roleId)
 
-  def avatarUrl(name: String)(implicit config: OreConfig): String =
-    config.security.api.avatarUrl.format(name)
-
   implicit class UserModelOps(private val self: Model[User]) extends AnyVal {
 
     /**
@@ -111,30 +78,33 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       *
       * @return Roles the user has.
       */
-    def globalRoles(
-        implicit service: ModelService
-    ): ParentAssociationAccess[UserGlobalRolesTable, User, DbRole, UserTable, DbRoleTable, IO] =
-      new ModelAssociationAccessImpl(OrePostgresDriver)(User, DbRole).applyParent(self)
+    def globalRoles[F[_]](
+        implicit service: ModelService[F],
+        F: Functor[F]
+    ): ParentAssociationAccess[UserGlobalRolesTable, User, DbRole, UserTable, DbRoleTable, F] =
+      new ModelAssociationAccessImpl(OrePostgresDriver)(User, DbRole).applyParent(self.id)
 
     /**
       * Returns the [[Organization]]s that this User belongs to.
       *
       * @return Organizations user belongs to
       */
-    def organizations(
-        implicit service: ModelService
-    ): ParentAssociationAccess[OrganizationMembersTable, User, Organization, UserTable, OrganizationTable, IO] =
-      new ModelAssociationAccessImpl(OrePostgresDriver)(User, Organization).applyParent(self)
+    def organizations[F[_]](
+        implicit service: ModelService[F],
+        F: Functor[F]
+    ): ParentAssociationAccess[OrganizationMembersTable, User, Organization, UserTable, OrganizationTable, F] =
+      new ModelAssociationAccessImpl(OrePostgresDriver)(User, Organization).applyParent(self.id)
 
     /**
       * Returns the [[Project]]s that this User is watching.
       *
       * @return Projects user is watching
       */
-    def watching(
-        implicit service: ModelService
-    ): ChildAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, IO] =
-      new ModelAssociationAccessImpl(OrePostgresDriver)(Project, User).applyChild(self)
+    def watching[F[_]](
+        implicit service: ModelService[F],
+        F: Functor[F]
+    ): ChildAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, F] =
+      new ModelAssociationAccessImpl(OrePostgresDriver)(Project, User).applyChild(self.id)
 
     /**
       * Sets the "watching" status on the specified project.
@@ -142,18 +112,18 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       * @param project  Project to update status on
       * @param watching True if watching
       */
-    def setWatching(
+    def setWatching[F[_]](
         project: Model[Project],
         watching: Boolean
-    )(implicit service: ModelService): IO[Unit] = {
-      val contains = self.watching.contains(project)
+    )(implicit service: ModelService[F], F: Monad[F]): F[Unit] = {
+      val contains = self.watching.contains(project.id)
       contains.flatMap {
-        case true  => if (!watching) self.watching.removeAssoc(project) else IO.unit
-        case false => if (watching) self.watching.addAssoc(project) else IO.unit
+        case true  => if (!watching) self.watching.removeAssoc(project.id) else F.unit
+        case false => if (watching) self.watching.addAssoc(project.id) else F.unit
       }
     }
 
-    def permissionsIn[A: HasScope](a: A)(implicit service: ModelService): IO[Permission] =
+    def permissionsIn[A: HasScope, F[_]](a: A)(implicit service: ModelService[F]): F[Permission] =
       permissionsIn(a.scope)
 
     /**
@@ -161,7 +131,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       *
       * @return Highest level of trust
       */
-    def permissionsIn(scope: Scope = GlobalScope)(implicit service: ModelService): IO[Permission] = {
+    def permissionsIn[F[_]](scope: Scope = GlobalScope)(implicit service: ModelService[F]): F[Permission] = {
       val conIO = scope match {
         case GlobalScope             => UserQueries.globalPermission(self.id.value).unique
         case ProjectScope(projectId) => UserQueries.projectPermission(self.id.value, projectId).unique
@@ -177,7 +147,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       *
       * @return Projects user has starred
       */
-    def starred()(implicit service: ModelService): IO[Seq[Model[Project]]] = {
+    def starred[F[_]](implicit service: ModelService[F]): F[Seq[Model[Project]]] = {
       val filter = Visibility.isPublicFilter[ProjectTableMain]
 
       val baseQuery = for {
@@ -274,8 +244,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       *
       * @param prompt Prompt to mark as read
       */
-    def markPromptAsRead(prompt: Prompt)(implicit service: ModelService): IO[Model[User]] = {
-      checkNotNull(prompt, "null prompt", "")
+    def markPromptAsRead[F[_]](prompt: Prompt)(implicit service: ModelService[F]): F[Model[User]] = {
       service.update(self)(
         _.copy(
           readPrompts = self.readPrompts :+ prompt

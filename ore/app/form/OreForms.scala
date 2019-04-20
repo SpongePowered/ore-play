@@ -17,11 +17,11 @@ import form.project._
 import ore.api.ProjectApiKey
 import ore.models.project.Page._
 import ore.models.project.{Channel, Page}
-import ore.models.user.Organization
 import ore.models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
 import ore.rest.ProjectApiKeyType
 
@@ -134,7 +134,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
   )
 
   /**
-    * Submits an avatar update for an [[ore.models.user.Organization]].
+    * Submits an avatar update for an [[Organization]].
     */
   lazy val OrganizationUpdateAvatar = Form(
     mapping(

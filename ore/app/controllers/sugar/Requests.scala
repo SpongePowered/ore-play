@@ -4,16 +4,19 @@ import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
 
-import ore.api.ApiKey
+import ore.models.api.ApiKey
 import ore.models.project.Project
-import ore.models.user.{Organization, User}
+import ore.models.user.User
 import models.viewhelper._
 import ore.db.{Model, ModelService}
+import ore.models.organization.Organization
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
+import ore.util.OreMDC
 import util.syntax._
 
 import cats.effect.IO
+import org.slf4j.MDC
 
 /**
   * Contains the custom WrappedRequests used by Ore.
@@ -22,28 +25,66 @@ object Requests {
 
   case class ApiAuthInfo(user: Option[Model[User]], key: Option[ApiKey], expires: Instant, globalPerms: Permission)
 
-  case class ApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) {
+  case class ApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) with OreMDC {
     def user: Option[Model[User]] = apiInfo.user
 
     def globalPermissions: Permission = apiInfo.globalPerms
 
-    def permissionIn[B: HasScope](b: B)(implicit service: ModelService): IO[Permission] =
+    def permissionIn[B: HasScope](b: B)(implicit service: ModelService[IO]): IO[Permission] =
       if (b.scope == GlobalScope) IO.pure(apiInfo.globalPerms)
       else apiInfo.key.fold(IO.pure(globalPermissions))(_.permissionsIn(b))
+
+    override def logMessage(s: String): String = {
+      user.foreach(mdcPutUser)
+      s
+    }
+
+    override def afterLog(): Unit = mdcClear()
+  }
+
+  private def mdcPutUser(user: Model[User]): Unit = {
+    MDC.put("currentUserId", user.id.toString)
+    MDC.put("currentUserName", user.name)
+  }
+
+  private def mdcPutProject(project: Model[Project]): Unit = {
+    MDC.put("currentProjectId", project.id.toString)
+    MDC.put("currentProjectSlug", project.slug)
+  }
+
+  private def mdcPutOrg(orga: Model[Organization]): Unit = {
+    MDC.put("currentOrgaId", orga.id.toString)
+    MDC.put("currentOrgaName", orga.name)
+  }
+
+  private def mdcClear(): Unit = {
+    MDC.remove("currentUserId")
+    MDC.remove("currentUserName")
+    MDC.remove("currentProjectId")
+    MDC.remove("currentProjectSlug")
+    MDC.remove("currentOrgaId")
+    MDC.remove("currentOrgaName")
   }
 
   /**
     * Base Request for Ore that holds all data needed for rendering the header
     */
-  sealed trait OreRequest[A] extends WrappedRequest[A] {
+  sealed trait OreRequest[A] extends WrappedRequest[A] with OreMDC {
     def headerData: HeaderData
     def currentUser: Option[Model[User]] = headerData.currentUser
     def hasUser: Boolean                 = headerData.currentUser.isDefined
+
+    override def afterLog(): Unit = mdcClear()
   }
 
   final class SimpleOreRequest[A](val headerData: HeaderData, val request: Request[A])
       extends WrappedRequest[A](request)
-      with OreRequest[A]
+      with OreRequest[A] {
+    override def logMessage(s: String): String = {
+      currentUser.foreach(mdcPutUser)
+      s
+    }
+  }
 
   /** Represents a Request with a [[User]] and subject */
   sealed trait ScopedRequest[A] extends OreRequest[A] {
@@ -72,7 +113,12 @@ object Requests {
   final class AuthRequest[A](val user: Model[User], val headerData: HeaderData, request: Request[A])
       extends WrappedRequest[A](request)
       with OreRequest[A]
-      with UserScopedRequest[A]
+      with UserScopedRequest[A] {
+    override def logMessage(s: String): String = {
+      mdcPutUser(user)
+      s
+    }
+  }
 
   /**
     * A request that holds a [[Project]].
@@ -90,6 +136,12 @@ object Requests {
       with OreRequest[A] {
 
     def project: Model[Project] = data.project
+
+    override def logMessage(s: String): String = {
+      currentUser.foreach(mdcPutUser)
+      mdcPutProject(project)
+      s
+    }
   }
 
   /**
@@ -129,7 +181,13 @@ object Requests {
       val headerData: HeaderData,
       val request: Request[A]
   ) extends WrappedRequest[A](request)
-      with OreRequest[A]
+      with OreRequest[A] {
+    override def logMessage(s: String): String = {
+      currentUser.foreach(mdcPutUser)
+      mdcPutOrg(data.orga)
+      s
+    }
+  }
 
   /**
     * A request that holds an [[Organization]] and an [[AuthRequest]].

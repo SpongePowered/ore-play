@@ -4,14 +4,13 @@ import java.sql.Timestamp
 import java.time.LocalDateTime
 
 import ore.db.DbRef
-import ore.db.impl.query.DoobieOreProtocol
 import ore.models.project.TagColor
 import ore.models.user.User
 
 import cats.data.NonEmptyList
 import doobie._
 
-object APIV2Queries extends DoobieOreProtocol {
+object APIV2Queries extends WebDoobieOreProtocol {
 
   implicit val apiV2TagRead: Read[List[APIV2QueryVersionTag]] =
     viewTagListRead.map(_.map(t => APIV2QueryVersionTag(t.name, t.data, t.color)))
@@ -26,6 +25,33 @@ object APIV2Queries extends DoobieOreProtocol {
     }
 
   implicit val localDateTimeMeta: Meta[LocalDateTime] = Meta[Timestamp].timap(_.toLocalDateTime)(Timestamp.valueOf)
+
+  def getApiAuthInfo(token: String): Query0[ApiAuthInfo] =
+    sql"""|SELECT u.id,
+          |       u.created_at,
+          |       u.full_name,
+          |       u.name,
+          |       u.email,
+          |       u.tagline,
+          |       u.join_date,
+          |       u.read_prompts,
+          |       u.is_locked,
+          |       u.language,
+          |       ak.name,
+          |       ak.owner_id,
+          |       ak.token,
+          |       ak.raw_key_permissions,
+          |       aks.expires,
+          |       CASE
+          |           WHEN u.id IS NULL THEN 1::BIT(64)
+          |           ELSE (coalesce(gt.permission, B'0'::BIT(64)) | 1::BIT(64) | (1::BIT(64) << 1) | (1::BIT(64) << 2)) &
+          |                coalesce(ak.raw_key_permissions, (-1)::BIT(64))
+          |           END
+          |    FROM api_sessions aks
+          |             LEFT JOIN api_keys ak ON aks.key_id = ak.id
+          |             LEFT JOIN users u ON aks.user_id = u.id
+          |             LEFT JOIN global_trust gt ON gt.user_id = u.id
+          |  WHERE aks.token = $token""".stripMargin.query[ApiAuthInfo]
 
   def findApiKey(identifier: String, token: String): Query0[(DbRef[ApiKey], DbRef[User])] =
     sql"""SELECT k.id, k.owner_id FROM api_keys k WHERE k.token_identifier = $identifier AND k.token = crypt($token, k.token)"""

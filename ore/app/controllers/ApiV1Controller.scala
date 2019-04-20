@@ -17,7 +17,7 @@ import ore.db.impl.schema.ProjectApiKeyTable
 import form.OreForms
 import ore.api.ProjectApiKey
 import ore.models.project.{Page, Project, Version}
-import ore.models.user.{LoggedAction, Organization, User, UserActionLogger}
+import ore.models.user.{LoggedAction, User, UserActionLogger}
 import ore.db.access.ModelView
 import ore.db.{DbRef, ModelService}
 import ore.permission.Permission

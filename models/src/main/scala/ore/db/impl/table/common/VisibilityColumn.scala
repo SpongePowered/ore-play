@@ -1,7 +1,6 @@
 package ore.db.impl.table.common
 
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.common.Hideable
 import ore.models.project.Visibility
 
 /**
@@ -10,7 +9,7 @@ import ore.models.project.Visibility
   *
   * @tparam M Model type
   */
-trait VisibilityColumn[M <: Hideable] extends ModelTable[M] {
+trait VisibilityColumn[M] extends ModelTable[M] {
 
   /**
     * Column definition of visibility. True if visible.

@@ -18,6 +18,7 @@ import mail.{EmailFactory, Mailer}
 import ore.models.project.Version
 import ore.models.user._
 import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
+import ore.data.Prompt
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.permission.Permission
@@ -335,7 +336,7 @@ class Users @Inject()(
   }
 
   /**
-    * Marks a [[ore.models.user.Prompt]] as read for the authenticated
+    * Marks a [[Prompt]] as read for the authenticated
     * [[ore.models.user.User]].
     *
     * @param id Prompt ID

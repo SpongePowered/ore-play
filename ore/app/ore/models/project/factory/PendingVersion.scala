@@ -4,15 +4,16 @@ import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
+import ore.data.project.Dependency
+import ore.data.{Color, Platform}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
 import ore.models.project._
 import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
-import ore.models.project.Dependency
 import ore.models.project.io.PluginFileWithData
-import ore.{Cacheable, Color, Platform}
+import ore.{Cacheable, Platform}
 
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._

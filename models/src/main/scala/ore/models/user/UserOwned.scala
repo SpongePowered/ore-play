@@ -1,6 +1,6 @@
 package ore.models.user
 
-import scala.language.higherKinds
+import scala.language.{higherKinds, implicitConversions}
 
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
@@ -15,7 +15,7 @@ import simulacrum.typeclass
   def userId(a: A): DbRef[User]
 
   /** Returns the User */
-  def user[F[_]](a: A)(implicit service: ModelService[F], F: MonadError[F, Throwable]): F[Model[User]] =
+  def user[F[_]: ModelService](a: A)(implicit F: MonadError[F, Throwable]): F[Model[User]] =
     ModelView.now(User).get(userId(a)).getOrElseF(F.raiseError(new NoSuchElementException("None on get")))
 }
 object UserOwned {

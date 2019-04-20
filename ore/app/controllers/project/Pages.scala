@@ -26,7 +26,7 @@ import ore.permission.Permission
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.OreMDC
-import util.StringUtils._
+import ore.util.StringUtils._
 import views.html.projects.{pages => views}
 
 import cats.data.OptionT

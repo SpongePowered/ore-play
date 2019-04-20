@@ -2,26 +2,15 @@ package ore.models.project
 
 import scala.language.higherKinds
 
-import play.twirl.api.Html
-
+import ore.db.access.{ModelView, QueryView}
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common.Named
 import ore.db.impl.schema.{PageTable, ProjectTableMain}
-import discourse.OreDiscourseApi
-import ore.OreConfig
-import ore.db.access.{ModelView, QueryView}
-import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.markdown.MarkdownRenderer
-import ore.models.project.ProjectOwned
-import util.IOUtils
-import util.StringUtils._
-import util.syntax._
+import ore.db.{DbRef, Model, ModelQuery}
+import ore.syntax._
+import ore.util.StringUtils._
 
-import cats.effect.IO
-import cats.syntax.all._
-import com.google.common.base.Preconditions._
-import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
 /**
@@ -42,31 +31,6 @@ case class Page private (
     isDeletable: Boolean,
     contents: String
 ) extends Named {
-  import ore.models.project.Page._
-
-  checkNotNull(this.name, "name cannot be null", "")
-  checkNotNull(this.slug, "slug cannot be null", "")
-  checkNotNull(this.contents, "contents cannot be null", "")
-
-  /**
-    * Returns the HTML representation of this Page.
-    *
-    * @return HTML representation
-    */
-  def html(project: Option[Project])(implicit renderer: MarkdownRenderer): Html = {
-    val settings = MarkdownRenderer.RenderSettings(
-      linkEscapeChars = Some(" +<>"),
-      linkPrefix = project.map(p => s"/${p.ownerName}/${p.slug}/pages/")
-    )
-    renderer.render(contents, settings)
-  }
-
-  /**
-    * Returns true if this is the home page.
-    *
-    * @return True if home page
-    */
-  def isHome(implicit config: OreConfig): Boolean = this.name.equals(homeName) && parentId.isEmpty
 
   /**
     * Get Project associated with page.
@@ -110,31 +74,6 @@ object Page extends DefaultModelCompanion[Page, PageTable](TableQuery[PageTable]
   implicit val isProjectOwned: ProjectOwned[Page] = (a: Page) => a.projectId
 
   /**
-    * The name of each Project's homepage.
-    */
-  def homeName(implicit config: OreConfig): String = config.ore.pages.homeName
-
-  /**
-    * The template body for the Home page.
-    */
-  def homeMessage(implicit config: OreConfig): String = config.ore.pages.homeMessage
-
-  /**
-    * The minimum amount of characters a page may have.
-    */
-  def minLength(implicit config: OreConfig): Int = config.ore.pages.minLen
-
-  /**
-    * The maximum amount of characters the home page may have.
-    */
-  def maxLength(implicit config: OreConfig): Int = config.ore.pages.maxLen
-
-  /**
-    * The maximum amount of characters a page may have.
-    */
-  def maxLengthPage(implicit config: OreConfig): Int = config.ore.pages.pageMaxLen
-
-  /**
     * Returns a template for new Pages.
     *
     * @param title  Page title
@@ -144,35 +83,6 @@ object Page extends DefaultModelCompanion[Page, PageTable](TableQuery[PageTable]
   def template(title: String, body: String = ""): String = "# " + title + "\n" + body
 
   implicit class PageModelOps(private val self: Model[Page]) extends AnyVal {
-
-    /**
-      * Sets the Markdown contents of this Page and updates the associated forum
-      * topic if this is the home page.
-      *
-      * @param contents Markdown contents
-      */
-    def updateContentsWithForum[A](
-        contents: String,
-        logger: LoggerTakingImplicit[A]
-    )(implicit service: ModelService, config: OreConfig, forums: OreDiscourseApi, mdc: A): IO[Model[Page]] = {
-      checkNotNull(contents, "null contents", "")
-      checkArgument(
-        (self.isHome && contents.length <= maxLength) || contents.length <= maxLengthPage,
-        "contents too long",
-        ""
-      )
-      for {
-        updated <- service.update(self)(_.copy(contents = contents))
-        project <- ProjectOwned[Page].project(self)
-        // Contents were updated, update on forums
-        _ <- if (self.name.equals(homeName) && project.topicId.isDefined)
-          forums
-            .updateProjectTopic(project)
-            .runAsync(IOUtils.logCallback("Failed to update page with forums", logger))
-            .toIO
-        else IO.unit
-      } yield updated
-    }
 
     /**
       * Returns access to this Page's children (if any).

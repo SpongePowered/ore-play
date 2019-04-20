@@ -15,12 +15,14 @@ import ore.models.user.User
 import ore.StatTracker.COOKIE_NAME
 import ore.db.access.ModelView
 import ore.db._
+import ore.models.statistic.{ProjectView, VersionDownload}
 import security.spauth.SpongeAuthApi
 import util.{IOUtils, OreMDC}
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
 
 /**
@@ -73,7 +75,16 @@ trait StatTracker {
       auth: SpongeAuthApi,
       mdc: OreMDC
   ): IO[Result] = {
-    ProjectView.bindFromRequest.flatMap { statEntry =>
+    val statEntryF = users.current.map(_.id.value).value.map { userId =>
+      ProjectView(
+        modelId = projectRequest.data.project.id,
+        address = InetString(StatTracker.remoteAddress),
+        cookie = StatTracker.currentCookie,
+        userId = userId
+      )
+    }
+
+    statEntryF.flatMap { statEntry =>
       val projectView =
         record(statEntry, Project, ProjectView)((m, id) => m.copy(userId = Some(id)))
           .flatMap {
@@ -102,6 +113,15 @@ trait StatTracker {
       mdc: OreMDC,
       cs: ContextShift[IO]
   ): IO[Result] = {
+    val statEntryF = users.current.map(_.id.value).value.map { userId =>
+      VersionDownload(
+        modelId = version.id,
+        address = InetString(StatTracker.remoteAddress),
+        cookie = StatTracker.currentCookie,
+        userId = userId
+      )
+    }
+
     VersionDownload.bindFromRequest(version).flatMap { statEntry =>
       val recordDownload =
         record(statEntry, Version, VersionDownload)((m, id) => m.copy(userId = Some(id)))

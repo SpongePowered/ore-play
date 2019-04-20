@@ -5,7 +5,6 @@ Page used for uploading and creating new projects.
 
 @import controllers.sugar.Requests.OreRequest
 @import ore.models.project.Project
-@import ore.models.user.Organization
 @import ore.OreConfig
 @import ore.models.project.factory.PendingProject
 @import views.html.helper.{CSRF, form}
@@ -16,6 +15,7 @@ Page used for uploading and creating new projects.
 @import ore.db.ObjId
 @import views.html.helper.CSPNonce
 @import ore.db.Model
+@import ore.models.organization.Organization
 @(createProjectOrgas: Seq[Model[Organization]],pending: Option[PendingProject])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

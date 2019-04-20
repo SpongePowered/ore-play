@@ -1,6 +1,7 @@
 package util
 
 import ore.db.access.QueryView
+import ore.markdown.IsMarkdownRenderable
 import ore.models.organization.OrganizationOwned
 import ore.permission.scope.HasScope
 import ore.models.project.ProjectOwned
@@ -12,3 +13,5 @@ package object syntax
     with ProjectOwned.ToProjectOwnedOps
     with UserOwned.ToUserOwnedOps
     with QueryView.ToQueryFilterableOps
+    with IsMarkdownRenderable.ToIsMarkdownRenderableOps
+    with ModelSyntax

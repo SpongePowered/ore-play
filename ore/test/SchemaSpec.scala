@@ -1,6 +1,7 @@
 import ore.db.DbRef
 import ore.admin._
 import ore.api.ProjectApiKey
+import ore.models.organization.Organization
 import ore.models.project._
 import ore.statistic.{ProjectView, VersionDownload}
 import ore.models.user._

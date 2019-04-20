@@ -1,10 +1,10 @@
 package ore.models.project
 
+import ore.data.DownloadType
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.UnsafeDownloadsTable
 import ore.models.user.User
 import ore.db.{DbRef, ModelQuery}
-import ore.models.project.io.DownloadType
 
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery

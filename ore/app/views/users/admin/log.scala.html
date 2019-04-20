@@ -8,7 +8,7 @@
 @import ore.models.user.{LoggedAction, LoggedActionContext, User}
 @import ore.OreConfig
 @import ore.db.Model
-@import util.StringUtils._
+@import ore.util.StringUtils._
 @import ore.db.DbRef
 @(actions: Seq[Model[LoggedActionViewModel[_]]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],

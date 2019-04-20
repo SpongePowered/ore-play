@@ -4,19 +4,13 @@ import scala.language.higherKinds
 
 import scala.collection.immutable
 
-import controllers.sugar.Requests.AuthRequest
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.LoggedActionTable
-import ore.StatTracker
-import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.models.user.UserOwned
+import ore.db.{DbRef, ModelQuery}
+import ore.models.organization.Organization
 
-import cats.effect.{Clock, IO}
-import cats.syntax.all._
-import cats.{Monad, ~>}
 import com.github.tminglei.slickpg.InetString
 import enumeratum.values.{IntEnum, IntEnumEntry}
-import slick.dbio.DBIO
 import slick.lifted.TableQuery
 
 case class LoggedActionModel[Ctx] private (
@@ -45,7 +39,7 @@ object LoggedActionContext extends IntEnum[LoggedActionContext[_]] {
   case object Version      extends LoggedActionContext[ore.models.project.Version](1)
   case object ProjectPage  extends LoggedActionContext[ore.models.project.Page](2)
   case object User         extends LoggedActionContext[ore.models.user.User](3)
-  case object Organization extends LoggedActionContext[ore.models.user.Organization](4)
+  case object Organization extends LoggedActionContext[Organization](4)
 
   val values: immutable.IndexedSeq[LoggedActionContext[_]] = findValues
 
@@ -123,47 +117,4 @@ case object LoggedAction extends IntEnum[LoggedAction[_]] {
   case object UserTaglineChanged
       extends LoggedAction(14, "UserTaglineChanged", LoggedActionContext.User, "The user tagline changed")
   val values: immutable.IndexedSeq[LoggedAction[_]] = findValues
-}
-
-object UserActionLogger {
-
-  def log[Ctx](
-      request: AuthRequest[_],
-      action: LoggedAction[Ctx],
-      actionContextId: DbRef[Ctx],
-      newState: String,
-      oldState: String
-  )(implicit service: ModelService): IO[Model[LoggedActionModel[Ctx]]] =
-    service.insert(
-      LoggedActionModel(
-        request.user.id,
-        InetString(StatTracker.remoteAddress(request)),
-        action,
-        action.context,
-        actionContextId,
-        newState,
-        oldState
-      )
-    )
-
-  def logF[Ctx, F[_]: Monad: Clock](
-      request: AuthRequest[_],
-      action: LoggedAction[Ctx],
-      actionContextId: DbRef[Ctx],
-      newState: String,
-      oldState: String
-  )(runDBIO: DBIO ~> F): F[Model[LoggedActionModel[Ctx]]] = {
-    LoggedActionModel.insert(
-      LoggedActionModel(
-        request.user.id,
-        InetString(StatTracker.remoteAddress(request)),
-        action,
-        action.context,
-        actionContextId,
-        newState,
-        oldState
-      ).asInstanceOf[LoggedActionModel[Any]]
-    )(runDBIO)
-  }.map(_.asInstanceOf[Model[LoggedActionModel[Ctx]]])
-
 }

@@ -4,14 +4,13 @@ import java.time.LocalDate
 
 import scala.concurrent.duration.FiniteDuration
 
-import ore.db.impl.query.DoobieOreProtocol
 import ore.db.{DbRef, Model}
 import ore.models.project.{Page, Project, ReviewState, Version}
 import ore.models.user.User
 
 import doobie.{Fragments, Query0}
 
-object AppQueries extends DoobieOreProtocol {
+object AppQueries extends WebDoobieOreProtocol {
 
   //implicit val logger: LogHandler = createLogger("Database")
 

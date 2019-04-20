@@ -24,13 +24,14 @@ import models.querymodels.{FlagActivity, ReviewActivity}
 import ore.models.user.role._
 import ore.models.user._
 import models.viewhelper.OrganizationData
+import ore.data.{Platform, PlatformCategory}
 import ore.db.access.ModelView
 import ore.db._
 import ore.markdown.MarkdownRenderer
+import ore.member.MembershipDossier
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
-import ore.models.project.{Category, ProjectSortingStrategy}
-import ore.models.user.MembershipDossier
+import ore.models.project.ProjectSortingStrategy
 import ore.{OreConfig, OreEnv, Platform, PlatformCategory}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.syntax._

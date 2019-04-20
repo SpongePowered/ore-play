@@ -2,6 +2,8 @@ package ore.db.impl.query
 
 import java.net.InetAddress
 import java.sql.Timestamp
+import java.time.Instant
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 import scala.annotation.tailrec
@@ -11,15 +13,12 @@ import scala.reflect.runtime.universe.TypeTag
 import ore.models.api.ApiKey
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.{LoggedAction, LoggedActionContext, User}
-import ore.Color
+import ore.data.{Color, DownloadType, Prompt}
+import ore.data.project.{Category, FlagReason}
+import ore.data.user.notification.NotificationType
 import ore.db.{DbRef, Model, ObjId, ObjInstant}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
-import ore.models.project.io.DownloadType
-import ore.models.project.{Category, FlagReason}
-import ore.rest.ProjectApiKeyType
-import ore.models.user.Prompt
-import ore.models.user.notification.NotificationType
 
 import cats.data.{NonEmptyList => NEL}
 import com.github.tminglei.slickpg.InetString
@@ -28,6 +27,7 @@ import doobie._
 import doobie.enum.JdbcType
 import doobie.implicits._
 import doobie.postgres.implicits._
+import doobie.postgres.circe.jsonb.implicits._
 import org.postgresql.util.{PGInterval, PGobject}
 import shapeless._
 import enumeratum.values._
@@ -78,7 +78,7 @@ trait DoobieOreProtocol {
 
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
     Meta[Long].timap(ObjId.apply[A])(_.value)
-  implicit val objTimestampMeta: Meta[ObjInstant] = Meta[Timestamp].timap(ObjInstant.apply)(_.value)
+  implicit val objInstantMeta: Meta[ObjInstant] = Meta[Instant].timap(ObjInstant.apply)(_.value)
 
   implicit def modelRead[A](implicit raw: Read[(ObjId[A], ObjInstant, A)]): Read[Model[A]] = raw.map {
     case (id, time, obj) => Model(id, time, obj)
@@ -112,19 +112,6 @@ trait DoobieOreProtocol {
     }.orNull
   }
 
-  implicit val jsonMeta: Meta[JsValue] = Meta.Advanced
-    .other[PGobject]("jsonb")
-    .timap[JsValue] { o =>
-      Option(o).map(a => Json.parse(a.getValue)).orNull
-    } { a =>
-      Option(a).map { a =>
-        val o = new PGobject
-        o.setType("jsonb")
-        o.setValue(a.toString())
-        o
-      }.orNull
-    }
-
   def enumeratumMeta[V: TypeTag, E <: ValueEnumEntry[V]: TypeTag](
       enum: ValueEnum[V, E]
   )(implicit meta: Meta[V]): Meta[E] =
@@ -138,7 +125,6 @@ trait DoobieOreProtocol {
   implicit val notificationTypeMeta: Meta[NotificationType]  = enumeratumMeta(NotificationType)
   implicit val promptMeta: Meta[Prompt]                      = enumeratumMeta(Prompt)
   implicit val downloadTypeMeta: Meta[DownloadType]          = enumeratumMeta(DownloadType)
-  implicit val pojectApiKeyTypeMeta: Meta[ProjectApiKeyType] = enumeratumMeta(ProjectApiKeyType)
   implicit val visibilityMeta: Meta[Visibility]              = enumeratumMeta(Visibility)
   implicit def loggedActionMeta[Ctx]: Meta[LoggedAction[Ctx]] =
     enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]] // scalafix:ok
@@ -146,7 +132,7 @@ trait DoobieOreProtocol {
     enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]] // scalafix:ok
   implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
 
-  implicit val langMeta: Meta[Lang] = Meta[String].timap(Lang.apply)(_.toLocale.toLanguageTag)
+  implicit val langMeta: Meta[Locale] = Meta[String].timap(Locale.forLanguageTag)(_.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =
     Meta[InetAddress].timap(address => InetString(address.toString))(str => InetAddress.getByName(str.value))
 
@@ -206,17 +192,10 @@ trait DoobieOreProtocol {
   implicit def unsafeNelPut[A](implicit listPut: Put[List[A]], typeTag: TypeTag[NEL[A]]): Put[NEL[A]] =
     listPut.tcontramap(_.toList)
 
-  implicit val viewTagListRead: Read[List[ViewTag]] = Read[(List[String], List[String], List[TagColor])].map {
-    case (name, data, color) => name.zip(data).zip(color).map(t => ViewTag(t._1._1, t._1._2, t._2))
-  }
-
-  implicit val viewTagListWrite: Write[List[ViewTag]] =
-    Write[(List[String], List[String], List[TagColor])].contramap(_.flatMap(ViewTag.unapply).unzip3)
-
   implicit val userModelRead: Read[Model[User]] =
     Read[ObjId[User] :: ObjInstant :: Option[String] :: String :: Option[String] :: Option[String] :: Option[
-      Timestamp
-    ] :: List[Prompt] :: Boolean :: Option[Lang] :: HNil].map {
+      Instant
+    ] :: List[Prompt] :: Boolean :: Option[Locale] :: HNil].map {
       case id :: createdAt :: fullName :: name :: email :: tagline :: joinDate :: readPrompts :: isLocked :: lang :: HNil =>
         Model(
           id,
@@ -238,8 +217,8 @@ trait DoobieOreProtocol {
   implicit val userModelOptRead: Read[Option[Model[User]]] =
     Read[Option[ObjId[User]] :: Option[ObjInstant] :: Option[String] :: Option[String] :: Option[String] :: Option[
       String
-    ] :: Option[Timestamp] :: Option[List[Prompt]] :: Option[Boolean] :: Option[
-      Lang
+    ] :: Option[Instant] :: Option[List[Prompt]] :: Option[Boolean] :: Option[
+      Locale
     ] :: HNil].map {
       case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: Some(
             isLocked
