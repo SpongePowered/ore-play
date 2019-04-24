@@ -38,9 +38,9 @@ case class Notification(
   def origin(implicit service: ModelService): OptionT[IO, Model[User]] =
     OptionT
       .fromOption[IO](originId)
-      .semiflatMap(
-        id => ModelView.now(User).get(id).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
-      )
+      .semiflatMap { id =>
+        ModelView.now(User).get(id).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
+      }
 
 }
 object Notification extends DefaultModelCompanion[Notification, NotificationTable](TableQuery[NotificationTable]) {

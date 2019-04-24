@@ -303,7 +303,7 @@ class Users @Inject()(
       val notificationsF = service.runDBIO(
         nFilter(user.notifications(ModelView.raw(Notification)))
           .joinLeft(TableQuery[UserTable])
-          .on(_.originId.map(id => id) === _.id)
+          .on(_.originId === _.id)
           .result
       )
       val invitesF = iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject.tupleLeft(invite)))
