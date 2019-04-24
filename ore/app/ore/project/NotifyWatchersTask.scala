@@ -26,7 +26,7 @@ case class NotifyWatchersTask(version: Model[Version], project: Model[Project])(
   private val notification = (userId: DbRef[User]) =>
     Notification(
       userId = userId,
-      originId = project.ownerId,
+      originId = Some(project.ownerId),
       notificationType = NotificationType.NewProjectVersion,
       messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
       action = Some(version.url(project))

@@ -264,7 +264,7 @@ trait ProjectFactory {
             service.insert(
               Notification(
                 userId = role.userId,
-                originId = ownerId,
+                originId = Some(ownerId),
                 notificationType = NotificationType.ProjectInvite,
                 messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, newProject.name)
               )

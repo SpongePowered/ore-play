@@ -177,7 +177,6 @@ final class Reviews @Inject()(forms: OreForms)(
         users.map { userId =>
           Notification(
             userId = userId,
-            originId = requestUser.id,
             notificationType = NotificationType.VersionReviewed,
             messageArgs = NonEmptyList.of("notification.project.reviewed", project.slug, version.versionString)
           )

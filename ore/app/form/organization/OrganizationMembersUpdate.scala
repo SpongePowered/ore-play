@@ -45,7 +45,7 @@ case class OrganizationMembersUpdate(
         val sendNotif = service.insert(
           Notification(
             userId = role.userId,
-            originId = orgId,
+            originId = Some(orgId),
             notificationType = NotificationType.OrganizationInvite,
             messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, organization.name)
           )

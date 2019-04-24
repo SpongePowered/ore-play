@@ -7,7 +7,7 @@ import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.user.UserOwned
 import ore.user.notification.NotificationType
 
-import cats.data.{NonEmptyList => NEL}
+import cats.data.{OptionT, NonEmptyList => NEL}
 import cats.effect.IO
 import slick.lifted.TableQuery
 
@@ -23,7 +23,7 @@ import slick.lifted.TableQuery
   */
 case class Notification(
     userId: DbRef[User],
-    originId: DbRef[User],
+    originId: Option[DbRef[User]] = None,
     notificationType: NotificationType,
     messageArgs: NEL[String],
     action: Option[String] = None,
@@ -35,8 +35,13 @@ case class Notification(
     *
     * @return User from which this originated from
     */
-  def origin(implicit service: ModelService): IO[Model[User]] =
-    ModelView.now(User).get(this.originId).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
+  def origin(implicit service: ModelService): OptionT[IO, Model[User]] =
+    OptionT
+      .fromOption[IO](originId)
+      .semiflatMap(
+        id => ModelView.now(User).get(id).getOrElseF(IO.raiseError(new NoSuchElementException("Get on None")))
+      )
+
 }
 object Notification extends DefaultModelCompanion[Notification, NotificationTable](TableQuery[NotificationTable]) {
 

@@ -96,7 +96,7 @@ class OrganizationBase(implicit val service: ModelService) {
                 service.insert(
                   Notification(
                     userId = role.userId,
-                    originId = org.id,
+                    originId = Some(org.id),
                     notificationType = NotificationType.OrganizationInvite,
                     messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
                   )

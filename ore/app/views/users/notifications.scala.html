@@ -8,7 +8,7 @@
 
 @import cats.data.{NonEmptyList => NEL}
 
-@(notifications: Seq[(Model[Notification], User)], invites: Seq[(Model[UserRoleModel[_]], Visitable)], notificationFilter: NotificationFilter,
+@(notifications: Seq[(Model[Notification], Option[User])], invites: Seq[(Model[UserRoleModel[_]], Visitable)], notificationFilter: NotificationFilter,
         inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @notificationFilterOption(option: NotificationFilter) = @{
@@ -80,8 +80,9 @@
                     @notifications.map { case (notification, origin) =>
                     <li class="list-group-item notification" data-action="@notification.action.getOrElse("none")"
                     data-id="@notification.id">
-
-                        @userAvatar(Some(origin.name), origin.avatarUrl, clazz = "user-avatar-s")
+                        @origin.map { origin =>
+                            @userAvatar(Some(origin.name), origin.avatarUrl, clazz = "user-avatar-s")
+                        }
                         @formatNotification(notification)
 
                         @if(!notification.isRead) {
