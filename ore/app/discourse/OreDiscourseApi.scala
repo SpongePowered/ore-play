@@ -15,7 +15,7 @@ import util.syntax._
 
 import akka.actor.Scheduler
 import cats.data.EitherT
-import cats.effect.{ContextShift, IO, Timer}
+import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions.checkArgument
 import com.typesafe.scalalogging
@@ -61,7 +61,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
   /**
     * Initializes and starts this API instance.
     */
-  def start(implicit ec: ExecutionContext, service: ModelService, config: OreConfig): Unit = {
+  def start(implicit ec: ExecutionContext, service: ModelService[IO], config: OreConfig): Unit = {
     if (!this.isEnabled) {
       Logger.info("Discourse API initialized in disabled mode.")
     } else {
@@ -78,7 +78,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
     */
   def createProjectTopic(
       project: Model[Project]
-  )(implicit service: ModelService, config: OreConfig): IO[Model[Project]] = {
+  )(implicit service: ModelService[IO], config: OreConfig): IO[Model[Project]] = {
     if (!this.isEnabled)
       IO.pure(project)
     else {
@@ -123,7 +123,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
               s"""|Request to create topic for project '${project.url}' might have been successful but there were errors along the way:
                   |Errors: $error""".stripMargin
             MDCLogger.warn(message)
-            project.logger.flatMap(_.err(message)).as(project)
+            project.logger.flatMap(_.err[IO](message)).as(project)
         }
         .merge
         .onError {
@@ -141,7 +141,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
     */
   def updateProjectTopic(
       project: Model[Project]
-  )(implicit service: ModelService, config: OreConfig): IO[Boolean] = {
+  )(implicit service: ModelService[IO], config: OreConfig): IO[Boolean] = {
     if (!this.isEnabled)
       IO.pure(true)
     else {
@@ -163,7 +163,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
               |Title: $title
               |Errors: $error""".stripMargin
         MDCLogger.warn(message)
-        project.logger.flatMap(_.err(message)).as(as)
+        project.logger.flatMap(_.err[IO](message)).as(as)
       }
 
       val updateTopicProgram =
@@ -217,7 +217,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
     * @return
     */
   def createVersionPost(project: Model[Project], version: Model[Version])(
-      implicit service: ModelService,
+      implicit service: ModelService[IO],
       cs: ContextShift[IO]
   ): IO[Model[Version]] = {
     if (!this.isEnabled)
@@ -225,7 +225,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
     else {
       checkArgument(version.projectId == project.id.value, "invalid version project pair", "")
       EitherT
-        .liftF(project.owner.user)
+        .liftF(project.user)
         .flatMap { user =>
           postDiscussionReply(
             project,
@@ -233,14 +233,14 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
             content = Templates.versionRelease(project, version, version.description)
           )
         }
-        .leftSemiflatMap(error => project.logger.flatMap(_.err(error)).as(version))
+        .leftSemiflatMap(error => project.logger.flatMap(_.err[IO](error)).as(version))
         .semiflatMap(post => service.update(version)(_.copy(postId = Some(post.postId))))
         .merge
     }
   }
 
   def updateVersionPost(project: Model[Project], version: Model[Version])(
-      implicit service: ModelService
+      implicit service: ModelService[IO]
   ): IO[Boolean] = {
     if (!this.isEnabled)
       IO.pure(true)
@@ -263,7 +263,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
               |Title: $title
               |Errors: $error""".stripMargin
         MDCLogger.warn(message)
-        project.logger.flatMap(_.err(message)).as(as)
+        project.logger.flatMap(_.err[IO](message)).as(as)
       }
 
       val updatePostProgram = (content: String) =>
@@ -307,7 +307,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
     * @param project  Project to delete topic for
     * @return         True if deleted
     */
-  def deleteProjectTopic(project: Model[Project])(implicit service: ModelService): IO[Model[Project]] = {
+  def deleteProjectTopic(project: Model[Project])(implicit service: ModelService[IO]): IO[Model[Project]] = {
     if (!this.isEnabled)
       IO.pure(project)
     else {
@@ -333,7 +333,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
     /** Generates the content for a project topic. */
     def projectTopic(
         project: Model[Project]
-    )(implicit config: OreConfig, service: ModelService): IO[String] = project.homePage.map { page =>
+    )(implicit config: OreConfig, service: ModelService[IO]): IO[String] = project.homePage.map { page =>
       readAndFormatFile(
         topicTemplatePath,
         project.name,

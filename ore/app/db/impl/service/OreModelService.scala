@@ -71,7 +71,7 @@ class OreModelService @Inject()(
 
   override def runDbCon[R](program: ConnectionIO[R]): IO[R] = program.transact(xa)
 
-  override def insert[M](companion: ModelCompanion[M])(model: M): IO[Model[M]] =
+  override def insertRaw[M](companion: ModelCompanion[M])(model: M): IO[Model[M]] =
     companion.insert[IO](model).flatMap(runDBIO)
 
   override def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[Model[M]]] =

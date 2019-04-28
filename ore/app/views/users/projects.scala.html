@@ -10,6 +10,7 @@
 @import views.html.utils.userAvatar
 @import models.querymodels.ProjectListEntry
 @import ore.permission.Permission
+@import util.syntax._
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry], starred: Seq[(Project, Option[Version])],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

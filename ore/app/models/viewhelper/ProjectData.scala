@@ -1,21 +1,23 @@
 package models.viewhelper
 
+import scala.language.higherKinds
+
 import play.twirl.api.Html
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectRoleTable, UserTable}
-import ore.admin.{ProjectLogEntry, ProjectVisibilityChange}
 import ore.models.project._
-import ore.models.user.User
+import ore.models.user.{User, UserOwned}
 import ore.models.user.role.ProjectUserRole
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer
+import ore.models.admin.{ProjectLogEntry, ProjectVisibilityChange}
 import ore.permission.role.RoleCategory
 import util.syntax._
 
+import cats.{MonadError, Parallel}
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -40,24 +42,27 @@ case class ProjectData(
 
   def project: Model[Project] = joinable
 
-  def visibility: Visibility = project.visibility
+  def visibility: Visibility = joinable.obj.visibility
 
   def fullSlug = s"""/${project.ownerName}/${project.slug}"""
 
   def renderVisibilityChange(implicit renderer: MarkdownRenderer): Option[Html] =
-    lastVisibilityChange.map(_.renderComment)
+    lastVisibilityChange.map(_.render)
 
   def roleCategory: RoleCategory = RoleCategory.Project
+
+  override def ownerInstance: UserOwned[Project] = UserOwned[Project]
 }
 
 object ProjectData {
 
   def cacheKey(project: Model[Project]): String = "project" + project.id
 
-  def of[A](project: Model[Project])(
-      implicit service: ModelService,
-      cs: ContextShift[IO]
-  ): IO[ProjectData] = {
+  def of[F[_], G[_]](project: Model[Project])(
+      implicit service: ModelService[F],
+      F: MonadError[F, Throwable],
+      par: Parallel[F, G]
+  ): F[ProjectData] = {
     val flagsWithNames = project
       .flags(ModelView.later(Flag))
       .query
@@ -79,13 +84,13 @@ object ProjectData {
 
     (
       project.settings,
-      project.owner.user,
+      project.user,
       project.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
-      project.logger.flatMap(log => log.entries(ModelView.now(ProjectLogEntry)).size),
+      project.logger.flatMap(_.entries(ModelView.now(ProjectLogEntry)).size),
       service.runDBIO(flagsWithNames.result),
       service.runDBIO(lastVisibilityChangeUserWithUser.result.headOption),
-      project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[IO, Model[Version]]).value
+      project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[F, Model[Version]]).value
     ).parMapN {
       case (
           settings,
@@ -115,9 +120,9 @@ object ProjectData {
     }
   }
 
-  def members(
+  def members[F[_]](
       project: Model[Project]
-  )(implicit service: ModelService): IO[Seq[(Model[ProjectUserRole], Model[User])]] = {
+  )(implicit service: ModelService[F]): F[Seq[(Model[ProjectUserRole], Model[User])]] = {
     val query = for {
       r <- TableQuery[ProjectRoleTable] if r.projectId === project.id.value
       u <- TableQuery[UserTable] if r.userId === u.id

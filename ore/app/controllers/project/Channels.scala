@@ -22,6 +22,7 @@ import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
 
 import cats.data.OptionT
+import cats.effect.IO
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -36,7 +37,7 @@ class Channels @Inject()(forms: OreForms)(
     sso: SingleSignOnConsumer,
     env: OreEnv,
     config: OreConfig,
-    service: ModelService
+    service: ModelService[IO]
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Channels

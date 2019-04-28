@@ -4,11 +4,11 @@ import scala.concurrent.ExecutionContext
 
 import ore.data.user.notification.NotificationType
 import ore.db.impl.OrePostgresDriver.api._
-import ore.models.project.{Project, Version}
 import ore.models.user.{Notification, User}
 import ore.db.{DbRef, Model, ModelService}
 
 import cats.data.NonEmptyList
+import cats.effect.IO
 
 /**
   * Notifies all [[ore.models.user.User]]s that are watching the specified
@@ -16,11 +16,10 @@ import cats.data.NonEmptyList
   * released.
   *
   * @param version  New version
-  * @param projects ProjectBase instance
   */
 case class NotifyWatchersTask(version: Model[Version], project: Model[Project])(
     implicit ec: ExecutionContext,
-    service: ModelService
+    service: ModelService[IO]
 ) extends Runnable {
 
   private val notification = (userId: DbRef[User]) =>

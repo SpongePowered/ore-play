@@ -11,6 +11,7 @@
 @import views.html.utils.editor
 @import views.html.helper.CSPNonce
 @import ore.util.{FileUtils, StringUtils}
+@import models.querymodels.ViewTag
 @(projectName: String, projectSlug: String, ownerName: String, projectDescription: Option[String], isProjectPending: Boolean, forumSync: Boolean, pending: Option[PendingVersion],
   channels: Option[Seq[Channel]], showFileControls: Boolean)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
@@ -119,7 +120,7 @@
                                         <td>
                                             <div class="pull-right" id="upload-platform-tags">
                                             @for(t <- version.dependenciesAsGhostTags) {
-                                                @projects.tag(t.asViewTag)
+                                                @projects.tag(ViewTag.fromVersionTag(t))
                                             }
                                             </div>
                                         </td>

@@ -14,8 +14,8 @@ import play.api.i18n.Lang
 import play.api.libs.ws.WSClient
 
 import ore.OreConfig
+import ore.util.OreMDC
 import security.CryptoUtils
-import util.OreMDC
 
 import akka.http.scaladsl.model.Uri
 import cats.data.OptionT

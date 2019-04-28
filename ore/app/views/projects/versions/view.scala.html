@@ -2,12 +2,14 @@
 @import ore.models.project.{ReviewState, Visibility}
 @import models.viewhelper.{ScopedProjectData, VersionData}
 @import ore.OreConfig
-@import ore.util.StringUtils._
+@import util.StringFormatterUtils._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
 @import ore.data.Platform
+@import util.syntax._
+
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -71,7 +73,7 @@
 
                     <div>
 
-                        @if(!v.isRecommended && sp.perms(Permission.EditVersion) && !v.v.isDeleted) {
+                        @if(!v.isRecommended && sp.perms(Permission.EditVersion) && v.v.visibility != Visibility.SoftDelete) {
                             @form(action = versionRoutes.setRecommended(
                                 v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
                                 @CSRF.formField
@@ -173,7 +175,7 @@
                     ),
                     enabled = sp.perms(Permission.EditPage),
                     raw = v.v.description.getOrElse(""),
-                    cooked = v.v.descriptionHtml,
+                    cooked = v.v.obj.render,
                     subject = "Version"
                 )
                 </div>

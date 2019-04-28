@@ -3,12 +3,20 @@ package db.impl.query
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
+import controllers.sugar.Requests.ApiAuthInfo
+import models.protocols.APIV2
+import models.querymodels._
+import ore.data.project.Category
 import ore.db.DbRef
-import ore.models.project.TagColor
+import ore.models.api.ApiKey
+import ore.models.project.{ProjectSortingStrategy, TagColor}
 import ore.models.user.User
+import ore.permission.Permission
 
 import cats.data.NonEmptyList
 import doobie._
+import doobie.implicits._
+import doobie.postgres.implicits._
 
 object APIV2Queries extends WebDoobieOreProtocol {
 

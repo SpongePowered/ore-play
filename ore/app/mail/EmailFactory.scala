@@ -2,12 +2,13 @@ package mail
 
 import javax.inject.Inject
 
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.{I18nSupport, Lang, MessagesApi}
 import play.api.mvc.Flash
 
 import controllers.sugar.Requests.OreRequest
 import ore.models.user.User
 import ore.OreConfig
+import util.syntax._
 
 final class EmailFactory @Inject()(
     val messagesApi: MessagesApi
@@ -17,7 +18,7 @@ final class EmailFactory @Inject()(
   val AccountUnlocked = "email.accountUnlock"
 
   def create(user: User, id: String)(implicit request: OreRequest[_]): Email = {
-    import user.langOrDefault
+    implicit val lang: Lang = user.langOrDefault
 
     implicit def flash: Flash = request.flash
 

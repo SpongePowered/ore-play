@@ -19,7 +19,7 @@ import com.typesafe.scalalogging
   */
 class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApi)(
     implicit ec: ExecutionContext,
-    service: ModelService,
+    service: ModelService[IO],
     config: OreConfig
 ) extends Runnable {
 

@@ -1,5 +1,7 @@
 package form.project
 
+import scala.language.higherKinds
+
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ChannelTable
 import ore.models.project.{Channel, Project}
@@ -10,6 +12,7 @@ import ore.OreConfig
 import ore.data.Color
 import ore.util.StringUtils._
 
+import cats.Monad
 import cats.data.{EitherT, OptionT}
 import cats.effect.IO
 import cats.syntax.all._
@@ -43,7 +46,7 @@ trait TChannelData {
     */
   def addTo(
       project: Model[Project]
-  )(implicit service: ModelService): EitherT[IO, List[String], Model[Channel]] = {
+  )(implicit service: ModelService[IO]): EitherT[IO, List[String], Model[Channel]] = {
     val dbChannels = project.channels(ModelView.later(Channel))
     val conditions = (
       dbChannels.size <= config.ore.projects.maxChannels,
@@ -74,10 +77,10 @@ trait TChannelData {
     * @param project  Project of channel
     * @return         Error, if any
     */
-  def saveTo(
+  def saveTo[F[_]](
       project: Model[Project],
       oldName: String
-  )(implicit service: ModelService): EitherT[IO, List[String], Unit] = {
+  )(implicit service: ModelService[F], F: Monad[F]): EitherT[F, List[String], Unit] = {
     val otherDbChannels = project.channels(ModelView.later(Channel)).filterView(_.name =!= oldName)
     val query = project.channels(ModelView.raw(Channel)).filter(_.name === oldName).map { channel =>
       (
@@ -106,7 +109,7 @@ trait TChannelData {
           )
         )
 
-        if (errors.isEmpty) EitherT.leftT[IO, Unit](errors)
+        if (errors.isEmpty) EitherT.leftT[F, Unit](errors)
         else EitherT.right[List[String]](effect.void)
     }
   }

@@ -17,7 +17,8 @@ import ore.data.project.Category
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
-import ore.models.project.{Category, ProjectSortingStrategy}
+import ore.models.project.ProjectSortingStrategy
+import util.syntax._
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
@@ -28,7 +29,7 @@ import cats.syntax.all._
   */
 trait OreRestfulApiV1 extends OreWrites {
 
-  implicit def service: ModelService
+  implicit def service: ModelService[IO]
   def config: OreConfig
 
   /**
@@ -355,7 +356,7 @@ trait OreRestfulApiV1 extends OreWrites {
   def getUserList(
       limit: Option[Int],
       offset: Option[Int]
-  )(implicit service: ModelService, cs: ContextShift[IO]): IO[JsValue] =
+  )(implicit cs: ContextShift[IO]): IO[JsValue] =
     for {
       users        <- service.runDBIO(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(25)).result)
       writtenUsers <- writeUsers(users)
@@ -363,7 +364,7 @@ trait OreRestfulApiV1 extends OreWrites {
 
   def writeUsers(
       userList: Seq[Model[User]]
-  )(implicit service: ModelService, cs: ContextShift[IO]): IO[Seq[JsObject]] = {
+  )(implicit cs: ContextShift[IO]): IO[Seq[JsObject]] = {
     implicit def config: OreConfig = this.config
     import cats.instances.vector._
 
@@ -399,7 +400,7 @@ trait OreRestfulApiV1 extends OreWrites {
     * @param username Username of User
     * @return         JSON user if found, None otherwise
     */
-  def getUser(username: String)(implicit service: ModelService, cs: ContextShift[IO]): IO[Option[JsValue]] = {
+  def getUser(username: String)(implicit cs: ContextShift[IO]): IO[Option[JsValue]] = {
     val queryOneUser = TableQuery[UserTable].filter {
       _.name.toLowerCase === username.toLowerCase
     }
@@ -444,4 +445,4 @@ trait OreRestfulApiV1 extends OreWrites {
   def getTagColor(tagId: Int): Option[JsValue] = TagColor.withValueOpt(tagId).map(toJson(_)(tagColorWrites))
 }
 
-class OreRestfulServerV1 @Inject()(val service: ModelService, val config: OreConfig) extends OreRestfulApiV1
+class OreRestfulServerV1 @Inject()(val service: ModelService[IO], val config: OreConfig) extends OreRestfulApiV1

@@ -1,5 +1,7 @@
 package ore.models.user.notification
 
+import scala.language.higherKinds
+
 import scala.collection.immutable
 
 import ore.db.impl.OrePostgresDriver.api._
@@ -9,7 +11,6 @@ import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 
 import cats.Parallel
-import cats.effect.{ContextShift, IO}
 import enumeratum.values._
 
 /**
@@ -19,16 +20,20 @@ sealed abstract class InviteFilter(
     val value: Int,
     val name: String,
     val title: String,
-    val filter: InviteFilter.FilterFunc[?]
+    val filter: InviteFilter.FilterFunc
 ) extends IntEnumEntry {
-  def apply[F[_]](
+  def apply[F[_], G[_]](
       user: Model[User]
-  )(implicit service: ModelService[F], cs: ContextShift[F]): F[Seq[Model[UserRoleModel[_]]]] =
-    filter(cs)(service)(user)
+  )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+    filter(user)
 }
 
 object InviteFilter extends IntEnum[InviteFilter] {
-  type FilterFunc[F[_]] = ContextShift[F] => ModelService[F] => Model[User] => F[Seq[Model[UserRoleModel[_]]]]
+  trait FilterFunc {
+    def apply[F[_], G[_]](
+        user: Model[User]
+    )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]]
+  }
 
   val values: immutable.IndexedSeq[InviteFilter] = findValues
 
@@ -37,15 +42,17 @@ object InviteFilter extends IntEnum[InviteFilter] {
         0,
         "all",
         "notification.invite.all",
-        implicit cs =>
-          implicit service =>
-            user =>
-              Parallel.parMap2(
-                service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result),
-                service.runDBIO(
-                  user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result
-                )
-              )(_ ++ _)
+        new FilterFunc {
+          override def apply[F[_], G[_]](
+              user: Model[User]
+          )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+            Parallel.parMap2(
+              service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result),
+              service.runDBIO(
+                user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result
+              )
+            )(_ ++ _)
+        }
       )
 
   case object Projects
@@ -53,9 +60,12 @@ object InviteFilter extends IntEnum[InviteFilter] {
         1,
         "projects",
         "notification.invite.projects",
-        _ =>
-          implicit service =>
-            user => service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result)
+        new FilterFunc {
+          override def apply[F[_], G[_]](
+              user: Model[User]
+          )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+            service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result)
+        }
       )
 
   case object Organizations
@@ -63,9 +73,11 @@ object InviteFilter extends IntEnum[InviteFilter] {
         2,
         "organizations",
         "notification.invite.organizations",
-        _ =>
-          implicit service =>
-            user =>
-              service.runDBIO(user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result)
+        new FilterFunc {
+          override def apply[F[_], G[_]](
+              user: Model[User]
+          )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+            service.runDBIO(user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result)
+        }
       )
 }

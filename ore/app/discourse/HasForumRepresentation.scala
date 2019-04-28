@@ -1,10 +1,12 @@
 package discourse
 
-import scala.language.higherKinds
+import scala.language.{higherKinds, implicitConversions}
 
+import controllers.project.Pages
 import ore.OreConfig
 import ore.db.{Model, ModelService}
 import ore.models.project.{Page, Version}
+import ore.util.OreMDC
 import util.IOUtils
 import util.syntax._
 
@@ -33,7 +35,7 @@ object HasForumRepresentation {
         _ <- if (a.name == Page.homeName && project.topicId.isDefined)
           forums
             .updateProjectTopic(project)
-            .runAsync(IOUtils.logCallback("Failed to update page with forums", logger))
+            .runAsync(IOUtils.logCallback("Failed to update page with forums", Pages.Logger)(OreMDC.NoMDC))
             .toIO
         else IO.unit
       } yield updated
@@ -52,5 +54,17 @@ object HasForumRepresentation {
         else IO.pure(false)
       } yield updated
     }
+  }
+
+  class HasForumRepresentationOps[A](private val value: Model[A]) extends AnyVal {
+
+    def updateForumContents[F[_]](contents: String)(
+        implicit hasForumRepresentation: HasForumRepresentation[F, A]
+    ): F[Model[A]] = hasForumRepresentation.updateForumContents(value)(contents)
+  }
+
+  trait ToHasForumRepresentationOps {
+    implicit def hasForumRepresentationToOps[A](model: Model[A]): HasForumRepresentationOps[A] =
+      new HasForumRepresentationOps(model)
   }
 }

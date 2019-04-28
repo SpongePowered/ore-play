@@ -1,23 +1,23 @@
 package models.querymodels
-import java.sql.Timestamp
+import java.time.Instant
 
 import ore.data.project.ProjectNamespace
 import ore.models.user.User
-import ore.data.{Color, ProjectNamespace}
+import ore.data.Color
 import ore.db.DbRef
 
 case class UnsortedQueueEntry(
     namespace: ProjectNamespace,
     projectName: String,
     versionString: String,
-    versionCreatedAt: Timestamp,
+    versionCreatedAt: Instant,
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String],
     reviewerId: Option[DbRef[User]],
     reviewerName: Option[String],
-    reviewStarted: Option[Timestamp],
-    reviewEnded: Option[Timestamp]
+    reviewStarted: Option[Instant],
+    reviewEnded: Option[Instant]
 ) {
 
   def sort: Either[ReviewedQueueEntry, NotStartedQueueEntry] =
@@ -56,14 +56,14 @@ case class ReviewedQueueEntry(
     namespace: ProjectNamespace,
     projectName: String,
     versionString: String,
-    versionCreatedAt: Timestamp,
+    versionCreatedAt: Instant,
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String],
     reviewerId: DbRef[User],
     reviewerName: String,
-    reviewStarted: Timestamp,
-    reviewEnded: Option[Timestamp]
+    reviewStarted: Instant,
+    reviewEnded: Option[Instant]
 ) {
 
   def isUnfinished: Boolean = reviewEnded.nonEmpty
@@ -73,7 +73,7 @@ case class NotStartedQueueEntry(
     namespace: ProjectNamespace,
     projectName: String,
     versionString: String,
-    versionCreatedAt: Timestamp,
+    versionCreatedAt: Instant,
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String]

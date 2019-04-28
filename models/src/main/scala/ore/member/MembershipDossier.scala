@@ -126,7 +126,7 @@ object MembershipDossier {
       clearRoles(model)(user) *> association.removeAssoc(user, model.id)
   }
 
-  implicit def project[F[_]](
+  implicit def projectHasMemberships[F[_]](
       implicit service: ModelService[F],
       F: Monad[F]
   ): MembershipDossier.Aux[F, Project, ProjectUserRole, ProjectRoleTable] =
@@ -142,7 +142,7 @@ object MembershipDossier {
         service.deleteWhere(ProjectUserRole)(s => (s.userId === user) && (s.projectId === model.id.value))
     }
 
-  implicit def organization[F[_]](
+  implicit def organizationHasMemberships[F[_]](
       implicit service: ModelService[F],
       F: Monad[F]
   ): MembershipDossier.Aux[F, Organization, OrganizationUserRole, OrganizationRoleTable] =
@@ -157,4 +157,8 @@ object MembershipDossier {
       override def clearRoles(model: Model[Organization])(user: DbRef[User]): F[Int] =
         service.deleteWhere(OrganizationUserRole)(s => (s.userId === user) && (s.organizationId === model.id.value))
     }
+
+  val STATUS_DECLINE  = "decline"
+  val STATUS_ACCEPT   = "accept"
+  val STATUS_UNACCEPT = "unaccept"
 }

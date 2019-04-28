@@ -1,6 +1,7 @@
 package ore.models.project.factory
 
-import java.sql.Timestamp
+import scala.language.higherKinds
+
 import java.time.Instant
 
 import scala.concurrent.ExecutionContext
@@ -16,6 +17,7 @@ import ore.db.{DbRef, Model, ModelService}
 import ore.models.project.io.PluginFileWithData
 import ore.{Cacheable, OreConfig}
 
+import cats.MonadError
 import cats.effect.{ContextShift, IO}
 
 /**
@@ -41,7 +43,7 @@ case class PendingProject(
     extends Cacheable {
 
   def complete(factory: ProjectFactory)(
-      implicit service: ModelService,
+      implicit service: ModelService[IO],
       ec: ExecutionContext,
       cs: ContextShift[IO]
   ): IO[(Model[Project], Model[Version])] =
@@ -52,10 +54,10 @@ case class PendingProject(
       updatedProject <- service.update(newProject)(_.copy(recommendedVersionId = Some(newVersion._1.id)))
     } yield (updatedProject, newVersion._1)
 
-  def owner(implicit service: ModelService): IO[Model[User]] =
-    ModelView.now(User).get(ownerId).getOrElseF(IO.raiseError(new Exception("No owner for pending project")))
+  def owner[F[_]](implicit service: ModelService[F], F: MonadError[F, Throwable]): F[Model[User]] =
+    ModelView.now(User).get(ownerId).getOrElseF(F.raiseError(new Exception("No owner for pending project")))
 
-  def asFunc: Project =
+  def asProject: Project =
     Project(
       pluginId,
       ownerName,
@@ -63,7 +65,7 @@ case class PendingProject(
       name,
       slug,
       visibility = visibility,
-      lastUpdated = Timestamp.from(Instant.now()),
+      lastUpdated = Instant.now(),
       description = description,
       category = category
     )

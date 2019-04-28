@@ -9,18 +9,19 @@ import scala.concurrent.duration.FiniteDuration
 import play.api.inject.ApplicationLifecycle
 
 import ore.db.impl.OrePostgresDriver.api._
-import ore.api.ApiSession
 import ore.OreConfig
 import ore.db.ModelService
-import util.OreMDC
+import ore.models.api.ApiSession
+import ore.util.OreMDC
 
 import akka.actor.ActorSystem
+import cats.effect.IO
 import com.typesafe.scalalogging
 
 @Singleton
 class UserTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
     implicit ec: ExecutionContext,
-    service: ModelService
+    service: ModelService[IO]
 ) extends Runnable {
 
   private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("UserTask")

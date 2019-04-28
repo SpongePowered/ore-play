@@ -1,7 +1,7 @@
 package db.impl.access
 
-import java.sql.Timestamp
-import java.util.{Date, UUID}
+import java.time.Instant
+import java.util.UUID
 
 import play.api.mvc.Request
 
@@ -9,11 +9,13 @@ import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{Model, ModelService}
+import ore.models.organization.Organization
 import ore.models.user.{Session, User}
 import ore.permission.Permission
 import ore.util.OreMDC
 import ore.util.StringUtils._
 import security.spauth.SpongeAuthApi
+import util.syntax._
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
@@ -94,7 +96,7 @@ class UserBase(implicit val service: ModelService[IO]) {
     */
   def createSession(user: User)(implicit config: OreConfig): IO[Model[Session]] = {
     val maxAge     = config.play.sessionMaxAge
-    val expiration = new Timestamp(new Date().getTime + maxAge.toMillis)
+    val expiration = Instant.now().plusMillis(maxAge.toMillis)
     val token      = UUID.randomUUID().toString
     service.insert(Session(expiration, user.name, token))
   }
@@ -131,7 +133,7 @@ class UserBase(implicit val service: ModelService[IO]) {
 object UserBase {
   def apply()(implicit userBase: UserBase): UserBase = userBase
 
-  implicit def fromService(implicit service: ModelService): UserBase = new UserBase()
+  implicit def fromService(implicit service: ModelService[IO]): UserBase = new UserBase()
 
   trait UserOrdering
   object UserOrdering {

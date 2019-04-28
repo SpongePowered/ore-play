@@ -4,10 +4,12 @@
 @import ore.models.project.{Note, Project}
 @import ore.models.user.User
 @import ore.OreConfig
-@import ore.util.StringUtils._
+@import util.StringFormatterUtils._
 @import views.html.helper.CSPNonce
 @import ore.markdown.MarkdownRenderer
+@import util.syntax._
 
+@import java.time.Instant
 @(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
 
 
@@ -52,7 +54,7 @@
                 <tbody>
                 @notes.map { case (note, user) =>
                 <tr>
-                    <td class="note-fixed-with">@prettifyDateAndTime(new Timestamp(note.time))</td>
+                    <td class="note-fixed-with">@prettifyDateAndTime(Instant.ofEpochMilli(note.time))</td>
                     <td class="note-fixed-with"><strong>@user.map(_.name).getOrElse("Unknown")</strong></td>
                     <td>@note.render</td>
                 </tr>

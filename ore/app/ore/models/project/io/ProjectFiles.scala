@@ -9,7 +9,7 @@ import scala.util.Try
 
 import ore.models.project.Project
 import ore.OreEnv
-import util.OreMDC
+import ore.util.OreMDC
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all._

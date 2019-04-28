@@ -1,16 +1,17 @@
 package models.viewhelper
 
+import scala.language.higherKinds
+
 import controllers.sugar.Requests.ProjectRequest
-import db.impl.access.ProjectBase
 import ore.data.Platform
 import ore.data.project.Dependency
-import ore.models.project.{Channel, Project, Version}
-import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
+import ore.models.project.{Channel, Project, Version}
+import ore.models.user.User
 
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import cats.{MonadError, Parallel}
 
 case class VersionData(
     p: ProjectData,
@@ -35,11 +36,11 @@ case class VersionData(
 }
 
 object VersionData {
-  def of[A](request: ProjectRequest[A], version: Model[Version])(
-      implicit service: ModelService,
-      projectBase: ProjectBase,
-      cs: ContextShift[IO]
-  ): IO[VersionData] = {
+  def of[F[_], G[_]](request: ProjectRequest[_], version: Model[Version])(
+      implicit service: ModelService[F],
+      F: MonadError[F, Throwable],
+      par: Parallel[F, G]
+  ): F[VersionData] = {
     import cats.instances.list._
     import cats.instances.option._
     val depsF = version.dependencies.parTraverse(dep => dep.project.value.tupleLeft(dep))

@@ -52,11 +52,10 @@ lazy val commonSettings = Seq(
 lazy val playCommonSettings = Seq(
   routesImport ++= Seq(
     "ore.db.DbRef",
-    "models.admin._",
-    "models.project._",
-    "models.user._",
-    "models.user.role._",
-    "ore.user._"
+    "ore.models.admin._",
+    "ore.models.project._",
+    "ore.models.user._",
+    "ore.models.user.role._"
   ).map(s => s"_root_.$s"),
   unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test"),
   pipelineStages := Seq(digest, gzip)

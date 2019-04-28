@@ -4,7 +4,9 @@ import models.querymodels.ViewTag
 import ore.db.impl.query.DoobieOreProtocol
 import ore.models.project.TagColor
 
-import doobie.{Read, Write}
+import doobie._
+import doobie.implicits._
+import doobie.postgres.implicits._
 
 trait WebDoobieOreProtocol extends DoobieOreProtocol {
 

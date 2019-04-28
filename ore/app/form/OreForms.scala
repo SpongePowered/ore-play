@@ -14,16 +14,15 @@ import controllers.sugar.Requests.ProjectRequest
 import ore.db.impl.OrePostgresDriver.api._
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
-import ore.api.ProjectApiKey
-import ore.models.project.Page._
 import ore.models.project.{Channel, Page}
 import ore.models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
-import ore.rest.ProjectApiKeyType
+import util.syntax._
 
 import cats.data.OptionT
 import cats.effect.IO
@@ -32,7 +31,7 @@ import cats.effect.IO
   * Collection of forms used in this application.
   */
 //noinspection ConvertibleToMethodValue
-class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, service: ModelService) {
+class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, service: ModelService[IO]) {
 
   val url: Mapping[String] = text.verifying("error.url.invalid", text => {
     if (text.isEmpty)
@@ -117,7 +116,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     */
   lazy val ProjectReply = Form(
     mapping(
-      "content" -> text(minLength = minLength, maxLength = maxLength),
+      "content" -> text(minLength = Page.minLength, maxLength = Page.maxLength),
       "poster"  -> optional(nonEmptyText)
     )(DiscussionReplyForm.apply)(DiscussionReplyForm.unapply)
   )
@@ -186,18 +185,18 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
       "name"      -> optional(text),
       "content" -> optional(
         text(
-          maxLength = maxLengthPage
+          maxLength = Page.maxLengthPage
         )
       )
     )(PageSaveForm.apply)(PageSaveForm.unapply).verifying(
       "error.maxLength",
       pageSaveForm => {
-        val isHome   = pageSaveForm.parentId.isEmpty && pageSaveForm.name.contains(homeName)
+        val isHome   = pageSaveForm.parentId.isEmpty && pageSaveForm.name.contains(Page.homeName)
         val pageSize = pageSaveForm.content.getOrElse("").length
         if (isHome)
-          pageSize <= maxLength
+          pageSize <= Page.maxLength
         else
-          pageSize <= maxLengthPage
+          pageSize <= Page.maxLengthPage
       }
     )
   )
@@ -227,17 +226,6 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     * Submits a change to a Version's description.
     */
   lazy val VersionDescription = Form(single("content" -> text))
-
-  val projectApiKeyType: FieldMapping[ProjectApiKeyType] = of[ProjectApiKeyType](new Formatter[ProjectApiKeyType] {
-    def bind(key: String, data: Map[String, String]): Either[Seq[FormError], ProjectApiKeyType] =
-      data
-        .get(key)
-        .flatMap(id => Try(id.toInt).toOption.map(ProjectApiKeyType.withValue))
-        .toRight(Seq(FormError(key, "error.required", Nil)))
-    def unbind(key: String, value: ProjectApiKeyType): Map[String, String] = Map(key -> value.value.toString)
-  })
-
-  lazy val ProjectApiKeyCreate = Form(single("key-type" -> projectApiKeyType))
 
   def required(key: String): Seq[FormError] = Seq(FormError(key, "error.required", Nil))
 

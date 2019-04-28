@@ -1,5 +1,7 @@
 package models.viewhelper
 
+import scala.language.higherKinds
+
 import play.api.mvc.Request
 
 import ore.db.impl.OrePostgresDriver.api._
@@ -10,8 +12,9 @@ import ore.db.{DbRef, Model, ModelService}
 import ore.permission._
 import ore.permission.scope.GlobalScope
 
+import cats.{Functor, Monad}
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
+import cats.syntax.all._
 import slick.lifted.TableQuery
 
 /**
@@ -43,17 +46,17 @@ object HeaderData {
 
   def cacheKey(user: Model[User]) = s"""user${user.id}"""
 
-  def of[A](request: Request[A])(
-      implicit service: ModelService,
-      cs: ContextShift[IO]
-  ): IO[HeaderData] =
+  def of[F[_]](request: Request[_])(
+      implicit service: ModelService[F],
+      F: Monad[F]
+  ): F[HeaderData] =
     OptionT
-      .fromOption[IO](request.cookies.get("_oretoken"))
+      .fromOption[F](request.cookies.get("_oretoken"))
       .flatMap(cookie => getSessionUser(cookie.value))
-      .semiflatMap(getHeaderData)
+      .semiflatMap(getHeaderData[F])
       .getOrElse(unAuthenticated)
 
-  private def getSessionUser(token: String)(implicit service: ModelService) = {
+  private def getSessionUser[F[_]](token: String)(implicit service: ModelService[F], F: Functor[F]) = {
     val query = for {
       s <- TableQuery[SessionTable] if s.token === token
       u <- TableQuery[UserTable] if s.username === u.name
@@ -74,9 +77,9 @@ object HeaderData {
 
   private val flagQueue: Rep[Boolean] = TableQuery[FlagTable].filter(_.isResolved === false).exists
 
-  private def getHeaderData(
+  private def getHeaderData[F[_]](
       user: Model[User]
-  )(implicit service: ModelService) = {
+  )(implicit service: ModelService[F], F: Monad[F]) = {
     user.permissionsIn(GlobalScope).flatMap { perms =>
       val query = Query.apply(
         (

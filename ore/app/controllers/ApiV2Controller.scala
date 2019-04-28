@@ -12,6 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.cache.AsyncCacheApi
 import play.api.http.HttpErrorHandler
+import play.api.i18n.Lang
 import play.api.libs.Files
 import play.api.mvc._
 
@@ -20,24 +21,26 @@ import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
 import controllers.sugar.{Bakery, CircePlayController}
 import ore.db.impl.OrePostgresDriver.api._
 import db.impl.query.APIV2Queries
-import ore.db.impl.query.UserQueries
 import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
-import ore.api.ApiSession
 import ore.models.project.{Page, Version}
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2QueryVersionTag}
+import ore.data.project.Category
 import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
+import ore.models.api.ApiSession
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.PluginUpload
 import ore.models.project.ProjectSortingStrategy
 import ore.models.user.FakeUser
+import ore.util.OreMDC
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import _root_.util.{IOUtils, OreMDC}
+import _root_.util.IOUtils
+import _root_.util.syntax._
 
 import akka.stream.Materializer
 import akka.stream.scaladsl.FileIO
@@ -57,7 +60,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     implicit val ec: ExecutionContext,
     env: OreEnv,
     config: OreConfig,
-    service: ModelService,
+    service: ModelService[IO],
     bakery: Bakery,
     auth: SpongeAuthApi,
     sso: SingleSignOnConsumer,
@@ -88,7 +91,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
       optToken
         .fold(EitherT.leftT[IO, ApiRequest[A]](unAuth(ApiError("No session specified")))) { token =>
-          OptionT(service.runDbCon(UserQueries.getApiAuthInfo(token).option))
+          OptionT(service.runDbCon(APIV2Queries.getApiAuthInfo(token).option))
             .toRight(unAuth(ApiError("Invalid session")))
             .flatMap { info =>
               if (info.expires.isBefore(Instant.now())) {
@@ -169,7 +172,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       service.runDbCon(action(request)).map(xs => Ok(xs.asJson))
     }
 
-  private def expiration(duration: FiniteDuration) = service.theTime.toInstant.plusSeconds(duration.toSeconds)
+  private def expiration(duration: FiniteDuration) = Instant.now().plusSeconds(duration.toSeconds)
 
   def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     val sessionExpiration = expiration(config.ore.api.session.expiration)
@@ -504,7 +507,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           .leftMap(e => BadRequest(ApiError(e)))
 
         def uploadErrors(user: Model[User]) = {
-          import user.obj.langOrDefault
+          implicit val lang: Lang = user.langOrDefault
           EitherT.fromEither[IO](
             factory
               .getUploadError(user)
@@ -542,7 +545,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           )
           val apiTags = channelApiTag :: normalApiTags
           val apiVersion = APIV2QueryVersion(
-            LocalDateTime.ofInstant(version.createdAt.toInstant, ZoneOffset.UTC),
+            LocalDateTime.ofInstant(version.createdAt, ZoneOffset.UTC),
             version.versionString,
             version.dependencyIds,
             version.visibility,

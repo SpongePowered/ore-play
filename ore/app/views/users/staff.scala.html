@@ -1,14 +1,16 @@
 @import java.sql.Timestamp
 
 @import controllers.sugar.Requests.OreRequest
-@import ore.db.impl.access.UserBase.UserOrdering
+@import db.impl.access.UserBase.UserOrdering
 @import ore.models.user.User
 @import ore.OreConfig
 @import ore.permission.role.Role
-@import ore.util.StringUtils._
+@import util.StringFormatterUtils._
+@import util.syntax._
 @import views.html.utils.userAvatar
 @import views.html.helper.CSPNonce
-@(staff: Seq[(String, Role, Option[Timestamp], Timestamp)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@import java.time.Instant
+@(staff: Seq[(String, Role, Option[Instant], Instant)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @pageSize = @{ config.ore.users.authorPageSize }
 @direction = @{ if (ordering.startsWith("-")) "chevron-down" else "chevron-up" }

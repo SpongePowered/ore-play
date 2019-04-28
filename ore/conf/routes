@@ -123,7 +123,7 @@ GET     /staff                                                      @controllers
 GET     /notifications                                              @controllers.Users.showNotifications(notificationFilter: Option[String], inviteFilter: Option[String])
 POST    /notifications/read/:id                                     @controllers.Users.markNotificationRead(id: DbRef[Notification])
 
-POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: DbRef[Prompt])
+POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: Int)
 
 GET     /:user                                                      @controllers.Users.showProjects(user, page: Option[Int])
 POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)

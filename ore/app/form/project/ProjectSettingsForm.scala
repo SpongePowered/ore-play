@@ -15,10 +15,12 @@ import ore.models.project.io.ProjectFiles
 import ore.permission.role.Role
 import ore.util.OreMDC
 import ore.util.StringUtils.noneIfEmpty
+import util.syntax._
 
 import cats.data.NonEmptyList
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
 /**
@@ -87,15 +89,15 @@ case class ProjectSettingsForm(
     }
   }
 
-  def save(settings: Model[ProjectSettings], project: Model[Project])(
+  def save(settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
       implicit fileManager: ProjectFiles,
       mdc: OreMDC,
       service: ModelService[IO],
       cs: ContextShift[IO]
   ): IO[(Model[Project], Model[ProjectSettings])] = {
     import cats.instances.vector._
-    MDCLogger.debug("Saving project settings")
-    MDCLogger.debug(this.toString)
+    logger.debug("Saving project settings")
+    logger.debug(this.toString)
     val newOwnerId = this.ownerId.getOrElse(project.ownerId)
 
     val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
@@ -141,7 +143,7 @@ case class ProjectSettingsForm(
         .build()
         .toVector
         .parTraverse { role =>
-          dossier.addRole(project, role.userId, role.copy(projectId = project.id))
+          dossier.addRole(project)(role.userId, role.copy(projectId = project.id))
         }
         .flatMap { roles =>
           val notifications = roles.map { role =>
@@ -178,7 +180,6 @@ case class ProjectSettingsForm(
             }
             .flatMap(updates => service.runDBIO(DBIO.sequence(updates)).as(t))
         }
-      ???
     }
   }
 

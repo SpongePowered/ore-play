@@ -1,7 +1,7 @@
 package controllers
 
-import java.sql.Timestamp
-import java.util.{Base64, Date, UUID}
+import java.time.Instant
+import java.util.{Base64, UUID}
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
@@ -15,22 +15,23 @@ import controllers.sugar.Bakery
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ProjectApiKeyTable
 import form.OreForms
-import ore.api.ProjectApiKey
 import ore.models.project.{Page, Project, Version}
-import ore.models.user.{LoggedAction, User, UserActionLogger}
+import ore.models.user.{LoggedAction, User}
 import ore.db.access.ModelView
 import ore.db.{DbRef, ModelService}
+import ore.models.api.ProjectApiKey
+import ore.models.organization.Organization
 import ore.permission.Permission
 import ore.permission.role.Role
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginUpload, ProjectFiles}
-import ore.rest.ProjectApiKeyType._
-import ore.rest.{OreRestfulApiV1, OreWrites, ProjectApiKeyType}
+import ore.rest.{OreRestfulApiV1, OreWrites}
 import ore.{OreConfig, OreEnv}
 import security.CryptoUtils
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.StatusZ
 import _root_.util.syntax._
+import _root_.util.UserActionLogger
 
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
@@ -51,7 +52,7 @@ final class ApiV1Controller @Inject()(
     implicit val ec: ExecutionContext,
     config: OreConfig,
     env: OreEnv,
-    service: ModelService,
+    service: ModelService[IO],
     bakery: Bakery,
     cache: AsyncCacheApi,
     auth: SpongeAuthApi,
@@ -95,16 +96,13 @@ final class ApiV1Controller @Inject()(
       implicit request =>
         val projectId = request.data.project.id.value
         val res = for {
-          keyType <- forms.ProjectApiKeyCreate.bindOptionT[IO]
-          if keyType == Deployment
           exists <- OptionT
-            .liftF(ModelView.now(ProjectApiKey).exists(k => k.projectId === projectId && k.keyType === keyType))
+            .liftF(ModelView.now(ProjectApiKey).exists(k => k.projectId === projectId))
           if !exists
           pak <- OptionT.liftF(
             service.insert(
               ProjectApiKey(
                 projectId = projectId,
-                keyType = keyType,
                 value = UUID.randomUUID().toString.replace("-", "")
               )
             )
@@ -209,9 +207,9 @@ final class ApiV1Controller @Inject()(
         .flatMap {
           case (formData, formChannel) =>
             val apiKeyTable = TableQuery[ProjectApiKeyTable]
-            def queryApiKey(deployment: ProjectApiKeyType, key: String, pId: DbRef[Project]) = {
+            def queryApiKey(key: String, pId: DbRef[Project]) = {
               val query = for {
-                k <- apiKeyTable if k.value === key && k.projectId === pId && k.keyType === deployment
+                k <- apiKeyTable if k.value === key && k.projectId === pId
               } yield {
                 k.id
               }
@@ -220,7 +218,7 @@ final class ApiV1Controller @Inject()(
 
             val query = Query.apply(
               (
-                queryApiKey(Deployment, formData.apiKey, project.id),
+                queryApiKey(formData.apiKey, project.id),
                 project.versions(ModelView.later(Version)).exists(_.versionString === name)
               )
             )
@@ -229,9 +227,9 @@ final class ApiV1Controller @Inject()(
               .liftF(service.runDBIO(query.result.head))
               .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
               .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
-              .semiflatMap(_ => project.owner.user)
+              .semiflatMap(_ => project.user)
               .semiflatMap(
-                user => user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.owner.user).getOrElse(user)
+                user => user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.user).getOrElse(user)
               )
               .flatMap { owner =>
                 val pluginUpload = this.factory
@@ -261,11 +259,11 @@ final class ApiV1Controller @Inject()(
                       service.update(project)(
                         _.copy(
                           recommendedVersionId = Some(newVersion.id),
-                          lastUpdated = new Timestamp(new Date().getTime)
+                          lastUpdated = Instant.now()
                         )
                       )
                     else
-                      service.update(project)(_.copy(lastUpdated = new Timestamp(new Date().getTime)))
+                      service.update(project)(_.copy(lastUpdated = Instant.now()))
 
                   update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
               }
@@ -354,7 +352,7 @@ final class ApiV1Controller @Inject()(
 
               val updateRoles = globalRoles.fold(IO.unit) { roles =>
                 user.globalRoles.deleteAllFromParent *> roles
-                  .map(_.toDbRole)
+                  .map(_.toDbRole.id.value)
                   .traverse(user.globalRoles.addAssoc)
                   .void
               }

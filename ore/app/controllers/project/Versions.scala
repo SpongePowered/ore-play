@@ -2,8 +2,8 @@ package controllers.project
 
 import java.nio.file.Files._
 import java.nio.file.{Files, StandardCopyOption}
-import java.sql.Timestamp
-import java.util.{Date, UUID}
+import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
@@ -21,21 +21,22 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.UserTable
 import discourse.OreDiscourseApi
 import form.OreForms
-import ore.admin.VersionVisibilityChange
 import ore.models.project._
-import ore.models.user.{LoggedAction, User, UserActionLogger}
+import ore.models.user.{LoggedAction, User}
 import models.viewhelper.VersionData
+import ore.data.DownloadType
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
+import ore.models.admin.VersionVisibilityChange
 import ore.permission.Permission
 import ore.models.project.factory.{PendingProject, ProjectFactory}
-import ore.models.project.io.DownloadType._
 import ore.models.project.io.{PluginFile, PluginUpload}
+import ore.util.OreMDC
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.OreMDC
 import ore.util.StringUtils._
+import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{versions => views}
 
@@ -58,7 +59,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     messagesApi: MessagesApi,
     env: OreEnv,
     config: OreConfig,
-    service: ModelService,
+    service: ModelService[IO],
     forums: OreDiscourseApi,
     renderer: MarkdownRenderer
 ) extends OreBaseController {
@@ -108,7 +109,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         version <- getVersion(request.project, versionString)
         oldDescription = version.description.getOrElse("")
         newDescription = request.body.trim
-        _ <- EitherT.right[Result](version.updateDescriptionWithForum(request.project, newDescription))
+        _ <- EitherT.right[Result](version.updateForumContents(newDescription))
         _ <- EitherT.right[Result](
           UserActionLogger.log(
             request.request,
@@ -170,7 +171,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               _.copy(
                 reviewState = newState,
                 reviewerId = Some(request.user.id),
-                approvedAt = Some(service.theTime)
+                approvedAt = Some(Instant.now())
               )
             )
           )
@@ -387,7 +388,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                                     .update(project)(
                                       _.copy(
                                         recommendedVersionId = Some(newVersion.id),
-                                        lastUpdated = new Timestamp(new Date().getTime)
+                                        lastUpdated = Instant.now()
                                       )
                                     )
                                     .void
@@ -395,7 +396,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                                   service
                                     .update(project)(
                                       _.copy(
-                                        lastUpdated = new Timestamp(new Date().getTime)
+                                        lastUpdated = Instant.now()
                                       )
                                     )
                                     .void
@@ -574,7 +575,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               project.ownerName,
               project.slug,
               version.name,
-              Some(UploadedFile.value),
+              Some(DownloadType.UploadedFile.value),
               api = Some(false),
               Some("dummy")
             )
@@ -656,11 +657,12 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
           val token      = UUID.randomUUID().toString
-          val expiration = new Timestamp(new Date().getTime + this.config.security.unsafeDownloadMaxAge)
+          val expiration = Instant.now().plusMillis(this.config.security.unsafeDownloadMaxAge)
           val address    = InetString(StatTracker.remoteAddress)
           // remove old warning attached to address that are expired (or duplicated for version)
           val removeWarnings = service.deleteWhere(DownloadWarning) { warning =>
-            (warning.address === address || warning.expiration < new Timestamp(new Date().getTime)) && warning.versionId === version.id.value
+            (warning.address === address || warning.expiration < Instant
+              .now()) && warning.versionId === version.id.value
           }
           // create warning
           val addWarning = service.insert(
@@ -742,8 +744,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           case (dl, optNewSession) =>
             val newSession = optNewSession.getOrElse(request.session)
             dl.downloadType match {
-              case UploadedFile => Redirect(self.download(author, slug, target, token)).withSession(newSession)
-              case JarFile      => Redirect(self.downloadJar(author, slug, target, token)).withSession(newSession)
+              case DownloadType.UploadedFile =>
+                Redirect(self.download(author, slug, target, token)).withSession(newSession)
+              case DownloadType.JarFile =>
+                Redirect(self.downloadJar(author, slug, target, token)).withSession(newSession)
             }
         }
     }
@@ -852,7 +856,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 project.ownerName,
                 project.slug,
                 version.name,
-                Some(JarFile.value),
+                Some(DownloadType.JarFile.value),
                 api = Some(api),
                 None
               )
@@ -861,7 +865,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         } else {
           val fileName = version.fileName
           val path     = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
-          project.owner.user.flatMap { projectOwner =>
+          project.user.flatMap { projectOwner =>
             this.stats.versionDownloaded(version) {
               if (fileName.endsWith(".jar"))
                 IO.pure(Ok.sendPath(path))
@@ -926,7 +930,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       getVersion(project, versionString).semiflatMap { version =>
         optToken
           .map { token =>
-            confirmDownload0(version.id, Some(JarFile.value), Some(token)).value *>
+            confirmDownload0(version.id, Some(DownloadType.JarFile.value), Some(token)).value *>
               sendJar(project, version, optToken, api = true)
           }
           .getOrElse(sendJar(project, version, optToken, api = true))

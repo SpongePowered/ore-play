@@ -7,10 +7,10 @@ import java.util.Locale
 
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.ReviewTable
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.models.project.{Project, Version}
 import ore.models.user.User
-import ore.db.{DbRef, Model, ModelQuery, ModelService}
-import ore.util.StringUtils
+import ore.util.StringLocaleFormatterUtils
 
 import io.circe.Json
 import io.circe.generic.JsonCodec
@@ -47,7 +47,7 @@ case class Review(
   * This modal is needed to convert the json
   */
 @JsonCodec case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
-  def getTime(implicit locale: Locale): String = StringUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
+  def getTime(implicit locale: Locale): String = StringLocaleFormatterUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
   def isTakeover: Boolean                      = action.equalsIgnoreCase("takeover")
   def isStop: Boolean                          = action.equalsIgnoreCase("stop")
 }

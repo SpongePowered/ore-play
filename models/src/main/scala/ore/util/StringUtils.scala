@@ -1,26 +1,15 @@
 package ore.util
 
-import ore.db.impl.OrePostgresDriver.api._
-
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
-import java.text.{DateFormat, MessageFormat}
-import java.time.Instant
-import java.util.Locale
+import java.text.MessageFormat
+
+import ore.db.impl.OrePostgresDriver.api._
 
 /**
   * Helper class for handling User input.
   */
 object StringUtils {
-
-  /**
-    * Formats the specified date into the standard application form.
-    *
-    * @param instant Date to format
-    * @return        Standard formatted date
-    */
-  def prettifyDate(instant: Instant)(implicit locale: Locale): String =
-    DateFormat.getDateInstance(DateFormat.DEFAULT, locale).format(instant)
 
   /**
     * Returns a URL readable string from the specified string.
@@ -70,15 +59,6 @@ object StringUtils {
     */
   def readAndFormatFile(path: Path, params: String*): String =
     MessageFormat.format(new String(Files.readAllBytes(path)), params: _*)
-
-  /**
-    * Formats the specified date into the standard application form time.
-    *
-    * @param instant Date to format
-    * @return        Standard formatted date
-    */
-  def prettifyDateAndTime(instant: Instant)(implicit locale: Locale): String =
-    DateFormat.getDateTimeInstance(DateFormat.DEFAULT, DateFormat.DEFAULT, locale).format(instant)
 
   //https://stackoverflow.com/a/9855338
   private val hexArray = "0123456789abcdef".toCharArray

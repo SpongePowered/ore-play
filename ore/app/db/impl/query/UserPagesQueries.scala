@@ -1,6 +1,7 @@
 package db.impl.query
 
 import java.sql.Timestamp
+import java.time.Instant
 
 import db.impl.access.UserBase.UserOrdering
 import models.querymodels.ProjectListEntry
@@ -82,7 +83,7 @@ object UserPagesQueries extends WebDoobieOreProtocol {
 
   def getAuthors(page: Int, ordering: String)(
       implicit config: OreConfig
-  ): Query0[(String, Option[Timestamp], Timestamp, Option[Role], Option[Role], Long)] = {
+  ): Query0[(String, Option[Instant], Instant, Option[Role], Option[Role], Long)] = {
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
     val pageSize        = config.ore.users.authorPageSize
     val offset          = (page - 1) * pageSize
@@ -112,12 +113,12 @@ object UserPagesQueries extends WebDoobieOreProtocol {
         userFragOrder(reverse, sort) ++
         fr"""OFFSET $offset LIMIT $pageSize"""
 
-    fragments.query[(String, Option[Timestamp], Timestamp, Option[Role], Option[Role], Long)]
+    fragments.query[(String, Option[Instant], Instant, Option[Role], Option[Role], Long)]
   }
 
   def getStaff(page: Int, ordering: String)(
       implicit config: OreConfig
-  ): Query0[(String, Role, Option[Timestamp], Timestamp)] = {
+  ): Query0[(String, Role, Option[Instant], Instant)] = {
     val (sort, reverse) = if (ordering.startsWith("-")) (ordering.substring(1), false) else (ordering, true)
     val pageSize        = config.ore.users.authorPageSize
     val offset          = (page - 1) * pageSize
@@ -138,6 +139,6 @@ object UserPagesQueries extends WebDoobieOreProtocol {
         userFragOrder(reverse, sort) ++
         fr"""OFFSET $offset LIMIT $pageSize"""
 
-    fragments.query[(String, Role, Option[Timestamp], Timestamp)]
+    fragments.query[(String, Role, Option[Instant], Instant)]
   }
 }

@@ -18,15 +18,17 @@ import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
 import ore.models.project.{Page, Project}
-import ore.models.user.{LoggedAction, UserActionLogger}
+import ore.models.user.LoggedAction
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
+import ore.util.OreMDC
 import ore.{OreConfig, OreEnv, StatTracker}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.OreMDC
 import ore.util.StringUtils._
+import util.UserActionLogger
+import util.syntax._
 import views.html.projects.{pages => views}
 
 import cats.data.OptionT
@@ -45,15 +47,13 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     sso: SingleSignOnConsumer,
     env: OreEnv,
     config: OreConfig,
-    service: ModelService,
+    service: ModelService[IO],
     auth: SpongeAuthApi,
     forums: OreDiscourseApi,
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Pages
-
-  private val Logger = scalalogging.Logger.takingImplicit[OreMDC]("Pages")
 
   private def PageEditAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.EditPage))
@@ -230,7 +230,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
                       createdPage.id,
                       newPage,
                       oldPage
-                    ) *> createdPage.updateContentsWithForum(newPage, Logger)
+                    ) *> createdPage.updateForumContents(newPage)
                   }
                 }
                 .as(Redirect(self.show(author, slug, page)))
@@ -256,4 +256,8 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
       }
     }
 
+}
+
+object Pages {
+  val Logger = scalalogging.Logger.takingImplicit[OreMDC]("Pages")
 }

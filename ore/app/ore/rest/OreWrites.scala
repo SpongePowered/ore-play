@@ -3,9 +3,9 @@ package ore.rest
 import play.api.libs.json.Json.obj
 import play.api.libs.json._
 
-import ore.api.ProjectApiKey
 import ore.models.project._
 import ore.db.Model
+import ore.models.api.ProjectApiKey
 
 /**
   * Contains implicit JSON [[Writes]] for the Ore API.
@@ -16,7 +16,7 @@ trait OreWrites {
     obj(
       "id"        -> key.id.value,
       "createdAt" -> key.createdAt.value,
-      "keyType"   -> obj("id" -> key.keyType.value, "name" -> key.keyType.name),
+      "keyType"   -> obj("id" -> 0, "name" -> "deployment"),
       "projectId" -> key.projectId,
       "value"     -> key.value
   )

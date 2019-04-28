@@ -5,6 +5,8 @@ The main header displayed on each layout.
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
 @import ore.permission.Permission
+@import util.syntax._
+
 @(authEnabled: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 

@@ -29,7 +29,7 @@ import cats.effect.{ContextShift, IO}
 abstract class OreBaseController(
     implicit val env: OreEnv,
     val config: OreConfig,
-    val service: ModelService,
+    val service: ModelService[IO],
     val bakery: Bakery,
     val auth: SpongeAuthApi,
     val sso: SingleSignOnConsumer,

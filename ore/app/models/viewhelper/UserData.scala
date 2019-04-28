@@ -1,11 +1,13 @@
 package models.viewhelper
 
+import scala.language.higherKinds
+
 import controllers.sugar.Requests.OreRequest
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
 import ore.models.project.Project
 import ore.models.user.role.OrganizationUserRole
-import ore.models.user.{Organization, User}
+import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
@@ -13,7 +15,7 @@ import ore.permission._
 import ore.permission.role.Role
 import ore.permission.scope.GlobalScope
 
-import cats.effect.{ContextShift, IO}
+import cats.{Monad, Parallel}
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -48,10 +50,11 @@ object UserData {
       owner   <- TableQuery[UserTable] if org.userId === owner.id
     } yield (org, orgUser, role, owner)
 
-  def of[A](request: OreRequest[A], user: Model[User])(
-      implicit service: ModelService,
-      cs: ContextShift[IO]
-  ): IO[UserData] =
+  def of[F[_], G[_]](request: OreRequest[_], user: Model[User])(
+      implicit service: ModelService[F],
+      F: Monad[F],
+      par: Parallel[F, G]
+  ): F[UserData] =
     for {
       isOrga       <- user.toMaybeOrganization(ModelView.now(Organization)).isDefined
       projectCount <- user.projects(ModelView.now(Project)).size
@@ -60,10 +63,11 @@ object UserData {
       orgas <- service.runDBIO(queryRoles(user).result)
     } yield UserData(request.headerData, user, isOrga, projectCount, orgas, globalRoles, userPerms, orgaPerms)
 
-  def perms(user: Model[User])(
-      implicit cs: ContextShift[IO],
-      service: ModelService
-  ): IO[(Set[Role], Permission, Permission)] = {
+  def perms[F[_], G[_]](user: Model[User])(
+      implicit service: ModelService[F],
+      F: Monad[F],
+      par: Parallel[F, G]
+  ): F[(Set[Role], Permission, Permission)] = {
     (
       user.permissionsIn(GlobalScope),
       user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.permissionsIn(_)).value,

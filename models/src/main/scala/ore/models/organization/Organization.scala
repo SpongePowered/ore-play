@@ -54,12 +54,10 @@ object Organization extends ModelCompanionPartial[Organization, OrganizationTabl
       implicit service: ModelService[F],
       F: Monad[F],
       par: Parallel[F, G]
-  ): Joinable[F, Organization] =
+  ): Joinable.Aux[F, Organization, OrganizationUserRole, OrganizationRoleTable] =
     new Joinable[F, Organization] {
       override type RoleType      = OrganizationUserRole
       override type RoleTypeTable = OrganizationRoleTable
-
-      override def ownerId(m: Organization): DbRef[User] = m.ownerId
 
       override def transferOwner(m: Model[Organization])(newOwner: DbRef[User]): F[Model[Organization]] = {
         // Down-grade current owner to "Admin"
@@ -78,6 +76,8 @@ object Organization extends ModelCompanionPartial[Organization, OrganizationTabl
       }
 
       override def memberships: MembershipDossier.Aux[F, Organization, OrganizationUserRole, OrganizationRoleTable] =
-        MembershipDossier.organization
+        MembershipDossier.organizationHasMemberships
+
+      override def userOwned: UserOwned[Organization] = isUserOwned
     }
 }

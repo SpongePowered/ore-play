@@ -6,28 +6,28 @@ import java.time.Instant
 import java.util.Locale
 
 import ore.data.project.{Category, FlagReason, ProjectNamespace}
+import ore.db._
+import ore.db.access._
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common._
 import ore.db.impl.schema._
 import ore.db.impl.{ModelCompanionPartial, OrePostgresDriver}
+import ore.member.{Joinable, MembershipDossier}
 import ore.models.admin.{ProjectLog, ProjectVisibilityChange}
 import ore.models.api.ProjectApiKey
 import ore.models.statistic.ProjectView
-import ore.models.user.User
 import ore.models.user.role.ProjectUserRole
-import ore.db.access._
-import ore.db._
-import ore.member.{Joinable, MembershipDossier}
+import ore.models.user.{User, UserOwned}
 import ore.permission.role.Role
 import ore.permission.scope.HasScope
 import ore.syntax._
-import ore.util.StringUtils
+import ore.util.StringLocaleFormatterUtils
 
-import cats.{Functor, Monad, MonadError, Parallel}
 import cats.syntax.all._
+import cats.{Functor, Monad, MonadError, Parallel}
 import io.circe.Json
-import io.circe.syntax._
 import io.circe.generic.JsonCodec
+import io.circe.syntax._
 import slick.lifted
 import slick.lifted.{Rep, TableQuery}
 
@@ -98,7 +98,7 @@ case class Project(
   * This modal is needed to convert the json
   */
 @JsonCodec case class Note(message: String, user: DbRef[User], time: Long = System.currentTimeMillis()) {
-  def printTime(implicit locale: Locale): String = StringUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
+  def printTime(implicit locale: Locale): String = StringLocaleFormatterUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
 }
 
 object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQuery[ProjectTableMain]) {
@@ -185,15 +185,15 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
     ): V[ProjectVisibilityChangeTable, Model[ProjectVisibilityChange]] = view.filterView(_.projectId === m.id.value)
   }
 
+  implicit val isUserOwned: UserOwned[Project] = (a: Project) => a.ownerId
+
   implicit def projectJoinable[F[_], G[_]](
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
       par: Parallel[F, G]
-  ): Joinable[F, Project] = new Joinable[F, Project] {
+  ): Joinable.Aux[F, Project, ProjectUserRole, ProjectRoleTable] = new Joinable[F, Project] {
     type RoleType      = ProjectUserRole
     type RoleTypeTable = ProjectRoleTable
-
-    override def ownerId(m: Project): DbRef[User] = m.ownerId
 
     override def transferOwner(m: Model[Project])(newOwner: DbRef[User]): F[Model[Project]] = {
       // Down-grade current owner to "Developer"
@@ -225,7 +225,9 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
     }
 
     override def memberships: MembershipDossier.Aux[F, Project, RoleType, RoleTypeTable] =
-      MembershipDossier.project
+      MembershipDossier.projectHasMemberships
+
+    override def userOwned: UserOwned[Project] = isUserOwned
   }
 
   implicit class ProjectModelOps(private val self: Model[Project]) extends AnyVal {

@@ -1,20 +1,23 @@
 package ore.models.project.factory
 
+import scala.language.higherKinds
+
 import scala.concurrent.ExecutionContext
 
 import play.api.cache.SyncCacheApi
 
+import ore.Cacheable
 import ore.data.project.Dependency
 import ore.data.{Color, Platform}
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
-import ore.models.project._
-import ore.models.user.User
-import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.project._
 import ore.models.project.io.PluginFileWithData
-import ore.{Cacheable, Platform}
+import ore.models.user.User
 
+import cats.MonadError
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import slick.lifted.TableQuery
@@ -70,7 +73,7 @@ case class PendingVersion(
     *
     * @return True if exists
     */
-  def exists(implicit service: ModelService): IO[Boolean] = {
+  def exists[F[_]](implicit service: ModelService[F], F: MonadError[F, Throwable]): F[Boolean] = {
     val hashExistsBaseQuery = for {
       v <- TableQuery[VersionTable]
       if v.projectId === projectId
@@ -79,9 +82,12 @@ case class PendingVersion(
 
     val hashExistsQuery = hashExistsBaseQuery.exists
 
-    projectId.fold(IO.pure(false)) { projectId =>
+    projectId.fold(F.pure(false)) { projectId =>
       for {
-        project <- ModelView.now(Project).get(projectId).getOrElse(sys.error(s"No project found for id $projectId"))
+        project <- ModelView
+          .now(Project)
+          .get(projectId)
+          .getOrElseF(F.raiseError(new Exception(s"No project found for id $projectId")))
         versionExistsQuery = project
           .versions(ModelView.later(Version))
           .exists(_.versionString.toLowerCase === this.versionString.toLowerCase)

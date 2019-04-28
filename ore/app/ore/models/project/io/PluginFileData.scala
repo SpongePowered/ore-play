@@ -1,5 +1,7 @@
 package ore.models.project.io
 
+import scala.language.higherKinds
+
 import java.io.BufferedReader
 
 import scala.collection.JavaConverters._
@@ -10,7 +12,6 @@ import ore.data.project.Dependency
 import ore.models.project.{TagColor, Version, VersionTag}
 import ore.db.{DbRef, Model, ModelService}
 
-import cats.effect.IO
 import org.spongepowered.plugin.meta.McModInfo
 
 /**
@@ -77,7 +78,7 @@ class PluginFileData(data: Seq[DataValue]) {
     case _                  => false
   }
 
-  def createTags(versionId: DbRef[Version])(implicit service: ModelService): IO[Seq[Model[VersionTag]]] = {
+  def createTags[F[_]](versionId: DbRef[Version])(implicit service: ModelService[F]): F[Seq[Model[VersionTag]]] = {
     val buffer = new ArrayBuffer[VersionTag]
 
     if (containsMixins) {

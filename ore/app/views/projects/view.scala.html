@@ -7,11 +7,13 @@ Base template for Project overview.
 @import ore.models.project.Visibility
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import ore.models.project.FlagReason
 @import views.html.helper.{CSRF, form}
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
+@import ore.data.project.FlagReason
+@import util.syntax._
+
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @appRoutes = @{controllers.routes.Application}
@@ -154,7 +156,7 @@ Base template for Project overview.
                             </span>
                         }
 
-                        @if(!p.project.isDeleted) {
+                        @if(p.project.visibility != Visibility.SoftDelete) {
                             @if(request.currentUser.exists(u => !p.project.isOwner(u))) {
                                 <button class="btn btn-default btn-star">
                                     <i id="icon-star" @if(sp.starred) {
@@ -178,7 +180,7 @@ Base template for Project overview.
                             <!-- Flag button -->
                         @if(request.hasUser && !request.currentUser.get.name.equals(p.project.ownerName)
                                 && !sp.uProjectFlags
-                                && !p.project.isDeleted) {
+                                && p.project.visibility != Visibility.SoftDelete) {
                             <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
                                 <i class="fas fa-flag"></i> @messages("project.flag")
                             </button>
@@ -225,7 +227,7 @@ Base template for Project overview.
                         }
 
                             <!-- Download button -->
-                        @if(!p.project.isDeleted) {
+                        @if(p.project.visibility != Visibility.SoftDelete) {
                             <div class="btn-group btn-download">
                                 <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
                                 title="@messages("project.download.recommend")" data-toggle="tooltip"

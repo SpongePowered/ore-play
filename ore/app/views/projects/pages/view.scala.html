@@ -10,11 +10,13 @@ Documentation page within Project overview.
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.db.Model
-@import ore.util.StringUtils._
+@import util.StringFormatterUtils._
 @import views.html.utils.editor
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
+@import util.syntax._
+
 @(p: ProjectData,
   sp: ScopedProjectData,
   rootPages: Seq[(Model[Page], Seq[Page])],

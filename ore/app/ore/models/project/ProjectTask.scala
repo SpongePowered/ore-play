@@ -1,6 +1,5 @@
 package ore.models.project
 
-import java.sql.Timestamp
 import java.time.Instant
 import javax.inject.{Inject, Singleton}
 
@@ -8,10 +7,10 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import ore.db.impl.OrePostgresDriver.api._
-import ore.models.project.{Project, Visibility}
 import ore.OreConfig
 import ore.db.ModelService
 import ore.db.access.ModelView
+import util.syntax._
 
 import akka.actor.ActorSystem
 import cats.effect.{ContextShift, IO}
@@ -23,7 +22,7 @@ import com.typesafe.scalalogging
 @Singleton
 class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
     implicit ec: ExecutionContext,
-    service: ModelService
+    service: ModelService[IO]
 ) extends Runnable {
 
   implicit val cs: ContextShift[IO] = IO.contextShift(ec)
@@ -33,7 +32,7 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   val interval: FiniteDuration = this.config.ore.projects.checkInterval
   val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
 
-  private def dayAgo          = Timestamp.from(Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire))
+  private def dayAgo          = Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire)
   private val newFilter       = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
   private def createdAtFilter = ModelFilter(Project)(_.createdAt < dayAgo)
   private def newProjects     = service.runDBIO(ModelView.now(Project).query.filter(newFilter && createdAtFilter).result)

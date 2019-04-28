@@ -2,11 +2,9 @@ package ore.models.user
 
 import scala.language.implicitConversions
 
-import java.sql.Timestamp
-import java.util.Date
+import java.time.Instant
 import javax.inject.Inject
 
-import ore.models.user.User
 import ore.OreConfig
 import ore.db.{DbRef, ObjId}
 
@@ -33,7 +31,7 @@ final class FakeUser @Inject()(config: OreConfig) {
         fullName = conf.name,
         name = username,
         email = conf.email,
-        joinDate = Some(new Timestamp(new Date().getTime)),
+        joinDate = Some(Instant.now()),
       )
     else sys.error("Tried to use disabled fake user")
 

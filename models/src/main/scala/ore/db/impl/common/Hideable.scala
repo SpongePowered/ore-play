@@ -59,39 +59,36 @@ object Hideable {
     type MVisibilityChangeTable = MChangeTable
   }
 
-  class RawOps[F[_], M](private val m: M) extends AnyVal {
-    def visibility(implicit hide: Hideable[F, M]): Visibility = hide.visibility(m)
-    def isDeleted(implicit hide: Hideable[F, M]): Boolean     = hide.isDeleted(m)
+  class RawOps[M](private val m: M) extends AnyVal {
+    def isDeleted[F[_]](implicit hide: Hideable[F, M]): Boolean     = hide.isDeleted(m)
   }
 
-  class ModelOps[F[_], M](private val m: Model[M]) extends AnyVal {
+  class ModelOps[M](private val m: Model[M]) extends AnyVal {
 
-    def setVisibility(
+    def setVisibility[F[_]](
         visibility: Visibility,
         comment: String,
         creator: DbRef[User]
     )(implicit hide: Hideable[F, M]): F[(Model[M], Model[hide.MVisibilityChange])] =
       hide.setVisibility(m)(visibility, comment, creator)
 
-    def visibilityChanges[V[_, _]: QueryView, VCTable <: VisibilityChangeColumns[Change], Change <: VisibilityChange](
+    def visibilityChanges[F[_], V[_, _]: QueryView, VCTable <: VisibilityChangeColumns[Change], Change <: VisibilityChange](
         view: V[VCTable, Model[Change]]
     )(implicit hide: Hideable.Aux[F, M, Change, VCTable]): V[VCTable, Model[Change]] = hide.visibilityChanges(m)(view)
 
-    def visibilityChangesByDate[V[_, _]: QueryView, VCTable <: VisibilityChangeColumns[Change], Change <: VisibilityChange](
+    def visibilityChangesByDate[F[_], V[_, _]: QueryView, VCTable <: VisibilityChangeColumns[Change], Change <: VisibilityChange](
         view: V[VCTable, Model[Change]]
     )(implicit hide: Hideable.Aux[F, M, Change, VCTable]): V[VCTable, Model[Change]] =
       hide.visibilityChangesByDate(m)(view)
 
-    def lastVisibilityChange[QOptRet, SRet[_], VCTable <: VisibilityChangeColumns[Change], Change <: VisibilityChange](
-        m: Model[M]
-    )(
+    def lastVisibilityChange[F[_], QOptRet, SRet[_], VCTable <: VisibilityChangeColumns[Change], Change <: VisibilityChange](
         view: ModelView[QOptRet, SRet, VCTable, Model[Change]]
     )(implicit hide: Hideable.Aux[F, M, Change, VCTable]): QOptRet = hide.lastVisibilityChange(m)(view)
 
   }
 
   trait ToHideableOps {
-    implicit def toRawOps[F[_], M](m: M): Hideable.RawOps[F, M] = new Hideable.RawOps(m)
-    implicit def toModelOps[F[_], M](m: Model[M]): Hideable.ModelOps[F, M] = new Hideable.ModelOps(m)
+    implicit def hideableToRawOps[M](m: M): Hideable.RawOps[M]            = new Hideable.RawOps(m)
+    implicit def hideableToModelOps[M](m: Model[M]): Hideable.ModelOps[M] = new Hideable.ModelOps(m)
   }
 }

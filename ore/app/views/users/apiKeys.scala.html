@@ -6,8 +6,8 @@
 @import views.html.utils.{modal, prompt, userAvatar}
 @import views.html.helper.CSPNonce
 @import ore.permission.{NamedPermission, Permission}
-@import ore.api.ApiKey
 @import ore.data.Prompt
+@import ore.models.api.ApiKey
 
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], keys: Seq[ApiKey], perms: Seq[NamedPermission])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

@@ -2,6 +2,7 @@ package ore
 
 import ore.db.access.QueryView
 import ore.db.impl.common.Hideable
+import ore.member.Joinable
 import ore.models.organization.OrganizationOwned
 import ore.models.project.ProjectOwned
 import ore.models.user.UserOwned
@@ -14,3 +15,4 @@ object syntax
     with UserOwned.ToUserOwnedOps
     with QueryView.ToQueryFilterableOps
     with Hideable.ToHideableOps
+    with Joinable.ToJoinableOps

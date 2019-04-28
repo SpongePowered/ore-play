@@ -1,13 +1,15 @@
 package models.viewhelper
 
-import ore.models.project.{Flag, Project}
-import ore.models.user.User
+import scala.language.higherKinds
+
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
+import ore.models.project.{Flag, Project}
+import ore.models.user.User
 import ore.permission.{Permission, _}
 
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import cats.{Applicative, Parallel}
 
 /**
   * Holds ProjectData that is specific to a user
@@ -16,16 +18,16 @@ object ScopedProjectData {
 
   def cacheKey(project: Model[Project], user: Model[User]) = s"""project${project.id}foruser${user.id}"""
 
-  def of(
+  def of[F[_], G[_]](
       currentUser: Option[Model[User]],
       project: Model[Project]
-  )(implicit service: ModelService, cs: ContextShift[IO]): IO[ScopedProjectData] = {
+  )(implicit service: ModelService[F], F: Applicative[F], par: Parallel[F, G]): F[ScopedProjectData] = {
     currentUser
       .map { user =>
         (
           user.hasUnresolvedFlagFor(project, ModelView.now(Flag)),
-          project.stars.contains(user),
-          project.watchers.contains(user),
+          project.stars.contains(user.id),
+          project.watchers.contains(user.id),
           user.permissionsIn(project)
         ).parMapN {
           case (
@@ -43,7 +45,7 @@ object ScopedProjectData {
             )
         }
       }
-      .getOrElse(IO.pure(noScope))
+      .getOrElse(F.pure(noScope))
   }
 
   val noScope = ScopedProjectData()

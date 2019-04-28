@@ -1,6 +1,7 @@
 package db.impl
 
 import javax.inject.Inject
+import javax.inject.Singleton
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -10,7 +11,7 @@ import play.api.inject.ApplicationLifecycle
 import db.impl.access.ProjectBase
 import ore.{OreConfig, OreEnv}
 import ore.db.ModelService
-import util.OreMDC
+import ore.util.OreMDC
 
 import akka.actor.ActorSystem
 import cats.effect.IO

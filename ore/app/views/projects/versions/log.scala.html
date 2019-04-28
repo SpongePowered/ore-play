@@ -1,11 +1,13 @@
 @import controllers.sugar.Requests.OreRequest
-@import ore.admin.VersionVisibilityChange
 @import ore.models.project.{Project, Version}
 @import ore.models.user.User
 @import ore.OreConfig
 @import ore.db.Model
-@import ore.util.StringUtils._
+@import util.StringFormatterUtils._
 @import ore.markdown.MarkdownRenderer
+@import ore.models.admin.VersionVisibilityChange
+@import util.syntax._
+
 @(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
 
 @versionRoutes = @{controllers.project.routes.Versions}
@@ -40,7 +42,7 @@
 						<tr>
 							<td>@entry.visibility</td>
 							<td>@prettifyDateAndTime(entry.createdAt)</td>
-							<td>@entry.renderComment</td>
+							<td>@entry.obj.render</td>
 							@if(createdBy.isDefined) {
 								<td>@createdBy.get.name</td>
 							} else {

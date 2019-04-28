@@ -1,17 +1,20 @@
 package models.viewhelper
 
+import scala.language.higherKinds
+
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectRoleTable, ProjectTableMain}
 import ore.models.project.Project
 import ore.models.user.role.{OrganizationUserRole, ProjectUserRole}
-import ore.models.user.User
+import ore.models.user.{User, UserOwned}
 import ore.db.{DbRef, Model, ModelService}
 import ore.models.organization.Organization
 import ore.permission.role.RoleCategory
 import util.syntax._
 
+import cats.{MonadError, Parallel}
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import slick.lifted.TableQuery
 
@@ -24,26 +27,30 @@ case class OrganizationData(
   def orga: Model[Organization] = joinable
 
   def roleCategory: RoleCategory = RoleCategory.Organization
+
+  override def ownerInstance: UserOwned[Organization] = UserOwned[Organization]
 }
 
 object OrganizationData {
 
   def cacheKey(orga: Model[Organization]): String = "organization" + orga.id
 
-  def of[A](orga: Model[Organization])(
-      implicit service: ModelService,
-      cs: ContextShift[IO]
-  ): IO[OrganizationData] = {
+  def of[F[_], G[_]](orga: Model[Organization])(
+      implicit service: ModelService[F],
+      F: MonadError[F, Throwable],
+      par: Parallel[F, G]
+  ): F[OrganizationData] = {
     import cats.instances.vector._
     for {
-      members      <- orga.memberships.members(orga)
-      memberRoles  <- members.toVector.parTraverse(_.headRole)
-      memberUser   <- memberRoles.parTraverse(_.user)
+      members <- orga.memberships.members(orga)
+      members <- members.toVector.traverse { userId =>
+        val orgaRole = orga.memberships.getRoles(orga)(userId).map(_.maxBy(_.role.permissions: Long))
+        val users =
+          ModelView.now(User).get(userId).getOrElseF(F.raiseError(new Exception("Member of organization not found")))
+        (orgaRole, users).parTupled
+      }
       projectRoles <- service.runDBIO(queryProjectRoles(orga.id).result)
-    } yield {
-      val members = memberRoles.zip(memberUser)
-      OrganizationData(orga, members, projectRoles)
-    }
+    } yield OrganizationData(orga, members, projectRoles)
   }
 
   private def queryProjectRoles(userId: DbRef[User]) =
@@ -52,8 +59,9 @@ object OrganizationData {
       if role.userId === userId
     } yield (role, project)
 
-  def of[A](orga: Option[Model[Organization]])(
-      implicit service: ModelService,
-      cs: ContextShift[IO]
-  ): OptionT[IO, OrganizationData] = OptionT.fromOption[IO](orga).semiflatMap(of)
+  def of[F[_], G[_]](orga: Option[Model[Organization]])(
+      implicit service: ModelService[F],
+      F: MonadError[F, Throwable],
+      par: Parallel[F, G]
+  ): OptionT[F, OrganizationData] = OptionT.fromOption[F](orga).semiflatMap(of[F, G])
 }

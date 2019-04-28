@@ -12,14 +12,12 @@ import controllers.sugar.Bakery
 import ore.db.impl.OrePostgresDriver.api._
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
-import ore.models.user.Organization
 import ore.models.user.role.OrganizationUserRole
 import ore.db.access.ModelView
 import ore.db.{DbRef, ModelService}
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
 import ore.permission.Permission
-import ore.models.user.MembershipDossier._
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.syntax._
@@ -39,7 +37,7 @@ class Organizations @Inject()(forms: OreForms)(
     sso: SingleSignOnConsumer,
     env: OreEnv,
     config: OreConfig,
-    service: ModelService,
+    service: ModelService[IO],
     cache: AsyncCacheApi,
     messagesApi: MessagesApi
 ) extends OreBaseController {
@@ -111,8 +109,9 @@ class Organizations @Inject()(forms: OreForms)(
         .organizationRoles(ModelView.now(OrganizationUserRole))
         .get(id)
         .semiflatMap { role =>
+          import MembershipDossier._
           status match {
-            case STATUS_DECLINE  => role.organization.flatMap(MembershipDossier.organization.removeRole(_, role)).as(Ok)
+            case STATUS_DECLINE  => role.organization.flatMap(org => org.memberships.removeRole(org)(role.id)).as(Ok)
             case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
             case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.pure(BadRequest)
@@ -153,7 +152,7 @@ class Organizations @Inject()(forms: OreForms)(
       .asyncF(parse.form(forms.OrganizationMemberRemove)) { implicit request =>
         val res = for {
           user <- users.withName(request.body)
-          _    <- OptionT.liftF(request.data.orga.memberships.removeMember(request.data.orga, user))
+          _    <- OptionT.liftF(request.data.orga.memberships.removeMember(request.data.orga)(user.id))
         } yield Redirect(ShowUser(organization))
 
         res.getOrElse(BadRequest)

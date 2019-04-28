@@ -1,13 +1,11 @@
 package controllers
 
-import java.sql.Timestamp
 import java.time.Instant
 import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
 
 import play.api.cache.AsyncCacheApi
-import play.api.libs.json.JsObject
 import play.api.mvc.{Action, AnyContent, Result}
 
 import controllers.sugar.Bakery
@@ -15,23 +13,25 @@ import controllers.sugar.Requests.AuthRequest
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
 import form.OreForms
-import ore.admin.{Message, Review}
 import ore.data.user.notification.NotificationType
 import ore.models.project.{Project, ReviewState, Version}
-import ore.models.user.{LoggedAction, Notification, User, UserActionLogger}
+import ore.models.user.{LoggedAction, Notification, User}
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
+import ore.models.admin.{Message, Review}
 import ore.permission.Permission
 import ore.permission.role.Role
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.UserActionLogger
 import views.{html => views}
 
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.IO
 import cats.instances.option._
 import cats.syntax.all._
+import io.circe.Json
 import slick.lifted.{Rep, TableQuery}
 
 /**
@@ -45,7 +45,7 @@ final class Reviews @Inject()(forms: OreForms)(
     env: OreEnv,
     cache: AsyncCacheApi,
     config: OreConfig,
-    service: ModelService,
+    service: ModelService[IO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
@@ -74,7 +74,7 @@ final class Reviews @Inject()(forms: OreForms)(
           version.id,
           request.user.id,
           None,
-          JsObject.empty
+          Json.obj()
         )
         this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
       }
@@ -113,7 +113,7 @@ final class Reviews @Inject()(forms: OreForms)(
           review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound)
           _ <- EitherT.right[Result](
             service
-              .update(review)(_.copy(endedAt = Some(Timestamp.from(Instant.now()))))
+              .update(review)(_.copy(endedAt = Some(Instant.now())))
               .flatMap(_.addMessage(Message(request.body.trim, System.currentTimeMillis(), "stop")))
           )
         } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
@@ -128,7 +128,7 @@ final class Reviews @Inject()(forms: OreForms)(
         review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound)
         _ <- EitherT.right[Result](
           (
-            service.update(review)(_.copy(endedAt = Some(Timestamp.from(Instant.now())))),
+            service.update(review)(_.copy(endedAt = Some(Instant.now()))),
             // send notification that review happened
             sendReviewNotification(project, version, request.user)
           ).parTupled
@@ -200,7 +200,7 @@ final class Reviews @Inject()(forms: OreForms)(
               .semiflatMap { oldreview =>
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
-                  service.update(oldreview)(_.copy(endedAt = Some(Timestamp.from(Instant.now())))),
+                  service.update(oldreview)(_.copy(endedAt = Some(Instant.now()))),
                 ).parTupled.void
               }
               .getOrElse(())
@@ -213,7 +213,7 @@ final class Reviews @Inject()(forms: OreForms)(
                   version.id,
                   request.user.id,
                   None,
-                  JsObject.empty
+                  Json.obj()
                 )
               )
             ).parTupled

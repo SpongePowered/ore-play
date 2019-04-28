@@ -3,27 +3,31 @@ package db.impl.access
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Files._
-import java.sql.Timestamp
-import java.util.Date
+import java.time.Instant
 
+import db.impl.query.AppQueries
+import discourse.OreDiscourseApi
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
 import ore.db.{Model, ModelService}
 import ore.models.project._
 import ore.models.project.io.ProjectFiles
-import ore.util.FileUtils
+import ore.util.{FileUtils, OreMDC}
 import ore.{OreConfig, OreEnv}
+import ore.util.StringUtils._
 import util.syntax._
-import util.{IOUtils, OreMDC}
+import util.IOUtils
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import cats.instances.vector._
+import cats.instances.option._
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 
-class ProjectBase(implicit val service: ModelService, env: OreEnv) {
+class ProjectBase(implicit val service: ModelService[IO], env: OreEnv) {
 
   val fileManager = new ProjectFiles(this.env)
 
@@ -68,7 +72,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv) {
     service.runDBIO(
       ModelView
         .raw(Project)
-        .filter(_.lastUpdated > new Timestamp(new Date().getTime - config.ore.projects.staleAge.toMillis))
+        .filter(_.lastUpdated > Instant.now().minusMillis(config.ore.projects.staleAge.toMillis))
         .result
     )
 
@@ -197,7 +201,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv) {
     } yield ()
   }
 
-  def prepareDeleteVersion(version: Model[Version]): IO[Model[Project]] = {
+  def prepareDeleteVersion(version: Model[Version])(implicit cs: ContextShift[IO]): IO[Model[Project]] = {
     for {
       proj <- version.project
       size <- proj.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility))
@@ -207,7 +211,7 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv) {
       res <- {
         if (rv.contains(version))
           service.update(proj)(
-            _.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.isDeleted).head.id))
+            _.copy(recommendedVersionId = Some(projects.filter(v => v != version && !v.obj.isDeleted).head.id))
           )
         else IO.pure(proj)
       }
@@ -267,5 +271,5 @@ class ProjectBase(implicit val service: ModelService, env: OreEnv) {
 object ProjectBase {
   def apply()(implicit projectBase: ProjectBase): ProjectBase = projectBase
 
-  implicit def fromService(implicit service: ModelService, env: OreEnv): ProjectBase = new ProjectBase()
+  implicit def fromService(implicit service: ModelService[IO], env: OreEnv): ProjectBase = new ProjectBase()
 }

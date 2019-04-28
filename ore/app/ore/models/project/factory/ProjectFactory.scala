@@ -24,8 +24,9 @@ import ore.permission.role.Role
 import ore.models.project.NotifyWatchersTask
 import ore.models.project.io._
 import ore.util.StringUtils
-import ore.{OreConfig, OreEnv, Platform}
-import util.StringUtils._
+import ore.util.StringUtils._
+import ore.{OreConfig, OreEnv}
+import util.syntax._
 
 import akka.actor.ActorSystem
 import cats.data.{EitherT, NonEmptyList}
@@ -38,7 +39,7 @@ import com.google.common.base.Preconditions._
   */
 trait ProjectFactory {
 
-  implicit def service: ModelService
+  implicit def service: ModelService[IO]
   implicit def projects: ProjectBase = ProjectBase.fromService
 
   def fileManager: ProjectFiles = this.projects.fileManager
@@ -246,22 +247,20 @@ trait ProjectFactory {
       _                   = checkArgument(available, "slug not available", "")
       _                   = checkArgument(this.config.isValidProjectName(pending.name), "invalid name", "")
       // Create the project and it's settings
-      newProject <- service.insert(pending.asFunc)
+      newProject <- service.insert(pending.asProject)
       _          <- service.insert(pending.settings.copy(projectId = newProject.id))
       _ <- {
         // Invite members
         val dossier   = newProject.memberships
-        val owner     = newProject.owner
-        val ownerId   = owner.userId
+        val ownerId   = newProject.ownerId
         val projectId = newProject.id
 
-        val addRole = dossier.addRole(
-          newProject,
+        val addRole = dossier.addRole(newProject)(
           ownerId,
           ProjectUserRole(ownerId, projectId, Role.ProjectOwner, isAccepted = true)
         )
         val addOtherRoles = pending.roles.toVector.parTraverse { role =>
-          dossier.addRole(newProject, role.userId, role.copy(projectId = projectId)) *>
+          dossier.addRole(newProject)(role.userId, role.copy(projectId = projectId)) *>
             service.insert(
               Notification(
                 userId = role.userId,
@@ -376,7 +375,7 @@ trait ProjectFactory {
 }
 
 class OreProjectFactory @Inject()(
-    override val service: ModelService,
+    override val service: ModelService[IO],
     override val config: OreConfig,
     override val forums: OreDiscourseApi,
     override val cacheApi: SyncCacheApi,

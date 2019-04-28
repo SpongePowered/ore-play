@@ -1,5 +1,4 @@
 @import controllers.sugar.Requests.OreRequest
-@import ore.api.ProjectApiKey
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.db.Model
@@ -8,6 +7,9 @@
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
+@import ore.models.api.ProjectApiKey
+@import util.syntax._
+
 @(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}

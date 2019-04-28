@@ -2,11 +2,11 @@ package controllers.sugar
 
 import scala.language.higherKinds
 
-import java.util.Date
+import java.time.Instant
 
 import scala.concurrent.{ExecutionContext, Future}
 
-import play.api.i18n.Messages
+import play.api.i18n.{Lang, Messages}
 import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc._
 
@@ -14,18 +14,18 @@ import controllers.routes
 import controllers.sugar.Requests._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.access.{ProjectBase, UserBase}
 import ore.models.project.{Project, Visibility}
-import ore.models.user.{Organization, SignOn, User}
+import ore.models.user.{SignOn, User}
 import models.viewhelper._
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
+import ore.util.OreMDC
 import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import util.{IOUtils, OreMDC}
+import util.IOUtils
 
 import cats.data.OptionT
 import cats.effect.{ContextShift, IO}
@@ -37,7 +37,7 @@ import com.typesafe.scalalogging
   */
 trait Actions extends Calls with ActionHelpers {
 
-  implicit def service: ModelService
+  implicit def service: ModelService[IO]
   def sso: SingleSignOnConsumer
   def bakery: Bakery
   implicit def auth: SpongeAuthApi
@@ -55,8 +55,8 @@ trait Actions extends Calls with ActionHelpers {
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
   def onUnauthorized(implicit request: Request[_]): Future[Result] = {
-    val noRedirect = request.flash.get("noRedirect")
-    import OreMDC.Implicits.noCtx
+    val noRedirect           = request.flash.get("noRedirect")
+    implicit val mdc: OreMDC = OreMDC.NoMDC
     users.current.isEmpty
       .map { currentUserEmpty =>
         if (noRedirect.isEmpty && currentUserEmpty)
@@ -84,7 +84,7 @@ trait Actions extends Calls with ActionHelpers {
       private def log(success: Boolean, request: R[_]): Unit = {
         val lang = if (success) "GRANTED" else "DENIED"
         MDCPermsLogger.debug(s"<PERMISSION $lang> ${request.user.name}@${request.path.substring(1)}")(
-          OreMDC.RequestMDC(request)
+          request: OreRequest[_]
         )
       }
 
@@ -160,7 +160,7 @@ trait Actions extends Calls with ActionHelpers {
       .now(SignOn)
       .find(_.nonce === nonce)
       .semiflatMap { signOn =>
-        if (signOn.isCompleted || new Date().getTime - signOn.createdAt.getTime > 600000)
+        if (signOn.isCompleted || Instant.now().toEpochMilli - signOn.createdAt.toEpochMilli > 600000)
           IO.pure(false)
         else {
           service.update(signOn)(_.copy(isCompleted = true)).as(true)
@@ -196,7 +196,7 @@ trait Actions extends Calls with ActionHelpers {
       val auth = for {
         ssoSome <- OptionT.fromOption[IO](sso)
         sigSome <- OptionT.fromOption[IO](sig)
-        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)(OreMDC.RequestMDC(request))
+        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)(request)
       } yield res
 
       auth
@@ -217,7 +217,7 @@ trait Actions extends Calls with ActionHelpers {
           .requestPermission(request.user, username, Permission.EditOwnUserSettings)(
             auth,
             cs,
-            OreMDC.RequestMDC(request)
+            request
           )
           .transform {
             case None    => Some(Unauthorized) // No Permission
@@ -238,7 +238,9 @@ trait Actions extends Calls with ActionHelpers {
         .of(request)
         .map { data =>
           val requestWithLang =
-            data.currentUser.flatMap(_.lang).fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
+            data.currentUser
+              .flatMap(_.lang.map(Lang.apply))
+              .fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
           new SimpleOreRequest(data, requestWithLang)
         }
         .unsafeToFuture()
@@ -424,6 +426,6 @@ trait Actions extends Calls with ActionHelpers {
     organizations.withName(organization)
 
   def getUserData(request: OreRequest[_], userName: String)(implicit cs: ContextShift[IO]): OptionT[IO, UserData] =
-    users.withName(userName)(auth, OreMDC.RequestMDC(request)).semiflatMap(UserData.of(request, _))
+    users.withName(userName)(auth, request).semiflatMap(UserData.of(request, _))
 
 }

@@ -4,8 +4,9 @@ Collection of all projects.
 @import ore.models.project.{Project, Version, VersionTag}
 @import ore.models.user.User
 @import ore.OreConfig
-@import ore.models.project.Category
+@import ore.data.project.Category
 @import models.querymodels.{ProjectListEntry, ViewTag}
+@import util.syntax._
 @import views.html.utils
 @(models: Seq[ProjectListEntry], page: Int, pageSize: Long, call: Int => Call)(implicit config: OreConfig)
 

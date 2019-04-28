@@ -1,5 +1,7 @@
 package ore.markdown
 
+import scala.language.implicitConversions
+
 import play.twirl.api.Html
 
 import ore.db.impl.common.VisibilityChange
@@ -10,15 +12,15 @@ import simulacrum.typeclass
 
 @typeclass trait IsMarkdownRenderable[A] {
 
-  def render(a: A)(renderer: MarkdownRenderer): Html
+  def render(a: A)(implicit renderer: MarkdownRenderer): Html
 }
 object IsMarkdownRenderable {
 
   def fieldRenderer[A](access: A => String): IsMarkdownRenderable[A] = new IsMarkdownRenderable[A] {
-    override def render(a: A)(renderer: MarkdownRenderer): Html = renderer.render(access(a))
+    override def render(a: A)(implicit renderer: MarkdownRenderer): Html = renderer.render(access(a))
   }
 
-  implicit val visibilityChangeRenderable: IsMarkdownRenderable[VisibilityChange] = fieldRenderer(_.comment)
+  implicit def visibilityChangeRenderable[A <: VisibilityChange]: IsMarkdownRenderable[A] = fieldRenderer(_.comment)
 
   implicit val reviewMessageIsRenderable: IsMarkdownRenderable[Message] = fieldRenderer(_.message)
 
