@@ -126,10 +126,10 @@ object ModelSyntax extends ModelSyntax {
         page: Page
     )(implicit service: ModelService[F], F: Monad[F]): F[Model[Page]] = {
       def like =
-        ModelView.now(Page).find { p =>
-          p.projectId === p.id.value && p.name.toLowerCase === name.toLowerCase && parentId.fold(
-            p.parentId.isEmpty
-          )(parentId => (p.parentId === parentId).getOrElse(false: Rep[Boolean]))
+        ModelView.now(Page).find { page =>
+          page.projectId === p.id.value && page.name.toLowerCase === name.toLowerCase && parentId.fold(
+            page.parentId.isEmpty
+          )(parentId => (page.parentId === parentId).getOrElse(false: Rep[Boolean]))
         }
 
       like.value.flatMap {
