@@ -1,14 +1,15 @@
 import ore.db.DbRef
-import ore.admin._
-import ore.api.ProjectApiKey
+import ore.models.admin._
+import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project._
-import ore.statistic.{ProjectView, VersionDownload}
+import ore.models.statistic.{ProjectView, VersionDownload}
 import ore.models.user._
 import ore.models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 
 import doobie.implicits._
 import doobie.postgres.implicits._
+import doobie.postgres.circe.jsonb.implicits._
 import org.junit.runner._
 import org.scalatest.junit.JUnitRunner
 
@@ -143,7 +144,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("ProjectApiKey") {
-    check(sql"""SELECT project_id, key_type, value FROM project_api_keys""".query[ProjectApiKey])
+    check(sql"""SELECT project_id, value FROM project_api_keys""".query[ProjectApiKey])
   }
 
   test("Review") {

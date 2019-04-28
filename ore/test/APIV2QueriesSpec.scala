@@ -2,8 +2,8 @@ import play.api.Configuration
 
 import db.impl.query.APIV2Queries
 import ore.OreConfig
+import ore.data.project.Category
 import ore.permission.Permission
-import ore.models.project.Category
 
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -14,6 +14,10 @@ class APIV2QueriesSpec extends DbSpec {
   implicit val config: OreConfig = new OreConfig(
     Configuration.load(getClass.getClassLoader, System.getProperties, Map.empty, allowMissingApplicationConf = false)
   )
+
+  test("GetApiAuthInfo") {
+    check(APIV2Queries.getApiAuthInfo(""))
+  }
 
   test("FindApiKey") {
     check(APIV2Queries.findApiKey("Foo", "Bar"))

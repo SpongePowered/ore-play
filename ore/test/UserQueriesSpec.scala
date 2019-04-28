@@ -1,7 +1,8 @@
 import play.api.Configuration
 
 import ore.db.impl.query.UserQueries
-import ore.db.impl.access.UserBase.UserOrdering
+import db.impl.access.UserBase.UserOrdering
+import db.impl.query.UserPagesQueries
 import ore.OreConfig
 
 import org.junit.runner.RunWith
@@ -21,11 +22,11 @@ class UserQueriesSpec extends DbSpec {
    */
 
   test("GetAuthors") {
-    check(UserQueries.getAuthors(0, UserOrdering.Role))
+    check(UserPagesQueries.getAuthors(0, UserOrdering.Role))
   }
 
   test("GetStaff") {
-    check(UserQueries.getStaff(0, UserOrdering.Role))
+    check(UserPagesQueries.getStaff(0, UserOrdering.Role))
   }
 
   /* Relies on a view and as such can't test NULL stuff reliably
@@ -41,10 +42,6 @@ class UserQueriesSpec extends DbSpec {
     check(UserQueries.organizationTrust(0L, 0L))
   }
    */
-
-  test("GetApiAuthInfo") {
-    check(UserQueries.getApiAuthInfo(""))
-  }
 
   test("AllPossibleProjectPermissions") {
     check(UserQueries.allPossibleProjectPermissions(0L))
