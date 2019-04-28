@@ -9,7 +9,7 @@ import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
 import security.spauth.{SingleSignOnConsumer, SpongeAuth, SpongeAuthApi, SpongeSingleSignOnConsumer}
 
 import cats.effect.IO
-import com.google.inject.AbstractModule
+import com.google.inject.{AbstractModule, TypeLiteral}
 
 /** The Ore Module */
 class Module extends AbstractModule {
@@ -21,7 +21,7 @@ class Module extends AbstractModule {
     bind(classOf[ProjectFactory]).to(classOf[OreProjectFactory])
     bind(classOf[OreDiscourseApi]).to(classOf[SpongeForums])
     bind(classOf[SpongeAuthApi]).to(classOf[SpongeAuth])
-    bind(classOf[ModelService[IO]]).to(classOf[OreModelService])
+    bind(new TypeLiteral[ModelService[IO]] {}).to(classOf[OreModelService])
     bind(classOf[Mailer]).to(classOf[SpongeMailer])
     bind(classOf[SingleSignOnConsumer]).to(classOf[SpongeSingleSignOnConsumer])
     bind(classOf[Bootstrap]).to(classOf[BootstrapImpl]).asEagerSingleton()
