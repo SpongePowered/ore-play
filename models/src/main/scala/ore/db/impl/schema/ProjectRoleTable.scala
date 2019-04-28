@@ -1,10 +1,10 @@
 package ore.db.impl.schema
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.RoleTable
 import ore.models.project.Project
 import ore.models.user.role.ProjectUserRole
-import ore.db.DbRef
 
 class ProjectRoleTable(tag: Tag)
     extends ModelTable[ProjectUserRole](tag, "user_project_roles")

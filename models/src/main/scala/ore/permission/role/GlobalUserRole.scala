@@ -1,9 +1,8 @@
 package ore.permission.role
 
-import ore.models.user.User
 import ore.db.DbRef
+import ore.models.user.{User, UserOwned}
 import ore.permission.scope.GlobalScope
-import ore.models.user.UserOwned
 
 /**
   * Represents a user's [[Role]] within the [[GlobalScope]].

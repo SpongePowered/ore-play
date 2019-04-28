@@ -3,9 +3,9 @@ package ore.db.impl
 import java.sql.{PreparedStatement, ResultSet}
 import java.util.Locale
 
-import ore.data.{Color, DownloadType, Prompt}
 import ore.data.project.{Category, FlagReason}
 import ore.data.user.notification.NotificationType
+import ore.data.{Color, DownloadType, Prompt}
 import ore.db.OreProfile
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.{LoggedAction, LoggedActionContext}

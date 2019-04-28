@@ -2,10 +2,10 @@ package ore.db.impl.schema
 
 import java.time.Instant
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.api.{ApiKey, ApiSession}
 import ore.models.user.User
-import ore.db.DbRef
 
 class ApiKeySessionTable(tag: Tag) extends ModelTable[ApiSession](tag, "api_sessions") {
   def token   = column[String]("token")

@@ -2,9 +2,9 @@ package ore.db.impl.schema
 
 import java.time.Instant
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.project.{DownloadWarning, UnsafeDownload, Version}
-import ore.db.DbRef
 
 import com.github.tminglei.slickpg.InetString
 

@@ -1,8 +1,8 @@
 package ore.permission.scope
 
-import ore.models.project.Project
 import ore.db.DbRef
 import ore.models.organization.Organization
+import ore.models.project.Project
 
 sealed trait Scope
 object Scope extends LowPriorityScope {

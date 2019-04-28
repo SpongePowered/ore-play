@@ -3,15 +3,13 @@ package ore.models.user.role
 import scala.language.higherKinds
 
 import ore.db.impl.DefaultModelCompanion
-import ore.db.impl.schema.ProjectRoleTable
-import ore.models.project.Project
-import ore.models.user.User
 import ore.db.impl.common.Visitable
+import ore.db.impl.schema.ProjectRoleTable
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
+import ore.models.project.{Project, ProjectOwned}
+import ore.models.user.{User, UserOwned}
 import ore.permission.role.Role
 import ore.permission.scope.ProjectScope
-import ore.models.project.ProjectOwned
-import ore.models.user.UserOwned
 
 import cats.MonadError
 import cats.syntax.all._

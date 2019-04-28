@@ -3,10 +3,10 @@ package ore.db.impl.schema
 import java.time.Instant
 
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{DbRef, Model, ObjId, ObjInstant}
 import ore.models.admin._
 import ore.models.project.{Page, Project, Version}
 import ore.models.user.{LoggedAction, LoggedActionContext, User}
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
 
 import com.github.tminglei.slickpg.InetString
 

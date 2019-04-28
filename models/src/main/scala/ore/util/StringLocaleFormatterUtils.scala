@@ -1,7 +1,7 @@
 package ore.util
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.time.format.{DateTimeFormatter, FormatStyle}
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.Locale
 
 object StringLocaleFormatterUtils {

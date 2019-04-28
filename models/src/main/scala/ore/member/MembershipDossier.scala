@@ -10,8 +10,8 @@ import ore.db.impl.schema._
 import ore.db.impl.table.common.RoleTable
 import ore.models.organization.Organization
 import ore.models.project.Project
-import ore.models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 import ore.models.user.User
+import ore.models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
 
 import cats.Monad
 import cats.syntax.all._

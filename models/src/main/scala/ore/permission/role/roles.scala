@@ -4,10 +4,10 @@ import java.time.Instant
 
 import scala.collection.immutable
 
-import ore.models.user.role.DbRole
-import ore.data.Color._
 import ore.data.Color
+import ore.data.Color._
 import ore.db.{Model, ObjId, ObjInstant}
+import ore.models.user.role.DbRole
 import ore.permission.{Permission => Perm}
 
 import enumeratum.values.{StringEnum, StringEnumEntry}

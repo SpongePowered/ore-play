@@ -2,9 +2,9 @@ package ore.db.impl.common
 
 import java.time.Instant
 
+import ore.db.DbRef
 import ore.models.project.Visibility
 import ore.models.user.User
-import ore.db.DbRef
 
 trait VisibilityChange {
 

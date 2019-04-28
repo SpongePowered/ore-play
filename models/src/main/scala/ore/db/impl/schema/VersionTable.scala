@@ -2,11 +2,11 @@ package ore.db.impl.schema
 
 import java.time.Instant
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
 import ore.models.project.{Channel, Project, ReviewState, Version}
 import ore.models.user.User
-import ore.db.DbRef
 
 class VersionTable(tag: Tag)
     extends ModelTable[Version](tag, "project_versions")

@@ -5,8 +5,8 @@ import scala.language.higherKinds
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-import ore.db.{Model, ModelCompanion, ObjId, ObjInstant}
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{Model, ModelCompanion, ObjId, ObjInstant}
 
 import cats._
 import cats.effect.Clock

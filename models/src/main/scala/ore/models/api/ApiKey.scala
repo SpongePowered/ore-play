@@ -5,11 +5,10 @@ import scala.language.higherKinds
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.query.UserQueries
 import ore.db.impl.schema.ApiKeyTable
-import ore.models.user.User
 import ore.db.{DbRef, ModelQuery, ModelService}
+import ore.models.user.{User, UserOwned}
 import ore.permission.scope.{GlobalScope, HasScope, OrganizationScope, ProjectScope}
 import ore.permission.{NamedPermission, Permission}
-import ore.models.user.UserOwned
 import ore.syntax._
 
 import cats.Functor

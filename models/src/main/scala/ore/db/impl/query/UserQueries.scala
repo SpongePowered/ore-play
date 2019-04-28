@@ -1,9 +1,9 @@
 package ore.db.impl.query
 
-import ore.models.project.Project
-import ore.models.user.User
 import ore.db.DbRef
 import ore.models.organization.Organization
+import ore.models.project.Project
+import ore.models.user.User
 import ore.permission.Permission
 
 import doobie._

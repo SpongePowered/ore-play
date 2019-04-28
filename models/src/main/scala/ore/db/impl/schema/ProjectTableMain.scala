@@ -3,11 +3,11 @@ package ore.db.impl.schema
 import java.time.Instant
 
 import ore.data.project.Category
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.{DescriptionColumn, DownloadsColumn, NameColumn, VisibilityColumn}
 import ore.models.project._
 import ore.models.user.User
-import ore.db.DbRef
 
 import io.circe.Json
 

@@ -1,9 +1,9 @@
 package ore.db.impl.schema
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.api.ApiKey
 import ore.models.user.User
-import ore.db.DbRef
 import ore.permission.Permission
 
 class ApiKeyTable(tag: Tag) extends ModelTable[ApiKey](tag, "api_keys") {

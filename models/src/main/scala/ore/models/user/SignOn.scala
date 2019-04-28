@@ -1,8 +1,8 @@
 package ore.models.user
 
+import ore.db.ModelQuery
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.SignOnTable
-import ore.db.ModelQuery
 
 import slick.lifted.TableQuery
 

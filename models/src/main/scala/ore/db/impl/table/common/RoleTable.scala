@@ -1,9 +1,9 @@
 package ore.db.impl.table.common
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.user.User
 import ore.models.user.role.UserRoleModel
-import ore.db.DbRef
 import ore.permission.role.Role
 
 trait RoleTable[R <: UserRoleModel[R]] extends ModelTable[R] {

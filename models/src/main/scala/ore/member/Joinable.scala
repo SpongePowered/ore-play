@@ -4,8 +4,8 @@ import scala.language.{higherKinds, implicitConversions}
 
 import ore.db.impl.table.common.RoleTable
 import ore.db.{DbRef, Model}
-import ore.models.user.{User, UserOwned}
 import ore.models.user.role.UserRoleModel
+import ore.models.user.{User, UserOwned}
 
 /**
   * Represents something with a [[MembershipDossier]].

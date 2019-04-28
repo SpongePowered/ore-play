@@ -2,11 +2,11 @@ package ore.db.impl.table.common
 
 import java.time.Instant
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common.VisibilityChange
 import ore.models.project.Visibility
 import ore.models.user.User
-import ore.db.DbRef
 
 trait VisibilityChangeColumns[M <: VisibilityChange] extends ModelTable[M] {
 

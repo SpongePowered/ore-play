@@ -44,9 +44,9 @@ object NamedPermission extends Enum[NamedPermission] {
   override def values: immutable.IndexedSeq[NamedPermission] = findValues
 
   def parseNamed(names: Seq[String]): Option[Vector[NamedPermission]] = {
-    import cats.syntax.all._
-    import cats.instances.vector._
     import cats.instances.option._
+    import cats.instances.vector._
+    import cats.syntax.all._
     names.toVector.traverse(NamedPermission.withNameOption)
   }
 }

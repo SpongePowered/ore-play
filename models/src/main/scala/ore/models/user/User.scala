@@ -5,23 +5,23 @@ import scala.language.higherKinds
 import java.time.Instant
 import java.util.Locale
 
+import ore.data.Prompt
+import ore.db._
+import ore.db.access._
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common.Named
 import ore.db.impl.query.UserQueries
 import ore.db.impl.schema._
 import ore.db.impl.{ModelCompanionPartial, OrePostgresDriver}
+import ore.models.organization.Organization
 import ore.models.project.{Flag, Project, Visibility}
 import ore.models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
-import ore.db.access._
-import ore.db._
 import ore.permission._
 import ore.permission.scope._
 import ore.syntax._
-import ore.data.Prompt
-import ore.models.organization.Organization
 
-import cats.{Functor, Monad}
 import cats.syntax.all._
+import cats.{Functor, Monad}
 import slick.lifted.TableQuery
 
 /**

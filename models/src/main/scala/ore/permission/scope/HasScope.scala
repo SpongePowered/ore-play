@@ -2,9 +2,9 @@ package ore.permission.scope
 
 import scala.language.implicitConversions
 
-import ore.models.project.Project
 import ore.db.{DbRef, Model}
 import ore.models.organization.Organization
+import ore.models.project.Project
 
 import simulacrum.typeclass
 

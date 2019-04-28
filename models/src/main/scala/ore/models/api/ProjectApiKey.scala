@@ -2,9 +2,8 @@ package ore.models.api
 
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.ProjectApiKeyTable
-import ore.models.project.Project
 import ore.db.{DbRef, ModelQuery}
-import ore.models.project.ProjectOwned
+import ore.models.project.{Project, ProjectOwned}
 
 import slick.lifted.TableQuery
 

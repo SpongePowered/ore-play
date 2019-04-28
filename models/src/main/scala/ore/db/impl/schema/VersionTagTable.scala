@@ -4,8 +4,8 @@ import java.time.Instant
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.NameColumn
-import ore.models.project.{TagColor, Version, VersionTag}
 import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.models.project.{TagColor, Version, VersionTag}
 
 class VersionTagTable(tag: Tag)
     extends ModelTable[VersionTag](tag, "project_version_tags")

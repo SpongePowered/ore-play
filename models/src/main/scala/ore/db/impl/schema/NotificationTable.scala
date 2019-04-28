@@ -1,9 +1,9 @@
 package ore.db.impl.schema
 
 import ore.data.user.notification.NotificationType
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.user.{Notification, User}
-import ore.db.DbRef
 
 import cats.data.NonEmptyList
 

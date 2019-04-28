@@ -3,8 +3,8 @@ package ore.db.impl.schema
 import java.time.Instant
 
 import ore.db.impl.OrePostgresDriver.api._
-import ore.models.user.role.DbRole
 import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.models.user.role.DbRole
 import ore.permission.Permission
 import ore.permission.role.RoleCategory
 

@@ -4,12 +4,12 @@ import scala.language.higherKinds
 
 import java.time.Instant
 
+import ore.db.access.{ModelView, QueryView}
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectLogEntryTable, ProjectLogTable}
-import ore.models.project.Project
-import ore.db.access.{ModelView, QueryView}
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
+import ore.models.project.Project
 import ore.syntax._
 
 import cats.Monad

@@ -4,10 +4,10 @@ import java.time.Instant
 
 import scala.collection.immutable
 
+import ore.db._
 import ore.db.impl.ModelCompanionPartial
 import ore.db.impl.common.Named
 import ore.db.impl.schema.VersionTagTable
-import ore.db._
 
 import enumeratum.values._
 import slick.lifted.TableQuery

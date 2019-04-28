@@ -2,11 +2,11 @@ package ore.db.impl.schema
 
 import java.time.Instant
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.admin.Review
 import ore.models.project.Version
 import ore.models.user.User
-import ore.db.DbRef
 
 import io.circe.Json
 

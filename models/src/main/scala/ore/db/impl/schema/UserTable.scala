@@ -6,8 +6,8 @@ import java.util.Locale
 import ore.data.Prompt
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.NameColumn
-import ore.models.user.User
 import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.models.user.User
 
 class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn[User] {
 

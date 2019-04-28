@@ -3,9 +3,9 @@ package ore.models.user
 import scala.language.higherKinds
 
 import ore.data.user.notification.NotificationType
+import ore.db.access.ModelView
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.NotificationTable
-import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
 
 import cats.MonadError

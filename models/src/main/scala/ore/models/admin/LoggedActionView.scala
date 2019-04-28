@@ -1,11 +1,10 @@
 package ore.models.admin
 
+import ore.db._
 import ore.db.impl.ModelCompanionPartial
 import ore.db.impl.schema.LoggedActionViewTable
 import ore.models.project.{Page, Project, Version}
-import ore.models.user.{LoggedAction, LoggedActionContext, User}
-import ore.db._
-import ore.models.user.UserOwned
+import ore.models.user.{LoggedAction, LoggedActionContext, User, UserOwned}
 
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery

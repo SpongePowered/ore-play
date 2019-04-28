@@ -5,9 +5,9 @@ import java.time.Instant
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.common.VisibilityChange
 import ore.db.impl.schema.VersionVisibilityChangeTable
+import ore.db.{DbRef, ModelQuery}
 import ore.models.project.{Version, Visibility}
 import ore.models.user.User
-import ore.db.{DbRef, ModelQuery}
 
 import slick.lifted.TableQuery
 

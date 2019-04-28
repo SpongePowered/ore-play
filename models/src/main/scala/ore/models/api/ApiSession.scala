@@ -4,8 +4,8 @@ import java.time.Instant
 
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.schema.ApiKeySessionTable
-import ore.models.user.User
 import ore.db.{DbRef, ModelQuery}
+import ore.models.user.User
 
 import slick.lifted.TableQuery
 

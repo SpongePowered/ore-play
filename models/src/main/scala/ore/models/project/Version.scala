@@ -4,22 +4,22 @@ import scala.language.higherKinds
 
 import java.time.Instant
 
+import ore.data.project.Dependency
+import ore.db.access.{ModelView, QueryView}
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common.{Describable, Downloadable, Hideable}
 import ore.db.impl.schema._
+import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.models.admin.{Review, VersionVisibilityChange}
 import ore.models.statistic.VersionDownload
 import ore.models.user.User
-import ore.db.access.{ModelView, QueryView}
-import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.syntax._
-import ore.data.project.Dependency
 import ore.util.FileUtils
 
-import cats.{Monad, MonadError, Parallel}
 import cats.data.OptionT
 import cats.syntax.all._
+import cats.{Monad, MonadError, Parallel}
 import slick.lifted.TableQuery
 
 /**

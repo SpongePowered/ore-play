@@ -2,9 +2,9 @@ package ore.models.statistic
 
 import scala.language.higherKinds
 
-import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.user.User
 
 import cats.Monad
 import cats.data.OptionT

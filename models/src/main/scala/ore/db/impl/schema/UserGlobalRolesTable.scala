@@ -1,9 +1,9 @@
 package ore.db.impl.schema
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.user.User
 import ore.models.user.role.DbRole
-import ore.db.DbRef
 
 class UserGlobalRolesTable(tag: Tag) extends AssociativeTable[User, DbRole](tag, "user_global_roles") {
 

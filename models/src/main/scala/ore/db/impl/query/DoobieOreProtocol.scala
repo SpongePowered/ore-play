@@ -1,7 +1,6 @@
 package ore.db.impl.query
 
 import java.net.InetAddress
-import java.sql.Timestamp
 import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -10,13 +9,13 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.runtime.universe.TypeTag
 
+import ore.data.project.{Category, FlagReason}
+import ore.data.user.notification.NotificationType
+import ore.data.{Color, DownloadType, Prompt}
+import ore.db.{DbRef, Model, ObjId, ObjInstant}
 import ore.models.api.ApiKey
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.{LoggedAction, LoggedActionContext, User}
-import ore.data.{Color, DownloadType, Prompt}
-import ore.data.project.{Category, FlagReason}
-import ore.data.user.notification.NotificationType
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
 
@@ -27,10 +26,9 @@ import doobie._
 import doobie.enum.JdbcType
 import doobie.implicits._
 import doobie.postgres.implicits._
-import doobie.postgres.circe.jsonb.implicits._
+import enumeratum.values._
 import org.postgresql.util.{PGInterval, PGobject}
 import shapeless._
-import enumeratum.values._
 
 trait DoobieOreProtocol {
 

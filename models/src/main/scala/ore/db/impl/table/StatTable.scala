@@ -1,9 +1,9 @@
 package ore.db.impl.table
 
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.statistic.StatEntry
 import ore.models.user.User
-import ore.db.DbRef
 
 import com.github.tminglei.slickpg.InetString
 

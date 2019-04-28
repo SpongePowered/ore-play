@@ -2,9 +2,9 @@ package ore.data.project
 
 import scala.language.higherKinds
 
-import ore.db.{Model, ModelService}
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{Model, ModelService}
 import ore.models.project.Project
 
 import cats.data.OptionT

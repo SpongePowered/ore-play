@@ -1,10 +1,10 @@
 package ore.db.impl.schema
 
+import ore.data.Color
+import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.NameColumn
 import ore.models.project.{Channel, Project}
-import ore.data.Color
-import ore.db.DbRef
 
 class ChannelTable(tag: Tag) extends ModelTable[Channel](tag, "project_channels") with NameColumn[Channel] {
 
