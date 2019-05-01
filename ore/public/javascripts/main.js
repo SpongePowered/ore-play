@@ -115,7 +115,7 @@ function getApiSession() {
                         csrfToken: csrf
                     }
                 }).done(function (data) {
-                    if (data.type !== 'ore.models.user') {
+                    if (data.type !== 'user') {
                         reject('Expected user session from user authentication');
                     } else {
                         localStorage.setItem('api_session', data.session);

@@ -70,7 +70,7 @@ $(function() {
         if (!saveBtn.is(':visible'))
             saveBtn.fadeIn('fast');
 
-        var user = ore.models.user;
+        var user = result.user;
         // Check if user is already defined
         if ($('.list-members').find('a[href="/' + user.username + '"]').length) {
             return;
