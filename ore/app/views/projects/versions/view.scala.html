@@ -36,17 +36,14 @@
 
             <div class="pull-right version-actions">
                 <div class="version-icons">
+                    <div>
                     @if(v.isRecommended) {
-                        <div>
                             <i data-toggle="tooltip" data-placement="left"
                             title="@messages("version.recommended")"
-                            class="recommended far fa-gem pull-right"></i>
-                        </div>
-                        <div class="clearfix"></div>
+                            class="recommended far fa-lg fa-gem pull-right"></i>
                     }
 
                     @if(v.v.reviewState.isChecked) {
-                        <div>
                             @if(request.headerData.globalPerm(Permission.Reviewer)) {
                                 @v.approvedBy.zip(v.v.approvedAt).map { t =>
                                     <i class="minor">
@@ -56,13 +53,13 @@
                             }
                             @if(v.v.reviewState == ReviewState.PartiallyReviewed) {
                                 <i data-toggle="tooltip" data-placement="left" title="@messages("version.approvedPartial")"
-                                class="fas fa-lg fa-check-circle-o"></i>
+                                class="far fa-lg fa-check-circle"></i>
                             } else {
                                 <i data-toggle="tooltip" data-placement="left" title="@messages("version.approved")"
-                                class="fas fa-lg fa-check-circle-o"></i>
+                                class="far fa-lg fa-check-circle"></i>
                             }
-                        </div>
                     }
+                    </div>
                 </div>
 
                 <div class="version-buttons pull-right">
