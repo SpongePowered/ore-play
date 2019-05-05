@@ -1,9 +1,6 @@
 # --- !Ups
-
-ALTER TABLE project_api_keys DROP COLUMN key_type;
+ALTER TABLE notifications ALTER COLUMN origin_id DROP NOT NULL;
 
 # --- !Downs
-
-ALTER TABLE project_api_keys ADD COLUMN key_type INTEGER DEFAULT 0 NOT NULL;
-
-ALTER TABLE project_api_keys ALTER COLUMN key_type DROP DEFAULT;
+DELETE FROM notifications WHERE origin_id IS NULL;
+ALTER TABLE notifications ALTER COLUMN origin_id SET NOT NULL;

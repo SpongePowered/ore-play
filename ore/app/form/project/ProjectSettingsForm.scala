@@ -149,7 +149,7 @@ case class ProjectSettingsForm(
           val notifications = roles.map { role =>
             Notification(
               userId = role.userId,
-              originId = project.ownerId,
+              originId = Some(project.ownerId),
               notificationType = NotificationType.ProjectInvite,
               messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
             )

@@ -9,7 +9,7 @@ import ore.db.impl.schema.NotificationTable
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
 
 import cats.MonadError
-import cats.data.{NonEmptyList => NEL}
+import cats.data.{OptionT, NonEmptyList => NEL}
 import slick.lifted.TableQuery
 
 /**
@@ -24,7 +24,7 @@ import slick.lifted.TableQuery
   */
 case class Notification(
     userId: DbRef[User],
-    originId: DbRef[User],
+    originId: Option[DbRef[User]] = None,
     notificationType: NotificationType,
     messageArgs: NEL[String],
     action: Option[String] = None,
@@ -36,8 +36,13 @@ case class Notification(
     *
     * @return User from which this originated from
     */
-  def origin[F[_]: ModelService](implicit F: MonadError[F, Throwable]): F[Model[User]] =
-    ModelView.now(User).get(this.originId).getOrElseF(F.raiseError(new NoSuchElementException("Get on None")))
+  def origin[F[_]: ModelService](implicit F: MonadError[F, Throwable]): OptionT[F, Model[User]] = {
+    OptionT
+      .fromOption[F](originId)
+      .semiflatMap { id =>
+        ModelView.now(User).get(id).getOrElseF(F.raiseError(new NoSuchElementException("Get on None")))
+      }
+  }
 }
 object Notification extends DefaultModelCompanion[Notification, NotificationTable](TableQuery[NotificationTable]) {
 
