@@ -55,7 +55,6 @@ final class Application @Inject()(forms: OreForms)(
     sso: SingleSignOnConsumer,
     env: OreEnv,
     config: OreConfig,
-    cache: AsyncCacheApi,
     service: ModelService[IO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {

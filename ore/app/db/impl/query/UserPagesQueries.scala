@@ -1,6 +1,5 @@
 package db.impl.query
 
-import java.sql.Timestamp
 import java.time.Instant
 
 import db.impl.access.UserBase.UserOrdering

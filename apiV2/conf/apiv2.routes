@@ -1,0 +1,26 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
++nocsrf
+POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate(fake: Boolean ?= false)
+POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
++nocsrf
+POST    /keys                                                @controllers.apiv2.ApiV2Controller.createKey()
++nocsrf
+DELETE  /keys                                                @controllers.apiv2.ApiV2Controller.deleteKey(name)
+GET     /permissions                                         @controllers.apiv2.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
+GET     /permissions/hasAll                                  @controllers.apiv2.ApiV2Controller.hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
+GET     /permissions/hasAny                                  @controllers.apiv2.ApiV2Controller.hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
+GET     /projects                                            @controllers.apiv2.ApiV2Controller.listProjects(q: Option[String], categories: Seq[String], tags: Seq[String], owner: Option[String], sort: Option[String], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId                                  @controllers.apiv2.ApiV2Controller.showProject(pluginId)
+GET     /projects/:pluginId/members                          @controllers.apiv2.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
+
+GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.showVersion(pluginId, name)
++nocsrf
+POST    /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.deployVersion(pluginId, name)
+
+#GET     /projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
+
+GET     /users/:user                                         @controllers.apiv2.ApiV2Controller.showUser(user)

@@ -55,7 +55,6 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     auth: SpongeAuthApi,
     bakery: Bakery,
     sso: SingleSignOnConsumer,
-    cache: AsyncCacheApi,
     messagesApi: MessagesApi,
     env: OreEnv,
     config: OreConfig,

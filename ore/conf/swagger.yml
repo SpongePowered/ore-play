@@ -1,0 +1,5 @@
+openapi: 3.0.0
+info:
+  title: "Ore API"
+  description: "Ore REST API"
+  

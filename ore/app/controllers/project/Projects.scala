@@ -54,7 +54,6 @@ import com.typesafe.scalalogging
   */
 class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFactory)(
     implicit val ec: ExecutionContext,
-    cache: AsyncCacheApi,
     bakery: Bakery,
     sso: SingleSignOnConsumer,
     auth: SpongeAuthApi,

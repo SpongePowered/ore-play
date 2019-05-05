@@ -57,29 +57,7 @@ GET     /api/v1/users/:user                                         @controllers
 GET     /api/v1/projects/:plugin/tags/:versionName                  @controllers.ApiV1Controller.listTags(plugin, versionName)
 GET     /api/v1/tags/:tagId                                         @controllers.ApiV1Controller.tagColor(tagId)
 
-# ---------- API (v2) ----------
-+nocsrf
-POST    /api/v2/authenticate                                        @controllers.ApiV2Controller.authenticate(fake: Boolean ?= false)
-POST    /api/v2/authenticate/user                                   @controllers.ApiV2Controller.authenticateUser()
-+nocsrf
-POST    /api/v2/keys                                                @controllers.ApiV2Controller.createKey()
-+nocsrf
-DELETE  /api/v2/keys                                                @controllers.ApiV2Controller.deleteKey(name)
-GET     /api/v2/permissions                                         @controllers.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
-GET     /api/v2/permissions/hasAll                                  @controllers.ApiV2Controller.hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
-GET     /api/v2/permissions/hasAny                                  @controllers.ApiV2Controller.hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
-GET     /api/v2/projects                                            @controllers.ApiV2Controller.listProjects(q: Option[String], categories: Seq[String], tags: Seq[String], owner: Option[String], sort: Option[String], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
-GET     /api/v2/projects/:pluginId                                  @controllers.ApiV2Controller.showProject(pluginId)
-GET     /api/v2/projects/:pluginId/members                          @controllers.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
-
-GET     /api/v2/projects/:pluginId/versions                         @controllers.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
-GET     /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.showVersion(pluginId, name)
-+nocsrf
-POST    /api/v2/projects/:pluginId/versions/:name                   @controllers.ApiV2Controller.deployVersion(pluginId, name)
-
-#GET     /api/v2/projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
-
-GET     /api/v2/users/:user                                         @controllers.ApiV2Controller.showUser(user)
+->      /api/v2                                                     apiv2.Routes
 
 # ---------- Application ----------
 
@@ -226,4 +204,5 @@ POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers
 
 # ---------- Other ----------
 
+GET     /swagger-ui/*file                                              controllers.Assets.at(path:String="public/lib/swagger-ui", file: String)
 GET     /assets/*file                                               controllers.Assets.versioned(path="/public", file: Asset)

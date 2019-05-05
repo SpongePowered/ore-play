@@ -90,8 +90,6 @@ object AppQueries extends WebDoobieOreProtocol {
     fragments.query[ProjectListEntry]
   }
 
-  val refreshHomeView: doobie.Update0 = sql"REFRESH MATERIALIZED VIEW home_projects".update
-
   val getQueue: Query0[UnsortedQueueEntry] = {
     val reviewStateId = ReviewState.Unreviewed.value
     sql"""|SELECT sq.project_author,

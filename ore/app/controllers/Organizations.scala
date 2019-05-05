@@ -38,7 +38,6 @@ class Organizations @Inject()(forms: OreForms)(
     env: OreEnv,
     config: OreConfig,
     service: ModelService[IO],
-    cache: AsyncCacheApi,
     messagesApi: MessagesApi
 ) extends OreBaseController {
 

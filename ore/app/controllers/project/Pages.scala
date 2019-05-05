@@ -43,7 +43,6 @@ import com.typesafe.scalalogging
 class Pages @Inject()(forms: OreForms, stats: StatTracker)(
     implicit val ec: ExecutionContext,
     bakery: Bakery,
-    cache: AsyncCacheApi,
     sso: SingleSignOnConsumer,
     env: OreEnv,
     config: OreConfig,
@@ -256,8 +255,4 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
       }
     }
 
-}
-
-object Pages {
-  val Logger = scalalogging.Logger.takingImplicit[OreMDC]("Pages")
 }

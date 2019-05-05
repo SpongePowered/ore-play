@@ -54,7 +54,6 @@ final class ApiV1Controller @Inject()(
     env: OreEnv,
     service: ModelService[IO],
     bakery: Bakery,
-    cache: AsyncCacheApi,
     auth: SpongeAuthApi,
     sso: SingleSignOnConsumer,
 ) extends OreBaseController

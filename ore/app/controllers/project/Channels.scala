@@ -32,7 +32,6 @@ import slick.lifted.TableQuery
 class Channels @Inject()(forms: OreForms)(
     implicit val ec: ExecutionContext,
     bakery: Bakery,
-    cache: AsyncCacheApi,
     auth: SpongeAuthApi,
     sso: SingleSignOnConsumer,
     env: OreEnv,

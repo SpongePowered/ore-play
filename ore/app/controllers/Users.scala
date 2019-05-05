@@ -55,7 +55,6 @@ class Users @Inject()(
     messagesApi: MessagesApi,
     env: OreEnv,
     config: OreConfig,
-    cache: AsyncCacheApi,
     service: ModelService[IO]
 ) extends OreBaseController {
 

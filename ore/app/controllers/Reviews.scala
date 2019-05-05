@@ -43,7 +43,6 @@ final class Reviews @Inject()(forms: OreForms)(
     auth: SpongeAuthApi,
     sso: SingleSignOnConsumer,
     env: OreEnv,
-    cache: AsyncCacheApi,
     config: OreConfig,
     service: ModelService[IO],
     renderer: MarkdownRenderer
