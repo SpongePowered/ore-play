@@ -163,7 +163,7 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #      required: false
 #    - name: tags
 #      required: false
-#      description: A list of tags all the returned projects should have
+#      description: A list of tags all the returned projects should have. Should be formated either as `tagname` or `tagname:tagdata`.
 #    - name: owner
 #      description: Limit the search to a specific user
 #    - name: sort
@@ -248,7 +248,7 @@ GET     /projects/:pluginId/members                          @controllers.apiv2.
 #      description: The plugin id of the project to return versions for
 #    - name: tags
 #      required: false
-#      description: A list of tags all the returned versions should have
+#      description: A list of tags all the returned versions should have. Should be formated either as `tagname` or `tagname:tagdata`.
 #    - name: limit
 #      description: The maximum amount of versions to return
 #    - name: offset
