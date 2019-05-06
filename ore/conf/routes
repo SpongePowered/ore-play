@@ -57,6 +57,7 @@ GET     /api/v1/users/:user                                         @controllers
 GET     /api/v1/projects/:plugin/tags/:versionName                  @controllers.ApiV1Controller.listTags(plugin, versionName)
 GET     /api/v1/tags/:tagId                                         @controllers.ApiV1Controller.tagColor(tagId)
 
+GET     /api                                                        @controllers.Application.swagger()
 ->      /api/v2                                                     apiv2.Routes
 
 # ---------- Application ----------
@@ -67,7 +68,6 @@ GET     /signup                                                     @controllers
 GET     /login                                                      @controllers.Users.logIn(sso: Option[String], sig: Option[String], returnUrl: Option[String])
 GET     /logout                                                     @controllers.Users.logOut()
 POST    /verify                                                     @controllers.Users.verify(returnPath: Option[String])
-GET     /swagger                                                    @controllers.Application.swagger()
 
 # ---------- Projects ----------
 

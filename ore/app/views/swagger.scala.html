@@ -2,7 +2,7 @@
 @import ore.OreConfig
 @import views.html.helper.CSPNonce
 
-@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@()(implicit messages: Messages, request: OreRequest[_])
 
 @*
 Mostly copied from swagger-ui's index file
@@ -10,9 +10,9 @@ Mostly copied from swagger-ui's index file
 <!DOCTYPE html>
 <html>
     <head>
-        <title>@messages("general.swagger")</title>
+        <title>@messages("general.openapi")</title>
 
-        <meta charset="utf-8">l
+        <meta charset="utf-8">
 
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
 
@@ -41,7 +41,7 @@ Mostly copied from swagger-ui's index file
 
             <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-bundle.js")"></script>
             <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
-            <script src="@routes.Assets.versioned("javascripts/main.js")"></script>
+            <script src="@routes.Assets.versioned("javascripts/apiRequests.js")"></script>
             <script @CSPNonce.attr>
                 window.onload = function () {
                     // Begin Swagger UI call region
@@ -56,11 +56,28 @@ Mostly copied from swagger-ui's index file
                         plugins: [
                             SwaggerUIBundle.plugins.DownloadUrl
                         ],
-                        layout: "StandaloneLayout"
+                        layout: "StandaloneLayout",
+                        requestInterceptor: function (a) {
+                            if(!a.loadSpec) {
+                                return getApiSession().then(function (session) {
+                                    a.headers.authorization = 'ApiSession ' + session;
+                                    return a;
+                                });
+                            }
+                            else {
+                                return a;
+                            }
+                        }
                     });
                     // End Swagger UI call region
                     window.ui = ui
                 }
             </script>
+            @if(request != null) {
+                <script @CSPNonce.attr>
+                        csrf = '@play.filters.csrf.CSRF.getToken.get.value';
+                        isLoggedIn = @request.hasUser;
+                </script>
+            }
     </body>
 </html>

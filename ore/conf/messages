@@ -12,6 +12,7 @@ general.api                     =   API
 general.sponsors                =   Sponsors
 general.description             =   A Minecraft Package Repository
 general.title                   =   Ore - A Minecraft Package Repository
+general.openapi                 =   Ore OpenAPI specification
 general.signout                 =   Sign out
 general.signup                  =   Sign up
 general.login                   =   Log in
