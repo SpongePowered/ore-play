@@ -393,7 +393,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
         (service.runDbCon(getProjects), service.runDbCon(countProjects)).parMapN { (projects, count) =>
           Ok(
-            PaginatedResult(
+            PaginatedProjectResult(
               Pagination(realLimit, offset, count),
               projects
             )
@@ -452,7 +452,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
       (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
         Ok(
-          PaginatedResult(
+          PaginatedVersionResult(
             Pagination(realLimit, offset, count),
             versions
           )
@@ -594,25 +594,15 @@ object ApiV2Controller {
       @JsonKey("type") tpe: String
   )
 
-  case class PaginatedResult[A](
+  @ConfiguredJsonCodec case class PaginatedProjectResult(
       pagination: Pagination,
-      result: A
+      result: Seq[APIV2.Project]
   )
-  object PaginatedResult {
-    implicit def encodePaginatedResult[A: Encoder]: Encoder[PaginatedResult[A]] =
-      (a: PaginatedResult[A]) =>
-        Json.obj(
-          "pagination" -> a.pagination.asJson,
-          "result"     -> a.result.asJson
-      )
 
-    implicit def decodePaginatedResult[A: Decoder]: Decoder[PaginatedResult[A]] =
-      (c: HCursor) =>
-        for {
-          pagination <- c.get[Pagination]("pagination")
-          result     <- c.get[A]("result")
-        } yield PaginatedResult(pagination, result)
-  }
+  @ConfiguredJsonCodec case class PaginatedVersionResult(
+      pagination: Pagination,
+      result: Seq[APIV2.Version]
+  )
 
   @ConfiguredJsonCodec case class Pagination(
       limit: Long,

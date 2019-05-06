@@ -1,0 +1,5 @@
+---
+  - type: java\.time\.LocalDateTime
+    specAsParameter:
+      - type: string
+        format: date-time

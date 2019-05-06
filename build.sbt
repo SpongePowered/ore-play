@@ -204,7 +204,10 @@ lazy val ore = project
     ),
     libraryDependencies ++= playTestDeps,
     swaggerRoutesFile := "apiv2.routes",
-    swaggerDomainNameSpaces := Seq("models/protocols"),
+    swaggerDomainNameSpaces := Seq(
+      "models.protocols.APIV2",
+      "controllers.apiv2.ApiV2Controller",
+    ),
     swaggerAPIVersion := "2.0",
     swaggerPrettyJson := true,
     swaggerV3 := true

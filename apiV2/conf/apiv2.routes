@@ -1,5 +1,5 @@
 # Routes
-# This file defines all application routes (Higher priority routes first)
+# This file defines all API V2 routes (Higher priority routes first)
 # ~~~~
 
 +nocsrf
@@ -9,18 +9,221 @@ POST    /authenticate/user                                   @controllers.apiv2.
 POST    /keys                                                @controllers.apiv2.ApiV2Controller.createKey()
 +nocsrf
 DELETE  /keys                                                @controllers.apiv2.ApiV2Controller.deleteKey(name)
+
+###
+#  summary: Checks your permissions
+#  description: Checks your permissions with a given session in a given context
+#  tags:
+#    - Permissions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: organizationName
+#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.KeyPermissions'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /permissions                                         @controllers.apiv2.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
+
+###
+#  summary: Do an AND permission check
+#  description: Checks that you have all the permissions passed in with a given session in a given context
+#  tags:
+#    - Permissions
+#  parameters:
+#    - name: permissions
+#      description: The permissions to check
+#    - name: pluginId
+#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: organizationName
+#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PermissionCheck'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /permissions/hasAll                                  @controllers.apiv2.ApiV2Controller.hasAll(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
+
+###
+#  summary: Do an OR permission check
+#  description: Checks that you have any of the permissions passed in with a given session in a given context
+#  tags:
+#    - Permissions
+#  parameters:
+#    - name: permissions
+#      description: The permissions to check
+#    - name: pluginId
+#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: organizationName
+#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PermissionCheck'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /permissions/hasAny                                  @controllers.apiv2.ApiV2Controller.hasAny(permissions: Seq[String], pluginId: Option[String], organizationName: Option[String])
+
+
+
+###
+#  summary: Searches the projects on Ore
+#  tags:
+#    - Projects
+#  parameters:
+#    - name: q
+#      description: The query to use when searching
+#    - name: categories
+#      description: Restrict your search to a list of categories
+#    - name: tags
+#      description: A list of tags all the returned projects should have
+#    - name: owner
+#      description: Limit the search to a specific user
+#    - name: sort
+#      description: How to sort the projects
+#    - name: relevance
+#      description: If how relevant the project is to the given query should be used when sorting the projects
+#    - name: limit
+#      description: The maximum amount of projects to return
+#    - name: offset
+#      description: Where to start searching
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedProjectResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /projects                                            @controllers.apiv2.ApiV2Controller.listProjects(q: Option[String], categories: Seq[String], tags: Seq[String], owner: Option[String], sort: Option[String], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+
+###
+#  summary: Returns info on a specific project
+#  tags:
+#    - Projects
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Project'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /projects/:pluginId                                  @controllers.apiv2.ApiV2Controller.showProject(pluginId)
+
+###
+#  summary: Returns the members of a project
+#  tags:
+#    - Projects
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return members for
+#    - name: limit
+#      description: The maximum amount of members to return
+#    - name: offset
+#      description: Where to start returning
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.ProjectMember'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /projects/:pluginId/members                          @controllers.apiv2.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
 
+
+
+###
+#  summary: Returns the versions of a project
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return versions for
+#    - name: tags
+#      description: A list of tags all the returned versions should have
+#    - name: limit
+#      description: The maximum amount of versions to return
+#    - name: offset
+#      description: Where to start returning
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedVersionResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+
+###
+#  summary: Returns a specific version of a project
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return the version for
+#    - name: name
+#      description: The name of the version to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Version'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.showVersion(pluginId, name)
 +nocsrf
 POST    /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.deployVersion(pluginId, name)
 
 #GET     /projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
 
+###
+#  summary: Gets a specific user
+#  tags:
+#    - Users
+#  parameters:
+#    - name: user
+#      description: The user to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.User'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
 GET     /users/:user                                         @controllers.apiv2.ApiV2Controller.showUser(user)

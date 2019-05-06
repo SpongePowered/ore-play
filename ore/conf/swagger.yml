@@ -2,4 +2,25 @@ openapi: 3.0.0
 info:
   title: "Ore API"
   description: "Ore REST API"
-  
+
+servers:
+  - url: /api/v2
+
+components:
+  securitySchemes:
+    Session:
+      type: http
+      scheme: ApiSession
+    Key:
+      type: http
+      scheme: ApiKey
+  responses:
+    UnauthorizedError:
+      description: Api session missing, invalid or expired
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+
+security:
+  - Session: []
