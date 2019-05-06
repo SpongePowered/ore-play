@@ -67,6 +67,7 @@ GET     /signup                                                     @controllers
 GET     /login                                                      @controllers.Users.logIn(sso: Option[String], sig: Option[String], returnUrl: Option[String])
 GET     /logout                                                     @controllers.Users.logOut()
 POST    /verify                                                     @controllers.Users.verify(returnPath: Option[String])
+GET     /swagger                                                    @controllers.Application.swagger()
 
 # ---------- Projects ----------
 
@@ -204,5 +205,4 @@ POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers
 
 # ---------- Other ----------
 
-GET     /swagger-ui/*file                                              controllers.Assets.at(path:String="/public/lib/swagger-ui", file: String)
 GET     /assets/*file                                               controllers.Assets.versioned(path="/public", file: Asset)

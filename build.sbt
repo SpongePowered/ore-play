@@ -205,7 +205,7 @@ lazy val ore = project
       "org.webjars.npm" % "moment"       % "2.24.0",
       "org.webjars.npm" % "clipboard"    % "2.0.4",
       "org.webjars.npm" % "chart.js"     % "2.7.3",
-      "org.webjars"     % "swagger-ui"   % "2.2.0"
+      "org.webjars"     % "swagger-ui"   % "3.22.0"
     ),
     libraryDependencies ++= playTestDeps,
     swaggerRoutesFile := "apiv2.routes",
@@ -213,6 +213,7 @@ lazy val ore = project
       "models.protocols.APIV2",
       "controllers.apiv2.ApiV2Controller",
     ),
+    swaggerTarget := swaggerTarget.value / "swagger",
     swaggerAPIVersion := "2.0",
     swaggerPrettyJson := true,
     swaggerV3 := true

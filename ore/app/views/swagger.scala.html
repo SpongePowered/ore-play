@@ -1,0 +1,66 @@
+@import controllers.sugar.Requests.OreRequest
+@import ore.OreConfig
+@import views.html.helper.CSPNonce
+
+@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+
+@*
+Mostly copied from swagger-ui's index file
+*@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>@messages("general.swagger")</title>
+
+        <meta charset="utf-8">l
+
+        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
+
+        <style>
+            html
+            {
+              box-sizing: border-box;
+              overflow: -moz-scrollbars-vertical;
+              overflow-y: scroll;
+            }
+            *,
+            *:before,
+            *:after
+            {
+              box-sizing: inherit;
+            }
+            body
+            {
+              margin:0;
+              background: #fafafa;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+
+            <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-bundle.js")"></script>
+            <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
+            <script src="@routes.Assets.versioned("javascripts/main.js")"></script>
+            <script @CSPNonce.attr>
+                window.onload = function () {
+                    // Begin Swagger UI call region
+                    const ui = SwaggerUIBundle({
+                        url: "@routes.Assets.versioned("swagger/swagger.json")",
+                        dom_id: '#swagger-ui',
+                        deepLinking: true,
+                        presets: [
+                            SwaggerUIBundle.presets.apis,
+                            SwaggerUIStandalonePreset
+                        ],
+                        plugins: [
+                            SwaggerUIBundle.plugins.DownloadUrl
+                        ],
+                        layout: "StandaloneLayout"
+                    });
+                    // End Swagger UI call region
+                    window.ui = ui
+                }
+            </script>
+    </body>
+</html>
