@@ -55,7 +55,9 @@ lazy val playCommonSettings = Seq(
     "ore.models.admin._",
     "ore.models.project._",
     "ore.models.user._",
-    "ore.models.user.role._"
+    "ore.models.user.role._",
+    "ore.permission.NamedPermission",
+    "ore.data.project.Category",
   ).map(s => s"_root_.$s"),
   unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test"),
   pipelineStages := Seq(digest, gzip)
@@ -150,6 +152,9 @@ lazy val apiV2 = project
     commonSettings,
     playCommonSettings,
     name := "ore-apiv2",
+    routesImport ++= Seq(
+      "util.APIBinders._"
+    ).map(s => s"_root_.$s"),
     libraryDependencies ++= Seq(
       "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
       "org.typelevel"              %% "cats-core"            % catsVersion,

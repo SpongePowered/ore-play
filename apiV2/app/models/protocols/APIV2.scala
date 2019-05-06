@@ -44,17 +44,17 @@ object APIV2 {
 
   //Project
   @ConfiguredJsonCodec case class Project(
-      createdAt: LocalDateTime,
-      pluginId: String,
+      created_at: LocalDateTime,
+      plugin_id: String,
       name: String,
       namespace: ProjectNamespace,
-      recommendedVersion: Option[RecommendedVersion],
+      recommended_version: Option[RecommendedVersion],
       stats: ProjectStats,
       category: Category,
       description: Option[String],
-      lastUpdated: LocalDateTime,
+      last_updated: LocalDateTime,
       visibility: Visibility,
-      userActions: UserActions,
+      user_actions: UserActions,
       settings: ProjectSettings
   )
 
@@ -68,7 +68,7 @@ object APIV2 {
       issues: Option[String],
       sources: Option[String],
       license: ProjectLicense,
-      forumSync: Boolean
+      forum_sync: Boolean
   )
   @ConfiguredJsonCodec case class ProjectLicense(name: Option[String], url: Option[String])
 
@@ -86,28 +86,28 @@ object APIV2 {
 
   //Version
   @ConfiguredJsonCodec case class Version(
-      createdAt: LocalDateTime,
+      created_at: LocalDateTime,
       name: String,
       dependencies: List[VersionDependency],
       visibility: Visibility,
       description: Option[String],
       stats: VersionStats,
-      fileInfo: FileInfo,
+      file_info: FileInfo,
       author: Option[String],
-      reviewState: ReviewState,
+      review_state: ReviewState,
       tags: List[VersionTag]
   )
 
-  @ConfiguredJsonCodec case class VersionDependency(pluginId: String, version: Option[String])
+  @ConfiguredJsonCodec case class VersionDependency(plugin_id: String, version: Option[String])
   @ConfiguredJsonCodec case class VersionStats(downloads: Long)
-  @ConfiguredJsonCodec case class FileInfo(name: String, sizeBytes: Long, md5Hash: String)
+  @ConfiguredJsonCodec case class FileInfo(name: String, size_bytes: Long, md5_hash: String)
 
   //User
   @ConfiguredJsonCodec case class User(
-      createdAt: LocalDateTime,
+      created_at: LocalDateTime,
       name: String,
       tagline: Option[String],
-      joinDate: Option[LocalDateTime],
+      join_date: Option[LocalDateTime],
       roles: List[Role]
   )
 }
