@@ -5,11 +5,11 @@ import java.nio.file.Path
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
+import ore.models.project.{Project, Version}
+import ore.models.user.User
 import ore.OreConfig
 import ore.db.{Model, ModelService}
 import ore.discourse.{DiscourseApi, DiscoursePost}
-import ore.models.project.{Project, Version}
-import ore.models.user.User
 import ore.util.StringUtils._
 import util.syntax._
 

@@ -8,8 +8,8 @@ import play.twirl.api.Html
 import db.impl.access.UserBase
 import ore.OreConfig
 import ore.db.access.ModelView
-import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{DbRef, Model, ModelService}
+import ore.db.impl.OrePostgresDriver.api._
 import ore.markdown.MarkdownRenderer
 import ore.models.organization.Organization
 import ore.models.project.{Page, Project}
@@ -18,9 +18,9 @@ import ore.util.OreMDC
 import security.spauth.SpongeAuthApi
 
 import cats.Monad
+import cats.syntax.all._
 import cats.data.OptionT
 import cats.effect.IO
-import cats.syntax.all._
 
 trait ModelSyntax {
 

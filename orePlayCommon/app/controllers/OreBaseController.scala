@@ -7,16 +7,16 @@ import scala.concurrent.ExecutionContext
 import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-import controllers.sugar.{Actions, Bakery, Requests}
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
-import ore.{OreConfig, OreEnv}
-import ore.db.access.ModelView
+import controllers.sugar.{Actions, Bakery, Requests}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
+import ore.models.project.{Project, Version, Visibility}
+import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
-import ore.models.project.{Project, Version, Visibility}
 import ore.permission.Permission
+import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 
 import cats.data.EitherT

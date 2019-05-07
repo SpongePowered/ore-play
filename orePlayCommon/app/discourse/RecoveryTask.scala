@@ -3,12 +3,12 @@ package discourse
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-import ore.OreConfig
-import ore.db.ModelService
-import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTableMain, VersionTable}
 import ore.models.project.{Project, Version, Visibility}
+import ore.OreConfig
+import ore.db.ModelService
+import ore.db.access.ModelView
 
 import akka.actor.Scheduler
 import cats.effect.{ContextShift, IO}

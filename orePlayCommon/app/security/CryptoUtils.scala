@@ -5,7 +5,7 @@ import javax.crypto.spec.SecretKeySpec
 
 import ore.util.StringUtils
 
-import com.google.common.base.Preconditions.{checkArgument, checkNotNull}
+import com.google.common.base.Preconditions._
 
 /**
   * Handles common cryptography functions within the application.

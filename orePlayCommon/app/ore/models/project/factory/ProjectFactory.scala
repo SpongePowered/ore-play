@@ -11,17 +11,17 @@ import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
 import db.impl.access.ProjectBase
+import ore.db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, Platform}
-import ore.db.access.ModelView
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.{DbRef, Model, ModelService}
 import ore.models.project._
-import ore.models.project.io.{PluginFile, PluginFileWithData, PluginUpload, ProjectFiles}
 import ore.models.user.role.ProjectUserRole
 import ore.models.user.{Notification, User}
+import ore.db.access.ModelView
+import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
+import ore.models.project.io._
 import ore.util.StringUtils
 import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}

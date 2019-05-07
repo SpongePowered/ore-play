@@ -2,13 +2,13 @@ package models.querymodels
 
 import java.time.LocalDateTime
 
+import ore.models.project.{ReviewState, TagColor, Visibility}
 import models.protocols.APIV2
 import ore.data.project.{Category, ProjectNamespace}
-import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.permission.role.Role
 
-import cats.instances.option._
 import cats.syntax.all._
+import cats.instances.option._
 
 case class APIV2QueryProject(
     createdAt: LocalDateTime,

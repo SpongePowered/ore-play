@@ -12,17 +12,17 @@ import play.api.mvc._
 
 import controllers.sugar.Requests._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import models.viewhelper.{HeaderData, OrganizationData, ProjectData, ScopedOrganizationData, ScopedProjectData, UserData}
 import ore.db.impl.OrePostgresDriver.api._
-import ore.{OreConfig, OreEnv}
+import ore.models.project.{Project, Visibility}
+import ore.models.user.{SignOn, User}
+import models.viewhelper._
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
-import ore.models.project.{Project, Visibility}
-import ore.models.user.{SignOn, User}
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC
+import ore.{OreConfig, OreEnv}
 import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.IOUtils
 
