@@ -3,6 +3,7 @@
 # ~~~~
 
 GET     /*path/                                                     @controllers.Application.removeTrail(path)
+GET     /assets/*file                                               controllers.Assets.versioned(path="/public", file: Asset)
 
 # ---------- Admin ----------
 
@@ -202,7 +203,3 @@ POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers
 POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: DbRef[Review])
 POST    /:author/:slug/versions/:version/reviews/reopen             @controllers.Reviews.reopenReview(author, slug, version)
 POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers.Reviews.backlogToggle(author, slug, version)
-
-# ---------- Other ----------
-
-GET     /assets/*file                                               controllers.Assets.versioned(path="/public", file: Asset)

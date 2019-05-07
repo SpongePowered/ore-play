@@ -213,7 +213,6 @@ lazy val ore = project
       "models.protocols.APIV2",
       "controllers.apiv2.ApiV2Controller",
     ),
-    swaggerTarget := swaggerTarget.value / "swagger", //Seems like Play refuses to load it in the base folder
     swaggerAPIVersion := "2.0",
     swaggerV3 := true
   )
