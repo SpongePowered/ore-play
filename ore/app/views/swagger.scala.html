@@ -17,22 +17,23 @@ Mostly copied from swagger-ui's index file
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
 
         <style>
-            html
-            {
+            html {
               box-sizing: border-box;
               overflow: -moz-scrollbars-vertical;
               overflow-y: scroll;
             }
-            *,
-            *:before,
-            *:after
-            {
+            *, *:before, *:after {
               box-sizing: inherit;
             }
-            body
-            {
+            body {
               margin:0;
               background: #fafafa;
+            }
+            .swagger-ui .topbar .download-url-wrapper, .swagger-ui .info hgroup.main a, .swagger-ui .info .description {
+                display: none;
+            }
+            .swagger-ui .info {
+                margin: 2rem 0;
             }
         </style>
     </head>
