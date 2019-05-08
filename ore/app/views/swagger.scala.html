@@ -44,9 +44,8 @@ Mostly copied from swagger-ui's index file
             <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
             <script src="@routes.Assets.versioned("javascripts/apiRequests.js")"></script>
             <script @CSPNonce.attr>
-                window.onload = function () {
-                    // Begin Swagger UI call region
-                    const ui = SwaggerUIBundle({
+                window.onload = () => {
+                    window.ui = SwaggerUIBundle({
                         url: "@routes.Assets.versioned("swagger.json")",
                         dom_id: '#swagger-ui',
                         deepLinking: true,
@@ -58,20 +57,19 @@ Mostly copied from swagger-ui's index file
                             SwaggerUIBundle.plugins.DownloadUrl
                         ],
                         layout: "StandaloneLayout",
-                        requestInterceptor: function (a) {
-                            if(!a.loadSpec) {
-                                return getApiSession().then(function (session) {
-                                    a.headers.authorization = 'ApiSession ' + session;
-                                    return a;
+                        requestInterceptor: (req) => {
+                            if (!req.loadSpec) {
+                                const promise = getApiSession().then((session) => {
+                                    req.headers.authorization = 'ApiSession ' + session;
+                                    return req;
                                 });
-                            }
-                            else {
-                                return a;
+                                promise.url = req.url;
+                                return promise;
+                            } else {
+                                return req;
                             }
                         }
-                    });
-                    // End Swagger UI call region
-                    window.ui = ui
+                    })
                 }
             </script>
             @if(request != null) {
