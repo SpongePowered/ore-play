@@ -38,7 +38,7 @@ play {
                 block-all-mixed-content = ""
                 script-src = ${play.filters.csp.nonce.pattern} "'self' https://forums.spongepowered.org https://forums-cdn.spongepowered.org"
                 style-src = "'self' 'unsafe-inline' https://fonts.googleapis.com https://forums-cdn.spongepowered.org"
-                img-src = "'self' https: http:"
+                img-src = "'self' data: https: http:"
                 font-src = "'self' https://fonts.gstatic.com"
                 frame-src = "https://forums.spongepowered.org"
                 frame-ancestors = "'none'"
