@@ -345,8 +345,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def listProjects(
       q: Option[String],
-      categories: Seq[Category],
-      tags: Seq[String],
+      category: Seq[Category],
+      tag: Seq[String],
       owner: Option[String],
       sort: Option[ProjectSortingStrategy],
       relevance: Option[Boolean],
@@ -359,8 +359,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       val getProjects = APIV2Queries
         .projectQuery(
           None,
-          categories.toList,
-          tags.toList,
+          category.toList,
+          tag.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -375,8 +375,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       val countProjects = APIV2Queries
         .projectCountQuery(
           None,
-          categories.toList,
-          tags.toList,
+          category.toList,
+          tag.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -422,7 +422,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def listVersions(
       pluginId: String,
-      tags: Seq[String],
+      tag: Seq[String],
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
@@ -433,13 +433,13 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         .versionQuery(
           pluginId,
           None,
-          tags.toList,
+          tag.toList,
           realLimit,
           realOffset
         )
         .to[Vector]
 
-      val countVersions = APIV2Queries.versionCountQuery(pluginId, tags.toList).unique
+      val countVersions = APIV2Queries.versionCountQuery(pluginId, tag.toList).unique
 
       (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
         Ok(

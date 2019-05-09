@@ -38,7 +38,7 @@ function loadVersions(increment, scrollTop) {
     var offset = (page + increment - 1) * VERSIONS_PER_PAGE;
     var url = 'projects/' + PLUGIN_ID + '/versions' + '?offset=' + offset;
     for (var urlChannel of channels) {
-        url += '&tags=Channel:' + urlChannel
+        url += '&tag=Channel:' + urlChannel
     }
 
     apiV2Request(url).then(function (response) {

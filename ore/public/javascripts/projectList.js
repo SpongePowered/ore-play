@@ -147,19 +147,19 @@ function loadProjects(increment, scrollTop, pushHistory) {
 
     var url = 'projects' + '?sort=' + sort + '&relevance=' + relevance + '&limit=' + PROJECTS_PER_PAGE + '&offset=' + offset;
     if (query) {
-        url = url + '&q=' + query;
+        url += '&q=' + query;
     }
 
     if (owner) {
-        url = url + '&owner=' + owner;
+        url += '&owner=' + owner;
     }
 
     for (var category of categories) {
-        url = url + '&categories=' + category;
+        url += '&category=' + category;
     }
 
     for (var tag of tags) {
-        url = url + '&tags=' + tag;
+        url += '&tag=' + tag;
     }
 
     if(pushHistory) {

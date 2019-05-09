@@ -158,10 +158,10 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #  parameters:
 #    - name: q
 #      description: The query to use when searching
-#    - name: categories
+#    - name: category
 #      description: Restrict your search to a list of categories
 #      required: false
-#    - name: tags
+#    - name: tag
 #      required: false
 #      description: A list of tags all the returned projects should have. Should be formated either as `tagname` or `tagname:tagdata`.
 #    - name: owner
@@ -186,7 +186,7 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects                                            @controllers.apiv2.ApiV2Controller.listProjects(q: Option[String], categories: Seq[Category], tags: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+GET     /projects                                            @controllers.apiv2.ApiV2Controller.listProjects(q: Option[String], category: Seq[Category], tag: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns info on a specific project
@@ -246,7 +246,7 @@ GET     /projects/:pluginId/members                          @controllers.apiv2.
 #  parameters:
 #    - name: pluginId
 #      description: The plugin id of the project to return versions for
-#    - name: tags
+#    - name: tag
 #      required: false
 #      description: A list of tags all the returned versions should have. Should be formated either as `tagname` or `tagname:tagdata`.
 #    - name: limit
@@ -265,7 +265,7 @@ GET     /projects/:pluginId/members                          @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tag: Seq[String], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns a specific version of a project
