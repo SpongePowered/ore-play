@@ -76,59 +76,28 @@ final class Application @Inject()(forms: OreForms)(
     * @return Home page
     */
   def showHome(
-      categories: Option[String],
+      category: Seq[String],
       query: Option[String],
-      sort: Option[Int],
+      sort: Option[String],
       page: Option[Int],
-      platformCategory: Option[String],
-      platform: Option[String],
+      platformName: Option[String],
       orderWithRelevance: Option[Boolean]
-  ): Action[AnyContent] = OreAction.asyncF { implicit request =>
+  ): Action[AnyContent] = OreAction { implicit request =>
+    import cats.instances.list._
+    import cats.instances.option._
+
     // Get categories and sorting strategy
-
-    val canSeeHidden  = request.headerData.globalPerm(Permission.SeeHidden)
-    val currentUserId = request.headerData.currentUser.map(_.id.value)
-
     val withRelevance = orderWithRelevance.getOrElse(true)
-    val ordering      = sort.flatMap(ProjectSortingStrategy.withValueOpt).getOrElse(ProjectSortingStrategy.Default)
-    val pcat          = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
-    val pform         = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
+    val ordering =
+      sort.flatMap(s => ProjectSortingStrategy.values.find(_.apiName == s)).getOrElse(ProjectSortingStrategy.Default)
 
-    // get the categories being queried
-    val categoryPlatformNames = pcat.toList.flatMap(_.getPlatforms.map(_.name))
-    val platformNames         = (pform.map(_.name).toList ::: categoryPlatformNames).map(_.toLowerCase)
+    val categoryList = category.toList.traverse(Category.fromApiName).getOrElse(Nil)
 
-    val categoryList = categories.fold(Category.fromString(""))(s => Category.fromString(s)).toList
+    val pageNum = math.max(page.getOrElse(1), 1)
 
-    val pageSize = this.config.ore.projects.initLoad
-    val pageNum  = math.max(page.getOrElse(1), 1)
-    val offset   = (pageNum - 1) * pageSize
-
-    val projectNumQ = TableQuery[ProjectTableMain].filter(_.visibility === (Visibility.Public: Visibility)).size
-
-    val projectListF = service
-      .runDbCon(
-        AppQueries
-          .getHomeProjects(
-            currentUserId,
-            canSeeHidden,
-            platformNames,
-            categoryList,
-            query.filter(_.nonEmpty),
-            ordering,
-            offset,
-            pageSize,
-            withRelevance
-          )
-          .to[Vector]
-      )
-    val projectNumF = service.runDBIO(projectNumQ.result)
-
-    (projectListF, projectNumF).parMapN { (data, projectNum) =>
-      val catList =
-        if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
-      Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance, projectNum))
-    }
+    val catList =
+      if (categoryList.isEmpty || Category.visible.toSet == categoryList.toSet) None else Some(categoryList)
+    Ok(views.home(catList, query.filter(_.nonEmpty), pageNum, ordering, platformName, withRelevance))
   }
 
   /**
