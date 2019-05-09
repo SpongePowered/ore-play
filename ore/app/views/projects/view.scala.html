@@ -12,9 +12,12 @@ Base template for Project overview.
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
 @import ore.data.project.FlagReason
+@import db.impl.access.ProjectBase
+
 @import util.syntax._
 
-@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages,
+        request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, projectBase: ProjectBase)
 
 @appRoutes = @{controllers.routes.Application}
 
@@ -32,7 +35,7 @@ Base template for Project overview.
     <meta property="og:title" content="@p.project.ownerName / @p.project.name" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="@config.app.baseUrl@Projects.show(p.project.ownerName, p.project.slug)" />
-    <meta property="og:image" content="@config.app.baseUrl@Projects.showIcon(p.project.ownerName, p.project.slug)" />
+    <meta property="og:image" content="@p.project.obj.iconUrl" />
     <meta property="og:site_name" content="@messages("general.appName")" />
     @defining(p.project.description.getOrElse("")) { description =>
         <meta property="og:description" content="@description" />

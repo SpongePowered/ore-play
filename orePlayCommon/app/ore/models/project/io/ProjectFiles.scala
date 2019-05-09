@@ -86,11 +86,21 @@ class ProjectFiles(val env: OreEnv) {
   /**
     * Returns the path to a custom [[Project]] icon, if any, None otherwise.
     *
+    * @param owner  Project owner
+    * @param name   Project name
+    * @return Project icon
+    */
+  def getIconPath(owner: String, name: String)(implicit mdc: OreMDC): Option[Path] =
+    findFirstFile(getIconDir(owner, name))
+
+  /**
+    * Returns the path to a custom [[Project]] icon, if any, None otherwise.
+    *
     * @param project Project to get icon for
     * @return Project icon
     */
   def getIconPath(project: Project)(implicit mdc: OreMDC): Option[Path] =
-    findFirstFile(getIconDir(project.ownerName, project.name))
+    getIconPath(project.ownerName, project.name)
 
   /**
     * Returns the directory that contains an icon that has not yet been saved.

@@ -11,8 +11,9 @@
 @import models.querymodels.ProjectListEntry
 @import ore.permission.Permission
 @import util.syntax._
+@import db.impl.access.ProjectBase
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry], starred: Seq[(Project, Option[Version])],
-        page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+        page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, projectBase: ProjectBase)
 
 @canEditOrgMembers = @{
     u.isOrga &&

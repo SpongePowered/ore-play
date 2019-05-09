@@ -16,10 +16,11 @@ sorted according to different criteria.
 @import ore.data.Platform
 @import ore.data.PlatformCategory
 @import ore.data.project.Category
+@import db.impl.access.ProjectBase
 @(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
-        request: OreRequest[_], config: OreConfig)
+        request: OreRequest[_], config: OreConfig, projectBase: ProjectBase)
 
 @randomSponsor = @{
     val logos = config.sponge.sponsors

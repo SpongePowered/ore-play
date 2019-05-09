@@ -2,10 +2,13 @@ package util.syntax
 
 import scala.language.{higherKinds, implicitConversions}
 
+import java.nio.file.Path
+
 import play.api.i18n.Lang
+import play.api.mvc.RequestHeader
 import play.twirl.api.Html
 
-import db.impl.access.UserBase
+import db.impl.access.{ProjectBase, UserBase}
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
@@ -32,6 +35,7 @@ trait ModelSyntax {
   implicit def pageSyntax(p: Page): ModelSyntax.PageSyntax                         = new ModelSyntax.PageSyntax(p)
   implicit def pageModelRawSyntax(p: Model[Page]): ModelSyntax.PageSyntax          = new ModelSyntax.PageSyntax(p)
   implicit def pageObjSyntax(p: Page.type): ModelSyntax.PageObjSyntax              = new ModelSyntax.PageObjSyntax(p)
+  implicit def projectSyntax(p: Project): ModelSyntax.ProjectSyntax                = new ModelSyntax.ProjectSyntax(p)
   implicit def projectModelSyntax(p: Model[Project]): ModelSyntax.ProjectModelSyntax =
     new ModelSyntax.ProjectModelSyntax(p)
   implicit def orgSyntax(o: Organization): ModelSyntax.OrganizationSyntax = new ModelSyntax.OrganizationSyntax(o)
@@ -118,6 +122,17 @@ object ModelSyntax extends ModelSyntax {
       * The maximum amount of characters a page may have.
       */
     def maxLengthPage(implicit config: OreConfig): Int = config.ore.pages.pageMaxLen
+  }
+
+  class ProjectSyntax(private val p: Project) extends AnyVal {
+
+    def iconUrlOrPath(implicit projects: ProjectBase, mdc: OreMDC, config: OreConfig): Either[String, Path] =
+      projects.fileManager.getIconPath(p).toRight(User.avatarUrl(p.ownerName))
+
+    def hasIcon(implicit projects: ProjectBase, mdc: OreMDC): Boolean = projects.fileManager.getIconPath(p).isDefined
+
+    def iconUrl(implicit projects: ProjectBase, mdc: OreMDC, header: RequestHeader, config: OreConfig): String =
+      iconUrlOrPath.swap.getOrElse(controllers.project.routes.Projects.showIcon(p.ownerName, p.slug).absoluteURL())
   }
 
   class ProjectModelSyntax(private val p: Model[Project]) extends AnyVal {

@@ -8,9 +8,12 @@
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
 @import ore.models.api.ProjectApiKey
+@import ore.util.OreMDC
+@import db.impl.access.ProjectBase
 @import util.syntax._
 
-@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash,
+        request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer, projectBase: ProjectBase, mdc: OreMDC)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -102,7 +105,7 @@
                                 @utils.userAvatar(
                                     Some(p.projectOwner.name),
                                     p.projectOwner.avatarUrl,
-                                    call = projectRoutes.showIcon(p.project.ownerName, p.project.slug),
+                                    imgSrc = p.project.obj.iconUrl,
                                     clazz = "user-avatar-md")
 
                                 <input class="form-control-static" type="file" id="icon" name="icon" />

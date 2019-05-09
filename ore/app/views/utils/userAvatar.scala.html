@@ -1,13 +1,13 @@
-@(userName: Option[String], avatarUrl: String = "", call: Call = null, clazz: String = "", attr: Map[String, String] = Map(), href: String = null)
+@(userName: Option[String], avatarUrl: String = "", imgSrc: String = null, clazz: String = "", attr: Map[String, String] = Map(), href: String = null)
 
 @src = @{
-    if (call == null) {
+    if (imgSrc == null) {
         if (userName.nonEmpty)
             avatarUrl
         else
             ""
     } else
-        call.url
+        imgSrc
 }
 
 @url = @{

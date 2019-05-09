@@ -340,14 +340,11 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @return Project icon
     */
   def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF {
-    // TODO maybe instead of redirect cache this on ore?
     projects
       .withSlug(author, slug)
       .map { project =>
-        projects.fileManager.getIconPath(project)(OreMDC.NoMDC) match {
-          case None           => Redirect(User.avatarUrl(project.ownerName))
-          case Some(iconPath) => showImage(iconPath)
-        }
+        implicit val mdc: OreMDC.NoMDC.type = OreMDC.NoMDC
+        project.obj.iconUrlOrPath.fold(Redirect(_), showImage)
       }
       .getOrElse(NotFound)
   }

@@ -8,9 +8,10 @@ Versions page within Project overview.
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
+@import db.impl.access.ProjectBase
 @(p: ProjectData,
         sp: ScopedProjectData,
-        channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+        channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, projectBase: ProjectBase)
 
 @projectRoutes = @{ controllers.project.routes.Projects }
 @versionRoutes = @{ controllers.project.routes.Versions }

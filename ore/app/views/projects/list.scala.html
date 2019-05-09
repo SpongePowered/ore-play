@@ -8,10 +8,21 @@ Collection of all projects.
 @import models.querymodels.{ProjectListEntry, ViewTag}
 @import util.syntax._
 @import views.html.utils
-@(models: Seq[ProjectListEntry], page: Int, pageSize: Long, call: Int => Call)(implicit config: OreConfig)
+@import db.impl.access.ProjectBase
+@import ore.util.OreMDC
+@(models: Seq[ProjectListEntry], page: Int, pageSize: Long, call: Int => Call)(implicit config: OreConfig, projectBase: ProjectBase, mdc: OreMDC)
 
 @projectRoutes = @{
     controllers.project.routes.Projects
+}
+
+@entryIcon(entry: ProjectListEntry) = @{
+    if(projectBase.fileManager.getIconPath(entry.namespace.ownerName, entry.name).isDefined) {
+        projectRoutes.showIcon(entry.namespace.ownerName, entry.namespace.slug).url
+    }
+    else {
+        User.avatarUrl(entry.namespace.ownerName)
+    }
 }
 
 <ul class="list-group project-list">
@@ -23,7 +34,7 @@ Collection of all projects.
                     @utils.userAvatar(
                         userName = Some(entry.namespace.ownerName),
                         avatarUrl = User.avatarUrl(entry.namespace.ownerName),
-                        call = projectRoutes.showIcon(entry.namespace.ownerName, entry.namespace.slug),
+                        imgSrc = entryIcon(entry),
                         clazz = "user-avatar-sm")
                     </div>
                     <div class="col-xs-12 col-sm-11">

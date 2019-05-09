@@ -17,13 +17,14 @@ Documentation page within Project overview.
 @import ore.markdown.MarkdownRenderer
 @import util.syntax._
 
+@import db.impl.access.ProjectBase
 @(p: ProjectData,
   sp: ScopedProjectData,
   rootPages: Seq[(Model[Page], Seq[Page])],
   page: Page,
   parentPage: Option[Page],
   pageCount: Int,
-  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, projectBase: ProjectBase)
 
 @canEditPages = @{
     sp.perms(Permission.EditPage)
