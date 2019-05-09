@@ -353,7 +353,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { request =>
+    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
       val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
       val realOffset = offsetOrZero(offset)
       val getProjects = APIV2Queries
@@ -395,7 +395,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
-    apiOptDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { request =>
+    apiOptDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { implicit request =>
       APIV2Queries
         .projectQuery(
           Some(pluginId),

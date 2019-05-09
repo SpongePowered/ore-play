@@ -3,15 +3,20 @@ package db.impl.query
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
+import play.api.mvc.RequestHeader
+
 import controllers.sugar.Requests.ApiAuthInfo
+import db.impl.access.ProjectBase
 import models.protocols.APIV2
 import models.querymodels._
+import ore.OreConfig
 import ore.data.project.Category
 import ore.db.DbRef
 import ore.models.api.ApiKey
 import ore.models.project.{ProjectSortingStrategy, TagColor}
 import ore.models.user.User
 import ore.permission.Permission
+import ore.util.OreMDC
 
 import cats.data.NonEmptyList
 import doobie._
@@ -165,7 +170,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       orderWithRelevance: Boolean,
       limit: Long,
       offset: Long
-  ): Query0[APIV2.Project] = {
+  )(implicit projectBase: ProjectBase, requestHeader: RequestHeader, mdc: OreMDC, config: OreConfig): Query0[APIV2.Project] = {
     val ordering = if (orderWithRelevance && query.nonEmpty) {
       val relevance = query.fold(fr"1") { q =>
         fr"ts_rank(p.search_words, websearch_to_tsquery($q)) DESC"
