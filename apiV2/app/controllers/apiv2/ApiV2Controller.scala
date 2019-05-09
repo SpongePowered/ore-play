@@ -71,6 +71,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   private val Logger = scalalogging.Logger.takingImplicit[OreMDC]("ApiV2")
 
   private def limitOrDefault(limit: Option[Long], default: Long) = math.min(limit.getOrElse(default), default)
+  private def offsetOrZero(offset: Long) = math.max(offset, 0)
 
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
@@ -354,6 +355,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   ): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { request =>
       val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
+      val realOffset = offsetOrZero(offset)
       val getProjects = APIV2Queries
         .projectQuery(
           None,
@@ -366,7 +368,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           sort.getOrElse(ProjectSortingStrategy.Default),
           relevance.getOrElse(true),
           realLimit,
-          offset
+          realOffset
         )
         .to[Vector]
 
@@ -385,7 +387,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       (service.runDbCon(getProjects), service.runDbCon(countProjects)).parMapN { (projects, count) =>
         Ok(
           PaginatedProjectResult(
-            Pagination(realLimit, offset, count),
+            Pagination(realLimit, realOffset, count),
             projects
           )
         )
@@ -414,7 +416,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
     apiVecDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
       APIV2Queries
-        .projectMembers(pluginId, limitOrDefault(limit, 25), offset)
+        .projectMembers(pluginId, limitOrDefault(limit, 25), offsetOrZero(offset))
         .to[Vector]
     }
 
@@ -426,13 +428,14 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   ): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
       val realLimit = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
+      val realOffset = offsetOrZero(offset)
       val getVersions = APIV2Queries
         .versionQuery(
           pluginId,
           None,
           tags.toList,
           realLimit,
-          offset
+          realOffset
         )
         .to[Vector]
 
@@ -441,7 +444,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
         Ok(
           PaginatedVersionResult(
-            Pagination(realLimit, offset, count),
+            Pagination(realLimit, realOffset, count),
             versions
           )
         )
