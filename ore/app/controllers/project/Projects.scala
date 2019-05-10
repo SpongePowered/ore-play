@@ -250,18 +250,6 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   }
 
   /**
-    * Shortcut for navigating to a project.
-    *
-    * @param pluginId Project pluginId
-    * @return Redirect to project page.
-    */
-  def showProjectById(pluginId: String): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    projects.withPluginId(pluginId).fold(notFound) { project =>
-      Redirect(self.show(project.ownerName, project.slug))
-    }
-  }
-
-  /**
     * Displays the "discussion" tab within a Project view.
     *
     * @param author Owner of project
