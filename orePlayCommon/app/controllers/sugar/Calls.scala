@@ -40,8 +40,6 @@ trait Calls {
     */
   def ShowProject(author: String, slug: String): Call = controllers.project.routes.Projects.show(author, slug)
 
-  def ShowProject(pluginId: String): Call = controllers.project.routes.Projects.showProjectById(pluginId)
-
   /**
     * A call to a [[Project]] page.
     *
