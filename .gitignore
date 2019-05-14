@@ -86,7 +86,6 @@ project/plugins/project/
 ### PlayFramework ###
 # Ignore Play! working directory #
 bin/
-/db
 .eclipse
 /lib/
 /logs/
@@ -180,7 +179,7 @@ local.properties
 .recommenders/
 
 # Ore
-/conf/application.conf
+ore/conf/application.conf
 /project/project/target
 uploads
 RUNNING_PID

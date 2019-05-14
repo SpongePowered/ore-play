@@ -1,0 +1,93 @@
+# For a quick start check out our HTTP Requests collection (Tools|HTTP Client|Open HTTP Requests Collection).
+#
+# Following HTTP Request Live Templates are available:
+# * 'gtrp' and 'gtr' create a GET request with or without query parameters;
+# * 'ptr' and 'ptrp' create a POST request with a simple or parameter-like body;
+# * 'mptr' and 'fptr' create a POST request to submit a form with a text or file field (multipart/form-data);
+
+### Authenticate public
+POST http://localhost:9000/api/v2/authenticate
+Accept: application/json
+
+> {% client.global.set("api_session", response.body.session); %}
+
+### Authenticate key
+POST http://localhost:9000/api/v2/authenticate
+Accept: application/json
+Authorization: ApiKey {{api_key}}
+
+> {% client.global.set("api_session", response.body.session); %}
+
+### Authenticate user
+POST http://localhost:9000/api/v2/authenticate/user
+Accept: application/json
+Cookie: _oretoken={{ore_session}}
+
+> {% client.global.set("api_session", response.body.session); %}
+
+### Authenticate fake
+POST http://localhost:9000/api/v2/authenticate?fake=true
+Accept: application/json
+
+> {% client.global.set("api_session", response.body.session); %}
+
+### Create a new key
+POST http://localhost:9000/api/v2/keys
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+Content-Type: application/json
+
+{
+  "permissions": [
+    "edit_api_keys",
+    "edit_all_user_settings"
+  ],
+  "name": "Foo"
+}
+
+> {% client.global.set("api_key", response.body.key); %}
+
+### Delete a key
+DELETE http://localhost:9000/api/v2/keys?name=Foo
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+Content-Type: application/json
+
+> {% client.global.clear("api_key"); %}
+
+### Get current permissions
+GET http://localhost:9000/api/v2/permissions
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+### Project list
+GET http://localhost:9000/api/v2/projects
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+### Get single project
+GET http://localhost:9000/api/v2/projects/nucleus
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+### Get project members
+GET http://localhost:9000/api/v2/projects/nucleus/members
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+### Get project versions
+GET http://localhost:9000/api/v2/projects/nucleus/versions
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+### Get single project versions
+GET http://localhost:9000/api/v2/projects/nucleus/versions/1.9.0-S7.1
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+### Get user
+GET http://localhost:9000/api/v2/users/Spongie
+Authorization: ApiSession {{api_session}}
+Accept: application/json
+
+###
