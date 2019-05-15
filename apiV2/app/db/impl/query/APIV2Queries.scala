@@ -113,6 +113,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
         fr"""|       ps.homepage,
              |       ps.issues,
              |       ps.source,
+             |       ps.support,
              |       ps.license_name,
              |       ps.license_url,
              |       ps.forum_sync
