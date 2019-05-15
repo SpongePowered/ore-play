@@ -40,7 +40,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Project log entry") {
-    check(sql"""|SELECT log_id, tag, message, occurrences,
+    check(sql"""|SELECT project_id, tag, message, occurrences,
                 |last_occurrence FROM project_log_entries""".stripMargin.query[ProjectLogEntry])
   }
 
