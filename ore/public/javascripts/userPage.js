@@ -1,97 +1,84 @@
 //=====> EXTERNAL CONSTANTS
 
 var USERNAME = null;
-var STARS_PER_PAGE = 5;
-var currentStarsPage = 1;
+var NO_ACTION_MESSAGE = {};
+var CATEGORY_TITLE = {};
+var CATEGORY_ICON = {};
+
+var CONTENT_PER_PAGE = 5;
+
+var pages = {
+    starred: 1,
+    watching: 1
+};
 
 
 //=====> HELPER FUNCTIONS
 
-function getStarsPanel() {
-    return $('.panel-stars');
+function getStarsPanel(action) {
+    return $('.panel-user-info[data-action=' + action + ']');
 }
 
-function getStarsFooter() {
-    return getStarsPanel().find('.panel-footer');
+function getStarsFooter(action) {
+    return getStarsPanel(action).find('.panel-footer');
 }
 
-function loadStars(increment) {
-    // Request user data
-    $.ajax({
-        url: 'api/users/' + USERNAME,
-        dataType: 'json',
-        success: function(userData) {
-            var allStars = userData.starred;
-            var start = (currentStarsPage - 1) * STARS_PER_PAGE + STARS_PER_PAGE * increment;
-            var end = Math.min(start + STARS_PER_PAGE, allStars.length + 1);
-            var newStars = allStars.slice(start, end);
-            var tbody = getStarsPanel().find('.panel-body').find('tbody');
-            var content = '';
-            var count = 0;
+function loadActions(increment, action) {
+    pages[action] += increment;
+    var offset = (pages[action] - 1) * CONTENT_PER_PAGE;
 
-            for (var i in newStars) {
-                if (!newStars.hasOwnProperty(i)) {
-                    continue;
+    apiV2Request('users/' + USERNAME + '/' + action + '?offset=' + offset + '&limit=' + CONTENT_PER_PAGE).then(function (result) {
+        //TODO: Use pagination info
+        var tbody = getStarsPanel(action).find('.panel-body').find('tbody');
+
+        var content = [];
+
+        if(result.pagination.count === 0) {
+            content.push($("<tr>").append($("<td>").append($("<i class='minor'>").text(NO_ACTION_MESSAGE[action]))));
+        }
+        else {
+            for (var project of result.result) {
+
+                var link = $("<a>").attr("href", '/' + project.namespace.owner + '/' + project.namespace.slug).text(project.namespace.owner + '/').append($("<strong>").text(project.namespace.slug));
+                var versionDiv = $("<div class='pull-right'>");
+                if (project.recommended_version) {
+                    versionDiv.append($("<span class='minor'>").text(project.recommended_version.version));
                 }
-                var star = newStars[i];
 
-                // Request project data for this Star
-                $.ajax({
-                    url: 'api/projects/' + star,
-                    dataType: 'json',
-                    error: function() {
-                        ++count;
-                    },
-                    success: function(projectData) {
-                        var href = projectData.href;
-                        var slug = href.substr(href.lastIndexOf('/') + 1, href.length);
-                        var category = projectData.category;
+                var versionIcon = $("<i>");
+                versionIcon.attr("title", CATEGORY_TITLE[project.category]);
+                versionIcon.addClass('fas fa-fw').addClass(CATEGORY_ICON[project.category]);
+                versionDiv.append(versionIcon);
 
-                        // Append project contents to result
-                        content +=
-                            '<tr>'
-                            + '<td>'
-                            +   '<a href="' + href + '">' + projectData.owner + '/<strong>' + slug + '</strong></a>'
-                            +   '<div class="pull-right">'
-                            +     '<span class="minor">' + projectData.recommended.name + '</span> '
-                            +     '<i title="' + category.title + '" class="fas fa-fw ' + category.icon + '"></i>'
-                            +   '</div>'
-                            + '</td>';
-
-                        ++count
-                    },
-                    complete: function()  {
-                        if (count == newStars.length) {
-                            // Done loading, set the table to the result
-                            tbody.html(content);
-                            currentStarsPage += increment;
-                            var footer = getStarsFooter();
-                            var prev = footer.find('.prev');
-
-                            // Check if there is a last page
-                            if (currentStarsPage > 1) {
-                                prev.show();
-                            } else {
-                                prev.hide();
-                            }
-
-                            // Check if there is a next page
-                            var next = footer.find('.next');
-                            if (end < allStars.length) {
-                                next.show();
-                            } else {
-                                next.hide();
-                            }
-                        }
-                    }
-                });
+                content.push($("<tr>").append($("<td>").append(link, versionDiv)));
             }
+        }
+
+        // Done loading, set the table to the result
+        tbody.empty();
+        tbody.append(content);
+        var footer = getStarsFooter(action);
+        var prev = footer.find('.prev');
+
+        // Check if there is a last page
+        if (pages[action] > 1) {
+            prev.show();
+        } else {
+            prev.hide();
+        }
+
+        // Check if there is a next page
+        var next = footer.find('.next');
+        if (result.pagination.count > pages[action] * CONTENT_PER_PAGE) {
+            next.show();
+        } else {
+            next.hide();
         }
     });
 }
 
 function formAsync(form, route, onSuccess) {
-    form.submit(function(e) {
+    form.submit(function (e) {
         e.preventDefault();
         var formData = new FormData(this);
         var spinner = $(this).find('.fa-spinner').show();
@@ -103,7 +90,7 @@ function formAsync(form, route, onSuccess) {
             processData: false,
             type: 'post',
             dataType: 'json',
-            complete: function() {
+            complete: function () {
                 spinner.hide();
             },
             success: onSuccess
@@ -113,20 +100,20 @@ function formAsync(form, route, onSuccess) {
 
 function setupAvatarForm() {
 
-    $('.btn-got-it').click(function() {
+    $('.btn-got-it').click(function () {
         var prompt = $(this).closest('.prompt');
         $.ajax({
             type: 'post',
             url: 'prompts/read/' + prompt.data('prompt-id'),
-            data: { csrfToken: csrf }
+            data: {csrfToken: csrf}
         });
         prompt.fadeOut('fast');
     });
 
-    $('.organization-avatar').hover(function() {
+    $('.organization-avatar').hover(function () {
         $('.edit-avatar').fadeIn('fast');
-    }, function(e) {
-        if(!$(e.relatedTarget).closest("div").hasClass("edit-avatar")) {
+    }, function (e) {
+        if (!$(e.relatedTarget).closest("div").hasClass("edit-avatar")) {
             $('.edit-avatar').fadeOut('fast');
         }
     });
@@ -135,11 +122,11 @@ function setupAvatarForm() {
     avatarModal.find('.alert').hide();
 
     var avatarForm = avatarModal.find('#form-avatar');
-    avatarForm.find('input[name="avatar-method"]').change(function() {
+    avatarForm.find('input[name="avatar-method"]').change(function () {
         avatarForm.find('input[name="avatar-file"]').prop('disabled', $(this).val() !== 'by-file');
     });
 
-    formAsync(avatarForm, 'organizations/' + USERNAME + '/settings/avatar', function(json) {
+    formAsync(avatarForm, 'organizations/' + USERNAME + '/settings/avatar', function (json) {
         if (json.hasOwnProperty('errors')) {
             var alert = avatarForm.find('.alert-danger');
             alert.find('.error').text(json['errors'][0]);
@@ -158,9 +145,17 @@ function setupAvatarForm() {
 
 //=====> DOCUMENT READY
 
-$(function() {
-    var footer = getStarsFooter();
-    footer.find('.next').click(function() { loadStars(1); });
-    footer.find('.prev').click(function() { loadStars(-1); });
+$(function () {
+    for (let action of ['starred', 'watching']) {
+        var footer = getStarsFooter(action);
+        loadActions(0, action);
+        footer.find('.next').click(function () {
+            loadActions(1, action);
+        });
+        footer.find('.prev').click(function () {
+            loadActions(-1, action);
+        });
+    }
+
     setupAvatarForm();
 });

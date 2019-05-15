@@ -120,7 +120,7 @@ ore {
         staleAge = 28d
         check-interval = 1h
         draft-expire = 1d
-        stargazers-page-size = 30
+        user-grid-page-size = 30
     }
 
     users {

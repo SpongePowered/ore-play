@@ -58,6 +58,16 @@ object APIV2 {
       settings: ProjectSettings
   )
 
+  @ConfiguredJsonCodec case class CompactProject(
+      plugin_id: String,
+      name: String,
+      namespace: ProjectNamespace,
+      recommended_version: Option[RecommendedVersion],
+      stats: ProjectStats,
+      category: Category,
+      visibility: Visibility,
+  )
+
   @ConfiguredJsonCodec case class ProjectNamespace(owner: String, slug: String)
   @ConfiguredJsonCodec case class RecommendedVersion(version: String, tags: List[VersionTag])
   @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)

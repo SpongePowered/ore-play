@@ -11,7 +11,7 @@
 @import models.querymodels.ProjectListEntry
 @import ore.permission.Permission
 @import util.syntax._
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry], starred: Seq[(Project, Option[Version])],
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgMembers = @{
@@ -41,7 +41,7 @@
 
         <div class="col-md-4">
             @if(u.isOrga && o.isDefined && canEditOrgMembers) {
-                <div class="panel-stars panel panel-default">
+                <div class="panel-user-info panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">@messages("project.manager")</h3>
                     </div>
@@ -100,34 +100,30 @@
                     </div>
                 </div>
 
-                <div class="panel-stars panel panel-default">
+                <div class="panel-user-info panel panel-default" data-action="starred">
                     <div class="panel-heading">
                         <h3 class="panel-title"><i class="fas fa-star"></i> @messages("project.starred")</h3>
                     </div>
                     <table class="table panel-body">
                         <tbody>
-                            @if(starred.isEmpty) {
-                                <tr><td><i class="minor">@messages("user.noStars", u.user.name)</i></td></tr>
-                            } else {
-                                @starred.map { case (star, rv) =>
-                                    <tr>
-                                        <td>
-                                            <a href="@projectRoutes.Projects.show(star.ownerName, star.slug)"
-                                               class="pull-left">
-                                                @star.ownerName/<strong>@star.name</strong>
-                                            </a>
-                                            @rv.map { recommended =>
-                                                <div class="pull-right">
-                                                    <span class="minor">@recommended.versionString</span>
-                                                    @defining(star.category) { category =>
-                                                        <i title="@category.title" class="fas fa-fw @category.icon"></i>
-                                                    }
-                                                </div>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            }
+                        </tbody>
+                    </table>
+
+                    <div class="panel-footer">
+                        <div class="pull-right">
+                            <a class="prev" href="#" style="display: none;">&laquo;</a>
+                            <a class="next" href="#" >&raquo;</a>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+
+                <div class="panel-user-info panel panel-default" data-action="watching">
+                    <div class="panel-heading">
+                        <h3 class="panel-title"><i class="fas fa-eye"></i> @messages("project.watching")</h3>
+                    </div>
+                    <table class="table panel-body">
+                        <tbody>
                         </tbody>
                     </table>
 

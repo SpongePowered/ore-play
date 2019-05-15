@@ -183,26 +183,21 @@ class Users @Inject()(
                 )
                 .to[Vector]
             ),
-            user.starred,
             getOrga(username).value,
             getUserData(request, username).value
           ).parTupled
-          (projects, starred, orga, userData) = t1
+          (projects, orga, userData) = t1
           t2 <- (
-            starred.toVector
-              .parTraverse(p => p.recommendedVersion(ModelView.now(Version)).sequence.subflatMap(identity).value),
             OrganizationData.of(orga).value,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
-          (starredRv, orgaData, scopedOrgaData) = t2
+          (orgaData, scopedOrgaData) = t2
         } yield {
-          val starredData = starred.zip(starredRv)
           Ok(
             views.users.projects(
               userData.get,
               orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
               projects,
-              Model.unwrapNested(starredData.take(5)),
               pageNum
             )
           )

@@ -69,6 +69,41 @@ case class APIV2QueryProject(
   )
 }
 
+case class APIV2QueryCompactProject(
+    pluginId: String,
+    name: String,
+    namespace: ProjectNamespace,
+    recommendedVersion: Option[String],
+    recommendedVersionTags: Option[List[APIV2QueryVersionTag]],
+    views: Long,
+    downloads: Long,
+    stars: Long,
+    category: Category,
+    visibility: Visibility
+) {
+  def asProtocol: APIV2.CompactProject = APIV2.CompactProject(
+    pluginId,
+    name,
+    APIV2.ProjectNamespace(
+      namespace.ownerName,
+      namespace.slug
+    ),
+    (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
+      APIV2.RecommendedVersion(
+        version,
+        tags.map(_.asProtocol)
+      )
+    },
+    APIV2.ProjectStats(
+      views,
+      downloads,
+      stars
+    ),
+    category,
+    visibility,
+  )
+}
+
 case class APIV2QueryProjectMember(
     user: String,
     roles: List[Role]
