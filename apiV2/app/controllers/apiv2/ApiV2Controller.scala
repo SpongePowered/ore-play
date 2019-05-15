@@ -487,7 +487,6 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           .orElse(pluginInfoFromFileF)
           .toRight("No or invalid plugin info specified")
           .subflatMap(s => parser.decode[DeployVersionInfo](s).leftMap(_.show))
-          .ensure("Description too short")(_.description.forall(_.length < Page.minLength))
           .ensure("Description too long")(_.description.forall(_.length > Page.maxLength))
           .leftMap(e => BadRequest(ApiError(e)))
 
