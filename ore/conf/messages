@@ -109,6 +109,7 @@ error.plugin.metaNotFound       =   No plugin meta file found.
 error.plugin.unexpected         =   An unexpected error occurred, please try again later.
 error.plugin.jarNotFound        =   Could not find a JAR file in the top level of ZIP file.
 error.plugin.invalidPluginId    =   Invalid plugin ID for new version.
+error.plugin.noVersion          =   Plugin meta file missing version field.
 error.plugin.incomplete         =   Plugin meta file missing required field "{0}".
 error.plugin.notSponge          =   Project is marked as a Sponge Plugin and new version contains no dependency to Sponge.
 error.plugin.notForge           =   Project is marked as a Forge Mod and new version contains no dependency to Forge.
