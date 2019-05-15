@@ -420,7 +420,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     val pageNum  = math.max(page.getOrElse(1), 1)
     val offset   = (pageNum - 1) * pageSize
 
-    val queryRes = query(request.project).drop(offset).take(pageSize).sortBy(_.name).result
+    val queryRes = query(request.project).sortBy(_.name).drop(offset).take(pageSize).result
     service.runDBIO(queryRes).map { users =>
       Ok(
         views.userGrid(
