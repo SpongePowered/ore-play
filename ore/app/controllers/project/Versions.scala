@@ -232,8 +232,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             project.description,
             forumSync = request.data.settings.forumSync,
             None,
-            Model.unwrapNested(channels),
-            showFileControls = true
+            Model.unwrapNested(channels)
           )
         )
       }
@@ -312,8 +311,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 projectDescription,
                 forumSync,
                 Some(pendingVersion),
-                Model.unwrapNested(channels),
-                showFileControls = true
+                Model.unwrapNested(channels)
               )
             )
         }
@@ -363,35 +361,37 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                       _ =>
                         newPendingVersion
                           .complete(project, factory)
-                          .map(_._2)
-                          .flatTap { newVersion =>
-                            if (versionData.recommended)
-                              service
-                                .update(project)(
-                                  _.copy(
-                                    recommendedVersionId = Some(newVersion.id),
-                                    lastUpdated = Instant.now()
+                          .map(t => t._1 -> t._2)
+                          .flatTap {
+                            case (newProject, newVersion) =>
+                              if (versionData.recommended)
+                                service
+                                  .update(newProject)(
+                                    _.copy(
+                                      recommendedVersionId = Some(newVersion.id),
+                                      lastUpdated = Instant.now()
+                                    )
                                   )
-                                )
-                                .void
-                            else
-                              service
-                                .update(project)(
-                                  _.copy(
-                                    lastUpdated = Instant.now()
+                                  .void
+                              else
+                                service
+                                  .update(newProject)(
+                                    _.copy(
+                                      lastUpdated = Instant.now()
+                                    )
                                   )
-                                )
-                                .void
+                                  .void
                           }
-                          .flatTap(addUnstableTag(_, versionData.unstable))
-                          .flatTap { newVersion =>
-                            UserActionLogger.log(
-                              request,
-                              LoggedAction.VersionUploaded,
-                              newVersion.id,
-                              "published",
-                              "null"
-                            )
+                          .flatTap(t => addUnstableTag(t._2, versionData.unstable))
+                          .flatTap {
+                            case (_, newVersion) =>
+                              UserActionLogger.log(
+                                request,
+                                LoggedAction.VersionUploaded,
+                                newVersion.id,
+                                "published",
+                                "null"
+                              )
                           }
                           .as(Redirect(self.show(author, slug, versionString)))
                     }

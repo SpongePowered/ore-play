@@ -288,8 +288,11 @@ trait ProjectFactory {
       _ <- uploadPlugin(project, pending.plugin, version).fold(e => IO.raiseError(new Exception(e)), IO.pure)
       firstTimeUploadProject <- {
         if (project.visibility == Visibility.New) {
-          val setVisibility = project.setVisibility(Visibility.Public, "First upload", version.authorId).map(_._1)
-          if (project.topicId.isEmpty) this.forums.createProjectTopic(project) *> setVisibility else setVisibility
+          val setVisibility = (project: Model[Project]) => {
+            project.setVisibility(Visibility.Public, "First upload", version.authorId).map(_._1)
+          }
+          if (project.topicId.isEmpty) this.forums.createProjectTopic(project).flatMap(setVisibility)
+          else setVisibility(project)
         } else IO.pure(project)
       }
       withTopicId <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)
