@@ -99,23 +99,24 @@
 
 .project-header {
   @include padding-vert(0, 1.5rem);
-  white-space: nowrap;
   width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-}
 
-.project-header > h1 {
-  @include margin-vert(0, 0);
-  font-size: 20px;
-  font-weight: normal;
-  float: left;
-  padding-right: 5px;
-}
+  > .project-path {
+    @include margin-vert(0, 0);
+    font-size: 20px;
+    font-weight: normal;
 
-.project-header > i {
-  font-size: 16px;
-  text-overflow: ellipsis;
+    > .project-name {
+      font-weight: bold;
+    }
+  }
+
+  > i {
+    font-size: 16px;
+    text-overflow: ellipsis;
+  }
 }
 
 .row-nav .navbar {
