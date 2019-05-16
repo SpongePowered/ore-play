@@ -54,7 +54,8 @@ object ModelSyntax extends ModelSyntax {
   class UserObjSyntax(private val u: User.type) extends AnyVal {
 
     def avatarUrl(name: String)(implicit config: OreConfig): String =
-      config.security.api.avatarUrl.format(name)
+      if (name == "Spongie") config.sponge.logo
+      else config.security.api.avatarUrl.format(name)
   }
 
   class SessionSyntax(private val s: Session) extends AnyVal {

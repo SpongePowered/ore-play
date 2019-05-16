@@ -64,7 +64,7 @@ trait TChannelData {
           case (success, error) if !success => error
         }
 
-        if (errors.isEmpty) EitherT.leftT[IO, Model[Channel]](errors)
+        if (errors.nonEmpty) EitherT.leftT[IO, Model[Channel]](errors)
         else EitherT.right[List[String]](factory.createChannel(project, channelName, color))
     }
   }
@@ -109,7 +109,7 @@ trait TChannelData {
           )
         )
 
-        if (errors.isEmpty) EitherT.leftT[F, Unit](errors)
+        if (errors.nonEmpty) EitherT.leftT[F, Unit](errors)
         else EitherT.right[List[String]](effect.void)
     }
   }

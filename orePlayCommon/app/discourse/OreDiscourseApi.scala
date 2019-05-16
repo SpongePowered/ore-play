@@ -123,7 +123,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
               s"""|Request to create topic for project '${project.url}' might have been successful but there were errors along the way:
                   |Errors: $error""".stripMargin
             MDCLogger.warn(message)
-            project.logger.flatMap(_.err[IO](message)).as(project)
+            project.logError(message).as(project)
         }
         .merge
         .onError {
@@ -163,7 +163,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
               |Title: $title
               |Errors: $error""".stripMargin
         MDCLogger.warn(message)
-        project.logger.flatMap(_.err[IO](message)).as(as)
+        project.logError(message).as(as)
       }
 
       val updateTopicProgram =
@@ -233,7 +233,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
             content = Templates.versionRelease(project, version, version.description)
           )
         }
-        .leftSemiflatMap(error => project.logger.flatMap(_.err[IO](error)).as(version))
+        .leftSemiflatMap(error => project.logError(error).as(version))
         .semiflatMap(post => service.update(version)(_.copy(postId = Some(post.postId))))
         .merge
     }
@@ -263,7 +263,7 @@ abstract class OreDiscourseApi(val api: DiscourseApi[IO])(implicit cs: ContextSh
               |Title: $title
               |Errors: $error""".stripMargin
         MDCLogger.warn(message)
-        project.logger.flatMap(_.err[IO](message)).as(as)
+        project.logError(message).as(as)
       }
 
       val updatePostProgram = (content: String) =>

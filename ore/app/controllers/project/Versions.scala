@@ -366,7 +366,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               )
 
               // Check for pending project
-              this.factory.getPendingProject(author, slug) match {
+              val createVersion = this.factory.getPendingProject(author, slug) match {
                 case None =>
                   // No pending project, create version for existing project
                   getProject(author, slug).flatMap {
@@ -425,6 +425,11 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                     .productR(projects.refreshHomePage(MDCLogger))
                     .as(Redirect(ShowProject(author, slug)))
               }
+
+              newPendingVersion.exists.ifM(
+                IO.pure(Redirect(self.showCreator(author, slug)).withError("error.plugin.versionExists")),
+                createVersion
+              )
             }
           )
       }
