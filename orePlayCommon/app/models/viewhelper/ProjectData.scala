@@ -87,7 +87,7 @@ object ProjectData {
       project.user,
       project.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
-      project.logger.flatMap(_.entries(ModelView.now(ProjectLogEntry)).size),
+      project.loggerEntries(ModelView.now(ProjectLogEntry)).size,
       service.runDBIO(flagsWithNames.result),
       service.runDBIO(lastVisibilityChangeUserWithUser.result.headOption),
       project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[F, Model[Version]]).value

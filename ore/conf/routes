@@ -72,8 +72,6 @@ POST    /verify                                                     @controllers
 
 # ---------- Projects ----------
 
-GET     /p/:pluginId                                                @controllers.project.Projects.showProjectById(pluginId)
-
 GET     /new                                                        @controllers.project.Projects.showCreator()
 
 POST    /new/upload                                                 @controllers.project.Projects.upload()

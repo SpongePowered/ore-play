@@ -179,6 +179,8 @@ trait ProjectFactory {
     val metaData = plugin.data
     if (!metaData.id.contains(pluginId))
       Left("error.plugin.invalidPluginId")
+    else if (metaData.version.isEmpty)
+      Left("error.plugin.noVersion")
     else {
       // Create new pending version
       val path = plugin.path
