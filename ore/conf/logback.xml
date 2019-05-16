@@ -1,0 +1,71 @@
+<!--
+  ~ Copyright (C) 2009-2016 Lightbend Inc. <https://www.lightbend.com>
+  -->
+<!-- The default logback configuration that Play uses if no other configuration is provided -->
+<configuration>
+    <conversionRule conversionWord="coloredLevel" converterClass="play.api.libs.logback.ColoredLevel" />
+
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%d{HH:mm:ss.SSS}] %coloredLevel %logger{15} - %message%n%xException{10}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="AsyncConsole" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="Console" />
+    </appender>
+
+    <!-- Sentry -->
+    <appender name="Sentry" class="io.sentry.logback.SentryAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="Sentry" />
+        <appender-ref ref="AsyncConsole" />
+    </root>
+
+    <!-- Disables the security logger -->
+    <turboFilter class="ch.qos.logback.classic.turbo.MarkerFilter">
+        <Marker>SECURITY</Marker>
+        <OnMatch>DENY</OnMatch>
+    </turboFilter>
+
+    <!-- Shutdown gracefully -->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
+
+    <!-- Play -->
+    <logger name="play" level="INFO" />
+    <logger name="application" level="INFO" />
+    <logger name="slick" level="INFO" />
+    <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
+    <logger name="org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator" level="ERROR" />
+
+    <!-- Akka -->
+    <logger name="akka.http.impl.engine.client.PoolGateway" level="ERROR" />
+    <logger name="akka.io.InetAddressDnsResolver" level="ERROR" />
+
+    <!-- Ore loggers -->
+    <logger name="Bootstrap" level="INFO" />
+    <logger name="Discourse" level="INFO" />
+    <logger name="DiscourseApi" level="INFO" />
+    <logger name="Database"  level="INFO" />
+    <logger name="DataHelper" level="INFO" />
+    <logger name="Mailer" level="INFO" />
+    <logger name="SpongeAuth" level="INFO" />
+    <logger name="Permissions" level="INFO" />
+    <logger name="UserSync" level="INFO" />
+    <logger name="Organizations" level="INFO" />
+    <logger name="SSO" level="INFO" />
+    <logger name="ProjectTask" level="INFO" />
+    <logger name="DbUpdateTask" level="INFO" />
+    <logger name="UserTask" level="INFO" />
+    <logger name="ApiV2" level="INFO" />
+    <logger name="Projects" level="INFO" />
+    <logger name="Versions" level="INFO" />
+    <logger name="ProjectSettings" level="INFO" />
+    <logger name="ProjectFiles" level="INFO" />
+    <logger name="Pages" level="INFO" />
+</configuration>

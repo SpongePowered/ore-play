@@ -14,8 +14,11 @@ The following steps will ensure your project is cloned properly.
 
 ### Setup
 
-After cloning Ore, the first thing you will want to do is create a new PostgreSQL database for the application to use.
+After cloning Ore, the first thing you will want to do is create a new PostgreSQL 11 database for the application to use.
 This is required in order for Ore to run. Learn more about PostgreSQL [here](https://www.postgresql.org/).
+
+You will also need to enable a few extensions for Ore. These are:
+* [pgcrypto](https://www.postgresql.org/docs/11/pgcrypto.html)
 
 After setting up a database, create a copy of `conf/application.conf.template` named `conf/application.conf` and 
 configure the application. This file is in the `.gitignore` so it will not appear in your commits. In a typical 
@@ -30,18 +33,13 @@ Running Ore is relatively simple.
 
 **With SBT**
 * Download and install the latest [SBT](http://www.scala-sbt.org/download.html) version.
-* Execute `sbt run` in the project root.
+* Execute `sbt ore/run` in the project root.
 
 **With IntelliJ Community Edition**
 * Install the Scala plugin.
 * Import the `build.sbt` file.
-* Create a new SBT Task run configuration. Enter `run` in the Tasks field.
-* Run it.
-
-**With IntelliJ Ultimate Edition:**
-* Install the Scala plugin.
-* Import the `build.sbt` file.
-* Create a new Play 2 App run configuration.
+* Create a new SBT Task run configuration. Enter `ore/run` in the Tasks field.
+* Untick the box that says `Use sbt shell`
 * Run it.
 
 ### Using Hydra
