@@ -108,6 +108,12 @@ final class OreConfig @Inject()(config: Configuration) {
       val maxReviewTime: FiniteDuration = raw.getOptional[FiniteDuration]("max-review-time").getOrElse(1.day)
     }
 
+    object competitions extends ConfigCategory {
+      val raw: Configuration = ore.raw.get[Configuration]("competitions")
+      val dateFormat: String = raw.get[String]("date-format")
+      val nameMaxLen: Int    = raw.get[Int]("name-max-len")
+    }
+
     object api extends ConfigCategory {
       val raw: Configuration = ore.raw.get[Configuration]("api")
 
@@ -200,6 +206,7 @@ final class OreConfig @Inject()(config: Configuration) {
   ore.users.load()
   ore.orgs.load()
   ore.queue.load()
+  ore.competitions.load()
   ore.api.load()
   ore.api.session.load()
   forums.load()

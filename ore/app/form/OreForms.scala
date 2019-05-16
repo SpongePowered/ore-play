@@ -12,9 +12,11 @@ import play.api.data.{FieldMapping, Form, FormError, Mapping}
 
 import controllers.sugar.Requests.ProjectRequest
 import ore.db.impl.OrePostgresDriver.api._
+import form.project.competition.{CompetitionCreateForm, CompetitionSaveForm}
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
-import ore.models.project.{Channel, Page}
+import ore.models.competition.Competition
+import ore.models.project.{Channel, Page, Project}
 import ore.models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.db.access.ModelView
@@ -102,6 +104,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
         "roleUps"      -> list(text),
         "update-icon"  -> boolean,
         "owner"        -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo)),
+        "competition"  -> optional(longNumber.transform[DbRef[Competition]](i => i, i => i)),
         "forum-sync"   -> boolean
       )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply)
     )
@@ -220,6 +223,58 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
       "content"      -> optional(text),
       "forum-post"   -> boolean
     )(VersionData.apply)(VersionData.unapply)
+  )
+
+  private val dateFormat = this.config.ore.competitions.dateFormat
+
+  /**
+    * Submits a new [[Competition]].
+    */
+  lazy val CompetitionCreate = Form(
+    mapping(
+      "name"              -> nonEmptyText(0, this.config.ore.competitions.nameMaxLen),
+      "description"       -> optional(nonEmptyText),
+      "start-date"        -> localDateTime(this.dateFormat),
+      "end-date"          -> localDateTime(this.dateFormat),
+      "time-zone"         -> nonEmptyText,
+      "enable-voting"     -> default(boolean, false),
+      "staff-only"        -> default(boolean, false),
+      "show-vote-count"   -> default(boolean, false),
+      "sponge-only"       -> default(boolean, false),
+      "source-required"   -> default(boolean, false),
+      "default-votes"     -> default(number(0), 1),
+      "staff-votes"       -> default(number(0), 1),
+      "default-entries"   -> default(number(1), 1),
+      "max-entries-total" -> default(number(-1), -1)
+    )(CompetitionCreateForm.apply)(CompetitionCreateForm.unapply)
+      .verifying("error.competition.dates", _.checkDates(checkStart = true))
+  )
+
+  /**
+    * Saves a Competition.
+    */
+  lazy val CompetitionSave = Form(
+    mapping(
+      "start-date"        -> localDateTime(this.dateFormat),
+      "end-date"          -> localDateTime(this.dateFormat),
+      "time-zone"         -> nonEmptyText,
+      "enable-voting"     -> default(boolean, false),
+      "staff-only"        -> default(boolean, false),
+      "show-vote-count"   -> default(boolean, false),
+      "source-required"   -> default(boolean, false),
+      "default-votes"     -> default(number(0), 1),
+      "staff-votes"       -> default(number(0), 1),
+      "default-entries"   -> default(number(1), 1),
+      "max-entries-total" -> default(number(-1), -1)
+    )(CompetitionSaveForm.apply)(CompetitionSaveForm.unapply)
+      .verifying("error.competition.dates", _.checkDates(checkStart = false))
+  )
+
+  /**
+    * Submits a project to a competition.
+    */
+  lazy val CompetitionSubmitProject = Form(
+    single("project" -> longNumber(min = -1).transform[DbRef[Project]](i => i, i => i))
   )
 
   /**

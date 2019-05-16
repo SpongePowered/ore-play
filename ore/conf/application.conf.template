@@ -140,6 +140,11 @@ ore {
         max-review-time = 1d
     }
 
+    competitions {
+        name-max-len = 20
+        date-format = "yyyy-MM-dd'T'HH:mm"
+    }
+
     api {
         session {
             public-expiration = 3h

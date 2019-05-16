@@ -60,6 +60,8 @@ package object permission {
     val IsStaff          = Permission(1L << 26)
     val Reviewer         = Permission(1L << 27)
 
+    val EditCompetition = Permission(1L << 28)
+
     val ViewHealth = Permission(1L << 32)
     val ViewIp     = Permission(1L << 33)
     val ViewStats  = Permission(1L << 34)

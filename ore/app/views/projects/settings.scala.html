@@ -10,7 +10,8 @@
 @import ore.models.api.ProjectApiKey
 @import util.syntax._
 
-@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
+@import ore.models.competition.Competition
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]], competitions: Seq[Model[Competition]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -153,7 +154,22 @@
                         </div>
                     }
 
-                        <!-- Rename -->
+                                            <!-- Competition entry -->
+                    <div class="setting">
+                        <div class="setting-description">
+                            <h4>@messages("project.competitions")</h4>
+                            <p>@messages("project.competitions.info")</p>
+                        </div>
+                        <select class="form-control" form="save" name="competition">
+                            <option selected value="-1">@Html(messages("project.competitions.select"))</option>
+                            @competitions.map { competition =>
+                                <option value="@competition.id">@competition.name</option>
+                            }
+                        </select>
+                        <div class="clearfix"></div>
+                    </div>
+
+                    <!-- Rename -->
                     <div class="setting">
                         <div class="setting-description">
                             <h4 class="danger">@messages("project.rename")</h4>

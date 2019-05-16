@@ -7,7 +7,6 @@ import javax.inject.Inject
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
@@ -340,14 +339,6 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       .getOrElse(NotFound)
   }
 
-  private def showImage(path: Path) = {
-    val lastModified     = Files.getLastModifiedTime(path).toString.getBytes("UTF-8")
-    val lastModifiedHash = MessageDigest.getInstance("MD5").digest(lastModified)
-    val hashString       = Base64.getEncoder.encodeToString(lastModifiedHash)
-    Ok.sendPath(path)
-      .withHeaders(ETAG -> s""""$hashString"""", CACHE_CONTROL -> s"max-age=${1.hour.toSeconds.toString}")
-  }
-
   /**
     * Submits a flag on the specified project for further review.
     *
@@ -490,11 +481,9 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
-      request.project
-        .apiKeys(ModelView.now(ProjectApiKey))
-        .one
-        .value
-        .map(deployKey => Ok(views.settings(request.data, request.scoped, deployKey)))
+      request.project.apiKeys(ModelView.now(ProjectApiKey)).one.value.map { deployKey =>
+        Ok(views.settings(request.data, request.scoped, deployKey, request.headerData.activeCompetitions))
+      }
   }
 
   /**
@@ -589,31 +578,26 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return View of project
     */
-  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
+  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncEitherT {
     implicit request =>
-      orgasUserCanUploadTo(request.user).flatMap { organisationUserCanUploadTo =>
-        val data = request.data
-        this.forms
+      for {
+        organisationUserCanUploadTo <- EitherT.right[Result](orgasUserCanUploadTo(request.user))
+        formData <- forms
           .ProjectSave(organisationUserCanUploadTo.toSeq)
-          .bindFromRequest()
-          .fold(
-            FormErrorLocalized(self.showSettings(author, slug)).andThen(IO.pure),
-            formData => {
-              formData
-                .save(data.settings, data.project, MDCLogger)
-                .productR {
-                  UserActionLogger.log(
-                    request.request,
-                    LoggedAction.ProjectSettingsChanged,
-                    request.data.project.id,
-                    "",
-                    ""
-                  ) //todo add old new data
-                }
-                .as(Redirect(self.show(author, slug)))
-            }
-          )
-      }
+          .bindEitherT[IO](FormErrorLocalized(self.showSettings(author, slug)))
+        _ <- formData
+          .save(request.data.settings, request.project, MDCLogger)
+          .leftMap(errs => Redirect(self.showSettings(author, slug)).withErrors(errs.toList))
+        _ <- EitherT.right[Result](
+          UserActionLogger.log(
+            request.request,
+            LoggedAction.ProjectSettingsChanged,
+            request.data.project.id.value,
+            "",
+            ""
+          ) //todo add old new data
+        )
+      } yield Redirect(self.show(author, slug))
   }
 
   /**

@@ -1,0 +1,104 @@
+@import db.impl.access.CompetitionBase
+@import db.impl.access.UserBase
+@import ore.OreConfig
+@import _root_.views.html.projects.{list => projectList}
+@import db.impl.access.ProjectBase
+@import controllers.sugar.Requests.OreRequest
+@import ore.permission.Permission.EditCompetition
+
+@import views.html.helper.CSRF
+@import ore.models.competition.Competition
+@import ore.models.project.Project
+@import ore.models.user.User
+@import ore.models.project.Version
+@import ore.models.project.VersionTag
+@import ore.db.Model
+@import models.querymodels.ProjectListEntry
+
+@(competition: Model[Competition], models: Seq[ProjectListEntry], userProjects: Seq[Model[Project]], page: Int, pageSize: Long)(implicit messages: Messages, request: OreRequest[_],
+        config: OreConfig, competitions: CompetitionBase, flash: Flash)
+
+@compRoutes = @{
+    controllers.project.routes.Competitions
+}
+
+@hasBanner = @{
+    competitions.getBannerPath(competition).isDefined
+}
+
+@bootstrap.layout(messages("competition.title")) {
+
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/competition.js")"></script>
+    <script>competitionId = '@competition.id.value';</script>
+
+    <div class="container comp-container" style="margin-top: 90px;">
+        <div class="row">
+            @utils.alert("error")
+        </div>
+        <div class="row">
+            <div class="comp-header">
+                @if(request.headerData.globalPerm(EditCompetition)) {
+                    <div class="sponsor banner @if(hasBanner) { banner-some }">
+                        <input type="file" name="banner" style="display: none;"/>
+                        <div class="banner-edit">
+                            <a href="#" class="banner-upload">
+                                <i class="fa fa-edit"></i>
+                                @messages("competition.editBanner")
+                            </a>
+                        </div>
+
+                        @if(hasBanner) {
+                            <img class="banner-image" src="@compRoutes.showBanner(competition.id.value)" />
+                        } else {
+                            <div class="banner-none">
+                                <a href="#" class="banner-upload">
+                                    <i class="fa fa-plus"></i>
+                                    @messages("competition.addBanner")
+                                </a>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0"
+                                    aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                <h1>@competition.name</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="pull-right form-inline">
+                @helper.form(action = compRoutes.submitProject(competition.id.value)) {
+                    @CSRF.formField
+                    @if(userProjects.nonEmpty) {
+                        <select class="form-control" name="project">
+                            <option selected value="-1">@Html(messages("competition.submit.selectProject"))</option>
+                            @userProjects.map { project =>
+                                <option value="@project.id.value">@project.name</option>
+                            }
+                        </select>
+                    }
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa fa-plus"></i> @messages("competition.submit")
+                    </button>
+                }
+            </div>
+        </div>
+        <div class="row">
+            @if(models.nonEmpty) {
+                @projectList(
+                    models = models,
+                    page = page,
+                    pageSize = pageSize,
+                    call = i => compRoutes.showProjects(competition.id.value, Some(i)))
+            } else {
+                <div class="list-group-item">
+                    <p>@messages("competition.entries.empty")</p>
+                    <a href="#">@messages("competition.entries.empty.new")</a>
+                </div>
+            }
+        </div>
+    </div>
+
+}

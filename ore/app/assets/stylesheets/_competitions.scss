@@ -1,0 +1,117 @@
+.form-competition {
+  input[type="number"] { max-width: 40px; }
+  .setting-content {
+    text-align: right;
+  }
+}
+
+.header-competitions {
+  .btn { margin-top: 25px; }
+}
+
+.list-competitions {
+  .list-group-item {
+    margin-bottom: 10px;
+  }
+
+  .btn-results {
+    margin-top: 5px;
+    margin-right: 5px;
+  }
+
+  .counter {
+    color: gray;
+    font-weight: bold;
+  }
+
+  .competition-expand {
+    .down {
+      -webkit-transform: rotate(90deg);
+      -moz-transform: rotate(90deg);
+      -ms-transform: rotate(90deg);
+      -o-transform: rotate(90deg);
+      transform: rotate(90deg);
+    }
+
+    .fa-chevron-right {
+      font-size: 75%;
+      -webkit-transition: all 0.1s linear;
+      -moz-transition: all 0.1s linear;
+      -ms-transition: all 0.1s linear;
+      -o-transition: all 0.1s linear;
+      transition: all 0.1s linear;
+    }
+  }
+
+  .competition-drawer {
+    display: none;
+    z-index: -1;
+    height: 0;
+    width: 100%;
+    background-color: white;
+    border-top: 1px solid #ddd;
+
+    .col-drawer {
+      padding-top: 20px;
+      input[type="number"] { max-width: 40px; }
+      table td {
+        padding: 5px;
+      }
+    }
+
+    .row:last-child {
+      border-top: 1px solid #ddd;
+      padding: 10px;
+    }
+
+    .competition-delete {
+      position: absolute;
+      right: 15px;
+      top: 55px;
+    }
+
+    select[name="time-zone"] {
+      margin-top: 5px;
+    }
+  }
+
+}
+
+.comp-container .row:not(:last-child) {
+  margin-bottom: 20px;
+}
+
+.comp-header {
+  .banner {
+    position: relative;
+    line-height: 100px;
+    text-align: center;
+    font-size: 18px;
+
+    .progress {
+      margin-bottom: 0;
+      width: 100%;
+      border-radius: 0 0 4px 4px;
+      max-height: 10px;
+      visibility: hidden;
+      background-color: #ddd;
+    }
+
+    .banner-image {
+      width: 100%;
+    }
+
+    .banner-edit {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      top: 0;
+      a {
+        color: white;
+      }
+    }
+  }
+}

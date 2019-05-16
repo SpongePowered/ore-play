@@ -1,6 +1,6 @@
 package util
 
-import java.time.Instant
+import java.time.{Instant, LocalDateTime}
 
 import play.api.i18n.Messages
 
@@ -25,4 +25,7 @@ object StringFormatterUtils {
     */
   def prettifyDateAndTime(instant: Instant)(implicit messages: Messages): String =
     StringLocaleFormatterUtils.prettifyDateAndTime(instant)(messages.lang.locale)
+
+  def localDateTime2Instant(date: LocalDateTime, timeZone: String): Instant =
+    StringLocaleFormatterUtils.localDateTime2Instant(date, timeZone)
 }

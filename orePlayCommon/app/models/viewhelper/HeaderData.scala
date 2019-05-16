@@ -4,15 +4,18 @@ import scala.language.higherKinds
 
 import play.api.mvc.Request
 
+import db.impl.access.CompetitionBase
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema._
+import ore.models.competition.Competition
 import ore.models.project.{ReviewState, Visibility}
 import ore.models.user.User
 import ore.db.{DbRef, Model, ModelService}
 import ore.permission._
 import ore.permission.scope.GlobalScope
 
-import cats.{Functor, Monad}
+import cats.{Functor, Monad, Parallel}
 import cats.data.OptionT
 import cats.syntax.all._
 import slick.lifted.TableQuery
@@ -27,7 +30,8 @@ case class HeaderData(
     hasUnreadNotifications: Boolean = false,
     unresolvedFlags: Boolean = false,
     hasProjectApprovals: Boolean = false,
-    hasReviewQueue: Boolean = false // queue.nonEmpty
+    hasReviewQueue: Boolean = false, // queue.nonEmpty
+    activeCompetitions: Seq[Model[Competition]]
 ) {
 
   // Just some helpers in templates:
@@ -42,19 +46,28 @@ case class HeaderData(
 
 object HeaderData {
 
-  val unAuthenticated: HeaderData = HeaderData()
+  def unAuthenticated[F[_]](
+      implicit competitions: CompetitionBase,
+      service: ModelService[F],
+      F: Functor[F]
+  ): F[HeaderData] =
+    service
+      .runDBIO(competitions.active(ModelView.raw(Competition)).result)
+      .map(comps => HeaderData(activeCompetitions = comps))
 
   def cacheKey(user: Model[User]) = s"""user${user.id}"""
 
-  def of[F[_]](request: Request[_])(
-      implicit service: ModelService[F],
-      F: Monad[F]
+  def of[F[_], G[_]](request: Request[_])(
+      implicit competitions: CompetitionBase,
+      service: ModelService[F],
+      F: Monad[F],
+      par: Parallel[F, G]
   ): F[HeaderData] =
     OptionT
       .fromOption[F](request.cookies.get("_oretoken"))
       .flatMap(cookie => getSessionUser(cookie.value))
-      .semiflatMap(getHeaderData[F])
-      .getOrElse(unAuthenticated)
+      .semiflatMap(getHeaderData[F, G])
+      .getOrElseF(unAuthenticated)
 
   private def getSessionUser[F[_]](token: String)(implicit service: ModelService[F], F: Functor[F]) = {
     val query = for {
@@ -77,32 +90,37 @@ object HeaderData {
 
   private val flagQueue: Rep[Boolean] = TableQuery[FlagTable].filter(_.isResolved === false).exists
 
-  private def getHeaderData[F[_]](
+  private def getHeaderData[F[_], G[_]](
       user: Model[User]
-  )(implicit service: ModelService[F], F: Monad[F]) = {
-    user.permissionsIn(GlobalScope).flatMap { perms =>
-      val query = Query.apply(
-        (
-          TableQuery[NotificationTable].filter(n => n.userId === user.id.value && !n.read).exists,
-          if (perms.has(Permission.ModNotesAndFlags)) flagQueue else false.bind,
-          if (perms.has(Permission.ModNotesAndFlags ++ Permission.SeeHidden)) projectApproval(user)
-          else false.bind,
-          if (perms.has(Permission.Reviewer)) reviewQueue else false.bind
-        )
-      )
-
-      service.runDBIO(query.result.head).map {
-        case (unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>
-          HeaderData(
-            Some(user),
-            perms,
-            unreadNotif || unresolvedFlags || hasProjectApprovals || hasReviewQueue,
-            unreadNotif,
-            unresolvedFlags,
-            hasProjectApprovals,
-            hasReviewQueue
+  )(implicit service: ModelService[F], competitions: CompetitionBase, F: Monad[F], par: Parallel[F, G]) = {
+    (
+      user.permissionsIn(GlobalScope),
+      service.runDBIO(competitions.active(ModelView.raw(Competition)).result)
+    ).parTupled.flatMap {
+      case (perms, activeCompetitions) =>
+        val query = Query.apply(
+          (
+            TableQuery[NotificationTable].filter(n => n.userId === user.id.value && !n.read).exists,
+            if (perms.has(Permission.ModNotesAndFlags)) flagQueue else false.bind,
+            if (perms.has(Permission.ModNotesAndFlags ++ Permission.SeeHidden)) projectApproval(user)
+            else false.bind,
+            if (perms.has(Permission.Reviewer)) reviewQueue else false.bind
           )
-      }
+        )
+
+        service.runDBIO(query.result.head).map {
+          case (unreadNotif, unresolvedFlags, hasProjectApprovals, hasReviewQueue) =>
+            HeaderData(
+              Some(user),
+              perms,
+              unreadNotif || unresolvedFlags || hasProjectApprovals || hasReviewQueue,
+              unreadNotif,
+              unresolvedFlags,
+              hasProjectApprovals,
+              hasReviewQueue,
+              activeCompetitions
+            )
+        }
     }
   }
 }

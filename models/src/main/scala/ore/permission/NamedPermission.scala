@@ -31,6 +31,8 @@ object NamedPermission extends Enum[NamedPermission] {
   case object IsStaff          extends NamedPermission(Permission.IsStaff)
   case object Reviewer         extends NamedPermission(Permission.Reviewer)
 
+  case object EditCompetition extends NamedPermission(Permission.EditCompetition)
+
   case object ViewHealth extends NamedPermission(Permission.ViewHealth)
   case object ViewIp     extends NamedPermission(Permission.ViewIp)
   case object ViewStats  extends NamedPermission(Permission.ViewStats)

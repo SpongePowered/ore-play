@@ -1,0 +1,130 @@
+@import ore.models.user.User
+@import ore.permission.Permission
+@import ore.OreConfig
+@import controllers.sugar.Requests.OreRequest
+@import util.syntax._
+
+@(user: User)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+
+<li class="dropdown user-controls nav-icon">
+    <a href="#" class="drop-down-toggle user-toggle" data-toggle="dropdown">
+        @if(request.headerData.hasNotice) {
+            <span class="unread"></span>
+        }
+    <img height="32" width="32" class="user-avatar" src="@user.avatarUrl" />
+    <span class="caret"></span>
+    </a>
+    <ul class="user-dropdown dropdown-menu" aria-label="@messages("aria.dropdown.menu", 1)">
+        <li>
+            <a href="@routes.Users.showProjects(user.name, None)">
+                <i class="fas fa-user mr-1"></i>
+                <span>@user.name</span>
+            </a>
+        </li>
+
+        <li>
+            <a href="@routes.Users.showNotifications(None, None)">
+                <i class="fas fa-bell mr-1"></i>
+                <span>
+                    @messages("notification.plural")
+                    @if(request.headerData.hasUnreadNotifications) {
+                        <span class="unread"></span>
+                    }
+                </span>
+            </a>
+        </li>
+
+        @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
+            <li>
+                <a href="@routes.Application.showFlags()">
+                    <i class="fas fa-flag mr-1"></i>
+                    <span>
+                        @messages("project.flag.plural")
+                        @if(request.headerData.unresolvedFlags) {
+                            <span class="unread"></span>
+                        }
+                    </span>
+                </a>
+            </li>
+        }
+
+        @if(request.headerData.globalPerm(Permission.ModNotesAndFlags)) {
+            <li>
+                <a href="@routes.Application.showProjectVisibility()">
+                    <i class="fas fa-thumbs-up mr-1"></i>
+                    <span>
+                        Project approvals
+                        @if(request.headerData.hasProjectApprovals) {
+                            <span class="unread"></span>
+                        }
+                    </span>
+                </a>
+            </li>
+        }
+
+        @if(request.headerData.globalPerm(Permission.Reviewer)) {
+            <li>
+                <a href="@routes.Application.showQueue()">
+                    <i class="far fa-thumbs-up mr-1"></i>
+                    <span>
+                        @messages("user.queue")
+                        @if(request.headerData.hasReviewQueue) {
+                            <span class="unread"></span>
+                        }
+                    </span>
+                </a>
+            </li>
+        }
+
+
+        @if(request.headerData.globalPerm(Permission.EditCompetition)) {
+            <li>
+                <a href="@controllers.project.routes.Competitions.showManager()">
+                    <span class="pull-left">@messages("project.competition.plural")</span>
+                    <i class="pull-right fa fa-trophy"></i>
+                </a>
+            </li>
+        }
+
+        @if(request.headerData.globalPerm(Permission.ViewStats)) {
+            <li>
+                <a href="@routes.Application.showStats(None, None)">
+                    <i class="fas fa-chart-area mr-1"></i>
+                    <span>
+                    @messages("user.stats")
+                    </span>
+                </a>
+            </li>
+        }
+
+        @if(request.headerData.globalPerm(Permission.ViewHealth)) {
+            <li>
+                <a href="@routes.Application.showHealth()">
+                    <i class="fas fa-heartbeat mr-1"></i>
+                    <span>
+                    @messages("admin.health.title")
+                    </span>
+                </a>
+            </li>
+        }
+
+        @if(request.headerData.globalPerm(Permission.ViewLogs)) {
+            <li>
+                <a href="@routes.Application.showLog(None, None, None, None, None, None, None)">
+                    <i class="fas fa-list mr-1"></i>
+                    <span>
+                    @messages("admin.log.title")
+                    </span>
+                </a>
+            </li>
+        }
+
+        <li role="separator" class="divider"></li>
+        <li>
+            <a href="@routes.Users.logOut()">
+                <i class="fas fa-sign-out-alt mr-1"></i>
+                <span>@messages("general.signout")</span>
+            </a>
+        </li>
+    </ul>
+</li>

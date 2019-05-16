@@ -18,6 +18,12 @@ GET     /admin/activities/:user                                     @controllers
 GET     /admin/stats                                                @controllers.Application.showStats(from: Option[String], to: Option[String])
 GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[DbRef[User]], projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]], actionFilter: Option[Int], subjectFilter: Option[DbRef[_]])
 
+GET     /admin/competitions                                         @controllers.project.Competitions.showManager()
+GET     /admin/competitions/new                                     @controllers.project.Competitions.showCreator()
+POST    /admin/competitions/new                                     @controllers.project.Competitions.create()
+POST    /admin/competitions/:id/save                                @controllers.project.Competitions.save(id: DbRef[Competition])
+GET     /admin/competitions/:id/delete                              @controllers.project.Competitions.delete(id: DbRef[Competition])
+
 GET     /statusz                                                    @controllers.ApiV1Controller.showStatusZ()
 
 # ---------- API (v1) ----------
@@ -82,6 +88,13 @@ POST    /invite/:id/:status                                         @controllers
 POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String)
 
 POST    /pages/preview                                              @controllers.project.Pages.showPreview()
+
+# ---------- Competitions  ----------
+
+POST    /competitions/:id                                           @controllers.project.Competitions.submitProject(id: DbRef[Competition])
+GET     /competitions/:id                                           @controllers.project.Competitions.showProjects(id: DbRef[Competition], page: Option[Int])
+POST    /competitions/:id/banner                                    @controllers.project.Competitions.setBanner(id: DbRef[Competition])
+GET     /competitions/:id/banner                                    @controllers.project.Competitions.showBanner(id: DbRef[Competition])
 
 # ---------- Organizations ----------
 

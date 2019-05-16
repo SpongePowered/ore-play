@@ -4,6 +4,7 @@ import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
 
+import ore.models.competition.Competition
 import ore.models.api.ApiKey
 import ore.models.project.Project
 import ore.models.user.User
@@ -57,6 +58,11 @@ object Requests {
     MDC.put("currentOrgaName", orga.name)
   }
 
+  private def mdcPutCompetition(competition: Model[Competition]): Unit = {
+    MDC.put("currentCompetitionId", competition.id.toString)
+    MDC.put("currentCompetitionName", competition.name)
+  }
+
   private def mdcClear(): Unit = {
     MDC.remove("currentUserId")
     MDC.remove("currentUserName")
@@ -64,6 +70,8 @@ object Requests {
     MDC.remove("currentProjectSlug")
     MDC.remove("currentOrgaId")
     MDC.remove("currentOrgaName")
+    MDC.remove("currentCompetitionId")
+    MDC.remove("currentCompetitionName")
   }
 
   /**
@@ -210,5 +218,43 @@ object Requests {
   }
   object AuthedOrganizationRequest {
     implicit def hasScope: HasScope[AuthedOrganizationRequest[_]] = HasScope.orgScope(_.subject.id.value)
+  }
+
+  /**
+    * A request with a [[Competition]].
+    *
+    * @param competition  Competition
+    * @param request      Wrapped request
+    */
+  sealed class CompetitionRequest[A](
+      val competition: Model[Competition],
+      val headerData: HeaderData,
+      val request: Request[A]
+  ) extends WrappedRequest[A](request)
+      with OreRequest[A] {
+
+    override def logMessage(s: String): String = {
+      currentUser.foreach(mdcPutUser)
+      mdcPutCompetition(competition)
+      s
+    }
+  }
+
+  /**
+    * An authenticated request with a [[Competition]].
+    *
+    * @param competition  Competition
+    * @param request      Wrapped request
+    */
+  final case class AuthedCompetitionRequest[A](
+      override val competition: Model[Competition],
+      override val headerData: HeaderData,
+      override val request: AuthRequest[A]
+  ) extends CompetitionRequest(competition, headerData, request)
+      with ScopedRequest[A]
+      with OreRequest[A] {
+    type Subject = Model[Competition]
+    override def user: Model[User]           = request.user
+    override def subject: Model[Competition] = competition
   }
 }

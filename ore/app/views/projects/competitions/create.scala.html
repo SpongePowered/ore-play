@@ -1,0 +1,125 @@
+@import ore.OreConfig
+@import db.impl.access.UserBase
+@import views.html.helper.form
+@import java.util.Date
+@import controllers.sugar.Requests.OreRequest
+@import java.time.ZoneId
+@import scala.collection.JavaConverters._
+
+@import views.html.helper.CSRF
+@()(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+
+@bootstrap.layout(messages("project.competition.create.title")) {
+
+    <script>
+        $(function() {
+            var timezone = jstz.determine().name();
+            $('select[name="time-zone"]').find('option[value="' + timezone + '"]').prop('selected', true);
+            var now = new Date();
+            now.setDate(now.getDate() + 1);
+            $('input[name="start-date"]').attr('value', now.toJSON().slice(0, 10) + 'T00:00');
+            now.setDate(now.getDate() + 7);
+            $('input[name="end-date"]').attr('value', now.toJSON().slice(0, 10) + 'T00:00');
+        });
+    </script>
+
+    <div class="container" style="margin-top: 90px;">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">@messages("project.competition.create.title")</h3>
+                    </div>
+                    <div class="panel-body">
+
+                        @utils.alert("error")
+
+                        @form(action = controllers.project.routes.Competitions.create(),
+                            'class -> "form-competition") {
+                            @CSRF.formField
+                            <div class="setting setting-no-border">
+                                <h4>@messages("general.name")</h4>
+                                <input type="text" name="name" class="form-control" required
+                                       maxlength="@config.ore.competitions.nameMaxLen" />
+                            </div>
+
+                            <div class="setting setting-no-border">
+                                <h4>@messages("general.description")</h4>
+                                <input type="text" name="description" class="form-control" />
+                            </div>
+
+                            <div class="setting setting-no-border">
+                                <h4>@messages("project.competition.create.startDate")</h4>
+                                <input type="datetime-local" name="start-date" required />
+                            </div>
+
+                            <div class="setting setting-no-border">
+                                <h4>@messages("project.competition.create.endDate")</h4>
+                                <input type="datetime-local" name="end-date" required />
+                            </div>
+
+                            <div class="setting">
+                                <h4>@messages("project.competition.create.timeZone")</h4>
+                                <select name="time-zone" required>
+                                    @for(id <- ZoneId.getAvailableZoneIds.asScala.toList.sorted) {
+                                        <option value="@id">@id</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="setting">
+
+                                <div class="setting-description">
+                                    <label for="enable-voting">
+                                        @messages("project.competition.create.enableVoting")
+                                    </label><br />
+                                    <label for="staff-only">
+                                        @messages("project.competition.create.staffOnly")
+                                    </label><br/>
+                                    <label for="show-vote-count">
+                                        @messages("project.competition.create.showVoteCount")
+                                    </label><br/>
+                                    <label for="sponge-only">
+                                        @messages("project.competition.create.spongeOnly")
+                                    </label><br/>
+                                    <label for="source-required">
+                                        @messages("project.competition.create.sourceRequired")
+                                    </label><br/>
+                                    <label for="default-votes">
+                                        @messages("project.competition.create.defaultVotes")
+                                    </label><br/>
+                                    <label for="staff-votes">
+                                        @messages("project.competition.create.staffVotes")
+                                    </label><br/>
+                                    <label for="default-entries">
+                                        @messages("project.competition.create.defaultEntries")
+                                    </label><br/>
+                                    <label for="max-entries-total">
+                                        @messages("project.competition.create.maxEntriesTotal")
+                                    </label>
+                                </div>
+
+                                <div class="setting-content">
+                                    <input name="enable-voting" type="checkbox" checked value="true" /><br/>
+                                    <input name="staff-only" type="checkbox" value="true" /><br/>
+                                    <input name="show-vote-count" type="checkbox" checked value="true" /><br/>
+                                    <input name="sponge-only" type="checkbox" value="true" /><br/>
+                                    <input name="source-required" type="checkbox" value="true" /><br/>
+                                    <input name="default-votes" type="number" min="0" value="1" /><br/>
+                                    <input name="staff-votes" type="number" min="0" value="1" /><br />
+                                    <input name="default-entries" type="number" min="0" value="1"><br/>
+                                    <input name="max-entries-total" type="number" min="-1" value="1">
+                                </div>
+                                <div class="clearfix"></div>
+
+                            </div>
+
+                            <button type="submit" class="form-control pull-right">@messages("general.create")</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+}

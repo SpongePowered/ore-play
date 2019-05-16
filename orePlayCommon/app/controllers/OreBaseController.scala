@@ -2,7 +2,12 @@ package controllers
 
 import scala.language.higherKinds
 
+import java.nio.file.{Files, Path}
+import java.security.MessageDigest
+import java.util.Base64
+
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 import play.api.i18n.I18nSupport
 import play.api.mvc._
@@ -12,8 +17,9 @@ import controllers.sugar.{Actions, Bakery, Requests}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
 import ore.models.project.{Project, Version, Visibility}
+import ore.models.competition.Competition
 import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
+import ore.db.{DbRef, Model, ModelService}
 import ore.models.organization.Organization
 import ore.permission.Permission
 import ore.{OreConfig, OreEnv}
@@ -162,6 +168,24 @@ abstract class OreBaseController(
   }
 
   /**
+    * Retrieves a [[Competition]] and adds it to the request.
+    *
+    * @param id Competition ID
+    * @return   Request with competition
+    */
+  def CompetitionAction(id: DbRef[Competition]): ActionBuilder[Requests.CompetitionRequest, AnyContent] =
+    OreAction.andThen(competitionAction(id))
+
+  /**
+    * Authenticates and then adds a [[Competition]] to the request.
+    *
+    * @param id Competition ID
+    * @return   Authenticated request with competition
+    */
+  def AuthedCompetitionAction(id: DbRef[Competition]): ActionBuilder[Requests.AuthedCompetitionRequest, AnyContent] =
+    Authenticated.andThen(authedCompetitionAction(id))
+
+  /**
     * A request that ensures that a user has permission to edit a specified
     * profile.
     *
@@ -184,4 +208,12 @@ abstract class OreBaseController(
       sso: Option[String],
       sig: Option[String]
   ): ActionBuilder[AuthRequest, AnyContent] = UserEditAction(username).andThen(verifiedAction(sso, sig))
+
+  def showImage(path: Path): Result = {
+    val lastModified     = Files.getLastModifiedTime(path).toString.getBytes("UTF-8")
+    val lastModifiedHash = MessageDigest.getInstance("MD5").digest(lastModified)
+    val hashString       = Base64.getEncoder.encodeToString(lastModifiedHash)
+    Ok.sendPath(path)
+      .withHeaders(ETAG -> s""""$hashString"""", CACHE_CONTROL -> s"max-age=${1.hour.toSeconds.toString}")
+  }
 }

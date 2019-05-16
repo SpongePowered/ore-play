@@ -54,6 +54,7 @@ lazy val playCommonSettings = Seq(
     "ore.db.DbRef",
     "ore.models.admin._",
     "ore.models.project._",
+    "ore.models.competition._",
     "ore.models.user._",
     "ore.models.user.role._",
     "ore.permission.NamedPermission",
