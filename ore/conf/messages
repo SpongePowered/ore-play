@@ -80,6 +80,7 @@ error.nameUnavailable           =   That name is not available.
 error.noLogin                   =   Login is temporarily unavailable, please try again later.
 error.loginFailed               =   Authentication failed.
 error.project.invalidPluginFile =   Invalid plugin file.
+error.project.tooManyKeywords   =   Too many keywords specified.
 error.channel.last              =   You cannot delete your only channel.
 error.channel.lastNonEmpty      =   You cannot delete your only non-empty channel.
 error.channel.lastReviewed      =   You cannot delete your only reviewed channel.

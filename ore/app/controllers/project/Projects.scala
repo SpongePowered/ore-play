@@ -561,31 +561,27 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     * @param slug   Project slug
     * @return View of project
     */
-  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
+  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncEitherT {
     implicit request =>
-      orgasUserCanUploadTo(request.user).flatMap { organisationUserCanUploadTo =>
-        val data = request.data
-        this.forms
+      val data = request.data
+      for {
+        organisationUserCanUploadTo <- EitherT.right[Result](orgasUserCanUploadTo(request.user))
+        formData <- this.forms
           .ProjectSave(organisationUserCanUploadTo.toSeq)
-          .bindFromRequest()
-          .fold(
-            FormErrorLocalized(self.showSettings(author, slug)).andThen(IO.pure),
-            formData => {
-              formData
-                .save(data.settings, data.project, MDCLogger)
-                .productR {
-                  UserActionLogger.log(
-                    request.request,
-                    LoggedAction.ProjectSettingsChanged,
-                    request.data.project.id,
-                    "",
-                    ""
-                  ) //todo add old new data
-                }
-                .as(Redirect(self.show(author, slug)))
-            }
+          .bindEitherT[IO](FormErrorLocalized(self.showSettings(author, slug)))
+        _ <- formData
+          .save(data.settings, data.project, MDCLogger)
+          .leftMap(Redirect(self.showSettings(author, slug)).withError(_))
+        _ <- EitherT.right[Result](
+          UserActionLogger.log(
+            request.request,
+            LoggedAction.ProjectSettingsChanged,
+            request.data.project.id,
+            "",
+            ""
           )
-      }
+        )
+      } yield Redirect(self.show(author, slug))
   }
 
   /**

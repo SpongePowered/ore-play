@@ -17,9 +17,10 @@ import ore.util.OreMDC
 import ore.util.StringUtils.noneIfEmpty
 import util.syntax._
 
-import cats.data.NonEmptyList
+import cats.data.{EitherT, NonEmptyList}
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import cats.instances.either._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
@@ -42,7 +43,8 @@ case class ProjectSettingsForm(
     roleUps: List[String],
     updateIcon: Boolean,
     ownerId: Option[DbRef[User]],
-    forumSync: Boolean
+    forumSync: Boolean,
+    keywordsRaw: String
 ) extends TProjectRoleSetBuilder {
 
   def savePending(settings: ProjectSettings, project: PendingProject)(
@@ -98,7 +100,7 @@ case class ProjectSettingsForm(
       mdc: OreMDC,
       service: ModelService[IO],
       cs: ContextShift[IO]
-  ): IO[(Model[Project], Model[ProjectSettings])] = {
+  ): EitherT[IO, String, (Model[Project], Model[ProjectSettings])] = {
     import cats.instances.vector._
     logger.debug("Saving project settings")
     logger.debug(this.toString)
@@ -106,15 +108,29 @@ case class ProjectSettingsForm(
 
     val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
 
-    val updateProject = service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
-      service.update(project)(
-        _.copy(
-          category = Category.values.find(_.title == this.categoryName).get,
-          description = noneIfEmpty(this.description),
-          ownerId = newOwnerId,
-          ownerName = ownerName
+    val keywords = keywordsRaw.split(" ").iterator.map(_.trim).filter(_.nonEmpty).toList
+
+    val checkedKeywordsF = EitherT.fromEither[IO] {
+      if (keywords.length > 5)
+        Left("error.project.tooManyKeywords")
+      else if (keywords.exists(_.length > 32))
+        Left("error.maxLength")
+      else
+        Right(keywords)
+    }
+
+    val updateProject = checkedKeywordsF.semiflatMap { checkedKeywords =>
+      service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
+        service.update(project)(
+          _.copy(
+            category = Category.values.find(_.title == this.categoryName).get,
+            description = noneIfEmpty(this.description),
+            ownerId = newOwnerId,
+            ownerName = ownerName,
+            keywords = checkedKeywords
+          )
         )
-      )
+      }
     }
 
     val updateSettings = service.update(settings)(
@@ -129,9 +145,9 @@ case class ProjectSettingsForm(
       )
     )
 
-    val modelUpdates = (updateProject, updateSettings).parTupled
+    val modelUpdates = EitherT((updateProject.value, updateSettings.map(_.asRight[String])).parTupled.map(_.tupled))
 
-    modelUpdates.flatMap { t =>
+    modelUpdates.semiflatMap { t =>
       // Update icon
       if (this.updateIcon) {
         fileManager.getPendingIconPath(project).foreach { pendingPath =>
