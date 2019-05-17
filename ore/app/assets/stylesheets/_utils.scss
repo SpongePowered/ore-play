@@ -51,44 +51,26 @@ a > .fa {
 }
 
 @mixin no-box-shadow() {
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
   box-shadow: none;
 }
 
 @mixin box-shadow4($x, $y, $blur, $color) {
-  -webkit-box-shadow: $x, $y, $color;
-  -moz-box-shadow: $x, $y, $color;
   box-shadow: $x, $y, $color;
 }
 
 @mixin box-shadow5($x, $y, $blur, $color, $spread) {
-  -webkit-box-shadow: $x, $y, $color, $spread;
-  -moz-box-shadow: $x, $y, $color, $spread;
   box-shadow: $x, $y, $color, $spread;
 }
 
 @mixin transition2($attr, $time) {
-  -webkit-transition: $attr $time;
-  -moz-transition: $attr $time;
-  -ms-transition: $attr $time;
-  -o-transition: $attr $time;
   transition: $attr $time;
 }
 
 @mixin transition3($attr, $type, $time) {
-  -webkit-transition: $attr, $type $time;
-  -moz-transition: $attr, $type $time;
-  -ms-transition: $attr, $type $time;
-  -o-transition: $attr, $type $time;
   transition: $attr, $type $time;
 }
 
 @mixin transition6($attr, $type, $time, $attr1, $type1, $time1) {
-  -webkit-transition: $attr, $type $time, $attr1, $type1, $time1;
-  -moz-transition: $attr, $type $time, $attr1, $type1, $time1;
-  -ms-transition: $attr, $type $time, $attr1, $type1, $time1;
-  -o-transition: $attr, $type $time, $attr1, $type1, $time1;
   transition: $attr, $type $time, $attr1, $type1, $time1;
 }
 
