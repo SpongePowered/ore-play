@@ -64,7 +64,7 @@ lazy val playCommonSettings = Seq(
   unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test"),
   pipelineStages := Seq(digest, gzip),
   pipelineStages in Assets := Seq(autoprefixer),
-  autoPrefixerBrowsers in Assets := JS.Array("> 1%", "last 4 versions")
+  autoPrefixerBrowsers in Assets := JS.Array("> 1%", "last 4 versions", "Firefox ESR")
 )
 
 lazy val playTestDeps = Seq(
