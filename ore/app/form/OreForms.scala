@@ -112,8 +112,10 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     Form(
       mapping(
         "category"     -> text,
+        "homepage"     -> url,
         "issues"       -> url,
         "source"       -> url,
+        "support"      -> url,
         "license-name" -> text,
         "license-url"  -> url,
         "description"  -> text,

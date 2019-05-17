@@ -23,7 +23,7 @@ class SchemaSpec extends DbSpec {
   }
 
   test("Project settings") {
-    check(sql"""|SELECT project_id, homepage, issues, source, license_name, license_url,
+    check(sql"""|SELECT project_id, homepage, issues, source, support, license_name, license_url,
                 |forum_sync FROM project_settings""".stripMargin.query[ProjectSettings])
   }
 

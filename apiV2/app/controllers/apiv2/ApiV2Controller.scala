@@ -457,16 +457,10 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   private def readFileAsync(file: Path): IO[String] =
     IO.fromFuture(IO(FileIO.fromPath(file).fold(ByteString.empty)(_ ++ _).map(_.utf8String).runFold("")(_ + _)))
 
-  def deployVersion(pluginId: String, versionName: String): Action[MultipartFormData[Files.TemporaryFile]] =
+  def deployVersion(pluginId: String): Action[MultipartFormData[Files.TemporaryFile]] =
     ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncEitherT {
       implicit request =>
         type TempFile = MultipartFormData.FilePart[Files.TemporaryFile]
-        val checkAlreadyExists = EitherT(
-          ModelView
-            .now(Version)
-            .exists(_.versionString === versionName)
-            .ifM(IO.pure(Left(Conflict(UserError("Version already exists")))), IO.pure(Right(())))
-        )
 
         val acquire = OptionT(IO(request.body.file("plugin-info")))
         val use     = (filePart: TempFile) => OptionT.liftF(readFileAsync(filePart.ref))
@@ -502,7 +496,6 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
         for {
           user            <- EitherT.fromOption[IO](request.user, BadRequest(ApiError("No user found for session")))
-          _               <- checkAlreadyExists
           _               <- uploadErrors(user)
           project         <- projects.withPluginId(pluginId).toRight(NotFound: Result)
           projectSettings <- EitherT.right[Result](project.settings)
@@ -510,7 +503,10 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           file            <- fileF
           pendingVersion <- factory
             .processSubsequentPluginUpload(PluginUpload(file.ref, file.filename), user, project)
-            .leftMap(s => BadRequest(UserError(s)))
+            .leftMap { s =>
+              implicit val lang: Lang = user.langOrDefault
+              BadRequest(UserError(messagesApi(s)))
+            }
             .map { v =>
               v.copy(
                 createForumPost = data.create_forum_post.getOrElse(projectSettings.forumSync),
@@ -543,7 +539,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
             apiTags
           )
 
-          Ok(apiVersion.asProtocol)
+          Created(apiVersion.asProtocol)
         }
     }
 

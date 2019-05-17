@@ -29,6 +29,7 @@ case class APIV2QueryProject(
     homepage: Option[String],
     issues: Option[String],
     sources: Option[String],
+    support: Option[String],
     licenseName: Option[String],
     licenseUrl: Option[String],
     forumSync: Boolean
@@ -61,8 +62,10 @@ case class APIV2QueryProject(
       userWatching
     ),
     APIV2.ProjectSettings(
+      homepage,
       issues,
       sources,
+      support,
       APIV2.ProjectLicense(licenseName, licenseUrl),
       forumSync
     )

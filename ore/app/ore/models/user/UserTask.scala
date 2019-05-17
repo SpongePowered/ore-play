@@ -3,7 +3,7 @@ package ore.models.user
 import java.time.Instant
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 
 import play.api.inject.ApplicationLifecycle
@@ -31,7 +31,12 @@ class UserTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle:
 
   def start(): Unit = {
     Logger.info("DbUpdateTask starting")
-    this.actorSystem.scheduler.schedule(interval, interval, this)
+    val task = this.actorSystem.scheduler.schedule(interval, interval, this)
+    lifecycle.addStopHook { () =>
+      Future {
+        task.cancel()
+      }
+    }
     run()
   }
 

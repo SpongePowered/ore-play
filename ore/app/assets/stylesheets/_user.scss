@@ -49,10 +49,6 @@
 
   .action-lock-account:hover, .action-api svg:hover, .user-settings svg:hover {
     background-color: gray;
-    -webkit-transition: all 0.5s ease;
-    -moz-transition: all 0.5s ease;
-    -ms-transition: all 0.5s ease;
-    -o-transition: all 0.5s ease;
     transition: all 0.5s ease;
   }
 
@@ -204,10 +200,6 @@
 .dismiss:hover {
   color: white;
   background-color: gray;
-  -webkit-transition: all .2s ease-out;
-  -moz-transition: all .2s ease-out;
-  -ms-transition: all .2s ease-out;
-  -o-transition: all .2s ease-out;
   transition: all .2s ease-out;
 }
 

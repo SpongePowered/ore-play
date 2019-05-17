@@ -204,34 +204,6 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     }
 
   /**
-    * Redirect's to the project's issue tracker if any.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Issue tracker
-    */
-  def showIssues(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug) { implicit request =>
-    request.data.settings.issues match {
-      case None       => notFound
-      case Some(link) => Redirect(controllers.routes.Application.linkOut(link))
-    }
-  }
-
-  /**
-    * Redirect's to the project's source code if any.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Source code
-    */
-  def showSource(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug) { implicit request =>
-    request.data.settings.source match {
-      case None       => notFound
-      case Some(link) => Redirect(controllers.routes.Application.linkOut(link))
-    }
-  }
-
-  /**
     * Shows either a customly uploaded icon for a [[ore.models.project.Project]]
     * or the owner's avatar if there is none.
     *

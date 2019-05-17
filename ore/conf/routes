@@ -130,9 +130,6 @@ GET     /:author/:slug/flags                                        @controllers
 GET     /:author/:slug/notes                                        @controllers.project.Projects.showNotes(author, slug)
 POST    /:author/:slug/notes/addmessage                             @controllers.project.Projects.addMessage(author, slug)
 
-GET     /:author/:slug/issues                                       @controllers.project.Projects.showIssues(author, slug)
-GET     /:author/:slug/source                                       @controllers.project.Projects.showSource(author, slug)
-
 GET     /:author/:slug/icon                                         @controllers.project.Projects.showIcon(author, slug)
 POST    /:author/:slug/icon                                         @controllers.project.Projects.uploadIcon(author, slug)
 POST    /:author/:slug/icon/reset                                   @controllers.project.Projects.resetIcon(author, slug)

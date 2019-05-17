@@ -28,8 +28,10 @@ import slick.lifted.TableQuery
   */
 case class ProjectSettingsForm(
     categoryName: String,
+    homepage: String,
     issues: String,
     source: String,
+    support: String,
     licenseName: String,
     licenseUrl: String,
     description: String,
@@ -68,8 +70,10 @@ case class ProjectSettingsForm(
 
     val updateSettings = service.update(settings)(
       _.copy(
+        homepage = noneIfEmpty(this.homepage),
         issues = noneIfEmpty(this.issues),
         source = noneIfEmpty(this.source),
+        support = noneIfEmpty(this.support),
         licenseUrl = noneIfEmpty(this.licenseUrl),
         licenseName = if (this.licenseUrl.nonEmpty) Some(this.licenseName) else settings.licenseName,
         forumSync = this.forumSync

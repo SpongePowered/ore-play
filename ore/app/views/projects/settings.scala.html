@@ -65,8 +65,10 @@
                 <div class="panel-body">
                     @projects.helper.inputSettings(
                         form = "save",
+                        homepage = p.settings.homepage,
                         issues = p.settings.issues,
                         source = p.settings.source,
+                        support = p.settings.support,
                         licenseName = p.settings.licenseName,
                         licenseUrl = p.settings.licenseUrl,
                         selected = Some(p.project.category),

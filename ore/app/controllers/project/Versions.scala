@@ -350,7 +350,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 description = versionData.content
               )
 
-              getProject(author, slug).flatMap {
+              val createVersion = getProject(author, slug).flatMap {
                 project =>
                   project
                     .channels(ModelView.now(Channel))
@@ -397,6 +397,11 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                     }
                     .leftMap(Redirect(self.showCreatorWithMeta(author, slug, versionString)).withErrors(_))
               }.merge
+
+              newPendingVersion.exists.ifM(
+                IO.pure(Redirect(self.showCreator(author, slug)).withError("error.plugin.versionExists")),
+                createVersion
+              )
             }
           )
       }

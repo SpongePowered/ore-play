@@ -65,8 +65,10 @@ object APIV2 {
   @ConfiguredJsonCodec case class ProjectStats(views: Long, downloads: Long, stars: Long)
   @ConfiguredJsonCodec case class UserActions(starred: Boolean, watching: Boolean)
   @ConfiguredJsonCodec case class ProjectSettings(
+      homepage: Option[String],
       issues: Option[String],
       sources: Option[String],
+      support: Option[String],
       license: ProjectLicense,
       forum_sync: Boolean
   )
