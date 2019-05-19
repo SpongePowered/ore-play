@@ -24,9 +24,8 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Environment (please complete the following information):**
- - Device Type [desktop / mobile]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+ - Operating System & Version [e.g. iOS, android, windows, ubuntu, macos]
+ - Browser & Version [e.g. chrome, firefox, safari]
 
 **Additional context**
 Add any other context about the problem here.
