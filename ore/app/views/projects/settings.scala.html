@@ -13,7 +13,7 @@
 @import util.syntax._
 
 @(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash,
-        request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer, projectBase: ProjectBase, mdc: OreMDC)
+        request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer, projectBase: ProjectBase)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

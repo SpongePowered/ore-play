@@ -20,6 +20,31 @@ var visibilityCssClasses = {
     softDelete: "striped project-hidden"
 };
 
+var categoryIcons = {
+    admin_tools: "fa-server",
+    chat: "fa-comment",
+    dev_tools: "fa-wrench",
+    economy: "fa-money-bill-alt",
+    gameplay: "fa-puzzle-piece",
+    games: "fa-gamepad",
+    protection: "fa-lock",
+    role_playing: "fa-magic",
+    world_management: "fa-globe",
+    misc: "fa-asterisk"
+};
+
+var NUM_SUFFIXES = ["", "k", "m"];
+
+
+//=====> HELPER FUNCTIONS
+
+function abbreviateStat(stat) {
+    stat = stat.toString().trim();
+    if (parseInt(stat) < 1000) return stat;
+    var suffix = NUM_SUFFIXES[Math.min(2, Math.floor(stat.length / 3))];
+    return stat[0] + '.' + stat[1] + suffix;
+}
+
 function icon(faName) {
     return $('<i>').addClass(faName);
 }
@@ -169,129 +194,138 @@ function loadProjects(increment, scrollTop, pushHistory) {
         var projectList = $('.project-list');
         projectList.empty();
 
-        response.result.forEach(function (project) {
+        var totalProjects = response.pagination.count;
+
+        if(totalProjects > 0) {
+            response.result.forEach(function (project) {
+                var element = $("<li class='list-group-item project'>");
+                projectList.append(element);
+
+                var visibility = project.visibility;
+                if (visibilityCssClasses[visibility]) {
+                    element.addClass(visibilityCssClasses[visibility]);
+                }
+
+                var container = $("<div class='container-fluid'>");
+                element.append(container);
+
+                var row = $("<div class='row'>");
+                container.append(row);
+
+                var iconCol = $("<div class='col-xs-12 col-sm-1'>");
+                row.append(iconCol);
+
+                var iconLink = $("<a>");
+                iconLink.attr("href", '/' + project.namespace.owner);
+                iconCol.append(iconLink);
+
+                var iconImage = $("<img class='user-avatar user-avatar-sm'>");
+                iconImage.attr("src", project.icon_url);
+                iconLink.append(iconImage);
+
+                var projectContent = $("<div class='col-xs-12 col-sm-11'>");
+                row.append(projectContent);
+
+                var infoRow = $("<div class='row'>");
+                projectContent.append(infoRow);
+
+                var titleCol = $("<div class='col-sm-6'>");
+                infoRow.append(titleCol);
+
+                var titleLink = $("<a class='title'>");
+                titleLink.attr("href", '/' + project.namespace.owner + '/' + project.namespace.slug);
+                titleLink.text(project.name);
+                titleCol.append(titleLink);
+
+                var infoCol = $("<div class='col-sm-6 hidden-xs'>");
+                infoRow.append(infoCol);
+
+                var info = $("<div class='info minor'>");
+                infoCol.append(info);
+
+                if (project.recommended_version) {
+                    var recommended = $("<span class='stat recommended-version' title='Recommended version'>");
+                    info.append(recommended);
+
+                    recommended.append(icon('far fa-gem'));
+
+                    var recommendedLink = $("<a>");
+                    recommendedLink.attr("href", '/' + project.namespace.owner + '/' + project.namespace.slug + '/versions/' + project.recommended_version.version);
+                    recommendedLink.text(project.recommended_version.version);
+                    recommended.append(recommendedLink);
+                }
+
+                function stat(title, faName, text) {
+                    var statSpan = $('<span class="stat">');
+                    statSpan.attr("title", title);
+                    statSpan.append(icon(faName));
+
+                    if (text !== undefined) {
+                        statSpan.append(abbreviateStat(text));
+                    }
+
+                    return statSpan;
+                }
+
+                info.append(stat('Views', 'fas fa-eye', project.stats.views));
+                info.append(stat('Downloads', 'fas fa-download', project.stats.downloads));
+                info.append(stat('Stars', 'fas fa-star', project.stats.stars));
+                info.append(stat(project.category, 'fas ' + categoryIcons[project.category]));
+
+                var textRow = $("<div class='row'>");
+                projectContent.append(textRow);
+
+                var descriptionCol = $("<div class='col-sm-7 description-column'>");
+                textRow.append(descriptionCol);
+
+                var description = $("<div class='description'>");
+                descriptionCol.append(description);
+
+                if (project.description) {
+                    description.text(project.description);
+                } else {
+                    description.text("");
+                }
+
+                var tagLine = $("<div class='col-xs-12 col-sm-5 tags-line'>");
+                textRow.append(tagLine);
+
+                if (project.recommended_version) {
+                    for (var tag of project.recommended_version.tags) {
+                        if (tag.name !== 'Channel') {
+                            var tagContainer = $("<div class='tags'>");
+                            if (tag.data) {
+                                tagContainer.addClass("has-addons");
+                            }
+
+                            var tagElement = $("<span class='tag'>");
+                            tagElement.text(tag.name);
+                            tagElement.css("background", tag.color.background);
+                            tagElement.css("border-color", tag.color.background);
+                            tagElement.css("color", tag.color.foreground);
+                            tagContainer.append(tagElement);
+
+                            if (tag.data) {
+                                var tagDataElement = $("<span class='tag'>");
+                                tagDataElement.text(tag.data);
+                                tagContainer.append(tagDataElement);
+                            }
+
+                            tagLine.append(tagContainer);
+                        }
+                    }
+                }
+            });
+        }
+        else {
             var element = $("<li class='list-group-item project'>");
             projectList.append(element);
 
-            var visibility = project.visibility;
-            if (visibilityCssClasses[visibility]) {
-                element.addClass(visibilityCssClasses[visibility]);
-            }
-
-            var container = $("<div class='container-fluid'>");
+            var container = $("<div class='container-fluid'>").text("No projects found for your query");
             element.append(container);
-
-            var row = $("<div class='row'>");
-            container.append(row);
-
-            var iconCol = $("<div class='col-xs-12 col-sm-1'>");
-            row.append(iconCol);
-
-            var iconLink = $("<a>");
-            iconLink.attr("href", '/' + project.namespace.owner);
-            iconCol.append(iconLink);
-
-            var iconImage = $("<img class='user-avatar user-avatar-sm'>");
-            iconImage.attr("src", project.icon_url);
-            iconLink.append(iconImage);
-
-            var projectContent = $("<div class='col-xs-12 col-sm-11'>");
-            row.append(projectContent);
-
-            var infoRow = $("<div class='row'>");
-            projectContent.append(infoRow);
-
-            var titleCol = $("<div class='col-sm-6'>");
-            infoRow.append(titleCol);
-
-            var titleLink = $("<a class='title'>");
-            titleLink.attr("href", '/' + project.namespace.owner + '/' + project.namespace.slug);
-            titleLink.text(project.name);
-            titleCol.append(titleLink);
-
-            var infoCol = $("<div class='col-sm-6 hidden-xs'>");
-            infoRow.append(infoCol);
-
-            var info = $("<div class='info minor'>");
-            infoCol.append(info);
-
-            if (project.recommended_version) {
-                var recommended = $("<span class='stat recommended-version' title='Recommended version'>");
-                info.append(recommended);
-
-                recommended.append(icon('far fa-gem'));
-
-                var recommendedLink = $("<a>");
-                recommendedLink.attr("href", '/' + project.namespace.owner + '/' + project.namespace.slug + '/versions/' + project.recommended_version.version);
-                recommendedLink.text(project.recommended_version.version);
-                recommended.append(recommendedLink);
-            }
-
-            function stat(title, faName, text) {
-                var statSpan = $('<span class="stat">');
-                statSpan.attr("title", title);
-                statSpan.append(icon(faName));
-
-                if (text !== undefined) {
-                    statSpan.append(text);
-                }
-
-                return statSpan;
-            }
-
-            info.append(stat('Views', 'fas fa-eye', project.stats.views));
-            info.append(stat('Downloads', 'fas fa-download', project.stats.downloads));
-            info.append(stat('Stars', 'fas fa-star', project.stats.stars));
-            info.append(stat(project.category, 'fas fa-star'));
-
-            var textRow = $("<div class='row'>");
-            projectContent.append(textRow);
-
-            var descriptionCol = $("<div class='col-sm-7 description-column'>");
-            textRow.append(descriptionCol);
-
-            var description = $("<div class='description'>");
-            descriptionCol.append(description);
-
-            if (project.description) {
-                description.text(project.description);
-            } else {
-                description.text("");
-            }
-
-            var tagLine = $("<div class='col-xs-12 col-sm-5 tags-line'>");
-            textRow.append(tagLine);
-
-            if (project.recommended_version) {
-                for (var tag of project.recommended_version.tags) {
-                    if (tag.name !== 'Channel') {
-                        var tagContainer = $("<div class='tags'>");
-                        if (tag.data) {
-                            tagContainer.addClass("has-addons");
-                        }
-
-                        var tagElement = $("<span class='tag'>");
-                        tagElement.text(tag.name);
-                        tagElement.css("background", tag.color.background);
-                        tagElement.css("border-color", tag.color.background);
-                        tagElement.css("color", tag.color.foreground);
-                        tagContainer.append(tagElement);
-
-                        if (tag.data) {
-                            var tagDataElement = $("<span class='tag'>");
-                            tagDataElement.text(tag.data);
-                            tagContainer.append(tagDataElement);
-                        }
-
-                        tagLine.append(tagContainer);
-                    }
-                }
-            }
-        });
+        }
 
         // Sets the new page number
-
-        var totalProjects = response.pagination.count;
 
         if (!query && categories.length === 0 && tags.length === 0) {
             $('#searchQuery').attr("placeholder", 'Search in ' + totalProjects + ' projects, proudly made by the community...');
