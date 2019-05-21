@@ -23,6 +23,10 @@
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/channelManage.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pluginUpload.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDetail.js")"></script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/versionCreateChannelNew.js")"></script>
+    <script @CSPNonce.attr>
+            DEFAULT_COLOR = '@config.defaultChannelColor.hex';
+    </script>
 }
 
 @bootstrap.layout(messages("version.create.pageTitle"), scripts) {
@@ -83,9 +87,6 @@
                                                 <i id="channel-new" class="fas fa-plus" data-toggle="modal"
                                                 data-target="#channel-settings"></i>
                                             </a>
-                                            <script type="text/javascript"
-                                            src="@routes.Assets.versioned("javascripts/versionCreateChannelNew.js")"></script>
-                                            <script @CSPNonce.attr>DEFAULT_COLOR = '@config.defaultChannelColor.hex';</script>
                                         </td>
                                     </tr>
                                     <tr>
