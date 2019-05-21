@@ -137,14 +137,6 @@ abstract class OreBaseController(
     first.andThen(authedProjectAction(author, slug))
   }
 
-  def AuthedProjectActionById(
-      pluginId: String,
-      requireUnlock: Boolean = true
-  ): ActionBuilder[AuthedProjectRequest, AnyContent] = {
-    val first = if (requireUnlock) UserLock(ShowProject(pluginId)) else Authenticated
-    first.andThen(authedProjectActionById(pluginId))
-  }
-
   /**
     * Retrieves an [[Organization]] and adds it to the request.
     *

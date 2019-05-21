@@ -318,7 +318,7 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #          plugin-info:
 #            contentType: application/json, application/octet-stream
 #  responses:
-#    200:
+#    201:
 #      description: Ok
 #      content:
 #        application/json:
@@ -331,7 +331,7 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-POST    /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.deployVersion(pluginId, name)
+POST    /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.deployVersion(pluginId)
 
 #GET     /projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
 

@@ -1,7 +1,9 @@
 @import ore.data.project.Category
 @(form: String,
+  homepage: Option[String] = None,
   issues: Option[String] = None,
   source: Option[String] = None,
+  support: Option[String] = None,
   licenseName: Option[String] = None,
   licenseUrl: Option[String] = None,
   selected: Option[Category] = None,
@@ -33,6 +35,19 @@
 
 <div class="setting">
     <div class="setting-description">
+        <h4>Homepage <i>(optional)</i></h4>
+        <p>
+            Having a custom homepage for your project helps you look more proper, official, and gives you another place
+            to gather information about your project.
+        </p>
+    </div>
+    <input @if(homepage.isDefined) { value="@homepage.get" } form="@form" type="url" class="form-control" id="homepage"
+    name="homepage" placeholder="https://spongepowered.org" />
+    <div class="clearfix"></div>
+</div>
+
+<div class="setting">
+    <div class="setting-description">
         <h4>Issue tracker <i>(optional)</i></h4>
         <p>
             Providing an issue tracker helps your users get support more easily and provides you with an easy way to
@@ -51,6 +66,19 @@
     </div>
     <input @if(source.isDefined) { value="@source.get" } form="@form" type="url" class="form-control" id="source"
            name="source" placeholder="https://github.com/SpongePowered/SpongeAPI" />
+</div>
+
+<div class="setting">
+    <div class="setting-description">
+        <h4>External support <i>(optional)</i></h4>
+        <p>
+            An external place where you can offer support to your users. Could be a forum, a Discord server, or
+            somewhere else.
+        </p>
+    </div>
+    <input @if(support.isDefined) { value="@support.get" } form="@form" type="url" class="form-control" id="support"
+    name="support" placeholder="https://discord.gg/sponge" />
+    <div class="clearfix"></div>
 </div>
 
 <div class="setting">

@@ -72,8 +72,6 @@ POST    /verify                                                     @controllers
 
 # ---------- Projects ----------
 
-GET     /p/:pluginId                                                @controllers.project.Projects.showProjectById(pluginId)
-
 GET     /new                                                        @controllers.project.Projects.showCreator()
 
 POST    /new/upload                                                 @controllers.project.Projects.upload()
@@ -136,9 +134,6 @@ GET     /:author/:slug/versionLog                                   @controllers
 GET     /:author/:slug/flags                                        @controllers.project.Projects.showFlags(author, slug)
 GET     /:author/:slug/notes                                        @controllers.project.Projects.showNotes(author, slug)
 POST    /:author/:slug/notes/addmessage                             @controllers.project.Projects.addMessage(author, slug)
-
-GET     /:author/:slug/issues                                       @controllers.project.Projects.showIssues(author, slug)
-GET     /:author/:slug/source                                       @controllers.project.Projects.showSource(author, slug)
 
 GET     /:author/:slug/icon                                         @controllers.project.Projects.showIcon(author, slug)
 POST    /:author/:slug/icon                                         @controllers.project.Projects.uploadIcon(author, slug)

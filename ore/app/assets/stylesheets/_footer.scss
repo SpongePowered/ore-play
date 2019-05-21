@@ -49,7 +49,7 @@
           animation-iteration-count: infinite;
         }
 
-        @-webkit-keyframes bounce {
+        @keyframes bounce {
           0%, 100% {
             transform: rotateZ(0);
           }

@@ -250,18 +250,6 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
   }
 
   /**
-    * Shortcut for navigating to a project.
-    *
-    * @param pluginId Project pluginId
-    * @return Redirect to project page.
-    */
-  def showProjectById(pluginId: String): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    projects.withPluginId(pluginId).fold(notFound) { project =>
-      Redirect(self.show(project.ownerName, project.slug))
-    }
-  }
-
-  /**
     * Displays the "discussion" tab within a Project view.
     *
     * @param author Owner of project
@@ -302,34 +290,6 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         } yield Redirect(self.showDiscussion(author, slug)).withErrors(errors.toList)
       }
     }
-
-  /**
-    * Redirect's to the project's issue tracker if any.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Issue tracker
-    */
-  def showIssues(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug) { implicit request =>
-    request.data.settings.issues match {
-      case None       => notFound
-      case Some(link) => Redirect(controllers.routes.Application.linkOut(link))
-    }
-  }
-
-  /**
-    * Redirect's to the project's source code if any.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Source code
-    */
-  def showSource(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug) { implicit request =>
-    request.data.settings.source match {
-      case None       => notFound
-      case Some(link) => Redirect(controllers.routes.Application.linkOut(link))
-    }
-  }
 
   /**
     * Shows either a customly uploaded icon for a [[ore.models.project.Project]]
@@ -744,15 +704,13 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
   }
 
-  def showLog(author: String, slug: String): Action[AnyContent] = {
+  def showLog(author: String, slug: String): Action[AnyContent] =
     Authenticated.andThen(PermissionAction(Permission.ViewLogs)).andThen(ProjectAction(author, slug)).asyncF {
       implicit request =>
-        for {
-          logger <- request.project.logger
-          logs   <- service.runDBIO(logger.entries(ModelView.raw(ProjectLogEntry)).result)
-        } yield Ok(views.log(request.project, logs))
+        service
+          .runDBIO(request.project.loggerEntries(ModelView.raw(ProjectLogEntry)).result)
+          .map(logs => Ok(views.log(request.project, logs)))
     }
-  }
 
   /**
     * Irreversibly deletes the specified project.

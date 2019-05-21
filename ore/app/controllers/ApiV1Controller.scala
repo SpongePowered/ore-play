@@ -12,6 +12,7 @@ import play.api.libs.json._
 import play.api.mvc._
 
 import controllers.sugar.Bakery
+import controllers.sugar.Requests.AuthedProjectRequest
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ProjectApiKeyTable
 import form.OreForms
@@ -58,6 +59,11 @@ final class ApiV1Controller @Inject()(
     sso: SingleSignOnConsumer,
 ) extends OreBaseController
     with OreWrites {
+
+  def AuthedProjectActionById(
+      pluginId: String
+  ): ActionBuilder[AuthedProjectRequest, AnyContent] =
+    UserLock(ShowHome).andThen(authedProjectActionById(pluginId))
 
   val files = new ProjectFiles(this.env)
 

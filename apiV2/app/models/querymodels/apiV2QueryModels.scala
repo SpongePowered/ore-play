@@ -36,15 +36,23 @@ case class APIV2QueryProject(
     homepage: Option[String],
     issues: Option[String],
     sources: Option[String],
+    support: Option[String],
     licenseName: Option[String],
     licenseUrl: Option[String],
     forumSync: Boolean
 ) {
-  def asProtocol(implicit projectBase: ProjectBase, requestHeader: RequestHeader, mdc: OreMDC, config: OreConfig): APIV2.Project = {
+
+  def asProtocol(
+      implicit projectBase: ProjectBase,
+      requestHeader: RequestHeader,
+      mdc: OreMDC,
+      config: OreConfig
+  ): APIV2.Project = {
     val iconPath = projectBase.fileManager.getIconPath(namespace.ownerName, name)
-    val iconUrl = if (iconPath.isDefined)
-      controllers.project.routes.Projects.showIcon(namespace.ownerName, namespace.slug).absoluteURL()
-    else User.avatarUrl(namespace.ownerName)
+    val iconUrl =
+      if (iconPath.isDefined)
+        controllers.project.routes.Projects.showIcon(namespace.ownerName, namespace.slug).absoluteURL()
+      else User.avatarUrl(namespace.ownerName)
 
     APIV2.Project(
       createdAt,
@@ -74,8 +82,10 @@ case class APIV2QueryProject(
         userWatching
       ),
       APIV2.ProjectSettings(
+        homepage,
         issues,
         sources,
+        support,
         APIV2.ProjectLicense(licenseName, licenseUrl),
         forumSync
       ),
