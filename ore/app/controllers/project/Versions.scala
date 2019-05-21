@@ -227,6 +227,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         Ok(
           views.create(
             project.name,
+            project.pluginId,
             project.slug,
             project.ownerName,
             project.description,
@@ -292,7 +293,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .semiflatMap {
           case (pendingVersion, project) =>
             val projectData = project.settings.map { settings =>
-              (project.name, project.slug, project.ownerName, project.description, settings.forumSync)
+              (project.name, project.pluginId, project.slug, project.ownerName, project.description, settings.forumSync)
             }
             (service.runDBIO(project.channels(ModelView.raw(Channel)).result), projectData)
               .parMapN((channels, data) => (channels, data, pendingVersion))
@@ -300,12 +301,13 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .map {
           case (
               channels,
-              (projectName, projectSlug, ownerName, projectDescription, forumSync),
+              (projectName, pluginId, projectSlug, ownerName, projectDescription, forumSync),
               pendingVersion
               ) =>
             Ok(
               views.create(
                 projectName,
+                pluginId,
                 projectSlug,
                 ownerName,
                 projectDescription,
