@@ -219,9 +219,6 @@
 
             <!-- Side panel -->
         <div class="col-md-4">
-            <div class="alert alert-danger" role="alert" @if(flash.get("error").isEmpty) { style="display: none;" }>
-                <strong>Whoops!</strong> <span>@flash.get("error").getOrElse("")</span>
-            </div>
             @users.memberList(p,
                 editable = true,
                 perms = sp.permissions,
