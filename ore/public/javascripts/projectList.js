@@ -165,6 +165,13 @@ window.onpopstate = function () {
 };
 
 function loadProjects(increment, scrollTop, pushHistory) {
+    $(".loading").show();
+    var projectList = $('.project-list');
+    projectList.empty();
+
+    var pagination = $(".pagination");
+    pagination.empty();
+
     var offset = (page + increment - 1) * PROJECTS_PER_PAGE;
     if(offset < 0) {
         offset = 0;
@@ -191,9 +198,6 @@ function loadProjects(increment, scrollTop, pushHistory) {
         pushUrl(increment);
     }
     apiV2Request(url).then(function (response) {
-        var projectList = $('.project-list');
-        projectList.empty();
-
         var totalProjects = response.pagination.count;
 
         if(totalProjects > 0) {
@@ -345,13 +349,9 @@ function loadProjects(increment, scrollTop, pushHistory) {
             return pageTemplate;
         }
 
-        var pagination = $(".pagination");
-
         if (totalPages > 1) {
 
             // Sets up the pagination
-            pagination.empty();
-
             var prev = $("<li>");
             prev.addClass("prev");
             if (page === 1) {
