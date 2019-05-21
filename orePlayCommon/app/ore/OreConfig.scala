@@ -85,7 +85,7 @@ final class OreConfig @Inject()(config: Configuration) {
       val staleAge: FiniteDuration      = raw.get[FiniteDuration]("staleAge")
       val checkInterval: FiniteDuration = raw.get[FiniteDuration]("check-interval")
       val draftExpire: FiniteDuration   = raw.getOptional[FiniteDuration]("draft-expire").getOrElse(1.day)
-      val stargazersPageSize: Int       = raw.get[Int]("stargazers-page-size")
+      val userGridPageSize: Int         = raw.get[Int]("user-grid-page-size")
     }
 
     object users extends ConfigCategory {

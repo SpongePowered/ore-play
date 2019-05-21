@@ -28,7 +28,7 @@ import ore.data.project.Category
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
-import ore.db.{Model, ModelService}
+import ore.db.{DbRef, Model, ModelService}
 import ore.models.api.ApiSession
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.PluginUpload
@@ -337,10 +337,18 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       }
     }
 
-  def hasAll(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
+  def hasAll(
+      permissions: Seq[NamedPermission],
+      pluginId: Option[String],
+      organizationName: Option[String]
+  ): Action[AnyContent] =
     has(permissions, pluginId, organizationName)((seq, perm) => seq.forall(p => perm.has(p.permission)))
 
-  def hasAny(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
+  def hasAny(
+      permissions: Seq[NamedPermission],
+      pluginId: Option[String],
+      organizationName: Option[String]
+  ): Action[AnyContent] =
     has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(p => perm.has(p.permission)))
 
   def listProjects(
@@ -548,6 +556,64 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def showUser(user: String): Action[AnyContent] =
     apiOptDbAction(Permission.ViewPublicInfo, APIScope.GlobalScope)(_ => APIV2Queries.userQuery(user).option)
+
+  def showStarred(
+      user: String,
+      sort: Option[ProjectSortingStrategy],
+      limit: Option[Long],
+      offset: Long
+  ): Action[AnyContent] =
+    showUserAction(user, sort, limit, offset, APIV2Queries.starredQuery, APIV2Queries.starredCountQuery)
+
+  def showWatching(
+      user: String,
+      sort: Option[ProjectSortingStrategy],
+      limit: Option[Long],
+      offset: Long
+  ): Action[AnyContent] =
+    showUserAction(user, sort, limit, offset, APIV2Queries.watchingQuery, APIV2Queries.watchingCountQuery)
+
+  def showUserAction(
+      user: String,
+      sort: Option[ProjectSortingStrategy],
+      limit: Option[Long],
+      offset: Long,
+      query: (
+          String,
+          Boolean,
+          Option[DbRef[User]],
+          ProjectSortingStrategy,
+          Long,
+          Long
+      ) => doobie.Query0[APIV2.CompactProject],
+      countQuery: (String, Boolean, Option[DbRef[User]]) => doobie.Query0[Long]
+  ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { request =>
+    val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
+
+    val getProjects = query(
+      user,
+      request.globalPermissions.has(Permission.SeeHidden),
+      request.user.map(_.id),
+      sort.getOrElse(ProjectSortingStrategy.Default),
+      realLimit,
+      offset
+    ).to[Vector]
+
+    val countProjects = countQuery(
+      user,
+      request.globalPermissions.has(Permission.SeeHidden),
+      request.user.map(_.id)
+    ).unique
+
+    (service.runDbCon(getProjects), service.runDbCon(countProjects)).parMapN { (projects, count) =>
+      Ok(
+        PaginatedCompactProjectResult(
+          Pagination(realLimit, offset, count),
+          projects
+        )
+      )
+    }
+  }
 }
 object ApiV2Controller {
 
@@ -608,6 +674,11 @@ object ApiV2Controller {
   @ConfiguredJsonCodec case class PaginatedProjectResult(
       pagination: Pagination,
       result: Seq[APIV2.Project]
+  )
+
+  @ConfiguredJsonCodec case class PaginatedCompactProjectResult(
+      pagination: Pagination,
+      result: Seq[APIV2.CompactProject]
   )
 
   @ConfiguredJsonCodec case class PaginatedVersionResult(

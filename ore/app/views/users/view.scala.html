@@ -8,6 +8,7 @@
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
 @import util.syntax._
+@import ore.data.project.Category
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{
@@ -19,7 +20,15 @@
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userPage.js")"></script>
-    <script @CSPNonce.attr>USERNAME = 'ore.models.user.name';</script>
+    <script @CSPNonce.attr>
+            USERNAME = '@u.user.name';
+            @for(category <- Category.values) {
+                CATEGORY_TITLE['@category.apiName'] = '@category.title';
+                CATEGORY_ICON['@category.apiName'] = '@category.icon';
+            }
+            NO_ACTION_MESSAGE.starred = '@messages("user.noStars", u.user.name)';
+            NO_ACTION_MESSAGE.watching = '@messages("user.noWatching", u.user.name)';
+    </script>
     @additionalScripts
 }
 

@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.libs.Files.TemporaryFile
-import play.api.mvc.{Action, AnyContent, MultipartFormData, Result}
+import play.api.mvc.{Action, AnyContent, Call, MultipartFormData, Result}
 
 import controllers.OreBaseController
 import controllers.sugar.Bakery
@@ -21,11 +21,12 @@ import ore.db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
-import ore.models.project.{Flag, Note, Page, Visibility}
+import ore.models.project.{Flag, Note, Page, Project, Visibility}
 import ore.models.user._
 import ore.models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
 import ore.db.access.ModelView
+import ore.db.impl.schema.UserTable
 import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
@@ -364,17 +365,53 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       request.user.setWatching(request.project, watching).as(Ok)
     }
 
-  def showStargazers(author: String, slug: String, page: Option[Int]): Action[AnyContent] =
-    ProjectAction(author, slug).asyncF { implicit request =>
-      val pageSize = this.config.ore.projects.stargazersPageSize
-      val pageNum  = math.max(page.getOrElse(1), 1)
-      val offset   = (pageNum - 1) * pageSize
+  def showUserGrid(
+      author: String,
+      slug: String,
+      page: Option[Int],
+      title: String,
+      query: Model[Project] => Query[UserTable, Model[User], Seq],
+      call: Int => Call
+  ): Action[AnyContent] = ProjectAction(author, slug).asyncF { implicit request =>
+    val pageSize = this.config.ore.projects.userGridPageSize
+    val pageNum  = math.max(page.getOrElse(1), 1)
+    val offset   = (pageNum - 1) * pageSize
 
-      val query = request.project.stars.allQueryFromChild.drop(offset).take(pageSize).sortBy(_.name).result
-      service.runDBIO(query).map { users =>
-        Ok(views.stargazers(request.data, request.scoped, Model.unwrapNested(users), pageNum, pageSize))
-      }
+    val queryRes = query(request.project).sortBy(_.name).drop(offset).take(pageSize).result
+    service.runDBIO(queryRes).map { users =>
+      Ok(
+        views.userGrid(
+          title,
+          call,
+          request.data,
+          request.scoped,
+          Model.unwrapNested(users),
+          pageNum,
+          pageSize
+        )
+      )
     }
+  }
+
+  def showStargazers(author: String, slug: String, page: Option[Int]): Action[AnyContent] =
+    showUserGrid(
+      author,
+      slug,
+      page,
+      "Stargazers",
+      _.stars.allQueryFromChild,
+      page => routes.Projects.showStargazers(author, slug, Some(page))
+    )
+
+  def showWatchers(author: String, slug: String, page: Option[Int]): Action[AnyContent] =
+    showUserGrid(
+      author,
+      slug,
+      page,
+      "Watchers",
+      _.watchers.allQueryFromParent,
+      page => routes.Projects.showWatchers(author, slug, Some(page))
+    )
 
   /**
     * Sets the "starred" status of a Project for the current user.

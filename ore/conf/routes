@@ -115,7 +115,8 @@ GET     /:author/:slug/stars                                        @controllers
 POST    /:author/:slug/stars/toggle                                 @controllers.project.Projects.toggleStarred(author, slug)
 POST    /:author/:slug/flag                                         @controllers.project.Projects.flag(author, slug)
 POST    /:author/:slug/visible/:visibility                          @controllers.project.Projects.setVisible(author, slug, visibility: Int)
-POST    /:author/:slug/watch/:watching                              @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
+GET     /:author/:slug/watchers                                     @controllers.project.Projects.showWatchers(author, slug, page: Option[Int])
+POST    /:author/:slug/watchers/:watching                           @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
 
 GET     /:author/:slug/discuss                                      @controllers.project.Projects.showDiscussion(author, slug)
 POST    /:author/:slug/discuss/reply                                @controllers.project.Projects.postDiscussionReply(author, slug)

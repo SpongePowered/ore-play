@@ -356,3 +356,59 @@ POST    /projects/:pluginId/versions                         @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 GET     /users/:user                                         @controllers.apiv2.ApiV2Controller.showUser(user)
+
+###
+#  summary: Gets the starred projects for a specific user
+#  description: Gets the starred projects for a specific user. Requires the `view_public_info` permission.
+#  tags:
+#    - Users
+#  parameters:
+#    - name: user
+#      description: The user to return for
+#    - name: sort
+#      description: How to sort the projects
+#    - name: limit
+#      description: The maximum amount of projects to return
+#    - name: offset
+#      description: Where to start searching
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /users/:user/starred                                 @controllers.apiv2.ApiV2Controller.showStarred(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)
+
+###
+#  summary: Gets the watched projects for a specific user
+#  description: Gets the watched projects for a specific user. Requires the `view_public_info` permission.
+#  tags:
+#    - Users
+#  parameters:
+#    - name: user
+#      description: The user to return for
+#    - name: sort
+#      description: How to sort the projects
+#    - name: limit
+#      description: The maximum amount of projects to return
+#    - name: offset
+#      description: Where to start searching
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /users/:user/watching                                @controllers.apiv2.ApiV2Controller.showWatching(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)
