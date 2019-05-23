@@ -1,5 +1,7 @@
 package discourse
 
+import scala.language.higherKinds
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
@@ -9,21 +11,23 @@ import ore.models.project.{Project, Version, Visibility}
 import ore.OreConfig
 import ore.db.ModelService
 import ore.db.access.ModelView
+import util.IOUtils
 
 import akka.actor.Scheduler
-import cats.effect.{ContextShift, IO}
+import cats.Parallel
+import cats.syntax.all._
+import cats.effect.syntax.all._
 import com.typesafe.scalalogging
 
 /**
   * Task to periodically retry failed Discourse requests.
   */
-class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApi)(
+class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApiEnabled[F, G])(
     implicit ec: ExecutionContext,
-    service: ModelService[IO],
-    config: OreConfig
+    service: ModelService[F],
+    par: Parallel[F, G],
+    effect: cats.effect.Effect[F]
 ) extends Runnable {
-
-  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
   val Logger: scalalogging.Logger = this.api.Logger
 
@@ -31,8 +35,8 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
   private val projectDirtyFilter = ModelFilter(Project)(_.isTopicDirty)
   private val visibleFilter      = Visibility.isPublicFilter[ProjectTableMain]
 
-  private val toCreateProjects   = ModelView.raw(Project).filter(projectTopicFilter && visibleFilter)
-  private val dirtyTopicProjects = ModelView.raw(Project).filter(projectDirtyFilter && visibleFilter)
+  private val toCreateProjects   = ModelView.raw(Project).filter(projectTopicFilter && visibleFilter).to[Vector]
+  private val dirtyTopicProjects = ModelView.raw(Project).filter(projectDirtyFilter && visibleFilter).to[Vector]
 
   private val versionsQueryBase = for {
     (version, project) <- TableQuery[VersionTable].join(TableQuery[ProjectTableMain]).on(_.projectId === _.id)
@@ -43,8 +47,8 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
   private val versionTopicFilter = ModelFilter(Version)(_.postId.isEmpty)
   private val versionDirtyFilter = ModelFilter(Version)(_.isPostDirty)
 
-  private val toCreateVersions  = versionsQueryBase.filter(v => versionTopicFilter(v._2))
-  private val dirtyPostVersions = versionsQueryBase.filter(v => versionDirtyFilter(v._2))
+  private val toCreateVersions  = versionsQueryBase.filter(v => versionTopicFilter(v._2)).to[Vector]
+  private val dirtyPostVersions = versionsQueryBase.filter(v => versionDirtyFilter(v._2)).to[Vector]
 
   /**
     * Starts the recovery task to be run at the specified interval.
@@ -55,26 +59,36 @@ class RecoveryTask(scheduler: Scheduler, retryRate: FiniteDuration, api: OreDisc
   }
 
   override def run(): Unit = {
+    import cats.instances.vector._
     Logger.debug("Running Discourse recovery task...")
 
-    service.runDBIO(toCreateProjects.result).unsafeToFuture().foreach { toCreate =>
+    def runUpdates[T, M, S[_], A](query: Query[T, M, S], error: String)(use: S[M] => F[A]): Unit =
+      service
+        .runDBIO(query.result)
+        .flatMap { models =>
+          use(models)
+        }
+        .runAsync(IOUtils.logCallbackNoMDC("Failed to create project topic", Logger))
+        .unsafeRunSync()
+
+    runUpdates(toCreateProjects, "Failed to create project topic") { toCreate =>
       Logger.debug(s"Creating ${toCreate.size} topics...")
-      toCreate.foreach(this.api.createProjectTopic(_).unsafeToFuture())
+      toCreate.parTraverse(this.api.createProjectTopic)
     }
 
-    service.runDBIO(dirtyTopicProjects.result).unsafeToFuture().foreach { toUpdate =>
+    runUpdates(dirtyTopicProjects, "Failed to update dirty project") { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} topics...")
-      toUpdate.foreach(this.api.updateProjectTopic(_).unsafeToFuture())
+      toUpdate.parTraverse(this.api.updateProjectTopic)
     }
 
-    service.runDBIO(toCreateVersions.result).unsafeToFuture().foreach { toCreate =>
+    runUpdates(toCreateVersions, "Failed to create version post") { toCreate =>
       Logger.debug(s"Creating ${toCreate.size} posts...")
-      toCreate.foreach(t => this.api.createVersionPost(t._1, t._2).unsafeToFuture())
+      toCreate.parTraverse(t => this.api.createVersionPost(t._1, t._2))
     }
 
-    service.runDBIO(dirtyPostVersions.result).unsafeToFuture().foreach { toUpdate =>
+    runUpdates(dirtyPostVersions, "Failed to update dirty version") { toUpdate =>
       Logger.debug(s"Updating ${toUpdate.size} posts...")
-      toUpdate.foreach(t => this.api.updateVersionPost(t._1, t._2).unsafeToFuture())
+      toUpdate.parTraverse(t => this.api.updateVersionPost(t._1, t._2))
     }
 
     Logger.debug("Done")

@@ -37,5 +37,5 @@ case class NotifyWatchersTask(version: Model[Version], project: Model[Project])(
   def run(): Unit =
     watchingUsers
       .unsafeToFuture()
-      .foreach(_.foreach(watcher => service.insert(notification(watcher.id))))
+      .foreach(_.foreach(watcher => service.insert(notification(watcher.id)).unsafeRunAsyncAndForget()))
 }

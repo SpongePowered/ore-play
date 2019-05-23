@@ -16,39 +16,33 @@ import play.api.i18n.Lang
 import play.api.libs.Files
 import play.api.mvc._
 
-import controllers.OreBaseController
 import controllers.apiv2.ApiV2Controller._
+import controllers.sugar.CircePlayController
 import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
-import controllers.sugar.{Bakery, CircePlayController}
+import controllers.{OreBaseController, OreControllerComponents}
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2QueryVersionTag}
-import ore.{OreConfig, OreEnv}
 import ore.data.project.Category
-import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.{DbRef, Model}
 import ore.models.api.ApiSession
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.PluginUpload
-import ore.models.project.{Page, ProjectSortingStrategy, Version}
+import ore.models.project.{Page, ProjectSortingStrategy}
 import ore.models.user.{FakeUser, User}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
 import ore.util.OreMDC
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import _root_.util.IOUtils
 import _root_.util.syntax._
 
 import akka.stream.Materializer
 import akka.stream.scaladsl.FileIO
 import akka.util.ByteString
-import cats.Traverse
 import cats.data.{EitherT, NonEmptyList, OptionT}
 import cats.effect.{IO, Sync}
-import cats.instances.list._
-import cats.instances.option._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import enumeratum._
@@ -57,13 +51,7 @@ import io.circe.generic.extras._
 import io.circe.syntax._
 
 class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
-    implicit val ec: ExecutionContext,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
+    implicit oreComponents: OreControllerComponents[IO],
     mat: Materializer
 ) extends OreBaseController
     with CircePlayController {

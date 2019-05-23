@@ -29,16 +29,14 @@ class UserTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle:
 
   val interval: FiniteDuration = config.ore.api.session.checkInterval
 
-  def start(): Unit = {
-    Logger.info("DbUpdateTask starting")
-    val task = this.actorSystem.scheduler.schedule(interval, interval, this)
-    lifecycle.addStopHook { () =>
-      Future {
-        task.cancel()
-      }
+  Logger.info("DbUpdateTask starting")
+  private val task = this.actorSystem.scheduler.schedule(interval, interval, this)
+  lifecycle.addStopHook { () =>
+    Future {
+      task.cancel()
     }
-    run()
   }
+  run()
 
   override def run(): Unit = {
     val now = Instant.now()

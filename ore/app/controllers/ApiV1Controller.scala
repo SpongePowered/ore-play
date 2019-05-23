@@ -4,35 +4,29 @@ import java.time.Instant
 import java.util.{Base64, UUID}
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.Messages
 import play.api.libs.json._
 import play.api.mvc._
 
-import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthedProjectRequest
+import form.OreForms
+import ore.OreEnv
+import ore.auth.CryptoUtils
+import ore.db.DbRef
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ProjectApiKeyTable
-import form.OreForms
-import ore.models.project.{Page, Project, Version}
-import ore.models.user.{LoggedAction, User}
-import ore.db.access.ModelView
-import ore.db.{DbRef, ModelService}
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
-import ore.permission.Permission
-import ore.permission.role.Role
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginUpload, ProjectFiles}
+import ore.models.project.{Page, Project, Version}
+import ore.models.user.{LoggedAction, User}
+import ore.permission.Permission
+import ore.permission.role.Role
 import ore.rest.{OreRestfulApiV1, OreWrites}
-import ore.{OreConfig, OreEnv}
-import security.CryptoUtils
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
-import _root_.util.StatusZ
 import _root_.util.syntax._
-import _root_.util.UserActionLogger
+import _root_.util.{StatusZ, UserActionLogger}
 
 import akka.http.scaladsl.model.Uri
 import cats.data.{EitherT, OptionT}
@@ -48,15 +42,10 @@ final class ApiV1Controller @Inject()(
     api: OreRestfulApiV1,
     status: StatusZ,
     forms: OreForms,
-    factory: ProjectFactory
+    factory: ProjectFactory,
+    files: ProjectFiles
 )(
-    implicit val ec: ExecutionContext,
-    config: OreConfig,
-    env: OreEnv,
-    service: ModelService[IO],
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
+    implicit oreComponents: OreControllerComponents[IO],
 ) extends OreBaseController
     with OreWrites {
 
@@ -64,8 +53,6 @@ final class ApiV1Controller @Inject()(
       pluginId: String
   ): ActionBuilder[AuthedProjectRequest, AnyContent] =
     UserLock(ShowHome).andThen(authedProjectActionById(pluginId))
-
-  val files = new ProjectFiles(this.env)
 
   private val Logger = scalalogging.Logger("SSO")
 

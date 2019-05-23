@@ -6,36 +6,32 @@ import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, Result}
 import play.filters.csrf.CSRF
 
-import controllers.OreBaseController
-import controllers.sugar.Bakery
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.UserTable
+import controllers.{OreBaseController, OreControllerComponents}
 import discourse.OreDiscourseApi
 import form.OreForms
-import ore.models.project._
-import ore.models.user.{LoggedAction, User}
 import models.viewhelper.VersionData
+import ore.auth.SpongeAuthApi
 import ore.data.DownloadType
 import ore.db.access.ModelView
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.UserTable
+import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.models.admin.VersionVisibilityChange
-import ore.permission.Permission
+import ore.models.project._
 import ore.models.project.factory.{PendingProject, ProjectFactory}
-import ore.models.project.io.{PluginFile, PluginUpload}
+import ore.models.project.io.{PluginFile, PluginUpload, ProjectFiles}
+import ore.models.user.{LoggedAction, User}
+import ore.permission.Permission
 import ore.util.OreMDC
-import ore.{OreConfig, OreEnv, StatTracker}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import ore.util.StringUtils._
+import ore.{OreEnv, StatTracker}
 import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{versions => views}
@@ -50,21 +46,15 @@ import com.typesafe.scalalogging
 /**
   * Controller for handling Version related actions.
   */
-class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFactory)(
-    implicit val ec: ExecutionContext,
-    auth: SpongeAuthApi,
-    bakery: Bakery,
-    sso: SingleSignOnConsumer,
+class Versions @Inject()(stats: StatTracker[IO], forms: OreForms, factory: ProjectFactory, fileManager: ProjectFiles)(
+    implicit oreComponents: OreControllerComponents[IO],
     messagesApi: MessagesApi,
     env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
-    forums: OreDiscourseApi,
+    forums: OreDiscourseApi[IO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
-  private val fileManager = projects.fileManager
-  private val self        = controllers.project.routes.Versions
+  private val self = controllers.project.routes.Versions
 
   private val Logger    = scalalogging.Logger("Versions")
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
@@ -89,7 +79,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         version <- getVersion(request.project, versionString)
         data    <- EitherT.right[Result](VersionData.of(request, version))
         response <- EitherT.right[Result](
-          this.stats.projectViewed(Ok(views.view(data, request.scoped)))
+          this.stats.projectViewed(IO.pure(Ok(views.view(data, request.scoped))))
         )
       } yield response
     }
@@ -199,8 +189,8 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val allChannelsDBIO = request.project.channels(ModelView.raw(Channel)).result
 
       service.runDBIO(allChannelsDBIO).flatMap { allChannels =>
-        this.stats
-          .projectViewed(
+        this.stats.projectViewed(
+          IO.pure(
             Ok(
               views.list(
                 request.data,
@@ -209,6 +199,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               )
             )
           )
+        )
       }
     }
   }
@@ -268,7 +259,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .semiflatMap { pendingVersion =>
           pendingVersion
             .copy(authorId = user.id)
-            .cache
+            .cache[IO]
             .as(
               Redirect(
                 self.showCreatorWithMeta(request.data.project.ownerName, slug, pendingVersion.versionString)
@@ -876,9 +867,10 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
               else {
                 val pluginFile = new PluginFile(path, projectOwner)
                 val jarName    = fileName.substring(0, fileName.lastIndexOf('.')) + ".jar"
-                val jarPath    = this.fileManager.env.tmp.resolve(project.ownerName).resolve(jarName)
+                val jarPath    = env.tmp.resolve(project.ownerName).resolve(jarName)
 
-                pluginFile.newJarStream
+                pluginFile
+                  .newJarStream[IO]
                   .use { jarIn =>
                     jarIn
                       .fold(

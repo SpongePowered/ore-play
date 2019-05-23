@@ -12,7 +12,7 @@ import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.{OreConfig, OreEnv}
 
-import cats.effect.{Clock, ContextShift, IO}
+import cats.effect.{Clock, ContextShift, IO, Sync}
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
@@ -31,15 +31,16 @@ class OreModelService @Inject()(
     db: DatabaseConfigProvider,
     lifecycle: ApplicationLifecycle
 )(implicit ec: ExecutionContext)
-    extends ModelService[IO] {
+    extends ModelService[OreModelService.F] {
+  import OreModelService.F
 
   // Implement ModelService
   lazy val DB = db.get[JdbcProfile]
 
-  implicit val clock: Clock[IO] = Clock.create[IO]
+  implicit val clock: Clock[F] = Clock.create[F]
 
-  implicit val xa: Transactor.Aux[IO, JdbcDataSource] = {
-    implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+  implicit val xa: Transactor.Aux[F, JdbcDataSource] = {
+    implicit val cs: ContextShift[F] = IO.contextShift(ec)
 
     val connectExec  = Executors.newFixedThreadPool(32)
     val transactExec = Executors.newCachedThreadPool
@@ -59,30 +60,34 @@ class OreModelService @Inject()(
       }
     }
 
-    Transactor[IO, JdbcDataSource](
+    Transactor[F, JdbcDataSource](
       DB.db.source,
-      source => cs.evalOn(connectEC)(IO(source.createConnection())),
-      KleisliInterpreter[IO](transactEC).ConnectionInterpreter,
+      source => cs.evalOn(connectEC)(F.delay(source.createConnection())),
+      KleisliInterpreter[F](transactEC).ConnectionInterpreter,
       Strategy.default
     )
   }
 
-  override def runDBIO[R](action: DBIO[R]): IO[R] = IO.fromFuture(IO(DB.db.run(action)))
+  override def runDBIO[R](action: DBIO[R]): F[R] = IO.fromFuture(IO(DB.db.run(action)))
 
-  override def runDbCon[R](program: ConnectionIO[R]): IO[R] = program.transact(xa)
+  override def runDbCon[R](program: ConnectionIO[R]): F[R] = program.transact(xa)
 
-  override def insertRaw[M](companion: ModelCompanion[M])(model: M): IO[Model[M]] =
-    companion.insert[IO](model).flatMap(runDBIO)
+  override def insertRaw[M](companion: ModelCompanion[M])(model: M): F[Model[M]] =
+    companion.insert[F](model).flatMap(runDBIO)
 
-  override def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): IO[Seq[Model[M]]] =
-    query.companion.bulkInsert[IO](models).flatMap(runDBIO)
+  override def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): F[Seq[Model[M]]] =
+    query.companion.bulkInsert[F](models).flatMap(runDBIO)
 
-  override def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): IO[Model[M]] =
-    query.companion.update[IO](model)(update).flatMap(runDBIO)
+  override def updateRaw[M](companion: ModelCompanion[M])(model: Model[M])(update: M => M): F[Model[M]] =
+    companion.update[F](model)(update).flatMap(runDBIO)
 
-  override def delete[M](model: Model[M])(implicit query: ModelQuery[M]): IO[Int] =
+  override def delete[M](model: Model[M])(implicit query: ModelQuery[M]): F[Int] =
     runDBIO(query.companion.delete(model))
 
-  override def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): IO[Int] =
+  override def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): F[Int] =
     runDBIO(model.deleteWhere(filter))
+}
+object OreModelService {
+  type F[A] = IO[A]
+  val F: Sync[F] = Sync[F]
 }

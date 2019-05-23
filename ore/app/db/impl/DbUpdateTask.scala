@@ -1,7 +1,6 @@
 package db.impl
 
-import javax.inject.Inject
-import javax.inject.Singleton
+import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -9,8 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.inject.ApplicationLifecycle
 
 import db.impl.access.ProjectBase
-import ore.{OreConfig, OreEnv}
-import ore.db.ModelService
+import ore.OreConfig
 import ore.util.OreMDC
 
 import akka.actor.ActorSystem
@@ -20,8 +18,7 @@ import com.typesafe.scalalogging
 @Singleton
 class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
     implicit ec: ExecutionContext,
-    service: ModelService[IO],
-    env: OreEnv
+    projects: ProjectBase[IO]
 ) extends Runnable {
 
   val interval: FiniteDuration = config.ore.homepage.updateInterval
@@ -29,20 +26,18 @@ class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecy
   private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("DbUpdateTask")
   implicit private val mdc: OreMDC = OreMDC.NoMDC
 
-  def start(): Unit = {
-    Logger.info("DbUpdateTask starting")
-    val task = this.actorSystem.scheduler.schedule(interval, interval, this)
-    lifecycle.addStopHook { () =>
-      Future {
-        task.cancel()
-      }
+  Logger.info("DbUpdateTask starting")
+  private val task = this.actorSystem.scheduler.schedule(interval, interval, this)
+  lifecycle.addStopHook { () =>
+    Future {
+      task.cancel()
     }
-    run()
   }
+  run()
 
   override def run(): Unit = {
     Logger.debug("Updating homepage view")
-    ProjectBase().refreshHomePage(Logger).unsafeRunSync()
+    projects.refreshHomePage(Logger).unsafeRunSync()
     ()
   }
 }

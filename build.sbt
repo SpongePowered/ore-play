@@ -83,6 +83,7 @@ lazy val circeVersion        = "0.11.1"
 lazy val akkaVersion         = "2.5.22"
 lazy val akkaHttpVersion     = "10.1.8"
 lazy val scalaLoggingVersion = "3.9.2"
+lazy val simulacrumVersion   = "0.16.0"
 
 lazy val db = project.settings(
   commonSettings,
@@ -94,9 +95,9 @@ lazy val db = project.settings(
   )
 )
 
-lazy val discourse = project.settings(
+lazy val externalCommon = project.settings(
   commonSettings,
-  name := "ore-discourse",
+  name := "ore-external",
   libraryDependencies ++= Seq(
     "org.typelevel"              %% "cats-core"            % catsVersion,
     "org.typelevel"              %% "cats-effect"          % "1.2.0",
@@ -108,8 +109,23 @@ lazy val discourse = project.settings(
     "com.typesafe.akka"          %% "akka-stream"          % akkaVersion,
     "de.heikoseeberger"          %% "akka-http-circe"      % "1.25.2",
     "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
-  )
+    "com.github.mpilquist"       %% "simulacrum"           % simulacrumVersion
+  ),
 )
+
+lazy val discourse = project
+  .dependsOn(externalCommon)
+  .settings(
+    commonSettings,
+    name := "ore-discourse"
+  )
+
+lazy val auth = project
+  .dependsOn(externalCommon)
+  .settings(
+    commonSettings,
+    name := "ore-auth"
+  )
 
 lazy val models = project
   .dependsOn(db)
@@ -126,7 +142,7 @@ lazy val models = project
       "com.beachape"               %% "enumeratum"            % "1.5.13",
       "com.beachape"               %% "enumeratum-slick"      % "1.5.15",
       "org.typelevel"              %% "cats-core"             % catsVersion,
-      "com.github.mpilquist"       %% "simulacrum"            % "0.16.0",
+      "com.github.mpilquist"       %% "simulacrum"            % simulacrumVersion,
       "io.circe"                   %% "circe-core"            % circeVersion,
       "io.circe"                   %% "circe-generic-extras"  % circeVersion,
       "io.circe"                   %% "circe-parser"          % circeVersion,
@@ -135,7 +151,7 @@ lazy val models = project
 
 lazy val orePlayCommon: Project = project
   .enablePlugins(PlayScala)
-  .dependsOn(discourse, models)
+  .dependsOn(discourse, auth, models)
   .settings(
     commonSettings,
     playCommonSettings,

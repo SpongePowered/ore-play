@@ -1,7 +1,7 @@
 package ore.models.project.factory
 
 import java.nio.file.Files._
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -38,17 +38,17 @@ import com.google.common.base.Preconditions._
   */
 trait ProjectFactory {
 
-  implicit def service: ModelService[IO]
-  implicit def projects: ProjectBase = ProjectBase.fromService
+  implicit protected def service: ModelService[IO]
+  implicit protected def projects: ProjectBase[IO]
 
-  def fileManager: ProjectFiles = this.projects.fileManager
-  def cacheApi: SyncCacheApi
-  def actorSystem: ActorSystem
-  val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
+  protected def fileManager: ProjectFiles
+  protected def cacheApi: SyncCacheApi
+  protected def actorSystem: ActorSystem
+  protected val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
-  implicit def config: OreConfig
-  implicit def forums: OreDiscourseApi
-  implicit def env: OreEnv
+  implicit protected def config: OreConfig
+  implicit protected def forums: OreDiscourseApi[IO]
+  implicit protected def env: OreEnv
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -109,13 +109,13 @@ trait ProjectFactory {
             headChannel.name
           )
           modelExists <- version match {
-            case Right(v) => v.exists
+            case Right(v) => v.exists[IO]
             case Left(_)  => IO.pure(false)
           }
           res <- version match {
             case Right(_) if modelExists && this.config.ore.projects.fileValidate =>
               IO.pure(Left("error.version.duplicate"))
-            case Right(v) => v.cache.as(Right(v))
+            case Right(v) => v.cache[IO].as(Right(v))
             case Left(m)  => IO.pure(Left(m))
           }
         } yield res
@@ -375,11 +375,14 @@ trait ProjectFactory {
 
 }
 
+@Singleton
 class OreProjectFactory @Inject()(
-    override val service: ModelService[IO],
-    override val config: OreConfig,
-    override val forums: OreDiscourseApi,
-    override val cacheApi: SyncCacheApi,
-    override val actorSystem: ActorSystem,
-    override val env: OreEnv
+    val service: ModelService[IO],
+    val config: OreConfig,
+    val forums: OreDiscourseApi[IO],
+    val cacheApi: SyncCacheApi,
+    val actorSystem: ActorSystem,
+    val env: OreEnv,
+    val projects: ProjectBase[IO],
+    val fileManager: ProjectFiles
 ) extends ProjectFactory

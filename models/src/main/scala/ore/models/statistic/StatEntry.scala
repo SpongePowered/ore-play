@@ -13,7 +13,7 @@ import com.github.tminglei.slickpg.InetString
 /**
   * Represents a statistic entry in a StatTable.
   */
-abstract class StatEntry[Subject] {
+abstract class StatEntry[Subject, Self <: StatEntry[Subject, Self]] {
 
   /**
     * ID of model the stat is on
@@ -34,6 +34,8 @@ abstract class StatEntry[Subject] {
     * User ID
     */
   def userId: Option[DbRef[User]]
+
+  def withUserId(userId: Option[DbRef[User]]): Self
 
   /**
     * Returns the User associated with this entry, if any.

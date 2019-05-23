@@ -11,7 +11,7 @@ import controllers.sugar.Requests.OreRequest
 import cats.Monad
 import cats.data.{EitherT, OptionT}
 import cats.effect.syntax.all._
-import cats.effect.{Effect, IO}
+import cats.effect.IO
 import com.google.common.base.Preconditions.checkArgument
 
 /**
@@ -61,8 +61,8 @@ trait ActionHelpers {
 
   implicit def toOreRequestBuilderOps[R[_], B](
       builder: ActionBuilder[R, B]
-  ): ActionHelpers.OreActionBuilderOps[R, IO, B] =
-    new ActionHelpers.OreActionBuilderOps[R, IO, B](builder)
+  ): ActionHelpers.OreActionBuilderOps[R, B] =
+    new ActionHelpers.OreActionBuilderOps[R, B](builder)
 }
 object ActionHelpers {
 
@@ -184,26 +184,26 @@ object ActionHelpers {
       form.bindFromRequest().fold(left.andThen(EitherT.leftT[F, B](_)), EitherT.rightT[F, A](_))
   }
 
-  class OreActionBuilderOps[R[_], F[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
+  class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 
-    def asyncF(fr: F[Result])(implicit F: Effect[F]): Action[AnyContent] = action.async(fr.toIO.unsafeToFuture())
+    def asyncF(fr: IO[Result]): Action[AnyContent] = action.async(fr.unsafeToFuture())
 
-    def asyncF(fr: R[B] => F[Result])(implicit F: Effect[F]): Action[B] =
-      action.async(r => fr(r).toIO.unsafeToFuture())
+    def asyncF(fr: R[B] => IO[Result]): Action[B] =
+      action.async(r => fr(r).unsafeToFuture())
 
     def asyncF[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => F[Result])(implicit F: Effect[F]): Action[A] =
+    )(fr: R[A] => IO[Result]): Action[A] =
       action.async(bodyParser)(r => fr(r).toIO.unsafeToFuture())
 
-    def asyncEitherT(fr: EitherT[F, _ <: Result, Result])(implicit F: Effect[F]): Action[AnyContent] = asyncF(fr.merge)
+    def asyncEitherT(fr: EitherT[IO, _ <: Result, Result]): Action[AnyContent] = asyncF(fr.merge)
 
-    def asyncEitherT(fr: R[B] => EitherT[F, _ <: Result, Result])(implicit F: Effect[F]): Action[B] =
+    def asyncEitherT(fr: R[B] => EitherT[IO, _ <: Result, Result]): Action[B] =
       asyncF(r => fr(r).merge)
 
     def asyncEitherT[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => EitherT[F, _ <: Result, Result])(implicit F: Effect[F]): Action[A] =
+    )(fr: R[A] => EitherT[IO, _ <: Result, Result]): Action[A] =
       asyncF(bodyParser)(r => fr(r).merge)
   }
 }

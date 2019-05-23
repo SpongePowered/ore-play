@@ -1,5 +1,7 @@
 package form.project
 
+import scala.language.higherKinds
+
 import java.nio.file.Files
 import java.nio.file.Files.{createDirectories, delete, list, move, notExists}
 
@@ -17,6 +19,7 @@ import ore.util.OreMDC
 import ore.util.StringUtils.noneIfEmpty
 import util.syntax._
 
+import cats.{Monad, MonadError, Parallel}
 import cats.data.NonEmptyList
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
@@ -45,11 +48,12 @@ case class ProjectSettingsForm(
     forumSync: Boolean
 ) extends TProjectRoleSetBuilder {
 
-  def savePending(settings: ProjectSettings, project: PendingProject)(
+  def savePending[F[_]](settings: ProjectSettings, project: PendingProject)(
       implicit fileManager: ProjectFiles,
       mdc: OreMDC,
-      service: ModelService[IO]
-  ): IO[(PendingProject, ProjectSettings)] = {
+      service: ModelService[F],
+      F: Monad[F]
+  ): F[(PendingProject, ProjectSettings)] = {
     val queryOwnerName = for {
       u <- TableQuery[UserTable] if this.ownerId.getOrElse(project.ownerId).bind === u.id
     } yield u.name
@@ -93,12 +97,13 @@ case class ProjectSettingsForm(
     }
   }
 
-  def save(settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
+  def save[F[_], G[_]](settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
       implicit fileManager: ProjectFiles,
       mdc: OreMDC,
-      service: ModelService[IO],
-      cs: ContextShift[IO]
-  ): IO[(Model[Project], Model[ProjectSettings])] = {
+      service: ModelService[F],
+      F: MonadError[F, Throwable],
+      par: Parallel[F, G]
+  ): F[(Model[Project], Model[ProjectSettings])] = {
     import cats.instances.vector._
     logger.debug("Saving project settings")
     logger.debug(this.toString)
@@ -174,7 +179,7 @@ case class ProjectSettingsForm(
               val roles = this.roleUps.traverse { role =>
                 Role.projectRoles
                   .find(_.value == role)
-                  .fold(IO.raiseError[Role](new RuntimeException("supplied invalid role type")))(IO.pure)
+                  .fold(F.raiseError[Role](new RuntimeException("supplied invalid role type")))(F.pure)
               }
 
               roles.map(xs => userIds.zip(xs))

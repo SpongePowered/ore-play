@@ -2,35 +2,28 @@ package controllers
 
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.mvc._
 
-import controllers.sugar.Bakery
 import db.impl.access.UserBase.UserOrdering
 import db.impl.query.UserPagesQueries
+import form.OreForms
+import mail.{EmailFactory, Mailer}
+import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
+import ore.OreEnv
+import ore.data.Prompt
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.query.UserQueries
 import ore.db.impl.schema.{ApiKeyTable, UserTable}
-import form.OreForms
-import mail.{EmailFactory, Mailer}
-import ore.models.project.Version
-import ore.models.user._
-import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
-import ore.data.Prompt
-import ore.db.access.ModelView
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.{DbRef, Model}
+import ore.models.project.ProjectSortingStrategy
+import ore.models.user.{FakeUser, _}
+import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.permission.Permission
 import ore.permission.role.Role
-import ore.models.project.ProjectSortingStrategy
-import ore.models.user.notification.{InviteFilter, NotificationFilter}
-import ore.models.user.FakeUser
-import ore.util.OreMDC
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.UserActionLogger
+import util.syntax._
 import views.{html => views}
 
 import cats.data.EitherT
@@ -48,14 +41,8 @@ class Users @Inject()(
     mailer: Mailer,
     emails: EmailFactory
 )(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
+    implicit oreComponents: OreControllerComponents[IO],
     messagesApi: MessagesApi,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO]
 ) extends OreBaseController {
 
   private val baseUrl = this.config.app.baseUrl
@@ -66,7 +53,7 @@ class Users @Inject()(
     * @return Logged in page
     */
   def signUp(): Action[AnyContent] = Action.asyncF {
-    val nonce = SingleSignOnConsumer.nonce
+    val nonce = sso.nonce()
     service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
     )
@@ -92,20 +79,20 @@ class Users @Inject()(
           )
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
-        val nonce = SingleSignOnConsumer.nonce
+        val nonce = this.sso.nonce()
         service.insert(SignOn(nonce = nonce)) *> redirectToSso(
           this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
         ).map(_.flashing("url" -> returnPath.getOrElse(request.path)))
       } else {
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
-          .authenticate(sso.get, sig.get)(isNonceValid)(OreMDC.NoMDC)
+          .authenticate(sso.get, sig.get)(isNonceValid)
           .map(sponge => sponge.toUser -> sponge)
           .semiflatMap {
             case (fromSponge, sponge) =>
               // Complete authentication
               for {
-                user <- users.getOrCreate(sponge.username, fromSponge)
+                user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
                 _    <- user.globalRoles.deleteAllFromParent
                 _ <- sponge.newGlobalRoles
                   .fold(IO.unit)(_.map(_.toDbRole.id).traverse_(user.globalRoles.addAssoc(_)))
@@ -124,16 +111,14 @@ class Users @Inject()(
     * @return           Redirect to verification
     */
   def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
-    val nonce = SingleSignOnConsumer.nonce
+    val nonce = sso.nonce()
     service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
     )
   }
 
-  private def redirectToSso(url: String): IO[Result] = {
-    implicit val timer: Timer[IO] = IO.timer(ec)
+  private def redirectToSso(url: String): IO[Result] =
     this.sso.isAvailable.ifM(IO.pure(Redirect(url)), IO.pure(Redirect(ShowHome).withError("error.noLogin")))
-  }
 
   private def redirectBack(url: String, user: User) =
     Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
@@ -157,7 +142,6 @@ class Users @Inject()(
     * @return           View of user projects page
     */
   def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    import cats.instances.vector._
     val pageSize = this.config.ore.users.projectPageSize
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
@@ -167,7 +151,6 @@ class Users @Inject()(
     users
       .withName(username)
       .semiflatMap { user =>
-        import cats.instances.option._
         for {
           // TODO include orga projects?
           t1 <- (

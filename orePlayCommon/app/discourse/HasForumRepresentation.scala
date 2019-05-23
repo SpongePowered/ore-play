@@ -9,7 +9,10 @@ import ore.util.OreMDC
 import util.IOUtils
 import util.syntax._
 
-import cats.effect.IO
+import cats.MonadError
+import cats.syntax.all._
+import cats.effect.syntax.all._
+import cats.effect.Effect
 import com.typesafe.scalalogging
 
 trait HasForumRepresentation[F[_], A] {
@@ -20,12 +23,13 @@ object HasForumRepresentation {
 
   private val PagesLogger = scalalogging.Logger.takingImplicit[OreMDC]("Pages")
 
-  implicit def pageHasForumRepresentation(
-      implicit service: ModelService[IO],
+  implicit def pageHasForumRepresentation[F[_]](
+      implicit service: ModelService[F],
       config: OreConfig,
-      forums: OreDiscourseApi
-  ): HasForumRepresentation[IO, Page] = new HasForumRepresentation[IO, Page] {
-    override def updateForumContents(a: Model[Page])(contents: String): IO[Model[Page]] = {
+      forums: OreDiscourseApi[F],
+      F: Effect[F]
+  ): HasForumRepresentation[F, Page] = new HasForumRepresentation[F, Page] {
+    override def updateForumContents(a: Model[Page])(contents: String): F[Model[Page]] = {
       require(
         (a.isHome && contents.length <= Page.maxLength) || contents.length <= Page.maxLengthPage,
         "contents too long",
@@ -38,22 +42,23 @@ object HasForumRepresentation {
           forums
             .updateProjectTopic(project)
             .runAsync(IOUtils.logCallback("Failed to update page with forums", PagesLogger)(OreMDC.NoMDC))
-            .toIO
-        else IO.unit
+            .to[F]
+        else F.unit
       } yield updated
     }
   }
 
-  implicit def versionHasForumRepresentation(
-      implicit service: ModelService[IO],
-      forums: OreDiscourseApi
-  ): HasForumRepresentation[IO, Version] = new HasForumRepresentation[IO, Version] {
-    override def updateForumContents(a: Model[Version])(contents: String): IO[Model[Version]] = {
+  implicit def versionHasForumRepresentation[F[_]](
+      implicit service: ModelService[F],
+      forums: OreDiscourseApi[F],
+      F: MonadError[F, Throwable]
+  ): HasForumRepresentation[F, Version] = new HasForumRepresentation[F, Version] {
+    override def updateForumContents(a: Model[Version])(contents: String): F[Model[Version]] = {
       for {
         project <- a.project
         updated <- service.update(a)(_.copy(description = Some(contents)))
         _ <- if (project.topicId.isDefined && a.postId.isDefined) forums.updateVersionPost(project, updated)
-        else IO.pure(false)
+        else F.pure(false)
       } yield updated
     }
   }

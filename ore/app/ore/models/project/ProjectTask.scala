@@ -37,13 +37,8 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
   private def createdAtFilter = ModelFilter(Project)(_.createdAt < dayAgo)
   private def newProjects     = service.runDBIO(ModelView.now(Project).query.filter(newFilter && createdAtFilter).result)
 
-  /**
-    * Starts the task.
-    */
-  def start(): Unit = {
-    this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
-    Logger.info(s"Initialized. First run in ${this.interval.toString}.")
-  }
+  this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
+  Logger.info(s"Initialized. First run in ${this.interval.toString}.")
 
   /**
     * Task runner

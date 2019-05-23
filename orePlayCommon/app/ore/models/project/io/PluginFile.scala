@@ -1,5 +1,7 @@
 package ore.models.project.io
 
+import scala.language.higherKinds
+
 import java.io._
 import java.nio.file.{Files, Path}
 import java.util.jar.{JarFile, JarInputStream}
@@ -9,12 +11,12 @@ import scala.collection.JavaConverters._
 
 import play.api.i18n.Messages
 
-import ore.models.user.User
 import ore.db.Model
-import ore.models.user.UserOwned
+import ore.models.user.{User, UserOwned}
 
 import cats.data.EitherT
-import cats.effect.{IO, Resource}
+import cats.syntax.all._
+import cats.effect.{Resource, Sync}
 
 /**
   * Represents an uploaded plugin file.
@@ -30,19 +32,19 @@ class PluginFile(val path: Path, val user: Model[User]) {
     *
     * @return Plugin metadata or an error message
     */
-  def loadMeta(implicit messages: Messages): EitherT[IO, String, PluginFileWithData] = {
+  def loadMeta[F[_]](implicit messages: Messages, F: Sync[F]): EitherT[F, String, PluginFileWithData] = {
     val fileNames = PluginFileData.fileNames
 
     val res = newJarStream
       .flatMap { in =>
-        val jarIn = IO(in.map(new JarInputStream(_)))
+        val jarIn = F.delay(in.map(new JarInputStream(_)))
         Resource.make(jarIn) {
-          case Right(is) => IO(is.close())
-          case _         => IO.unit
+          case Right(is) => F.delay(is.close())
+          case _         => F.unit
         }
       }
       .use { eJarIn =>
-        IO {
+        F.delay {
           eJarIn.map { jarIn =>
             val fileDataSeq = Iterator
               .continually(jarIn.getNextJarEntry)
@@ -93,20 +95,20 @@ class PluginFile(val path: Path, val user: Model[User]) {
     *
     * @return InputStream of JAR
     */
-  def newJarStream: Resource[IO, Either[String, InputStream]] = {
+  def newJarStream[F[_]](implicit F: Sync[F]): Resource[F, Either[String, InputStream]] = {
     if (this.path.toString.endsWith(".jar"))
       Resource
-        .fromAutoCloseable[IO, InputStream](IO(Files.newInputStream(this.path)))
+        .fromAutoCloseable[F, InputStream](F.delay(Files.newInputStream(this.path)))
         .flatMap(is => Resource.pure(Right(is)))
     else
       Resource
-        .fromAutoCloseable(IO(new ZipFile(this.path.toFile)))
+        .fromAutoCloseable(F.delay(new ZipFile(this.path.toFile)))
         .flatMap { zip =>
-          val jarIn = IO(findTopLevelJar(zip).map(zip.getInputStream))
+          val jarIn = F.delay(findTopLevelJar(zip).map(zip.getInputStream))
 
           Resource.make(jarIn) {
-            case Right(is) => IO(is.close())
-            case _         => IO.unit
+            case Right(is) => F.delay(is.close())
+            case _         => F.unit
           }
         }
   }

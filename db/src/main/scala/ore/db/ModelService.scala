@@ -51,7 +51,22 @@ trait ModelService[F[_]] {
     */
   def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): F[Seq[Model[M]]]
 
-  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): F[Model[M]]
+  /**
+    * Updates the model in the database to be equal to the value created in the update function.
+    * @param model The model to update
+    * @param update An function to update the inner model
+    * @return The updated model
+    */
+  def updateRaw[M](companion: ModelCompanion[M])(model: Model[M])(update: M => M): F[Model[M]]
+
+  /**
+    * Updates the model in the database to be equal to the value created in the update function.
+    * @param model The model to update
+    * @param update An function to update the inner model
+    * @return The updated model
+    */
+  def update[M](model: Model[M])(update: M => M)(implicit query: ModelQuery[M]): F[Model[M]] =
+    updateRaw(query.companion)(model)(update)
 
   /**
     * Deletes the specified Model.

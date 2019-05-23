@@ -1,7 +1,7 @@
 package ore.rest
 
 import java.lang.Math._
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
@@ -316,7 +316,7 @@ trait OreRestfulApiV1 extends OreWrites {
   def getPages(
       pluginId: String,
       parentId: Option[DbRef[Page]]
-  )(implicit projectBase: ProjectBase): OptionT[IO, JsValue] = {
+  )(implicit projectBase: ProjectBase[IO]): OptionT[IO, JsValue] = {
     projectBase.withPluginId(pluginId).semiflatMap { project =>
       for {
         pages <- service.runDBIO(project.pages(ModelView.raw(Page)).sortBy(_.name).result)
@@ -421,7 +421,7 @@ trait OreRestfulApiV1 extends OreWrites {
   def getTags(
       pluginId: String,
       version: String
-  )(implicit projectBase: ProjectBase): OptionT[IO, JsValue] = {
+  )(implicit projectBase: ProjectBase[IO]): OptionT[IO, JsValue] = {
     projectBase.withPluginId(pluginId).flatMap { project =>
       project
         .versions(ModelView.now(Version))
@@ -445,4 +445,5 @@ trait OreRestfulApiV1 extends OreWrites {
   def getTagColor(tagId: Int): Option[JsValue] = TagColor.withValueOpt(tagId).map(toJson(_)(tagColorWrites))
 }
 
+@Singleton
 class OreRestfulServerV1 @Inject()(val service: ModelService[IO], val config: OreConfig) extends OreRestfulApiV1

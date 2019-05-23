@@ -1,8 +1,10 @@
 package ore
 
+import scala.language.higherKinds
+
 import play.api.cache.SyncCacheApi
 
-import cats.effect.IO
+import cats.effect.Sync
 
 /**
   * Represents something that can be added to the Cache.
@@ -21,11 +23,11 @@ trait Cacheable {
   /**
     * Caches this.
     */
-  def cache: IO[Unit] = IO(this.cacheApi.set(this.key, this))
+  def cache[F[_]](implicit F: Sync[F]): F[Unit] = F.delay(this.cacheApi.set(this.key, this))
 
   /**
     * Removes this from the Cache.
     */
-  def free: IO[Unit] = IO(this.cacheApi.remove(this.key))
+  def free[F[_]](implicit F: Sync[F]): F[Unit] = F.delay(this.cacheApi.remove(this.key))
 
 }

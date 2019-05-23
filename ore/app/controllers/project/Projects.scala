@@ -6,40 +6,37 @@ import java.util.Base64
 import javax.inject.Inject
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.MessagesApi
 import play.api.libs.Files.TemporaryFile
-import play.api.mvc.{Action, AnyContent, Call, MultipartFormData, Result}
+import play.api.mvc._
 
-import controllers.OreBaseController
-import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import ore.db.impl.OrePostgresDriver.api._
+import controllers.{OreBaseController, OreControllerComponents}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
-import ore.models.project.{Flag, Note, Page, Project, Visibility}
-import ore.models.user._
-import ore.models.user.role.ProjectUserRole
 import models.viewhelper.ScopedOrganizationData
+import ore.auth.SpongeAuthApi
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.UserTable
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
 import ore.models.admin.ProjectLogEntry
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
-import ore.permission._
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginUpload, ProjectFiles}
+import ore.models.project._
+import ore.models.user._
+import ore.models.user.role.ProjectUserRole
+import ore.permission._
 import ore.util.OreMDC
-import ore.{OreConfig, OreEnv, StatTracker}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import ore.util.StringUtils._
+import ore.{OreEnv, StatTracker}
 import _root_.util.syntax._
 import util.UserActionLogger
 import views.html.{projects => views}
@@ -53,20 +50,13 @@ import com.typesafe.scalalogging
 /**
   * Controller for handling Project related actions.
   */
-class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFactory)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    sso: SingleSignOnConsumer,
-    auth: SpongeAuthApi,
-    forums: OreDiscourseApi,
+class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: ProjectFactory)(
+    implicit oreComponents: OreControllerComponents[IO],
+    forums: OreDiscourseApi[IO],
     messagesApi: MessagesApi,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
-    renderer: MarkdownRenderer
+    renderer: MarkdownRenderer,
+    fileManager: ProjectFiles
 ) extends OreBaseController {
-
-  implicit val fileManager: ProjectFiles = factory.fileManager
 
   private val self = controllers.project.routes.Projects
 
@@ -112,7 +102,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       uploadData <- EitherT.fromOption[IO](PluginUpload.bindFromRequest(), "error.noFile")
       pluginFile <- factory.processPluginUpload(uploadData, user)
       project = factory.startProject(pluginFile)
-      _ <- EitherT.right[String](project.cache)
+      _ <- EitherT.right[String](project.cache[IO])
     } yield Redirect(self.showCreatorWithMeta(project.ownerName, project.slug))
 
     res.leftMap(Redirect(self.showCreator()).withError(_))
@@ -169,8 +159,8 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
 
                     val authors = newPending.file.data.authors.toList
                     (
-                      pendingProject.free *> newPending.cache *>
-                        pendingProject.pendingVersion.free *> newPending.pendingVersion.cache,
+                      pendingProject.free[IO] *> newPending.cache[IO] *>
+                        pendingProject.pendingVersion.free[IO] *> newPending.pendingVersion.cache[IO],
                       authors.filter(_ != request.user.name).parTraverse(users.withName(_).value),
                       newPending.owner
                     ).parMapN { (_, users, owner) =>
@@ -216,9 +206,11 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .map { pendingProject =>
           val newPending     = pendingProject.copy(roles = request.body.build())
           val pendingVersion = newPending.pendingVersion
-          newPending.cache.as(
-            Redirect(routes.Versions.showCreatorWithMeta(author, slug, pendingVersion.versionString))
-          )
+          newPending
+            .cache[IO]
+            .as(
+              Redirect(routes.Versions.showCreatorWithMeta(author, slug, pendingVersion.versionString))
+            )
         }
         .merge
     }
@@ -236,14 +228,16 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       (pages, homePage) = t
       pageCount         = pages.size + pages.map(_._2.size).sum
       res <- stats.projectViewed(
-        Ok(
-          views.pages.view(
-            request.data,
-            request.scoped,
-            Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
-            homePage,
-            None,
-            pageCount
+        IO.pure(
+          Ok(
+            views.pages.view(
+              request.data,
+              request.scoped,
+              Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
+              homePage,
+              None,
+              pageCount
+            )
           )
         )
       )
@@ -259,8 +253,8 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
     implicit request =>
-      forums.api.isAvailable.flatMap { isAvailable =>
-        this.stats.projectViewed(Ok(views.discuss(request.data, request.scoped, isAvailable)))
+      forums.isAvailable.flatMap { isAvailable =>
+        this.stats.projectViewed(IO.pure(Ok(views.discuss(request.data, request.scoped, isAvailable))))
       }
   }
 
@@ -305,7 +299,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     projects
       .withSlug(author, slug)
       .map { project =>
-        projects.fileManager.getIconPath(project)(OreMDC.NoMDC) match {
+        fileManager.getIconPath(project)(OreMDC.NoMDC) match {
           case None           => Redirect(User.avatarUrl(project.ownerName))
           case Some(iconPath) => showImage(iconPath)
         }
@@ -519,7 +513,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         case None => IO.pure(Redirect(self.showSettings(author, slug)).withError("error.noFile"))
         case Some(tmpFile) =>
           val data       = request.data
-          val pendingDir = projects.fileManager.getPendingIconDir(data.project.ownerName, data.project.name)
+          val pendingDir = fileManager.getPendingIconDir(data.project.ownerName, data.project.name)
           if (Files.notExists(pendingDir))
             Files.createDirectories(pendingDir)
           Files.list(pendingDir).iterator().asScala.foreach(Files.delete)
@@ -538,8 +532,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def resetIcon(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
-      val project     = request.project
-      val fileManager = projects.fileManager
+      val project = request.project
       fileManager.getIconPath(project).foreach(Files.delete)
       fileManager.getPendingIconPath(project).foreach(Files.delete)
       //todo data
@@ -557,7 +550,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
     */
   def showPendingIcon(author: String, slug: String): Action[AnyContent] =
     ProjectAction(author, slug) { implicit request =>
-      projects.fileManager.getPendingIconPath(request.project) match {
+      fileManager.getPendingIconPath(request.project) match {
         case None       => notFound
         case Some(path) => showImage(path)
       }

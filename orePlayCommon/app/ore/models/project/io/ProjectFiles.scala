@@ -1,24 +1,26 @@
 package ore.models.project.io
 
+import scala.language.higherKinds
+
 import java.io.IOException
 import java.nio.file.Files._
 import java.nio.file.Path
+import javax.inject.Inject
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 import ore.models.project.Project
 import ore.OreEnv
 import ore.util.OreMDC
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Resource, Sync}
 import cats.syntax.all._
 import com.typesafe.scalalogging
 
 /**
   * Handles file management of Projects.
   */
-class ProjectFiles(val env: OreEnv) {
+class ProjectFiles @Inject()(val env: OreEnv) {
 
   private val Logger    = scalalogging.Logger("ProjectFiles")
   private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
@@ -59,7 +61,7 @@ class ProjectFiles(val env: OreEnv) {
     * @param newName  New project name
     * @return         New path
     */
-  def renameProject(owner: String, oldName: String, newName: String): Try[Unit] = Try {
+  def renameProject[F[_]](owner: String, oldName: String, newName: String)(implicit F: Sync[F]): F[Unit] = F.delay {
     val newProjectDir = getProjectDir(owner, newName)
     move(getProjectDir(owner, oldName), newProjectDir)
     ()

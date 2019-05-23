@@ -3,30 +3,25 @@ package controllers.project
 import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.libs.json.JsValue
 import play.api.mvc.{Action, AnyContent}
 import play.utils.UriEncoding
 
-import controllers.OreBaseController
-import controllers.sugar.Bakery
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.PageTable
+import controllers.{OreBaseController, OreControllerComponents}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
+import ore.auth.SpongeAuthApi
+import ore.db.Model
+import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.PageTable
+import ore.markdown.MarkdownRenderer
 import ore.models.project.{Page, Project}
 import ore.models.user.LoggedAction
-import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
-import ore.markdown.MarkdownRenderer
 import ore.permission.Permission
-import ore.util.OreMDC
-import ore.{OreConfig, OreEnv, StatTracker}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import ore.util.StringUtils._
+import ore.{OreEnv, StatTracker}
 import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{pages => views}
@@ -35,20 +30,13 @@ import cats.data.OptionT
 import cats.effect.IO
 import cats.instances.option._
 import cats.syntax.all._
-import com.typesafe.scalalogging
 
 /**
   * Controller for handling Page related actions.
   */
-class Pages @Inject()(forms: OreForms, stats: StatTracker)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    sso: SingleSignOnConsumer,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
-    auth: SpongeAuthApi,
-    forums: OreDiscourseApi,
+class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
+    implicit oreComponents: OreControllerComponents[IO],
+    forums: OreDiscourseApi[IO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
@@ -119,14 +107,16 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker)(
               if (pages.map(_._1).contains(p)) None
               else pages.collectFirst { case (pp, subPage) if subPage.contains(p) => pp }
             this.stats.projectViewed(
-              Ok(
-                views.view(
-                  request.data,
-                  request.scoped,
-                  Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
-                  p,
-                  Model.unwrapNested(parentPage),
-                  pageCount
+              IO.pure(
+                Ok(
+                  views.view(
+                    request.data,
+                    request.scoped,
+                    Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
+                    p,
+                    Model.unwrapNested(parentPage),
+                    pageCount
+                  )
                 )
               )
             )

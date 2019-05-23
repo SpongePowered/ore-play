@@ -71,6 +71,12 @@ security {
         key = "changeme"
         key = ${?SPONGE_AUTH_API_KEY}
         timeout = 10000ms
+
+        breaker {
+            max-failures =   5
+            timeout      =   10s
+            reset        =   5m
+        }
     }
 
     sso {
@@ -79,7 +85,8 @@ security {
         verifyUrl = ${security.api.url}"/sso/sudo/"
         secret = "changeme"
         secret = ${?SPONGE_AUTH_SSO_SECRET}
-        timeout = 10000ms
+        timeout = 2s
+        reset = 10m
         apikey = "changeme"
         apikey = ${?SPONGE_AUTH_SSO_API_KEY}
     }

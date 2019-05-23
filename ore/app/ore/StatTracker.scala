@@ -1,104 +1,42 @@
 package ore
 
+import scala.language.higherKinds
+
 import java.util.UUID
-import javax.inject.Inject
 
 import play.api.mvc.{RequestHeader, Result}
 
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import _root_.db.impl.access.UserBase
+import ore.db.{ModelCompanion, _}
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.StatTable
-import ore.models.project.{Project, Version}
-import ore.models.user.User
-import ore.StatTracker.COOKIE_NAME
-import ore.db.access.ModelView
-import ore.db._
-import ore.util.OreMDC
+import ore.models.project.Version
 import ore.models.statistic.{ProjectView, StatEntry, VersionDownload}
-import security.spauth.SpongeAuthApi
+import ore.models.user.User
+import ore.util.OreMDC
 import _root_.util.IOUtils
 
+import cats.Parallel
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import cats.effect.syntax.all._
 import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
 
 /**
   * Helper class for handling tracking of statistics.
   */
-trait StatTracker {
-
-  implicit def service: ModelService[IO]
-  def users: UserBase = UserBase.fromService
-
-  def bakery: Bakery
-
-  private val Logger    = scalalogging.Logger("StatTracker")
-  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
-
-  private def record[S, M <: StatEntry[S]: ModelQuery, T <: StatTable[S, M]](
-      entry: M,
-      subject: ModelCompanion[S],
-      model: ModelCompanion.Aux[M, T]
-  )(setUserId: (M, DbRef[User]) => M): IO[Boolean] = {
-    like[S, M, T](entry, model).value.flatMap {
-      case None => service.insert(entry).as(true)
-      case Some(existingEntry) =>
-        val effect =
-          if (existingEntry.userId.isEmpty && entry.userId.isDefined)
-            service.update(existingEntry)(setUserId(_, entry.userId.get)).void
-          else
-            IO.unit
-        effect.as(false)
-    }
-  }
-
-  private def like[S, M <: StatEntry[S]: ModelQuery, T <: StatTable[S, M]](
-      entry: M,
-      model: ModelCompanion.Aux[M, T]
-  ): OptionT[IO, Model[M]] = {
-    val baseFilter: T => Rep[Boolean] = _.modelId === entry.modelId
-    val filter: T => Rep[Boolean]     = _.cookie === entry.cookie
-
-    val userFilter = entry.userId.fold(filter)(id => e => filter(e) || e.userId === id)
-    ModelView.now(model).find(baseFilter && userFilter)
-  }
+trait StatTracker[F[_]] {
 
   /**
     * Signifies that a project has been viewed with the specified request and
     * actions should be taken to check whether a view should be added to the
     * Project's view count.
     */
-  def projectViewed(f: => Result)(
-      implicit projectRequest: ProjectRequest[_],
-      auth: SpongeAuthApi
-  ): IO[Result] = {
-    val statEntryF = users.current.map(_.id.value).value.map { userId =>
-      ProjectView(
-        modelId = projectRequest.data.project.id,
-        address = InetString(StatTracker.remoteAddress),
-        cookie = StatTracker.currentCookie,
-        userId = userId
-      )
-    }
-
-    statEntryF.flatMap { statEntry =>
-      val projectView =
-        record(statEntry, Project, ProjectView)((m, id) => m.copy(userId = Some(id)))
-          .flatMap {
-            case true  => projectRequest.data.project.addView
-            case false => IO.unit
-          }
-
-      projectView
-        .runAsync(IOUtils.logCallback("Failed to register project view", MDCLogger))
-        .as(f.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
-        .toIO
-    }
-  }
+  def projectViewed(result: F[Result])(implicit request: ProjectRequest[_]): F[Result]
 
   /**
     * Signifies that a version has been downloaded with the specified request
@@ -108,33 +46,7 @@ trait StatTracker {
     * @param version Version to check downloads for
     * @param request Request to download the version
     */
-  def versionDownloaded(version: Model[Version])(f: IO[Result])(
-      implicit request: ProjectRequest[_],
-      auth: SpongeAuthApi,
-      cs: ContextShift[IO]
-  ): IO[Result] = {
-    val statEntryF = users.current.map(_.id.value).value.map { userId =>
-      VersionDownload(
-        modelId = version.id,
-        address = InetString(StatTracker.remoteAddress),
-        cookie = StatTracker.currentCookie,
-        userId = userId
-      )
-    }
-
-    statEntryF.flatMap { statEntry =>
-      val recordDownload =
-        record(statEntry, Version, VersionDownload)((m, id) => m.copy(userId = Some(id)))
-          .flatMap {
-            case true  => version.addDownload &> request.data.project.addDownload
-            case false => IO.unit
-          }
-
-      recordDownload.runAsync(IOUtils.logCallback("Failed to register version download", MDCLogger)).toIO *> f
-        .map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
-    }
-  }
-
+  def versionDownloaded(version: Model[Version])(result: F[Result])(implicit request: ProjectRequest[_]): F[Result]
 }
 
 object StatTracker {
@@ -163,6 +75,97 @@ object StatTracker {
       case Some(header) => header.split(',').headOption.map(_.trim).getOrElse(request.remoteAddress)
     }
 
-}
+  /**
+    * Helper class for handling tracking of statistics.
+    */
+  class StatTrackerInstant[F[_], G[_]](bakery: Bakery)(
+      implicit service: ModelService[F],
+      users: UserBase[F],
+      F: cats.effect.Effect[F],
+      par: Parallel[F, G]
+  ) extends StatTracker[F] {
 
-class OreStatTracker @Inject()(val service: ModelService[IO], override val bakery: Bakery) extends StatTracker
+    private val Logger    = scalalogging.Logger("StatTracker")
+    private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
+
+    private def recordDB[M <: StatEntry[_, M], T <: StatTable[_, M]](
+        entry: M,
+        model: ModelCompanion.Aux[M, T]
+    ): F[Boolean] = {
+      like(entry, model).value.flatMap {
+        case None => service.insertRaw(model)(entry).as(true)
+        case Some(existingEntry) =>
+          val effect =
+            if (existingEntry.userId.isEmpty && entry.userId.isDefined)
+              service.updateRaw(model)(existingEntry)(_.withUserId(Some(entry.userId.get))).void
+            else
+              F.unit
+
+          effect.as(false)
+      }
+    }
+
+    private def like[M <: StatEntry[_, M], T <: StatTable[_, M]](
+        entry: M,
+        model: ModelCompanion.Aux[M, T]
+    ): OptionT[F, Model[M]] = {
+      val baseFilter: T => Rep[Boolean] = _.modelId === entry.modelId
+      val filter: T => Rep[Boolean]     = _.cookie === entry.cookie
+
+      val userFilter = entry.userId.fold(filter)(id => e => filter(e) || e.userId === id)
+      ModelView.now(model).find(baseFilter && userFilter)
+    }
+
+    private def createEntry[A](
+        f: (InetString, String, Option[DbRef[User]]) => A
+    )(implicit projectRequest: ProjectRequest[_]) =
+      users.current
+        .map(_.id.value)
+        .value
+        .map(userId => f(InetString(StatTracker.remoteAddress), StatTracker.currentCookie, userId))
+
+    private def addStat[M <: StatEntry[_, M], T <: StatTable[_, M]](
+        createEntryFunc: (InetString, String, Option[DbRef[User]]) => M,
+        entryCompanion: ModelCompanion.Aux[M, T],
+        describe: String,
+        addStatNow: F[Unit],
+        result: F[Result]
+    )(implicit projectRequest: ProjectRequest[_]) = {
+      createEntry(createEntryFunc).flatMap { statEntry =>
+        val stat = recordDB(statEntry, entryCompanion).flatMap {
+          case true  => addStatNow
+          case false => F.unit
+        }
+
+        val doUpdateAsync =
+          stat.runAsync(IOUtils.logCallback(s"Failed to register $describe", MDCLogger)).to[F]
+        val setCookie = result.map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
+
+        doUpdateAsync *> setCookie
+      }
+    }
+
+    def projectViewed(result: F[Result])(implicit projectRequest: ProjectRequest[_]): F[Result] = {
+      addStat(
+        ProjectView(projectRequest.data.project.id, _, _, _),
+        ProjectView,
+        "project view",
+        projectRequest.data.project.addView.void,
+        result
+      )
+    }
+
+    def versionDownloaded(
+        version: Model[Version]
+    )(result: F[Result])(implicit request: ProjectRequest[_]): F[Result] = {
+      addStat(
+        VersionDownload(version.id, _, _, _),
+        VersionDownload,
+        "version download",
+        version.addDownload &> request.data.project.addDownload.void,
+        result
+      )
+    }
+
+  }
+}

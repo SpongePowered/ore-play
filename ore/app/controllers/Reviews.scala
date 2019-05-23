@@ -3,27 +3,21 @@ package controllers
 import java.time.Instant
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, AnyContent, Result}
 
-import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
 import form.OreForms
 import ore.data.user.notification.NotificationType
-import ore.models.project.{Project, ReviewState, Version}
-import ore.models.user.{LoggedAction, Notification, User}
 import ore.db.access.ModelView
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
+import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.models.admin.{Message, Review}
+import ore.models.project.{Project, ReviewState, Version}
+import ore.models.user.{LoggedAction, Notification, User}
 import ore.permission.Permission
 import ore.permission.role.Role
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.UserActionLogger
 import views.{html => views}
 
@@ -38,13 +32,7 @@ import slick.lifted.{Rep, TableQuery}
   * Controller for handling Review related actions.
   */
 final class Reviews @Inject()(forms: OreForms)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
+    implicit oreComponents: OreControllerComponents[IO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 

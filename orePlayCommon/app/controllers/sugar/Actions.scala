@@ -10,20 +10,21 @@ import play.api.i18n.{Lang, Messages}
 import play.api.mvc.Results.{Redirect, Unauthorized}
 import play.api.mvc._
 
+import controllers.OreControllerComponents
 import controllers.sugar.Requests._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.project.{Project, Visibility}
 import ore.models.user.{SignOn, User}
 import models.viewhelper._
+import ore.OreConfig
+import ore.auth.SSOApi
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.IOUtils
 
 import cats.data.OptionT
@@ -34,18 +35,21 @@ import com.typesafe.scalalogging
 /**
   * A set of actions used by Ore.
   */
-trait Actions extends Calls with ActionHelpers {
+trait Actions extends Calls with ActionHelpers { self =>
 
-  implicit def service: ModelService[IO]
-  def sso: SingleSignOnConsumer
-  def bakery: Bakery
-  implicit def auth: SpongeAuthApi
-  implicit def env: OreEnv
-  implicit def config: OreConfig
+  def oreComponents: OreControllerComponents[IO]
 
-  def users: UserBase                 = UserBase()
-  def projects: ProjectBase           = ProjectBase()
-  def organizations: OrganizationBase = OrganizationBase()
+  implicit def service: ModelService[IO] = oreComponents.service
+  def sso: SSOApi[IO]                    = oreComponents.sso
+  def bakery: Bakery                     = oreComponents.bakery
+  implicit def config: OreConfig                  = oreComponents.config
+
+  implicit def users: UserBase[IO]                 = oreComponents.users
+  implicit def projects: ProjectBase[IO]           = oreComponents.projects
+  implicit def organizations: OrganizationBase[IO] = oreComponents.organizations
+
+  implicit def ec: ExecutionContext = oreComponents.ec
+  implicit def cs: ContextShift[IO] = IO.contextShift(ec)
 
   private val PermsLogger    = scalalogging.Logger("Permissions")
   private val MDCPermsLogger = scalalogging.Logger.takingImplicit[OreMDC](PermsLogger.underlying)
@@ -195,7 +199,7 @@ trait Actions extends Calls with ActionHelpers {
       val auth = for {
         ssoSome <- OptionT.fromOption[IO](sso)
         sigSome <- OptionT.fromOption[IO](sig)
-        res     <- Actions.this.sso.authenticate(ssoSome, sigSome)(isNonceValid)(request)
+        res     <- self.sso.authenticate(ssoSome, sigSome)(isNonceValid)
       } yield res
 
       auth
@@ -213,11 +217,7 @@ trait Actions extends Calls with ActionHelpers {
 
       def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
         users
-          .requestPermission(request.user, username, Permission.EditOwnUserSettings)(
-            auth,
-            cs,
-            request
-          )
+          .requestPermission(request.user, username, Permission.EditOwnUserSettings)(request)
           .transform {
             case None    => Some(Unauthorized) // No Permission
             case Some(_) => None // Permission granted => No Filter
@@ -253,7 +253,7 @@ trait Actions extends Calls with ActionHelpers {
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: Request[A]): Future[Either[Result, AuthRequest[A]]] =
-      maybeAuthRequest(request, users.current(request, auth, OreMDC.NoMDC))
+      maybeAuthRequest(request, users.current(request, OreMDC.NoMDC))
 
   }
 
@@ -425,6 +425,6 @@ trait Actions extends Calls with ActionHelpers {
     organizations.withName(organization)
 
   def getUserData(request: OreRequest[_], userName: String)(implicit cs: ContextShift[IO]): OptionT[IO, UserData] =
-    users.withName(userName)(auth, request).semiflatMap(UserData.of(request, _))
+    users.withName(userName)(request).semiflatMap(UserData.of(request, _))
 
 }

@@ -2,44 +2,31 @@ package controllers
 
 import scala.language.higherKinds
 
-import scala.concurrent.ExecutionContext
-
 import play.api.i18n.I18nSupport
 import play.api.mvc._
 
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
-import controllers.sugar.{Actions, Bakery, Requests}
+import controllers.sugar.{Actions, Requests}
+import ore.db.Model
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
-import ore.models.project.{Project, Version, Visibility}
-import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
+import ore.models.project.{Project, Version, Visibility}
 import ore.permission.Permission
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 
 import cats.data.EitherT
-import cats.effect.{ContextShift, IO}
+import cats.effect.IO
 
 /**
   * Represents a Secured base Controller for this application.
   */
-abstract class OreBaseController(
-    implicit val env: OreEnv,
-    val config: OreConfig,
-    val service: ModelService[IO],
-    val bakery: Bakery,
-    val auth: SpongeAuthApi,
-    val sso: SingleSignOnConsumer
-) extends InjectedController
+abstract class OreBaseController(implicit val oreComponents: OreControllerComponents[IO])
+    extends InjectedController
     with Actions
     with I18nSupport {
 
   override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
-
-  implicit def ec: ExecutionContext
-  implicit def cs: ContextShift[IO] = IO.contextShift(ec)
 
   /**
     * Gets a project with the specified author and slug, or returns a notFound.

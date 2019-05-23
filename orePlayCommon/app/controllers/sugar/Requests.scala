@@ -1,5 +1,7 @@
 package controllers.sugar
 
+import scala.language.higherKinds
+
 import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
@@ -15,7 +17,7 @@ import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC
 import util.syntax._
 
-import cats.effect.IO
+import cats.Applicative
 import org.slf4j.MDC
 
 /**
@@ -30,9 +32,9 @@ object Requests {
 
     def globalPermissions: Permission = apiInfo.globalPerms
 
-    def permissionIn[B: HasScope](b: B)(implicit service: ModelService[IO]): IO[Permission] =
-      if (b.scope == GlobalScope) IO.pure(apiInfo.globalPerms)
-      else apiInfo.key.fold(IO.pure(globalPermissions))(_.permissionsIn(b))
+    def permissionIn[B: HasScope, F[_]](b: B)(implicit service: ModelService[F], F: Applicative[F]): F[Permission] =
+      if (b.scope == GlobalScope) F.pure(apiInfo.globalPerms)
+      else apiInfo.key.fold(F.pure(globalPermissions))(_.permissionsIn(b))
 
     override def logMessage(s: String): String = {
       user.foreach(mdcPutUser)

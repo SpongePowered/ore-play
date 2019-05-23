@@ -163,6 +163,13 @@ final class OreConfig @Inject()(config: Configuration) {
       val avatarUrl: String       = raw.get[String]("avatarUrl")
       val key: String             = raw.get[String]("key")
       val timeout: FiniteDuration = raw.get[FiniteDuration]("timeout")
+
+      object breaker extends ConfigCategory {
+        val raw: Configuration      = api.raw.get[Configuration]("breaker")
+        val maxFailures: Int        = raw.get[Int]("max-failures")
+        val reset: FiniteDuration   = raw.get[FiniteDuration]("reset")
+        val timeout: FiniteDuration = raw.get[FiniteDuration]("timeout")
+      }
     }
 
     object sso extends ConfigCategory {
@@ -172,6 +179,7 @@ final class OreConfig @Inject()(config: Configuration) {
       val verifyUrl: String       = raw.get[String]("verifyUrl")
       val secret: String          = raw.get[String]("secret")
       val timeout: FiniteDuration = raw.get[FiniteDuration]("timeout")
+      val reset: FiniteDuration   = raw.get[FiniteDuration]("reset")
       val apikey: String          = raw.get[String]("apikey")
     }
   }

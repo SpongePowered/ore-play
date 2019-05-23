@@ -2,24 +2,19 @@ package controllers
 
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.mvc.{Action, AnyContent}
 
-import controllers.sugar.Bakery
-import ore.db.impl.OrePostgresDriver.api._
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
-import ore.models.user.role.OrganizationUserRole
+import ore.auth.SpongeAuthApi
+import ore.db.DbRef
 import ore.db.access.ModelView
-import ore.db.{DbRef, ModelService}
+import ore.db.impl.OrePostgresDriver.api._
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
+import ore.models.user.role.OrganizationUserRole
 import ore.permission.Permission
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.syntax._
 import views.{html => views}
 
@@ -31,13 +26,8 @@ import cats.syntax.all._
   * Controller for handling Organization based actions.
   */
 class Organizations @Inject()(forms: OreForms)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
+    implicit oreComponents: OreControllerComponents[IO],
+    auth: SpongeAuthApi[IO],
     messagesApi: MessagesApi
 ) extends OreBaseController {
 
@@ -135,7 +125,7 @@ class Organizations @Inject()(forms: OreForms)(
           case Left(_) =>
             Redirect(routes.Users.showProjects(organization, None)).withError(messagesApi("organization.avatarFailed"))
           case Right(token) =>
-            Redirect(auth.url + s"/accounts/user/$organization/change-avatar/?key=${token.signedData}")
+            Redirect(auth.changeAvatarUri(organization, token).toString())
         }
       }
 

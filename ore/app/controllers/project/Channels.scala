@@ -2,23 +2,16 @@ package controllers.project
 
 import javax.inject.Inject
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, AnyContent}
 
-import controllers.OreBaseController
-import controllers.sugar.Bakery
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{ChannelTable, VersionTable}
+import controllers.{OreBaseController, OreControllerComponents}
 import form.OreForms
 import form.project.ChannelData
-import ore.models.project.Channel
-import ore.db.ModelService
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{ChannelTable, VersionTable}
+import ore.models.project.Channel
 import ore.permission.Permission
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
 
 import cats.data.OptionT
@@ -30,13 +23,7 @@ import slick.lifted.TableQuery
   * Controller for handling Channel related actions.
   */
 class Channels @Inject()(forms: OreForms)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO]
+    implicit oreComponents: OreControllerComponents[IO]
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Channels

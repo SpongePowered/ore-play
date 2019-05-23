@@ -48,7 +48,7 @@ case class PendingProject(
       cs: ContextShift[IO]
   ): IO[(Model[Project], Model[Version])] =
     for {
-      _              <- free
+      _              <- free[IO]
       newProject     <- factory.createProject(this)
       newVersion     <- factory.createVersion(newProject, this.pendingVersion)
       updatedProject <- service.update(newProject)(_.copy(recommendedVersionId = Some(newVersion._1.id)))
@@ -85,7 +85,7 @@ object PendingProject {
     )
     result match {
       case Right(version) =>
-        version.cache.unsafeRunSync()
+        version.cache[IO].unsafeRunSync()
         version
       // TODO: not this crap
       case Left(errorMessage) => throw new IllegalArgumentException(errorMessage)
