@@ -5,31 +5,30 @@ import scala.language.higherKinds
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
+import ore.db.ModelService
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTableMain, VersionTable}
 import ore.models.project.{Project, Version, Visibility}
-import ore.OreConfig
-import ore.db.ModelService
-import ore.db.access.ModelView
 import util.IOUtils
 
 import akka.actor.Scheduler
 import cats.Parallel
-import cats.syntax.all._
 import cats.effect.syntax.all._
+import cats.syntax.all._
 import com.typesafe.scalalogging
 
 /**
   * Task to periodically retry failed Discourse requests.
   */
-class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApiEnabled[F, G])(
+class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApi[F])(
     implicit ec: ExecutionContext,
     service: ModelService[F],
     par: Parallel[F, G],
     effect: cats.effect.Effect[F]
 ) extends Runnable {
 
-  val Logger: scalalogging.Logger = this.api.Logger
+  val Logger: scalalogging.Logger = scalalogging.Logger("Discourse")
 
   private val projectTopicFilter = ModelFilter(Project)(_.topicId.isEmpty)
   private val projectDirtyFilter = ModelFilter(Project)(_.isTopicDirty)

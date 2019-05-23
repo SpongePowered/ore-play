@@ -10,7 +10,6 @@ import play.api.inject.ApplicationLifecycle
 
 import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
 import ore.db.impl.OrePostgresDriver.api._
-import ore.{OreConfig, OreEnv}
 
 import cats.effect.{Clock, ContextShift, IO, Sync}
 import doobie._
@@ -26,8 +25,6 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
   */
 @Singleton
 class OreModelService @Inject()(
-    env: OreEnv,
-    config: OreConfig,
     db: DatabaseConfigProvider,
     lifecycle: ApplicationLifecycle
 )(implicit ec: ExecutionContext)
