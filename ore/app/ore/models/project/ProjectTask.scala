@@ -3,8 +3,10 @@ package ore.models.project
 import java.time.Instant
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+
+import play.api.inject.ApplicationLifecycle
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.OreConfig
@@ -20,7 +22,7 @@ import com.typesafe.scalalogging
   * Task that is responsible for publishing New projects
   */
 @Singleton
-class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
+class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
     implicit ec: ExecutionContext,
     service: ModelService[IO]
 ) extends Runnable {
@@ -45,7 +47,12 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
     * Starts the task.
     */
   def start(): Unit = {
-    this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
+    val task = this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
+    lifecycle.addStopHook { () =>
+      Future {
+        task.cancel()
+      }
+    }
     Logger.info(s"Initialized. First run in ${this.interval.toString}.")
   }
 
