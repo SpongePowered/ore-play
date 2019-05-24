@@ -167,12 +167,14 @@ trait ProjectFactory {
     for {
       t <- EitherT.liftF(
         (
+          this.projects.withPluginId(template.pluginId).isDefined,
           this.projects.exists(owner.name, name),
           this.projects.isNamespaceAvailable(owner.name, slug)
         ).parTupled
       )
-      (exists, available) = t
-      _           <- EitherT.cond[IO].apply(!exists, (), "project already exists")
+      (existsId, existsName, available) = t
+      _                                 = println(t)
+      _           <- EitherT.cond[IO].apply(!existsName && !existsId, (), "project already exists")
       _           <- EitherT.cond[IO].apply(available, (), "slug not available")
       _           <- EitherT.cond[IO].apply(config.isValidProjectName(name), (), "invalid name")
       newProject  <- EitherT.right[String](service.insert(project))
