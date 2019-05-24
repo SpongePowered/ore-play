@@ -173,8 +173,8 @@ trait ProjectFactory {
         ).parTupled
       )
       (existsId, existsName, available) = t
-      _                                 = println(t)
-      _           <- EitherT.cond[IO].apply(!existsName && !existsId, (), "project already exists")
+      _           <- EitherT.cond[IO].apply(!existsName, (), "project with that name already exists")
+      _           <- EitherT.cond[IO].apply(!existsId, (), "project with that plugin id already exists")
       _           <- EitherT.cond[IO].apply(available, (), "slug not available")
       _           <- EitherT.cond[IO].apply(config.isValidProjectName(name), (), "invalid name")
       newProject  <- EitherT.right[String](service.insert(project))
