@@ -237,4 +237,5 @@ lazy val ore = project
     swaggerV3 := true
   )
 
-lazy val oreAll = project.in(file(".")).aggregate(db, ore, discourse, models)
+lazy val oreAll =
+  project.in(file(".")).aggregate(db, externalCommon, discourse, auth, models, orePlayCommon, apiV2, ore)
