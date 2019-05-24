@@ -22,7 +22,7 @@ import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
 import ore.models.project.io._
-import ore.util.StringUtils
+import ore.util.{OreMDC, StringUtils}
 import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}
 import util.syntax._
@@ -32,6 +32,7 @@ import cats.data.EitherT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
+import com.typesafe.scalalogging
 
 /**
   * Manages the project and version creation pipeline.
@@ -49,6 +50,9 @@ trait ProjectFactory {
   implicit def config: OreConfig
   implicit def forums: OreDiscourseApi
   implicit def env: OreEnv
+
+  private val Logger    = scalalogging.Logger("Projects")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -291,8 +295,12 @@ trait ProjectFactory {
           val setVisibility = (project: Model[Project]) => {
             project.setVisibility(Visibility.Public, "First upload", version.authorId).map(_._1)
           }
-          if (project.topicId.isEmpty) this.forums.createProjectTopic(project).flatMap(setVisibility)
-          else setVisibility(project)
+          val initProject =
+            if (project.topicId.isEmpty) this.forums.createProjectTopic(project).flatMap(setVisibility)
+            else setVisibility(project)
+
+          initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
+
         } else IO.pure(project)
       }
       withTopicId <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)

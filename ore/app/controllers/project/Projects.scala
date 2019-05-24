@@ -114,6 +114,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         .fold(OptionT.pure[IO](user))(ModelView.now(User).get(_))
         .toRight(Redirect(self.showCreator()).withError("Owner not found"))
       project <- factory.createProject(owner, settings.asTemplate).leftMap(Redirect(self.showCreator()).withError(_))
+      _       <- EitherT.right[Result](projects.refreshHomePage(MDCLogger))
     } yield Redirect(self.show(project._1.ownerName, project._1.slug))
   }
 
