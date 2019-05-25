@@ -55,6 +55,10 @@ function toggleSpinner(e) {
 hljs.initHighlightingOnLoad();
 
 $(function() {
+    if(window.navigator.userAgent.indexOf('MSIE ') > 0 || window.navigator.userAgent.indexOf('Trident/') > 0) {
+        alert("Ore doesn't support Internet Explorer! Please use a modern browser.");
+    }
+
     $('.alert-fade').fadeIn('slow');
 
     initTooltips();
