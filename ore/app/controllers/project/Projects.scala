@@ -572,6 +572,7 @@ class Projects @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         _ <- formData
           .save(data.settings, data.project, MDCLogger)
           .leftMap(Redirect(self.showSettings(author, slug)).withError(_))
+        _ <- EitherT.right[Result](projects.refreshHomePage(MDCLogger))
         _ <- EitherT.right[Result](
           UserActionLogger.log(
             request.request,
