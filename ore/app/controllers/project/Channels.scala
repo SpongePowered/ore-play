@@ -1,6 +1,6 @@
 package controllers.project
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.mvc.{Action, AnyContent}
 
@@ -22,6 +22,7 @@ import slick.lifted.TableQuery
 /**
   * Controller for handling Channel related actions.
   */
+@Singleton
 class Channels @Inject()(forms: OreForms)(
     implicit oreComponents: OreControllerComponents[IO]
 ) extends OreBaseController {

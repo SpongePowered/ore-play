@@ -1,7 +1,7 @@
 package controllers.project
 
 import java.nio.charset.StandardCharsets
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.libs.json.JsValue
 import play.api.mvc.{Action, AnyContent}
@@ -34,6 +34,7 @@ import cats.syntax.all._
 /**
   * Controller for handling Page related actions.
   */
+@Singleton
 class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
     implicit oreComponents: OreControllerComponents[IO],
     forums: OreDiscourseApi[IO],

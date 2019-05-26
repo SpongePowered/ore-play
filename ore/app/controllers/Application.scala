@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDate}
 import java.util.Date
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import scala.util.Try
 
@@ -42,6 +42,7 @@ import cats.syntax.all._
 /**
   * Main entry point for application.
   */
+@Singleton
 final class Application @Inject()(forms: OreForms)(
     implicit oreComponents: OreControllerComponents[IO],
     renderer: MarkdownRenderer

@@ -3,7 +3,7 @@ package controllers.project
 import java.nio.file.{Files, Path}
 import java.security.MessageDigest
 import java.util.Base64
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -50,6 +50,7 @@ import com.typesafe.scalalogging
 /**
   * Controller for handling Project related actions.
   */
+@Singleton
 class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: ProjectFactory)(
     implicit oreComponents: OreControllerComponents[IO],
     forums: OreDiscourseApi[IO],

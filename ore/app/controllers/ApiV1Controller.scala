@@ -2,7 +2,7 @@ package controllers
 
 import java.time.Instant
 import java.util.{Base64, UUID}
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.i18n.Messages
 import play.api.libs.json._
@@ -38,6 +38,7 @@ import com.typesafe.scalalogging
 /**
   * Ore API (v1)
   */
+@Singleton
 final class ApiV1Controller @Inject()(
     api: OreRestfulApiV1,
     status: StatusZ,

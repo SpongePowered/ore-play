@@ -6,6 +6,10 @@ import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
 
+import play.api.http.FileMimeTypes
+import play.api.i18n.{Langs, MessagesApi}
+import play.api.mvc.{ControllerComponents, DefaultActionBuilder, PlayBodyParsers}
+
 import controllers.sugar.Bakery
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import ore.OreConfig
@@ -14,7 +18,7 @@ import ore.db.ModelService
 
 import cats.effect.IO
 
-trait OreControllerComponents[F[_]] {
+trait OreControllerComponents[F[_]] extends ControllerComponents {
   def service: ModelService[F]
   def sso: SSOApi[F]
   def bakery: Bakery
@@ -22,9 +26,8 @@ trait OreControllerComponents[F[_]] {
   def users: UserBase[F]
   def projects: ProjectBase[F]
   def organizations: OrganizationBase[F]
-  def ec: ExecutionContext
 }
-case class DefaultOreControllerComponents @Inject() (
+case class DefaultOreControllerComponents @Inject()(
     service: ModelService[IO],
     sso: SSOApi[IO],
     bakery: Bakery,
@@ -32,5 +35,10 @@ case class DefaultOreControllerComponents @Inject() (
     users: UserBase[IO],
     projects: ProjectBase[IO],
     organizations: OrganizationBase[IO],
-    ec: ExecutionContext
+    actionBuilder: DefaultActionBuilder,
+    parsers: PlayBodyParsers,
+    messagesApi: MessagesApi,
+    langs: Langs,
+    fileMimeTypes: FileMimeTypes,
+    executionContext: ExecutionContext
 ) extends OreControllerComponents[IO]

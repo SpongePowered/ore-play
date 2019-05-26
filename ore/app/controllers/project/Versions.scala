@@ -4,7 +4,7 @@ import java.nio.file.Files._
 import java.nio.file.{Files, StandardCopyOption}
 import java.time.Instant
 import java.util.UUID
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.libs.json.Json
@@ -46,6 +46,7 @@ import com.typesafe.scalalogging
 /**
   * Controller for handling Version related actions.
   */
+@Singleton
 class Versions @Inject()(stats: StatTracker[IO], forms: OreForms, factory: ProjectFactory, fileManager: ProjectFiles)(
     implicit oreComponents: OreControllerComponents[IO],
     messagesApi: MessagesApi,

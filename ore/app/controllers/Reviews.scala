@@ -1,7 +1,7 @@
 package controllers
 
 import java.time.Instant
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.mvc.{Action, AnyContent, Result}
 
@@ -31,6 +31,7 @@ import slick.lifted.{Rep, TableQuery}
 /**
   * Controller for handling Review related actions.
   */
+@Singleton
 final class Reviews @Inject()(forms: OreForms)(
     implicit oreComponents: OreControllerComponents[IO],
     renderer: MarkdownRenderer

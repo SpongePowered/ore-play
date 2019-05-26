@@ -5,7 +5,7 @@ import scala.language.higherKinds
 import java.nio.file.Path
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
@@ -50,6 +50,7 @@ import io.circe._
 import io.circe.generic.extras._
 import io.circe.syntax._
 
+@Singleton
 class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
     implicit oreComponents: OreControllerComponents[IO],
     mat: Materializer

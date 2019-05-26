@@ -48,7 +48,7 @@ trait Actions extends Calls with ActionHelpers { self =>
   implicit def projects: ProjectBase[IO]           = oreComponents.projects
   implicit def organizations: OrganizationBase[IO] = oreComponents.organizations
 
-  implicit def ec: ExecutionContext = oreComponents.ec
+  implicit def ec: ExecutionContext = oreComponents.executionContext
   implicit def cs: ContextShift[IO] = IO.contextShift(ec)
 
   private val PermsLogger    = scalalogging.Logger("Permissions")

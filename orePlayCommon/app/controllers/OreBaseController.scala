@@ -22,9 +22,10 @@ import cats.effect.IO
   * Represents a Secured base Controller for this application.
   */
 abstract class OreBaseController(implicit val oreComponents: OreControllerComponents[IO])
-    extends InjectedController
+    extends AbstractController(oreComponents)
     with Actions
     with I18nSupport {
+  println(getClass.getSimpleName)
 
   override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
 

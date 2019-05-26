@@ -1,6 +1,6 @@
 package controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import play.api.i18n.MessagesApi
 import play.api.mvc._
@@ -35,6 +35,7 @@ import cats.syntax.all._
 /**
   * Controller for general user actions.
   */
+@Singleton
 class Users @Inject()(
     fakeUser: FakeUser,
     forms: OreForms,
