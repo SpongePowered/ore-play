@@ -8,9 +8,7 @@ import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
 
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
-import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, Result}
 import play.filters.csrf.CSRF
 
@@ -46,6 +44,8 @@ import cats.instances.option._
 import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
+import _root_.io.circe.Json
+import _root_.io.circe.syntax._
 
 /**
   * Controller for handling Version related actions.
@@ -657,18 +657,27 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           val apiMsgKey   = if (isPartial) "version.download.confirmPartial.api" else "version.download.confirm.body.api"
           lazy val apiMsg = this.messagesApi(apiMsgKey)
 
+          lazy val curlInstruction = this.messagesApi(
+            "version.download.confirm.curl",
+            self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
+            CSRF.getToken.get.value
+          )
+
           if (api.getOrElse(false)) {
             (removeWarnings *> addWarning).as(
               MultipleChoices(
-                Json.obj(
-                  "message" -> apiMsg,
-                  "post" -> self
-                    .confirmDownload(author, slug, target, Some(dlType.value), Some(token), None)
-                    .absoluteURL(),
-                  "url"   -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
-                  "token" -> token
-                )
-              )
+                Json
+                  .obj(
+                    "message" := apiMsg,
+                    "post" := self
+                      .confirmDownload(author, slug, target, Some(dlType.value), Some(token), None)
+                      .absoluteURL(),
+                    "url" := self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
+                    "curl" := curlInstruction,
+                    "token" := token
+                  )
+                  .spaces4
+              ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
             )
           } else {
             val userAgent = request.headers.get("User-Agent").map(_.toLowerCase)
@@ -681,11 +690,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             } else if (userAgent.exists(_.startsWith("curl/"))) {
               (removeWarnings *> addWarning).as(
                 MultipleChoices(
-                  apiMsg + "\n" + this.messagesApi(
-                    "version.download.confirm.curl",
-                    self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
-                    CSRF.getToken.get.value
-                  ) + "\n"
+                  apiMsg + "\n" + curlInstruction + "\n"
                 ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
               )
             } else {
