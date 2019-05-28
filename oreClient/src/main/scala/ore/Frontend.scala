@@ -8,6 +8,6 @@ object Frontend {
 
   def main(args: Array[String]): Unit = {
     println("Hello world in console")
-    OutWatch.renderInto("#app", h1("Hello World")).unsafeRunSync()
+    //OutWatch.renderInto("#app", h1("Hello World")).unsafeRunSync()
   }
 }
