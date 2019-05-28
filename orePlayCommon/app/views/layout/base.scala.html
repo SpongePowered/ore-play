@@ -42,7 +42,7 @@ this.
     </head>
     <body class="site">
         @if(showHeader) {
-            @bootstrap.header(authEnabled)
+            @layout.header(authEnabled)
         }
 
         <div class="site-content">
@@ -65,7 +65,7 @@ this.
         </div>
 
         @if(showFooter) {
-            @bootstrap.footer()
+            @layout.footer()
         }
 
         @if(scriptsEnabled) {

@@ -2,7 +2,7 @@
 @import ore.OreConfig
 @(remoteUrl: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
-@bootstrap.layout(messages("general.linkout.title")) {
+@layout.base(messages("general.linkout.title")) {
 
     <div class="row">
         <div class="col-md-6 col-md-offset-3">

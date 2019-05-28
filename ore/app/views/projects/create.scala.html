@@ -27,7 +27,7 @@ Page used for uploading and creating new projects.
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pluginUpload.js")"></script>
 }
 
-@bootstrap.layout(messages("project.create"), scripts) {
+@layout.base(messages("project.create"), scripts) {
 
     <div class="row">
         <div class="col-md-10">

@@ -10,7 +10,7 @@
 
 @versionRoutes = @{ controllers.project.routes.Versions }
 
-@bootstrap.layout(messages("version.download.confirm.title") + " " + messages("version.download.confirm.header", project.ownerName, project.name, target.name)) {
+@layout.base(messages("version.download.confirm.title") + " " + messages("version.download.confirm.header", project.ownerName, project.name, target.name)) {
 
     <div class="row">
         <div class="col-md-6 col-md-offset-3">

@@ -57,7 +57,7 @@
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userAdmin.js")"></script>
 }
 
-@bootstrap.layout(prefix + user.user.name, scripts) {
+@layout.base(prefix + user.user.name, scripts) {
 
     <div class="row">
         <div class="col-md-12">
