@@ -72,9 +72,6 @@ sorted according to different criteria.
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <script src="@bundleUrl("ore-client", "library")"></script>
-    <script src="@bundleUrl("ore-client", "loader")"></script>
-    <script src="@bundleUrl("ore-client", "")"></script>
     <script src="@routes.Assets.versioned("main-library.js")"></script>
     <script @CSPNonce.attr>
     @if(visibleCategories.isDefined) {
