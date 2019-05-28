@@ -279,13 +279,7 @@ lazy val ore = project
     scalaJSProjects := Seq(oreClient),
     pipelineStages in Assets += scalaJSPipeline,
     WebKeys.exportedMappings in Assets := Seq(),
-    PlayKeys.playMonitoredFiles ++= {
-      val files = (oreClient / Compile / fastOptJS / webpackMonitoredFiles).value
-      files.map { file =>
-        if (file.isFile) file.getParentFile
-        else file
-      }.distinct
-    }
+    PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets"
   )
 
 lazy val oreAll =
