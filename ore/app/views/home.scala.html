@@ -60,18 +60,9 @@ sorted according to different criteria.
     Some(orderWithRelevance).filterNot(identity)
 }
 
-@bundleUrl(projectName: String, tpe: String) = @{
-    val name = projectName.toLowerCase
-    val tpeWithDash = if(tpe.isEmpty) "" else s"-$tpe"
-
-    Seq(s"$name-opt$tpeWithDash.js", s"$name-fastopt$tpeWithDash.js")
-            .find(name => getClass.getResource(s"/public/$name") != null)
-            .map(controllers.routes.Assets.versioned(_).url)
-}
-
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    @*<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>*@
     <script src="@routes.Assets.versioned("home-library.js")"></script>
     <script @CSPNonce.attr>
     @if(visibleCategories.isDefined) {
