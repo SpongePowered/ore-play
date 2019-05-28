@@ -211,7 +211,7 @@ lazy val oreClient = project
     webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
     webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack.config.prod.js"),
     webpackMonitoredDirectories += baseDirectory.value / "assets",
-    includeFilter in webpackMonitoredFiles := "*.vue",
+    includeFilter in webpackMonitoredFiles := "*.vue" || "*.js",
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     version in startWebpackDevServer := "3.1.4",
     version in webpack := "4.16.1",
@@ -278,6 +278,14 @@ lazy val ore = project
     swaggerV3 := true,
     scalaJSProjects := Seq(oreClient),
     pipelineStages in Assets += scalaJSPipeline,
+    WebKeys.exportedMappings in Assets := Seq(),
+    PlayKeys.playMonitoredFiles ++= {
+      val files = (oreClient / Compile / fastOptJS / webpackMonitoredFiles).value
+      files.map { file =>
+        if (file.isFile) file.getParentFile
+        else file
+      }.distinct
+    }
   )
 
 lazy val oreAll =

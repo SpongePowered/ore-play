@@ -7,7 +7,8 @@ const rootDir = Path.resolve(__dirname, '../../../..');
 module.exports = {
     entry: {
         home: Path.resolve(rootDir, 'assets', 'main.js'),
-        "ore-client-fastopt": Path.resolve(rootDir, 'assets', 'dummy.js')
+        "ore-client-fastopt": Path.resolve(rootDir, 'assets', 'dummy.js'),
+        "ore-client-opt": Path.resolve(rootDir, 'assets', 'dummy.js')
     },
     output: {
         path: __dirname,
@@ -50,6 +51,9 @@ module.exports = {
     resolve: {
         alias: {
             'vue$': 'vue/dist/vue.esm.js'
-        }
+        },
+        modules: [
+            Path.resolve(__dirname, 'node_modules')
+        ]
     }
 };
