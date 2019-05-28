@@ -199,8 +199,44 @@ def flexmarkDep(module: String) = {
   "com.vladsch.flexmark" % artifactId % flexmarkVersion
 }
 
+lazy val copyFastOptJS = TaskKey[Unit]("copyFastOptJS", "Copy javascript files to target directory")
+
+lazy val oreClient = project
+  .enablePlugins(ScalaJSBundlerPlugin)
+  .settings(
+    name := "ore-client",
+    commonSettings,
+    useYarn := true,
+    scalacOptions += "-P:scalajs:sjsDefinedByDefault",
+    scalaJSUseMainModuleInitializer := true,
+    scalaJSModuleKind := ModuleKind.CommonJSModule,
+    webpackDevServerExtraArgs := Seq("--progress", "--color"),
+    webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
+    webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
+    libraryDependencies ++= Seq(
+      "org.scala-js"       %%% "scalajs-dom" % "0.9.1",
+      "io.github.outwatch" %%% "outwatch"    % "1.0.0-RC2"
+    ),
+    version in webpack := "4.16.1",
+    version in startWebpackDevServer := "3.1.4",
+    addCommandAlias("dev", "; compile; fastOptJS::startWebpackDevServer; devwatch; fastOptJS::stopWebpackDevServer"),
+    addCommandAlias("devwatch", "~; fastOptJS; copyFastOptJS"),
+    copyFastOptJS := {
+      val inDir  = (crossTarget in (Compile, fastOptJS)).value
+      val outDir = (crossTarget in (Compile, fastOptJS)).value / "dev"
+      val files = Seq(name.value.toLowerCase + "-fastopt-loader.js", name.value.toLowerCase + "-fastopt.js").map { p =>
+        (inDir / p, outDir / p)
+      }
+      IO.copy(files, overwrite = true, preserveLastModified = true, preserveExecutable = true)
+    },
+    //Probably not used as it's not used in the App anywhere
+    npmDependencies in Compile ++= Seq(
+      "vue" -> "2.6.10"
+    )
+  )
+
 lazy val ore = project
-  .enablePlugins(PlayScala, SwaggerPlugin)
+  .enablePlugins(PlayScala, SwaggerPlugin, WebScalaJSBundlerPlugin)
   .dependsOn(orePlayCommon, apiV2)
   .settings(
     commonSettings,
@@ -244,8 +280,10 @@ lazy val ore = project
       "controllers.apiv2.ApiV2Controller",
     ),
     swaggerAPIVersion := "2.0",
-    swaggerV3 := true
+    swaggerV3 := true,
+    scalaJSProjects := Seq(oreClient),
+    pipelineStages in Assets += scalaJSPipeline,
   )
 
 lazy val oreAll =
-  project.in(file(".")).aggregate(db, externalCommon, discourse, auth, models, orePlayCommon, apiV2, ore)
+  project.in(file(".")).aggregate(db, externalCommon, discourse, auth, models, orePlayCommon, apiV2, ore, oreClient)

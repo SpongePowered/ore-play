@@ -60,8 +60,20 @@ sorted according to different criteria.
     Some(orderWithRelevance).filterNot(identity)
 }
 
+@bundleUrl(projectName: String, tpe: String) = @{
+    val name = projectName.toLowerCase
+    val tpeWithDash = if(tpe.isEmpty) "" else s"-$tpe"
+
+    Seq(s"$name-opt$tpeWithDash.js", s"$name-fastopt$tpeWithDash.js")
+            .find(name => getClass.getResource(s"/public/$name") != null)
+            .map(controllers.routes.Assets.versioned(_).url)
+}
+
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
+    <script src="@bundleUrl("ore-client", "library")"></script>
+    <script src="@bundleUrl("ore-client", "loader")"></script>
+    <script src="@bundleUrl("ore-client", "")"></script>
     <script @CSPNonce.attr>
     @if(visibleCategories.isDefined) {
     CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
@@ -90,7 +102,7 @@ sorted according to different criteria.
 @layout.base(messages("general.title"), scripts, additionalMeta = meta) {
 
     <!-- Header -->
-    <div class="index-header">
+    <div id="app" class="index-header">
         <div class="row centered-content-row">
             <div class="col-md-9 ore-banner">
                 <div class="row aligned-row">
