@@ -1,6 +1,6 @@
-const Vue = require('vue');
+import Vue from 'vue'
 const root = require('./Test.vue').default;
-const app = new Vue.default({
+const app = new Vue({
     el: '#app',
     render: createElement => createElement(root),
 });
