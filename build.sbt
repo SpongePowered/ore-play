@@ -208,19 +208,25 @@ lazy val oreClient = project
     scalacOptions += "-P:scalajs:sjsDefinedByDefault",
     scalaJSUseMainModuleInitializer := false,
     scalaJSModuleKind := ModuleKind.CommonJSModule,
-    webpackConfigFile := Some(baseDirectory.value / "webpack.config.dev.js"),
+    webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
+    webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack.config.prod.js"),
+    webpackMonitoredDirectories += baseDirectory.value / "assets",
+    includeFilter in webpackMonitoredFiles := "*.vue",
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     version in startWebpackDevServer := "3.1.4",
     version in webpack := "4.16.1",
     //Probably not used as it's not used in the App anywhere
     npmDependencies in Compile ++= Seq(
-      "vue" -> "2.6.10",
-      "vue-loader" -> "15.7.0",
+      "vue"                   -> "2.6.10",
+      "vue-loader"            -> "15.7.0",
       "vue-template-compiler" -> "2.6.10",
-      "css-loader" -> "2.1.1",
-      "vue-style-loader" -> "4.1.2",
-      "babel-loader" -> "8.0.6",
-      "@babel/core" -> "7.4.5",
+      "css-loader"            -> "2.1.1",
+      "vue-style-loader"      -> "4.1.2",
+      "babel-loader"          -> "8.0.6",
+      "@babel/core"           -> "7.4.5",
+    ),
+    npmDevDependencies in Compile ++= Seq(
+      "webpack-merge" -> "4.1.0"
     )
   )
 
