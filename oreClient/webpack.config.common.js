@@ -3,12 +3,13 @@ const VueLoaderPlugin = require('vue-loader/lib/plugin');
 
 const Path = require('path');
 const rootDir = Path.resolve(__dirname, '../../../..');
+const resourcesDir = Path.resolve(rootDir, 'src', 'main', 'resources');
 
 module.exports = {
     entry: {
-        home: Path.resolve(rootDir, 'assets', 'main.js'),
-        "ore-client-fastopt": Path.resolve(rootDir, 'assets', 'dummy.js'),
-        "ore-client-opt": Path.resolve(rootDir, 'assets', 'dummy.js')
+        home: Path.resolve(resourcesDir, 'assets', 'main.js'),
+        "ore-client-fastopt": Path.resolve(resourcesDir, 'assets', 'dummy.js'),
+        "ore-client-opt": Path.resolve(resourcesDir, 'assets', 'dummy.js')
     },
     output: {
         path: __dirname,
@@ -19,7 +20,7 @@ module.exports = {
     devServer: {
         contentBase: [
             Path.resolve(__dirname, 'dev'),
-            Path.resolve(rootDir, 'assets')
+            Path.resolve(resourcesDir, 'assets')
         ],
         watchContentBase: true,
         hot: false,
