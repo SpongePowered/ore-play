@@ -63,7 +63,7 @@ sorted according to different criteria.
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
     @*<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>*@
-    <script src="@routes.Assets.versioned("home-library.js")"></script>
+    <script src="@routes.Assets.versioned("vue/home.js")"></script>
     <script @CSPNonce.attr>
     @if(visibleCategories.isDefined) {
     CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
@@ -89,7 +89,11 @@ sorted according to different criteria.
     <meta property="og:description" content="@messages("general.description")" />
 }
 
-@layout.base(messages("general.title"), scripts, additionalMeta = meta) {
+@styling = {
+    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("vue/home.css")" />
+}
+
+@layout.base(messages("general.title"), scripts, additionalMeta = meta, additionalStyling = styling) {
 
     <!-- Header -->
     <div id="app" class="index-header">

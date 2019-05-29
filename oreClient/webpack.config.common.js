@@ -1,5 +1,6 @@
 const webpack = require('webpack');
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const Path = require('path');
 const rootDir = Path.resolve(__dirname, '../../../..');
@@ -7,28 +8,22 @@ const resourcesDir = Path.resolve(rootDir, 'src', 'main', 'resources');
 
 module.exports = {
     entry: {
-        home: Path.resolve(resourcesDir, 'assets', 'main.js'),
+        home: Path.resolve(resourcesDir, 'assets', 'home.js'),
         "ore-client-fastopt": Path.resolve(resourcesDir, 'assets', 'dummy.js'),
         "ore-client-opt": Path.resolve(resourcesDir, 'assets', 'dummy.js')
     },
     output: {
-        path: __dirname,
-        filename: '[name]-library.js',
+        path: Path.resolve(__dirname, "vue"),
+        filename: '[name].js',
         publicPath: '/dist/',
         libraryTarget: 'umd'
     },
-    devServer: {
-        contentBase: [
-            Path.resolve(__dirname, 'dev'),
-            Path.resolve(resourcesDir, 'assets')
-        ],
-        watchContentBase: true,
-        hot: false,
-        hotOnly: false,
-        inline: true
-    },
     plugins: [
-        new VueLoaderPlugin()
+        new VueLoaderPlugin(),
+        new MiniCssExtractPlugin({
+            filename: '[name].css',
+            chunkFilename: '[id].css',
+        })
     ],
     module: {
         rules: [
@@ -42,11 +37,12 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                use: [
-                    'vue-style-loader',
-                    'css-loader'
-                ]
-            }
+                use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader'],
+            },
+            {
+                test: /\.scss$/,
+                use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader', 'sass-loader'],
+            },
         ]
     },
     resolve: {
@@ -56,5 +52,16 @@ module.exports = {
         modules: [
             Path.resolve(__dirname, 'node_modules')
         ]
+    },
+    optimization: {
+        splitChunks: {
+            cacheGroups: {
+                vendors: {
+                    test: /[\\/]node_modules[\\/]/,
+                    name: 'commons',
+                    chunks: 'all'
+                },
+            }
+        },
     }
 };

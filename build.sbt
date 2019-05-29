@@ -220,13 +220,20 @@ lazy val oreClient = project
       "vue" -> "2.6.10",
     ),
     npmDevDependencies in Compile ++= Seq(
-      "webpack-merge"         -> "4.1.0",
-      "vue-loader"            -> "15.7.0",
-      "vue-template-compiler" -> "2.6.10",
-      "css-loader"            -> "2.1.1",
-      "vue-style-loader"      -> "4.1.2",
-      "babel-loader"          -> "8.0.6",
-      "@babel/core"           -> "7.4.5",
+      "webpack-merge"                      -> "4.1.0",
+      "vue-loader"                         -> "15.7.0",
+      "vue-template-compiler"              -> "2.6.10",
+      "css-loader"                         -> "2.1.1",
+      "vue-style-loader"                   -> "4.1.2",
+      "babel-loader"                       -> "8.0.6",
+      "@babel/core"                        -> "7.4.5",
+      "terser-webpack-plugin"              -> "1.3.0",
+      "mini-css-extract-plugin"            -> "0.7.0",
+      "optimize-css-assets-webpack-plugin" -> "5.0.1",
+      "sass-loader"                        -> "7.1.0",
+      "postcss-loader"                     -> "3.0.0",
+      "autoprefixer"                       -> "9.5.1",
+      "node-sass"                          -> "4.12.0",
     )
   )
 

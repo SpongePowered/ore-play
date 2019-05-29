@@ -12,8 +12,10 @@
     }
 </script>
 
-<style>
+<style lang="scss">
     .example {
         color: red;
+        display: flex;
+        background: linear-gradient(45deg, blue, red);
     }
 </style>
