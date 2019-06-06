@@ -71,7 +71,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   private val Logger = scalalogging.Logger.takingImplicit[OreMDC]("ApiV2")
 
   private def limitOrDefault(limit: Option[Long], default: Long) = math.min(limit.getOrElse(default), default)
-  private def offsetOrZero(offset: Long) = math.max(offset, 0)
+  private def offsetOrZero(offset: Long)                         = math.max(offset, 0)
 
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
@@ -353,8 +353,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def listProjects(
       q: Option[String],
-      category: Seq[Category],
-      tag: Seq[String],
+      categories: Seq[Category],
+      tags: Seq[String],
       owner: Option[String],
       sort: Option[ProjectSortingStrategy],
       relevance: Option[Boolean],
@@ -362,13 +362,13 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       offset: Long
   ): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
-      val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
+      val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
       val realOffset = offsetOrZero(offset)
       val getProjects = APIV2Queries
         .projectQuery(
           None,
-          category.toList,
-          tag.toList,
+          categories.toList,
+          tags.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -383,8 +383,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       val countProjects = APIV2Queries
         .projectCountQuery(
           None,
-          category.toList,
-          tag.toList,
+          categories.toList,
+          tags.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -430,24 +430,24 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def listVersions(
       pluginId: String,
-      tag: Seq[String],
+      tags: Seq[String],
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
-      val realLimit = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
+      val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
       val realOffset = offsetOrZero(offset)
       val getVersions = APIV2Queries
         .versionQuery(
           pluginId,
           None,
-          tag.toList,
+          tags.toList,
           realLimit,
           realOffset
         )
         .to[Vector]
 
-      val countVersions = APIV2Queries.versionCountQuery(pluginId, tag.toList).unique
+      val countVersions = APIV2Queries.versionCountQuery(pluginId, tags.toList).unique
 
       (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
         Ok(
