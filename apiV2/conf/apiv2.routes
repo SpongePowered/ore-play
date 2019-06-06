@@ -265,7 +265,7 @@ GET     /projects/:pluginId/members                          @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tag: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns a specific version of a project
