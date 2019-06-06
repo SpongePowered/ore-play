@@ -107,9 +107,6 @@ final class Application @Inject()(forms: OreForms)(
     val pageNum  = math.max(page.getOrElse(1), 1)
     val offset   = (pageNum - 1) * pageSize
 
-    val catList =
-      if (categoryList.isEmpty || Category.visible.toSet == categoryList.toSet) None else Some(categoryList)
-
     val projectNumQ = TableQuery[ProjectTableMain].filter(_.visibility === (Visibility.Public: Visibility)).size
 
     val projectListF = service

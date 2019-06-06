@@ -17,10 +17,10 @@ sorted according to different criteria.
 @import ore.data.PlatformCategory
 @import ore.data.project.Category
 @import db.impl.access.ProjectBase
-@(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,,
+@(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
-        request: OreRequest[_], config: OreConfig)
+        request: OreRequest[_], config: OreConfig, projectBase: ProjectBase)
 
 @randomSponsor = @{
     val logos = config.sponge.sponsors
@@ -29,30 +29,30 @@ sorted according to different criteria.
     logos(index)
 }
 
-@generateQueryString(categories: Seq[Category]) = @{
-    categories.map(c => c.value).mkString(",")
+@generateCategoryStrings(categories: Seq[Category]) = @{
+    categories.map(_.apiName)
 }
 
 @generateModifiedQueryString(categories: Seq[Category], modifiedCategory: Category) = @{
     if (categories.isEmpty) {
-        Some(generateQueryString(Seq(modifiedCategory)))
+        generateCategoryStrings(Seq(modifiedCategory))
     } else if (categories.contains(modifiedCategory)) {
-        Some(generateQueryString((categories.toSet - modifiedCategory).toSeq))
+        generateCategoryStrings((categories.toSet - modifiedCategory).toSeq)
     } else if (categories.size + 1 == Category.visible.size) {
-        None
+        Nil
     } else {
-        Some(generateQueryString((categories.toSet + modifiedCategory).toSeq))
+        generateCategoryStrings((categories.toSet + modifiedCategory).toSeq)
     }
 }
 
-@categoryString = @{
-    visibleCategories.flatMap(cat => Some(generateQueryString(cat)))
+@categoryStrings = @{
+    generateCategoryStrings(visibleCategories.getOrElse(Nil))
 }
 
 @orderingOption = @{
     sort match {
         case ProjectSortingStrategy.Default => None
-        case _ => Some(sort.id)
+        case _ => Some(sort.apiName)
     }
 }
 
@@ -142,21 +142,9 @@ sorted according to different criteria.
                 page = page,
                 pageSize = config.ore.projects.initLoad,
                 call = page => routes.Application.showHome(
-                    categoryString, query, orderingOption, Some(page),
+                    categoryStrings, query, orderingOption, Some(page),
                     platformCategory.map(_.name) ,platform.map(_.name), relevanceOption)
-                )
             )
-
-            <div class="project-container">
-
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-
-                <ul class="list-group project-list"></ul>
-
-                <ul class="pagination"></ul>
-            </div>
         </div>
 
         <!-- Sidebar -->
@@ -180,7 +168,7 @@ sorted according to different criteria.
                     <h3 class="panel-title">@messages("project.category.plural")</h3>
                     @if(visibleCategories.isDefined) {
                         <a href="@routes.Application.showHome(
-                            None, None, None, None,
+                            Nil, None, None, None,
                             platformCategory.map(_.name),
                             platform.map(_.name), relevanceOption)">
                             <i class="category-reset fas fa-times white"></i>
@@ -208,19 +196,19 @@ sorted according to different criteria.
                 <ul class="list-group">
 
                     <a href="@routes.Application.showHome(
-                            categoryString,
-                            query,
-                            orderingOption,
-                            None,
-                            None, None,
-                            relevanceOption)"
+                        categoryStrings,
+                        query,
+                        orderingOption,
+                        None,
+                        None, None,
+                        relevanceOption)"
                     class="list-group-item @if(platform.isEmpty && platformCategory.isEmpty) { active }">
                         <strong>@messages("general.any")</strong>
                     </a>
 
                     @for(pc <- PlatformCategory.getPlatformCategories) {
                         <a href="@routes.Application.showHome(
-                            categoryString,
+                            categoryStrings,
                             query,
                             orderingOption,
                             None,
@@ -235,7 +223,7 @@ sorted according to different criteria.
                             @if(platforms.size > 1) {
                                 @for(p <- platforms) {
                                     <a href="@routes.Application.showHome(
-                                        categoryString,
+                                        categoryStrings,
                                         query,
                                         orderingOption,
                                         None,
