@@ -16,9 +16,8 @@ import controllers.sugar.Requests.AuthRequest
 import controllers.{OreBaseController, OreControllerComponents}
 import discourse.OreDiscourseApi
 import form.OreForms
-import form.project.{DiscussionReplyForm, FlagForm, ProjectRoleSetBuilder}
+import form.project.{DiscussionReplyForm, FlagForm}
 import models.viewhelper.ScopedOrganizationData
-import ore.auth.SpongeAuthApi
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.UserTable
@@ -29,14 +28,14 @@ import ore.models.admin.ProjectLogEntry
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.{PluginUpload, ProjectFiles}
+import ore.models.project.io.ProjectFiles
 import ore.models.project._
 import ore.models.user._
 import ore.models.user.role.ProjectUserRole
 import ore.permission._
 import ore.util.OreMDC
 import ore.util.StringUtils._
-import ore.{OreEnv, StatTracker}
+import ore.StatTracker
 import _root_.util.syntax._
 import util.UserActionLogger
 import views.html.{projects => views}
@@ -86,92 +85,28 @@ class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: Proje
       val createdOrgas = orgas.zip(createOrga).collect {
         case (orga, true) => orga
       }
-      Ok(views.create(createdOrgas, None))
+      Ok(views.create(createdOrgas, request.user))
     }
   }
 
-  /**
-    * Uploads a Project's first plugin file for further processing.
-    *
-    * @return Result
-    */
-  def upload(): Action[AnyContent] = UserLock().asyncEitherT { implicit request =>
+  def createProject(): Action[AnyContent] = UserLock().asyncEitherT { implicit request =>
     val user = request.user
-
-    val res = for {
-      _          <- EitherT.fromOption[IO](factory.getUploadError(user), ()).swap
-      uploadData <- EitherT.fromOption[IO](PluginUpload.bindFromRequest(), "error.noFile")
-      pluginFile <- factory.processPluginUpload(uploadData, user)
-      project = factory.startProject(pluginFile)
-      _ <- EitherT.right[String](project.cache[IO])
-    } yield Redirect(self.showCreatorWithMeta(project.ownerName, project.slug))
-
-    res.leftMap(Redirect(self.showCreator()).withError(_))
-  }
-
-  /**
-    * Displays the "create project" page with uploaded plugin meta data.
-    *
-    * @param author Author of plugin
-    * @param slug   Project slug
-    * @return Create project view
-    */
-  def showCreatorWithMeta(author: String, slug: String): Action[AnyContent] = UserLock().asyncF { implicit request =>
-    this.factory.getPendingProject(author, slug) match {
-      case None => IO.pure(Redirect(self.showCreator()).withError("error.project.timeout"))
-      case Some(pending) =>
-        import cats.instances.vector._
-        for {
-          t <- (request.user.organizations.allFromParent, pending.owner).parTupled
-          (orgas, owner) = t
-          createOrga <- orgas.toVector.parTraverse(request.user.permissionsIn(_).map(_.has(Permission.CreateProject)))
-        } yield {
-          val createdOrgas = orgas.zip(createOrga).collect {
-            case (orga, true) => orga
-          }
-          Ok(views.create(createdOrgas, Some(pending)))
-        }
-    }
-  }
-
-  /**
-    * Shows the members invitation page during Project creation.
-    *
-    * @param author   Project owner
-    * @param slug     Project slug
-    * @return         View of members config
-    */
-  def showInvitationForm(author: String, slug: String): Action[AnyContent] = UserLock().asyncF { implicit request =>
-    orgasUserCanUploadTo(request.user).flatMap { organisationUserCanUploadTo =>
-      this.factory.getPendingProject(author, slug) match {
-        case None =>
-          IO.pure(Redirect(self.showCreator()).withError("error.project.timeout"))
-        case Some(pendingProject) =>
-          import cats.instances.list._
-          this.forms
-            .ProjectSave(organisationUserCanUploadTo.toSeq)
-            .bindFromRequest()
-            .fold(
-              FormErrorLocalized(self.showCreator()).andThen(IO.pure),
-              formData => {
-                formData.savePending(pendingProject.settings, pendingProject).flatMap {
-                  case (newProject, newSettings) =>
-                    val newPending = newProject.copy(settings = newSettings)
-
-                    val authors = newPending.file.data.authors.toList
-                    (
-                      pendingProject.free[IO] *> newPending.cache[IO] *>
-                        pendingProject.pendingVersion.free[IO] *> newPending.pendingVersion.cache[IO],
-                      authors.filter(_ != request.user.name).parTraverse(users.withName(_).value),
-                      newPending.owner
-                    ).parMapN { (_, users, owner) =>
-                      Ok(views.invite(owner, newPending, users.flatten))
-                    }
-                }
-              }
-            )
-      }
-    }
+    for {
+      _ <- EitherT
+        .fromOption[IO](factory.getUploadError(user), ())
+        .swap
+        .leftMap(Redirect(self.showCreator()).withError(_))
+      organisationUserCanUploadTo <- EitherT.right[Result](orgasUserCanUploadTo(user))
+      settings <- forms
+        .projectCreate(organisationUserCanUploadTo.toSeq)
+        .bindEitherT[IO](FormErrorLocalized(self.showCreator()))
+      owner <- settings.ownerId
+        .filter(_ != user.id.value)
+        .fold(OptionT.pure[IO](user))(ModelView.now(User).get(_))
+        .toRight(Redirect(self.showCreator()).withError("Owner not found"))
+      project <- factory.createProject(owner, settings.asTemplate).leftMap(Redirect(self.showCreator()).withError(_))
+      _       <- EitherT.right[Result](projects.refreshHomePage(MDCLogger))
+    } yield Redirect(self.show(project._1.ownerName, project._1.slug))
   }
 
   private def orgasUserCanUploadTo(user: Model[User]): IO[Set[DbRef[Organization]]] = {
@@ -190,31 +125,6 @@ class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: Proje
       others.toSet + user.id // Add self
     }
   }
-
-  /**
-    * Continues on to the second step of Project creation where the user
-    * publishes their Project.
-    *
-    * @param author Author of project
-    * @param slug   Project slug
-    * @return Redirection to project page if successful
-    */
-  def showFirstVersionCreator(author: String, slug: String): Action[ProjectRoleSetBuilder] =
-    UserLock()(parse.form(forms.ProjectMemberRoles)).asyncF { implicit request =>
-      this.factory
-        .getPendingProject(author, slug)
-        .toRight(IO.pure(Redirect(self.showCreator()).withError("error.project.timeout")))
-        .map { pendingProject =>
-          val newPending     = pendingProject.copy(roles = request.body.build())
-          val pendingVersion = newPending.pendingVersion
-          newPending
-            .cache[IO]
-            .as(
-              Redirect(routes.Versions.showCreatorWithMeta(author, slug, pendingVersion.versionString))
-            )
-        }
-        .merge
-    }
 
   /**
     * Displays the Project with the specified author and name.
@@ -592,31 +502,28 @@ class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: Proje
     * @param slug   Project slug
     * @return View of project
     */
-  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
+  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncEitherT {
     implicit request =>
-      orgasUserCanUploadTo(request.user).flatMap { organisationUserCanUploadTo =>
-        val data = request.data
-        this.forms
+      val data = request.data
+      for {
+        organisationUserCanUploadTo <- EitherT.right[Result](orgasUserCanUploadTo(request.user))
+        formData <- this.forms
           .ProjectSave(organisationUserCanUploadTo.toSeq)
-          .bindFromRequest()
-          .fold(
-            FormErrorLocalized(self.showSettings(author, slug)).andThen(IO.pure),
-            formData => {
-              formData
-                .save(data.settings, data.project, MDCLogger)
-                .productR {
-                  UserActionLogger.log(
-                    request.request,
-                    LoggedAction.ProjectSettingsChanged,
-                    request.data.project.id,
-                    "",
-                    ""
-                  ) //todo add old new data
-                }
-                .as(Redirect(self.show(author, slug)))
-            }
+          .bindEitherT[IO](FormErrorLocalized(self.showSettings(author, slug)))
+        _ <- formData
+          .save(data.settings, data.project, MDCLogger)
+          .leftMap(Redirect(self.showSettings(author, slug)).withError(_))
+        _ <- EitherT.right[Result](projects.refreshHomePage(MDCLogger))
+        _ <- EitherT.right[Result](
+          UserActionLogger.log(
+            request.request,
+            LoggedAction.ProjectSettingsChanged,
+            request.data.project.id,
+            "",
+            ""
           )
-      }
+        )
+      } yield Redirect(self.show(author, slug))
   }
 
   /**
@@ -691,31 +598,6 @@ class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: Proje
   }
 
   /**
-    * Set a project that is in new to public
-    * @param author   Project owner
-    * @param slug     Project slug
-    * @return         Redirect home
-    */
-  def publish(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
-    implicit request =>
-      val effects =
-        if (request.data.visibility == Visibility.New) {
-          val visibility = request.project.setVisibility(Visibility.Public, "", request.user.id)
-          val log = UserActionLogger.log(
-            request.request,
-            LoggedAction.ProjectVisibilityChange,
-            request.project.id,
-            Visibility.Public.nameKey,
-            Visibility.New.nameKey
-          )
-
-          visibility *> (log, projects.refreshHomePage(MDCLogger)).parTupled.void
-        } else IO.unit
-
-      effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
-  }
-
-  /**
     * Set a project that needed changes to the approval state
     * @param author   Project owner
     * @param slug     Project slug
@@ -756,18 +638,22 @@ class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: Proje
   def delete(author: String, slug: String): Action[AnyContent] = {
     Authenticated.andThen(PermissionAction(Permission.HardDeleteProject)).asyncF { implicit request =>
       getProject(author, slug).semiflatMap { project =>
-        val effects = projects.delete(project) *>
-          UserActionLogger.log(
-            request,
-            LoggedAction.ProjectVisibilityChange,
-            project.id,
-            "deleted",
-            project.visibility.nameKey
-          ) *>
-          projects.refreshHomePage(MDCLogger)
-        effects.as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
+        hardDeleteProject(project)
+          .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
       }.merge
     }
+  }
+
+  private def hardDeleteProject[A](project: Model[Project])(implicit request: AuthRequest[A]) = {
+    projects.delete(project) *>
+      UserActionLogger.log(
+        request,
+        LoggedAction.ProjectVisibilityChange,
+        project.id.value,
+        "deleted",
+        project.visibility.nameKey
+      ) *>
+      projects.refreshHomePage(MDCLogger)
   }
 
   /**
@@ -784,19 +670,25 @@ class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: Proje
         val oldProject = request.project
         val comment    = request.body.trim
 
-        val oreVisibility   = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id)
-        val forumVisibility = this.forums.changeTopicVisibility(oldProject, isVisible = false)
-        val log = UserActionLogger.log(
-          request.request,
-          LoggedAction.ProjectVisibilityChange,
-          oldProject.id,
-          Visibility.SoftDelete.nameKey,
-          oldProject.visibility.nameKey
-        )
+        val ret = if (oldProject.visibility == Visibility.New) {
+          hardDeleteProject(oldProject)(request.request)
+        } else {
+          val oreVisibility   = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id)
+          val forumVisibility = this.forums.changeTopicVisibility(oldProject, isVisible = false)
+          val log = UserActionLogger.log(
+            request.request,
+            LoggedAction.ProjectVisibilityChange,
+            oldProject.id,
+            Visibility.SoftDelete.nameKey,
+            oldProject.visibility.nameKey
+          )
 
-        (oreVisibility, forumVisibility).parTupled
-          .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
-          .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", oldProject.name)))
+          (oreVisibility, forumVisibility).parTupled
+            .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
+            .void
+        }
+
+        ret.as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", oldProject.name)))
       }
 
   /**

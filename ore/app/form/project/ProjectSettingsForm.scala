@@ -3,7 +3,7 @@ package form.project
 import scala.language.higherKinds
 
 import java.nio.file.Files
-import java.nio.file.Files.{createDirectories, delete, list, move, notExists}
+import java.nio.file.Files.{createDirectories, list, move, notExists}
 
 import ore.data.project.Category
 import ore.data.user.notification.NotificationType
@@ -12,17 +12,16 @@ import ore.db.{DbRef, Model, ModelService}
 import ore.db.impl.schema.{ProjectRoleTable, UserTable}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.project.{Project, ProjectSettings}
-import ore.models.project.factory.PendingProject
 import ore.models.project.io.ProjectFiles
 import ore.permission.role.Role
 import ore.util.OreMDC
 import ore.util.StringUtils.noneIfEmpty
 import util.syntax._
 
-import cats.{Monad, MonadError, Parallel}
-import cats.data.NonEmptyList
-import cats.effect.{ContextShift, IO}
+import cats.{MonadError, Parallel}
+import cats.data.{EitherT, NonEmptyList}
 import cats.syntax.all._
+import cats.instances.either._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 
@@ -45,57 +44,9 @@ case class ProjectSettingsForm(
     roleUps: List[String],
     updateIcon: Boolean,
     ownerId: Option[DbRef[User]],
-    forumSync: Boolean
+    forumSync: Boolean,
+    keywordsRaw: String
 ) extends TProjectRoleSetBuilder {
-
-  def savePending[F[_]](settings: ProjectSettings, project: PendingProject)(
-      implicit fileManager: ProjectFiles,
-      mdc: OreMDC,
-      service: ModelService[F],
-      F: Monad[F]
-  ): F[(PendingProject, ProjectSettings)] = {
-    val queryOwnerName = for {
-      u <- TableQuery[UserTable] if this.ownerId.getOrElse(project.ownerId).bind === u.id
-    } yield u.name
-
-    val updateProject = service.runDBIO(queryOwnerName.result).map { ownerName =>
-      val newProj = project.copy(
-        category = Category.values.find(_.title == this.categoryName).get,
-        description = noneIfEmpty(this.description),
-        ownerId = this.ownerId.getOrElse(project.ownerId),
-        ownerName = ownerName.head
-      )(project.config)
-
-      newProj.pendingVersion = newProj.pendingVersion.copy(projectUrl = newProj.key)
-
-      newProj
-    }
-
-    val updatedSettings = settings.copy(
-      homepage = noneIfEmpty(this.homepage),
-      issues = noneIfEmpty(this.issues),
-      source = noneIfEmpty(this.source),
-      support = noneIfEmpty(this.support),
-      licenseUrl = noneIfEmpty(this.licenseUrl),
-      licenseName = if (this.licenseUrl.nonEmpty) Some(this.licenseName) else settings.licenseName,
-      forumSync = this.forumSync
-    )
-
-    updateProject.map { project =>
-      // Update icon
-      if (this.updateIcon) {
-        fileManager.getPendingIconPath(project.ownerName, project.name).foreach { pendingPath =>
-          val iconDir = fileManager.getIconDir(project.ownerName, project.name)
-          if (notExists(iconDir))
-            createDirectories(iconDir)
-          list(iconDir).forEach(delete(_))
-          move(pendingPath, iconDir.resolve(pendingPath.getFileName))
-        }
-      }
-
-      (project, updatedSettings)
-    }
-  }
 
   def save[F[_], G[_]](settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
       implicit fileManager: ProjectFiles,
@@ -103,7 +54,7 @@ case class ProjectSettingsForm(
       service: ModelService[F],
       F: MonadError[F, Throwable],
       par: Parallel[F, G]
-  ): F[(Model[Project], Model[ProjectSettings])] = {
+  ): EitherT[F, String, (Model[Project], Model[ProjectSettings])] = {
     import cats.instances.vector._
     logger.debug("Saving project settings")
     logger.debug(this.toString)
@@ -111,15 +62,29 @@ case class ProjectSettingsForm(
 
     val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
 
-    val updateProject = service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
-      service.update(project)(
-        _.copy(
-          category = Category.values.find(_.title == this.categoryName).get,
-          description = noneIfEmpty(this.description),
-          ownerId = newOwnerId,
-          ownerName = ownerName
+    val keywords = keywordsRaw.split(" ").iterator.map(_.trim).filter(_.nonEmpty).toList
+
+    val checkedKeywordsF = EitherT.fromEither[F] {
+      if (keywords.length > 5)
+        Left("error.project.tooManyKeywords")
+      else if (keywords.exists(_.length > 32))
+        Left("error.maxLength")
+      else
+        Right(keywords)
+    }
+
+    val updateProject = checkedKeywordsF.semiflatMap { checkedKeywords =>
+      service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
+        service.update(project)(
+          _.copy(
+            category = Category.values.find(_.title == this.categoryName).get,
+            description = noneIfEmpty(this.description),
+            ownerId = newOwnerId,
+            ownerName = ownerName,
+            keywords = checkedKeywords
+          )
         )
-      )
+      }
     }
 
     val updateSettings = service.update(settings)(
@@ -134,9 +99,9 @@ case class ProjectSettingsForm(
       )
     )
 
-    val modelUpdates = (updateProject, updateSettings).parTupled
+    val modelUpdates = EitherT((updateProject.value, updateSettings.map(_.asRight[String])).parTupled.map(_.tupled))
 
-    modelUpdates.flatMap { t =>
+    modelUpdates.semiflatMap { t =>
       // Update icon
       if (this.updateIcon) {
         fileManager.getPendingIconPath(project).foreach { pendingPath =>

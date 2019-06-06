@@ -21,6 +21,7 @@ import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
+import ore.data.project.Category
 import ore.models.project.factory.ProjectFactory
 import util.syntax._
 
@@ -84,6 +85,26 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
       else Invalid(errors)
     }
 
+  val category: FieldMapping[Category] = of[Category](new Formatter[Category] {
+    override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], Category] =
+      data
+        .get(key)
+        .flatMap(s => Category.values.find(_.title == s))
+        .toRight(Seq(FormError(key, "error.project.categoryNotFound", Nil)))
+
+    override def unbind(key: String, value: Category): Map[String, String] = Map(key -> value.title)
+  })
+
+  def projectCreate(organisationUserCanUploadTo: Seq[DbRef[Organization]]) = Form(
+    mapping(
+      "name"        -> text,
+      "pluginId"    -> text,
+      "category"    -> category,
+      "description" -> optional(text),
+      "owner"       -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo))
+    )(ProjectCreateForm.apply)(ProjectCreateForm.unapply)
+  )
+
   /**
     * Submits settings changes for a Project.
     */
@@ -104,7 +125,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
         "roleUps"      -> list(text),
         "update-icon"  -> boolean,
         "owner"        -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo)),
-        "forum-sync"   -> boolean
+        "forum-sync"   -> boolean,
+        "keywords"     -> text,
       )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply)
     )
 

@@ -25,7 +25,6 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     extends AbstractController(oreComponents)
     with Actions
     with I18nSupport {
-  println(getClass.getSimpleName)
 
   override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
 

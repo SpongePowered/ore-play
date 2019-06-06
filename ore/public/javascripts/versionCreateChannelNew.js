@@ -28,7 +28,9 @@ function setColorInput(val) {
 //=====> DOCUMENT READY
 
 $(function() {
-    initChannelNew(DEFAULT_COLOR);
+    setTimeout(function () {
+        initChannelNew(DEFAULT_COLOR);
+    }, 200);
 
     getSelect().change(function() {
         setColorInput($(this).find(':selected').data('color'));

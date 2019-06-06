@@ -31,6 +31,7 @@ trait ProjectTable
   def isTopicDirty         = column[Boolean]("is_topic_dirty")
   def lastUpdated          = column[Instant]("last_updated")
   def notes                = column[Json]("notes")
+  def keywords             = column[List[String]]("keywords")
 
   override def * =
     (
@@ -53,7 +54,8 @@ trait ProjectTable
         isTopicDirty,
         visibility,
         lastUpdated,
-        notes
+        notes,
+        keywords
       )
     ) <> (mkApply((Project.apply _).tupled), mkUnapply(Project.unapply))
 }

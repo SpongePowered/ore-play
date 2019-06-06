@@ -2,7 +2,7 @@
 @import ore.OreConfig
 @(title: String, recipient: String, body: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
-@bootstrap.layout(messages(title), scriptsEnabled = false, showHeader = false, showFooter = false) {
+@layout.base(messages(title), scriptsEnabled = false, showHeader = false, showFooter = false) {
 
     <div class="container">
         <p>@recipient,</p>

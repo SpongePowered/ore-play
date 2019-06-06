@@ -12,7 +12,7 @@
 
 @versionRoutes = @{controllers.project.routes.Versions}
 
-@bootstrap.layout(messages("version.log.logger.title", project.namespace)) {
+@layout.base(messages("version.log.logger.title", project.namespace)) {
 	<div class="row">
 		<div class="col-md-12">
 			<h1>@messages("version.log.visibility.title") <a href="@versionRoutes.show(project.ownerName, project.slug, version.versionString)">@project.ownerName/@project.slug/versions/@version.versionString</a></h1>
