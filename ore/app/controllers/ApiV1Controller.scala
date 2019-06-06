@@ -258,7 +258,7 @@ final class ApiV1Controller @Inject()(
               }
               .semiflatMap(_.complete(project, factory))
               .semiflatMap {
-                case (newVersion, channel, tags) =>
+                case (newProject, newVersion, channel, tags) =>
                   val update =
                     if (formData.recommended)
                       service.update(project)(
@@ -270,7 +270,7 @@ final class ApiV1Controller @Inject()(
                     else
                       service.update(project)(_.copy(lastUpdated = Instant.now()))
 
-                  update.as(Created(api.writeVersion(newVersion, project, channel, None, tags)))
+                  update.as(Created(api.writeVersion(newVersion, newProject, channel, None, tags)))
               }
         }
         .merge

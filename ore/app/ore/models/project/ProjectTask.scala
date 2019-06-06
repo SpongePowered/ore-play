@@ -3,14 +3,16 @@ package ore.models.project
 import java.time.Instant
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+
+import play.api.inject.ApplicationLifecycle
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.OreConfig
 import ore.db.ModelService
-import ore.db.access.ModelView
-import util.syntax._
+import ore.db.impl.schema.{ProjectTableMain, VersionTable}
+import util.IOUtils
 
 import akka.actor.ActorSystem
 import cats.effect.{ContextShift, IO}
@@ -20,7 +22,7 @@ import com.typesafe.scalalogging
   * Task that is responsible for publishing New projects
   */
 @Singleton
-class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
+class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
     implicit ec: ExecutionContext,
     service: ModelService[IO]
 ) extends Runnable {
@@ -34,24 +36,32 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
 
   private def dayAgo          = Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire)
   private val newFilter       = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
+  private val hasVersions     = ModelFilter(Project)(p => TableQuery[VersionTable].filter(_.projectId === p.id).exists)
   private def createdAtFilter = ModelFilter(Project)(_.createdAt < dayAgo)
-  private def newProjects     = service.runDBIO(ModelView.now(Project).query.filter(newFilter && createdAtFilter).result)
+  private val updateFalseNewProjects = service.runDBIO(
+    TableQuery[ProjectTableMain].filter(newFilter && hasVersions).map(_.visibility).update(Visibility.Public)
+  )
+  private def deleteNewProjects = service.deleteWhere(Project)(newFilter && createdAtFilter)
 
   /**
     * Starts the task.
     */
   def start(): Unit = {
-    this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
+    val task = this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
+    lifecycle.addStopHook { () =>
+      Future {
+        task.cancel()
+      }
+    }
     Logger.info(s"Initialized. First run in ${this.interval.toString}.")
   }
 
   /**
     * Task runner
     */
-  def run(): Unit = newProjects.unsafeToFuture().foreach { projects =>
-    projects.foreach { project =>
-      Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-      project.setVisibility(Visibility.Public, "Changed by task", project.ownerId).unsafeRunAsyncAndForget()
-    }
+  def run(): Unit = {
+    Logger.debug(s"Deleting draft projects")
+    updateFalseNewProjects.unsafeRunAsync(IOUtils.logCallbackUnitNoMDC("Update false new project failed", Logger))
+    deleteNewProjects.unsafeRunAsync(IOUtils.logCallbackUnitNoMDC("Delete new project failed", Logger))
   }
 }

@@ -1,7 +1,7 @@
 package util
 
 import cats.effect.{ContextShift, IO}
-import com.typesafe.scalalogging.LoggerTakingImplicit
+import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
 
 object IOUtils {
 
@@ -18,5 +18,10 @@ object IOUtils {
   ): Either[Throwable, _] => IO[Unit] = {
     case Right(_) => IO(())
     case Left(e)  => IO(logger.error(msg, e))
+  }
+
+  def logCallbackUnitNoMDC[A](msg: => String, logger: Logger): Either[Throwable, A] => Unit = {
+    case Right(_) =>
+    case Left(e)  => logger.error(msg, e)
   }
 }

@@ -314,7 +314,7 @@ trait Actions extends Calls with ActionHelpers {
   private def processProject(project: Model[Project], user: Option[Model[User]])(
       implicit cs: ContextShift[IO]
   ): OptionT[IO, Model[Project]] = {
-    if (project.visibility == Visibility.Public || project.visibility == Visibility.New) {
+    if (project.visibility == Visibility.Public) {
       OptionT.pure[IO](project)
     } else {
       OptionT
@@ -332,13 +332,13 @@ trait Actions extends Calls with ActionHelpers {
     }
   }
 
-  private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User]) = {
-    if (project.visibility == Visibility.NeedsChanges || project.visibility == Visibility.NeedsApproval) {
-      user.permissionsIn(project).map(_.has(Permission.EditProjectSettings))
-    } else {
-      IO.pure(false)
+  private def canEditAndNeedChangeOrApproval(project: Model[Project], user: Model[User]) =
+    project.visibility match {
+      case Visibility.New => user.permissionsIn(project).map(_.has(Permission.CreateVersion))
+      case Visibility.NeedsApproval | Visibility.NeedsApproval =>
+        user.permissionsIn(project).map(_.has(Permission.EditProjectSettings))
+      case _ => IO.pure(false)
     }
-  }
 
   def authedProjectActionImpl(project: OptionT[IO, Model[Project]])(
       implicit ec: ExecutionContext,

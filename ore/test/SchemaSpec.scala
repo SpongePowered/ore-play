@@ -19,7 +19,7 @@ class SchemaSpec extends DbSpec {
   test("Project") {
     check(sql"""|SELECT plugin_id, owner_name, owner_id, name, slug, recommended_version_id,
                 |category, description, stars, views, downloads, topic_id, post_id, is_topic_dirty, visibility,
-                |last_updated, notes FROM projects""".stripMargin.query[Project])
+                |last_updated, notes, keywords FROM projects""".stripMargin.query[Project])
   }
 
   test("Project settings") {

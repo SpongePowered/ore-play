@@ -17,21 +17,22 @@ import ore.data.user.notification.NotificationType
 import ore.data.{Color, Platform}
 import ore.models.project._
 import ore.models.user.role.ProjectUserRole
-import ore.models.user.{Notification, User}
+import ore.models.user.User
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.permission.role.Role
 import ore.models.project.io._
-import ore.util.StringUtils
+import ore.util.{OreMDC, StringUtils}
 import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}
 import util.syntax._
 
 import akka.actor.ActorSystem
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.EitherT
 import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
+import com.typesafe.scalalogging
 
 /**
   * Manages the project and version creation pipeline.
@@ -49,6 +50,9 @@ trait ProjectFactory {
   implicit def config: OreConfig
   implicit def forums: OreDiscourseApi
   implicit def env: OreEnv
+
+  private val Logger    = scalalogging.Logger("Projects")
+  private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
 
   /**
     * Processes incoming [[PluginUpload]] data, verifies it, and loads a new
@@ -135,30 +139,54 @@ trait ProjectFactory {
   /**
     * Starts the construction process of a [[Project]].
     *
-    * @param plugin First version file
-    * @return PendingProject instance
+    * @param owner The owner of the project
+    * @param template The values to use for the new project
+    *
+    * @return Project and ProjectSettings instance
     */
-  def startProject(plugin: PluginFileWithData): PendingProject = {
-    val metaData = plugin.data
-    val owner    = plugin.user
-    val name     = metaData.name.getOrElse("name not found")
-
-    // Start a new pending project
-    val pendingProject = PendingProject(
-      pluginId = metaData.id.get,
+  def createProject(owner: Model[User], template: ProjectTemplate)(
+      implicit cs: ContextShift[IO]
+  ): EitherT[IO, String, (Project, ProjectSettings)] = {
+    val name = template.name
+    val slug = slugify(name)
+    val project = Project(
+      pluginId = template.pluginId,
       ownerName = owner.name,
       ownerId = owner.id,
       name = name,
-      slug = slugify(name),
+      slug = slug,
+      category = template.category,
+      description = template.description,
       visibility = Visibility.New,
-      file = plugin,
-      channelName = this.config.defaultChannelName,
-      pendingVersion = null, // scalafix:ok
-      cacheApi = this.cacheApi
     )
-    //TODO: Remove cyclic dependency between PendingProject and PendingVersion
-    pendingProject.pendingVersion = PendingProject.createPendingVersion(this, pendingProject)
-    pendingProject
+
+    val projectSettings: DbRef[Project] => ProjectSettings = ProjectSettings(_)
+
+    val channel: DbRef[Project] => Channel = Channel(_, config.defaultChannelName, config.defaultChannelColor)
+
+    for {
+      t <- EitherT.liftF(
+        (
+          this.projects.withPluginId(template.pluginId).isDefined,
+          this.projects.exists(owner.name, name),
+          this.projects.isNamespaceAvailable(owner.name, slug)
+        ).parTupled
+      )
+      (existsId, existsName, available) = t
+      _           <- EitherT.cond[IO].apply(!existsName, (), "project with that name already exists")
+      _           <- EitherT.cond[IO].apply(!existsId, (), "project with that plugin id already exists")
+      _           <- EitherT.cond[IO].apply(available, (), "slug not available")
+      _           <- EitherT.cond[IO].apply(config.isValidProjectName(name), (), "invalid name")
+      newProject  <- EitherT.right[String](service.insert(project))
+      newSettings <- EitherT.right[String](service.insert(projectSettings(newProject.id.value)))
+      _           <- EitherT.right[String](service.insert(channel(newProject.id.value)))
+      _ <- EitherT.right[String](
+        newProject.memberships.addRole(newProject)(
+          owner.id,
+          ProjectUserRole(owner.id, newProject.id, Role.ProjectOwner, isAccepted = true)
+        )
+      )
+    } yield (newProject, newSettings)
   }
 
   /**
@@ -207,16 +235,6 @@ trait ProjectFactory {
   }
 
   /**
-    * Returns the PendingProject of the specified owner and name, if any.
-    *
-    * @param owner Project owner
-    * @param slug  Project slug
-    * @return PendingProject if present, None otherwise
-    */
-  def getPendingProject(owner: String, slug: String): Option[PendingProject] =
-    this.cacheApi.get[PendingProject](owner + '/' + slug)
-
-  /**
     * Returns the pending version for the specified owner, name, channel, and
     * version string.
     *
@@ -227,56 +245,6 @@ trait ProjectFactory {
     */
   def getPendingVersion(owner: String, slug: String, version: String): Option[PendingVersion] =
     this.cacheApi.get[PendingVersion](owner + '/' + slug + '/' + version)
-
-  /**
-    * Creates a new Project from the specified PendingProject
-    *
-    * @param pending PendingProject
-    * @return New Project
-    * @throws         IllegalArgumentException if the project already exists
-    */
-  def createProject(pending: PendingProject)(implicit cs: ContextShift[IO]): IO[Model[Project]] = {
-    import cats.instances.vector._
-
-    for {
-      t <- (
-        this.projects.exists(pending.ownerName, pending.name),
-        this.projects.isNamespaceAvailable(pending.ownerName, pending.slug)
-      ).parTupled
-      (exists, available) = t
-      _                   = checkArgument(!exists, "project already exists", "")
-      _                   = checkArgument(available, "slug not available", "")
-      _                   = checkArgument(this.config.isValidProjectName(pending.name), "invalid name", "")
-      // Create the project and it's settings
-      newProject <- service.insert(pending.asProject)
-      _          <- service.insert(pending.settings.copy(projectId = newProject.id))
-      _ <- {
-        // Invite members
-        val dossier   = newProject.memberships
-        val ownerId   = newProject.ownerId
-        val projectId = newProject.id
-
-        val addRole = dossier.addRole(newProject)(
-          ownerId,
-          ProjectUserRole(ownerId, projectId, Role.ProjectOwner, isAccepted = true)
-        )
-        val addOtherRoles = pending.roles.toVector.parTraverse { role =>
-          dossier.addRole(newProject)(role.userId, role.copy(projectId = projectId)) *>
-            service.insert(
-              Notification(
-                userId = role.userId,
-                originId = Some(ownerId),
-                notificationType = NotificationType.ProjectInvite,
-                messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, newProject.name)
-              )
-            )
-        }
-
-        addRole *> addOtherRoles
-      }
-      withTopicId <- this.forums.createProjectTopic(newProject)
-    } yield withTopicId
-  }
 
   /**
     * Creates a new release channel for the specified [[Project]].
@@ -309,7 +277,7 @@ trait ProjectFactory {
   )(
       implicit ec: ExecutionContext,
       cs: ContextShift[IO]
-  ): IO[(Model[Version], Model[Channel], Seq[Model[VersionTag]])] = {
+  ): IO[(Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] = {
 
     for {
       // Create channel if not exists
@@ -324,10 +292,23 @@ trait ProjectFactory {
       // Notify watchers
       _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(version, project))
       _ <- uploadPlugin(project, pending.plugin, version).fold(e => IO.raiseError(new Exception(e)), IO.pure)
-      withTopicId <- if (project.topicId.isDefined && pending.createForumPost)
-        this.forums.createVersionPost(project, version)
+      firstTimeUploadProject <- {
+        if (project.visibility == Visibility.New) {
+          val setVisibility = (project: Model[Project]) => {
+            project.setVisibility(Visibility.Public, "First upload", version.authorId).map(_._1)
+          }
+          val initProject =
+            if (project.topicId.isEmpty) this.forums.createProjectTopic(project).flatMap(setVisibility)
+            else setVisibility(project)
+
+          initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
+
+        } else IO.pure(project)
+      }
+      withTopicId <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)
+        this.forums.createVersionPost(firstTimeUploadProject, version)
       else IO.pure(version)
-    } yield (withTopicId, channel, tags)
+    } yield (firstTimeUploadProject, withTopicId, channel, tags)
   }
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version])(

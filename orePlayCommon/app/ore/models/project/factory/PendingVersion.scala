@@ -52,7 +52,7 @@ case class PendingVersion(
   )(
       implicit ec: ExecutionContext,
       cs: ContextShift[IO]
-  ): IO[(Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
+  ): IO[(Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
     free *> factory.createVersion(project, this)
 
   override def key: String = projectUrl + '/' + versionString

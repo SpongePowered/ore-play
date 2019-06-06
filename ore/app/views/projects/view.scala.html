@@ -42,20 +42,13 @@ Base template for Project overview.
     }
 }
 
-@bootstrap.layout(p.project.ownerName + " / " + p.project.name, scripts, additionalMeta = meta) {
+@layout.base(p.project.ownerName + " / " + p.project.name, scripts, additionalMeta = meta) {
     <div class="project-header-container">
         @if(p.visibility != Visibility.Public) {
             <div class="row">
                 <div class="col-xs-12">
                     <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
-                    @if(p.visibility == Visibility.New) {
-                        @messages("visibility.notice." + p.visibility.nameKey)
-                        @if(sp.perms(Permission.EditProjectSettings)) {
-                            <br>
-                            @messages("visibility.notice.author." + p.visibility.nameKey)
-                            <a class="btn btn-success pull-right" href="@p.fullSlug/manage/publish" style="margin-top: -.5em">Publish</a>
-                        }
-                    } else { @if(p.visibility == Visibility.NeedsChanges) {
+                    @if(p.visibility == Visibility.NeedsChanges) {
                         @if(sp.perms(Permission.EditPage)) {
                             <a class="btn btn-success pull-right" href="@p.fullSlug/manage/sendforapproval">Send for approval</a>
                         }
@@ -63,14 +56,16 @@ Base template for Project overview.
                         <br>
                             @p.renderVisibilityChange.getOrElse("Unknown")
 
-                        } else { @if(p.visibility == Visibility.SoftDelete) {
+                        } else {
+                            @if(p.visibility == Visibility.SoftDelete) {
 
-                        @messages("visibility.notice." + p.visibility.nameKey, p.lastVisibilityChangeUser)
-                        @p.renderVisibilityChange.getOrElse("")
+                            @messages("visibility.notice." + p.visibility.nameKey, p.lastVisibilityChangeUser)
+                            @p.renderVisibilityChange.getOrElse("")
 
-                    } else {
-                        @messages("visibility.notice." + p.visibility.nameKey)
-                    }}}
+                            } else {
+                                @messages("visibility.notice." + p.visibility.nameKey)
+                            }
+                        }
                     </div>
                 </div>
             </div>

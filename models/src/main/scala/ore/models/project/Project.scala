@@ -69,7 +69,8 @@ case class Project(
     isTopicDirty: Boolean = false,
     visibility: Visibility = Visibility.Public,
     lastUpdated: Instant = Instant.now(),
-    notes: Json = Json.obj()
+    notes: Json = Json.obj(),
+    keywords: List[String] = Nil
 ) extends Downloadable
     with Named
     with Describable

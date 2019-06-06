@@ -8,9 +8,7 @@ import javax.inject.Inject
 
 import scala.concurrent.ExecutionContext
 
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
-import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, Result}
 import play.filters.csrf.CSRF
 
@@ -30,7 +28,7 @@ import ore.db.{DbRef, Model, ModelService}
 import ore.markdown.MarkdownRenderer
 import ore.models.admin.VersionVisibilityChange
 import ore.permission.Permission
-import ore.models.project.factory.{PendingProject, ProjectFactory}
+import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginFile, PluginUpload}
 import ore.util.OreMDC
 import ore.{OreConfig, OreEnv, StatTracker}
@@ -46,6 +44,8 @@ import cats.instances.option._
 import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
+import _root_.io.circe.Json
+import _root_.io.circe.syntax._
 
 /**
   * Controller for handling Version related actions.
@@ -227,14 +227,13 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
         Ok(
           views.create(
             project.name,
+            project.pluginId,
             project.slug,
             project.ownerName,
             project.description,
-            isProjectPending = false,
             forumSync = request.data.settings.forumSync,
             None,
-            Some(Model.unwrapNested(channels)),
-            showFileControls = true
+            Model.unwrapNested(channels)
           )
         )
       }
@@ -290,49 +289,37 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
       val success = OptionT
         .fromOption[IO](this.factory.getPendingVersion(author, slug, versionString))
         // Get pending version
-        .flatMap(pendingVersion => pendingOrReal(author, slug).map(pendingVersion -> _))
+        .flatMap(pendingVersion => projects.withSlug(author, slug).tupleLeft(pendingVersion))
         .semiflatMap {
-          case (pendingVersion, Left(pending)) =>
-            val projectData =
-              (pending.name, pending.slug, pending.ownerName, pending.description, true, pending.settings.forumSync)
-            IO.pure((None, projectData, pendingVersion))
-          case (pendingVersion, Right(real)) =>
-            val projectData = real.settings.map { settings =>
-              (real.name, real.slug, real.ownerName, real.description, false, settings.forumSync)
+          case (pendingVersion, project) =>
+            val projectData = project.settings.map { settings =>
+              (project.name, project.pluginId, project.slug, project.ownerName, project.description, settings.forumSync)
             }
-            (service.runDBIO(real.channels(ModelView.raw(Channel)).result), projectData)
-              .parMapN((channels, data) => (Some(channels), data, pendingVersion))
+            (service.runDBIO(project.channels(ModelView.raw(Channel)).result), projectData)
+              .parMapN((channels, data) => (channels, data, pendingVersion))
         }
         .map {
           case (
               channels,
-              (projectName, projectSlug, ownerName, projectDescription, isPending, forumSync),
+              (projectName, pluginId, projectSlug, ownerName, projectDescription, forumSync),
               pendingVersion
               ) =>
             Ok(
               views.create(
                 projectName,
+                pluginId,
                 projectSlug,
                 ownerName,
                 projectDescription,
-                isPending,
                 forumSync,
                 Some(pendingVersion),
-                Model.unwrapNested(channels),
-                showFileControls = channels.isDefined
+                Model.unwrapNested(channels)
               )
             )
         }
 
       success.getOrElse(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }
-
-  private def pendingOrReal(author: String, slug: String): OptionT[IO, Either[PendingProject, Model[Project]]] =
-    // Returns either a PendingProject or existing Project
-    projects
-      .withSlug(author, slug)
-      .map[Either[PendingProject, Model[Project]]](Right.apply)
-      .orElse(OptionT.fromOption[IO](this.factory.getPendingProject(author, slug)).map(Left.apply))
 
   /**
     * Completes the creation of the specified pending version or project if
@@ -365,66 +352,53 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                 description = versionData.content
               )
 
-              // Check for pending project
-              val createVersion = this.factory.getPendingProject(author, slug) match {
-                case None =>
-                  // No pending project, create version for existing project
-                  getProject(author, slug).flatMap {
-                    project =>
-                      project
-                        .channels(ModelView.now(Channel))
-                        .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))
-                        .toRight(versionData.addTo(project))
-                        .leftFlatMap(identity)
-                        .semiflatMap {
-                          _ =>
-                            newPendingVersion
-                              .complete(project, factory)
-                              .map(_._1)
-                              .flatTap { newVersion =>
-                                if (versionData.recommended)
-                                  service
-                                    .update(project)(
-                                      _.copy(
-                                        recommendedVersionId = Some(newVersion.id),
-                                        lastUpdated = Instant.now()
-                                      )
+              val createVersion = getProject(author, slug).flatMap {
+                project =>
+                  project
+                    .channels(ModelView.now(Channel))
+                    .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))
+                    .toRight(versionData.addTo(project))
+                    .leftFlatMap(identity)
+                    .semiflatMap {
+                      _ =>
+                        newPendingVersion
+                          .complete(project, factory)
+                          .map(t => t._1 -> t._2)
+                          .flatTap {
+                            case (newProject, newVersion) =>
+                              if (versionData.recommended)
+                                service
+                                  .update(newProject)(
+                                    _.copy(
+                                      recommendedVersionId = Some(newVersion.id),
+                                      lastUpdated = Instant.now()
                                     )
-                                    .void
-                                else
-                                  service
-                                    .update(project)(
-                                      _.copy(
-                                        lastUpdated = Instant.now()
-                                      )
+                                  )
+                                  .void
+                              else
+                                service
+                                  .update(newProject)(
+                                    _.copy(
+                                      lastUpdated = Instant.now()
                                     )
-                                    .void
-                              }
-                              .flatTap(addUnstableTag(_, versionData.unstable))
-                              .flatTap { newVersion =>
-                                UserActionLogger.log(
-                                  request,
-                                  LoggedAction.VersionUploaded,
-                                  newVersion.id,
-                                  "published",
-                                  "null"
-                                )
-                              }
-                              .as(Redirect(self.show(author, slug, versionString)))
-                        }
-                        .leftMap(Redirect(self.showCreatorWithMeta(author, slug, versionString)).withErrors(_))
-                  }.merge
-                case Some(pendingProject) =>
-                  // Found a pending project, create it with first version
-                  pendingProject
-                    .complete(factory)
-                    .flatTap { created =>
-                      UserActionLogger.log(request, LoggedAction.ProjectCreated, created._1.id, "created", "null")
+                                  )
+                                  .void
+                          }
+                          .flatTap(t => addUnstableTag(t._2, versionData.unstable))
+                          .flatTap {
+                            case (_, newVersion) =>
+                              UserActionLogger.log(
+                                request,
+                                LoggedAction.VersionUploaded,
+                                newVersion.id,
+                                "published",
+                                "null"
+                              )
+                          }
+                          .as(Redirect(self.show(author, slug, versionString)))
                     }
-                    .flatTap(created => addUnstableTag(created._2, versionData.unstable))
-                    .productR(projects.refreshHomePage(MDCLogger))
-                    .as(Redirect(ShowProject(author, slug)))
-              }
+                    .leftMap(Redirect(self.showCreatorWithMeta(author, slug, versionString)).withErrors(_))
+              }.merge
 
               newPendingVersion.exists.ifM(
                 IO.pure(Redirect(self.showCreator(author, slug)).withError("error.plugin.versionExists")),
@@ -683,18 +657,27 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
           val apiMsgKey   = if (isPartial) "version.download.confirmPartial.api" else "version.download.confirm.body.api"
           lazy val apiMsg = this.messagesApi(apiMsgKey)
 
+          lazy val curlInstruction = this.messagesApi(
+            "version.download.confirm.curl",
+            self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
+            CSRF.getToken.get.value
+          )
+
           if (api.getOrElse(false)) {
             (removeWarnings *> addWarning).as(
               MultipleChoices(
-                Json.obj(
-                  "message" -> apiMsg,
-                  "post" -> self
-                    .confirmDownload(author, slug, target, Some(dlType.value), Some(token), None)
-                    .absoluteURL(),
-                  "url"   -> self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
-                  "token" -> token
-                )
-              )
+                Json
+                  .obj(
+                    "message" := apiMsg,
+                    "post" := self
+                      .confirmDownload(author, slug, target, Some(dlType.value), Some(token), None)
+                      .absoluteURL(),
+                    "url" := self.downloadJarById(project.pluginId, version.name, Some(token)).absoluteURL(),
+                    "curl" := curlInstruction,
+                    "token" := token
+                  )
+                  .spaces4
+              ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
             )
           } else {
             val userAgent = request.headers.get("User-Agent").map(_.toLowerCase)
@@ -707,11 +690,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
             } else if (userAgent.exists(_.startsWith("curl/"))) {
               (removeWarnings *> addWarning).as(
                 MultipleChoices(
-                  apiMsg + "\n" + this.messagesApi(
-                    "version.download.confirm.curl",
-                    self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
-                    CSRF.getToken.get.value
-                  ) + "\n"
+                  apiMsg + "\n" + curlInstruction + "\n"
                 ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
               )
             } else {
@@ -888,7 +867,7 @@ class Versions @Inject()(stats: StatTracker, forms: OreForms, factory: ProjectFa
                       .void
                   }
                   .onError {
-                    case e => IO(Logger.error("an error occurred while trying to send a plugin", e))
+                    case e => IO(MDCLogger.error("an error occurred while trying to send a plugin", e))
                   }
                   .as(Ok.sendPath(jarPath, onClose = () => Files.delete(jarPath)))
               }
