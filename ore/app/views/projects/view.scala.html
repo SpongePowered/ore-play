@@ -39,7 +39,7 @@ Base template for Project overview.
     }
 }
 
-@bootstrap.layout(p.project.ownerName + " / " + p.project.name, scripts, additionalMeta = meta) {
+@layout.base(p.project.ownerName + " / " + p.project.name, scripts, additionalMeta = meta) {
     <div class="project-header-container">
         @if(p.visibility != Visibility.Public) {
             <div class="row">

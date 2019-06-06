@@ -36,7 +36,7 @@
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/notifications.js")"></script>
 }
 
-@bootstrap.layout(messages("notification.plural"), scripts) {
+@layout.base(messages("notification.plural"), scripts) {
 
     <div class="row">
         <div class="col-xs-12 col-md-8 header-flags">

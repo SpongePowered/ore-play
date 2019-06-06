@@ -9,7 +9,7 @@
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
-@bootstrap.layout(messages("project.log.logger.title", project.namespace)) {
+@layout.base(messages("project.log.logger.title", project.namespace)) {
     <div class="row">
         <div class="col-md-12">
             <h1>@messages("project.log.logger.title") <a href="@projectRoutes.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a></h1>

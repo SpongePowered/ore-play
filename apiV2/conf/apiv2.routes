@@ -299,8 +299,6 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #  parameters:
 #    - name: pluginId
 #      description: The plugin id of the project to create the version for
-#    - name: name
-#      description: The name of the version to create
 #  requestBody:
 #    required: true
 #    content:

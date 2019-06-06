@@ -523,7 +523,12 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
               )
             }
           t <- EitherT.right[Result](pendingVersion.complete(project, factory))
-          (_, version, channel, tags) = t
+          (project, version, channel, tags) = t
+          _ <- EitherT.right[Result](
+            if (data.recommended.exists(identity))
+              service.update(project)(_.copy(recommendedVersionId = Some(version.id)))
+            else IO.unit
+          )
         } yield {
           val normalApiTags = tags.map(tag => APIV2QueryVersionTag(tag.name, tag.data, tag.color)).toList
           val channelApiTag = APIV2QueryVersionTag(
