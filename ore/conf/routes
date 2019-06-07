@@ -63,7 +63,7 @@ GET     /api                                                        @controllers
 
 # ---------- Application ----------
 
-GET     /                                                           @controllers.Application.showHome(categories: Option[String], q: Option[String], sort: Option[Int], page: Option[Int], platformCategory: Option[String], platform: Option[String], relevance: Option[Boolean])
+GET     /                                                           @controllers.Application.showHome(categories: Seq[String], q: Option[String], sort: Option[String], page: Option[Int], platformCategory: Option[String], platform: Option[String], relevance: Option[Boolean])
 GET     /linkout                                                    @controllers.Application.linkOut(remoteUrl: String)
 GET     /signup                                                     @controllers.Users.signUp()
 GET     /login                                                      @controllers.Users.logIn(sso: Option[String], sig: Option[String], returnUrl: Option[String])

@@ -17,6 +17,7 @@ import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.PageTable
 import ore.markdown.MarkdownRenderer
+import ore.models.project.io.ProjectFiles
 import ore.models.project.{Page, Project}
 import ore.models.user.LoggedAction
 import ore.permission.Permission
@@ -38,7 +39,8 @@ import cats.syntax.all._
 class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
     implicit oreComponents: OreControllerComponents[IO],
     forums: OreDiscourseApi[IO],
-    renderer: MarkdownRenderer
+    renderer: MarkdownRenderer,
+    projectFiles: ProjectFiles
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Pages

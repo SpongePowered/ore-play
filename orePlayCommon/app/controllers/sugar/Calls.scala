@@ -13,7 +13,7 @@ trait Calls {
   /**
     * A call to the home page.
     */
-  val ShowHome: Call = controllers.routes.Application.showHome(None, None, None, None, None, None, None)
+  val ShowHome: Call = controllers.routes.Application.showHome(Nil, None, None, None, None, None, None)
 
   /**
     * A call to a [[User]] page.

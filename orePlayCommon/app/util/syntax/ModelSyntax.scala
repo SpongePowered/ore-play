@@ -2,7 +2,10 @@ package util.syntax
 
 import scala.language.{higherKinds, implicitConversions}
 
+import java.nio.file.Path
+
 import play.api.i18n.Lang
+import play.api.mvc.RequestHeader
 import play.twirl.api.Html
 
 import db.impl.access.UserBase
@@ -13,11 +16,11 @@ import ore.db.{DbRef, Model, ModelService, ObjId}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.markdown.MarkdownRenderer
 import ore.models.organization.Organization
+import ore.models.project.io.ProjectFiles
 import ore.models.project.{Page, Project}
 import ore.models.user.User
 import ore.permission.role.Role
 import ore.util.OreMDC
-import util.syntax
 
 import cats.Monad
 import cats.syntax.all._
@@ -31,6 +34,7 @@ trait ModelSyntax {
   implicit def pageSyntax(p: Page): ModelSyntax.PageSyntax                = new ModelSyntax.PageSyntax(p)
   implicit def pageModelRawSyntax(p: Model[Page]): ModelSyntax.PageSyntax = new ModelSyntax.PageSyntax(p)
   implicit def pageObjSyntax(p: Page.type): ModelSyntax.PageObjSyntax     = new ModelSyntax.PageObjSyntax(p)
+  implicit def projectSyntax(p: Project): ModelSyntax.ProjectSyntax                = new ModelSyntax.ProjectSyntax(p)
   implicit def projectModelSyntax(p: Model[Project]): ModelSyntax.ProjectModelSyntax =
     new ModelSyntax.ProjectModelSyntax(p)
   implicit def orgSyntax(o: Organization): ModelSyntax.OrganizationSyntax = new ModelSyntax.OrganizationSyntax(o)
@@ -107,6 +111,17 @@ object ModelSyntax extends ModelSyntax {
       * The maximum amount of characters a page may have.
       */
     def maxLengthPage(implicit config: OreConfig): Int = config.ore.pages.pageMaxLen
+  }
+
+  class ProjectSyntax(private val p: Project) extends AnyVal {
+
+    def iconUrlOrPath(implicit projectFiles: ProjectFiles, mdc: OreMDC, config: OreConfig): Either[String, Path] =
+      projectFiles.getIconPath(p).toRight(User.avatarUrl(p.ownerName))
+
+    def hasIcon(implicit projectFiles: ProjectFiles, mdc: OreMDC): Boolean = projectFiles.getIconPath(p).isDefined
+
+    def iconUrl(implicit projectFiles: ProjectFiles, mdc: OreMDC, header: RequestHeader, config: OreConfig): String =
+      iconUrlOrPath.swap.getOrElse(controllers.project.routes.Projects.showIcon(p.ownerName, p.slug).absoluteURL())
   }
 
   class ProjectModelSyntax(private val p: Model[Project]) extends AnyVal {

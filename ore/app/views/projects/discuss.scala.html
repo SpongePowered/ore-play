@@ -8,7 +8,10 @@ Discussion page within Project overview.
 
 @import views.html.helper.CSPNonce
 @import ore.markdown.MarkdownRenderer
-@(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+@import ore.models.project.io.ProjectFiles
+
+@(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_],
+        flash: Flash, config: OreConfig, renderer: MarkdownRenderer, projectFiles: ProjectFiles)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

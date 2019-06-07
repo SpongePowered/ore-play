@@ -18,6 +18,7 @@ import ore.db.impl.query.UserQueries
 import ore.db.impl.schema.{ApiKeyTable, UserTable}
 import ore.db.{DbRef, Model}
 import ore.models.project.ProjectSortingStrategy
+import ore.models.project.io.ProjectFiles
 import ore.models.user.{FakeUser, _}
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.permission.Permission
@@ -43,6 +44,7 @@ class Users @Inject()(
     emails: EmailFactory
 )(
     implicit oreComponents: OreControllerComponents[IO],
+    projectFiles: ProjectFiles,
     messagesApi: MessagesApi,
 ) extends OreBaseController {
 

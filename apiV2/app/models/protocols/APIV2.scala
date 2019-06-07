@@ -55,7 +55,8 @@ object APIV2 {
       last_updated: LocalDateTime,
       visibility: Visibility,
       user_actions: UserActions,
-      settings: ProjectSettings
+      settings: ProjectSettings,
+      icon_url: String
   )
 
   @ConfiguredJsonCodec case class CompactProject(

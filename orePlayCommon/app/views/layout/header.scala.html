@@ -18,7 +18,7 @@ The main header displayed on each layout.
     <div class="container">
         <!-- Left navbar -->
         <div id="sp-logo-container">
-            <a class="logo" href="@routes.Application.showHome(None, None, None, None, None, None, None)">
+            <a class="logo" href="@routes.Application.showHome(Nil, None, None, None, None, None, None)">
                 <img src="@config.sponge.logo">
                 <span>@messages("general.projectName")</span>
                 <i class="fas fa-fw fa-chevron-down"></i>
@@ -41,7 +41,7 @@ The main header displayed on each layout.
                     <li><a href="https://jd.spongepowered.org">
                         <i class="fa-fw fas fa-graduation-cap"></i>@messages("general.javadocs")
                     </a></li>
-                    <li class="active"><a href="@routes.Application.showHome(None, None, None, None, None, None, None)">
+                    <li class="active"><a href="@routes.Application.showHome(Nil, None, None, None, None, None, None)">
                         <img src="https://spongepowered.org/assets/img/icons/ore.svg" alt="" class="fa-fw ore-nav">@messages("general.plugins") (@messages("general.appName"))
                     </a></li>
                     <li><a href="https://www.spongepowered.org/downloads">

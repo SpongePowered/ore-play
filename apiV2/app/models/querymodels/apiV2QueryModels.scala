@@ -2,10 +2,17 @@ package models.querymodels
 
 import java.time.LocalDateTime
 
+import play.api.mvc.RequestHeader
+
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import models.protocols.APIV2
+import ore.OreConfig
 import ore.data.project.{Category, ProjectNamespace}
+import ore.models.project.io.ProjectFiles
+import ore.models.user.User
 import ore.permission.role.Role
+import ore.util.OreMDC
+import util.syntax._
 
 import cats.syntax.all._
 import cats.instances.option._
@@ -34,42 +41,57 @@ case class APIV2QueryProject(
     licenseUrl: Option[String],
     forumSync: Boolean
 ) {
-  def asProtocol: APIV2.Project = APIV2.Project(
-    createdAt,
-    pluginId,
-    name,
-    APIV2.ProjectNamespace(
-      namespace.ownerName,
-      namespace.slug
-    ),
-    (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
-      APIV2.RecommendedVersion(
-        version,
-        tags.map(_.asProtocol)
-      )
-    },
-    APIV2.ProjectStats(
-      views,
-      downloads,
-      stars
-    ),
-    category,
-    description,
-    lastUpdated,
-    visibility,
-    APIV2.UserActions(
-      userStarred,
-      userWatching
-    ),
-    APIV2.ProjectSettings(
-      homepage,
-      issues,
-      sources,
-      support,
-      APIV2.ProjectLicense(licenseName, licenseUrl),
-      forumSync
+
+  def asProtocol(
+      implicit projectFiles: ProjectFiles,
+      requestHeader: RequestHeader,
+      mdc: OreMDC,
+      config: OreConfig
+  ): APIV2.Project = {
+    val iconPath = projectFiles.getIconPath(namespace.ownerName, name)
+    val iconUrl =
+      if (iconPath.isDefined)
+        controllers.project.routes.Projects.showIcon(namespace.ownerName, namespace.slug).absoluteURL()
+      else User.avatarUrl(namespace.ownerName)
+
+    APIV2.Project(
+      createdAt,
+      pluginId,
+      name,
+      APIV2.ProjectNamespace(
+        namespace.ownerName,
+        namespace.slug
+      ),
+      (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
+        APIV2.RecommendedVersion(
+          version,
+          tags.map(_.asProtocol)
+        )
+      },
+      APIV2.ProjectStats(
+        views,
+        downloads,
+        stars
+      ),
+      category,
+      description,
+      lastUpdated,
+      visibility,
+      APIV2.UserActions(
+        userStarred,
+        userWatching
+      ),
+      APIV2.ProjectSettings(
+        homepage,
+        issues,
+        sources,
+        support,
+        APIV2.ProjectLicense(licenseName, licenseUrl),
+        forumSync
+      ),
+      iconUrl
     )
-  )
+  }
 }
 
 case class APIV2QueryCompactProject(

@@ -47,12 +47,13 @@ import _root_.io.circe.syntax._
   * Controller for handling Version related actions.
   */
 @Singleton
-class Versions @Inject()(stats: StatTracker[IO], forms: OreForms, factory: ProjectFactory, fileManager: ProjectFiles)(
+class Versions @Inject()(stats: StatTracker[IO], forms: OreForms, factory: ProjectFactory)(
     implicit oreComponents: OreControllerComponents[IO],
     messagesApi: MessagesApi,
     env: OreEnv,
     forums: OreDiscourseApi[IO],
-    renderer: MarkdownRenderer
+    renderer: MarkdownRenderer,
+    fileManager: ProjectFiles
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Versions

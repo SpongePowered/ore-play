@@ -24,6 +24,7 @@ import ore.db.impl.schema.ProjectTableMain
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
+import ore.models.project.io.ProjectFiles
 import ore.models.project.{ProjectSortingStrategy, _}
 import ore.models.user._
 import ore.models.user.role._
@@ -45,7 +46,8 @@ import cats.syntax.all._
 @Singleton
 final class Application @Inject()(forms: OreForms)(
     implicit oreComponents: OreControllerComponents[IO],
-    renderer: MarkdownRenderer
+    renderer: MarkdownRenderer,
+    projectFiles: ProjectFiles
 ) extends OreBaseController {
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
@@ -65,29 +67,32 @@ final class Application @Inject()(forms: OreForms)(
     * @return Home page
     */
   def showHome(
-      categories: Option[String],
+      categories: Seq[String],
       query: Option[String],
-      sort: Option[Int],
+      sort: Option[String],
       page: Option[Int],
       platformCategory: Option[String],
       platform: Option[String],
       orderWithRelevance: Option[Boolean]
   ): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    // Get categories and sorting strategy
+    import cats.instances.list._
+    import cats.instances.option._
 
     val canSeeHidden  = request.headerData.globalPerm(Permission.SeeHidden)
     val currentUserId = request.headerData.currentUser.map(_.id.value)
 
+    // Get categories and sorting strategy
     val withRelevance = orderWithRelevance.getOrElse(true)
-    val ordering      = sort.flatMap(ProjectSortingStrategy.withValueOpt).getOrElse(ProjectSortingStrategy.Default)
-    val pcat          = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
-    val pform         = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
+    val ordering =
+      sort.flatMap(s => ProjectSortingStrategy.values.find(_.apiName == s)).getOrElse(ProjectSortingStrategy.Default)
+    val pcat  = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
+    val pform = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
 
     // get the categories being queried
     val categoryPlatformNames = pcat.toList.flatMap(_.getPlatforms.map(_.name))
     val platformNames         = (pform.map(_.name).toList ::: categoryPlatformNames).map(_.toLowerCase)
 
-    val categoryList = categories.fold(Category.fromString(""))(s => Category.fromString(s)).toList
+    val categoryList = categories.toList.traverse(Category.fromApiName).getOrElse(Nil)
 
     val pageSize = this.config.ore.projects.initLoad
     val pageNum  = math.max(page.getOrElse(1), 1)

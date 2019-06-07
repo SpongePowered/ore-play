@@ -8,7 +8,8 @@
 @import util.syntax._
 
 @import ore.markdown.MarkdownRenderer
-@(title: String, call: Int => Call, p: ProjectData, sp: ScopedProjectData, users: Seq[User], page: Int, pageSize: Int)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+@import ore.models.project.io.ProjectFiles
+@(title: String, call: Int => Call, p: ProjectData, sp: ScopedProjectData, users: Seq[User], page: Int, pageSize: Int)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, projectFiles: ProjectFiles)
 
 @columns = @{
     3
