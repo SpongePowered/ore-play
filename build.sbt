@@ -217,7 +217,8 @@ lazy val oreClient = project
     version in webpack := "4.16.1",
     //Probably not used as it's not used in the App anywhere
     npmDependencies in Compile ++= Seq(
-      "vue" -> "2.6.10",
+      "vue"  -> "2.6.10",
+      "vuex" -> "3.1.1"
     ),
     npmDevDependencies in Compile ++= Seq(
       "webpack-merge"                      -> "4.1.0",

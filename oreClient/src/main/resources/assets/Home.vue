@@ -1,12 +1,13 @@
 <template>
     <div>
-        <div class="example">{{ msg }}</div>
-        <project-list></project-list>
+        <button v-on:click="click">Here</button>
+        <project-list v-bind="parameters"></project-list>
     </div>
 </template>
 
 <script>
     import ProjectList from "./components/ProjectList.vue"
+    import { HomeStore } from "./home"
 
     export default {
         components: {
@@ -17,6 +18,16 @@
                 msg: 'Hello world!'
             }
         },
+        computed: {
+            parameters: function () {
+                return HomeStore.getters.notNull;
+            }
+        },
+        methods: {
+            click: function () {
+                HomeStore.commit('query', 'Nucleus')
+            }
+        }
     }
 </script>
 

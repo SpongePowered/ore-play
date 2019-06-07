@@ -7,18 +7,34 @@
 </template>
 
 <script>
-    import queryString from "query-string"
-
     export default {
+        props: {
+            query: String,
+            categories: {
+                type: Array
+            },
+            tags: Array,
+            owner: String,
+            sort: String,
+            relevance: {
+                type: Boolean,
+                default: true
+            },
+            limit: Number,
+            offset: Number
+        },
         data () {
             return {
                 projects: []
             }
         },
         mounted() {
-            const params = queryString.parse(location.search, {arrayFormat: "comma"});
-
-            apiV2Request("projects", "GET", params).then((response) => {
+            apiV2Request("projects", "GET", this.$props).then((response) => {
+                this.projects = response.result;
+            });
+        },
+        updated() {
+            apiV2Request("projects", "GET", this.$props).then((response) => {
                 this.projects = response.result;
             });
         }
