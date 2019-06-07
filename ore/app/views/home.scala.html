@@ -153,7 +153,7 @@ sorted according to different criteria.
             <select class="form-control select-sort">
                 <option selected value="@sort.id">@sort.title</option>
                 @ProjectSortingStrategy.values.filterNot(_.equals(sort)).map { strategy =>
-                    <option value="@strategy.id">@strategy.title</option>
+                    <option value="@strategy.apiName">@strategy.title</option>
                 }
             </select>
 
