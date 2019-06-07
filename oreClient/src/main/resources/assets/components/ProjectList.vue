@@ -9,7 +9,7 @@
 <script>
     export default {
         props: {
-            query: String,
+            q: String,
             categories: {
                 type: Array
             },
@@ -29,14 +29,14 @@
             }
         },
         mounted() {
-            apiV2Request("projects", "GET", this.$props).then((response) => {
-                this.projects = response.result;
-            });
+            this.update();
         },
-        updated() {
-            apiV2Request("projects", "GET", this.$props).then((response) => {
-                this.projects = response.result;
-            });
+        methods: {
+            update: function() {
+                apiV2Request("projects", "GET", this.$props).then((response) => {
+                    this.projects = response.result;
+                });
+            },
         }
     }
 </script>

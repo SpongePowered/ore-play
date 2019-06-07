@@ -1,21 +1,28 @@
 <template>
     <div>
-        <button v-on:click="click">Here</button>
-        <project-list v-bind="parameters"></project-list>
+        <input placeholder="Query" v-model="query" />
+        <project-list v-bind="parameters" ref="list"></project-list>
     </div>
 </template>
 
 <script>
     import ProjectList from "./components/ProjectList.vue"
     import { HomeStore } from "./home"
+    import debounce from "lodash/debounce"
+    import queryString from "query-string"
 
     export default {
         components: {
             ProjectList
         },
-        data () {
+        data: function () {
             return {
-                msg: 'Hello world!'
+                query: this.q
+            }
+        },
+        watch: {
+            query: function () {
+                this.deboundedQuery();
             }
         },
         computed: {
@@ -24,17 +31,20 @@
             }
         },
         methods: {
-            click: function () {
-                HomeStore.commit('query', 'Nucleus')
+            updateQuery: function () {
+                HomeStore.commit('mutate', {
+                    property: 'q',
+                    with: this.query.trim() === "" ? null : this.query
+                });
+                this.$refs.list.update();
+                window.history.pushState(null, null, "?" + queryString.stringify(HomeStore.getters.notNull))
             }
+        },
+        created() {
+            this.deboundedQuery = debounce(this.updateQuery, 500);
         }
     }
 </script>
 
 <style lang="scss">
-    .example {
-        color: red;
-        display: flex;
-        background: linear-gradient(45deg, blue, red);
-    }
 </style>

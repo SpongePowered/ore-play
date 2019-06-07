@@ -6,7 +6,7 @@ Vue.use(Vuex);
 export const HomeStore = new Vuex.Store({
     strict: true,
     state: {
-        query: null,
+        q: null,
         categories: null,
         tags: null,
         owner: null,
@@ -15,18 +15,16 @@ export const HomeStore = new Vuex.Store({
         limit: null,
         offset: null
     },
-    computed: {
-        notNull () {
-            let data = {};
-            Object.assign(data, this.$store.state);
-            Object.keys(data).forEach(key => data[key] === null && delete data[key]);
-
-            return data;
+    getters: {
+        notNull(state) {
+            return Object.entries(state)
+                .filter(([key, value]) => value != null)
+                .reduce((acc, [key, value]) => ({...acc, [key]: value}), {})
         }
     },
     mutations: {
-        query(state, query) {
-            this.state.query = query;
+        mutate(state, payload) {
+            state[payload.property] = payload.with;
         }
     }
 });
