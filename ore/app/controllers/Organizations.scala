@@ -19,16 +19,18 @@ import util.syntax._
 import views.{html => views}
 
 import cats.data.OptionT
-import cats.effect.IO
 import cats.syntax.all._
+import scalaz.zio
+import scalaz.zio.{IO, Task, UIO}
+import scalaz.zio.interop.catz._
 
 /**
   * Controller for handling Organization based actions.
   */
 @Singleton
 class Organizations @Inject()(forms: OreForms)(
-    implicit oreComponents: OreControllerComponents[IO],
-    auth: SpongeAuthApi[IO],
+    implicit oreComponents: OreControllerComponents,
+    auth: SpongeAuthApi[UIO],
     messagesApi: MessagesApi
 ) extends OreBaseController {
 
@@ -57,26 +59,28 @@ class Organizations @Inject()(forms: OreForms)(
     * @return Redirect to organization page
     */
   def create(): Action[OrganizationRoleSetBuilder] =
-    UserLock().asyncF(
+    UserLock().asyncBIO(
       parse.form(forms.OrganizationCreate, onErrors = FormErrorLocalized(routes.Organizations.showCreator()))
     ) { implicit request =>
       val user     = request.user
       val failCall = routes.Organizations.showCreator()
 
       if (user.isLocked) {
-        IO.pure(BadRequest)
+        IO.fail(BadRequest)
       } else if (!this.config.ore.orgs.enabled) {
-        IO.pure(Redirect(failCall).withError("error.org.disabled"))
+        IO.fail(Redirect(failCall).withError("error.org.disabled"))
       } else {
         service
           .runDBIO((user.ownedOrganizations(ModelView.later(Organization)).size >= this.createLimit).result)
           .flatMap { limitReached =>
             if (limitReached)
-              IO.pure(BadRequest)
+              IO.fail(BadRequest)
             else {
               val formData = request.body
               organizations
                 .create(formData.name, user.id, formData.build())
+                .value
+                .absolve
                 .fold(
                   error => Redirect(failCall).withErrors(error),
                   organization => Redirect(routes.Users.showProjects(organization.name, None))
@@ -94,20 +98,23 @@ class Organizations @Inject()(forms: OreForms)(
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
   def setInviteStatus(id: DbRef[OrganizationUserRole], status: String): Action[AnyContent] =
-    Authenticated.asyncF { implicit request =>
+    Authenticated.asyncBIO { implicit request =>
       request.user
         .organizationRoles(ModelView.now(OrganizationUserRole))
         .get(id)
-        .semiflatMap { role =>
+        .value
+        .get
+        .mapError(_ => notFound)
+        .flatMap { role =>
           import MembershipDossier._
           status match {
-            case STATUS_DECLINE  => role.organization.flatMap(org => org.memberships.removeRole(org)(role.id)).as(Ok)
-            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
-            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
-            case _               => IO.pure(BadRequest)
+            case STATUS_DECLINE =>
+              role.organization[Task].orDie.flatMap(org => org.memberships.removeRole(org)(role.id)).as(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).const(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).const(Ok)
+            case _               => IO.fail(BadRequest)
           }
         }
-        .getOrElse(notFound)
     }
 
   /**
@@ -160,6 +167,9 @@ class Organizations @Inject()(forms: OreForms)(
         parse.form(forms.OrganizationUpdateMembers)
       )
       .asyncF { implicit request =>
-        request.body.saveTo(request.data.orga).as(Redirect(ShowUser(organization)))
+        request.body
+          .saveTo[Task, zio.interop.ParIO[Any, Throwable, ?]](request.data.orga)
+          .orDie
+          .const(Redirect(ShowUser(organization)))
       }
 }

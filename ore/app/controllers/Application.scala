@@ -35,17 +35,18 @@ import util.syntax._
 import views.{html => views}
 
 import cats.Order
-import cats.data.OptionT
-import cats.effect.IO
 import cats.instances.vector._
 import cats.syntax.all._
+import scalaz.zio
+import scalaz.zio.{IO, Task, UIO}
+import scalaz.zio.interop.catz._
 
 /**
   * Main entry point for application.
   */
 @Singleton
 final class Application @Inject()(forms: OreForms)(
-    implicit oreComponents: OreControllerComponents[IO],
+    implicit oreComponents: OreControllerComponents,
     renderer: MarkdownRenderer,
     projectFiles: ProjectFiles
 ) extends OreBaseController {
@@ -170,7 +171,7 @@ final class Application @Inject()(forms: OreForms)(
           for {
             user        <- users.current.value
             _           <- flag.markResolved(resolved, user)
-            flagCreator <- flag.user
+            flagCreator <- flag.user[Task].orDie
             _ <- UserActionLogger.log(
               request,
               LoggedAction.ProjectFlagResolved,
@@ -190,7 +191,7 @@ final class Application @Inject()(forms: OreForms)(
       (
         service.runDbCon(AppQueries.getUnhealtyProjects(config.ore.projects.staleAge).to[Vector]),
         projects.missingFile.flatMap { versions =>
-          versions.toVector.traverse(v => v.project.tupleLeft(v))
+          versions.toVector.traverse(v => v.project[Task].orDie.tupleLeft(v))
         }
       ).parMapN { (unhealtyProjects, missingFileProjects) =>
         val noTopicProjects    = unhealtyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)
@@ -262,7 +263,7 @@ final class Application @Inject()(forms: OreForms)(
     * @return
     */
   def showStats(from: Option[String], to: Option[String]): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewStats)).asyncF { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewStats)).asyncBIO { implicit request =>
       def parseTime(time: Option[String], default: LocalDate) =
         time.map(s => Try(LocalDate.parse(s)).toOption).getOrElse(Some(default))
 
@@ -276,7 +277,7 @@ final class Application @Inject()(forms: OreForms)(
         }
       }
 
-      res.getOrElse(IO.pure(BadRequest))
+      res.getOrElse(IO.fail(BadRequest))
     }
 
   def showLog(
@@ -322,19 +323,22 @@ final class Application @Inject()(forms: OreForms)(
   def UserAdminAction: ActionBuilder[AuthRequest, AnyContent] =
     Authenticated.andThen(PermissionAction(Permission.EditAllUserSettings))
 
-  def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncF { implicit request =>
+  def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncBIO { implicit request =>
     users
       .withName(user)
-      .semiflatMap { u =>
+      .value
+      .get
+      .mapError(_ => notFound)
+      .flatMap { u =>
         for {
           orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
           projectRoles <- orga.fold(
             service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
-          )(orga => IO.pure(Nil))
+          )(orga => IO.succeed(Nil))
           t2 <- (
             getUserData(request, user).value,
-            projectRoles.toVector.parTraverse(_.project),
-            OrganizationData.of(orga).value
+            projectRoles.toVector.parTraverse(_.project[Task].orDie),
+            OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga).value.orDie
           ).parTupled
           (userData, projects, orgaData) = t2
         } yield {
@@ -342,14 +346,16 @@ final class Application @Inject()(forms: OreForms)(
           Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.map(t => t._1.obj -> t._2)))
         }
       }
-      .getOrElse(notFound)
   }
 
   def updateUser(userName: String): Action[(String, String, String)] =
-    UserAdminAction.asyncF(parse.form(forms.UserAdminUpdate)) { implicit request =>
+    UserAdminAction.asyncBIO(parse.form(forms.UserAdminUpdate)) { implicit request =>
       users
         .withName(userName)
-        .map { user =>
+        .value
+        .get
+        .mapError(_ => NotFound)
+        .flatMap { user =>
           //TODO: Make the form take json directly
           val (thing, action, data) = request.body
           import play.api.libs.json._
@@ -357,54 +363,64 @@ final class Application @Inject()(forms: OreForms)(
           val orgDossier = MembershipDossier.organizationHasMemberships
 
           def updateRoleTable[M0 <: UserRoleModel[M0]: ModelQuery](model: ModelCompanion[M0])(
-              modelAccess: ModelView.Now[IO, model.T, Model[M0]],
+              modelAccess: ModelView.Now[UIO, model.T, Model[M0]],
               allowedCategory: RoleCategory,
               ownerType: Role,
-              transferOwner: Model[M0] => IO[Model[M0]]
+              transferOwner: Model[M0] => UIO[Model[M0]]
           ) = {
             val id = (json \ "id").as[DbRef[M0]]
             action match {
               case "setRole" =>
-                modelAccess.get(id).semiflatMap { role =>
+                modelAccess.get(id).value.get.mapError(Right.apply).flatMap { role =>
                   val roleType = Role.withValue((json \ "role").as[String])
 
                   if (roleType == ownerType)
-                    transferOwner(role).as(Ok)
+                    transferOwner(role).const(Ok)
                   else if (roleType.category == allowedCategory && roleType.isAssignable)
-                    service.update(role)(_.withRole(roleType)).as(Ok)
+                    service.update(role)(_.withRole(roleType)).const(Ok)
                   else
-                    IO.pure(BadRequest)
+                    IO.fail(Left(BadRequest))
                 }
               case "setAccepted" =>
                 modelAccess
                   .get(id)
-                  .semiflatMap(role => service.update(role)(_.withAccepted((json \ "accepted").as[Boolean])).as(Ok))
+                  .value
+                  .get
+                  .mapError(Right.apply)
+                  .flatMap(role => service.update(role)(_.withAccepted((json \ "accepted").as[Boolean])).as(Ok))
               case "deleteRole" =>
                 modelAccess
                   .get(id)
                   .filter(_.role.isAssignable)
-                  .semiflatMap(service.delete(_).as(Ok))
+                  .value
+                  .get
+                  .mapError(Right.apply)
+                  .flatMap(service.delete(_).as(Ok))
             }
           }
 
           def transferOrgOwner(r: Model[OrganizationUserRole]) =
-            r.organization
+            r.organization[Task]
+              .orDie
               .flatMap(_.transferOwner(r.userId))
-              .as(r)
+              .const(r)
 
-          thing match {
+          val res = thing match {
             case "orgRole" =>
-              OptionT.liftF(user.toMaybeOrganization(ModelView.now(Organization)).isEmpty).filter(identity).flatMap {
-                _ =>
-                  updateRoleTable(OrganizationUserRole)(
-                    user.organizationRoles(ModelView.now(OrganizationUserRole)),
-                    RoleCategory.Organization,
-                    Role.OrganizationOwner,
-                    transferOrgOwner,
-                  )
-              }
+              val update = updateRoleTable(OrganizationUserRole)(
+                user.organizationRoles(ModelView.now(OrganizationUserRole)),
+                RoleCategory.Organization,
+                Role.OrganizationOwner,
+                transferOrgOwner,
+              )
+
+              val isEmpty: IO[Either[Status, Unit], Boolean] = user
+                .toMaybeOrganization(ModelView.now(Organization))
+                .isEmpty
+
+              isEmpty.ifM(update, IO.fail(Right(())))
             case "memberRole" =>
-              user.toMaybeOrganization(ModelView.now(Organization)).flatMap { orga =>
+              user.toMaybeOrganization(ModelView.now(Organization)).value.get.mapError(Right.apply).flatMap { orga =>
                 updateRoleTable(OrganizationUserRole)(
                   orgDossier.roles(orga),
                   RoleCategory.Organization,
@@ -413,20 +429,25 @@ final class Application @Inject()(forms: OreForms)(
                 )
               }
             case "projectRole" =>
-              OptionT.liftF(user.toMaybeOrganization(ModelView.now(Organization)).isEmpty).filter(identity).flatMap {
-                _ =>
-                  updateRoleTable(ProjectUserRole)(
-                    user.projectRoles(ModelView.now(ProjectUserRole)),
-                    RoleCategory.Project,
-                    Role.ProjectOwner,
-                    r => r.project.flatMap(_.transferOwner(r.userId)).as(r),
-                  )
-              }
-            case _ => OptionT.none[IO, Status]
+              val update = updateRoleTable(ProjectUserRole)(
+                user.projectRoles(ModelView.now(ProjectUserRole)),
+                RoleCategory.Project,
+                Role.ProjectOwner,
+                r => r.project[Task].orDie.flatMap(_.transferOwner[Task](r.userId).orDie).as(r),
+              )
+
+              val isEmpty: IO[Either[Status, Unit], Boolean] =
+                user.toMaybeOrganization(ModelView.now(Organization)).isEmpty
+
+              isEmpty.ifM(update, IO.fail(Right(())))
+            case _ => IO.fail(Right(()))
+          }
+
+          res.mapError {
+            case Right(_) => BadRequest
+            case Left(e)  => e
           }
         }
-        .semiflatMap(_.getOrElse(BadRequest))
-        .getOrElse(NotFound)
     }
 
   def showProjectVisibility(): Action[AnyContent] =
