@@ -21,15 +21,16 @@ import ore.models.project.ProjectSortingStrategy
 import util.syntax._
 
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import scalaz.zio.UIO
+import scalaz.zio.interop.catz._
 
 /**
   * The Ore API
   */
 trait OreRestfulApiV1 extends OreWrites {
 
-  implicit def service: ModelService[IO]
+  implicit def service: ModelService[UIO]
   def config: OreConfig
 
   /**
@@ -48,7 +49,7 @@ trait OreRestfulApiV1 extends OreWrites {
       q: Option[String],
       limit: Option[Long],
       offset: Option[Long]
-  ): IO[JsValue] = {
+  ): UIO[JsValue] = {
     val cats: Option[Seq[Category]] = categories.map(Category.fromString).map(_.toSeq)
     val ordering                    = sort.map(ProjectSortingStrategy.withValue).getOrElse(ProjectSortingStrategy.Default)
 
@@ -116,7 +117,7 @@ trait OreRestfulApiV1 extends OreWrites {
 
   private def writeProjects(
       projects: Seq[(Model[Project], Model[Version], Model[Channel])]
-  ): IO[Seq[(Model[Project], JsObject)]] = {
+  ): UIO[Seq[(Model[Project], JsObject)]] = {
     val projectIds = projects.map(_._1.id.value)
     val versionIds = projects.map(_._2.id.value)
 
@@ -213,7 +214,7 @@ trait OreRestfulApiV1 extends OreWrites {
     * @param pluginId Project plugin ID
     * @return Json value of project if found, None otherwise
     */
-  def getProject(pluginId: String): IO[Option[JsValue]] = {
+  def getProject(pluginId: String): UIO[Option[JsValue]] = {
     val query = queryProjectRV.filter {
       case (p, _, _) => p.pluginId === pluginId
     }
@@ -240,7 +241,7 @@ trait OreRestfulApiV1 extends OreWrites {
       limit: Option[Int],
       offset: Option[Int],
       onlyPublic: Boolean
-  ): IO[JsValue] = {
+  ): UIO[JsValue] = {
     val filtered = channels
       .map { chan =>
         queryVersions(onlyPublic).filter {
@@ -277,7 +278,7 @@ trait OreRestfulApiV1 extends OreWrites {
     * @param name     Version name
     * @return         JSON version if found, None otherwise
     */
-  def getVersion(pluginId: String, name: String): IO[Option[JsValue]] = {
+  def getVersion(pluginId: String, name: String): UIO[Option[JsValue]] = {
 
     val filtered = queryVersions().filter {
       case (p, v, _, _, _) =>
@@ -316,7 +317,7 @@ trait OreRestfulApiV1 extends OreWrites {
   def getPages(
       pluginId: String,
       parentId: Option[DbRef[Page]]
-  )(implicit projectBase: ProjectBase[IO]): OptionT[IO, JsValue] = {
+  )(implicit projectBase: ProjectBase[UIO]): OptionT[UIO, JsValue] = {
     projectBase.withPluginId(pluginId).semiflatMap { project =>
       for {
         pages <- service.runDBIO(project.pages(ModelView.raw(Page)).sortBy(_.name).result)
@@ -356,7 +357,7 @@ trait OreRestfulApiV1 extends OreWrites {
   def getUserList(
       limit: Option[Int],
       offset: Option[Int]
-  )(implicit cs: ContextShift[IO]): IO[JsValue] =
+  ): UIO[JsValue] =
     for {
       users        <- service.runDBIO(TableQuery[UserTable].drop(offset.getOrElse(0)).take(limit.getOrElse(25)).result)
       writtenUsers <- writeUsers(users)
@@ -364,7 +365,7 @@ trait OreRestfulApiV1 extends OreWrites {
 
   def writeUsers(
       userList: Seq[Model[User]]
-  )(implicit cs: ContextShift[IO]): IO[Seq[JsObject]] = {
+  ): UIO[Seq[JsObject]] = {
     implicit def config: OreConfig = this.config
     import cats.instances.vector._
 
@@ -400,7 +401,7 @@ trait OreRestfulApiV1 extends OreWrites {
     * @param username Username of User
     * @return         JSON user if found, None otherwise
     */
-  def getUser(username: String)(implicit cs: ContextShift[IO]): IO[Option[JsValue]] = {
+  def getUser(username: String): UIO[Option[JsValue]] = {
     val queryOneUser = TableQuery[UserTable].filter {
       _.name.toLowerCase === username.toLowerCase
     }
@@ -421,7 +422,7 @@ trait OreRestfulApiV1 extends OreWrites {
   def getTags(
       pluginId: String,
       version: String
-  )(implicit projectBase: ProjectBase[IO]): OptionT[IO, JsValue] = {
+  )(implicit projectBase: ProjectBase[UIO]): OptionT[UIO, JsValue] = {
     projectBase.withPluginId(pluginId).flatMap { project =>
       project
         .versions(ModelView.now(Version))
@@ -446,4 +447,4 @@ trait OreRestfulApiV1 extends OreWrites {
 }
 
 @Singleton
-class OreRestfulServerV1 @Inject()(val service: ModelService[IO], val config: OreConfig) extends OreRestfulApiV1
+class OreRestfulServerV1 @Inject()(val service: ModelService[UIO], val config: OreConfig) extends OreRestfulApiV1

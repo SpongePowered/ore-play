@@ -59,7 +59,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   implicit val zioRuntime: zio.Runtime[Blocking] = oreComponents.zioRuntime
 
-  private def zioToFuture[A](zio: ZIO[Blocking, Nothing, A]): Future[A] =
+  protected def zioToFuture[A](zio: ZIO[Blocking, Nothing, A]): Future[A] =
     ActionHelpers.zioToFuture(zio)
 
   /** Called when a [[User]] tries to make a request they do not have permission for */

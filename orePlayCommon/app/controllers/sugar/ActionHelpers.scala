@@ -194,26 +194,26 @@ object ActionHelpers {
 
   class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 
-    def asyncF(fr: UIO[Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
+    def asyncF(fr: ZIO[Blocking, Nothing, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
       action.async(zioToFuture(fr))
 
-    def asyncF(fr: R[B] => UIO[Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
+    def asyncF(fr: R[B] => ZIO[Blocking, Nothing, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
       action.async(r => zioToFuture(fr(r)))
 
     def asyncF[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => UIO[Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
+    )(fr: R[A] => ZIO[Blocking, Nothing, Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
       action.async(bodyParser)(r => zioToFuture(fr(r)))
 
-    def asyncBIO(fr: IO[Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
+    def asyncBIO(fr: ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
       action.async(zioToFuture(fr.either.map(_.merge)))
 
-    def asyncBIO(fr: R[B] => IO[Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
+    def asyncBIO(fr: R[B] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
       action.async(r => zioToFuture(fr(r).either.map(_.merge)))
 
     def asyncBIO[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => IO[Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
+    )(fr: R[A] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
       action.async(bodyParser)(r => zioToFuture(fr(r).either.map(_.merge)))
   }
 }

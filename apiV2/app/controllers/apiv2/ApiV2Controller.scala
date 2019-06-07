@@ -8,6 +8,7 @@ import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
 import scala.collection.immutable
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -18,7 +19,7 @@ import play.api.mvc._
 
 import controllers.apiv2.ApiV2Controller._
 import controllers.sugar.CircePlayController
-import controllers.sugar.Requests.{ApiAuthInfo, ApiRequest}
+import controllers.sugar.Requests.ApiRequest
 import controllers.{OreBaseController, OreControllerComponents}
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
@@ -35,24 +36,23 @@ import ore.models.user.{FakeUser, User}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
 import ore.util.OreMDC
-import _root_.util.TaskUtils
 import _root_.util.syntax._
 
 import akka.stream.Materializer
-import akka.stream.scaladsl.FileIO
-import akka.util.ByteString
-import cats.data.{EitherT, NonEmptyList, OptionT}
-import cats.effect.{IO, Sync}
+import cats.data.NonEmptyList
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import enumeratum._
 import io.circe._
 import io.circe.generic.extras._
 import io.circe.syntax._
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.{IO, Task, UIO, ZIO}
+import scalaz.zio.interop.catz._
 
 @Singleton
 class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
-    implicit oreComponents: OreControllerComponents[IO],
+    implicit oreComponents: OreControllerComponents,
     projectFiles: ProjectFiles,
     mat: Materializer
 ) extends OreBaseController
@@ -76,36 +76,52 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       lazy val authUrl                          = routes.ApiV2Controller.authenticate().absoluteURL()(request)
       def unAuth(msg: ApiV2Controller.ApiError) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
-      optToken
-        .fold(EitherT.leftT[IO, ApiRequest[A]](unAuth(ApiError("No session specified")))) { token =>
-          OptionT(service.runDbCon(APIV2Queries.getApiAuthInfo(token).option))
-            .toRight(unAuth(ApiError("Invalid session")))
-            .flatMap { info =>
+      zioToFuture(
+        ZIO
+          .fromOption(optToken)
+          .mapError(_ => unAuth(ApiError("No session specified")))
+          .flatMap { token =>
+            //Need to break stuff op so that IntelliJ can follow
+            val infoF = service
+              .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
+              .get
+              .mapError(_ => unAuth(ApiError("Invalid session")))
+
+            infoF.flatMap { info =>
               if (info.expires.isBefore(Instant.now())) {
-                EitherT
-                  .left[ApiAuthInfo](service.deleteWhere(ApiSession)(_.token === token))
-                  .leftMap(_ => unAuth(ApiError("Api session expired")))
-              } else EitherT.rightT[IO, Result](info)
+                service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth(ApiError("Api session expired")))
+              } else IO.succeed(ApiRequest(info, request))
             }
-            .map(info => ApiRequest(info, request))
-        }
-        .value
-        .unsafeToFuture()
+          }
+          .either
+      )
     }
   }
 
-  def apiScopeToRealScope(scope: APIScope): OptionT[IO, Scope] = scope match {
-    case APIScope.GlobalScope => OptionT.pure[IO](GlobalScope)
+  def apiScopeToRealScope(scope: APIScope): IO[Unit, Scope] = scope match {
+    case APIScope.GlobalScope => UIO.succeed(GlobalScope)
     case APIScope.ProjectScope(pluginId) =>
-      OptionT(
-        service.runDBIO(TableQuery[ProjectTableMain].filter(_.pluginId === pluginId).map(_.id).result.headOption)
-      ).map(id => ProjectScope(id))
-    case APIScope.OrganizationScope(organizationName) =>
-      OptionT(
-        service.runDBIO(
-          TableQuery[OrganizationTable].filter(_.name === organizationName).map(_.id).result.headOption
+      service
+        .runDBIO(
+          TableQuery[ProjectTableMain]
+            .filter(_.pluginId === pluginId)
+            .map(_.id)
+            .result
+            .headOption
         )
-      ).map(id => OrganizationScope(id))
+        .get
+        .map(ProjectScope)
+    case APIScope.OrganizationScope(organizationName) =>
+      service
+        .runDBIO(
+          TableQuery[OrganizationTable]
+            .filter(_.name === organizationName)
+            .map(_.id)
+            .result
+            .headOption
+        )
+        .get
+        .map(OrganizationScope)
   }
 
   def permApiAction(perms: Permission, scope: APIScope): ActionFilter[ApiRequest] = new ActionFilter[ApiRequest] {
@@ -114,9 +130,11 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] = {
       //Techically we could make this faster by first checking if the global perms have the needed perms,
       //but then we wouldn't get the 404 on a non existent scope.
-      val scopePerms = apiScopeToRealScope(scope).semiflatMap(request.permissionIn(_))
+      val scopePerms: ZIO[Any, Unit, Permission] =
+        apiScopeToRealScope(scope).flatMap(request.permissionIn(_))
+      val res = scopePerms.mapError(_ => NotFound).ensure(Forbidden)(_.has(perms))
 
-      scopePerms.toRight(NotFound).ensure(Forbidden)(_.has(perms)).swap.toOption.value.unsafeToFuture()
+      zioToFuture(res.either.map(_.swap.toOption))
     }
   }
 
@@ -141,14 +159,14 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[A]]
   ): Action[AnyContent] =
     ApiAction(perms, scope).asyncF { request =>
-      action(request).bimap(IO.pure, service.runDbCon(_).map(a => Ok(a.asJson))).merge
+      action(request).bimap(UIO.succeed, service.runDbCon(_).map(a => Ok(a.asJson))).merge
     }
 
   def apiEitherVecDbAction[A: Encoder](perms: Permission, scope: APIScope)(
       action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[Vector[A]]]
   ): Action[AnyContent] =
     ApiAction(perms, scope).asyncF { request =>
-      action(request).bimap(IO.pure, service.runDbCon).map(_.map(a => Ok(a.asJson))).merge
+      action(request).bimap(UIO.succeed, service.runDbCon).map(_.map(a => Ok(a.asJson))).merge
     }
 
   def apiVecDbAction[A: Encoder](
@@ -181,7 +199,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   private val ApiKeyHeaderRegex =
     s"""ApiKey ($uuidRegex).($uuidRegex)""".r
 
-  def authenticateKeyPublic(): Action[AnyContent] = Action.asyncEitherT { implicit request =>
+  def authenticateKeyPublic(): Action[AnyContent] = Action.asyncBIO { implicit request =>
     lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
     lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
 
@@ -191,17 +209,19 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
     val sessionToInsert = authHeader match {
       case Some(ApiKeyHeaderRegex(identifier, token)) =>
-        OptionT(service.runDbCon(APIV2Queries.findApiKey(identifier, token).option)).map {
-          case (keyId, keyOwnerId) =>
-            SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
-        }
-      case Some(_) => OptionT.none[IO, (SessionType, ApiSession)]
-      case None =>
-        OptionT.pure[IO](SessionType.Public -> ApiSession(uuidToken, None, None, publicSessionExpiration))
+        service
+          .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
+          .flatMap(ZIO.fromOption)
+          .map {
+            case (keyId, keyOwnerId) =>
+              SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
+          }
+      case Some(_) => IO.fail(())
+      case None    => IO.succeed(SessionType.Public -> ApiSession(uuidToken, None, None, publicSessionExpiration))
     }
 
     sessionToInsert
-      .semiflatMap(t => service.insert(t._2).tupleLeft(t._1))
+      .flatMap(t => service.insert(t._2).tupleLeft(t._1))
       .map {
         case (tpe, key) =>
           Ok(
@@ -212,13 +232,13 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
             )
           )
       }
-      .toRight(
+      .mapError { _ =>
         Unauthorized(ApiError("Invalid api key"))
           .withHeaders(WWW_AUTHENTICATE -> routes.ApiV2Controller.authenticate().absoluteURL())
-      )
+      }
   }
 
-  def authenticateDev(): Action[AnyContent] = Action.asyncF {
+  def authenticateDev(): Action[AnyContent] = Action.asyncBIO {
     if (fakeUser.isEnabled) {
       config.checkDebug()
 
@@ -236,14 +256,14 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         )
       }
     } else {
-      IO.pure(Forbidden)
+      IO.fail(Forbidden)
     }
   }
 
   def authenticate(fake: Boolean): Action[AnyContent] = if (fake) authenticateDev() else authenticateKeyPublic()
 
   def createKey(): Action[KeyToCreate] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncF {
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncBIO {
       implicit request =>
         val permsVal = NamedPermission.parseNamed(request.body.permissions).toValidNel("Invalid permission name")
         val nameVal  = Some(request.body.name).filter(_.nonEmpty).toValidNel("Name was empty")
@@ -254,7 +274,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
             val isSubKey = request.apiInfo.key.forall(_.isSubKey(perm))
 
             if (!isSubKey) {
-              IO.pure(BadRequest(ApiError("Not enough permissions to create that key")))
+              IO.fail(BadRequest(ApiError("Not enough permissions to create that key")))
             } else {
               val tokenIdentifier = UUID.randomUUID().toString
               val token           = UUID.randomUUID().toString
@@ -263,23 +283,24 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
               val nameTaken =
                 TableQuery[ApiKeyTable].filter(t => t.name === name && t.ownerId === ownerId).exists.result
 
-              val ifTaken = IO.pure(Conflict(ApiError("Name already taken")))
+              val ifTaken = IO.fail(Conflict(ApiError("Name already taken")))
               val ifFree = service
                 .runDbCon(APIV2Queries.createApiKey(name, ownerId, tokenIdentifier, token, perm).run)
                 .map(_ => Ok(CreatedApiKey(s"$tokenIdentifier.$token", perm.toNamedSeq)))
 
-              service.runDBIO(nameTaken).ifM(ifTaken, ifFree)
+              (service.runDBIO(nameTaken): IO[Result, Boolean]).ifM(ifTaken, ifFree)
             }
           }
-          .leftMap((ApiErrors.apply _).andThen(BadRequest.apply(_)).andThen(IO.pure(_)))
+          .leftMap((ApiErrors.apply _).andThen(BadRequest.apply(_)).andThen(IO.fail))
           .merge
     }
 
   def deleteKey(name: String): Action[AnyContent] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncEitherT { implicit request =>
-      EitherT
-        .fromOption[IO](request.user, BadRequest(ApiError("Public keys can't be used to delete")))
-        .semiflatMap { user =>
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncBIO { implicit request =>
+      ZIO
+        .fromOption(request.user)
+        .mapError(_ => BadRequest(ApiError("Public keys can't be used to delete")))
+        .flatMap { user =>
           service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run).map {
             case 0 => NotFound: Result
             case _ => NoContent: Result
@@ -298,14 +319,14 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def permissionsInCreatedApiScope(pluginId: Option[String], organizationName: Option[String])(
       implicit request: ApiRequest[_]
-  ): EitherT[IO, Result, (APIScope, Permission)] =
-    EitherT
-      .fromEither[IO](createApiScope(pluginId, organizationName))
-      .flatMap(t => apiScopeToRealScope(t).tupleLeft(t).toRight(NotFound: Result))
-      .semiflatMap(t => request.permissionIn(t._2).tupleLeft(t._1))
+  ): IO[Result, (APIScope, Permission)] =
+    ZIO
+      .fromEither(createApiScope(pluginId, organizationName))
+      .flatMap(t => apiScopeToRealScope(t).tupleLeft(t).mapError(_ => NotFound))
+      .flatMap(t => request.permissionIn(t._2).tupleLeft(t._1))
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
-    ApiAction(Permission.None, APIScope.GlobalScope).asyncEitherT { implicit request =>
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncBIO { implicit request =>
       permissionsInCreatedApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
           Ok(
@@ -320,7 +341,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   def has(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])(
       check: (Seq[NamedPermission], Permission) => Boolean
   ): Action[AnyContent] =
-    ApiAction(Permission.None, APIScope.GlobalScope).asyncEitherT { implicit request =>
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncBIO { implicit request =>
       permissionsInCreatedApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
           Ok(PermissionCheck(scope.tpe, check(permissions, perms)))
@@ -454,40 +475,44 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       APIV2Queries.versionQuery(pluginId, Some(name), Nil, 1, 0).option
     }
 
-  //Not sure if FileIO us AsynchronousFileChannel, if it doesn't we can fix this later if it becomes a problem
-  private def readFileAsync(file: Path): IO[String] =
-    IO.fromFuture(IO(FileIO.fromPath(file).fold(ByteString.empty)(_ ++ _).map(_.utf8String).runFold("")(_ + _)))
+  //TODO: Do the async part at some point
+  private def readFileAsync(file: Path): ZIO[Blocking, Throwable, String] = {
+    import scalaz.zio.blocking._
+    effectBlocking(java.nio.file.Files.readAllLines(file).asScala.mkString("\n"))
+  }
 
   def deployVersion(pluginId: String): Action[MultipartFormData[Files.TemporaryFile]] =
-    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncEitherT {
+    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncBIO {
       implicit request =>
         type TempFile = MultipartFormData.FilePart[Files.TemporaryFile]
+        import scalaz.zio.blocking._
 
-        val acquire = OptionT(IO(request.body.file("plugin-info")))
-        val use     = (filePart: TempFile) => OptionT.liftF(readFileAsync(filePart.ref))
-        val release = (filePart: TempFile) =>
-          OptionT.liftF(
-            IO(java.nio.file.Files.deleteIfExists(filePart.ref))
-              .runAsync(TaskUtils.logCallback("Error deleting file upload", Logger))
-              .toIO
+        val pluginInfoFromFileF = ZIO.bracket(
+          acquire = UIO(request.body.file("plugin-info")).get.mapError(Left.apply),
+          release = (filePart: TempFile) => effectBlocking(java.nio.file.Files.deleteIfExists(filePart.ref)).fork,
+          use = (filePart: TempFile) => readFileAsync(filePart.ref).mapError(Right.apply)
         )
 
-        val pluginInfoFromFileF = Sync.catsOptionTSync[IO].bracket(acquire)(use)(release)
+        val dataStringF = ZIO
+          .fromOption(request.body.dataParts.get("plugin-info").flatMap(_.headOption))
+          .orElse(pluginInfoFromFileF)
+          .catchAll {
+            case Left(_)  => IO.fail("No plugin info specified")
+            case Right(e) => IO.die(e)
+          }
 
-        val fileF = EitherT.fromEither[IO](
+        val dataF = dataStringF
+          .flatMap(s => ZIO.fromEither(parser.decode[DeployVersionInfo](s).leftMap(_.show)))
+          .ensure("Description too long")(_.description.forall(_.length > Page.maxLength))
+          .mapError(e => BadRequest(ApiError(e)))
+
+        val fileF = ZIO.fromEither(
           request.body.file("plugin-file").toRight(BadRequest(ApiError("No plugin file specified")))
         )
-        val dataF = OptionT
-          .fromOption[IO](request.body.dataParts.get("plugin-info").flatMap(_.headOption))
-          .orElse(pluginInfoFromFileF)
-          .toRight("No or invalid plugin info specified")
-          .subflatMap(s => parser.decode[DeployVersionInfo](s).leftMap(_.show))
-          .ensure("Description too long")(_.description.forall(_.length > Page.maxLength))
-          .leftMap(e => BadRequest(ApiError(e)))
 
         def uploadErrors(user: Model[User]) = {
           implicit val lang: Lang = user.langOrDefault
-          EitherT.fromEither[IO](
+          ZIO.fromEither(
             factory
               .getUploadError(user)
               .map(e => BadRequest(UserError(messagesApi(e))))
@@ -496,10 +521,10 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         }
 
         for {
-          user            <- EitherT.fromOption[IO](request.user, BadRequest(ApiError("No user found for session")))
+          user            <- ZIO.fromOption(request.user).mapError(_ => BadRequest(ApiError("No user found for session")))
           _               <- uploadErrors(user)
-          project         <- projects.withPluginId(pluginId).toRight(NotFound: Result)
-          projectSettings <- EitherT.right[Result](project.settings)
+          project         <- projects.withPluginId(pluginId).value.get.mapError(_ => NotFound)
+          projectSettings <- project.settings[Task].orDie
           data            <- dataF
           file            <- fileF
           pendingVersion <- factory
@@ -515,13 +540,13 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
                 description = data.description
               )
             }
-          t <- EitherT.right[Result](pendingVersion.complete(project, factory))
+          t <- pendingVersion.complete(project, factory)
           (project, version, channel, tags) = t
-          _ <- EitherT.right[Result](
+          _ <- {
             if (data.recommended.exists(identity))
               service.update(project)(_.copy(recommendedVersionId = Some(version.id)))
             else IO.unit
-          )
+          }
         } yield {
           val normalApiTags = tags.map(tag => APIV2QueryVersionTag(tag.name, tag.data, tag.color)).toList
           val channelApiTag = APIV2QueryVersionTag(

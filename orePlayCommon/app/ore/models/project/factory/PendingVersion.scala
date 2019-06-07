@@ -17,7 +17,8 @@ import ore.models.user.User
 
 import cats.MonadError
 import cats.syntax.all._
-import scalaz.zio.Task
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.{Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 import slick.lifted.TableQuery
 
@@ -48,7 +49,7 @@ case class PendingVersion(
   def complete(
       project: Model[Project],
       factory: ProjectFactory
-  ): Task[(Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
+  ): ZIO[Blocking, Nothing, (Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
     free[Task].orDie *> factory.createVersion(project, this)
 
   override def key: String = projectUrl + '/' + versionString
