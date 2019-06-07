@@ -234,6 +234,7 @@ lazy val oreClient = project
       "postcss-loader"                     -> "3.0.0",
       "autoprefixer"                       -> "9.5.1",
       "node-sass"                          -> "4.12.0",
+      "query-string"                       -> "6.5.0",
     )
   )
 

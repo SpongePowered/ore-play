@@ -86,7 +86,6 @@ this.
             <script type="text/javascript" src="@routes.Assets.versioned("javascripts/apiRequests.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("javascripts/svg.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("javascripts/spongie.js")"></script>
-            @additionalScripts
 
             @if(request != null) {
                 <script @CSPNonce.attr>
@@ -95,6 +94,8 @@ this.
                         $.ajaxSetup({headers: {'Csrf-Token': csrf}});
                 </script>
             }
+
+            @additionalScripts
         }
 
     </body>

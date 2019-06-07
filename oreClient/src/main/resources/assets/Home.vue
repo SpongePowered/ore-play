@@ -1,14 +1,22 @@
 <template>
-    <div class="example">{{ msg }}</div>
+    <div>
+        <div class="example">{{ msg }}</div>
+        <project-list></project-list>
+    </div>
 </template>
 
 <script>
+    import ProjectList from "./components/ProjectList.vue"
+
     export default {
+        components: {
+            ProjectList
+        },
         data () {
             return {
                 msg: 'Hello world!'
             }
-        }
+        },
     }
 </script>
 
