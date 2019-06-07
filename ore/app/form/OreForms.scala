@@ -26,13 +26,19 @@ import ore.models.project.factory.ProjectFactory
 import util.syntax._
 
 import cats.data.OptionT
+import scalaz.zio
 import scalaz.zio.UIO
 
 /**
   * Collection of forms used in this application.
   */
 //noinspection ConvertibleToMethodValue
-class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, service: ModelService[UIO]) {
+class OreForms @Inject()(
+    implicit config: OreConfig,
+    factory: ProjectFactory,
+    service: ModelService[UIO],
+    runtime: zio.Runtime[Any]
+) {
 
   val url: Mapping[String] = text.verifying("error.url.invalid", text => {
     if (text.isEmpty)
@@ -263,7 +269,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
           .toRight(required(key))
 
       def unbind(key: String, value: OptionT[UIO, Model[ProjectApiKey]]): Map[String, String] =
-        value.value.unsafeRunSync().map(_.id.toString).map(key -> _).toMap
+        runtime.unsafeRun(value.value).map(_.id.toString).map(key -> _).toMap
     })
 
   def ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))
@@ -277,7 +283,7 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
           .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
 
       def unbind(key: String, value: OptionT[UIO, Model[Channel]]): Map[String, String] =
-        value.value.unsafeRunSync().map(key -> _.name.toLowerCase).toMap
+        runtime.unsafeRun(value.value).map(key -> _.name.toLowerCase).toMap
     })
 
   def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[UIO, Model[Channel]] =

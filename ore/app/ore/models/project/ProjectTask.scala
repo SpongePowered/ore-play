@@ -1,6 +1,7 @@
 package ore.models.project
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -14,49 +15,53 @@ import ore.db.ModelService
 import ore.db.impl.schema.{ProjectTableMain, VersionTable}
 import util.TaskUtils
 
-import akka.actor.ActorSystem
-import cats.effect.{ContextShift, IO}
 import com.typesafe.scalalogging
+import scalaz.zio
+import scalaz.zio.clock.Clock
+import scalaz.zio.{UIO, ZIO, ZSchedule, duration}
 
 /**
   * Task that is responsible for publishing New projects
   */
 @Singleton
-class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
+class ProjectTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
-    service: ModelService[IO]
-) extends Runnable {
-
-  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+    service: ModelService[UIO]
+) {
 
   private val Logger = scalalogging.Logger("ProjectTask")
 
-  val interval: FiniteDuration = this.config.ore.projects.checkInterval
-  val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
+  val interval: duration.Duration = duration.Duration.fromScala(this.config.ore.projects.checkInterval)
+  val draftExpire: Long           = this.config.ore.projects.draftExpire.toMillis
 
-  private def dayAgo          = Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire)
-  private val newFilter       = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
-  private val hasVersions     = ModelFilter(Project)(p => TableQuery[VersionTable].filter(_.projectId === p.id).exists)
-  private def createdAtFilter = ModelFilter(Project)(_.createdAt < dayAgo)
+  private val dayAgoF =
+    ZIO.accessM[Clock](_.clock.currentTime(TimeUnit.MILLISECONDS)).map(_ - draftExpire).map(Instant.ofEpochMilli)
+  private val newFilter        = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
+  private val hasVersions      = ModelFilter(Project)(p => TableQuery[VersionTable].filter(_.projectId === p.id).exists)
+  private val createdAtFilterF = dayAgoF.map(dayAgo => ModelFilter(Project)(_.createdAt < dayAgo))
   private val updateFalseNewProjects = service.runDBIO(
     TableQuery[ProjectTableMain].filter(newFilter && hasVersions).map(_.visibility).update(Visibility.Public)
   )
-  private def deleteNewProjects = service.deleteWhere(Project)(newFilter && createdAtFilter)
 
-  private val task = this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
+  private val deleteNewProjects =
+    createdAtFilterF.flatMap(createdAtFilter => service.deleteWhere(Project)(newFilter && createdAtFilter))
+
+  private val schedule: ZSchedule[Clock, Any, Int] = ZSchedule
+    .fixed(interval)
+    .logInput(_ => UIO(Logger.debug(s"Deleting draft projects")))
+
+  private val action = (updateFalseNewProjects *> deleteNewProjects).unit.delay(interval)
+
+  private lazy val repeatedAction: ZIO[Clock, Nothing, Int] =
+    action.repeatOrElse(schedule, (_, _) => repeatedAction)
+
+  //TODO: Repeat in case of failure
+  private val task = runtime.unsafeRun(repeatedAction.fork)
+
   lifecycle.addStopHook { () =>
     Future {
-      task.cancel()
+      runtime.unsafeRun(task.interrupt)
     }
   }
   Logger.info(s"Initialized. First run in ${this.interval.toString}.")
-
-  /**
-    * Task runner
-    */
-  def run(): Unit = {
-    Logger.debug(s"Deleting draft projects")
-    updateFalseNewProjects.unsafeRunAsync(TaskUtils.logCallbackUnitNoMDC("Update false new project failed", Logger))
-    deleteNewProjects.unsafeRunAsync(TaskUtils.logCallbackUnitNoMDC("Delete new project failed", Logger))
-  }
 }

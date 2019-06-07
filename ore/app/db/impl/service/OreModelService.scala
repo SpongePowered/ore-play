@@ -11,10 +11,12 @@ import play.api.inject.ApplicationLifecycle
 import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
 import ore.db.impl.OrePostgresDriver.api._
 
-import cats.effect.{Clock, ContextShift, IO, Sync}
+import cats.effect.{Clock, ContextShift, Sync}
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
+import scalaz.zio.{Task, ZIO}
+import scalaz.zio.interop.catz._
 import slick.jdbc.{JdbcDataSource, JdbcProfile}
 
 /**
@@ -37,7 +39,7 @@ class OreModelService @Inject()(
   implicit val clock: Clock[F] = Clock.create[F]
 
   implicit val xa: Transactor.Aux[F, JdbcDataSource] = {
-    implicit val cs: ContextShift[F] = IO.contextShift(ec)
+    val cs = ContextShift[Task]
 
     val connectExec  = Executors.newFixedThreadPool(32)
     val transactExec = Executors.newCachedThreadPool
@@ -65,7 +67,7 @@ class OreModelService @Inject()(
     )
   }
 
-  override def runDBIO[R](action: DBIO[R]): F[R] = IO.fromFuture(IO(DB.db.run(action)))
+  override def runDBIO[R](action: DBIO[R]): F[R] = ZIO.fromFuture(_ => DB.db.run(action))
 
   override def runDbCon[R](program: ConnectionIO[R]): F[R] = program.transact(xa)
 
@@ -85,6 +87,6 @@ class OreModelService @Inject()(
     runDBIO(model.deleteWhere(filter))
 }
 object OreModelService {
-  type F[A] = IO[A]
+  type F[A] = Task[A]
   val F: Sync[F] = Sync[F]
 }

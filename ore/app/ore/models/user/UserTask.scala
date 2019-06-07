@@ -1,10 +1,10 @@
 package ore.models.user
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.FiniteDuration
 
 import play.api.inject.ApplicationLifecycle
 
@@ -14,32 +14,40 @@ import ore.db.ModelService
 import ore.models.api.ApiSession
 import ore.util.OreMDC
 
-import akka.actor.ActorSystem
-import cats.effect.IO
 import com.typesafe.scalalogging
+import scalaz.zio
+import scalaz.zio.{UIO, ZIO, ZSchedule}
+import scalaz.zio.clock.Clock
+import scalaz.zio.duration.Duration
 
 @Singleton
-class UserTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
+class UserTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
-    service: ModelService[IO]
-) extends Runnable {
+    service: ModelService[UIO]
+) {
 
   private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("UserTask")
   implicit private val mdc: OreMDC = OreMDC.NoMDC
 
-  val interval: FiniteDuration = config.ore.api.session.checkInterval
+  val interval: Duration = zio.duration.Duration.fromScala(config.ore.api.session.checkInterval)
+
+  private val action = ZIO
+    .accessM[Clock](_.clock.currentTime(TimeUnit.MILLISECONDS))
+    .map(Instant.ofEpochMilli)
+    .flatMap(now => service.deleteWhere(ApiSession)(_.expires < now))
+    .unit
+
+  private val schedule: ZSchedule[Clock, Any, Int] = ZSchedule.fixed(interval)
+  private lazy val repeatedAction: ZIO[Clock, Nothing, Int] =
+    action.repeatOrElse(schedule, (_, _) => repeatedAction.delay(interval))
 
   Logger.info("DbUpdateTask starting")
-  private val task = this.actorSystem.scheduler.schedule(interval, interval, this)
+  //TODO: Repeat in case of failure
+  private val task = runtime.unsafeRun(repeatedAction.fork)
+
   lifecycle.addStopHook { () =>
     Future {
-      task.cancel()
+      runtime.unsafeRun(task.interrupt)
     }
-  }
-  run()
-
-  override def run(): Unit = {
-    val now = Instant.now()
-    service.deleteWhere(ApiSession)(_.expires < now).unsafeRunAsyncAndForget()
   }
 }

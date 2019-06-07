@@ -1,7 +1,5 @@
 import javax.inject.Singleton
 
-import scala.concurrent.ExecutionContext
-
 import controllers.sugar.Bakery
 import controllers.{DefaultOreControllerComponents, OreControllerComponents}
 import db.impl.DbUpdateTask
@@ -20,11 +18,15 @@ import ore.models.project.io.ProjectFiles
 import ore.models.user.UserTask
 import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
 import ore.{OreConfig, OreEnv, StatTracker}
+import util.uiowrappers.{UIOModelService, UIOSSOApi}
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import cats.effect.{ContextShift, IO, Timer}
 import com.google.inject.{AbstractModule, Provides, TypeLiteral}
+import scalaz.zio
+import scalaz.zio.{Task, UIO}
+import scalaz.zio.interop.catz._
+import scalaz.zio.interop.catz.implicits._
 
 /** The Ore Module */
 class Module extends AbstractModule {
@@ -33,12 +35,12 @@ class Module extends AbstractModule {
     bind(classOf[MarkdownRenderer]).to(classOf[FlexmarkRenderer])
     bind(classOf[OreRestfulApiV1]).to(classOf[OreRestfulServerV1])
     bind(classOf[ProjectFactory]).to(classOf[OreProjectFactory])
-    bind(new TypeLiteral[ModelService[IO]] {}).to(classOf[OreModelService])
+    bind(new TypeLiteral[ModelService[Task]] {}).to(classOf[OreModelService])
     bind(classOf[Mailer]).to(classOf[SpongeMailer])
     bind(classOf[ProjectTask]).asEagerSingleton()
     bind(classOf[UserTask]).asEagerSingleton()
     bind(classOf[DbUpdateTask]).asEagerSingleton()
-    bind(new TypeLiteral[OreControllerComponents[IO]] {}).to(classOf[DefaultOreControllerComponents])
+    bind(new TypeLiteral[OreControllerComponents] {}).to(classOf[DefaultOreControllerComponents])
     ()
   }
 
@@ -46,69 +48,63 @@ class Module extends AbstractModule {
   @Singleton
   def provideStatTracker(
       bakery: Bakery,
-      ec: ExecutionContext
-  )(implicit service: ModelService[IO], users: UserBase[IO]): StatTracker[IO] = {
-    implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+  )(implicit service: ModelService[Task], users: UserBase[Task], runtime: zio.Runtime[Any]): StatTracker[Task] =
     new StatTracker.StatTrackerInstant(bakery)
-  }
 
   @Provides
   @Singleton
   def provideAuthApi(
-      config: OreConfig,
-      ec: ExecutionContext
-  )(implicit system: ActorSystem, mat: Materializer): SpongeAuthApi[IO] = {
-    implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-    val api                           = config.security.api
-    AkkaSpongeAuthApi[IO](
-      AkkaSpongeAuthApi.AkkaSpongeAuthSettings(
-        api.key,
-        api.url,
-        api.breaker.maxFailures,
-        api.breaker.reset,
-        api.breaker.timeout
+      config: OreConfig
+  )(implicit system: ActorSystem, mat: Materializer, runtime: zio.Runtime[Any]): SpongeAuthApi[Task] = {
+    val api = config.security.api
+    runtime.unsafeRun(
+      AkkaSpongeAuthApi[Task](
+        AkkaSpongeAuthApi.AkkaSpongeAuthSettings(
+          api.key,
+          api.url,
+          api.breaker.maxFailures,
+          api.breaker.reset,
+          api.breaker.timeout
+        )
       )
-    ).unsafeRunSync()
+    )
   }
 
   @Provides
   @Singleton
   def provideSSOApi(
       config: OreConfig,
-      ec: ExecutionContext
-  )(implicit system: ActorSystem, mat: Materializer): SSOApi[IO] = {
-    val sso                           = config.security.sso
-    implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-    implicit val timer: Timer[IO]     = IO.timer(ec)
+  )(implicit system: ActorSystem, mat: Materializer, runtime: zio.Runtime[Any]): SSOApi[Task] = {
+    val sso = config.security.sso
 
-    AkkaSSOApi[IO](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset).unsafeRunSync()
+    runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
   }
 
   @Provides
   @Singleton
   def provideOreDiscourseApi(env: OreEnv)(
-      implicit service: ModelService[IO],
+      implicit service: ModelService[Task],
       config: OreConfig,
-      ec: ExecutionContext,
       system: ActorSystem,
-      mat: Materializer
-  ): OreDiscourseApi[IO] = {
+      mat: Materializer,
+      runtime: zio.Runtime[Any]
+  ): OreDiscourseApi[Task] = {
     val forums = config.forums
     if (forums.api.enabled) {
       val api = forums.api
 
-      implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-
-      val discourseApi = AkkaDiscourseApi[IO](
-        AkkaDiscourseSettings(
-          api.key,
-          api.admin,
-          forums.baseUrl,
-          api.breaker.maxFailures,
-          api.breaker.reset,
-          api.breaker.timeout,
+      val discourseApi = runtime.unsafeRun(
+        AkkaDiscourseApi[Task](
+          AkkaDiscourseSettings(
+            api.key,
+            api.admin,
+            forums.baseUrl,
+            api.breaker.maxFailures,
+            api.breaker.reset,
+            api.breaker.timeout,
+          )
         )
-      ).unsafeRunSync()
+      )
 
       val forumsApi = new OreDiscourseApiEnabled(
         discourseApi,
@@ -132,35 +128,49 @@ class Module extends AbstractModule {
 
   @Provides
   @Singleton
-  def provideUserBase(implicit service: ModelService[IO], authApi: SpongeAuthApi[IO], config: OreConfig): UserBase[IO] =
+  def provideModelServiceUIO(service: ModelService[Task]) = new UIOModelService(service)
+
+  @Provides
+  @Singleton
+  def provideSSOApiUIO(sso: SSOApi[Task]) = new UIOSSOApi(sso)
+
+  @Provides
+  @Singleton
+  def provideUserBaseTask(
+      implicit service: ModelService[Task],
+      authApi: SpongeAuthApi[Task],
+      config: OreConfig
+  ): UserBase[Task] =
     new UserBase.UserBaseF()
 
   @Provides
   @Singleton
-  def provideProjectBase(
-      ec: ExecutionContext
-  )(
-      implicit service: ModelService[IO],
-      fileManager: ProjectFiles,
-      config: OreConfig,
-      forums: OreDiscourseApi[IO]
-  ): ProjectBase[IO] = {
-    implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-    new ProjectBase.ProjectBaseF()
-  }
+  def provideUserBaseUIO(
+      implicit service: ModelService[UIO],
+      authApi: SpongeAuthApi[UIO],
+      config: OreConfig
+  ): UserBase[UIO] =
+    new UserBase.UserBaseF()
 
   @Provides
   @Singleton
-  def provideOrganizationBase(
-      ec: ExecutionContext
-  )(
-      implicit service: ModelService[IO],
+  def provideProjectBaseTask(
+      implicit service: ModelService[Task],
+      fileManager: ProjectFiles,
       config: OreConfig,
-      authApi: SpongeAuthApi[IO],
-      users: UserBase[IO]
-  ): OrganizationBase[IO] = {
-    implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+      forums: OreDiscourseApi[Task],
+      runtime: zio.Runtime[Any]
+  ): ProjectBase[Task] =
+    new ProjectBase.ProjectBaseF()
+
+  @Provides
+  @Singleton
+  def provideOrganizationBaseTask(
+      implicit service: ModelService[Task],
+      config: OreConfig,
+      authApi: SpongeAuthApi[Task],
+      users: UserBase[Task]
+  ): OrganizationBase[Task] =
     new OrganizationBase.OrganizationBaseF()
-  }
 
 }

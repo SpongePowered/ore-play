@@ -1,5 +1,6 @@
 package util
 
+import cats.effect.IO
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
 
 object TaskUtils {
