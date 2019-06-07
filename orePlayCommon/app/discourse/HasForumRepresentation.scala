@@ -6,7 +6,7 @@ import ore.OreConfig
 import ore.db.{Model, ModelService}
 import ore.models.project.{Page, Version}
 import ore.util.OreMDC
-import util.IOUtils
+import util.TaskUtils
 import util.syntax._
 
 import cats.MonadError
@@ -41,7 +41,7 @@ object HasForumRepresentation {
         _ <- if (a.name == Page.homeName && project.topicId.isDefined)
           forums
             .updateProjectTopic(project)
-            .runAsync(IOUtils.logCallback("Failed to update page with forums", PagesLogger)(OreMDC.NoMDC))
+            .runAsync(TaskUtils.logCallback("Failed to update page with forums", PagesLogger)(OreMDC.NoMDC))
             .to[F]
         else F.unit
       } yield updated

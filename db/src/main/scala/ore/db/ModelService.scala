@@ -9,7 +9,7 @@ import slick.lifted.Rep
 /**
   * Represents a service that creates, deletes, and manipulates Models.
   */
-trait ModelService[F[_]] {
+trait ModelService[+F[_]] {
 
   /**
     * Runs the specified DBIO on the DB.

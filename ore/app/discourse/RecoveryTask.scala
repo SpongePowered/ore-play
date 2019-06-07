@@ -10,7 +10,7 @@ import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTableMain, VersionTable}
 import ore.models.project.{Project, Version, Visibility}
-import util.IOUtils
+import util.TaskUtils
 
 import akka.actor.Scheduler
 import cats.Parallel
@@ -67,7 +67,7 @@ class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, 
         .flatMap { models =>
           use(models)
         }
-        .runAsync(IOUtils.logCallbackNoMDC("Failed to create project topic", Logger))
+        .runAsync(TaskUtils.logCallbackNoMDC("Failed to create project topic", Logger))
         .unsafeRunSync()
 
     runUpdates(toCreateProjects, "Failed to create project topic") { toCreate =>

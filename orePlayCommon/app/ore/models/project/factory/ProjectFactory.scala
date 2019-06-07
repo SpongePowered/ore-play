@@ -1,10 +1,8 @@
 package ore.models.project.factory
 
-import java.nio.file.Files._
+import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.Duration
 import scala.util.matching.Regex
 
 import play.api.cache.SyncCacheApi
@@ -17,9 +15,10 @@ import ore.data.user.notification.NotificationType
 import ore.data.{Color, Platform}
 import ore.models.project._
 import ore.models.user.role.ProjectUserRole
-import ore.models.user.User
+import ore.models.user.{Notification, User}
 import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
+import ore.member.MembershipDossier
 import ore.permission.role.Role
 import ore.models.project.io._
 import ore.util.{OreMDC, StringUtils}
@@ -27,28 +26,28 @@ import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}
 import util.syntax._
 
-import akka.actor.ActorSystem
-import cats.data.EitherT
-import cats.effect.{ContextShift, IO}
+import cats.data.NonEmptyList
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.{Fiber, IO, Task, UIO, ZIO}
+import scalaz.zio.interop.catz._
 
 /**
   * Manages the project and version creation pipeline.
   */
 trait ProjectFactory {
 
-  implicit protected def service: ModelService[IO]
-  implicit protected def projects: ProjectBase[IO]
+  implicit protected def service: ModelService[UIO]
+  implicit protected def projects: ProjectBase[UIO]
 
   protected def fileManager: ProjectFiles
   protected def cacheApi: SyncCacheApi
-  protected def actorSystem: ActorSystem
   protected val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
   implicit protected def config: OreConfig
-  implicit protected def forums: OreDiscourseApi[IO]
+  implicit protected def forums: OreDiscourseApi[UIO]
   implicit protected def env: OreEnv
 
   private val Logger    = scalalogging.Logger("Projects")
@@ -64,66 +63,72 @@ trait ProjectFactory {
     */
   def processPluginUpload(uploadData: PluginUpload, owner: Model[User])(
       implicit messages: Messages
-  ): EitherT[IO, String, PluginFileWithData] = {
+  ): ZIO[Blocking, String, PluginFileWithData] = {
     val pluginFileName = uploadData.pluginFileName
 
     // file extension constraints
     if (!pluginFileName.endsWith(".zip") && !pluginFileName.endsWith(".jar"))
-      EitherT.leftT("error.plugin.fileExtension")
+      ZIO.fail("error.plugin.fileExtension")
     // check user's public key validity
     else {
+      import scalaz.zio.blocking._
+
       // move uploaded files to temporary directory while the project creation
       // process continues
       val tmpDir = this.env.tmp.resolve(owner.name)
-      if (notExists(tmpDir))
-        createDirectories(tmpDir)
+      val createDirs = ZIO.whenM(effectBlocking(Files.notExists(tmpDir))) {
+        effectBlocking(Files.createDirectories(tmpDir))
+      }
 
-      val newPluginPath = uploadData.pluginFile.moveFileTo(tmpDir.resolve(pluginFileName), replace = true)
+      val moveToNewPluginPath = effectBlocking(
+        uploadData.pluginFile.moveFileTo(tmpDir.resolve(pluginFileName), replace = true)
+      )
 
-      // create and load a new PluginFile instance for further processing
-      val plugin = new PluginFile(newPluginPath, owner)
-      plugin.loadMeta
+      val loadData = createDirs *> moveToNewPluginPath.flatMap { newPluginPath =>
+        // create and load a new PluginFile instance for further processing
+        val plugin = new PluginFile(newPluginPath, owner)
+        plugin.loadMeta[Task].value
+      }
+
+      loadData.orDie.absolve
     }
   }
 
   def processSubsequentPluginUpload(uploadData: PluginUpload, owner: Model[User], project: Model[Project])(
-      implicit messages: Messages,
-      cs: ContextShift[IO]
-  ): EitherT[IO, String, PendingVersion] =
+      implicit messages: Messages
+  ): ZIO[Blocking, String, PendingVersion] = {
     this
       .processPluginUpload(uploadData, owner)
       .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
       .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
-      .flatMapF { plugin =>
+      .flatMap { plugin =>
         for {
           t <- (
             project
               .channels(ModelView.now(Channel))
               .one
-              .getOrElseF(IO.raiseError(new IllegalStateException("No channel found for project"))),
-            project.settings
+              .getOrElseF(UIO.die(new IllegalStateException("No channel found for project"))),
+            project.settings[Task].orDie
           ).parTupled
           (headChannel, settings) = t
-          version = this.startVersion(
-            plugin,
-            project.pluginId,
-            Some(project.id),
-            project.url,
-            settings.forumSync,
-            headChannel.name
+          version <- IO.fromEither(
+            this.startVersion(
+              plugin,
+              project.pluginId,
+              Some(project.id),
+              project.url,
+              settings.forumSync,
+              headChannel.name
+            )
           )
-          modelExists <- version match {
-            case Right(v) => v.exists[IO]
-            case Left(_)  => IO.pure(false)
-          }
-          res <- version match {
-            case Right(_) if modelExists && this.config.ore.projects.fileValidate =>
-              IO.pure(Left("error.version.duplicate"))
-            case Right(v) => v.cache[IO].as(Right(v))
-            case Left(m)  => IO.pure(Left(m))
+          modelExists <- version.exists[Task].orDie
+          res <- {
+            if (modelExists && this.config.ore.projects.fileValidate) IO.fail("error.version.duplicate")
+            else version.cache[Task].const(version).orDie
           }
         } yield res
       }
+  }
 
   /**
     * Returns the error ID to display to the User, if any, if they cannot
@@ -144,9 +149,10 @@ trait ProjectFactory {
     *
     * @return Project and ProjectSettings instance
     */
-  def createProject(owner: Model[User], template: ProjectTemplate)(
-      implicit cs: ContextShift[IO]
-  ): EitherT[IO, String, (Project, ProjectSettings)] = {
+  def createProject(
+      owner: Model[User],
+      template: ProjectTemplate
+  ): IO[String, (Model[Project], Model[ProjectSettings])] = {
     val name = template.name
     val slug = slugify(name)
     val project = Project(
@@ -164,28 +170,30 @@ trait ProjectFactory {
 
     val channel: DbRef[Project] => Channel = Channel(_, config.defaultChannelName, config.defaultChannelColor)
 
+    def cond[E](bool: Boolean, e: E) = if (bool) IO.succeed(()) else IO.fail(e)
+
     for {
-      t <- EitherT.liftF(
-        (
-          this.projects.withPluginId(template.pluginId).isDefined,
-          this.projects.exists(owner.name, name),
-          this.projects.isNamespaceAvailable(owner.name, slug)
-        ).parTupled
-      )
+      t <- (
+        this.projects.withPluginId(template.pluginId).isDefined,
+        this.projects.exists(owner.name, name),
+        this.projects.isNamespaceAvailable(owner.name, slug)
+      ).parTupled
       (existsId, existsName, available) = t
-      _           <- EitherT.cond[IO].apply(!existsName, (), "project with that name already exists")
-      _           <- EitherT.cond[IO].apply(!existsId, (), "project with that plugin id already exists")
-      _           <- EitherT.cond[IO].apply(available, (), "slug not available")
-      _           <- EitherT.cond[IO].apply(config.isValidProjectName(name), (), "invalid name")
-      newProject  <- EitherT.right[String](service.insert(project))
-      newSettings <- EitherT.right[String](service.insert(projectSettings(newProject.id.value)))
-      _           <- EitherT.right[String](service.insert(channel(newProject.id.value)))
-      _ <- EitherT.right[String](
-        newProject.memberships.addRole(newProject)(
-          owner.id,
-          ProjectUserRole(owner.id, newProject.id, Role.ProjectOwner, isAccepted = true)
-        )
-      )
+      _           <- cond(!existsName, "project with that name already exists")
+      _           <- cond(!existsId, "project with that plugin id already exists")
+      _           <- cond(available, "slug not available")
+      _           <- cond(config.isValidProjectName(name), "invalid name")
+      newProject  <- service.insert(project)
+      newSettings <- service.insert(projectSettings(newProject.id.value))
+      _           <- service.insert(channel(newProject.id.value))
+      _ <- {
+        MembershipDossier
+          .projectHasMemberships[UIO]
+          .addRole(newProject)(
+            owner.id,
+            ProjectUserRole(owner.id, newProject.id, Role.ProjectOwner, isAccepted = true)
+          )
+      }
     } yield (newProject, newSettings)
   }
 
@@ -254,7 +262,7 @@ trait ProjectFactory {
     * @param color   Channel color
     * @return New channel
     */
-  def createChannel(project: Model[Project], name: String, color: Color): IO[Model[Channel]] = {
+  def createChannel(project: Model[Project], name: String, color: Color): UIO[Model[Channel]] = {
     checkArgument(this.config.isValidChannelName(name), "invalid name", "")
     for {
       limitReached <- service.runDBIO(
@@ -263,6 +271,27 @@ trait ProjectFactory {
       _ = checkState(limitReached, "channel limit reached", "")
       channel <- service.insert(Channel(project.id, name, color))
     } yield channel
+  }
+
+  private def notifyWatchers(
+      version: Model[Version],
+      project: Model[Project]
+  ): UIO[Fiber[Nothing, Seq[Model[Notification]]]] = {
+    val notification = (userId: DbRef[User]) =>
+      Notification(
+        userId = userId,
+        originId = Some(project.ownerId),
+        notificationType = NotificationType.NewProjectVersion,
+        messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
+        action = Some(version.url(project))
+    )
+
+    val watchingUsers =
+      service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).result)
+
+    val run = watchingUsers.flatMap(watchers => service.bulkInsert(watchers.map(watcher => notification(watcher.id))))
+
+    run.fork
   }
 
   /**
@@ -274,24 +303,21 @@ trait ProjectFactory {
   def createVersion(
       project: Model[Project],
       pending: PendingVersion
-  )(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
-  ): IO[(Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] = {
+  ): ZIO[Blocking, Nothing, (Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] = {
 
     for {
       // Create channel if not exists
-      t <- (getOrCreateChannel(pending, project), pending.exists).parTupled
+      t <- (getOrCreateChannel(pending, project), pending.exists[Task].orDie: ZIO[Blocking, Nothing, Boolean]).parTupled
       (channel, exists) = t
       _ <- if (exists && this.config.ore.projects.fileValidate)
-        IO.raiseError(new IllegalArgumentException("Version already exists."))
-      else IO.unit
+        UIO.die(new IllegalArgumentException("Version already exists."))
+      else UIO.unit
       // Create version
       version <- service.insert(pending.asVersion(project.id, channel.id))
       tags    <- addTags(pending, version)
       // Notify watchers
-      _ = this.actorSystem.scheduler.scheduleOnce(Duration.Zero, NotifyWatchersTask(version, project))
-      _ <- uploadPlugin(project, pending.plugin, version).fold(e => IO.raiseError(new Exception(e)), IO.pure)
+      _ <- notifyWatchers(version, project)
+      _ <- uploadPlugin(project, pending.plugin, version).orDieWith(s => new Exception(s))
       firstTimeUploadProject <- {
         if (project.visibility == Visibility.New) {
           val setVisibility = (project: Model[Project]) => {
@@ -303,23 +329,21 @@ trait ProjectFactory {
 
           initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
 
-        } else IO.pure(project)
+        } else UIO.succeed(project)
       }
       withTopicId <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)
         this.forums.createVersionPost(firstTimeUploadProject, version)
-      else IO.pure(version)
+      else UIO.succeed(version)
     } yield (firstTimeUploadProject, withTopicId, channel, tags)
   }
 
-  private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version])(
-      implicit cs: ContextShift[IO]
-  ): IO[Seq[Model[VersionTag]]] =
+  private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version]): UIO[Seq[Model[VersionTag]]] =
     (
       pendingVersion.plugin.data.createTags(newVersion.id),
       addDependencyTags(newVersion)
     ).parMapN(_ ++ _)
 
-  private def addDependencyTags(version: Model[Version]): IO[Seq[Model[VersionTag]]] =
+  private def addDependencyTags(version: Model[Version]): UIO[Seq[Model[VersionTag]]] =
     Platform
       .createPlatformTags(
         version.id,
@@ -333,37 +357,39 @@ trait ProjectFactory {
       .find(equalsIgnoreCase(_.name, pending.channelName))
       .getOrElseF(createChannel(project, pending.channelName, pending.channelColor))
 
-  private def uploadPlugin(project: Project, plugin: PluginFileWithData, version: Version): EitherT[IO, String, Unit] =
-    EitherT(
-      IO {
-        val oldPath = plugin.path
+  private def uploadPlugin(
+      project: Project,
+      plugin: PluginFileWithData,
+      version: Version
+  ): ZIO[Blocking, String, Unit] = {
+    import scalaz.zio.blocking._
+    val oldPath = plugin.path
 
-        val versionDir = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
-        val newPath    = versionDir.resolve(oldPath.getFileName)
+    val versionDir = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
+    val newPath    = versionDir.resolve(oldPath.getFileName)
 
-        if (exists(newPath))
-          Left("error.plugin.fileName")
-        else {
-          if (!exists(newPath.getParent))
-            createDirectories(newPath.getParent)
-
-          move(oldPath, newPath)
-          deleteIfExists(oldPath)
-          Right(())
-        }
+    val move = {
+      val createDirs = ZIO.whenM(effectBlocking(!Files.exists(newPath.getParent))) {
+        effectBlocking(Files.createDirectories(newPath.getParent))
       }
-    )
+      val movePath  = effectBlocking(Files.move(oldPath, newPath))
+      val deleteOld = effectBlocking(Files.deleteIfExists(oldPath))
+
+      createDirs *> movePath *> deleteOld.const(Right(()))
+    }
+
+    effectBlocking(Files.exists(newPath)).ifM(UIO.succeed(Left("error.plugin.fileName")), move).orDie.absolve
+  }
 
 }
 
 @Singleton
 class OreProjectFactory @Inject()(
-    val service: ModelService[IO],
+    val service: ModelService[UIO],
     val config: OreConfig,
-    val forums: OreDiscourseApi[IO],
+    val forums: OreDiscourseApi[UIO],
     val cacheApi: SyncCacheApi,
-    val actorSystem: ActorSystem,
     val env: OreEnv,
-    val projects: ProjectBase[IO],
+    val projects: ProjectBase[UIO],
     val fileManager: ProjectFiles
 ) extends ProjectFactory

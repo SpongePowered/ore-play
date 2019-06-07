@@ -35,7 +35,7 @@ import ore.models.user.{FakeUser, User}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
 import ore.util.OreMDC
-import _root_.util.IOUtils
+import _root_.util.TaskUtils
 import _root_.util.syntax._
 
 import akka.stream.Materializer
@@ -468,7 +468,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         val release = (filePart: TempFile) =>
           OptionT.liftF(
             IO(java.nio.file.Files.deleteIfExists(filePart.ref))
-              .runAsync(IOUtils.logCallback("Error deleting file upload", Logger))
+              .runAsync(TaskUtils.logCallback("Error deleting file upload", Logger))
               .toIO
         )
 

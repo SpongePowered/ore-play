@@ -15,13 +15,12 @@ import ore.models.organization.Organization
 import ore.models.project.{Project, Version, Visibility}
 import ore.permission.Permission
 
-import cats.data.EitherT
-import cats.effect.IO
+import scalaz.zio.IO
 
 /**
   * Represents a Secured base Controller for this application.
   */
-abstract class OreBaseController(implicit val oreComponents: OreControllerComponents[IO])
+abstract class OreBaseController(implicit val oreComponents: OreControllerComponents)
     extends AbstractController(oreComponents)
     with Actions
     with I18nSupport {
@@ -36,8 +35,8 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     * @param request  Incoming request
     * @return         NotFound or project
     */
-  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[IO, Result, Model[Project]] =
-    projects.withSlug(author, slug).toRight(notFound)
+  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): IO[Result, Model[Project]] =
+    projects.withSlug(author, slug).value.map(_.toRight(notFound)).absolve
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
     val versionMatches = v.versionString.toLowerCase === versionString.toLowerCase
@@ -55,11 +54,13 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     */
   def getVersion(project: Model[Project], versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Model[Version]] =
+  ): IO[Result, Model[Version]] =
     project
       .versions(ModelView.now(Version))
       .find(versionFindFunc(versionString, request.headerData.globalPerm(Permission.SeeHidden)))
-      .toRight(notFound)
+      .value
+      .map(_.toRight(notFound))
+      .absolve
 
   /**
     * Gets a version with the specified author, project slug and version string
@@ -73,7 +74,7 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     */
   def getProjectVersion(author: String, slug: String, versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Model[Version]] =
+  ): IO[Result, Model[Version]] =
     for {
       project <- getProject(author, slug)
       version <- getVersion(project, versionString)

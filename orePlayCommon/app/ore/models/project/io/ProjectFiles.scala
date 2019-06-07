@@ -2,20 +2,23 @@ package ore.models.project.io
 
 import scala.language.higherKinds
 
-import java.io.IOException
-import java.nio.file.Files._
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import javax.inject.Inject
 
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
-import ore.models.project.Project
 import ore.OreEnv
+import ore.models.project.Project
 import ore.util.OreMDC
 
-import cats.effect.{IO, Resource, Sync}
+import cats.effect.Sync
 import cats.syntax.all._
 import com.typesafe.scalalogging
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.interop._
+import scalaz.zio.interop.catz._
+import scalaz.zio.{UIO, ZIO}
 
 /**
   * Handles file management of Projects.
@@ -63,8 +66,7 @@ class ProjectFiles @Inject()(val env: OreEnv) {
     */
   def renameProject[F[_]](owner: String, oldName: String, newName: String)(implicit F: Sync[F]): F[Unit] = F.delay {
     val newProjectDir = getProjectDir(owner, newName)
-    move(getProjectDir(owner, oldName), newProjectDir)
-    ()
+    F.delay(Files.move(getProjectDir(owner, oldName), newProjectDir)).void
   }
 
   /**
@@ -92,7 +94,7 @@ class ProjectFiles @Inject()(val env: OreEnv) {
     * @param name   Project name
     * @return Project icon
     */
-  def getIconPath(owner: String, name: String)(implicit mdc: OreMDC): Option[Path] =
+  def getIconPath(owner: String, name: String)(implicit mdc: OreMDC): ZIO[Blocking, Nothing, Option[Path]] =
     findFirstFile(getIconDir(owner, name))
 
   /**
@@ -101,7 +103,7 @@ class ProjectFiles @Inject()(val env: OreEnv) {
     * @param project Project to get icon for
     * @return Project icon
     */
-  def getIconPath(project: Project)(implicit mdc: OreMDC): Option[Path] =
+  def getIconPath(project: Project)(implicit mdc: OreMDC): ZIO[Blocking, Nothing, Option[Path]] =
     getIconPath(project.ownerName, project.name)
 
   /**
@@ -120,7 +122,7 @@ class ProjectFiles @Inject()(val env: OreEnv) {
     * @param project Project to get icon for
     * @return Pending icon path
     */
-  def getPendingIconPath(project: Project)(implicit mdc: OreMDC): Option[Path] =
+  def getPendingIconPath(project: Project)(implicit mdc: OreMDC): ZIO[Blocking, Nothing, Option[Path]] =
     getPendingIconPath(project.ownerName, project.name)
 
   /**
@@ -131,22 +133,21 @@ class ProjectFiles @Inject()(val env: OreEnv) {
     * @param name Name of the project to get icon for
     * @return Pending icon path
     */
-  def getPendingIconPath(ownerName: String, name: String)(implicit mdc: OreMDC): Option[Path] =
+  def getPendingIconPath(ownerName: String, name: String)(implicit mdc: OreMDC): ZIO[Blocking, Nothing, Option[Path]] =
     findFirstFile(getPendingIconDir(ownerName, name))
 
-  private def findFirstFile(dir: Path)(implicit MDC: OreMDC): Option[Path] = {
-    if (exists(dir)) {
-      Resource
-        .fromAutoCloseable(IO(list(dir)))
-        .use { stream =>
-          IO.pure(stream.iterator.asScala.filterNot(isDirectory(_)).toStream.headOption)
-        }
-        .recoverWith {
-          case e: IOException => IO(MDCLogger.error("an error occurred while searching a directory", e)).as(None)
-        }
-        .unsafeRunSync()
-    } else
-      None
+  private def findFirstFile(dir: Path)(implicit MDC: OreMDC): ZIO[Blocking, Nothing, Option[Path]] = {
+    import scalaz.zio.blocking._
+
+    val findFirst = effectBlocking(Files.list(dir))
+      .bracketAuto { stream =>
+        effectBlocking(stream.iterator.asScala.filterNot(Files.isDirectory(_)).toStream.headOption)
+      }
+
+    effectBlocking(Files.exists(dir)).ifM(findFirst, UIO.succeed(None)).catchAll {
+      case NonFatal(e) =>
+        UIO.succeed(MDCLogger.error("an error occurred while searching a directory", e)).const(None)
+    }
   }
 
 }

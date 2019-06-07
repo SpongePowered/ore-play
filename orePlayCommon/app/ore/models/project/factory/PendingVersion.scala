@@ -2,8 +2,6 @@ package ore.models.project.factory
 
 import scala.language.higherKinds
 
-import scala.concurrent.ExecutionContext
-
 import play.api.cache.SyncCacheApi
 
 import ore.Cacheable
@@ -18,8 +16,9 @@ import ore.models.project.io.PluginFileWithData
 import ore.models.user.User
 
 import cats.MonadError
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
+import scalaz.zio.Task
+import scalaz.zio.interop.catz._
 import slick.lifted.TableQuery
 
 /**
@@ -49,11 +48,8 @@ case class PendingVersion(
   def complete(
       project: Model[Project],
       factory: ProjectFactory
-  )(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
-  ): IO[(Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
-    free[IO] *> factory.createVersion(project, this)
+  ): Task[(Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
+    free[Task].orDie *> factory.createVersion(project, this)
 
   override def key: String = projectUrl + '/' + versionString
 

@@ -12,7 +12,7 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.OreConfig
 import ore.db.ModelService
 import ore.db.impl.schema.{ProjectTableMain, VersionTable}
-import util.IOUtils
+import util.TaskUtils
 
 import akka.actor.ActorSystem
 import cats.effect.{ContextShift, IO}
@@ -56,7 +56,7 @@ class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecyc
     */
   def run(): Unit = {
     Logger.debug(s"Deleting draft projects")
-    updateFalseNewProjects.unsafeRunAsync(IOUtils.logCallbackUnitNoMDC("Update false new project failed", Logger))
-    deleteNewProjects.unsafeRunAsync(IOUtils.logCallbackUnitNoMDC("Delete new project failed", Logger))
+    updateFalseNewProjects.unsafeRunAsync(TaskUtils.logCallbackUnitNoMDC("Update false new project failed", Logger))
+    deleteNewProjects.unsafeRunAsync(TaskUtils.logCallbackUnitNoMDC("Delete new project failed", Logger))
   }
 }

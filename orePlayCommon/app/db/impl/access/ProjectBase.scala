@@ -19,7 +19,7 @@ import ore.util.{FileUtils, OreMDC}
 import ore.{OreConfig, OreEnv}
 import ore.util.StringUtils._
 import util.syntax._
-import util.IOUtils
+import util.TaskUtils
 
 import cats.Parallel
 import cats.data.OptionT
@@ -163,7 +163,7 @@ object ProjectBase {
     def refreshHomePage(logger: LoggerTakingImplicit[OreMDC])(implicit mdc: OreMDC): F[Unit] =
       service
         .runDbCon(SharedQueries.refreshHomeView.run)
-        .runAsync(IOUtils.logCallback("Failed to refresh home page", logger))
+        .runAsync(TaskUtils.logCallback("Failed to refresh home page", logger))
         .to[F]
 
     def stale: F[Seq[Model[Project]]] =

@@ -13,51 +13,57 @@ import play.api.mvc._
 import controllers.OreControllerComponents
 import controllers.sugar.Requests._
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
-import ore.db.impl.OrePostgresDriver.api._
-import ore.models.project.{Project, Visibility}
-import ore.models.user.{SignOn, User}
 import models.viewhelper._
 import ore.OreConfig
 import ore.auth.SSOApi
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
+import ore.models.project.{Project, Visibility}
+import ore.models.user.{SignOn, User}
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC
-import util.IOUtils
 
 import cats.data.OptionT
-import cats.effect.{ContextShift, IO}
 import cats.syntax.all._
 import com.typesafe.scalalogging
+import scalaz.zio
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.{Task, UIO, ZIO}
+import scalaz.zio.interop.catz._
 
 /**
   * A set of actions used by Ore.
   */
 trait Actions extends Calls with ActionHelpers { self =>
 
-  def oreComponents: OreControllerComponents[IO]
+  def oreComponents: OreControllerComponents
 
-  implicit def service: ModelService[IO] = oreComponents.service
-  def sso: SSOApi[IO]                    = oreComponents.sso
-  def bakery: Bakery                     = oreComponents.bakery
-  implicit def config: OreConfig                  = oreComponents.config
+  def bakery: Bakery             = oreComponents.bakery
+  implicit def config: OreConfig = oreComponents.config
 
-  implicit def users: UserBase[IO]                 = oreComponents.users
-  implicit def projects: ProjectBase[IO]           = oreComponents.projects
-  implicit def organizations: OrganizationBase[IO] = oreComponents.organizations
+  implicit def service: ModelService[UIO]           = oreComponents.uioEffects.service
+  def sso: SSOApi[UIO]                              = oreComponents.uioEffects.sso
+  implicit def users: UserBase[UIO]                 = oreComponents.uioEffects.users
+  implicit def projects: ProjectBase[UIO]           = oreComponents.uioEffects.projects
+  implicit def organizations: OrganizationBase[UIO] = oreComponents.uioEffects.organizations
 
   implicit def ec: ExecutionContext = oreComponents.executionContext
-  implicit def cs: ContextShift[IO] = IO.contextShift(ec)
 
   private val PermsLogger    = scalalogging.Logger("Permissions")
   private val MDCPermsLogger = scalalogging.Logger.takingImplicit[OreMDC](PermsLogger.underlying)
 
   val AuthTokenName = "_oretoken"
 
+  implicit val zioRuntime: zio.Runtime[Blocking] = oreComponents.zioRuntime
+
+  private def zioToFuture[A](zio: ZIO[Blocking, Nothing, A]): Future[A] =
+    ActionHelpers.zioToFuture(zio)
+
   /** Called when a [[User]] tries to make a request they do not have permission for */
-  def onUnauthorized(implicit request: Request[_]): Future[Result] = {
+  def onUnauthorized(implicit request: Request[_]): UIO[Result] = {
     val noRedirect           = request.flash.get("noRedirect")
     implicit val mdc: OreMDC = OreMDC.NoMDC
     users.current.isEmpty
@@ -67,7 +73,6 @@ trait Actions extends Calls with ActionHelpers { self =>
         else
           Redirect(ShowHome)
       }
-      .unsafeToFuture()
   }
 
   /**
@@ -94,11 +99,17 @@ trait Actions extends Calls with ActionHelpers { self =>
       def refine[A](request: R[A]): Future[Either[Result, R[A]]] = {
         implicit val r: R[A] = request
 
-        request.user.permissionsIn(request).map(_.has(p)).unsafeToFuture().flatMap { perm =>
-          log(success = perm, request)
-          if (!perm) onUnauthorized.map(Left.apply)
-          else Future.successful(Right(request))
-        }
+        zioToFuture(
+          request.user
+            .permissionsIn(request)
+            .orDie
+            .map(_.has(p))
+            .flatMap { perm =>
+              log(success = perm, request)
+              if (!perm) onUnauthorized.orDie.map(Left.apply)
+              else UIO.succeed(Right(request))
+            }
+        )
       }
     }
 
@@ -134,7 +145,7 @@ trait Actions extends Calls with ActionHelpers { self =>
       * @param maxAge Maximum session age
       * @return Result with token
       */
-    def authenticatedAs(user: User, maxAge: Int = -1): IO[Result] = {
+    def authenticatedAs(user: User, maxAge: Int = -1): UIO[Result] = {
       val session = users.createSession(user)
       val age     = if (maxAge == -1) None else Some(maxAge)
       session.map { s =>
@@ -158,15 +169,15 @@ trait Actions extends Calls with ActionHelpers { self =>
     * @param nonce Nonce to check
     * @return True if valid
     */
-  def isNonceValid(nonce: String): IO[Boolean] =
+  def isNonceValid(nonce: String): UIO[Boolean] =
     ModelView
       .now(SignOn)
       .find(_.nonce === nonce)
       .semiflatMap { signOn =>
         if (signOn.isCompleted || Instant.now().toEpochMilli - signOn.createdAt.toEpochMilli > 600000)
-          IO.pure(false)
+          UIO.succeed(false)
         else {
-          service.update(signOn)(_.copy(isCompleted = true)).as(true)
+          service.update(signOn)(_.copy(isCompleted = true)).const(true)
         }
       }
       .exists(identity)
@@ -197,58 +208,59 @@ trait Actions extends Calls with ActionHelpers { self =>
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = {
       val auth = for {
-        ssoSome <- OptionT.fromOption[IO](sso)
-        sigSome <- OptionT.fromOption[IO](sig)
+        ssoSome <- OptionT.fromOption[UIO](sso)
+        sigSome <- OptionT.fromOption[UIO](sig)
         res     <- self.sso.authenticate(ssoSome, sigSome)(isNonceValid)
       } yield res
 
-      auth
-        .cata(
+      zioToFuture(
+        auth.cata(
           Some(Unauthorized),
           spongeUser => if (spongeUser.id == request.user.id.value) None else Some(Unauthorized)
         )
-        .unsafeToFuture()
+      )
     }
   }
 
-  def userEditAction(username: String)(implicit ec: ExecutionContext, cs: ContextShift[IO]): ActionFilter[AuthRequest] =
+  def userEditAction(username: String)(implicit ec: ExecutionContext): ActionFilter[AuthRequest] =
     new ActionFilter[AuthRequest] {
       def executionContext: ExecutionContext = ec
 
-      def filter[A](request: AuthRequest[A]): Future[Option[Result]] =
-        users
-          .requestPermission(request.user, username, Permission.EditOwnUserSettings)(request)
-          .transform {
-            case None    => Some(Unauthorized) // No Permission
-            case Some(_) => None // Permission granted => No Filter
-          }
-          .value
-          .unsafeToFuture()
+      def filter[A](request: AuthRequest[A]): Future[Option[Result]] = {
+        zioToFuture(
+          users
+            .requestPermission(request.user, username, Permission.EditOwnUserSettings)(request)
+            .transform {
+              case None    => Some(Unauthorized) // No Permission
+              case Some(_) => None // Permission granted => No Filter
+            }
+            .value
+        )
+      }
     }
 
   def oreAction(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionTransformer[Request, OreRequest] = new ActionTransformer[Request, OreRequest] {
     def executionContext: ExecutionContext = ec
 
     def transform[A](request: Request[A]): Future[OreRequest[A]] = {
-      HeaderData
-        .of(request)
-        .map { data =>
-          val requestWithLang =
-            data.currentUser
-              .flatMap(_.lang.map(Lang.apply))
-              .fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
-          new SimpleOreRequest(data, requestWithLang)
-        }
-        .unsafeToFuture()
+      zioToFuture(
+        HeaderData
+          .of(request)
+          .map { data =>
+            val requestWithLang =
+              data.currentUser
+                .flatMap(_.lang.map(Lang.apply))
+                .fold(request)(lang => request.addAttr(Messages.Attrs.CurrentLang, lang))
+            new SimpleOreRequest(data, requestWithLang)
+          }
+      )
     }
   }
 
   def authAction(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[Request, AuthRequest] = new ActionRefiner[Request, AuthRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -259,18 +271,18 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   private def maybeAuthRequest[A](
       request: Request[A],
-      userF: OptionT[IO, Model[User]]
-  )(implicit cs: ContextShift[IO]): Future[Either[Result, AuthRequest[A]]] =
-    userF
-      .semiflatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
-      .toRight(IO.fromFuture(IO(onUnauthorized(request))))
-      .leftSemiflatMap(identity)
-      .value
-      .unsafeToFuture()
+      userF: OptionT[UIO, Model[User]]
+  ): Future[Either[Result, AuthRequest[A]]] =
+    zioToFuture(
+      userF
+        .semiflatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
+        .toRight(onUnauthorized(request))
+        .leftSemiflatMap(identity)
+        .value
+    )
 
   def projectAction(author: String, slug: String)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[OreRequest, ProjectRequest] = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -279,8 +291,7 @@ trait Actions extends Calls with ActionHelpers { self =>
   }
 
   def projectAction(pluginId: String)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[OreRequest, ProjectRequest] = new ActionRefiner[OreRequest, ProjectRequest] {
     def executionContext: ExecutionContext = ec
 
@@ -288,42 +299,43 @@ trait Actions extends Calls with ActionHelpers { self =>
       maybeProjectRequest(request, projects.withPluginId(pluginId))
   }
 
-  private def maybeProjectRequest[A](r: OreRequest[A], project: OptionT[IO, Model[Project]])(
-      implicit cs: ContextShift[IO]
+  private def maybeProjectRequest[A](
+      r: OreRequest[A],
+      project: OptionT[UIO, Model[Project]]
   ): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request: OreRequest[A] = r
-    project
-      .flatMap(processProject(_, request.headerData.currentUser))
-      .semiflatMap { p =>
-        toProjectRequest(p) {
-          case (data, scoped) => new ProjectRequest[A](data, scoped, r.headerData, r)
+    zioToFuture(
+      project
+        .flatMap(processProject(_, request.headerData.currentUser))
+        .semiflatMap { p =>
+          toProjectRequest(p) {
+            case (data, scoped) => new ProjectRequest[A](data, scoped, r.headerData, r)
+          }
         }
-      }
-      .toRight(notFound)
-      .value
-      .unsafeToFuture()
+        .toRight(notFound)
+        .value
+    )
   }
 
   private def toProjectRequest[T](project: Model[Project])(f: (ProjectData, ScopedProjectData) => T)(
       implicit
-      request: OreRequest[_],
-      cs: ContextShift[IO]
-  ) =
-    (ProjectData.of(project), ScopedProjectData.of(request.headerData.currentUser, project)).parMapN(f)
+      request: OreRequest[_]
+  ) = {
+    val projectData = ProjectData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](project)
+    (projectData.orDie, ScopedProjectData.of(request.headerData.currentUser, project)).parMapN(f)
+  }
 
-  private def processProject(project: Model[Project], user: Option[Model[User]])(
-      implicit cs: ContextShift[IO]
-  ): OptionT[IO, Model[Project]] = {
+  private def processProject(project: Model[Project], user: Option[Model[User]]): OptionT[UIO, Model[Project]] = {
     if (project.visibility == Visibility.Public) {
-      OptionT.pure[IO](project)
+      OptionT.pure[UIO](project)
     } else {
       OptionT
-        .fromOption[IO](user)
+        .fromOption[UIO](user)
         .semiflatMap { user =>
           val check1 = canEditAndNeedChangeOrApproval(project, user)
           val check2 = user.permissionsIn(GlobalScope).map(_.has(Permission.SeeHidden))
 
-          IOUtils.raceBoolean(check1, check2)
+          check1.race(check2)
         }
         .subflatMap {
           case true  => Some(project)
@@ -337,12 +349,11 @@ trait Actions extends Calls with ActionHelpers { self =>
       case Visibility.New => user.permissionsIn(project).map(_.has(Permission.CreateVersion))
       case Visibility.NeedsApproval | Visibility.NeedsApproval =>
         user.permissionsIn(project).map(_.has(Permission.EditProjectSettings))
-      case _ => IO.pure(false)
+      case _ => UIO.succeed(false)
     }
 
-  def authedProjectActionImpl(project: OptionT[IO, Model[Project]])(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+  def authedProjectActionImpl(project: OptionT[UIO, Model[Project]])(
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
 
     def executionContext: ExecutionContext = ec
@@ -350,81 +361,81 @@ trait Actions extends Calls with ActionHelpers { self =>
     def refine[A](request: AuthRequest[A]): Future[Either[Result, AuthedProjectRequest[A]]] = {
       implicit val r: AuthRequest[A] = request
 
-      project
-        .flatMap(processProject(_, Some(request.user)))
-        .semiflatMap { p =>
-          toProjectRequest(p) {
-            case (data, scoped) => new AuthedProjectRequest[A](data, scoped, r.headerData, request)
+      zioToFuture(
+        project
+          .flatMap(processProject(_, Some(request.user)))
+          .semiflatMap { p =>
+            toProjectRequest(p) {
+              case (data, scoped) => new AuthedProjectRequest[A](data, scoped, r.headerData, request)
+            }
           }
-        }
-        .toRight(notFound)
-        .value
-        .unsafeToFuture()
+          .toRight(notFound)
+          .value
+      )
     }
   }
 
   def authedProjectAction(author: String, slug: String)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withSlug(author, slug))
 
   def authedProjectActionById(pluginId: String)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withPluginId(pluginId))
 
   def organizationAction(organization: String)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[OreRequest, OrganizationRequest] = new ActionRefiner[OreRequest, OrganizationRequest] {
 
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: OreRequest[A]): Future[Either[Result, OrganizationRequest[A]]] = {
       implicit val r: OreRequest[A] = request
-      getOrga(organization)
-        .semiflatMap { org =>
-          toOrgaRequest(org) {
-            case (data, scoped) => new OrganizationRequest[A](data, scoped, r.headerData, request)
+      zioToFuture(
+        getOrga(organization)
+          .semiflatMap { org =>
+            toOrgaRequest(org) {
+              case (data, scoped) => new OrganizationRequest[A](data, scoped, r.headerData, request)
+            }
           }
-        }
-        .toRight(notFound)
-        .value
-        .unsafeToFuture()
+          .toRight(notFound)
+          .value
+      )
     }
   }
 
   def authedOrganizationAction(organization: String)(
-      implicit ec: ExecutionContext,
-      cs: ContextShift[IO]
+      implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedOrganizationRequest] = new ActionRefiner[AuthRequest, AuthedOrganizationRequest] {
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: AuthRequest[A]): Future[Either[Result, AuthedOrganizationRequest[A]]] = {
       implicit val r: AuthRequest[A] = request
 
-      getOrga(organization)
-        .semiflatMap { org =>
-          toOrgaRequest(org) {
-            case (data, scoped) => new AuthedOrganizationRequest[A](data, scoped, r.headerData, request)
+      zioToFuture(
+        getOrga(organization)
+          .semiflatMap { org =>
+            toOrgaRequest(org) {
+              case (data, scoped) => new AuthedOrganizationRequest[A](data, scoped, r.headerData, request)
+            }
           }
-        }
-        .toRight(notFound)
-        .value
-        .unsafeToFuture()
+          .toRight(notFound)
+          .value
+      )
     }
-
   }
 
   private def toOrgaRequest[T](orga: Model[Organization])(f: (OrganizationData, ScopedOrganizationData) => T)(
-      implicit request: OreRequest[_],
-      cs: ContextShift[IO]
-  ) = (OrganizationData.of(orga), ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
+      implicit request: OreRequest[_]
+  ) = {
+    val orgData = OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga)
+    (orgData.orDie, ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
+  }
 
-  def getOrga(organization: String): OptionT[IO, Model[Organization]] =
+  def getOrga(organization: String): OptionT[UIO, Model[Organization]] =
     organizations.withName(organization)
 
-  def getUserData(request: OreRequest[_], userName: String)(implicit cs: ContextShift[IO]): OptionT[IO, UserData] =
+  def getUserData(request: OreRequest[_], userName: String): OptionT[UIO, UserData] =
     users.withName(userName)(request).semiflatMap(UserData.of(request, _))
 
 }

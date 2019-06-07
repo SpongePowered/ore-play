@@ -2,6 +2,8 @@ package controllers.sugar
 
 import scala.language.{higherKinds, implicitConversions}
 
+import scala.concurrent.Future
+
 import play.api.data.{Form, FormError}
 import play.api.mvc.Results.Redirect
 import play.api.mvc._
@@ -10,9 +12,11 @@ import controllers.sugar.Requests.OreRequest
 
 import cats.Monad
 import cats.data.{EitherT, OptionT}
-import cats.effect.syntax.all._
-import cats.effect.IO
 import com.google.common.base.Preconditions.checkArgument
+import scalaz.zio
+import scalaz.zio.interop.catz._
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.{IO, UIO, ZIO}
 
 /**
   * A helper class for some common functions of controllers.
@@ -184,26 +188,32 @@ object ActionHelpers {
       form.bindFromRequest().fold(left.andThen(EitherT.leftT[F, B](_)), EitherT.rightT[F, A](_))
   }
 
+  private[sugar] def zioToFuture[A](io: ZIO[Blocking, Nothing, A])(implicit runtime: zio.Runtime[Blocking]): Future[A] =
+    //TODO: If Sentry can't differentiate different errors here, log the error, and throw an exception ignored by Sentry instead
+    runtime.unsafeRun(io.toFutureWith(n => new Exception(s"Got impossible nothing $n")))
+
   class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 
-    def asyncF(fr: IO[Result]): Action[AnyContent] = action.async(fr.unsafeToFuture())
+    def asyncF(fr: UIO[Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
+      action.async(zioToFuture(fr))
 
-    def asyncF(fr: R[B] => IO[Result]): Action[B] =
-      action.async(r => fr(r).unsafeToFuture())
+    def asyncF(fr: R[B] => UIO[Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
+      action.async(r => zioToFuture(fr(r)))
 
     def asyncF[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => IO[Result]): Action[A] =
-      action.async(bodyParser)(r => fr(r).toIO.unsafeToFuture())
+    )(fr: R[A] => UIO[Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
+      action.async(bodyParser)(r => zioToFuture(fr(r)))
 
-    def asyncEitherT(fr: EitherT[IO, _ <: Result, Result]): Action[AnyContent] = asyncF(fr.merge)
+    def asyncBIO(fr: IO[Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
+      action.async(zioToFuture(fr.either.map(_.merge)))
 
-    def asyncEitherT(fr: R[B] => EitherT[IO, _ <: Result, Result]): Action[B] =
-      asyncF(r => fr(r).merge)
+    def asyncBIO(fr: R[B] => IO[Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
+      action.async(r => zioToFuture(fr(r).either.map(_.merge)))
 
-    def asyncEitherT[A](
+    def asyncBIO[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => EitherT[IO, _ <: Result, Result]): Action[A] =
-      asyncF(bodyParser)(r => fr(r).merge)
+    )(fr: R[A] => IO[Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
+      action.async(bodyParser)(r => zioToFuture(fr(r).either.map(_.merge)))
   }
 }

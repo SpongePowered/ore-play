@@ -15,30 +15,57 @@ import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import ore.OreConfig
 import ore.auth.SSOApi
 import ore.db.ModelService
+import util.uiowrappers.{UIOModelService, UIOSSOApi}
 
-import cats.effect.IO
+import scalaz.zio
+import scalaz.zio.{Task, UIO}
+import scalaz.zio.blocking.Blocking
 
-trait OreControllerComponents[F[_]] extends ControllerComponents {
-  def service: ModelService[F]
-  def sso: SSOApi[F]
+trait OreControllerComponents extends ControllerComponents {
+  def uioEffects: OreControllerEffects[UIO]
+  def taskEffects: OreControllerEffects[Task]
   def bakery: Bakery
   def config: OreConfig
+  def zioRuntime: zio.Runtime[Blocking]
+}
+trait OreControllerEffects[F[_]] {
+  def service: ModelService[F]
+  def sso: SSOApi[F]
   def users: UserBase[F]
   def projects: ProjectBase[F]
   def organizations: OrganizationBase[F]
 }
+
 case class DefaultOreControllerComponents @Inject()(
-    service: ModelService[IO],
-    sso: SSOApi[IO],
+    uioEffects: OreControllerEffects[UIO],
+    taskEffects: OreControllerEffects[Task],
     bakery: Bakery,
     config: OreConfig,
-    users: UserBase[IO],
-    projects: ProjectBase[IO],
-    organizations: OrganizationBase[IO],
     actionBuilder: DefaultActionBuilder,
     parsers: PlayBodyParsers,
     messagesApi: MessagesApi,
     langs: Langs,
     fileMimeTypes: FileMimeTypes,
-    executionContext: ExecutionContext
-) extends OreControllerComponents[IO]
+    executionContext: ExecutionContext,
+    zioRuntime: zio.Runtime[Blocking]
+) extends OreControllerComponents
+
+case class TaskOreControllerEffects @Inject()(
+    service: ModelService[Task],
+    sso: SSOApi[Task],
+    users: UserBase[Task],
+    projects: ProjectBase[Task],
+    organizations: OrganizationBase[Task],
+) extends OreControllerEffects[Task]
+
+case class UIOOreControllerEffects @Inject()(
+    private val taskService: ModelService[Task],
+    private val taskSso: SSOApi[Task],
+    users: UserBase[UIO],
+    projects: ProjectBase[UIO],
+    organizations: OrganizationBase[UIO],
+) extends OreControllerEffects[UIO] {
+  override val service: ModelService[UIO] = new UIOModelService(taskService)
+
+  override val sso: SSOApi[UIO] = new UIOSSOApi(taskSso)
+}
