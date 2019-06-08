@@ -21,11 +21,11 @@ import util.syntax._
 import util.TaskUtils
 
 import cats.Parallel
-import cats.data.OptionT
 import cats.effect.syntax.all._
 import cats.syntax.all._
 import cats.instances.vector._
 import cats.instances.option._
+import cats.tagless.autoFunctorK
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import scalaz.zio
@@ -33,7 +33,8 @@ import scalaz.zio.ZIO
 import scalaz.zio.interop.catz._
 import scalaz.zio.blocking.Blocking
 
-trait ProjectBase[F[_]] {
+@autoFunctorK
+trait ProjectBase[+F[_]] {
 
   def missingFile: F[Seq[Model[Version]]]
 
@@ -53,7 +54,7 @@ trait ProjectBase[F[_]] {
     * @param name   Project name
     * @return       Project with name
     */
-  def withName(owner: String, name: String): OptionT[F, Model[Project]]
+  def withName(owner: String, name: String): F[Option[Model[Project]]]
 
   /**
     * Returns the Project with the specified owner name and URL slug, if any.
@@ -62,7 +63,7 @@ trait ProjectBase[F[_]] {
     * @param slug   URL slug
     * @return       Project if found, None otherwise
     */
-  def withSlug(owner: String, slug: String): OptionT[F, Model[Project]]
+  def withSlug(owner: String, slug: String): F[Option[Model[Project]]]
 
   /**
     * Returns the Project with the specified plugin ID, if any.
@@ -70,7 +71,7 @@ trait ProjectBase[F[_]] {
     * @param pluginId Plugin ID
     * @return         Project if found, None otherwise
     */
-  def withPluginId(pluginId: String): OptionT[F, Model[Project]]
+  def withPluginId(pluginId: String): F[Option[Model[Project]]]
 
   /**
     * Returns true if the Project's desired slug is available.
@@ -178,24 +179,24 @@ object ProjectBase {
           .result
       )
 
-    def withName(owner: String, name: String): OptionT[F, Model[Project]] =
+    def withName(owner: String, name: String): F[Option[Model[Project]]] =
       ModelView
         .now(Project)
-        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase)
+        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase).value
 
-    def withSlug(owner: String, slug: String): OptionT[F, Model[Project]] =
+    def withSlug(owner: String, slug: String): F[Option[Model[Project]]] =
       ModelView
         .now(Project)
-        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase)
+        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase).value
 
-    def withPluginId(pluginId: String): OptionT[F, Model[Project]] =
-      ModelView.now(Project).find(equalsIgnoreCase(_.pluginId, pluginId))
+    def withPluginId(pluginId: String): F[Option[Model[Project]]] =
+      ModelView.now(Project).find(equalsIgnoreCase(_.pluginId, pluginId)).value
 
     def isNamespaceAvailable(owner: String, slug: String): F[Boolean] =
-      withSlug(owner, slug).isEmpty
+      withSlug(owner, slug).map(_.isEmpty)
 
     def exists(owner: String, name: String): F[Boolean] =
-      withName(owner, name).isDefined
+      withName(owner, name).map(_.isDefined)
 
     def savePendingIcon(project: Project)(implicit mdc: OreMDC): F[Unit] = F.delay {
       val program = this.fileManager.getPendingIconPath(project).flatMap { optIconPath =>
@@ -203,10 +204,10 @@ object ProjectBase {
           val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
           import zio.blocking._
 
-          val notExists = effectBlocking(Files.notExists(iconDir))
+          val notExists  = effectBlocking(Files.notExists(iconDir))
           val createDirs = effectBlocking(Files.createDirectories(iconDir))
-          val cleanDir = effectBlocking(FileUtils.cleanDirectory(iconDir))
-          val moveDir = effectBlocking(Files.move(iconPath, iconDir.resolve(iconPath.getFileName)))
+          val cleanDir   = effectBlocking(FileUtils.cleanDirectory(iconDir))
+          val moveDir    = effectBlocking(Files.move(iconPath, iconDir.resolve(iconPath.getFileName)))
 
           ZIO.whenM(notExists)(createDirs) *> cleanDir *> moveDir.unit
         }

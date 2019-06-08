@@ -60,5 +60,5 @@ class ProjectTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, 
       runtime.unsafeRun(task.interrupt)
     }
   }
-  Logger.info(s"Initialized. First run in ${this.interval.toString}.")
+  Logger.info(s"Initialized. First run in ${this.interval.asScala.toSeconds} seconds.")
 }

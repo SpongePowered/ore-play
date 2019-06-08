@@ -5,6 +5,8 @@ import scala.language.higherKinds
 import doobie.ConnectionIO
 import slick.dbio.DBIO
 import slick.lifted.Rep
+import cats.tagless._
+import cats.~>
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.
@@ -85,4 +87,29 @@ trait ModelService[+F[_]] {
 }
 object ModelService {
   def apply[F[_]](implicit service: ModelService[F]): ModelService[F] = service
+
+  implicit val functorK: FunctorK[ModelService] = new FunctorK[ModelService] {
+    override def mapK[F[_], G[_]](af: ModelService[F])(fk: F ~> G): ModelService[G] = new ModelService[G] {
+      override def runDBIO[R](action: DBIO[R]) =
+        fk(af.runDBIO(action))
+
+      override def runDbCon[R](program: ConnectionIO[R]): G[R] =
+        fk(af.runDbCon(program))
+
+      override def insertRaw[M](companion: ModelCompanion[M])(model: M): G[Model[M]] =
+        fk(af.insertRaw(companion)(model))
+
+      override def bulkInsert[M](models: Seq[M])(implicit query: ModelQuery[M]): G[Seq[Model[M]]] =
+        fk(af.bulkInsert(models))
+
+      override def updateRaw[M](companion: ModelCompanion[M])(model: Model[M])(update: M => M): G[Model[M]] =
+        fk(af.updateRaw(companion)(model)(update))
+
+      override def delete[M](model: Model[M])(implicit query: ModelQuery[M]): G[Int] =
+        fk(af.delete(model))
+
+      override def deleteWhere[M](model: ModelCompanion[M])(filter: model.T => Rep[Boolean]): G[Int] =
+        fk(af.deleteWhere(model)(filter))
+    }
+  }
 }

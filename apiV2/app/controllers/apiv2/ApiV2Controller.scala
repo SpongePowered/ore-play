@@ -525,7 +525,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         for {
           user            <- ZIO.fromOption(request.user).constError(BadRequest(ApiError("No user found for session")))
           _               <- uploadErrors(user)
-          project         <- projects.withPluginId(pluginId).toZIOWithError(NotFound)
+          project         <- projects.withPluginId(pluginId).get.constError(NotFound)
           projectSettings <- project.settings[Task].orDie
           data            <- dataF
           file            <- fileF

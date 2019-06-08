@@ -2,7 +2,8 @@ package ore.auth
 
 import scala.language.higherKinds
 
-import cats.data.OptionT
+import cats.tagless.InvariantK
+import cats.~>
 
 /**
   * Manages authentication to Sponge services.
@@ -72,5 +73,28 @@ trait SSOApi[F[_]] {
     *                       marks the nonce as invalid so it cannot be used again
     * @return               [[AuthUser]] if successful
     */
-  def authenticate(payload: String, sig: String)(isNonceValid: String => F[Boolean]): OptionT[F, AuthUser]
+  def authenticate(payload: String, sig: String)(isNonceValid: String => F[Boolean]): F[Option[AuthUser]]
+}
+object SSOApi {
+
+  implicit val ssoInvariantK: InvariantK[SSOApi] = new InvariantK[SSOApi] {
+    override def imapK[F[_], G[_]](af: SSOApi[F])(fk: F ~> G)(gK: G ~> F): SSOApi[G] = new SSOApi[G] {
+      override def isAvailable: G[Boolean] = fk(af.isAvailable)
+
+      override def nonce(): String = af.nonce()
+
+      override def getLoginUrl(returnUrl: String, nonce: String): String = af.getLoginUrl(returnUrl, nonce)
+
+      override def getSignupUrl(returnUrl: String, nonce: String): String = af.getSignupUrl(returnUrl, nonce)
+
+      override def getVerifyUrl(returnUrl: String, nonce: String): String = af.getVerifyUrl(returnUrl, nonce)
+
+      override def generatePayload(returnUrl: String, nonce: String): String = af.generatePayload(returnUrl, nonce)
+
+      override def generateSignature(payload: String): String = af.generateSignature(payload)
+
+      override def authenticate(payload: String, sig: String)(isNonceValid: String => G[Boolean]): G[Option[AuthUser]] =
+        fk(af.authenticate(payload, sig)(s => gK(isNonceValid(s))))
+    }
+  }
 }

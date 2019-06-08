@@ -11,7 +11,6 @@ import ore.external.AkkaClientApi
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
 import akka.stream.Materializer
-import cats.data.EitherT
 import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
@@ -39,7 +38,7 @@ class AkkaSpongeAuthApi[F[_]] private (
       json.as[A].leftMap(e => List(e.show))
   }
 
-  override def createDummyUser(username: String, email: String): EitherT[F, List[String], AuthUser] = {
+  override def createDummyUser(username: String, email: String): F[Either[List[String], AuthUser]] = {
     val params = Seq(
       "api-key"  -> settings.apiKey,
       "username" -> username,
@@ -57,7 +56,7 @@ class AkkaSpongeAuthApi[F[_]] private (
     )
   }
 
-  override def getUser(username: String): EitherT[F, List[String], AuthUser] = {
+  override def getUser(username: String): F[Either[List[String], AuthUser]] = {
     makeUnmarshallRequestEither(
       HttpRequest(
         HttpMethods.GET,
@@ -69,7 +68,7 @@ class AkkaSpongeAuthApi[F[_]] private (
   override def getChangeAvatarToken(
       requester: String,
       organization: String
-  ): EitherT[F, List[String], ChangeAvatarToken] = {
+  ): F[Either[List[String], ChangeAvatarToken]] = {
     val params = Seq(
       "api-key"          -> settings.apiKey,
       "request_username" -> requester,

@@ -23,12 +23,14 @@ import cats.Parallel
 import cats.data.OptionT
 import cats.syntax.all._
 import cats.effect.syntax.all._
+import cats.tagless.autoInvariantK
 import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
 
 /**
   * Helper class for handling tracking of statistics.
   */
+@autoInvariantK
 trait StatTracker[F[_]] {
 
   /**

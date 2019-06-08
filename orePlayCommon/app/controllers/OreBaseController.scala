@@ -37,7 +37,7 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     * @return         NotFound or project
     */
   def getProject(author: String, slug: String)(implicit request: OreRequest[_]): IO[Result, Model[Project]] =
-    projects.withSlug(author, slug).toZIOWithError(notFound)
+    projects.withSlug(author, slug).get.constError(notFound)
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
     val versionMatches = v.versionString.toLowerCase === versionString.toLowerCase

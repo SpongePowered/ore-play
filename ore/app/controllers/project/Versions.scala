@@ -41,6 +41,7 @@ import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
 import _root_.io.circe.Json
 import _root_.io.circe.syntax._
+import cats.arrow.FunctionK
 import scalaz.zio.blocking.Blocking
 import scalaz.zio
 import scalaz.zio.{IO, Task, UIO, ZIO}
@@ -274,7 +275,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       val success = ZIO
         .fromOption(this.factory.getPendingVersion(author, slug, versionString))
         // Get pending version
-        .flatMap(pendingVersion => projects.withSlug(author, slug).toZIO.tupleLeft(pendingVersion))
+        .flatMap(pendingVersion => projects.withSlug(author, slug).get.tupleLeft(pendingVersion))
 
       val suc2 = success
         .flatMap {
@@ -840,7 +841,17 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val fileName = version.fileName
           val path     = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
           project.user[Task].orDie.flatMap { projectOwner =>
-            val newStats: StatTracker[RIO[Blocking, ?]] = ??? //stats.mapK(???)
+            import cats.tagless.syntax._
+            import cats.tagless._
+            val newStats: StatTracker[RIO[Blocking, ?]] = InvariantK[StatTracker].imapK(stats) {
+              new FunctionK[UIO, RIO[Blocking, ?]] {
+                override def apply[A](fa: UIO[A]): RIO[Blocking, A] = fa
+              }
+            } {
+              new FunctionK[RIO[Blocking, ?], UIO] {
+                override def apply[A](fa: RIO[Blocking, A]): UIO[A] = fa.provide(zioRuntime.Environment)
+              }
+            }
 
             newStats.versionDownloaded(version) {
               if (fileName.endsWith(".jar"))

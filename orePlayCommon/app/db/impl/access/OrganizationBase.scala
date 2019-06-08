@@ -15,12 +15,14 @@ import ore.util.{OreMDC, StringUtils}
 import util.syntax._
 
 import cats.Parallel
-import cats.data.{EitherT, NonEmptyList, OptionT}
+import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Sync
 import cats.syntax.all._
+import cats.tagless.autoFunctorK
 import com.typesafe.scalalogging
 
-trait OrganizationBase[F[_]] {
+@autoFunctorK
+trait OrganizationBase[+F[_]] {
 
   /**
     * Creates a new [[Organization]]. This method creates a new user on the
@@ -34,7 +36,7 @@ trait OrganizationBase[F[_]] {
       name: String,
       ownerId: DbRef[User],
       members: Set[OrganizationUserRole]
-  )(implicit mdc: OreMDC): EitherT[F, List[String], Model[Organization]]
+  )(implicit mdc: OreMDC): F[Either[List[String], Model[Organization]]]
 
   /**
     * Returns an [[Organization]] with the specified name if it exists.
@@ -42,7 +44,7 @@ trait OrganizationBase[F[_]] {
     * @param name Organization name
     * @return     Organization with name if exists, None otherwise
     */
-  def withName(name: String): OptionT[F, Model[Organization]]
+  def withName(name: String): F[Option[Model[Organization]]]
 }
 
 object OrganizationBase {
@@ -66,7 +68,7 @@ object OrganizationBase {
         name: String,
         ownerId: DbRef[User],
         members: Set[OrganizationUserRole]
-    )(implicit mdc: OreMDC): EitherT[F, List[String], Model[Organization]] = {
+    )(implicit mdc: OreMDC): F[Either[List[String], Model[Organization]]] = {
       import cats.instances.vector._
       val logging = F.delay {
         MDCLogger.debug("Creating Organization...")
@@ -83,7 +85,7 @@ object OrganizationBase {
 
       // Replace all invalid characters to not throw invalid email error when trying to create org with invalid username
       val dummyEmail   = name.replaceAll("[^a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]", "") + '@' + config.ore.orgs.dummyEmailDomain
-      val spongeResult = EitherT.right[List[String]](logging) *> auth.createDummyUser(name, dummyEmail)
+      val spongeResult = EitherT.right[List[String]](logging) *> EitherT(auth.createDummyUser(name, dummyEmail))
 
       // Check for error
       spongeResult
@@ -139,7 +141,7 @@ object OrganizationBase {
             MDCLogger.debug("<SUCCESS> " + org)
             org
           }
-        }
+        }.value
     }
 
     /**
@@ -148,8 +150,8 @@ object OrganizationBase {
       * @param name Organization name
       * @return     Organization with name if exists, None otherwise
       */
-    def withName(name: String): OptionT[F, Model[Organization]] =
-      ModelView.now(Organization).find(StringUtils.equalsIgnoreCase(_.name, name))
+    def withName(name: String): F[Option[Model[Organization]]] =
+      ModelView.now(Organization).find(StringUtils.equalsIgnoreCase(_.name, name)).value
 
   }
 

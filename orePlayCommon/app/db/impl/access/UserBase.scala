@@ -20,7 +20,7 @@ import ore.util.StringUtils._
 import util.syntax._
 
 import cats.Monad
-import cats.data.OptionT
+import cats.data.{EitherT, OptionT}
 import cats.syntax.all._
 
 /**
@@ -91,7 +91,7 @@ object UserBase {
 
     def withName(username: String)(implicit mdc: OreMDC): OptionT[F, Model[User]] =
       ModelView.now(User).find(equalsIgnoreCase(_.name, username)).orElse {
-        auth.getUser(username).map(_.toUser).toOption.semiflatMap(res => service.insert(res))
+        EitherT(auth.getUser(username)).map(_.toUser).toOption.semiflatMap(res => service.insert(res))
       }
 
     def requestPermission(user: Model[User], name: String, perm: Permission)(

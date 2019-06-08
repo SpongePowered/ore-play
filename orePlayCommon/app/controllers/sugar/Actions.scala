@@ -28,7 +28,6 @@ import ore.util.OreMDC
 import util.syntax._
 
 import cats.Parallel
-import cats.data.OptionT
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import scalaz.zio
@@ -219,14 +218,14 @@ trait Actions extends Calls with ActionHelpers { self =>
 
     def filter[A](request: AuthRequest[A]): Future[Option[Result]] = {
       val auth = for {
-        ssoSome <- OptionT.fromOption[UIO](sso)
-        sigSome <- OptionT.fromOption[UIO](sig)
-        res     <- self.sso.authenticate(ssoSome, sigSome)(isNonceValid)
+        ssoSome <- ZIO.fromOption(sso)
+        sigSome <- ZIO.fromOption(sig)
+        res     <- self.sso.authenticate(ssoSome, sigSome)(isNonceValid).get
       } yield res
 
       zioToFuture(
-        auth.cata(
-          Some(Unauthorized),
+        auth.fold(
+          _ => Some(Unauthorized),
           spongeUser => if (spongeUser.id == request.user.id.value) None else Some(Unauthorized)
         )
       )
@@ -298,7 +297,7 @@ trait Actions extends Calls with ActionHelpers { self =>
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: OreRequest[A]): Future[Either[Result, ProjectRequest[A]]] =
-      maybeProjectRequest(request, projects.withSlug(author, slug).toZIO)
+      maybeProjectRequest(request, projects.withSlug(author, slug).get)
   }
 
   def projectAction(pluginId: String)(
@@ -307,7 +306,7 @@ trait Actions extends Calls with ActionHelpers { self =>
     def executionContext: ExecutionContext = ec
 
     def refine[A](request: OreRequest[A]): Future[Either[Result, ProjectRequest[A]]] =
-      maybeProjectRequest(request, projects.withPluginId(pluginId).toZIO)
+      maybeProjectRequest(request, projects.withPluginId(pluginId).get)
   }
 
   private def maybeProjectRequest[A](
@@ -388,11 +387,11 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   def authedProjectAction(author: String, slug: String)(
       implicit ec: ExecutionContext
-  ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withSlug(author, slug).toZIO)
+  ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withSlug(author, slug).get)
 
   def authedProjectActionById(pluginId: String)(
       implicit ec: ExecutionContext
-  ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withPluginId(pluginId).toZIO)
+  ): ActionRefiner[AuthRequest, AuthedProjectRequest] = authedProjectActionImpl(projects.withPluginId(pluginId).get)
 
   def organizationAction(organization: String)(
       implicit ec: ExecutionContext
@@ -444,7 +443,7 @@ trait Actions extends Calls with ActionHelpers { self =>
   }
 
   def getOrga(organization: String): IO[Unit, Model[Organization]] =
-    organizations.withName(organization).toZIO
+    organizations.withName(organization).get
 
   def getUserData(request: OreRequest[_], userName: String): IO[Unit, UserData] =
     users.withName(userName)(request).semiflatMap(UserData.of(request, _)).toZIO

@@ -22,11 +22,11 @@ import scalaz.zio.blocking.Blocking
 
 trait OreControllerComponents extends ControllerComponents {
   def uioEffects: OreControllerEffects[UIO]
-  def taskEffects: OreControllerEffects[Task]
   def bakery: Bakery
   def config: OreConfig
   def zioRuntime: zio.Runtime[Blocking]
 }
+
 trait OreControllerEffects[F[_]] {
   def service: ModelService[F]
   def sso: SSOApi[F]
@@ -49,18 +49,10 @@ case class DefaultOreControllerComponents @Inject()(
     zioRuntime: zio.Runtime[Blocking]
 ) extends OreControllerComponents
 
-case class TaskOreControllerEffects @Inject()(
-    service: ModelService[Task],
-    sso: SSOApi[Task],
-    users: UserBase[Task],
-    projects: ProjectBase[Task],
-    organizations: OrganizationBase[Task],
-) extends OreControllerEffects[Task]
-
-case class UIOOreControllerEffects @Inject()(
-    service: ModelService[UIO],
-    sso: SSOApi[UIO],
-    users: UserBase[UIO],
-    projects: ProjectBase[UIO],
-    organizations: OrganizationBase[UIO],
-) extends OreControllerEffects[UIO]
+case class DefaultOreControllerEffects[F[_]] @Inject()(
+    service: ModelService[F],
+    sso: SSOApi[F],
+    users: UserBase[F],
+    projects: ProjectBase[F],
+    organizations: OrganizationBase[F],
+) extends OreControllerEffects[F]

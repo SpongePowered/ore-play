@@ -215,7 +215,8 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF {
     projects
       .withSlug(author, slug)
-      .toZIOWithError(NotFound)
+      .get
+      .constError(NotFound)
       .flatMap { project =>
         implicit val mdc: OreMDC.NoMDC.type = OreMDC.NoMDC
         project.obj.iconUrlOrPath.map(_.fold(Redirect(_), showImage))
@@ -383,7 +384,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     Authenticated.asyncF { implicit request =>
       val user = request.user
       val res = for {
-        orga       <- organizations.withName(behalf).toZIO
+        orga       <- organizations.withName(behalf).get
         orgaUser   <- users.withName(behalf).toZIO
         role       <- orgaUser.projectRoles(ModelView.now(ProjectUserRole)).get(id).toZIO
         scopedData <- ScopedOrganizationData.of(Some(user), orga)

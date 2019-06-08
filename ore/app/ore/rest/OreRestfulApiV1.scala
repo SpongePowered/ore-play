@@ -318,7 +318,7 @@ trait OreRestfulApiV1 extends OreWrites {
       pluginId: String,
       parentId: Option[DbRef[Page]]
   )(implicit projectBase: ProjectBase[UIO]): OptionT[UIO, JsValue] = {
-    projectBase.withPluginId(pluginId).semiflatMap { project =>
+    OptionT(projectBase.withPluginId(pluginId)).semiflatMap { project =>
       for {
         pages <- service.runDBIO(project.pages(ModelView.raw(Page)).sortBy(_.name).result)
       } yield {
@@ -423,7 +423,7 @@ trait OreRestfulApiV1 extends OreWrites {
       pluginId: String,
       version: String
   )(implicit projectBase: ProjectBase[UIO]): OptionT[UIO, JsValue] = {
-    projectBase.withPluginId(pluginId).flatMap { project =>
+    OptionT(projectBase.withPluginId(pluginId)).flatMap { project =>
       project
         .versions(ModelView.now(Version))
         .find(

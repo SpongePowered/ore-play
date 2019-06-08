@@ -95,13 +95,14 @@ class AkkaSSOApi[F[_]](
   override def generateSignature(payload: String): String =
     CryptoUtils.hmac_sha256(secret, payload.getBytes(this.CharEncoding))
 
-  override def authenticate(payload: String, sig: String)(isNonceValid: String => F[Boolean]): OptionT[F, AuthUser] = {
+  override def authenticate(payload: String, sig: String)(isNonceValid: String => F[Boolean]): F[Option[AuthUser]] = {
     Logger.debug("Authenticating SSO payload...")
     Logger.debug(payload)
     Logger.debug("Signed with : " + sig)
+
     if (generateSignature(payload) != sig) {
       Logger.debug("<FAILURE> Could not verify payload against signature.")
-      OptionT.none[F, AuthUser]
+      F.pure(None)
     } else {
       // decode payload
       val query = Uri.Query(Base64.getMimeDecoder.decode(payload))
@@ -136,6 +137,7 @@ class AkkaSSOApi[F[_]](
             Logger.debug("<SUCCESS> " + user)
             Some(user)
         }
+        .value
     }
   }
 }

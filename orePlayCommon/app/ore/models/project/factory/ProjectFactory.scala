@@ -48,7 +48,7 @@ trait ProjectFactory {
   type ParUIO[+A]  = zio.interop.ParIO[Any, Nothing, A]
   type RIO[-R, +A] = ZIO[R, Nothing, A]
 
-  implicit val parUIO: Parallel[UIO, ParUIO] = parallelInstance[Any, Nothing]
+  implicit val parUIO: Parallel[UIO, ParUIO]    = parallelInstance[Any, Nothing]
   implicit val parTask: Parallel[Task, ParTask] = parallelInstance[Any, Throwable]
 
   protected def fileManager: ProjectFiles
@@ -183,7 +183,7 @@ trait ProjectFactory {
 
     for {
       t <- (
-        this.projects.withPluginId(template.pluginId).isDefined,
+        this.projects.withPluginId(template.pluginId).map(_.isDefined),
         this.projects.exists(owner.name, name),
         this.projects.isNamespaceAvailable(owner.name, slug)
       ).parTupled
@@ -316,7 +316,11 @@ trait ProjectFactory {
 
     for {
       // Create channel if not exists
-      t <- (getOrCreateChannel(pending, project), pending.exists[Task].orDie).parTupled: ZIO[Blocking, Nothing, (Model[Channel], Boolean)]
+      t <- (getOrCreateChannel(pending, project), pending.exists[Task].orDie).parTupled: ZIO[
+        Blocking,
+        Nothing,
+        (Model[Channel], Boolean)
+      ]
       (channel, exists) = t
       _ <- if (exists && this.config.ore.projects.fileValidate)
         UIO.die(new IllegalArgumentException("Version already exists."))

@@ -4,12 +4,13 @@ import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
 import play.api.cache.caffeine.CaffeineCacheComponents
 import play.api.db.slick.{DatabaseConfigProvider, DbName, SlickComponents}
 import play.api.db.slick.evolutions.SlickEvolutionsComponents
-import play.api.http.EnabledFilters
 import play.api.i18n.MessagesApi
 import play.api.mvc.EssentialFilter
 import play.api.routing.Router
 import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator, Application => PlayApplication}
 import play.filters.HttpFiltersComponents
+import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPResultProcessor}
+import play.filters.gzip.{GzipFilter, GzipFilterConfig}
 
 import controllers.apiv2.ApiV2Controller
 import controllers.project.{Channels, Pages, Projects, Versions}
@@ -33,10 +34,13 @@ import ore.models.project.io.ProjectFiles
 import ore.models.user.{FakeUser, UserTask}
 import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
 import util.StatusZ
-import util.uiowrappers._
 
 import akka.actor.ActorSystem
+import cats.arrow.FunctionK
 import com.softwaremill.macwire._
+import cats.~>
+import cats.tagless.syntax.all._
+import com.typesafe.scalalogging.Logger
 import scalaz.zio
 import scalaz.zio.{DefaultRuntime, Task, UIO}
 import scalaz.zio.interop.catz._
@@ -60,17 +64,37 @@ class OreComponents(context: ApplicationLoader.Context)
     with CaffeineCacheComponents
     with SlickComponents
     with SlickEvolutionsComponents {
-  override lazy val router: Router = {
-    val prefix = "/"
-    wire[_root_.router.Routes]
-  }
-  lazy val apiV2Routes: _root_.apiv2.Routes = {
-    val prefix = "/"
-    wire[_root_.apiv2.Routes]
-  }
+  override lazy val router: Router          = wire[_root_.router.Routes]
+  lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]
 
   //override lazy val httpFilters: Seq[EssentialFilter] = enabledFilters.filters
   //lazy val enabledFilters: EnabledFilters             = wire[EnabledFilters] //TODO: This probably won't work
+
+  override lazy val httpFilters: Seq[EssentialFilter] = {
+    val filters              = super.httpFilters ++ enabledFilters
+    val enabledFiltersConfig = configuration.get[Seq[String]]("play.filters.enabled")
+    val enabledFiltersCode   = filters.map(_.getClass.getName)
+
+    val notEnabledFilters = enabledFiltersConfig.diff(enabledFiltersCode)
+
+    if (notEnabledFilters.nonEmpty) {
+      Logger("Bootstrap").warn(s"Found filters enabled in the config but not in code: $notEnabledFilters")
+    }
+
+    filters
+  }
+
+  lazy val enabledFilters: Seq[EssentialFilter] = {
+    val baseFilters = Seq(
+      new CSPFilter(new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration))))
+    )
+
+    if (context.devContext.isDefined)
+      baseFilters ++ Seq(
+        new GzipFilter(GzipFilterConfig.fromConfiguration(configuration))
+      )
+    else baseFilters
+  }
 
   lazy val syncCacheApi: SyncCacheApi = new DefaultSyncCacheApi(defaultCacheApi)
   lazy val dbConfigProvider: DatabaseConfigProvider = new DatabaseConfigProvider {
@@ -84,6 +108,13 @@ class OreComponents(context: ApplicationLoader.Context)
   type ParUIO[A]  = zio.interop.ParIO[Any, Nothing, A]
   type ParTask[A] = zio.interop.ParIO[Any, Throwable, A]
 
+  val taskToUIO: Task ~> UIO = new FunctionK[Task, UIO] {
+    override def apply[A](fa: Task[A]): UIO[A] = fa.orDie
+  }
+  val uioToTask: UIO ~> Task = new FunctionK[UIO, Task] {
+    override def apply[A](fa: UIO[A]): Task[A] = fa
+  }
+
   implicit lazy val config: OreConfig                  = wire[OreConfig]
   implicit lazy val env: OreEnv                        = wire[OreEnv]
   implicit lazy val markdownRenderer: MarkdownRenderer = wire[FlexmarkRenderer]
@@ -91,19 +122,19 @@ class OreComponents(context: ApplicationLoader.Context)
 
   lazy val oreRestfulAPIV1: OreRestfulApiV1                          = wire[OreRestfulServerV1]
   implicit lazy val projectFactory: ProjectFactory                   = wire[OreProjectFactory]
-  implicit lazy val modelService: ModelService[UIO]                  = new UIOModelService(wire[OreModelService])
+  implicit lazy val modelService: ModelService[UIO]                  = wire[OreModelService].mapK(taskToUIO)
   lazy val emailFactory: EmailFactory                                = wire[EmailFactory]
   lazy val mailer: Mailer                                            = wire[SpongeMailer]
   lazy val projectTask: ProjectTask                                  = wire[ProjectTask]
   lazy val userTask: UserTask                                        = wire[UserTask]
   lazy val dbUpdateTask: DbUpdateTask                                = wire[DbUpdateTask]
   implicit lazy val oreControllerComponents: OreControllerComponents = wire[DefaultOreControllerComponents]
-  lazy val taskOreControllerEffects: OreControllerEffects[Task]      = wire[TaskOreControllerEffects]
-  lazy val uioOreControllerEffects: OreControllerEffects[UIO]        = wire[UIOOreControllerEffects]
+  lazy val taskOreControllerEffects: OreControllerEffects[Task]      = wire[DefaultOreControllerEffects[Task]]
+  lazy val uioOreControllerEffects: OreControllerEffects[UIO]        = wire[DefaultOreControllerEffects[UIO]]
 
   lazy val statTrackerTask: StatTracker[Task] = wire[StatTracker.StatTrackerInstant[Task, ParTask]]
-  lazy val statTracker: StatTracker[UIO]      = wire[UIOStatTracker]
-  implicit lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
+  lazy val statTracker: StatTracker[UIO]      = statTrackerTask.imapK(taskToUIO)(uioToTask) //wire[UIOStatTracker]
+  lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
     val api = config.security.api
     runtime.unsafeRun(
       AkkaSpongeAuthApi[Task](
@@ -117,12 +148,12 @@ class OreComponents(context: ApplicationLoader.Context)
       )
     )
   }
-  implicit lazy val spongeAuthApi: SpongeAuthApi[UIO] = wire[UIOSpongeAuthApi]
+  implicit lazy val spongeAuthApi: SpongeAuthApi[UIO] = spongeAuthApiTask.mapK(taskToUIO)
   lazy val ssoApiTask: SSOApi[Task] = {
     val sso = config.security.sso
     runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
   }
-  lazy val ssoApi: SSOApi[UIO] = wire[UIOSSOApi]
+  lazy val ssoApi: SSOApi[UIO] = ssoApiTask.imapK(taskToUIO)(uioToTask)
   lazy val oreDiscourseApiTask: OreDiscourseApi[Task] = {
     val forums = config.forums
     if (forums.api.enabled) {
@@ -160,13 +191,13 @@ class OreComponents(context: ApplicationLoader.Context)
       new OreDiscourseApiDisabled[Task]
     }
   }
-  implicit lazy val oreDiscourseApi: OreDiscourseApi[UIO] = wire[UIOOreDiscourseApi]
+  implicit lazy val oreDiscourseApi: OreDiscourseApi[UIO] = oreDiscourseApiTask.mapK(taskToUIO)
   implicit lazy val userBaseTask: UserBase[Task]          = wire[UserBase.UserBaseF[Task]]
   implicit lazy val userBaseUIO: UserBase[UIO]            = wire[UserBase.UserBaseF[UIO]]
-  lazy val projectBaseTask: ProjectBase[Task]             = wire[ProjectBase.ProjectBaseF[Task, ParTask]]
-  implicit lazy val projectBaseUIO: ProjectBase[UIO]      = wire[UIOProjectBase]
-  lazy val orgBaseTask: OrganizationBase[Task]            = wire[OrganizationBase.OrganizationBaseF[Task, ParTask]]
-  implicit lazy val orgBaseUIO: OrganizationBase[UIO]     = wire[UIOOrganizationBase]
+  implicit lazy val projectBase: ProjectBase[UIO] =
+    (wire[ProjectBase.ProjectBaseF[Task, ParTask]]: ProjectBase[Task]).mapK(taskToUIO)
+  implicit lazy val orgBase: OrganizationBase[UIO] =
+    (wire[OrganizationBase.OrganizationBaseF[Task, ParTask]]: OrganizationBase[Task]).mapK(taskToUIO)
 
   lazy val bakery: Bakery     = wire[Bakery]
   lazy val forms: OreForms    = wire[OreForms]

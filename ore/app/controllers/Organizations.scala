@@ -78,7 +78,7 @@ class Organizations @Inject()(forms: OreForms)(
               val formData = request.body
               organizations
                 .create(formData.name, user.id, formData.build())
-                .toZIO
+                .absolve
                 .bimap(
                   error => Redirect(failCall).withErrors(error),
                   organization => Redirect(routes.Users.showProjects(organization.name, None))
@@ -126,7 +126,7 @@ class Organizations @Inject()(forms: OreForms)(
       .asyncF { implicit request =>
         implicit val lang: Lang = request.lang
 
-        auth.getChangeAvatarToken(request.user.name, organization).value.map {
+        auth.getChangeAvatarToken(request.user.name, organization).map {
           case Left(_) =>
             Redirect(routes.Users.showProjects(organization, None)).withError(messagesApi("organization.avatarFailed"))
           case Right(token) =>

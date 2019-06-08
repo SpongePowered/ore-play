@@ -87,7 +87,8 @@ class Users @Inject()(
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
           .authenticate(sso.get, sig.get)(isNonceValid)
-          .toZIOWithError(Redirect(ShowHome).withError("error.loginFailed"))
+          .get
+          .constError(Redirect(ShowHome).withError("error.loginFailed"))
           .map(sponge => sponge.toUser -> sponge)
           .flatMap {
             case (fromSponge, sponge) =>

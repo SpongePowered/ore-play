@@ -58,11 +58,13 @@ class AkkaDiscourseApi[F[_]] private (
 
     val withCat = categoryId.fold(base)(i => base :+ ("category" -> i.toString))
 
-    makeUnmarshallRequestEither[DiscoursePost](
-      HttpRequest(
-        HttpMethods.POST,
-        apiUri(_ / "posts.json"),
-        entity = FormData(withCat: _*).toEntity
+    EitherT(
+      makeUnmarshallRequestEither[DiscoursePost](
+        HttpRequest(
+          HttpMethods.POST,
+          apiUri(_ / "posts.json"),
+          entity = FormData(withCat: _*).toEntity
+        )
       )
     )
   }
@@ -73,11 +75,13 @@ class AkkaDiscourseApi[F[_]] private (
       "raw"      -> content
     )
 
-    makeUnmarshallRequestEither[DiscoursePost](
-      HttpRequest(
-        HttpMethods.POST,
-        apiUri(_ / "posts.json"),
-        entity = FormData(params: _*).toEntity
+    EitherT(
+      makeUnmarshallRequestEither[DiscoursePost](
+        HttpRequest(
+          HttpMethods.POST,
+          apiUri(_ / "posts.json"),
+          entity = FormData(params: _*).toEntity
+        )
       )
     )
   }
@@ -95,11 +99,13 @@ class AkkaDiscourseApi[F[_]] private (
       val withTitle = title.fold(base)(t => base :+ ("title"                      -> t))
       val withCat   = categoryId.fold(withTitle)(c => withTitle :+ ("category_id" -> c.toString))
 
-      makeUnmarshallRequestEither[Json](
-        HttpRequest(
-          HttpMethods.PUT,
-          apiUri(_ / "t" / "-" / s"$topicId.json"),
-          entity = FormData(withCat: _*).toEntity
+      EitherT(
+        makeUnmarshallRequestEither[Json](
+          HttpRequest(
+            HttpMethods.PUT,
+            apiUri(_ / "t" / "-" / s"$topicId.json"),
+            entity = FormData(withCat: _*).toEntity
+          )
         )
       ).void
     }
@@ -108,11 +114,13 @@ class AkkaDiscourseApi[F[_]] private (
   override def updatePost(poster: String, postId: Int, content: String): EitherT[F, String, Unit] = {
     val params = startParams(Some(poster)) :+ ("post[raw]" -> content)
 
-    makeUnmarshallRequestEither[Json](
-      HttpRequest(
-        HttpMethods.PUT,
-        apiUri(_ / "posts" / s"$postId.json"),
-        entity = FormData(params: _*).toEntity
+    EitherT(
+      makeUnmarshallRequestEither[Json](
+        HttpRequest(
+          HttpMethods.PUT,
+          apiUri(_ / "posts" / s"$postId.json"),
+          entity = FormData(params: _*).toEntity
+        )
       )
     ).void
   }
@@ -127,7 +135,7 @@ class AkkaDiscourseApi[F[_]] private (
           )
         )
       )
-      .flatMap(gatherStatusErrors)
+      .flatMapF(gatherStatusErrors)
       .semiflatMap(resp => F.delay(resp.discardEntityBytes()))
       .void
 

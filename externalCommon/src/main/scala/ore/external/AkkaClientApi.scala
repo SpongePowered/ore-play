@@ -68,31 +68,27 @@ abstract class AkkaClientApi[F[_], E[_]](serviceName: String, counter: Ref[F, Lo
   private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]): F[A] =
     futureToF(Unmarshal(response).to[A])
 
-  protected def gatherStatusErrors(response: HttpResponse): EitherT[F, E[String], HttpResponse] = {
-    if (response.status.isSuccess()) EitherT.rightT[F, E[String]](response)
+  protected def gatherStatusErrors(response: HttpResponse): F[Either[E[String], HttpResponse]] = {
+    if (response.status.isSuccess()) F.pure(Right(response))
     else if (response.entity.isKnownEmpty())
-      EitherT.left[HttpResponse](
-        F.delay(response.entity.discardBytes())
-          .as(
-            E.pure(s"$serviceName request failed. Response code ${response.status}")
-          )
+      F.delay(response.entity.discardBytes()).as(
+        Left(E.pure(s"$serviceName request failed. Response code ${response.status}"))
       )
     else {
-      EitherT.left[HttpResponse](
-        unmarshallResponse[String](response)
-          .map(e => E.pure(s"$serviceName request failed. Response code ${response.status}: $e"))
-      )
+      unmarshallResponse[String](response)
+        .map(e => Left(E.pure(s"$serviceName request failed. Response code ${response.status}: $e")))
     }
   }
 
   protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[String], A]
 
-  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): EitherT[F, E[String], A] =
+  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[String], A]] =
     EitherT
       .liftF(makeRequest(request))
-      .flatMap(gatherStatusErrors)
+      .flatMapF(gatherStatusErrors)
       .semiflatMap(unmarshallResponse[Json])
       .subflatMap(gatherJsonErrors[A])
+      .value
 }
 object AkkaClientApi {
 
