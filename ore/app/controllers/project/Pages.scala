@@ -70,8 +70,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
       project
         .pages(ModelView.now(Page))
         .find(p => p.slug.toLowerCase === single.toLowerCase && p.parentId.isEmpty)
-        .value
-        .get
+        .toZIO
     case _ => IO.fail(())
   }
 
@@ -104,9 +103,9 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
     * @param page   Page name
     * @return View of page
     */
-  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).asyncBIO {
+  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
     implicit request =>
-      queryProjectPagesAndFindSpecific(request.project, page).mapError(_ => notFound).flatMap {
+      queryProjectPagesAndFindSpecific(request.project, page).constError(notFound).flatMap {
         case (pages, p) =>
           val pageCount = pages.size + pages.map(_._2.size).sum
           val parentPage =
@@ -141,8 +140,8 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
     * @return Page editor
     */
   def showEditor(author: String, slug: String, pageName: String): Action[AnyContent] =
-    PageEditAction(author, slug).asyncBIO { implicit request =>
-      queryProjectPagesAndFindSpecific(request.project, pageName).mapError(_ => notFound).map {
+    PageEditAction(author, slug).asyncF { implicit request =>
+      queryProjectPagesAndFindSpecific(request.project, pageName).constError(notFound).map {
         case (pages, p) =>
           val pageCount  = pages.size + pages.map(_._2.size).sum
           val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
@@ -180,7 +179,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
     * @return Project home
     */
   def save(author: String, slug: String, page: String): Action[PageSaveForm] =
-    PageEditAction(author, slug).asyncBIO(
+    PageEditAction(author, slug).asyncF(
       parse.form(forms.PageEdit, onErrors = FormError(self.show(author, slug, page)))
     ) { implicit request =>
       val pageData = request.body

@@ -96,7 +96,7 @@ trait ProjectFactory {
       val loadData = createDirs *> moveToNewPluginPath.flatMap { newPluginPath =>
         // create and load a new PluginFile instance for further processing
         val plugin = new PluginFile(newPluginPath, owner)
-        plugin.loadMeta[Task].value
+        plugin.loadMeta[Task]
       }
 
       loadData.orDie.absolve

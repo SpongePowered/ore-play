@@ -317,7 +317,7 @@ final class ApiV1Controller @Inject()(
     */
   def showStatusZ: Action[AnyContent] = Action(Ok(this.status.json))
 
-  def syncSso(): Action[AnyContent] = Action.asyncBIO { implicit request =>
+  def syncSso(): Action[AnyContent] = Action.asyncF { implicit request =>
     val confApiKey = this.config.security.sso.apikey
     val confSecret = this.config.security.sso.secret
 
@@ -367,7 +367,6 @@ final class ApiV1Controller @Inject()(
             .getOrElse(UIO.unit)
             .as(Ok(Json.obj("status" -> "success")))
       }
-      .value
-      .absolve
+      .toZIO
   }
 }

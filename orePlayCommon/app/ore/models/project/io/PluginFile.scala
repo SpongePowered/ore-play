@@ -32,7 +32,7 @@ class PluginFile(val path: Path, val user: Model[User]) {
     *
     * @return Plugin metadata or an error message
     */
-  def loadMeta[F[_]](implicit messages: Messages, F: Sync[F]): EitherT[F, String, PluginFileWithData] = {
+  def loadMeta[F[_]](implicit messages: Messages, F: Sync[F]): F[Either[String, PluginFileWithData]] = {
     val fileNames = PluginFileData.fileNames
 
     val res = newJarStream
@@ -87,7 +87,7 @@ class PluginFile(val path: Path, val user: Model[User]) {
         }
       }
 
-    EitherT(res.map(_.flatMap(identity)))
+    res.map(_.flatMap(identity))
   }
 
   /**

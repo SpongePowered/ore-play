@@ -21,3 +21,4 @@ package object syntax
     with IsMarkdownRenderable.ToIsMarkdownRenderableOps
     with HasForumRepresentation.ToHasForumRepresentationOps
     with ModelSyntax
+    with ZIOSyntax

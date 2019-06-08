@@ -91,7 +91,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     }
   }
 
-  def createProject(): Action[AnyContent] = UserLock().asyncBIO { implicit request =>
+  def createProject(): Action[AnyContent] = UserLock().asyncF { implicit request =>
     val user = request.user
     for {
       _ <- ZIO
@@ -101,13 +101,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       organisationUserCanUploadTo <- orgasUserCanUploadTo(user)
       settings <- forms
         .projectCreate(organisationUserCanUploadTo.toSeq)
-        .bindEitherT[UIO](FormErrorLocalized(self.showCreator()))
-        .value
-        .absolve
+        .bindZIO(FormErrorLocalized(self.showCreator()))
       owner <- settings.ownerId
         .filter(_ != user.id.value)
         .fold(IO.succeed(user): IO[Result, Model[User]])(
-          ModelView.now(User).get(_).value.get.mapError(_ => Redirect(self.showCreator()).withError("Owner not found"))
+          ModelView.now(User).get(_).toZIOWithError(Redirect(self.showCreator()).withError("Owner not found"))
         )
       project <- factory.createProject(owner, settings.asTemplate).mapError(Redirect(self.showCreator()).withError(_))
       _       <- projects.refreshHomePage(MDCLogger)
@@ -182,7 +180,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return       View of discussion with new post
     */
   def postDiscussionReply(author: String, slug: String): Action[DiscussionReplyForm] =
-    AuthedProjectAction(author, slug).asyncBIO(
+    AuthedProjectAction(author, slug).asyncF(
       parse.form(forms.ProjectReply, onErrors = FormError(self.showDiscussion(author, slug)))
     ) { implicit request =>
       val formData = request.body
@@ -195,9 +193,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             ZIO
               .fromOption(formData.poster)
               .flatMap { posterName =>
-                users.requestPermission(request.user, posterName, Permission.PostAsOrganization).value.get
+                users.requestPermission(request.user, posterName, Permission.PostAsOrganization).toZIO
               }
-              .mapError(_ => request.user)
+              .constError(request.user)
               .either
               .map(_.merge)
           }
@@ -214,12 +212,10 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @param slug Project slug
     * @return Project icon
     */
-  def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncBIO {
+  def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF {
     projects
       .withSlug(author, slug)
-      .value
-      .get
-      .mapError(_ => NotFound)
+      .toZIOWithError(NotFound)
       .flatMap { project =>
         implicit val mdc: OreMDC.NoMDC.type = OreMDC.NoMDC
         project.obj.iconUrlOrPath.map(_.fold(Redirect(_), showImage))
@@ -242,7 +238,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return       View of project
     */
   def flag(author: String, slug: String): Action[FlagForm] =
-    AuthedProjectAction(author, slug).asyncBIO(
+    AuthedProjectAction(author, slug).asyncF(
       parse.form(forms.ProjectFlag, onErrors = FormErrorLocalized(ShowProject(author, slug)))
     ) { implicit request =>
       val user     = request.user
@@ -338,7 +334,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return Result code
     */
   def toggleStarred(author: String, slug: String): Action[AnyContent] =
-    AuthedProjectAction(author, slug).asyncBIO { implicit request =>
+    AuthedProjectAction(author, slug).asyncF { implicit request =>
       if (request.project.ownerId != request.user.id.value)
         request.data.project.toggleStarredBy(request.user).as(Ok)
       else
@@ -352,15 +348,13 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @param status Invite status
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
-  def setInviteStatus(id: DbRef[ProjectUserRole], status: String): Action[AnyContent] = Authenticated.asyncBIO {
+  def setInviteStatus(id: DbRef[ProjectUserRole], status: String): Action[AnyContent] = Authenticated.asyncF {
     implicit request =>
       val user = request.user
       user
         .projectRoles(ModelView.now(ProjectUserRole))
         .get(id)
-        .value
-        .get
-        .mapError(_ => NotFound)
+        .toZIOWithError(NotFound)
         .flatMap { role =>
           import MembershipDossier._
           status match {
@@ -386,12 +380,12 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
   def setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String): Action[AnyContent] =
-    Authenticated.asyncBIO { implicit request =>
+    Authenticated.asyncF { implicit request =>
       val user = request.user
       val res = for {
-        orga       <- organizations.withName(behalf).value.get
-        orgaUser   <- users.withName(behalf).value.get
-        role       <- orgaUser.projectRoles(ModelView.now(ProjectUserRole)).get(id).value.get
+        orga       <- organizations.withName(behalf).toZIO
+        orgaUser   <- users.withName(behalf).toZIO
+        role       <- orgaUser.projectRoles(ModelView.now(ProjectUserRole)).get(id).toZIO
         scopedData <- ScopedOrganizationData.of(Some(user), orga)
         _          <- if (scopedData.permissions.has(Permission.ManageProjectMembers)) ZIO.succeed(()) else ZIO.fail(())
         project    <- role.project[Task].orDie
@@ -407,7 +401,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         }
       } yield res
 
-      res.mapError(_ => NotFound)
+      res.constError(NotFound)
     }
 
   /**
@@ -440,7 +434,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return       Ok or redirection if no file
     */
   def uploadIcon(author: String, slug: String): Action[MultipartFormData[TemporaryFile]] =
-    SettingsEditAction(author, slug)(parse.multipartFormData).asyncBIO { implicit request =>
+    SettingsEditAction(author, slug)(parse.multipartFormData).asyncF { implicit request =>
       request.body.file("icon") match {
         case None => IO.fail(Redirect(self.showSettings(author, slug)).withError("error.noFile"))
         case Some(tmpFile) =>
@@ -516,12 +510,10 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @param slug   Project slug
     */
   def removeMember(author: String, slug: String): Action[String] =
-    MemberEditAction(author, slug).asyncBIO(parse.form(forms.ProjectMemberRemove)) { implicit request =>
+    MemberEditAction(author, slug).asyncF(parse.form(forms.ProjectMemberRemove)) { implicit request =>
       users
         .withName(request.body)
-        .value
-        .get
-        .mapError(_ => BadRequest)
+        .toZIOWithError(BadRequest)
         .flatMap { user =>
           val project = request.data.project
           MembershipDossier
@@ -548,16 +540,14 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @param slug   Project slug
     * @return View of project
     */
-  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncBIO {
+  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
       val data = request.data
       for {
         organisationUserCanUploadTo <- orgasUserCanUploadTo(request.user)
         formData <- this.forms
           .ProjectSave(organisationUserCanUploadTo.toSeq)
-          .bindEitherT[UIO](FormErrorLocalized(self.showSettings(author, slug)))
-          .value
-          .absolve
+          .bindZIO(FormErrorLocalized(self.showSettings(author, slug)))
         _ <- formData
           .save[Task, ParTask](data.settings, data.project, MDCLogger)
           .value
@@ -583,17 +573,16 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return Project homepage
     */
   def rename(author: String, slug: String): Action[String] =
-    SettingsEditAction(author, slug).asyncBIO(parse.form(forms.ProjectRename)) { implicit request =>
+    SettingsEditAction(author, slug).asyncF(parse.form(forms.ProjectRename)) { implicit request =>
       val project = request.data.project
       val newName = compact(request.body)
       val oldName = request.project.name
 
       for {
         available <- projects.isNamespaceAvailable(author, slugify(newName))
-        _ <- EitherT
-          .cond[UIO](available, (), Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
-          .value
-          .absolve
+        _ <- ZIO.fromEither(
+          Either.cond(available, (), Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
+        )
         _ <- projects.rename(project, newName)
         _ <- UserActionLogger.log(
           request.request,
@@ -686,7 +675,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return Home page
     */
   def delete(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(Permission.HardDeleteProject)).asyncBIO { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.HardDeleteProject)).asyncF { implicit request =>
       getProject(author, slug).flatMap { project =>
         hardDeleteProject(project)
           .const(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
@@ -760,7 +749,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @param slug   Project slug
     */
   def showNotes(author: String, slug: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags)).asyncBIO { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags)).asyncF { implicit request =>
       getProject(author, slug).flatMap { project =>
         import cats.instances.vector._
         project.decodeNotes.toVector.parTraverse(note => ModelView.now(User).get(note.user).value.tupleLeft(note)).map {
@@ -774,7 +763,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   def addMessage(author: String, slug: String): Action[String] = {
     Authenticated
       .andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
-      .asyncBIO(parse.form(forms.NoteDescription)) { implicit request =>
+      .asyncF(parse.form(forms.NoteDescription)) { implicit request =>
         getProject(author, slug)
           .flatMap(_.addNote(Note(request.body.trim, request.user.id)))
           .const(Ok("Review"))

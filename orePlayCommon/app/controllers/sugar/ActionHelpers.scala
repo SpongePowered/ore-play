@@ -177,6 +177,9 @@ object ActionHelpers {
   }
 
   class FormBindOps[A](private val form: Form[A]) extends AnyVal {
+    def bindZIO[B](error: Form[A] => B)(implicit request: Request[_]): IO[B, A] =
+      form.bindFromRequest().fold(error.andThen(ZIO.fail), ZIO.succeed)
+
     def bindEitherT[F[_]] = new BindFormEitherTPartiallyApplied[F, A](form)
 
     def bindOptionT[F[_]](implicit F: Monad[F], request: Request[_]): OptionT[F, A] =
@@ -194,24 +197,13 @@ object ActionHelpers {
 
   class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 
-    def asyncF(fr: ZIO[Blocking, Nothing, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
-      action.async(zioToFuture(fr))
-
-    def asyncF(fr: R[B] => ZIO[Blocking, Nothing, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
-      action.async(r => zioToFuture(fr(r)))
-
-    def asyncF[A](
-        bodyParser: BodyParser[A]
-    )(fr: R[A] => ZIO[Blocking, Nothing, Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
-      action.async(bodyParser)(r => zioToFuture(fr(r)))
-
-    def asyncBIO(fr: ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
+    def asyncF(fr: ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
       action.async(zioToFuture(fr.either.map(_.merge)))
 
-    def asyncBIO(fr: R[B] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
+    def asyncF(fr: R[B] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
       action.async(r => zioToFuture(fr(r).either.map(_.merge)))
 
-    def asyncBIO[A](
+    def asyncF[A](
         bodyParser: BodyParser[A]
     )(fr: R[A] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
       action.async(bodyParser)(r => zioToFuture(fr(r).either.map(_.merge)))

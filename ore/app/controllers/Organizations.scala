@@ -20,7 +20,6 @@ import views.{html => views}
 
 import cats.data.OptionT
 import cats.syntax.all._
-import scalaz.zio
 import scalaz.zio.{IO, Task, UIO}
 import scalaz.zio.interop.catz._
 
@@ -59,7 +58,7 @@ class Organizations @Inject()(forms: OreForms)(
     * @return Redirect to organization page
     */
   def create(): Action[OrganizationRoleSetBuilder] =
-    UserLock().asyncBIO(
+    UserLock().asyncF(
       parse.form(forms.OrganizationCreate, onErrors = FormErrorLocalized(routes.Organizations.showCreator()))
     ) { implicit request =>
       val user     = request.user
@@ -79,9 +78,8 @@ class Organizations @Inject()(forms: OreForms)(
               val formData = request.body
               organizations
                 .create(formData.name, user.id, formData.build())
-                .value
-                .absolve
-                .fold(
+                .toZIO
+                .bimap(
                   error => Redirect(failCall).withErrors(error),
                   organization => Redirect(routes.Users.showProjects(organization.name, None))
                 )
@@ -98,13 +96,12 @@ class Organizations @Inject()(forms: OreForms)(
     * @return       NotFound if invite doesn't exist, Ok otherwise
     */
   def setInviteStatus(id: DbRef[OrganizationUserRole], status: String): Action[AnyContent] =
-    Authenticated.asyncBIO { implicit request =>
+    Authenticated.asyncF { implicit request =>
       request.user
         .organizationRoles(ModelView.now(OrganizationUserRole))
         .get(id)
-        .value
-        .get
-        .mapError(_ => notFound)
+        .toZIO
+        .constError(notFound)
         .flatMap { role =>
           import MembershipDossier._
           status match {

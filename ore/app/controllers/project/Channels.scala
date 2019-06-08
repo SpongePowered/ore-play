@@ -13,6 +13,7 @@ import ore.db.impl.schema.{ChannelTable, VersionTable}
 import ore.models.project.Channel
 import ore.permission.Permission
 import views.html.projects.{channels => views}
+import util.syntax._
 
 import scalaz.zio.{IO, Task}
 import scalaz.zio.interop.catz._
@@ -55,7 +56,7 @@ class Channels @Inject()(forms: OreForms)(
     * @return Redirect to view of channels
     */
   def create(author: String, slug: String): Action[ChannelData] =
-    ChannelEditAction(author, slug).asyncBIO(
+    ChannelEditAction(author, slug).asyncF(
       parse.form(forms.ChannelEdit, onErrors = FormError(self.showList(author, slug)))
     ) { request =>
       request.body
@@ -76,13 +77,12 @@ class Channels @Inject()(forms: OreForms)(
     * @return View of channels
     */
   def save(author: String, slug: String, channelName: String): Action[ChannelData] =
-    ChannelEditAction(author, slug).asyncBIO(
+    ChannelEditAction(author, slug).asyncF(
       parse.form(forms.ChannelEdit, onErrors = FormError(self.showList(author, slug)))
     ) { request =>
       request.body
         .saveTo(request.project, channelName)
-        .value
-        .absolve
+        .toZIO
         .mapError(Redirect(self.showList(author, slug)).withErrors(_))
         .const(Redirect(self.showList(author, slug)))
     }
@@ -96,7 +96,7 @@ class Channels @Inject()(forms: OreForms)(
     * @return View of channels
     */
   def delete(author: String, slug: String, channelName: String): Action[AnyContent] =
-    ChannelEditAction(author, slug).asyncBIO { implicit request =>
+    ChannelEditAction(author, slug).asyncF { implicit request =>
       val channelsAccess = request.project.channels(ModelView.later(Channel))
 
       val ourChannel = channelsAccess.find(_.name === channelName)
@@ -126,7 +126,7 @@ class Channels @Inject()(forms: OreForms)(
       service
         .runDBIO(query.result.headOption)
         .get
-        .mapError(_ => NotFound)
+        .constError(NotFound)
         .flatMap {
           case (channel, notLast, notLastNonEmpty, notLastReviewed) =>
             val errorSeq = Seq(

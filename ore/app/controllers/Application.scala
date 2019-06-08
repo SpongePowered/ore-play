@@ -14,7 +14,7 @@ import controllers.sugar.Requests.AuthRequest
 import db.impl.query.AppQueries
 import form.OreForms
 import models.querymodels.{FlagActivity, ReviewActivity}
-import models.viewhelper.OrganizationData
+import models.viewhelper.{OrganizationData, UserData}
 import ore.data.project.Category
 import ore.data.{Platform, PlatformCategory}
 import ore.db._
@@ -264,7 +264,7 @@ final class Application @Inject()(forms: OreForms)(
     * @return
     */
   def showStats(from: Option[String], to: Option[String]): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewStats)).asyncBIO { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.ViewStats)).asyncF { implicit request =>
       def parseTime(time: Option[String], default: LocalDate) =
         time.map(s => Try(LocalDate.parse(s)).toOption).getOrElse(Some(default))
 
@@ -324,12 +324,10 @@ final class Application @Inject()(forms: OreForms)(
   def UserAdminAction: ActionBuilder[AuthRequest, AnyContent] =
     Authenticated.andThen(PermissionAction(Permission.EditAllUserSettings))
 
-  def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncBIO { implicit request =>
+  def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncF { implicit request =>
     users
       .withName(user)
-      .value
-      .get
-      .mapError(_ => notFound)
+      .toZIOWithError(notFound)
       .flatMap { u =>
         for {
           orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
@@ -337,25 +335,23 @@ final class Application @Inject()(forms: OreForms)(
             service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
           )(orga => IO.succeed(Nil))
           t2 <- (
-            getUserData(request, user).value,
-            projectRoles.toVector.parTraverse(_.project[Task].orDie),
+            UserData.of(request, u),
+            ZIO.foreachPar(projectRoles)(_.project[Task].orDie),
             OrganizationData.of[Task, ParTask](orga).value.orDie
           ).parTupled
           (userData, projects, orgaData) = t2
         } yield {
           val pr = projects.zip(projectRoles)
-          Ok(views.users.admin.userAdmin(userData.get, orgaData, pr.map(t => t._1.obj -> t._2)))
+          Ok(views.users.admin.userAdmin(userData, orgaData, pr.map(t => t._1.obj -> t._2)))
         }
       }
   }
 
   def updateUser(userName: String): Action[(String, String, String)] =
-    UserAdminAction.asyncBIO(parse.form(forms.UserAdminUpdate)) { implicit request =>
+    UserAdminAction.asyncF(parse.form(forms.UserAdminUpdate)) { implicit request =>
       users
         .withName(userName)
-        .value
-        .get
-        .mapError(_ => NotFound)
+        .toZIOWithError(NotFound)
         .flatMap { user =>
           //TODO: Make the form take json directly
           val (thing, action, data) = request.body
@@ -372,7 +368,7 @@ final class Application @Inject()(forms: OreForms)(
             val id = (json \ "id").as[DbRef[M0]]
             action match {
               case "setRole" =>
-                modelAccess.get(id).value.get.mapError(Right.apply).flatMap { role =>
+                modelAccess.get(id).toZIO.mapError(Right.apply).flatMap { role =>
                   val roleType = Role.withValue((json \ "role").as[String])
 
                   if (roleType == ownerType)
@@ -385,16 +381,14 @@ final class Application @Inject()(forms: OreForms)(
               case "setAccepted" =>
                 modelAccess
                   .get(id)
-                  .value
-                  .get
+                  .toZIO
                   .mapError(Right.apply)
                   .flatMap(role => service.update(role)(_.withAccepted((json \ "accepted").as[Boolean])).as(Ok))
               case "deleteRole" =>
                 modelAccess
                   .get(id)
                   .filter(_.role.isAssignable)
-                  .value
-                  .get
+                  .toZIO
                   .mapError(Right.apply)
                   .flatMap(service.delete(_).as(Ok))
             }
@@ -421,7 +415,7 @@ final class Application @Inject()(forms: OreForms)(
 
               isEmpty.ifM(update, IO.fail(Right(())))
             case "memberRole" =>
-              user.toMaybeOrganization(ModelView.now(Organization)).value.get.mapError(Right.apply).flatMap { orga =>
+              user.toMaybeOrganization(ModelView.now(Organization)).toZIO.mapError(Right.apply).flatMap { orga =>
                 updateRoleTable(OrganizationUserRole)(
                   orgDossier.roles(orga),
                   RoleCategory.Organization,

@@ -76,13 +76,13 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       zioToFuture(
         ZIO
           .fromOption(optToken)
-          .mapError(_ => unAuth(ApiError("No session specified")))
+          .constError(unAuth(ApiError("No session specified")))
           .flatMap { token =>
             //Need to break stuff op so that IntelliJ can follow
             val infoF = service
               .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
               .get
-              .mapError(_ => unAuth(ApiError("Invalid session")))
+              .constError(unAuth(ApiError("Invalid session")))
 
             infoF.flatMap { info =>
               if (info.expires.isBefore(Instant.now())) {
@@ -129,7 +129,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       //but then we wouldn't get the 404 on a non existent scope.
       val scopePerms: IO[Unit, Permission] =
         apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, ?]](_))
-      val res = scopePerms.mapError(_ => NotFound).ensure(Forbidden)(_.has(perms))
+      val res = scopePerms.constError(NotFound).ensure(Forbidden)(_.has(perms))
 
       zioToFuture(res.either.map(_.swap.toOption))
     }
@@ -196,7 +196,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   private val ApiKeyHeaderRegex =
     s"""ApiKey ($uuidRegex).($uuidRegex)""".r
 
-  def authenticateKeyPublic(): Action[AnyContent] = Action.asyncBIO { implicit request =>
+  def authenticateKeyPublic(): Action[AnyContent] = Action.asyncF { implicit request =>
     lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
     lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
 
@@ -235,7 +235,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       }
   }
 
-  def authenticateDev(): Action[AnyContent] = Action.asyncBIO {
+  def authenticateDev(): Action[AnyContent] = Action.asyncF {
     if (fakeUser.isEnabled) {
       config.checkDebug()
 
@@ -260,7 +260,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   def authenticate(fake: Boolean): Action[AnyContent] = if (fake) authenticateDev() else authenticateKeyPublic()
 
   def createKey(): Action[KeyToCreate] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncBIO {
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncF {
       implicit request =>
         val permsVal = NamedPermission.parseNamed(request.body.permissions).toValidNel("Invalid permission name")
         val nameVal  = Some(request.body.name).filter(_.nonEmpty).toValidNel("Name was empty")
@@ -293,10 +293,10 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     }
 
   def deleteKey(name: String): Action[AnyContent] =
-    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncBIO { implicit request =>
+    ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncF { implicit request =>
       ZIO
         .fromOption(request.user)
-        .mapError(_ => BadRequest(ApiError("Public keys can't be used to delete")))
+        .constError(BadRequest(ApiError("Public keys can't be used to delete")))
         .flatMap { user =>
           service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run).map {
             case 0 => NotFound: Result
@@ -319,11 +319,11 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   ): IO[Result, (APIScope, Permission)] =
     ZIO
       .fromEither(createApiScope(pluginId, organizationName))
-      .flatMap(t => apiScopeToRealScope(t).tupleLeft(t).mapError(_ => NotFound))
+      .flatMap(t => apiScopeToRealScope(t).tupleLeft(t).constError(NotFound))
       .flatMap(t => request.permissionIn(t._2).tupleLeft(t._1))
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
-    ApiAction(Permission.None, APIScope.GlobalScope).asyncBIO { implicit request =>
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
       permissionsInCreatedApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
           Ok(
@@ -338,7 +338,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   def has(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])(
       check: (Seq[NamedPermission], Permission) => Boolean
   ): Action[AnyContent] =
-    ApiAction(Permission.None, APIScope.GlobalScope).asyncBIO { implicit request =>
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
       permissionsInCreatedApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
           Ok(PermissionCheck(scope.tpe, check(permissions, perms)))
@@ -414,7 +414,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncBIO { implicit request =>
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
       val dbCon = APIV2Queries
         .projectQuery(
           Some(pluginId),
@@ -484,7 +484,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   }
 
   def deployVersion(pluginId: String): Action[MultipartFormData[Files.TemporaryFile]] =
-    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncBIO {
+    ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncF {
       implicit request =>
         type TempFile = MultipartFormData.FilePart[Files.TemporaryFile]
         import scalaz.zio.blocking._
@@ -523,9 +523,9 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         }
 
         for {
-          user            <- ZIO.fromOption(request.user).mapError(_ => BadRequest(ApiError("No user found for session")))
+          user            <- ZIO.fromOption(request.user).constError(BadRequest(ApiError("No user found for session")))
           _               <- uploadErrors(user)
-          project         <- projects.withPluginId(pluginId).value.get.mapError(_ => NotFound)
+          project         <- projects.withPluginId(pluginId).toZIOWithError(NotFound)
           projectSettings <- project.settings[Task].orDie
           data            <- dataF
           file            <- fileF

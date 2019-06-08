@@ -52,7 +52,7 @@ class Users @Inject()(
     *
     * @return Logged in page
     */
-  def signUp(): Action[AnyContent] = Action.asyncBIO {
+  def signUp(): Action[AnyContent] = Action.asyncF {
     val nonce = sso.nonce()
     service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
@@ -67,7 +67,7 @@ class Users @Inject()(
     * @return     Logged in home
     */
   def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]): Action[AnyContent] =
-    Action.asyncBIO { implicit request =>
+    Action.asyncF { implicit request =>
       if (this.fakeUser.isEnabled) {
         // Log in as fake user (debug only)
         this.config.checkDebug()
@@ -87,9 +87,7 @@ class Users @Inject()(
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
           .authenticate(sso.get, sig.get)(isNonceValid)
-          .value
-          .get
-          .mapError(_ => Redirect(ShowHome).withError("error.loginFailed"))
+          .toZIOWithError(Redirect(ShowHome).withError("error.loginFailed"))
           .map(sponge => sponge.toUser -> sponge)
           .flatMap {
             case (fromSponge, sponge) =>
@@ -113,7 +111,7 @@ class Users @Inject()(
     * @param returnPath Verified action to perform
     * @return           Redirect to verification
     */
-  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncBIO {
+  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
     val nonce = sso.nonce()
     service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
@@ -145,7 +143,7 @@ class Users @Inject()(
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncBIO { implicit request =>
+  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
     val pageSize = this.config.ore.users.projectPageSize
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
@@ -154,11 +152,8 @@ class Users @Inject()(
 
     users
       .withName(username)
-      .value
-      .get
-      .mapError(_ => notFound)
-      .unit
-      .zipParRight {
+      .toZIOWithError(notFound)
+      .flatMap { u =>
         for {
           // TODO include orga projects?
           t1 <- (
@@ -176,8 +171,8 @@ class Users @Inject()(
                   .to[Vector]
               )
               .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon)),
-            getOrga(username).value,
-            getUserData(request, username).value
+            getOrga(username).option,
+            UserData.of(request, u),
           ).parTupled
           (projects, orga, userData) = t1
           t2 <- (
@@ -188,7 +183,7 @@ class Users @Inject()(
         } yield {
           Ok(
             views.users.projects(
-              userData.get,
+              userData,
               orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
               projects,
               pageNum
@@ -205,11 +200,11 @@ class Users @Inject()(
     * @return           View of user page
     */
   def saveTagline(username: String): Action[String] =
-    UserEditAction(username).asyncBIO(parse.form(forms.UserTagline)) { implicit request =>
+    UserEditAction(username).asyncF(parse.form(forms.UserTagline)) { implicit request =>
       val maxLen = this.config.ore.users.maxTaglineLen
 
       for {
-        user <- users.withName(username).value.get.mapError(_ => NotFound)
+        user <- users.withName(username).toZIOWithError(NotFound)
         res <- {
           val tagline = request.body
           if (tagline.length > maxLen)
@@ -331,7 +326,7 @@ class Users @Inject()(
     * @param id Prompt ID
     * @return   Ok if successful
     */
-  def markPromptRead(id: Int): Action[AnyContent] = Authenticated.asyncBIO { implicit request =>
+  def markPromptRead(id: Int): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     Prompt.values.find(_.value == id) match {
       case None         => IO.fail(BadRequest)
       case Some(prompt) => request.user.markPromptAsRead(prompt).const(Ok)
@@ -339,11 +334,11 @@ class Users @Inject()(
   }
 
   def editApiKeys(username: String): Action[AnyContent] =
-    Authenticated.asyncBIO { implicit request =>
+    Authenticated.asyncF { implicit request =>
       if (request.user.name == username) {
         for {
           t1 <- (
-            getOrga(username).value,
+            getOrga(username).option,
             UserData.of(request, request.user),
             service.runDBIO(TableQuery[ApiKeyTable].filter(_.ownerId === request.user.id.value).result)
           ).parTupled

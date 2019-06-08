@@ -14,6 +14,7 @@ import ore.db.impl.schema.VersionTable
 import ore.models.organization.Organization
 import ore.models.project.{Project, Version, Visibility}
 import ore.permission.Permission
+import util.syntax._
 
 import scalaz.zio.IO
 
@@ -36,7 +37,7 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     * @return         NotFound or project
     */
   def getProject(author: String, slug: String)(implicit request: OreRequest[_]): IO[Result, Model[Project]] =
-    projects.withSlug(author, slug).value.map(_.toRight(notFound)).absolve
+    projects.withSlug(author, slug).toZIOWithError(notFound)
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
     val versionMatches = v.versionString.toLowerCase === versionString.toLowerCase
@@ -58,9 +59,7 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     project
       .versions(ModelView.now(Version))
       .find(versionFindFunc(versionString, request.headerData.globalPerm(Permission.SeeHidden)))
-      .value
-      .map(_.toRight(notFound))
-      .absolve
+      .toZIOWithError(notFound)
 
   /**
     * Gets a version with the specified author, project slug and version string
