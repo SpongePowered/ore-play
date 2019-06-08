@@ -11,7 +11,6 @@ import controllers.{OreBaseController, OreControllerComponents}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
-import ore.auth.SpongeAuthApi
 import ore.db.Model
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
@@ -22,23 +21,23 @@ import ore.models.project.{Page, Project}
 import ore.models.user.LoggedAction
 import ore.permission.Permission
 import ore.util.StringUtils._
-import ore.{OreEnv, StatTracker}
+import ore.StatTracker
 import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{pages => views}
 
-import cats.data.OptionT
-import cats.effect.IO
 import cats.instances.option._
 import cats.syntax.all._
+import scalaz.zio.{IO, Task, UIO}
+import scalaz.zio.interop.catz._
 
 /**
   * Controller for handling Page related actions.
   */
 @Singleton
-class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
-    implicit oreComponents: OreControllerComponents[IO],
-    forums: OreDiscourseApi[IO],
+class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
+    implicit oreComponents: OreControllerComponents,
+    forums: OreDiscourseApi[UIO],
     renderer: MarkdownRenderer,
     projectFiles: ProjectFiles
 ) extends OreBaseController {
@@ -66,19 +65,24 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
   /**
     * Return the best guess of the page
     */
-  def findPage(project: Model[Project], page: String): OptionT[IO, Model[Page]] = pageParts(page) match {
-    case parent :: child :: Nil => OptionT(service.runDBIO(childPageQuery((parent, child)).result.headOption))
+  def findPage(project: Model[Project], page: String): IO[Unit, Model[Page]] = pageParts(page) match {
+    case parent :: child :: Nil => service.runDBIO(childPageQuery((parent, child)).result.headOption).get
     case single :: Nil =>
-      project.pages(ModelView.now(Page)).find(p => p.slug.toLowerCase === single.toLowerCase && p.parentId.isEmpty)
-    case _ => OptionT.none[IO, Model[Page]]
+      project
+        .pages(ModelView.now(Page))
+        .find(p => p.slug.toLowerCase === single.toLowerCase && p.parentId.isEmpty)
+        .value
+        .get
+    case _ => IO.fail(())
   }
 
   def queryProjectPagesAndFindSpecific(
       project: Model[Project],
       page: String
-  ): OptionT[IO, (Seq[(Model[Page], Seq[Model[Page]])], Model[Page])] =
-    OptionT(
-      projects.queryProjectPages(project).map { pages =>
+  ): IO[Unit, (Seq[(Model[Page], Seq[Model[Page]])], Model[Page])] =
+    projects
+      .queryProjectPages(project)
+      .map { pages =>
         def pageEqual(name: String): Model[Page] => Boolean = _.slug.toLowerCase == name.toLowerCase
         def findUpper(name: String)                         = pages.find(t => pageEqual(name)(t._1))
 
@@ -90,7 +94,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
 
         res.tupleLeft(pages)
       }
-    )
+      .get
 
   /**
     * Displays the specified page.
@@ -100,31 +104,29 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
     * @param page   Page name
     * @return View of page
     */
-  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
+  def show(author: String, slug: String, page: String): Action[AnyContent] = ProjectAction(author, slug).asyncBIO {
     implicit request =>
-      queryProjectPagesAndFindSpecific(request.project, page)
-        .semiflatMap {
-          case (pages, p) =>
-            val pageCount = pages.size + pages.map(_._2.size).sum
-            val parentPage =
-              if (pages.map(_._1).contains(p)) None
-              else pages.collectFirst { case (pp, subPage) if subPage.contains(p) => pp }
-            this.stats.projectViewed(
-              IO.pure(
-                Ok(
-                  views.view(
-                    request.data,
-                    request.scoped,
-                    Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
-                    p,
-                    Model.unwrapNested(parentPage),
-                    pageCount
-                  )
+      queryProjectPagesAndFindSpecific(request.project, page).mapError(_ => notFound).flatMap {
+        case (pages, p) =>
+          val pageCount = pages.size + pages.map(_._2.size).sum
+          val parentPage =
+            if (pages.map(_._1).contains(p)) None
+            else pages.collectFirst { case (pp, subPage) if subPage.contains(p) => pp }
+          this.stats.projectViewed(
+            IO.succeed(
+              Ok(
+                views.view(
+                  request.data,
+                  request.scoped,
+                  Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
+                  p,
+                  Model.unwrapNested(parentPage),
+                  pageCount
                 )
               )
             )
-        }
-        .getOrElse(notFound)
+          )
+      }
   }
 
   /**
@@ -137,8 +139,8 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
     * @return Page editor
     */
   def showEditor(author: String, slug: String, pageName: String): Action[AnyContent] =
-    PageEditAction(author, slug).asyncF { implicit request =>
-      queryProjectPagesAndFindSpecific(request.project, pageName).fold(notFound) {
+    PageEditAction(author, slug).asyncBIO { implicit request =>
+      queryProjectPagesAndFindSpecific(request.project, pageName).mapError(_ => notFound).map {
         case (pages, p) =>
           val pageCount  = pages.size + pages.map(_._2.size).sum
           val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
@@ -186,10 +188,10 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
           if (parentId.isDefined && !rootPages
                 .filter(_.name != Page.homeName)
                 .exists(p => parentId.contains(p.id.value))) {
-            IO.pure(BadRequest("Invalid parent ID."))
+            IO.fail(BadRequest("Invalid parent ID."))
           } else {
             if (page == Page.homeName && (!content.exists(_.length >= Page.minLength))) {
-              IO.pure(Redirect(self.show(author, slug, page)).withError("error.minLength"))
+              IO.fail(Redirect(self.show(author, slug, page)).withError("error.minLength"))
             } else {
               val parts = page.split("/")
 
@@ -214,7 +216,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
 
               created
                 .flatMap { createdPage =>
-                  content.fold(IO.pure(createdPage)) { newPage =>
+                  content.fold(IO.succeed(createdPage)) { newPage =>
                     val oldPage = createdPage.contents
                     UserActionLogger.log(
                       request.request,
@@ -222,10 +224,10 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
                       createdPage.id,
                       newPage,
                       oldPage
-                    ) *> createdPage.updateForumContents(newPage)
+                    ) *> createdPage.updateForumContents[Task](newPage).orDie
                   }
                 }
-                .as(Redirect(self.show(author, slug, page)))
+                .const(Redirect(self.show(author, slug, page)))
             }
           }
         }
@@ -241,11 +243,10 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[IO])(
     */
   def delete(author: String, slug: String, page: String): Action[AnyContent] =
     PageEditAction(author, slug).asyncF { request =>
-      findPage(request.project, page).value.flatMap { optionPage =>
-        optionPage
-          .fold(IO.unit)(p => service.delete(p).void)
-          .as(Redirect(routes.Projects.show(author, slug)))
-      }
+      findPage(request.project, page)
+        .flatMap(service.delete(_).unit)
+        .either
+        .const(Redirect(routes.Projects.show(author, slug)))
     }
 
 }

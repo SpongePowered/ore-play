@@ -16,8 +16,8 @@ class OreDiscourseApiDisabled[F[_]](implicit F: Applicative[F]) extends OreDisco
 
   override def updateProjectTopic(project: Model[Project]): F[Boolean] = F.pure(true)
 
-  override def postDiscussionReply(project: Project, user: User, content: String): EitherT[F, String, DiscoursePost] =
-    EitherT.leftT[F, DiscoursePost]("Tried to post discussion with API disabled")
+  override def postDiscussionReply(project: Project, user: User, content: String): F[Either[String, DiscoursePost]] =
+    F.pure(Left("Tried to post discussion with API disabled"))
 
   override def createVersionPost(project: Model[Project], version: Model[Version]): F[Model[Version]] = F.pure(version)
 

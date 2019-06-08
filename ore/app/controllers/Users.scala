@@ -10,7 +10,6 @@ import db.impl.query.UserPagesQueries
 import form.OreForms
 import mail.{EmailFactory, Mailer}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
-import ore.OreEnv
 import ore.data.Prompt
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
@@ -19,19 +18,20 @@ import ore.db.impl.schema.{ApiKeyTable, UserTable}
 import ore.db.{DbRef, Model}
 import ore.models.project.ProjectSortingStrategy
 import ore.models.project.io.ProjectFiles
-import ore.models.user.{FakeUser, _}
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
+import ore.models.user.{FakeUser, _}
 import ore.permission.Permission
 import ore.permission.role.Role
 import util.UserActionLogger
 import util.syntax._
 import views.{html => views}
 
-import cats.data.EitherT
-import cats.effect.{IO, Timer}
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
+import scalaz.zio
+import scalaz.zio.{IO, Task}
+import scalaz.zio.interop.catz._
 
 /**
   * Controller for general user actions.
@@ -43,7 +43,7 @@ class Users @Inject()(
     mailer: Mailer,
     emails: EmailFactory
 )(
-    implicit oreComponents: OreControllerComponents[IO],
+    implicit oreComponents: OreControllerComponents,
     projectFiles: ProjectFiles,
     messagesApi: MessagesApi,
 ) extends OreBaseController {
@@ -55,7 +55,7 @@ class Users @Inject()(
     *
     * @return Logged in page
     */
-  def signUp(): Action[AnyContent] = Action.asyncF {
+  def signUp(): Action[AnyContent] = Action.asyncBIO {
     val nonce = sso.nonce()
     service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
@@ -69,8 +69,8 @@ class Users @Inject()(
     * @param sig  Incoming signature from auth
     * @return     Logged in home
     */
-  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]): Action[AnyContent] = Action.asyncF {
-    implicit request =>
+  def logIn(sso: Option[String], sig: Option[String], returnPath: Option[String]): Action[AnyContent] =
+    Action.asyncBIO { implicit request =>
       if (this.fakeUser.isEnabled) {
         // Log in as fake user (debug only)
         this.config.checkDebug()
@@ -78,7 +78,7 @@ class Users @Inject()(
           .getOrCreate(
             this.fakeUser.username,
             this.fakeUser,
-            ifInsert = fakeUser => fakeUser.globalRoles.addAssoc(Role.OreAdmin.toDbRole.id).void
+            ifInsert = fakeUser => fakeUser.globalRoles.addAssoc(Role.OreAdmin.toDbRole.id).unit
           )
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
@@ -104,7 +104,7 @@ class Users @Inject()(
           }
           .getOrElse(Redirect(ShowHome).withError("error.loginFailed"))
       }
-  }
+    }
 
   /**
     * Redirects the user to the auth verification page to re-enter their
@@ -113,15 +113,15 @@ class Users @Inject()(
     * @param returnPath Verified action to perform
     * @return           Redirect to verification
     */
-  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
+  def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncBIO {
     val nonce = sso.nonce()
     service.insert(SignOn(nonce = nonce)) *> redirectToSso(
       this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
     )
   }
 
-  private def redirectToSso(url: String): IO[Result] =
-    this.sso.isAvailable.ifM(IO.pure(Redirect(url)), IO.pure(Redirect(ShowHome).withError("error.noLogin")))
+  private def redirectToSso(url: String): IO[Result, Result] =
+    this.sso.isAvailable.ifM(IO.succeed(Redirect(url)), IO.fail(Redirect(ShowHome).withError("error.noLogin")))
 
   private def redirectBack(url: String, user: User) =
     Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
@@ -144,7 +144,7 @@ class Users @Inject()(
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
+  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncBIO { implicit request =>
     val pageSize = this.config.ore.users.projectPageSize
     val pageNum  = page.getOrElse(1)
     val offset   = (pageNum - 1) * pageSize
@@ -153,7 +153,11 @@ class Users @Inject()(
 
     users
       .withName(username)
-      .semiflatMap { user =>
+      .toRight(notFound)
+      .value
+      .absolve
+      .unit
+      .zipParRight {
         for {
           // TODO include orga projects?
           t1 <- (
@@ -174,7 +178,7 @@ class Users @Inject()(
           ).parTupled
           (projects, orga, userData) = t1
           t2 <- (
-            OrganizationData.of(orga).value,
+            OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga).value.orDie,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2
@@ -189,7 +193,6 @@ class Users @Inject()(
           )
         }
       }
-      .getOrElse(notFound)
   }
 
   /**
@@ -199,22 +202,20 @@ class Users @Inject()(
     * @return           View of user page
     */
   def saveTagline(username: String): Action[String] =
-    UserEditAction(username).asyncEitherT(parse.form(forms.UserTagline)) { implicit request =>
+    UserEditAction(username).asyncBIO(parse.form(forms.UserTagline)) { implicit request =>
       val maxLen = this.config.ore.users.maxTaglineLen
 
       for {
-        user <- users.withName(username).toRight(NotFound)
+        user <- users.withName(username).toRight(NotFound).value.absolve
         res <- {
           val tagline = request.body
           if (tagline.length > maxLen)
-            EitherT.rightT[IO, Result](
-              Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen))
-            )
+            IO.fail(Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen)))
           else {
             val log = UserActionLogger
               .log(request, LoggedAction.UserTaglineChanged, user.id, tagline, user.tagline.getOrElse("null"))
             val insert = service.update(user)(_.copy(tagline = Some(tagline)))
-            EitherT.right[Result]((log *> insert).as(Redirect(ShowUser(user))))
+            (log *> insert).const(Redirect(ShowUser(user)))
           }
         }
       } yield res
@@ -289,7 +290,8 @@ class Users @Inject()(
           .on(_.originId === _.id)
           .result
       )
-      val invitesF = iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject.tupleLeft(invite)))
+      val invitesF =
+        iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject[Task].orDie.tupleLeft(invite)))
 
       (notificationsF, invitesF).parMapN { (notifications, invites) =>
         Ok(
@@ -314,7 +316,7 @@ class Users @Inject()(
     request.user
       .notifications(ModelView.now(Notification))
       .get(id)
-      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).as(Ok))
+      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).const(Ok))
       .getOrElse(notFound)
   }
 
@@ -325,15 +327,15 @@ class Users @Inject()(
     * @param id Prompt ID
     * @return   Ok if successful
     */
-  def markPromptRead(id: Int): Action[AnyContent] = Authenticated.asyncF { implicit request =>
+  def markPromptRead(id: Int): Action[AnyContent] = Authenticated.asyncBIO { implicit request =>
     Prompt.values.find(_.value == id) match {
-      case None         => IO.pure(BadRequest)
-      case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)
+      case None         => IO.fail(BadRequest)
+      case Some(prompt) => request.user.markPromptAsRead(prompt).const(Ok)
     }
   }
 
   def editApiKeys(username: String): Action[AnyContent] =
-    Authenticated.asyncF { implicit request =>
+    Authenticated.asyncBIO { implicit request =>
       if (request.user.name == username) {
         for {
           t1 <- (
@@ -343,7 +345,7 @@ class Users @Inject()(
           ).parTupled
           (orga, userData, keys) = t1
           t2 <- (
-            OrganizationData.of(orga).value,
+            OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga).value.orDie,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2
@@ -360,6 +362,6 @@ class Users @Inject()(
               totalPerms.toNamedSeq
             )
           )
-      } else IO.pure(Forbidden)
+      } else IO.fail(Forbidden)
     }
 }

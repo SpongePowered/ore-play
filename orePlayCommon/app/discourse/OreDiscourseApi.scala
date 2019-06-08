@@ -25,7 +25,7 @@ import com.typesafe.scalalogging
 /**
   * Manages forum threads and posts for Ore models.
   */
-trait OreDiscourseApi[F[_]] {
+trait OreDiscourseApi[+F[_]] {
 
   /**
     * Creates a new topic for the specified [[Project]].
@@ -51,7 +51,7 @@ trait OreDiscourseApi[F[_]] {
     * @param content  Post content
     * @return         List of errors Discourse returns
     */
-  def postDiscussionReply(project: Project, user: User, content: String): EitherT[F, String, DiscoursePost]
+  def postDiscussionReply(project: Project, user: User, content: String): F[Either[String, DiscoursePost]]
 
   /**
     * Posts a new "Version release" to a [[Project]]'s forum topic.

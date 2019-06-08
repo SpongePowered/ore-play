@@ -51,7 +51,7 @@ import com.typesafe.scalalogging
   */
 @Singleton
 class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: ProjectFactory)(
-    implicit oreComponents: OreControllerComponents[IO],
+    implicit oreComponents: OreControllerComponents,
     forums: OreDiscourseApi[IO],
     messagesApi: MessagesApi,
     renderer: MarkdownRenderer,

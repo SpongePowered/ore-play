@@ -178,14 +178,12 @@ class OreDiscourseApiEnabled[F[_], G[_]](
     * @param content  Post content
     * @return         List of errors Discourse returns
     */
-  def postDiscussionReply(project: Project, user: User, content: String): EitherT[F, String, DiscoursePost] = {
+  def postDiscussionReply(project: Project, user: User, content: String): F[Either[String, DiscoursePost]] = {
     require(project.topicId.isDefined, "undefined topic id")
-    EitherT(
-      api
-        .createPost(poster = user.name, topicId = project.topicId.get, content = content)
-        .value
-        .orElse(F.pure(Left("Could not connect to forums, please try again later.")))
-    )
+    api
+      .createPost(poster = user.name, topicId = project.topicId.get, content = content)
+      .value
+      .orElse(F.pure(Left("Could not connect to forums, please try again later.")))
   }
 
   /**
@@ -199,7 +197,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
     require(version.projectId == project.id.value, "invalid version project pair")
     EitherT
       .liftF(project.user)
-      .flatMap { user =>
+      .flatMapF { user =>
         postDiscussionReply(
           project,
           user,
