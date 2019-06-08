@@ -203,7 +203,6 @@ lazy val ore = project
     commonSettings,
     playCommonSettings,
     name := "ore",
-    libraryDependencies += guice,
     libraryDependencies ++= Seq(
       "com.typesafe.play"          %% "play-slick-evolutions" % playSlickVersion,
       "com.typesafe.scala-logging" %% "scala-logging"         % scalaLoggingVersion,
@@ -213,6 +212,10 @@ lazy val ore = project
       "io.circe"                   %% "circe-core"            % circeVersion,
       "io.circe"                   %% "circe-generic-extras"  % circeVersion,
       "io.circe"                   %% "circe-parser"          % circeVersion,
+      "com.softwaremill.macwire"   %% "macros"                % "2.3.2" % "provided",
+      "com.softwaremill.macwire"   %% "macrosakka"            % "2.3.2" % "provided",
+      "com.softwaremill.macwire"   %% "util"                  % "2.3.2",
+      //"com.softwaremill.macwire"   %% "proxy"                 % "2.3.2"
     ),
     libraryDependencies ++= Seq(
       "",

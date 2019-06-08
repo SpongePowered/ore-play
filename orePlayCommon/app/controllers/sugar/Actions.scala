@@ -68,7 +68,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   val AuthTokenName = "_oretoken"
 
-  implicit val zioRuntime: zio.Runtime[Blocking] = oreComponents.zioRuntime
+  implicit def zioRuntime: zio.Runtime[Blocking] = oreComponents.zioRuntime
 
   protected def zioToFuture[A](zio: RIO[Blocking, A]): Future[A] =
     ActionHelpers.zioToFuture(zio)

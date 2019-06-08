@@ -1,12 +1,14 @@
 package util.uiowrappers
 
+import javax.inject.Inject
+
 import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
 
 import scalaz.zio.{Task, UIO}
 import slick.dbio.DBIO
 import slick.lifted.Rep
 
-class UIOModelService(underlying: ModelService[Task]) extends ModelService[UIO] {
+class UIOModelService @Inject()(underlying: ModelService[Task]) extends ModelService[UIO] {
   override def runDBIO[R](action: DBIO[R]) = underlying.runDBIO(action).orDie
 
   override def runDbCon[R](program: doobie.ConnectionIO[R]): UIO[R] = underlying.runDbCon(program).orDie
