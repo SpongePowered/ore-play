@@ -32,6 +32,7 @@ import cats.syntax.all._
 import com.typesafe.scalalogging
 import scalaz.zio
 import scalaz.zio.blocking.Blocking
+import scalaz.zio.clock.Clock
 import scalaz.zio.{IO, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 
@@ -67,7 +68,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   val AuthTokenName = "_oretoken"
 
-  implicit def zioRuntime: zio.Runtime[Blocking] = oreComponents.zioRuntime
+  implicit def zioRuntime: zio.Runtime[Blocking with Clock] = oreComponents.zioRuntime
 
   protected def zioToFuture[A](zio: RIO[Blocking, A]): Future[A] =
     ActionHelpers.zioToFuture(zio)

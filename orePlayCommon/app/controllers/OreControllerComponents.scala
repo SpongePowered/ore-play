@@ -19,12 +19,13 @@ import ore.db.ModelService
 import scalaz.zio
 import scalaz.zio.{Task, UIO}
 import scalaz.zio.blocking.Blocking
+import scalaz.zio.clock.Clock
 
 trait OreControllerComponents extends ControllerComponents {
   def uioEffects: OreControllerEffects[UIO]
   def bakery: Bakery
   def config: OreConfig
-  def zioRuntime: zio.Runtime[Blocking]
+  def zioRuntime: zio.Runtime[Blocking with Clock]
 }
 
 trait OreControllerEffects[F[_]] {
@@ -45,7 +46,7 @@ case class DefaultOreControllerComponents @Inject()(
     langs: Langs,
     fileMimeTypes: FileMimeTypes,
     executionContext: ExecutionContext,
-    zioRuntime: zio.Runtime[Blocking]
+    zioRuntime: zio.Runtime[Blocking with Clock]
 ) extends OreControllerComponents
 
 case class DefaultOreControllerEffects[F[_]] @Inject()(

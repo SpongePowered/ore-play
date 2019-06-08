@@ -14,9 +14,9 @@ import cats.Monad
 import cats.data.{EitherT, OptionT}
 import com.google.common.base.Preconditions.checkArgument
 import scalaz.zio
-import scalaz.zio.interop.catz._
 import scalaz.zio.blocking.Blocking
-import scalaz.zio.{IO, UIO, ZIO}
+import scalaz.zio.clock.Clock
+import scalaz.zio.{IO, ZIO}
 
 /**
   * A helper class for some common functions of controllers.
@@ -191,21 +191,27 @@ object ActionHelpers {
       form.bindFromRequest().fold(left.andThen(EitherT.leftT[F, B](_)), EitherT.rightT[F, A](_))
   }
 
-  private[sugar] def zioToFuture[A](io: ZIO[Blocking, Nothing, A])(implicit runtime: zio.Runtime[Blocking]): Future[A] =
+  private[sugar] def zioToFuture[A](
+      io: ZIO[Blocking with Clock, Nothing, A]
+  )(implicit runtime: zio.Runtime[Blocking with Clock]): Future[A] =
     //TODO: If Sentry can't differentiate different errors here, log the error, and throw an exception ignored by Sentry instead
     runtime.unsafeRun(io.toFutureWith(_ => new Exception(s"Got impossible nothing")))
 
   class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 
-    def asyncF(fr: ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[AnyContent] =
+    def asyncF(
+        fr: ZIO[Blocking, Result, Result]
+    )(implicit runtime: zio.Runtime[Blocking with Clock]): Action[AnyContent] =
       action.async(zioToFuture(fr.either.map(_.merge)))
 
-    def asyncF(fr: R[B] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[B] =
+    def asyncF(
+        fr: R[B] => ZIO[Blocking, Result, Result]
+    )(implicit runtime: zio.Runtime[Blocking with Clock]): Action[B] =
       action.async(r => zioToFuture(fr(r).either.map(_.merge)))
 
     def asyncF[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking]): Action[A] =
+    )(fr: R[A] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking with Clock]): Action[A] =
       action.async(bodyParser)(r => zioToFuture(fr(r).either.map(_.merge)))
   }
 }

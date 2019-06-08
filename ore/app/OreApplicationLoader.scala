@@ -64,8 +64,11 @@ class OreComponents(context: ApplicationLoader.Context)
     with CaffeineCacheComponents
     with SlickComponents
     with SlickEvolutionsComponents {
+  val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
   lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]
+
+  eager(prefix) //Gets around unused warning
 
   //override lazy val httpFilters: Seq[EssentialFilter] = enabledFilters.filters
   //lazy val enabledFilters: EnabledFilters             = wire[EnabledFilters] //TODO: This probably won't work
