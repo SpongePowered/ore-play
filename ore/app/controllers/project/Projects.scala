@@ -214,14 +214,16 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @param slug Project slug
     * @return Project icon
     */
-  def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncF {
+  def showIcon(author: String, slug: String): Action[AnyContent] = Action.asyncBIO {
     projects
       .withSlug(author, slug)
-      .map { project =>
+      .value
+      .get
+      .mapError(_ => NotFound)
+      .flatMap { project =>
         implicit val mdc: OreMDC.NoMDC.type = OreMDC.NoMDC
-        project.obj.iconUrlOrPath.fold(Redirect(_), showImage)
+        project.obj.iconUrlOrPath.map(_.fold(Redirect(_), showImage))
       }
-      .getOrElse(NotFound)
   }
 
   private def showImage(path: Path) = {
@@ -240,7 +242,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     * @return       View of project
     */
   def flag(author: String, slug: String): Action[FlagForm] =
-    AuthedProjectAction(author, slug).asyncF(
+    AuthedProjectAction(author, slug).asyncBIO(
       parse.form(forms.ProjectFlag, onErrors = FormErrorLocalized(ShowProject(author, slug)))
     ) { implicit request =>
       val user     = request.user
@@ -417,11 +419,17 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
-      request.project
-        .apiKeys(ModelView.now(ProjectApiKey))
-        .one
-        .value
-        .map(deployKey => Ok(views.settings(request.data, request.scoped, deployKey)))
+      request.project.obj.iconUrl
+        .zipPar(
+          request.project
+            .apiKeys(ModelView.now(ProjectApiKey))
+            .one
+            .value
+        )
+        .map {
+          case (iconUrl, deployKey) =>
+            Ok(views.settings(request.data, request.scoped, deployKey, iconUrl))
+        }
   }
 
   /**
@@ -447,7 +455,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
           val deleteFiles = effectBlocking(Files.list(pendingDir))
             .map(_.iterator().asScala)
-            .flatMap(it => ZIO.foreachParN_(4)(it.toIterable)(deleteFile))
+            .flatMap(it => ZIO.foreachParN_(config.performance.nioBlockingFibers)(it.toIterable)(deleteFile))
 
           val moveFile = effectBlocking(tmpFile.ref.moveFileTo(pendingDir.resolve(tmpFile.filename), replace = true))
 
@@ -551,7 +559,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           .value
           .absolve
         _ <- formData
-          .save[Task, zio.interop.ParIO[Any, Throwable, ?]](data.settings, data.project, MDCLogger)
+          .save[Task, ParTask](data.settings, data.project, MDCLogger)
           .value
           .orDie
           .absolve
@@ -613,9 +621,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         val newVisibility = Visibility.withValue(visibility)
         val forumVisbility =
           if (!Visibility.isPublic(newVisibility) && Visibility.isPublic(request.project.visibility)) {
-            this.forums.changeTopicVisibility(request.project, isVisible = false).void
+            this.forums.changeTopicVisibility(request.project, isVisible = false).unit
           } else if (Visibility.isPublic(newVisibility) && !Visibility.isPublic(request.project.visibility)) {
-            this.forums.changeTopicVisibility(request.project, isVisible = true).void
+            this.forums.changeTopicVisibility(request.project, isVisible = true).unit
           } else IO.unit
 
         val projectVisibility = if (newVisibility.showModal) {
@@ -657,7 +665,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           Visibility.NeedsChanges.nameKey
         )
 
-        visibility *> log.void
+        visibility *> log.unit
       } else IO.unit
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
   }

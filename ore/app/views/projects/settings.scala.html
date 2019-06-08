@@ -12,7 +12,7 @@
 @import ore.models.project.io.ProjectFiles
 @import util.syntax._
 
-@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash,
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]], iconUrl: String)(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer, projectFiles: ProjectFiles)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -108,7 +108,7 @@
                                 @utils.userAvatar(
                                     Some(p.projectOwner.name),
                                     p.projectOwner.avatarUrl,
-                                    imgSrc = p.project.obj.iconUrl,
+                                    imgSrc = iconUrl,
                                     clazz = "user-avatar-md")
 
                                 <input class="form-control-static" type="file" id="icon" name="icon" />

@@ -11,7 +11,7 @@ import controllers.{OreBaseController, OreControllerComponents}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
-import ore.db.Model
+import ore.db.{DbRef, Model}
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.PageTable
@@ -26,7 +26,6 @@ import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{pages => views}
 
-import cats.instances.option._
 import cats.syntax.all._
 import scalaz.zio.{IO, Task, UIO}
 import scalaz.zio.interop.catz._
@@ -92,6 +91,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
           case _                      => None
         }
 
+        import cats.instances.option._
         res.tupleLeft(pages)
       }
       .get
@@ -112,6 +112,8 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
           val parentPage =
             if (pages.map(_._1).contains(p)) None
             else pages.collectFirst { case (pp, subPage) if subPage.contains(p) => pp }
+
+          import cats.instances.option._
           this.stats.projectViewed(
             IO.succeed(
               Ok(
@@ -144,6 +146,8 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
         case (pages, p) =>
           val pageCount  = pages.size + pages.map(_._2.size).sum
           val parentPage = pages.collectFirst { case (pp, page) if page.contains(p) => pp }
+
+          import cats.instances.option._
           Ok(
             views.view(
               request.data,
@@ -176,61 +180,64 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
     * @return Project home
     */
   def save(author: String, slug: String, page: String): Action[PageSaveForm] =
-    PageEditAction(author, slug).asyncF(parse.form(forms.PageEdit, onErrors = FormError(self.show(author, slug, page)))) {
-      implicit request =>
-        val pageData = request.body
-        val content  = pageData.content
-        val project  = request.project
-        val parentId = pageData.parentId
+    PageEditAction(author, slug).asyncBIO(
+      parse.form(forms.PageEdit, onErrors = FormError(self.show(author, slug, page)))
+    ) { implicit request =>
+      val pageData = request.body
+      val content  = pageData.content
+      val project  = request.project
+      val parentId = pageData.parentId
 
-        //noinspection ComparingUnrelatedTypes
-        service.runDBIO(project.rootPages(ModelView.raw(Page)).result).flatMap { rootPages =>
-          if (parentId.isDefined && !rootPages
-                .filter(_.name != Page.homeName)
-                .exists(p => parentId.contains(p.id.value))) {
-            IO.fail(BadRequest("Invalid parent ID."))
+      //noinspection ComparingUnrelatedTypes
+      service.runDBIO(project.rootPages(ModelView.raw(Page)).result).flatMap { rootPages =>
+        if (parentId.isDefined && !rootPages
+              .filter(_.name != Page.homeName)
+              .exists(p => parentId.contains(p.id.value))) {
+          IO.fail(BadRequest("Invalid parent ID."))
+        } else {
+          if (page == Page.homeName && (!content.exists(_.length >= Page.minLength))) {
+            IO.fail(Redirect(self.show(author, slug, page)).withError("error.minLength"))
           } else {
-            if (page == Page.homeName && (!content.exists(_.length >= Page.minLength))) {
-              IO.fail(Redirect(self.show(author, slug, page)).withError("error.minLength"))
-            } else {
-              val parts = page.split("/")
+            val parts = page.split("/")
 
-              val created = if (parts.size == 2) {
-                service
-                  .runDBIO(
-                    project
-                      .pages(ModelView.later(Page))
-                      .find(equalsIgnoreCase(_.slug, parts(0)))
-                      .map(_.id)
-                      .result
-                      .headOption
-                  )
-                  .flatMap { parentId =>
-                    val pageName = pageData.name.getOrElse(parts(1))
-                    project.getOrCreatePage(pageName, parentId, content)
-                  }
-              } else {
-                val pageName = pageData.name.getOrElse(parts(0))
-                project.getOrCreatePage(pageName, parentId, content)
-              }
-
-              created
-                .flatMap { createdPage =>
-                  content.fold(IO.succeed(createdPage)) { newPage =>
-                    val oldPage = createdPage.contents
-                    UserActionLogger.log(
-                      request.request,
-                      LoggedAction.ProjectPageEdited,
-                      createdPage.id,
-                      newPage,
-                      oldPage
-                    ) *> createdPage.updateForumContents[Task](newPage).orDie
-                  }
-                }
-                .const(Redirect(self.show(author, slug, page)))
+            val getOrCreate = (parentId: Option[DbRef[Page]], part: Int) => {
+              val pageName = pageData.name.getOrElse(parts(part))
+              //For some reason Scala doesn't want to use the implicit monad here
+              project.getOrCreatePage[UIO](pageName, parentId, content)
             }
+
+            val created = if (parts.size == 2) {
+              service
+                .runDBIO(
+                  project
+                    .pages(ModelView.later(Page))
+                    .find(equalsIgnoreCase(_.slug, parts(0)))
+                    .map(_.id)
+                    .result
+                    .headOption
+                )
+                .flatMap(getOrCreate(_, 1))
+            } else {
+              getOrCreate(parentId, 0)
+            }
+
+            created
+              .flatMap { createdPage =>
+                content.fold(IO.succeed(createdPage)) { newPage =>
+                  val oldPage = createdPage.contents
+                  UserActionLogger.log(
+                    request.request,
+                    LoggedAction.ProjectPageEdited,
+                    createdPage.id,
+                    newPage,
+                    oldPage
+                  ) *> createdPage.updateForumContents[Task](newPage).orDie
+                }
+              }
+              .const(Redirect(self.show(author, slug, page)))
           }
         }
+      }
     }
 
   /**

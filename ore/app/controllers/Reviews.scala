@@ -21,13 +21,12 @@ import ore.permission.role.Role
 import util.UserActionLogger
 import views.{html => views}
 
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.NonEmptyList
 import cats.instances.option._
 import cats.syntax.all._
 import io.circe.Json
-import scalaz.zio.UIO
+import scalaz.zio.{UIO, ZIO}
 import slick.lifted.{Rep, TableQuery}
-import scalaz.zio.interop.catz._
 
 /**
   * Controller for handling Review related actions.
@@ -74,7 +73,7 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncBIO { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        review  <- version.mostRecentReviews(ModelView.now(Review)).one.toRight(notFound).value.absolve
+        review  <- version.mostRecentReviews(ModelView.now(Review)).one.value.get.mapError(_ => notFound)
         _ <- service.update(version)(
           _.copy(
             reviewState = ReviewState.Unreviewed,
@@ -95,7 +94,7 @@ final class Reviews @Inject()(forms: OreForms)(
       .asyncBIO(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
-          review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound).value.absolve
+          review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).value.get.mapError(_ => notFound)
           _ <- service
             .update(review)(_.copy(endedAt = Some(Instant.now())))
             .flatMap(_.addMessage(Message(request.body.trim, System.currentTimeMillis(), "stop")))
@@ -108,7 +107,7 @@ final class Reviews @Inject()(forms: OreForms)(
       for {
         project <- getProject(author, slug)
         version <- getVersion(project, versionString)
-        review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound).value.absolve
+        review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).value.get.mapError(_ => notFound)
         _ <- (
           service.update(review)(_.copy(endedAt = Some(Instant.now()))),
           // send notification that review happened
@@ -177,13 +176,16 @@ final class Reviews @Inject()(forms: OreForms)(
             // Close old review
             val closeOldReview = version
               .mostRecentUnfinishedReview(ModelView.now(Review))
-              .semiflatMap { oldreview =>
+              .value
+              .get
+              .flatMap { oldreview =>
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
                   service.update(oldreview)(_.copy(endedAt = Some(Instant.now()))),
                 ).parTupled.unit
               }
-              .getOrElse(())
+              .either
+              .map(_.merge)
 
             // Then make new one
             (
@@ -208,7 +210,7 @@ final class Reviews @Inject()(forms: OreForms)(
       .asyncBIO(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
-          review  <- version.reviewById(reviewId).toRight(notFound).value.absolve
+          review  <- version.reviewById(reviewId).value.get.mapError(_ => notFound)
           _       <- review.addMessage(Message(request.body.trim))
         } yield Ok("Review" + review)
       }
@@ -218,9 +220,13 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncBIO(parse.form(forms.ReviewDescription)) {
       implicit request =>
         for {
-          version      <- getProjectVersion(author, slug, versionString)
-          recentReview <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(Ok("Review")).value.absolve
-          currentUser  <- users.current.toRight(Ok("Review")).value.absolve
+          version <- getProjectVersion(author, slug, versionString)
+          recentReview <- version
+            .mostRecentUnfinishedReview(ModelView.now(Review))
+            .value
+            .get
+            .mapError(_ => Ok("Review"))
+          currentUser <- users.current.value.get.mapError(_ => Ok("Review"))
           _ <- {
             if (recentReview.userId == currentUser.id.value) {
               recentReview.addMessage(Message(request.body.trim))
@@ -234,14 +240,13 @@ final class Reviews @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction[AuthRequest](Permission.Reviewer)).asyncBIO { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        oldState <- EitherT
-          .cond[UIO](
+        oldState <- ZIO.fromEither(
+          Either.cond(
             Seq(ReviewState.Backlog, ReviewState.Unreviewed).contains(version.reviewState),
             version.reviewState,
             BadRequest("Invalid state for toggle backlog")
           )
-          .value
-          .absolve
+        )
         newState = oldState match {
           case ReviewState.Unreviewed => ReviewState.Backlog
           case ReviewState.Backlog    => ReviewState.Unreviewed

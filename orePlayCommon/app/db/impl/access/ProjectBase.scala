@@ -4,7 +4,6 @@ import scala.language.higherKinds
 
 import java.io.IOException
 import java.nio.file.Files
-import java.nio.file.Files._
 import java.time.Instant
 
 import db.impl.query.SharedQueries
@@ -16,7 +15,7 @@ import ore.db.{Model, ModelService}
 import ore.models.project._
 import ore.models.project.io.ProjectFiles
 import ore.util.{FileUtils, OreMDC}
-import ore.{OreConfig, OreEnv}
+import ore.OreConfig
 import ore.util.StringUtils._
 import util.syntax._
 import util.TaskUtils
@@ -29,6 +28,10 @@ import cats.instances.vector._
 import cats.instances.option._
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging.LoggerTakingImplicit
+import scalaz.zio
+import scalaz.zio.ZIO
+import scalaz.zio.interop.catz._
+import scalaz.zio.blocking.Blocking
 
 trait ProjectBase[F[_]] {
 
@@ -133,7 +136,8 @@ object ProjectBase {
       forums: OreDiscourseApi[F],
       fileManager: ProjectFiles,
       F: cats.effect.Effect[F],
-      par: Parallel[F, G]
+      par: Parallel[F, G],
+      zioRuntime: zio.Runtime[Blocking] //TODO: In the future abstract projectFiles over F
   ) extends ProjectBase[F] {
 
     def missingFile: F[Seq[Model[Version]]] = {
@@ -194,13 +198,22 @@ object ProjectBase {
       withName(owner, name).isDefined
 
     def savePendingIcon(project: Project)(implicit mdc: OreMDC): F[Unit] = F.delay {
-      this.fileManager.getPendingIconPath(project).foreach { iconPath =>
-        val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
-        if (notExists(iconDir))
-          createDirectories(iconDir)
-        FileUtils.cleanDirectory(iconDir)
-        move(iconPath, iconDir.resolve(iconPath.getFileName))
+      val program = this.fileManager.getPendingIconPath(project).flatMap { optIconPath =>
+        optIconPath.fold(ZIO.succeed(()): ZIO[Blocking, Throwable, Unit]) { iconPath =>
+          val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
+          import zio.blocking._
+
+          val notExists = effectBlocking(Files.notExists(iconDir))
+          val createDirs = effectBlocking(Files.createDirectories(iconDir))
+          val cleanDir = effectBlocking(FileUtils.cleanDirectory(iconDir))
+          val moveDir = effectBlocking(Files.move(iconPath, iconDir.resolve(iconPath.getFileName)))
+
+          ZIO.whenM(notExists)(createDirs) *> cleanDir *> moveDir.unit
+        }
       }
+
+      //Roundtrip with IO because ZIO already has an to function
+      program.toIO.to[F]
     }
 
     def rename(
@@ -214,7 +227,7 @@ object ProjectBase {
         isAvailable <- this.isNamespaceAvailable(project.ownerName, newSlug)
         _ = checkArgument(isAvailable, "slug not available", "")
         res <- {
-          val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
+          val fileOp      = this.fileManager.renameProject[F](project.ownerName, project.name, newName)
           val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
 
           // Project's name alter's the topic title, update it

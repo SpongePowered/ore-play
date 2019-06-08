@@ -26,11 +26,8 @@ import util.UserActionLogger
 import util.syntax._
 import views.{html => views}
 
-import cats.instances.list._
-import cats.instances.option._
 import cats.syntax.all._
-import scalaz.zio
-import scalaz.zio.{IO, Task}
+import scalaz.zio.{IO, Task, ZIO}
 import scalaz.zio.interop.catz._
 
 /**
@@ -90,19 +87,22 @@ class Users @Inject()(
         // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
         this.sso
           .authenticate(sso.get, sig.get)(isNonceValid)
+          .value
+          .get
+          .mapError(_ => Redirect(ShowHome).withError("error.loginFailed"))
           .map(sponge => sponge.toUser -> sponge)
-          .semiflatMap {
+          .flatMap {
             case (fromSponge, sponge) =>
               // Complete authentication
               for {
                 user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
                 _    <- user.globalRoles.deleteAllFromParent
-                _ <- sponge.newGlobalRoles
-                  .fold(IO.unit)(_.map(_.toDbRole.id).traverse_(user.globalRoles.addAssoc(_)))
+                _ <- sponge.newGlobalRoles.fold(IO.unit) { roles =>
+                  ZIO.foreachPar_(roles.map(_.toDbRole.id))(user.globalRoles.addAssoc(_))
+                }
                 result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
               } yield result
           }
-          .getOrElse(Redirect(ShowHome).withError("error.loginFailed"))
       }
     }
 
@@ -121,7 +121,8 @@ class Users @Inject()(
   }
 
   private def redirectToSso(url: String): IO[Result, Result] =
-    this.sso.isAvailable.ifM(IO.succeed(Redirect(url)), IO.fail(Redirect(ShowHome).withError("error.noLogin")))
+    (this.sso.isAvailable: IO[Result, Boolean])
+      .ifM(IO.succeed(Redirect(url)), IO.fail(Redirect(ShowHome).withError("error.noLogin")))
 
   private def redirectBack(url: String, user: User) =
     Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
@@ -153,32 +154,34 @@ class Users @Inject()(
 
     users
       .withName(username)
-      .toRight(notFound)
       .value
-      .absolve
+      .get
+      .mapError(_ => notFound)
       .unit
       .zipParRight {
         for {
           // TODO include orga projects?
           t1 <- (
-            service.runDbCon(
-              UserPagesQueries
-                .getProjects(
-                  username,
-                  request.headerData.currentUser.map(_.id.value),
-                  canHideProjects,
-                  ProjectSortingStrategy.MostStars,
-                  pageSize,
-                  offset
-                )
-                .to[Vector]
-            ),
+            service
+              .runDbCon(
+                UserPagesQueries
+                  .getProjects(
+                    username,
+                    request.headerData.currentUser.map(_.id.value),
+                    canHideProjects,
+                    ProjectSortingStrategy.MostStars,
+                    pageSize,
+                    offset
+                  )
+                  .to[Vector]
+              )
+              .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon)),
             getOrga(username).value,
             getUserData(request, username).value
           ).parTupled
           (projects, orga, userData) = t1
           t2 <- (
-            OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga).value.orDie,
+            OrganizationData.of[Task, ParTask](orga).value.orDie,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2
@@ -206,7 +209,7 @@ class Users @Inject()(
       val maxLen = this.config.ore.users.maxTaglineLen
 
       for {
-        user <- users.withName(username).toRight(NotFound).value.absolve
+        user <- users.withName(username).value.get.mapError(_ => NotFound)
         res <- {
           val tagline = request.body
           if (tagline.length > maxLen)
@@ -294,6 +297,7 @@ class Users @Inject()(
         iFilter(user).flatMap(i => i.toVector.parTraverse(invite => invite.subject[Task].orDie.tupleLeft(invite)))
 
       (notificationsF, invitesF).parMapN { (notifications, invites) =>
+        import cats.instances.option._
         Ok(
           views.users.notifications(
             Model.unwrapNested[Seq[(Model[Notification], Option[User])]](notifications),
@@ -345,7 +349,7 @@ class Users @Inject()(
           ).parTupled
           (orga, userData, keys) = t1
           t2 <- (
-            OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga).value.orDie,
+            OrganizationData.of[Task, ParTask](orga).value.orDie,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2

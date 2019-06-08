@@ -25,6 +25,8 @@ import ore.util.OreMDC
 import cats.Monad
 import cats.syntax.all._
 import cats.data.OptionT
+import scalaz.zio.ZIO
+import scalaz.zio.blocking.Blocking
 
 trait ModelSyntax {
 
@@ -34,7 +36,7 @@ trait ModelSyntax {
   implicit def pageSyntax(p: Page): ModelSyntax.PageSyntax                = new ModelSyntax.PageSyntax(p)
   implicit def pageModelRawSyntax(p: Model[Page]): ModelSyntax.PageSyntax = new ModelSyntax.PageSyntax(p)
   implicit def pageObjSyntax(p: Page.type): ModelSyntax.PageObjSyntax     = new ModelSyntax.PageObjSyntax(p)
-  implicit def projectSyntax(p: Project): ModelSyntax.ProjectSyntax                = new ModelSyntax.ProjectSyntax(p)
+  implicit def projectSyntax(p: Project): ModelSyntax.ProjectSyntax       = new ModelSyntax.ProjectSyntax(p)
   implicit def projectModelSyntax(p: Model[Project]): ModelSyntax.ProjectModelSyntax =
     new ModelSyntax.ProjectModelSyntax(p)
   implicit def orgSyntax(o: Organization): ModelSyntax.OrganizationSyntax = new ModelSyntax.OrganizationSyntax(o)
@@ -113,15 +115,28 @@ object ModelSyntax extends ModelSyntax {
     def maxLengthPage(implicit config: OreConfig): Int = config.ore.pages.pageMaxLen
   }
 
+  //TODO: Remove these from views
   class ProjectSyntax(private val p: Project) extends AnyVal {
 
-    def iconUrlOrPath(implicit projectFiles: ProjectFiles, mdc: OreMDC, config: OreConfig): Either[String, Path] =
-      projectFiles.getIconPath(p).toRight(User.avatarUrl(p.ownerName))
+    def iconUrlOrPath(
+        implicit projectFiles: ProjectFiles,
+        mdc: OreMDC,
+        config: OreConfig
+    ): ZIO[Blocking, Nothing, Either[String, Path]] =
+      projectFiles.getIconPath(p).map(_.toRight(User.avatarUrl(p.ownerName)))
 
-    def hasIcon(implicit projectFiles: ProjectFiles, mdc: OreMDC): Boolean = projectFiles.getIconPath(p).isDefined
+    def hasIcon(implicit projectFiles: ProjectFiles, mdc: OreMDC): ZIO[Blocking, Nothing, Boolean] =
+      projectFiles.getIconPath(p).map(_.isDefined)
 
-    def iconUrl(implicit projectFiles: ProjectFiles, mdc: OreMDC, header: RequestHeader, config: OreConfig): String =
-      iconUrlOrPath.swap.getOrElse(controllers.project.routes.Projects.showIcon(p.ownerName, p.slug).absoluteURL())
+    def iconUrl(
+        implicit projectFiles: ProjectFiles,
+        mdc: OreMDC,
+        header: RequestHeader,
+        config: OreConfig
+    ): ZIO[Blocking, Nothing, String] =
+      iconUrlOrPath.map(
+        _.swap.getOrElse(controllers.project.routes.Projects.showIcon(p.ownerName, p.slug).absoluteURL())
+      )
   }
 
   class ProjectModelSyntax(private val p: Model[Project]) extends AnyVal {

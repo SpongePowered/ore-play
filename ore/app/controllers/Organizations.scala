@@ -168,7 +168,7 @@ class Organizations @Inject()(forms: OreForms)(
       )
       .asyncF { implicit request =>
         request.body
-          .saveTo[Task, zio.interop.ParIO[Any, Throwable, ?]](request.data.orga)
+          .saveTo[Task, ParTask](request.data.orga)
           .orDie
           .const(Redirect(ShowUser(organization)))
       }

@@ -10,17 +10,17 @@ sorted according to different criteria.
 @import ore.models.project.ProjectSortingStrategy._
 @import ore.models.project.ProjectSortingStrategy
 @import ore.OreConfig
-@import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
 @import views.html.helper.CSPNonce
 @import ore.data.Platform
 @import ore.data.PlatformCategory
 @import ore.data.project.Category
 @import ore.models.project.io.ProjectFiles
-@(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
+@import models.querymodels.ProjectListEntryWithIcon
+@(models: Seq[ProjectListEntryWithIcon], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
         sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
         orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
-        request: OreRequest[_], config: OreConfig, projectFiles: ProjectFiles)
+        request: OreRequest[_], config: OreConfig)
 
 @randomSponsor = @{
     val logos = config.sponge.sponsors

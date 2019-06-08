@@ -26,6 +26,7 @@ import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC
 
+import cats.Parallel
 import cats.data.OptionT
 import cats.syntax.all._
 import com.typesafe.scalalogging
@@ -44,6 +45,15 @@ trait Actions extends Calls with ActionHelpers { self =>
   def bakery: Bakery             = oreComponents.bakery
   implicit def config: OreConfig = oreComponents.config
 
+  type ParTask[+A]    = zio.interop.ParIO[Any, Throwable, A]
+  type ParUIO[+A]     = zio.interop.ParIO[Any, Nothing, A]
+  type RIO[-R, +A]    = ZIO[R, Nothing, A]
+  type ParRIO[-R, +A] = zio.interop.ParIO[R, Nothing, A]
+
+  implicit val parUIO: Parallel[UIO, ParUIO]                                  = parallelInstance[Any, Nothing]
+  implicit val parTask: Parallel[Task, ParTask]                               = parallelInstance[Any, Throwable]
+  implicit val parBlockingIO: Parallel[RIO[Blocking, ?], ParRIO[Blocking, ?]] = parallelInstance[Blocking, Nothing]
+
   implicit def service: ModelService[UIO]           = oreComponents.uioEffects.service
   def sso: SSOApi[UIO]                              = oreComponents.uioEffects.sso
   implicit def users: UserBase[UIO]                 = oreComponents.uioEffects.users
@@ -59,7 +69,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   implicit val zioRuntime: zio.Runtime[Blocking] = oreComponents.zioRuntime
 
-  protected def zioToFuture[A](zio: ZIO[Blocking, Nothing, A]): Future[A] =
+  protected def zioToFuture[A](zio: RIO[Blocking, A]): Future[A] =
     ActionHelpers.zioToFuture(zio)
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
@@ -321,8 +331,8 @@ trait Actions extends Calls with ActionHelpers { self =>
       implicit
       request: OreRequest[_]
   ) = {
-    val projectData = ProjectData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](project)
-    (projectData.orDie, ScopedProjectData.of(request.headerData.currentUser, project)).parMapN(f)
+    val projectData = ProjectData.of[Task, ParTask](project)
+    (projectData.orDie, ScopedProjectData.of[UIO, ParUIO](request.headerData.currentUser, project)).parMapN(f)
   }
 
   private def processProject(project: Model[Project], user: Option[Model[User]]): OptionT[UIO, Model[Project]] = {
@@ -428,7 +438,7 @@ trait Actions extends Calls with ActionHelpers { self =>
   private def toOrgaRequest[T](orga: Model[Organization])(f: (OrganizationData, ScopedOrganizationData) => T)(
       implicit request: OreRequest[_]
   ) = {
-    val orgData = OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga)
+    val orgData = OrganizationData.of[Task, ParTask](orga)
     (orgData.orDie, ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
   }
 

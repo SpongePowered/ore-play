@@ -22,7 +22,7 @@ import util.syntax._
 
 import cats.data.OptionT
 import cats.syntax.all._
-import scalaz.zio.UIO
+import scalaz.zio.{UIO, ZIO}
 import scalaz.zio.interop.catz._
 
 /**
@@ -377,7 +377,7 @@ trait OreRestfulApiV1 extends OreWrites {
       allProjects     <- service.runDBIO(query.result)
       stars           <- service.runDBIO(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
       jsonProjects    <- writeProjects(allProjects)
-      userGlobalRoles <- userList.toVector.parTraverse(_.globalRoles.allFromParent)
+      userGlobalRoles <- ZIO.foreachParN(config.performance.nioBlockingFibers)(userList)(_.globalRoles.allFromParent)
     } yield {
       val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
       userList.zip(userGlobalRoles).map {

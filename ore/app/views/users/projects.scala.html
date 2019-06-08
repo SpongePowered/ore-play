@@ -8,12 +8,12 @@
 @import ore.permission.role.Role
 @import views.html.projects.{list => projectList}
 @import views.html.utils.userAvatar
-@import models.querymodels.ProjectListEntry
 @import ore.permission.Permission
 @import util.syntax._
 @import ore.models.project.io.ProjectFiles
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntry],
-        page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, projectFiles: ProjectFiles)
+@import models.querymodels.ProjectListEntryWithIcon
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntryWithIcon],
+        page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgMembers = @{
     u.isOrga &&

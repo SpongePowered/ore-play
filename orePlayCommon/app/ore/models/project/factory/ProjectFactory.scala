@@ -26,10 +26,12 @@ import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}
 import util.syntax._
 
+import cats.Parallel
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging
+import scalaz.zio
 import scalaz.zio.blocking.Blocking
 import scalaz.zio.{Fiber, IO, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
@@ -41,6 +43,13 @@ trait ProjectFactory {
 
   implicit protected def service: ModelService[UIO]
   implicit protected def projects: ProjectBase[UIO]
+
+  type ParTask[+A] = zio.interop.ParIO[Any, Throwable, A]
+  type ParUIO[+A]  = zio.interop.ParIO[Any, Nothing, A]
+  type RIO[-R, +A] = ZIO[R, Nothing, A]
+
+  implicit val parUIO: Parallel[UIO, ParUIO] = parallelInstance[Any, Nothing]
+  implicit val parTask: Parallel[Task, ParTask] = parallelInstance[Any, Throwable]
 
   protected def fileManager: ProjectFiles
   protected def cacheApi: SyncCacheApi
@@ -276,7 +285,8 @@ trait ProjectFactory {
   private def notifyWatchers(
       version: Model[Version],
       project: Model[Project]
-  ): UIO[Fiber[Nothing, Seq[Model[Notification]]]] = {
+  ): UIO[Unit] = {
+    //TODO: Rewrite the entire operation to never have to leave the DB
     val notification = (userId: DbRef[User]) =>
       Notification(
         userId = userId,
@@ -286,12 +296,11 @@ trait ProjectFactory {
         action = Some(version.url(project))
     )
 
-    val watchingUsers =
-      service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).result)
+    val watchingUserIds =
+      service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).map(_.id).result)
+    val notifications = watchingUserIds.map(_.map(notification))
 
-    val run = watchingUsers.flatMap(watchers => service.bulkInsert(watchers.map(watcher => notification(watcher.id))))
-
-    run.fork
+    notifications.flatMap(service.bulkInsert(_)).unit
   }
 
   /**
@@ -307,7 +316,7 @@ trait ProjectFactory {
 
     for {
       // Create channel if not exists
-      t <- (getOrCreateChannel(pending, project), pending.exists[Task].orDie: ZIO[Blocking, Nothing, Boolean]).parTupled
+      t <- (getOrCreateChannel(pending, project), pending.exists[Task].orDie).parTupled: ZIO[Blocking, Nothing, (Model[Channel], Boolean)]
       (channel, exists) = t
       _ <- if (exists && this.config.ore.projects.fileValidate)
         UIO.die(new IllegalArgumentException("Version already exists."))

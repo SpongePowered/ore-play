@@ -38,7 +38,7 @@ import cats.Order
 import cats.instances.vector._
 import cats.syntax.all._
 import scalaz.zio
-import scalaz.zio.{IO, Task, UIO}
+import scalaz.zio.{IO, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 
 /**
@@ -117,6 +117,7 @@ final class Application @Inject()(forms: OreForms)(
           )
           .to[Vector]
       )
+      .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon))
     val projectNumF = service.runDBIO(projectNumQ.result)
 
     (projectListF, projectNumF).parMapN { (data, projectNum) =>
@@ -338,7 +339,7 @@ final class Application @Inject()(forms: OreForms)(
           t2 <- (
             getUserData(request, user).value,
             projectRoles.toVector.parTraverse(_.project[Task].orDie),
-            OrganizationData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](orga).value.orDie
+            OrganizationData.of[Task, ParTask](orga).value.orDie
           ).parTupled
           (userData, projects, orgaData) = t2
         } yield {

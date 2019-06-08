@@ -82,7 +82,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     ProjectAction(author, slug).asyncBIO { implicit request =>
       for {
         version  <- getVersion(request.project, versionString)
-        data     <- VersionData.of[Task, zio.interop.ParIO[Any, Throwable, ?]](request, version).orDie
+        data     <- VersionData.of[Task, ParTask](request, version).orDie
         response <- this.stats.projectViewed(UIO.succeed(Ok(views.view(data, request.scoped))))
       } yield response
     }
@@ -821,7 +821,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       api: Boolean = false
   )(
       implicit request: ProjectRequest[_]
-  ): IO[Result, Result] = {
+  ): ZIO[Blocking, Result, Result] = {
     if (project.visibility == Visibility.SoftDelete) {
       IO.fail(NotFound)
     } else {
@@ -843,7 +843,9 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val fileName = version.fileName
           val path     = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
           project.user[Task].orDie.flatMap { projectOwner =>
-            this.stats.mapK(???).versionDownloaded(version) {
+            val newStats: StatTracker[RIO[Blocking, ?]] = ??? //stats.mapK(???)
+
+            newStats.versionDownloaded(version) {
               if (fileName.endsWith(".jar"))
                 IO.succeed(Ok.sendPath(path))
               else {
@@ -868,7 +870,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               }
             }
           }
-
         }
       }
     }

@@ -38,8 +38,8 @@ import ore.permission.{NamedPermission, Permission}
 import ore.util.OreMDC
 import _root_.util.syntax._
 
-import akka.stream.Materializer
 import cats.data.NonEmptyList
+import cats.instances.option._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import enumeratum._
@@ -53,12 +53,9 @@ import scalaz.zio.interop.catz._
 @Singleton
 class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
     implicit oreComponents: OreControllerComponents,
-    projectFiles: ProjectFiles,
-    mat: Materializer
+    projectFiles: ProjectFiles
 ) extends OreBaseController
     with CircePlayController {
-
-  private val Logger = scalalogging.Logger.takingImplicit[OreMDC]("ApiV2")
 
   private def limitOrDefault(limit: Option[Long], default: Long) = math.min(limit.getOrElse(default), default)
   private def offsetOrZero(offset: Long)                         = math.max(offset, 0)
@@ -130,8 +127,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     override protected def filter[A](request: ApiRequest[A]): Future[Option[Result]] = {
       //Techically we could make this faster by first checking if the global perms have the needed perms,
       //but then we wouldn't get the 404 on a non existent scope.
-      val scopePerms: ZIO[Any, Unit, Permission] =
-        apiScopeToRealScope(scope).flatMap(request.permissionIn(_))
+      val scopePerms: IO[Unit, Permission] =
+        apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, ?]](_))
       val res = scopePerms.mapError(_ => NotFound).ensure(Forbidden)(_.has(perms))
 
       zioToFuture(res.either.map(_.swap.toOption))
@@ -211,7 +208,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       case Some(ApiKeyHeaderRegex(identifier, token)) =>
         service
           .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
-          .flatMap(ZIO.fromOption)
+          .get
           .map {
             case (keyId, keyOwnerId) =>
               SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
@@ -403,7 +400,10 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         )
         .unique
 
-      (service.runDbCon(getProjects), service.runDbCon(countProjects)).parMapN { (projects, count) =>
+      (
+        service.runDbCon(getProjects).flatMap(ZIO.foreachParN(config.performance.nioBlockingFibers)(_)(identity)),
+        service.runDbCon(countProjects)
+      ).parMapN { (projects, count) =>
         Ok(
           PaginatedProjectResult(
             Pagination(realLimit, realOffset, count),
@@ -414,8 +414,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
-    apiOptDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { implicit request =>
-      APIV2Queries
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncBIO { implicit request =>
+      val dbCon = APIV2Queries
         .projectQuery(
           Some(pluginId),
           Nil,
@@ -430,6 +430,8 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           0
         )
         .option
+
+      service.runDbCon(dbCon).flatMap(_.sequence).get.bimap(_ => NotFound, Ok(_))
     }
 
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =

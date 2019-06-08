@@ -197,6 +197,13 @@ final class OreConfig @Inject()(config: Configuration) {
     val properties: Map[String, String] = raw.get[Map[String, String]]("properties")
   }
 
+  object performance extends ConfigCategory {
+    val raw: Configuration = root.get[Configuration]("performance")
+    val vcpus: Int         = raw.get[Int]("vcpus")
+
+    val nioBlockingFibers: Long = vcpus.toLong - 2
+  }
+
   app.load()
   app.fakeUser.load()
   play.load()
@@ -217,6 +224,7 @@ final class OreConfig @Inject()(config: Configuration) {
   security.api.load()
   security.sso.load()
   mail.load()
+  performance.load()
 
   /**
     * The default color used for Channels.

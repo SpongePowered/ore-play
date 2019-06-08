@@ -24,6 +24,7 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import com.google.inject.{AbstractModule, Provides, TypeLiteral}
 import scalaz.zio
+import scalaz.zio.blocking.Blocking
 import scalaz.zio.{Task, UIO}
 import scalaz.zio.interop.catz._
 import scalaz.zio.interop.catz.implicits._
@@ -118,11 +119,12 @@ class Module extends AbstractModule {
         api.admin
       )
 
-      forumsApi.start()
+      //forumsApi.start()
+      ???
 
       forumsApi
     } else {
-      new OreDiscourseApiDisabled
+      new OreDiscourseApiDisabled[Task]
     }
   }
 
@@ -159,7 +161,7 @@ class Module extends AbstractModule {
       fileManager: ProjectFiles,
       config: OreConfig,
       forums: OreDiscourseApi[Task],
-      runtime: zio.Runtime[Any]
+      runtime: zio.Runtime[Blocking]
   ): ProjectBase[Task] =
     new ProjectBase.ProjectBaseF()
 

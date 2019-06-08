@@ -20,7 +20,7 @@ trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAft
 
   implicit val runtime: zio.Runtime[Any] = new DefaultRuntime {}
 
-  override implicit def M: Effect[Task] = Effect[Task]
+  implicit override def M: Effect[Task] = Effect[Task]
 
   lazy val database = Databases(
     "org.postgresql.Driver",

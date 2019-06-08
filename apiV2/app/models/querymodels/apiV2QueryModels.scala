@@ -16,6 +16,8 @@ import util.syntax._
 
 import cats.syntax.all._
 import cats.instances.option._
+import scalaz.zio.ZIO
+import scalaz.zio.blocking.Blocking
 
 case class APIV2QueryProject(
     createdAt: LocalDateTime,
@@ -47,50 +49,52 @@ case class APIV2QueryProject(
       requestHeader: RequestHeader,
       mdc: OreMDC,
       config: OreConfig
-  ): APIV2.Project = {
+  ): ZIO[Blocking, Nothing, APIV2.Project] = {
     val iconPath = projectFiles.getIconPath(namespace.ownerName, name)
-    val iconUrl =
-      if (iconPath.isDefined)
-        controllers.project.routes.Projects.showIcon(namespace.ownerName, namespace.slug).absoluteURL()
-      else User.avatarUrl(namespace.ownerName)
+    val iconUrlF = iconPath.map(_.isDefined).map {
+      case true  => controllers.project.routes.Projects.showIcon(namespace.ownerName, namespace.slug).absoluteURL()
+      case false => User.avatarUrl(namespace.ownerName)
+    }
 
-    APIV2.Project(
-      createdAt,
-      pluginId,
-      name,
-      APIV2.ProjectNamespace(
-        namespace.ownerName,
-        namespace.slug
-      ),
-      (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
-        APIV2.RecommendedVersion(
-          version,
-          tags.map(_.asProtocol)
-        )
-      },
-      APIV2.ProjectStats(
-        views,
-        downloads,
-        stars
-      ),
-      category,
-      description,
-      lastUpdated,
-      visibility,
-      APIV2.UserActions(
-        userStarred,
-        userWatching
-      ),
-      APIV2.ProjectSettings(
-        homepage,
-        issues,
-        sources,
-        support,
-        APIV2.ProjectLicense(licenseName, licenseUrl),
-        forumSync
-      ),
-      iconUrl
-    )
+    iconUrlF.map { iconUrl =>
+      APIV2.Project(
+        createdAt,
+        pluginId,
+        name,
+        APIV2.ProjectNamespace(
+          namespace.ownerName,
+          namespace.slug
+        ),
+        (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
+          APIV2.RecommendedVersion(
+            version,
+            tags.map(_.asProtocol)
+          )
+        },
+        APIV2.ProjectStats(
+          views,
+          downloads,
+          stars
+        ),
+        category,
+        description,
+        lastUpdated,
+        visibility,
+        APIV2.UserActions(
+          userStarred,
+          userWatching
+        ),
+        APIV2.ProjectSettings(
+          homepage,
+          issues,
+          sources,
+          support,
+          APIV2.ProjectLicense(licenseName, licenseUrl),
+          forumSync
+        ),
+        iconUrl
+      )
+    }
   }
 }
 

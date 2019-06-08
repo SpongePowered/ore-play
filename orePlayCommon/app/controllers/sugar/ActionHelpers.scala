@@ -190,7 +190,7 @@ object ActionHelpers {
 
   private[sugar] def zioToFuture[A](io: ZIO[Blocking, Nothing, A])(implicit runtime: zio.Runtime[Blocking]): Future[A] =
     //TODO: If Sentry can't differentiate different errors here, log the error, and throw an exception ignored by Sentry instead
-    runtime.unsafeRun(io.toFutureWith(n => new Exception(s"Got impossible nothing $n")))
+    runtime.unsafeRun(io.toFutureWith(_ => new Exception(s"Got impossible nothing")))
 
   class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 

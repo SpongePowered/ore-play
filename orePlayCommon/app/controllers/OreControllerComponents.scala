@@ -15,7 +15,6 @@ import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import ore.OreConfig
 import ore.auth.SSOApi
 import ore.db.ModelService
-import util.uiowrappers.{UIOModelService, UIOSSOApi}
 
 import scalaz.zio
 import scalaz.zio.{Task, UIO}
@@ -59,13 +58,9 @@ case class TaskOreControllerEffects @Inject()(
 ) extends OreControllerEffects[Task]
 
 case class UIOOreControllerEffects @Inject()(
-    private val taskService: ModelService[Task],
-    private val taskSso: SSOApi[Task],
+    service: ModelService[UIO],
+    sso: SSOApi[UIO],
     users: UserBase[UIO],
     projects: ProjectBase[UIO],
     organizations: OrganizationBase[UIO],
-) extends OreControllerEffects[UIO] {
-  override val service: ModelService[UIO] = new UIOModelService(taskService)
-
-  override val sso: SSOApi[UIO] = new UIOSSOApi(taskSso)
-}
+) extends OreControllerEffects[UIO]
