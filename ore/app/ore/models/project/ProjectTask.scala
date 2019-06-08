@@ -52,11 +52,8 @@ class ProjectTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, 
 
   private val action = (updateFalseNewProjects *> deleteNewProjects).unit.delay(interval)
 
-  private lazy val repeatedAction: ZIO[Clock, Nothing, Int] =
-    action.repeatOrElse(schedule, (_, _) => repeatedAction)
-
   //TODO: Repeat in case of failure
-  private val task = runtime.unsafeRun(repeatedAction.fork)
+  private val task = runtime.unsafeRun(action.option.unit.repeat(schedule).fork)
 
   lifecycle.addStopHook { () =>
     Future {

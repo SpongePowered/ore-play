@@ -38,12 +38,10 @@ class UserTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, run
     .unit
 
   private val schedule: ZSchedule[Clock, Any, Int] = ZSchedule.fixed(interval)
-  private lazy val repeatedAction: ZIO[Clock, Nothing, Int] =
-    action.repeatOrElse(schedule, (_, _) => repeatedAction.delay(interval))
 
   Logger.info("DbUpdateTask starting")
   //TODO: Repeat in case of failure
-  private val task = runtime.unsafeRun(repeatedAction.fork)
+  private val task = runtime.unsafeRun(action.option.unit.repeat(schedule).fork)
 
   lifecycle.addStopHook { () =>
     Future {
