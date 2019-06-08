@@ -24,7 +24,7 @@ Documentation page within Project overview.
   page: Page,
   parentPage: Option[Page],
   pageCount: Int,
-  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, projectFiles: ProjectFiles)
+  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @canEditPages = @{
     sp.perms(Permission.EditPage)

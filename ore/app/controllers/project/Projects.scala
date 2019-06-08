@@ -37,7 +37,7 @@ import ore.util.OreMDC
 import ore.util.StringUtils._
 import ore.StatTracker
 import _root_.util.syntax._
-import util.UserActionLogger
+import util.{FileIO, UserActionLogger}
 import views.html.{projects => views}
 
 import cats.data.EitherT
@@ -45,6 +45,7 @@ import cats.instances.option._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import scalaz.zio
+import scalaz.zio.blocking.Blocking
 import scalaz.zio.{IO, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 
@@ -55,9 +56,9 @@ import scalaz.zio.interop.catz._
 class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
     implicit oreComponents: OreControllerComponents,
     forums: OreDiscourseApi[UIO],
+    fileIO: FileIO[ZIO[Blocking, Throwable, ?]],
     messagesApi: MessagesApi,
-    renderer: MarkdownRenderer,
-    fileManager: ProjectFiles
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Projects
@@ -440,7 +441,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         case None => IO.fail(Redirect(self.showSettings(author, slug)).withError("error.noFile"))
         case Some(tmpFile) =>
           val data       = request.data
-          val pendingDir = fileManager.getPendingIconDir(data.project.ownerName, data.project.name)
+          val pendingDir = projectFiles.getPendingIconDir(data.project.ownerName, data.project.name)
 
           import scalaz.zio.blocking._
 
@@ -477,9 +478,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
       val deleteFile = (p: Path) => effectBlocking(Files.delete(p))
 
-      val deleteIcon    = fileManager.getIconPath(project).flatMap(_.map(deleteFile).getOrElse(IO.succeed(())))
-      val deletePending = fileManager.getPendingIconPath(project).flatMap(_.map(deleteFile).getOrElse(IO.succeed(())))
-      val deleteDir     = effectBlocking(Files.delete(fileManager.getPendingIconDir(project.ownerName, project.name)))
+      val deleteIcon    = projectFiles.getIconPath(project).flatMap(_.map(deleteFile).getOrElse(IO.succeed(())))
+      val deletePending = projectFiles.getPendingIconPath(project).flatMap(_.map(deleteFile).getOrElse(IO.succeed(())))
+      val deleteDir     = effectBlocking(Files.delete(projectFiles.getPendingIconDir(project.ownerName, project.name)))
 
       //todo data
       val log = UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id, "", "")
@@ -498,7 +499,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def showPendingIcon(author: String, slug: String): Action[AnyContent] =
     ProjectAction(author, slug).asyncF { implicit request =>
-      fileManager.getPendingIconPath(request.project).map {
+      projectFiles.getPendingIconPath(request.project).map {
         case None       => notFound
         case Some(path) => showImage(path)
       }
@@ -550,7 +551,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           .ProjectSave(organisationUserCanUploadTo.toSeq)
           .bindZIO(FormErrorLocalized(self.showSettings(author, slug)))
         _ <- formData
-          .save[Task, ParTask](data.settings, data.project, MDCLogger)
+          .save[ZIO[Blocking, Throwable, ?], zio.interop.ParIO[Blocking, Throwable, ?]](
+            data.settings,
+            data.project,
+            MDCLogger
+          )
           .value
           .orDie
           .absolve

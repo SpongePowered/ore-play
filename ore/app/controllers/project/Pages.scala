@@ -27,7 +27,8 @@ import util.syntax._
 import views.html.projects.{pages => views}
 
 import cats.syntax.all._
-import scalaz.zio.{IO, Task, UIO}
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.{IO, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 
 /**
@@ -37,8 +38,7 @@ import scalaz.zio.interop.catz._
 class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
     implicit oreComponents: OreControllerComponents,
     forums: OreDiscourseApi[UIO],
-    renderer: MarkdownRenderer,
-    projectFiles: ProjectFiles
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Pages

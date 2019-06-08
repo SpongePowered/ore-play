@@ -173,7 +173,12 @@ object APIV2Queries extends WebDoobieOreProtocol {
       orderWithRelevance: Boolean,
       limit: Long,
       offset: Long
-  )(implicit projectFiles: ProjectFiles, requestHeader: RequestHeader, mdc: OreMDC, config: OreConfig): Query0[ZIO[Blocking, Nothing, APIV2.Project]] = {
+  )(
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
+      requestHeader: RequestHeader,
+      mdc: OreMDC,
+      config: OreConfig
+  ): Query0[ZIO[Blocking, Nothing, APIV2.Project]] = {
     val ordering = if (orderWithRelevance && query.nonEmpty) {
       val relevance = query.fold(fr"1") { q =>
         fr"ts_rank(p.search_words, websearch_to_tsquery($q)) DESC"

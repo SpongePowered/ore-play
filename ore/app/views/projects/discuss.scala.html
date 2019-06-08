@@ -11,7 +11,7 @@ Discussion page within Project overview.
 @import ore.models.project.io.ProjectFiles
 
 @(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_],
-        flash: Flash, config: OreConfig, renderer: MarkdownRenderer, projectFiles: ProjectFiles)
+        flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

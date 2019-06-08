@@ -45,7 +45,7 @@ case class APIV2QueryProject(
 ) {
 
   def asProtocol(
-      implicit projectFiles: ProjectFiles,
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
       requestHeader: RequestHeader,
       mdc: OreMDC,
       config: OreConfig

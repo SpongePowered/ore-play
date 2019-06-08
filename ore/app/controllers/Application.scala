@@ -38,6 +38,7 @@ import cats.Order
 import cats.instances.vector._
 import cats.syntax.all._
 import scalaz.zio
+import scalaz.zio.blocking.Blocking
 import scalaz.zio.{IO, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 
@@ -47,8 +48,7 @@ import scalaz.zio.interop.catz._
 @Singleton
 final class Application @Inject()(forms: OreForms)(
     implicit oreComponents: OreControllerComponents,
-    renderer: MarkdownRenderer,
-    projectFiles: ProjectFiles
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))

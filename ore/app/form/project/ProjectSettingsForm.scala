@@ -2,10 +2,6 @@ package form.project
 
 import scala.language.higherKinds
 
-import java.nio.file.Files
-
-import scala.collection.JavaConverters._
-
 import ore.OreConfig
 import ore.data.project.Category
 import ore.data.user.notification.NotificationType
@@ -18,6 +14,7 @@ import ore.models.project.io.ProjectFiles
 import ore.permission.role.Role
 import ore.util.OreMDC
 import ore.util.StringUtils.noneIfEmpty
+import util.FileIO
 import util.syntax._
 
 import cats.Parallel
@@ -26,10 +23,6 @@ import cats.effect.Async
 import cats.syntax.all._
 import cats.instances.either._
 import com.typesafe.scalalogging.LoggerTakingImplicit
-import scalaz.zio
-import scalaz.zio.ZIO
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.interop.catz._
 import slick.lifted.TableQuery
 
 /**
@@ -56,13 +49,13 @@ case class ProjectSettingsForm(
 ) extends TProjectRoleSetBuilder {
 
   def save[F[_], G[_]](settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
-      implicit fileManager: ProjectFiles,
+      implicit fileManager: ProjectFiles[F],
+      fileIO: FileIO[F],
       mdc: OreMDC,
       config: OreConfig,
       service: ModelService[F],
       F: Async[F],
-      par: Parallel[F, G],
-      runtime: zio.Runtime[Blocking]
+      par: Parallel[F, G]
   ): EitherT[F, String, (Model[Project], Model[ProjectSettings])] = {
     import cats.instances.vector._
     logger.debug("Saving project settings")
@@ -114,21 +107,19 @@ case class ProjectSettingsForm(
       // Update icon
       if (this.updateIcon) {
         fileManager.getPendingIconPath(project).map { pendingPathOpt =>
-          val program = pendingPathOpt.fold(ZIO.succeed(()): ZIO[Blocking, Throwable, Unit]) { pendingPath =>
+          pendingPathOpt.fold(F.unit) { pendingPath =>
             val iconDir = fileManager.getIconDir(project.ownerName, project.name)
-            import scalaz.zio.blocking._
 
-            val notExist   = effectBlocking(Files.notExists(iconDir))
-            val createDirs = effectBlocking(Files.createDirectories(iconDir))
-            val deleteFiles = effectBlocking(Files.list(iconDir).iterator.asScala.toIterable).flatMap { ps =>
-              ZIO.foreachParN(config.performance.nioBlockingFibers)(ps)(p => effectBlocking(Files.delete(p)))
+            val notExist   = fileIO.notExists(iconDir)
+            val createDirs = fileIO.createDirectories(iconDir)
+            val deleteFiles = fileIO.list(iconDir).flatMap { ps =>
+              import cats.instances.stream._
+              fileIO.traverseLimited(ps)(p => fileIO.delete(p))
             }
-            val move = effectBlocking(Files.move(pendingPath, iconDir.resolve(pendingPath.getFileName)))
+            val move = fileIO.move(pendingPath, iconDir.resolve(pendingPath.getFileName))
 
-            ZIO.whenM(notExist)(createDirs) *> deleteFiles *> move.unit
+            notExist.ifM(createDirs, F.unit) *> deleteFiles *> move.void
           }
-
-          cats.effect.Effect[ZIO[Blocking, Throwable, ?]].toIO(program).to[F]
         }
       } else F.pure(())
 

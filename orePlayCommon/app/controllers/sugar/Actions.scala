@@ -20,6 +20,7 @@ import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
+import ore.models.project.io.ProjectFiles
 import ore.models.project.{Project, Visibility}
 import ore.models.user.{SignOn, User}
 import ore.permission.Permission
@@ -60,6 +61,8 @@ trait Actions extends Calls with ActionHelpers { self =>
   implicit def users: UserBase[UIO]                 = oreComponents.uioEffects.users
   implicit def projects: ProjectBase[UIO]           = oreComponents.uioEffects.projects
   implicit def organizations: OrganizationBase[UIO] = oreComponents.uioEffects.organizations
+
+  implicit def projectFiles: ProjectFiles[RIO[Blocking, ?]] = oreComponents.projectFiles
 
   implicit def ec: ExecutionContext = oreComponents.executionContext
 
@@ -332,7 +335,7 @@ trait Actions extends Calls with ActionHelpers { self =>
       implicit
       request: OreRequest[_]
   ) = {
-    val projectData = ProjectData.of[Task, ParTask](project)
+    val projectData = ProjectData.of[ZIO[Blocking, Throwable, ?], zio.interop.ParIO[Blocking, Throwable, ?]](project)
     (projectData.orDie, ScopedProjectData.of[UIO, ParUIO](request.headerData.currentUser, project)).parMapN(f)
   }
 

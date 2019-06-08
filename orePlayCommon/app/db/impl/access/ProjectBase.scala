@@ -3,7 +3,6 @@ package db.impl.access
 import scala.language.higherKinds
 
 import java.io.IOException
-import java.nio.file.Files
 import java.time.Instant
 
 import db.impl.query.SharedQueries
@@ -18,7 +17,7 @@ import ore.util.{FileUtils, OreMDC}
 import ore.OreConfig
 import ore.util.StringUtils._
 import util.syntax._
-import util.TaskUtils
+import util.{FileIO, TaskUtils}
 
 import cats.Parallel
 import cats.effect.syntax.all._
@@ -28,10 +27,6 @@ import cats.instances.option._
 import cats.tagless.autoFunctorK
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging.LoggerTakingImplicit
-import scalaz.zio
-import scalaz.zio.ZIO
-import scalaz.zio.interop.catz._
-import scalaz.zio.blocking.Blocking
 
 @autoFunctorK
 trait ProjectBase[+F[_]] {
@@ -135,10 +130,10 @@ object ProjectBase {
       implicit service: ModelService[F],
       config: OreConfig,
       forums: OreDiscourseApi[F],
-      fileManager: ProjectFiles,
+      fileManager: ProjectFiles[F],
+      fileIO: FileIO[F],
       F: cats.effect.Effect[F],
-      par: Parallel[F, G],
-      zioRuntime: zio.Runtime[Blocking] //TODO: In the future abstract projectFiles over F
+      par: Parallel[F, G]
   ) extends ProjectBase[F] {
 
     def missingFile: F[Seq[Model[Version]]] = {
@@ -148,20 +143,27 @@ object ProjectBase {
           p <- TableQuery[ProjectTableMain] if v.projectId === p.id
         } yield (p.ownerName, p.name, v)
 
-      service.runDBIO(allVersions.result).map { versions =>
-        versions
-          .filter {
-            case (ownerNamer, name, version) =>
-              try {
-                val versionDir = this.fileManager.getVersionDir(ownerNamer, name, version.name)
-                Files.notExists(versionDir.resolve(version.fileName))
-              } catch {
-                case _: IOException =>
-                  //Invalid file name
-                  false
-              }
+      service.runDBIO(allVersions.result).flatMap { versions =>
+        fileIO
+          .traverseLimited(versions.toVector) {
+            case t @ (ownerNamer, name, version) =>
+              val res = F
+                .bracket(F.delay(this.fileManager.getVersionDir(ownerNamer, name, version.name)))(
+                  versionDir => fileIO.notExists(versionDir.resolve(version.fileName))
+                )(_ => F.unit)
+                .recover {
+                  case _: IOException =>
+                    //Invalid file name
+                    false
+                }
+
+              res.tupleLeft(t)
           }
-          .map(_._3)
+          .map {
+            _.collect {
+              case ((_, _, v), true) => v
+            }
+          }
       }
     }
 
@@ -182,12 +184,14 @@ object ProjectBase {
     def withName(owner: String, name: String): F[Option[Model[Project]]] =
       ModelView
         .now(Project)
-        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase).value
+        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.name.toLowerCase === name.toLowerCase)
+        .value
 
     def withSlug(owner: String, slug: String): F[Option[Model[Project]]] =
       ModelView
         .now(Project)
-        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase).value
+        .find(p => p.ownerName.toLowerCase === owner.toLowerCase && p.slug.toLowerCase === slug.toLowerCase)
+        .value
 
     def withPluginId(pluginId: String): F[Option[Model[Project]]] =
       ModelView.now(Project).find(equalsIgnoreCase(_.pluginId, pluginId)).value
@@ -199,22 +203,18 @@ object ProjectBase {
       withName(owner, name).map(_.isDefined)
 
     def savePendingIcon(project: Project)(implicit mdc: OreMDC): F[Unit] = F.delay {
-      val program = this.fileManager.getPendingIconPath(project).flatMap { optIconPath =>
-        optIconPath.fold(ZIO.succeed(()): ZIO[Blocking, Throwable, Unit]) { iconPath =>
+      this.fileManager.getPendingIconPath(project).flatMap { optIconPath =>
+        optIconPath.fold(F.pure(())) { iconPath =>
           val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
-          import zio.blocking._
 
-          val notExists  = effectBlocking(Files.notExists(iconDir))
-          val createDirs = effectBlocking(Files.createDirectories(iconDir))
-          val cleanDir   = effectBlocking(FileUtils.cleanDirectory(iconDir))
-          val moveDir    = effectBlocking(Files.move(iconPath, iconDir.resolve(iconPath.getFileName)))
+          val notExists  = fileIO.notExists(iconDir)
+          val createDirs = fileIO.createDirectories(iconDir)
+          val cleanDir   = fileIO.executeBlocking(FileUtils.cleanDirectory(iconDir))
+          val moveDir    = fileIO.move(iconPath, iconDir.resolve(iconPath.getFileName))
 
-          ZIO.whenM(notExists)(createDirs) *> cleanDir *> moveDir.unit
+          notExists.ifM(createDirs, F.unit) *> cleanDir *> moveDir.void
         }
       }
-
-      //Roundtrip with IO because ZIO already has an to function
-      program.toIO.to[F]
     }
 
     def rename(
@@ -228,7 +228,7 @@ object ProjectBase {
         isAvailable <- this.isNamespaceAvailable(project.ownerName, newSlug)
         _ = checkArgument(isAvailable, "slug not available", "")
         res <- {
-          val fileOp      = this.fileManager.renameProject[F](project.ownerName, project.name, newName)
+          val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
           val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
 
           // Project's name alter's the topic title, update it
@@ -297,8 +297,7 @@ object ProjectBase {
         noVersions <- channel.versions(ModelView.now(Version)).isEmpty
         _ <- {
           val versionDir = this.fileManager.getVersionDir(proj.ownerName, proj.name, version.name)
-          FileUtils.deleteDirectory(versionDir)
-          service.delete(version)
+          fileIO.executeBlocking(FileUtils.deleteDirectory(versionDir)) *> service.delete(version)
         }
         // Delete channel if now empty
         _ <- if (noVersions) this.deleteChannel(proj, channel) else F.unit
@@ -311,7 +310,7 @@ object ProjectBase {
       * @param project Project to delete
       */
     def delete(project: Model[Project])(implicit mdc: OreMDC): F[Int] = {
-      val fileEff = F.delay(FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name)))
+      val fileEff = fileIO.executeBlocking(FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name)))
       val eff =
         if (project.topicId.isDefined)
           forums.deleteProjectTopic(project).void

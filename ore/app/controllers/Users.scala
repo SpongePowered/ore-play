@@ -27,6 +27,7 @@ import util.syntax._
 import views.{html => views}
 
 import cats.syntax.all._
+import scalaz.zio.blocking.Blocking
 import scalaz.zio.{IO, Task, ZIO}
 import scalaz.zio.interop.catz._
 
@@ -41,7 +42,6 @@ class Users @Inject()(
     emails: EmailFactory
 )(
     implicit oreComponents: OreControllerComponents,
-    projectFiles: ProjectFiles,
     messagesApi: MessagesApi,
 ) extends OreBaseController {
 

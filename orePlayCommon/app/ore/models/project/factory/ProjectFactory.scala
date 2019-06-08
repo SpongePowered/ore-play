@@ -1,6 +1,5 @@
 package ore.models.project.factory
 
-import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 
 import scala.util.matching.Regex
@@ -24,6 +23,7 @@ import ore.models.project.io._
 import ore.util.{OreMDC, StringUtils}
 import ore.util.StringUtils._
 import ore.{OreConfig, OreEnv}
+import util.FileIO
 import util.syntax._
 
 import cats.Parallel
@@ -33,7 +33,7 @@ import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging
 import scalaz.zio
 import scalaz.zio.blocking.Blocking
-import scalaz.zio.{Fiber, IO, Task, UIO, ZIO}
+import scalaz.zio.{IO, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 
 /**
@@ -51,7 +51,8 @@ trait ProjectFactory {
   implicit val parUIO: Parallel[UIO, ParUIO]    = parallelInstance[Any, Nothing]
   implicit val parTask: Parallel[Task, ParTask] = parallelInstance[Any, Throwable]
 
-  protected def fileManager: ProjectFiles
+  protected def fileIO: FileIO[ZIO[Blocking, Nothing, ?]]
+  protected def fileManager: ProjectFiles[ZIO[Blocking, Nothing, ?]]
   protected def cacheApi: SyncCacheApi
   protected val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
 
@@ -80,16 +81,14 @@ trait ProjectFactory {
       ZIO.fail("error.plugin.fileExtension")
     // check user's public key validity
     else {
-      import scalaz.zio.blocking._
-
       // move uploaded files to temporary directory while the project creation
       // process continues
       val tmpDir = this.env.tmp.resolve(owner.name)
-      val createDirs = ZIO.whenM(effectBlocking(Files.notExists(tmpDir))) {
-        effectBlocking(Files.createDirectories(tmpDir))
+      val createDirs = ZIO.whenM(fileIO.notExists(tmpDir)) {
+        fileIO.createDirectories(tmpDir)
       }
 
-      val moveToNewPluginPath = effectBlocking(
+      val moveToNewPluginPath = fileIO.executeBlocking(
         uploadData.pluginFile.moveFileTo(tmpDir.resolve(pluginFileName), replace = true)
       )
 
@@ -375,23 +374,22 @@ trait ProjectFactory {
       plugin: PluginFileWithData,
       version: Version
   ): ZIO[Blocking, String, Unit] = {
-    import scalaz.zio.blocking._
     val oldPath = plugin.path
 
     val versionDir = this.fileManager.getVersionDir(project.ownerName, project.name, version.name)
     val newPath    = versionDir.resolve(oldPath.getFileName)
 
-    val move = {
-      val createDirs = ZIO.whenM(effectBlocking(!Files.exists(newPath.getParent))) {
-        effectBlocking(Files.createDirectories(newPath.getParent))
+    val move: ZIO[Blocking, Nothing, Right[Nothing, Unit]] = {
+      val createDirs = ZIO.whenM(fileIO.notExists(newPath.getParent)) {
+        fileIO.createDirectories(newPath.getParent)
       }
-      val movePath  = effectBlocking(Files.move(oldPath, newPath))
-      val deleteOld = effectBlocking(Files.deleteIfExists(oldPath))
+      val movePath  = fileIO.move(oldPath, newPath)
+      val deleteOld = fileIO.deleteIfExists(oldPath)
 
       createDirs *> movePath *> deleteOld.const(Right(()))
     }
 
-    effectBlocking(Files.exists(newPath)).ifM(UIO.succeed(Left("error.plugin.fileName")), move).orDie.absolve
+    fileIO.exists(newPath).ifM(UIO.succeed(Left("error.plugin.fileName")), move).orDie.absolve
   }
 
 }
@@ -404,5 +402,6 @@ class OreProjectFactory @Inject()(
     val cacheApi: SyncCacheApi,
     val env: OreEnv,
     val projects: ProjectBase[UIO],
-    val fileManager: ProjectFiles
+    val fileManager: ProjectFiles[ZIO[Blocking, Nothing, ?]],
+    val fileIO: FileIO[ZIO[Blocking, Nothing, ?]]
 ) extends ProjectFactory

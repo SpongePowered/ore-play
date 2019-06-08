@@ -24,7 +24,7 @@ case class ProjectListEntry(
 ) {
 
   def withIcon(
-      implicit projectFiles: ProjectFiles,
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
       mdc: OreMDC,
       config: OreConfig
   ): ZIO[Blocking, Nothing, ProjectListEntryWithIcon] = {

@@ -56,8 +56,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     messagesApi: MessagesApi,
     env: OreEnv,
     forums: OreDiscourseApi[UIO],
-    renderer: MarkdownRenderer,
-    fileManager: ProjectFiles
+    renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Versions
@@ -584,7 +583,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     this.stats.versionDownloaded(version) {
       UIO.succeed {
         Ok.sendPath(
-          this.fileManager
+          projectFiles
             .getVersionDir(project.ownerName, project.name, version.name)
             .resolve(version.fileName)
         )
@@ -839,7 +838,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           )
         } else {
           val fileName = version.fileName
-          val path     = this.fileManager.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
+          val path     = projectFiles.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
           project.user[Task].orDie.flatMap { projectOwner =>
             import cats.tagless.syntax._
             import cats.tagless._

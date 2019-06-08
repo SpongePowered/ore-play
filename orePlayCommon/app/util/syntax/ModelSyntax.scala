@@ -22,7 +22,7 @@ import ore.models.user.User
 import ore.permission.role.Role
 import ore.util.OreMDC
 
-import cats.Monad
+import cats.{Functor, Monad}
 import cats.syntax.all._
 import cats.data.OptionT
 import scalaz.zio.ZIO
@@ -118,22 +118,24 @@ object ModelSyntax extends ModelSyntax {
   //TODO: Remove these from views
   class ProjectSyntax(private val p: Project) extends AnyVal {
 
-    def iconUrlOrPath(
-        implicit projectFiles: ProjectFiles,
+    def iconUrlOrPath[F[_]](
+        implicit projectFiles: ProjectFiles[F],
+        F: Functor[F],
         mdc: OreMDC,
         config: OreConfig
-    ): ZIO[Blocking, Nothing, Either[String, Path]] =
+    ): F[Either[String, Path]] =
       projectFiles.getIconPath(p).map(_.toRight(User.avatarUrl(p.ownerName)))
 
-    def hasIcon(implicit projectFiles: ProjectFiles, mdc: OreMDC): ZIO[Blocking, Nothing, Boolean] =
+    def hasIcon[F[_]](implicit projectFiles: ProjectFiles[F], F: Functor[F], mdc: OreMDC): F[Boolean] =
       projectFiles.getIconPath(p).map(_.isDefined)
 
-    def iconUrl(
-        implicit projectFiles: ProjectFiles,
+    def iconUrl[F[_]](
+        implicit projectFiles: ProjectFiles[F],
+        F: Functor[F],
         mdc: OreMDC,
         header: RequestHeader,
         config: OreConfig
-    ): ZIO[Blocking, Nothing, String] =
+    ): F[String] =
       iconUrlOrPath.map(
         _.swap.getOrElse(controllers.project.routes.Projects.showIcon(p.ownerName, p.slug).absoluteURL())
       )

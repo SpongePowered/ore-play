@@ -35,13 +35,11 @@ import ore.models.project.{Page, ProjectSortingStrategy}
 import ore.models.user.{FakeUser, User}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
-import ore.util.OreMDC
 import _root_.util.syntax._
 
 import cats.data.NonEmptyList
 import cats.instances.option._
 import cats.syntax.all._
-import com.typesafe.scalalogging
 import enumeratum._
 import io.circe._
 import io.circe.generic.extras._
@@ -52,8 +50,7 @@ import scalaz.zio.interop.catz._
 
 @Singleton
 class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
-    implicit oreComponents: OreControllerComponents,
-    projectFiles: ProjectFiles
+    implicit oreComponents: OreControllerComponents
 ) extends OreBaseController
     with CircePlayController {
 

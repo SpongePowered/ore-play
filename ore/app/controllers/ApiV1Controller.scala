@@ -44,8 +44,7 @@ final class ApiV1Controller @Inject()(
     api: OreRestfulApiV1,
     status: StatusZ,
     forms: OreForms,
-    factory: ProjectFactory,
-    files: ProjectFiles
+    factory: ProjectFactory
 )(
     implicit oreComponents: OreControllerComponents,
 ) extends OreBaseController

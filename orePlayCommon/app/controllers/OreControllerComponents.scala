@@ -15,9 +15,10 @@ import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import ore.OreConfig
 import ore.auth.SSOApi
 import ore.db.ModelService
+import ore.models.project.io.ProjectFiles
 
 import scalaz.zio
-import scalaz.zio.{Task, UIO}
+import scalaz.zio.{UIO, ZIO}
 import scalaz.zio.blocking.Blocking
 import scalaz.zio.clock.Clock
 
@@ -25,6 +26,7 @@ trait OreControllerComponents extends ControllerComponents {
   def uioEffects: OreControllerEffects[UIO]
   def bakery: Bakery
   def config: OreConfig
+  def projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]]
   def zioRuntime: zio.Runtime[Blocking with Clock]
 }
 
@@ -46,6 +48,7 @@ case class DefaultOreControllerComponents @Inject()(
     langs: Langs,
     fileMimeTypes: FileMimeTypes,
     executionContext: ExecutionContext,
+    projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
     zioRuntime: zio.Runtime[Blocking with Clock]
 ) extends OreControllerComponents
 

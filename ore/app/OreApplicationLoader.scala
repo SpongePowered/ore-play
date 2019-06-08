@@ -1,3 +1,5 @@
+import scala.language.higherKinds
+
 import javax.inject.Provider
 
 import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
@@ -33,7 +35,7 @@ import ore.models.project.factory.{OreProjectFactory, ProjectFactory}
 import ore.models.project.io.ProjectFiles
 import ore.models.user.{FakeUser, UserTask}
 import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
-import util.StatusZ
+import util.{FileIO, StatusZ, ZIOFileIO}
 
 import akka.actor.ActorSystem
 import cats.arrow.FunctionK
@@ -42,7 +44,8 @@ import cats.~>
 import cats.tagless.syntax.all._
 import com.typesafe.scalalogging.Logger
 import scalaz.zio
-import scalaz.zio.{DefaultRuntime, Task, UIO}
+import scalaz.zio.blocking.Blocking
+import scalaz.zio.{DefaultRuntime, Task, UIO, ZIO}
 import scalaz.zio.interop.catz._
 import scalaz.zio.interop.catz.implicits._
 import slick.basic.{BasicProfile, DatabaseConfig}
@@ -111,17 +114,20 @@ class OreComponents(context: ApplicationLoader.Context)
   type ParUIO[A]  = zio.interop.ParIO[Any, Nothing, A]
   type ParTask[A] = zio.interop.ParIO[Any, Throwable, A]
 
-  val taskToUIO: Task ~> UIO = new FunctionK[Task, UIO] {
-    override def apply[A](fa: Task[A]): UIO[A] = fa.orDie
-  }
-  val uioToTask: UIO ~> Task = new FunctionK[UIO, Task] {
-    override def apply[A](fa: UIO[A]): Task[A] = fa
-  }
+  val taskToUIO: Task ~> UIO = OreComponents.orDieFnK[Any]
+  val uioToTask: UIO ~> Task = OreComponents.upcastFnK[UIO, Task]
 
   implicit lazy val config: OreConfig                  = wire[OreConfig]
   implicit lazy val env: OreEnv                        = wire[OreEnv]
   implicit lazy val markdownRenderer: MarkdownRenderer = wire[FlexmarkRenderer]
-  implicit lazy val projectFiles: ProjectFiles         = wire[ProjectFiles]
+  //implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, ?]] = wire[ZIOFileIO]
+
+  implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, ?]] = wire[ZIOFileIO].imapK(OreComponents.orDieFnK[Blocking])(
+    OreComponents.upcastFnK[ZIO[Blocking, Nothing, ?], ZIO[Blocking, Throwable, ?]]
+  )
+
+  implicit lazy val projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]] =
+    wire[ProjectFiles.LocalProjectFiles[ZIO[Blocking, Nothing, ?]]]
 
   lazy val oreRestfulAPIV1: OreRestfulApiV1                          = wire[OreRestfulServerV1]
   implicit lazy val projectFactory: ProjectFactory                   = wire[OreProjectFactory]
@@ -196,8 +202,18 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val oreDiscourseApi: OreDiscourseApi[UIO] = oreDiscourseApiTask.mapK(taskToUIO)
   implicit lazy val userBaseTask: UserBase[Task]          = wire[UserBase.UserBaseF[Task]]
   implicit lazy val userBaseUIO: UserBase[UIO]            = wire[UserBase.UserBaseF[UIO]]
-  implicit lazy val projectBase: ProjectBase[UIO] =
+  implicit lazy val projectBase: ProjectBase[UIO] = {
+    implicit val providedProjectFiles: ProjectFiles[Task] =
+      projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.Environment))
+
+    implicit val throwableFileIO: FileIO[Task] = fileIO.imapK(new FunctionK[ZIO[Blocking, Nothing, ?], Task] {
+      override def apply[A](fa: ZIO[Blocking, Nothing, A]): Task[A] = fa.provide(runtime.Environment)
+    })(new FunctionK[Task, ZIO[Blocking, Nothing, ?]] {
+      override def apply[A](fa: Task[A]): ZIO[Blocking, Nothing, A] = fa.orDie
+    })
+
     (wire[ProjectBase.ProjectBaseF[Task, ParTask]]: ProjectBase[Task]).mapK(taskToUIO)
+  }
   implicit lazy val orgBase: OrganizationBase[UIO] =
     (wire[OrganizationBase.OrganizationBaseF[Task, ParTask]]: OrganizationBase[Task]).mapK(taskToUIO)
 
@@ -206,12 +222,15 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val statusZ: StatusZ   = wire[StatusZ]
   lazy val fakeUser: FakeUser = wire[FakeUser]
 
-  lazy val applicationController: Application                   = wire[Application]
-  lazy val apiV1Controller: ApiV1Controller                     = wire[ApiV1Controller]
-  lazy val apiV2Controller: ApiV2Controller                     = wire[ApiV2Controller]
-  lazy val versions: Versions                                   = wire[Versions]
-  lazy val users: Users                                         = wire[Users]
-  lazy val projects: Projects                                   = wire[Projects]
+  lazy val applicationController: Application = wire[Application]
+  lazy val apiV1Controller: ApiV1Controller   = wire[ApiV1Controller]
+  lazy val apiV2Controller: ApiV2Controller   = wire[ApiV2Controller]
+  lazy val versions: Versions                 = wire[Versions]
+  lazy val users: Users                       = wire[Users]
+  lazy val projects: Projects = {
+    implicit val throwableFileIO: ZIOFileIO = wire[ZIOFileIO]
+    wire[Projects]
+  }
   lazy val pages: Pages                                         = wire[Pages]
   lazy val organizations: Organizations                         = wire[Organizations]
   lazy val channels: Channels                                   = wire[Channels]
@@ -235,4 +254,17 @@ class OreComponents(context: ApplicationLoader.Context)
     identity(module)
     ()
   }
+}
+object OreComponents {
+  //macwire doesn't seem to like this function
+  def upcastFnK[From[_], To[A] >: From[A]]: From ~> To = new FunctionK[From, To] {
+    override def apply[A](fa: From[A]): To[A] = fa
+  }
+  def provideFnK[R, E](environment: R): ZIO[R, E, ?] ~> ZIO[Any, E, ?] = new FunctionK[ZIO[R, E, ?], ZIO[Any, E, ?]] {
+    override def apply[A](fa: ZIO[R, E, A]): ZIO[Any, E, A] = fa.provide(environment)
+  }
+  def orDieFnK[R]: ZIO[R, Throwable, ?] ~> ZIO[R, Nothing, ?] =
+    new FunctionK[ZIO[R, Throwable, ?], ZIO[R, Nothing, ?]] {
+      override def apply[A](fa: ZIO[R, Throwable, A]): ZIO[R, Nothing, A] = fa.orDie
+    }
 }
