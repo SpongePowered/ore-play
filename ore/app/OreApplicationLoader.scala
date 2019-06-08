@@ -129,11 +129,10 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val userTask: UserTask                                        = wire[UserTask]
   lazy val dbUpdateTask: DbUpdateTask                                = wire[DbUpdateTask]
   implicit lazy val oreControllerComponents: OreControllerComponents = wire[DefaultOreControllerComponents]
-  lazy val taskOreControllerEffects: OreControllerEffects[Task]      = wire[DefaultOreControllerEffects[Task]]
   lazy val uioOreControllerEffects: OreControllerEffects[UIO]        = wire[DefaultOreControllerEffects[UIO]]
 
-  lazy val statTrackerTask: StatTracker[Task] = wire[StatTracker.StatTrackerInstant[Task, ParTask]]
-  lazy val statTracker: StatTracker[UIO]      = statTrackerTask.imapK(taskToUIO)(uioToTask) //wire[UIOStatTracker]
+  lazy val statTracker: StatTracker[UIO] = (wire[StatTracker.StatTrackerInstant[Task, ParTask]]: StatTracker[Task])
+    .imapK(taskToUIO)(uioToTask) //wire[UIOStatTracker]
   lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
     val api = config.security.api
     runtime.unsafeRun(

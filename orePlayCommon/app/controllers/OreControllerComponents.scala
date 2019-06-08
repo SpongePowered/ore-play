@@ -37,7 +37,6 @@ trait OreControllerEffects[F[_]] {
 
 case class DefaultOreControllerComponents @Inject()(
     uioEffects: OreControllerEffects[UIO],
-    taskEffects: OreControllerEffects[Task],
     bakery: Bakery,
     config: OreConfig,
     actionBuilder: DefaultActionBuilder,
