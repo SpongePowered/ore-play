@@ -32,6 +32,17 @@ body {
 .site-header-margin {
   margin-top: 63px;
   padding-top: 1.5rem;
+
+  &.staging {
+    padding-top: 3rem;
+  }
+}
+
+.staging-warning {
+  background: #ff544b;
+  text-align: center;
+  padding: 0.25rem 0;
+  color: white;
 }
 
 .modal-body {

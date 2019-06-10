@@ -50,6 +50,7 @@ final class OreConfig @Inject()(config: Configuration) {
     val raw: Configuration = root.get[Configuration]("ore")
     val debug: Boolean     = raw.get[Boolean]("debug")
     val debugLevel: Int    = raw.get[Int]("debug-level")
+    var staging: Boolean   = raw.get[Boolean]("staging")
 
     object homepage extends ConfigCategory {
       val raw: Configuration             = ore.raw.get[Configuration]("homepage")

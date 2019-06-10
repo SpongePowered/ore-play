@@ -49,7 +49,7 @@ this.
             @if(noContainer) {
               @content
             } else {
-                <div class="container @if(showHeader){site-header-margin}">
+                <div class="container @if(showHeader){site-header-margin}@if(config.ore.staging){ staging}">
                     <div class="row">
                         <div class="col-xs-12">
                             @utils.alert("success")

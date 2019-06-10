@@ -219,4 +219,9 @@ The main header displayed on each layout.
             </ul>
         }
     </div>
+    @if(config.ore.staging) {
+        <div class="staging-warning">
+        @messages("general.stagingWarning")
+        </div>
+    }
 </nav>
