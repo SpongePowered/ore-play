@@ -45,36 +45,4 @@ $(function() {
         }
         go(url);
     });
-
-    const searchBar = $('.project-search');
-    searchBar.find('input').on('keypress', function(event) {
-        if (event.keyCode === KEY_ENTER) {
-            event.preventDefault();
-            $(this).next().find('.btn').click();
-        }
-    });
-    searchBar.find('.btn').click(function() {
-        const query = $(this).closest('.input-group').find('input').val();
-        let url = '/?q=' + query;
-        if (CATEGORY_STRING) url += '&categories=' + CATEGORY_STRING;
-        if (SORT_STRING) url += '&sort=' + SORT_STRING;
-        go(url);
-    });
-
-    // Initialize sorting selection
-    $('.select-sort').on('change', function() {
-        var url = '/?sort=' + $(this).find('option:selected').val();
-        if (QUERY_STRING) url += '&q=' + QUERY_STRING;
-        if (CATEGORY_STRING) url += '&categories=' + CATEGORY_STRING;
-        if (ORDER_WITH_RELEVANCE) url += '&relevance=' + ORDER_WITH_RELEVANCE;
-        go(url);
-    });
-
-    $('#relevanceBox').change(function() {
-        var url = '/?relevance=' + this.checked;
-        if (QUERY_STRING) url += '&q=' + QUERY_STRING;
-        if (CATEGORY_STRING) url += '&categories=' + CATEGORY_STRING;
-        if (SORT_STRING) url += '&sort=' + SORT_STRING;
-        go(url);
-    });
 });
