@@ -64,64 +64,8 @@ final class Application @Inject()(forms: OreForms)(
     *
     * @return Home page
     */
-  def showHome(
-      categories: Seq[String],
-      query: Option[String],
-      sort: Option[String],
-      page: Option[Int],
-      platformCategory: Option[String],
-      platform: Option[String],
-      orderWithRelevance: Option[Boolean]
-  ): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    import cats.instances.list._
-    import cats.instances.option._
-
-    val canSeeHidden  = request.headerData.globalPerm(Permission.SeeHidden)
-    val currentUserId = request.headerData.currentUser.map(_.id.value)
-
-    // Get categories and sorting strategy
-    val withRelevance = orderWithRelevance.getOrElse(true)
-    val ordering =
-      sort.flatMap(s => ProjectSortingStrategy.values.find(_.apiName == s)).getOrElse(ProjectSortingStrategy.Default)
-    val pcat  = platformCategory.flatMap(p => PlatformCategory.getPlatformCategories.find(_.name.equalsIgnoreCase(p)))
-    val pform = platform.flatMap(p => Platform.values.find(_.name.equalsIgnoreCase(p)))
-
-    // get the categories being queried
-    val categoryPlatformNames = pcat.toList.flatMap(_.getPlatforms.map(_.name))
-    val platformNames         = (pform.map(_.name).toList ::: categoryPlatformNames).map(_.toLowerCase)
-
-    val categoryList = categories.toList.traverse(Category.fromApiName).getOrElse(Nil)
-
-    val pageSize = this.config.ore.projects.initLoad
-    val pageNum  = math.max(page.getOrElse(1), 1)
-    val offset   = (pageNum - 1) * pageSize
-
-    val projectNumQ = TableQuery[ProjectTableMain].filter(_.visibility === (Visibility.Public: Visibility)).size
-
-    val projectListF = service
-      .runDbCon(
-        AppQueries
-          .getHomeProjects(
-            currentUserId,
-            canSeeHidden,
-            platformNames,
-            categoryList,
-            query.filter(_.nonEmpty),
-            ordering,
-            offset,
-            pageSize,
-            withRelevance
-          )
-          .to[Vector]
-      )
-      .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon))
-    val projectNumF = service.runDBIO(projectNumQ.result)
-
-    (projectListF, projectNumF).parMapN { (data, projectNum) =>
-      val catList =
-        if (categoryList.isEmpty || Category.visible.toSet.equals(categoryList.toSet)) None else Some(categoryList)
-      Ok(views.home(data, catList, query.filter(_.nonEmpty), pageNum, ordering, pcat, pform, withRelevance, projectNum))
-    }
+  def showHome(): Action[AnyContent] = OreAction { implicit request =>
+    Ok(views.home())
   }
 
   /**

@@ -44,6 +44,6 @@ export class Platform {
 
 const root = require('./Home.vue').default;
 const app = new Vue({
-    el: '#app',
+    el: '#home',
     render: createElement => createElement(root),
 });
