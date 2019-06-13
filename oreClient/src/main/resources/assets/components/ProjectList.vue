@@ -1,52 +1,57 @@
 <template>
     <div>
-        <ul class="list-group project-list">
-            <li v-for="project in projects" class="list-group-item project @entry.visibility.cssClass">
-                <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-xs-12 col-sm-1">
-                            <img class="user-avatar user-avatar-sm" :src="project.icon_url" :alt="project.name" />
-                        </div>
-                        <div class="col-xs-12 col-sm-11">
-                            <div class="row">
-                                <div class="col-sm-6">
-                                    <a class="title" href="@projectRoutes.show(entry.namespace.ownerName, entry.namespace.slug)">{{ project.name }}</a>
-                                </div>
-                                <div class="col-sm-6 hidden-xs">
-                                    <div class="info minor">
+        <div v-show="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Loading projects for you...</span>
+        </div>
+        <div v-show="!loading">
+            <ul class="list-group project-list">
+                <li v-for="project in projects" class="list-group-item project @entry.visibility.cssClass">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-1">
+                                <img class="user-avatar user-avatar-sm" :src="project.icon_url" :alt="project.name" />
+                            </div>
+                            <div class="col-xs-12 col-sm-11">
+                                <div class="row">
+                                    <div class="col-sm-6">
+                                        <a class="title" :href="routes.Projects.show(project.namespace.owner, project.namespace.slug).absoluteURL()">{{ project.name }}</a>
+                                    </div>
+                                    <div class="col-sm-6 hidden-xs">
+                                        <div class="info minor">
                                     <span class="stat recommended-version" title="Recommended version" v-if="project.recommended_version">
                                             <i class="far fa-gem"></i>
-                                            <a href="@controllers.project.routes.Versions.show(
-                                                entry.namespace.ownerName, entry.namespace.slug, recommendedVersion)">
+                                            <a :href="routes.Versions.show(project.namespace.owner, project.namespace.slug, project.recommended_version.version).absoluteURL()">
                                                 {{ project.recommended_version.version }}
                                             </a>
                                     </span>
 
-                                        <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ project.stats.views }}</span>
-                                        <span class="stat" title="Download"><i class="fas fa-download"></i> {{ project.stats.downloads }}</span>
-                                        <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ project.stats.stars }}</span>
+                                            <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ project.stats.views }}</span>
+                                            <span class="stat" title="Download"><i class="fas fa-download"></i> {{ project.stats.downloads }}</span>
+                                            <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ project.stats.stars }}</span>
 
-                                        <span class="stat" :title="categoryFromId(project.category).name">
+                                            <span class="stat" :title="categoryFromId(project.category).name">
                                             <i class="fas" :class="'fa-' + categoryFromId(project.category).icon"></i>
                                     </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-sm-7 description-column">
-                                    <div class="description">{{ project.description }}</div>
-                                </div>
-                                <div class="col-xs-12 col-sm-5 tags-line" v-if="project.recommended_version">
-                                    <Tag v-for="tag in filterTags(project.recommended_version.tags)"
-                                         v-bind="tag" v-bind:key="project.name + '-' + tag.name"></Tag>
+                                <div class="row">
+                                    <div class="col-sm-7 description-column">
+                                        <div class="description">{{ project.description }}</div>
+                                    </div>
+                                    <div class="col-xs-12 col-sm-5 tags-line" v-if="project.recommended_version">
+                                        <Tag v-for="tag in filterTags(project.recommended_version.tags)"
+                                             v-bind="tag" v-bind:key="project.name + '-' + tag.name"></Tag>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </li>
-        </ul>
-        <Pagination :current="current" :total="total" @prev="previousPage" @next="nextPage" @jumpTo="jumpToPage($event)"></Pagination>
+                </li>
+            </ul>
+            <Pagination :current="current" :total="total" @prev="previousPage" @next="nextPage" @jumpTo="jumpToPage($event)"></Pagination>
+        </div>
     </div>
 </template>
 
@@ -85,7 +90,8 @@
         data () {
             return {
                 projects: [],
-                totalProjects: 0
+                totalProjects: 0,
+                loading: true
             }
         },
         computed: {
@@ -94,6 +100,9 @@
             },
             total: function () {
                 return Math.ceil(this.totalProjects / this.limit)
+            },
+            routes: function () {
+                return jsRoutes.controllers.project;
             }
         },
         created() {
@@ -104,6 +113,7 @@
                 apiV2Request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
                     this.projects = response.result;
                     this.totalProjects = response.pagination.count;
+                    this.loading = false;
                 });
             },
             categoryFromId: function (id) {

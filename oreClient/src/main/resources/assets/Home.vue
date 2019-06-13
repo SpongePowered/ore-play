@@ -2,19 +2,18 @@
     <div class="row">
         <div class="col-md-9">
             <div class="project-search">
-                <input type="text" class="form-control" v-model="q" @keydown="deboundedUpdateProps"
-                       placeholder="Search in all projects, proudly made by the community..." />
+                <input type="text" class="form-control" v-model="q" placeholder="Search in all projects, proudly made by the community..." />
             </div>
             <project-list v-bind="listBinding" ref="list" @prevPage="previousPage"
                           @nextPage="nextPage" @jumpToPage="jumpToPage($event)"></project-list>
         </div>
         <div class="col-md-3">
-            <select class="form-control select-sort" v-model="sort" @change="deboundedUpdateProps">
+            <select class="form-control select-sort" v-model="sort" @change="resetPage">
                 <option v-for="option in sortOptions" :value="option.id">{{ option.name }}</option>
             </select>
 
             <div>
-                <input type="checkbox" id="relevanceBox" v-model="relevance" @change="deboundedUpdateProps">
+                <input type="checkbox" id="relevanceBox" v-model="relevance">
                 <label for="relevanceBox">Sort with relevance</label>
                 <div class="panel panel-default">
                     <div class="panel-heading">
@@ -56,7 +55,7 @@
     import ProjectList from "./components/ProjectList.vue"
     import debounce from "lodash/debounce"
     import queryString from "query-string"
-    import {clearFromDefaults, clearFromEmpty} from "./utils"
+    import {clearFromDefaults} from "./utils"
     import {Category, Platform, SortOptions} from "./home";
 
     function defaultData() {
@@ -78,9 +77,6 @@
         },
         data: defaultData,
         computed: {
-            nonDefaults: function () {
-                return clearFromDefaults(clearFromEmpty(this.$data), defaultData);
-            },
             allCategories: function () {
                 return Category.values;
             },
@@ -107,29 +103,32 @@
             }
         },
         methods: {
+            resetPage: function() {
+                this.page = 1;
+            },
             changeCategory: function(category) {
                 if(this.categories.includes(category.id)) {
                     this.categories.splice(this.categories.indexOf(category.id), 1);
-                    this.page = 1;
+                    this.resetPage();
                 } else if(this.categories.length + 1 === Category.values.length) {
                     this.clearCategory();
                 } else {
                     this.categories.push(category.id);
-                    this.page = 1;
+                    this.resetPage();
                 }
             },
             clearCategory: function() {
                 this.categories.splice(0, this.categories.length);
-                this.page = 1;
+                this.resetPage();
             },
             changePlatform: function(platform) {
                 this.clearPlatform();
                 this.tags.push(platform.id);
-                this.page = 1;
+                this.resetPage();
             },
             clearPlatform: function() {
                 this.tags.splice(0, this.tags.length);
-                this.page = 1;
+                this.resetPage();
             },
             updateProps: function () {
                 const query = queryString.stringify(this.urlBinding, {arrayFormat: 'bracket'});

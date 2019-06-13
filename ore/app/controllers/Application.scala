@@ -9,6 +9,7 @@ import javax.inject.{Inject, Singleton}
 import scala.util.Try
 
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
+import play.api.routing.JavaScriptReverseRouter
 
 import controllers.sugar.Requests.AuthRequest
 import db.impl.query.AppQueries
@@ -49,6 +50,15 @@ final class Application @Inject()(forms: OreForms)(
 ) extends OreBaseController {
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
+
+  def javascriptRoutes = Action { implicit request =>
+    Ok(
+      JavaScriptReverseRouter("jsRoutes")(
+        controllers.project.routes.javascript.Projects.show,
+        controllers.project.routes.javascript.Versions.show,
+      )
+    ).as("text/javascript")
+  }
 
   /**
     * Show external link warning page.

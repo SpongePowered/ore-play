@@ -76,6 +76,7 @@ this.
         }
 
         @if(scriptsEnabled) {
+            <script type="text/javascript" src="@routes.Application.javascriptRoutes"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("vue/commons.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/moment/min/moment.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("bootstrap/js/bootstrap.min.js")"></script>
