@@ -218,7 +218,6 @@ lazy val oreClient = project
     //Probably not used as it's not used in the App anywhere
     npmDependencies in Compile ++= Seq(
       "vue"    -> "2.6.10",
-      "vuex"   -> "3.1.1",
       "lodash" -> "4.17.11",
     ),
     npmDevDependencies in Compile ++= Seq(

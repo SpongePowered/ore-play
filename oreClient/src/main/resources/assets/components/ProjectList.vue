@@ -35,8 +35,9 @@
                             <div class="col-sm-7 description-column">
                                 <div class="description">{{ project.description }}</div>
                             </div>
-                            <div class="col-xs-12 col-sm-5 tags-line">
-                                <Tag v-for="tag in filterTags(project.recommended_version.tags)" v-bind="tag" v-bind:key="tag.name"></Tag>
+                            <div class="col-xs-12 col-sm-5 tags-line" v-if="project.recommended_version">
+                                <Tag v-for="tag in filterTags(project.recommended_version.tags)"
+                                     v-bind="tag" v-bind:key="project.name + '-' + tag.name"></Tag>
                             </div>
                         </div>
                     </div>
@@ -95,4 +96,84 @@
 </script>
 
 <style lang="scss">
+    @import "./../scss/variables";
+
+    .project-list {
+        .row {
+            display: flex;
+            flex-wrap: nowrap;
+        }
+
+        @media (max-width: 767px) {
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+            }
+        }
+
+        .project {
+            padding: 10px 0;
+            margin-bottom: 0.25rem;
+
+            &:first-child {
+                margin-top: 0.25rem;
+            }
+        }
+
+        .title {
+            font-size: 2rem;
+            color: $sponge_grey;
+            font-weight: bold;
+        }
+
+        .description-column {
+            overflow: hidden;
+
+            .description {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+
+        .tags-line {
+            display: flex;
+            justify-content: flex-end;
+
+            @media (max-width: 480px) {
+                justify-content: flex-start;
+                margin-top: 0.5rem;
+            }
+
+            .tags {
+                margin-right: 0.5rem;
+            }
+
+            :last-child {
+                margin-right: 0;
+            }
+
+            .tag {
+                margin: 0;
+            }
+        }
+
+        .info {
+            display: flex;
+            justify-content: flex-end;
+
+            span {
+                margin-right: 1.5rem;
+
+                &:last-child {
+                    margin-right: 0;
+                }
+
+                &.recommended-version a {
+                    font-weight: bold;
+                    color: #636363;
+                }
+            }
+        }
+    }
 </style>

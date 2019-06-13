@@ -2,30 +2,30 @@
     <div class="row">
         <div class="col-md-9">
             <div class="project-search">
-                <input type="text" class="form-control" v-model="properties.q" @keydown="deboundedUpdateProps"
+                <input type="text" class="form-control" v-model="q" @keydown="deboundedUpdateProps"
                        placeholder="Search in all projects, proudly made by the community..." />
             </div>
-            <project-list v-bind="changedProperties" ref="list"></project-list>
+            <project-list v-bind="listBinding" ref="list"></project-list>
         </div>
         <div class="col-md-3">
-            <select class="form-control select-sort" v-model="properties.sort" @change="deboundedUpdateProps">
+            <select class="form-control select-sort" v-model="sort" @change="deboundedUpdateProps">
                 <option v-for="option in sortOptions" :value="option.id">{{ option.name }}</option>
             </select>
 
             <div>
-                <input type="checkbox" id="relevanceBox" v-model="properties.relevance" @change="deboundedUpdateProps">
+                <input type="checkbox" id="relevanceBox" v-model="relevance" @change="deboundedUpdateProps">
                 <label for="relevanceBox">Sort with relevance</label>
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">Categories</h3>
-                        <a class="category-reset" @click="clearCategory" v-if="properties.categories.length > 0">
+                        <a class="category-reset" @click="clearCategory" v-if="categories.length > 0">
                             <i class="fas fa-times white"></i>
                         </a>
                     </div>
 
                     <div class="list-group category-list">
-                        <a v-for="category in categories" class="list-group-item" @click="changeCategory(category)"
-                           v-bind:class="{ active: properties.categories.includes(category.id) }">
+                        <a v-for="category in allCategories" class="list-group-item" @click="changeCategory(category)"
+                           v-bind:class="{ active: categories.includes(category.id) }">
                             <i class="fas fa-fw" :class="'fa-' + category.icon"></i>
                             <strong>{{ category.name }}</strong>
                         </a>
@@ -37,7 +37,11 @@
                     </div>
 
                     <div class="list-group platform-list">
-                        <a v-for="platform in platforms" class="list-group-item" @click="changePlatform(platform)">
+                        <a class="list-group-item" @click="clearPlatform" v-bind:class="{ active: tags.length === 0 }">
+                            <span class="parent">Any</span>
+                        </a>
+                        <a v-for="platform in platforms" class="list-group-item" @click="changePlatform(platform)"
+                           v-bind:class="{ active: tags.includes(platform.id) }">
                             <span :class="{parent: platform.parent}">{{ platform.name }}</span>
                         </a>
                     </div>
@@ -52,86 +56,96 @@
     import debounce from "lodash/debounce"
     import queryString from "query-string"
     import {clearFromDefaults, clearFromEmpty} from "./utils"
-    import {Category, Platform} from "./home";
+    import {Category, Platform, SortOptions} from "./home";
 
-    const defaultData = {
-        properties: {
+    function defaultData() {
+        return {
             q: "",
             sort: "updated",
             relevance: true,
             categories: [],
-            tags: ["Sponge"]
-        }
-    };
+            tags: [],
+            page: 0,
+            offset: 0,
+            limit: 25
+        };
+    }
 
     export default {
         components: {
             ProjectList
         },
-        data: function () {
-            return {
-                properties: JSON.parse(JSON.stringify(defaultData.properties)),
-                sortOptions: [
-                    {id: "stars",          name: "Most Stars"},
-                    {id: "downloads",      name: "Most Downloads"},
-                    {id: "views",          name: "Most Views"},
-                    {id: "newest",         name: "Newest"},
-                    {id: "updated",        name: "Recently updated"},
-                    {id: "only_relevance", name: "Only relevance"}
-                ],
-            };
-        },
+        data: defaultData,
         computed: {
-            changedProperties: function () {
-                return clearFromDefaults(clearFromEmpty(this.properties), defaultData.properties);
+            nonDefaults: function () {
+                return clearFromDefaults(clearFromEmpty(this.$data), defaultData);
             },
-            categories: function () {
+            allCategories: function () {
                 return Category.values;
             },
             platforms: function () {
                 return Platform.values;
+            },
+            sortOptions: function () {
+                return SortOptions;
+            },
+            baseBinding: function () {
+                return {
+                    q: this.q,
+                    sort: this.sort,
+                    relevance: this.relevance,
+                    categories: this.categories,
+                    tags: this.tags
+                }
+            },
+            listBinding: function () {
+                return clearFromDefaults(Object.assign({}, this.baseBinding, {offset: this.page * this.limit, limit: this.limit}), defaultData())
+            },
+            urlBinding: function () {
+                return clearFromDefaults(Object.assign({}, this.baseBinding, {page: this.page}), defaultData())
             }
         },
         methods: {
             changeCategory: function(category) {
-                if(this.properties.categories.includes(category.id)) {
-                    this.properties.categories.splice(this.properties.categories.indexOf(category.id), 1)
+                if(this.categories.includes(category.id)) {
+                    this.categories.splice(this.categories.indexOf(category.id), 1);
+                } else if(this.categories.length + 1 === Category.values.length) {
+                    this.clearCategory();
                 } else {
-                    this.properties.categories.push(category.id);
+                    this.categories.push(category.id);
                 }
-                this.updateProps();
             },
             clearCategory: function() {
-                this.properties.categories.splice(0, this.properties.categories.length);
-                this.updateProps();
+                this.categories.splice(0, this.categories.length);
             },
             changePlatform: function(platform) {
-                this.properties.tags.splice(0, this.properties.tags.length);
-                this.properties.tags.push(platform.id);
-                this.updateProps();
+                this.clearPlatform();
+                this.tags.push(platform.id);
+            },
+            clearPlatform: function() {
+                this.tags.splice(0, this.tags.length);
             },
             updateProps: function () {
+                const query = queryString.stringify(this.urlBinding, {arrayFormat: 'bracket'});
+                window.history.pushState(null, null, query !== "" ? "?" + query : "/");
                 this.$refs.list.update();
-                window.history.pushState(null, null, "?" + queryString.stringify(this.changedProperties, {arrayFormat: 'bracket'}))
             }
         },
         created() {
             this.deboundedUpdateProps = debounce(this.updateProps, 500);
 
-            const props = Object.entries(queryString.parse(location.search, {arrayFormat: 'bracket'}))
-                .filter(([key, value]) => defaultData.properties.hasOwnProperty(key));
-
-            if(props.length > 0) {
-                props.forEach(([key, value]) => this.properties[key] = value);
-                this.deboundedUpdateProps();
-            }
+            Object.entries(queryString.parse(location.search, {arrayFormat: 'bracket'}))
+                .filter(([key, value]) => defaultData().hasOwnProperty(key))
+                .forEach(([key, value]) => this.$data[key] = value);
+        },
+        updated() {
+            this.deboundedUpdateProps();
         }
     }
 </script>
 
 <style lang="scss">
-    @import "../../../../../ore/app/assets/stylesheets/sponge_variables";
-    @import "../../../../../ore/app/assets/stylesheets/pallette";
+    @import "./scss/variables";
 
     .select-sort {
         margin-bottom: 10px;

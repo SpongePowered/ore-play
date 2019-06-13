@@ -42,6 +42,15 @@ export class Platform {
     }
 }
 
+export const SortOptions = [
+    {id: "stars",          name: "Most Stars"},
+    {id: "downloads",      name: "Most Downloads"},
+    {id: "views",          name: "Most Views"},
+    {id: "newest",         name: "Newest"},
+    {id: "updated",        name: "Recently updated"},
+    {id: "only_relevance", name: "Only relevance"}
+];
+
 const root = require('./Home.vue').default;
 const app = new Vue({
     el: '#home',
