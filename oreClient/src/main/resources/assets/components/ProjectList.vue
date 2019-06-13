@@ -110,10 +110,12 @@
         },
         methods: {
             update: function() {
+                const vue = this;
                 apiV2Request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
                     this.projects = response.result;
                     this.totalProjects = response.pagination.count;
                     this.loading = false;
+                    this.$emit('update:projectCount', this.totalProjects);
                 });
             },
             categoryFromId: function (id) {

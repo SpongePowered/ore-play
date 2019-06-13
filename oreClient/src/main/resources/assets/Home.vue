@@ -2,10 +2,10 @@
     <div class="row">
         <div class="col-md-9">
             <div class="project-search">
-                <input type="text" class="form-control" v-model="q" placeholder="Search in all projects, proudly made by the community..." />
+                <input type="text" class="form-control" v-model="q" :placeholder="'Search in ' + projectCountPlaceholder + ' projects, proudly made by the community...'" />
             </div>
             <project-list v-bind="listBinding" ref="list" @prevPage="previousPage"
-                          @nextPage="nextPage" @jumpToPage="jumpToPage($event)"></project-list>
+                          @nextPage="nextPage" @jumpToPage="jumpToPage($event)" v-bind:projectCount.sync="projectCount"></project-list>
         </div>
         <div class="col-md-3">
             <select class="form-control select-sort" v-model="sort" @change="resetPage">
@@ -67,7 +67,8 @@
             tags: [],
             page: 1,
             offset: 0,
-            limit: 25
+            limit: 25,
+            projectCount: null
         };
     }
 
@@ -100,6 +101,9 @@
             },
             urlBinding: function () {
                 return clearFromDefaults(Object.assign({}, this.baseBinding, {page: this.page}), defaultData())
+            },
+            projectCountPlaceholder: function () {
+                return this.projectCount === null ? "all" : this.projectCount;
             }
         },
         methods: {
