@@ -1,18 +1,19 @@
 <template>
-    <ul class="list-group project-list">
-        <li v-for="project in projects" class="list-group-item project @entry.visibility.cssClass">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-xs-12 col-sm-1">
-                        <img class="user-avatar user-avatar-sm" :src="project.icon_url" :alt="project.name" />
-                    </div>
-                    <div class="col-xs-12 col-sm-11">
-                        <div class="row">
-                            <div class="col-sm-6">
-                                <a class="title" href="@projectRoutes.show(entry.namespace.ownerName, entry.namespace.slug)">{{ project.name }}</a>
-                            </div>
-                            <div class="col-sm-6 hidden-xs">
-                                <div class="info minor">
+    <div>
+        <ul class="list-group project-list">
+            <li v-for="project in projects" class="list-group-item project @entry.visibility.cssClass">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-1">
+                            <img class="user-avatar user-avatar-sm" :src="project.icon_url" :alt="project.name" />
+                        </div>
+                        <div class="col-xs-12 col-sm-11">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <a class="title" href="@projectRoutes.show(entry.namespace.ownerName, entry.namespace.slug)">{{ project.name }}</a>
+                                </div>
+                                <div class="col-sm-6 hidden-xs">
+                                    <div class="info minor">
                                     <span class="stat recommended-version" title="Recommended version" v-if="project.recommended_version">
                                             <i class="far fa-gem"></i>
                                             <a href="@controllers.project.routes.Versions.show(
@@ -21,40 +22,44 @@
                                             </a>
                                     </span>
 
-                                    <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ project.stats.views }}</span>
-                                    <span class="stat" title="Download"><i class="fas fa-download"></i> {{ project.stats.downloads }}</span>
-                                    <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ project.stats.stars }}</span>
+                                        <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ project.stats.views }}</span>
+                                        <span class="stat" title="Download"><i class="fas fa-download"></i> {{ project.stats.downloads }}</span>
+                                        <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ project.stats.stars }}</span>
 
-                                    <span class="stat" :title="categoryFromId(project.category).name">
+                                        <span class="stat" :title="categoryFromId(project.category).name">
                                             <i class="fas" :class="'fa-' + categoryFromId(project.category).icon"></i>
                                     </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-sm-7 description-column">
-                                <div class="description">{{ project.description }}</div>
-                            </div>
-                            <div class="col-xs-12 col-sm-5 tags-line" v-if="project.recommended_version">
-                                <Tag v-for="tag in filterTags(project.recommended_version.tags)"
-                                     v-bind="tag" v-bind:key="project.name + '-' + tag.name"></Tag>
+                            <div class="row">
+                                <div class="col-sm-7 description-column">
+                                    <div class="description">{{ project.description }}</div>
+                                </div>
+                                <div class="col-xs-12 col-sm-5 tags-line" v-if="project.recommended_version">
+                                    <Tag v-for="tag in filterTags(project.recommended_version.tags)"
+                                         v-bind="tag" v-bind:key="project.name + '-' + tag.name"></Tag>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </li>
-    </ul>
+            </li>
+        </ul>
+        <Pagination :current="current" :total="total" @prev="previousPage" @next="nextPage" @jumpTo="jumpToPage($event)"></Pagination>
+    </div>
 </template>
 
 <script>
     import Tag from "./Tag.vue"
     import { clearFromEmpty } from "./../utils"
     import {Category, Platform} from "../home";
+    import Pagination from "./Pagination.vue";
 
     export default {
         components: {
-            Tag
+            Tag,
+            Pagination
         },
         props: {
             q: String,
@@ -68,21 +73,37 @@
                 type: Boolean,
                 default: true
             },
-            limit: Number,
-            offset: Number
+            limit: {
+                type: Number,
+                default: 25
+            },
+            offset: {
+                type: Number,
+                default: 0
+            }
         },
         data () {
             return {
-                projects: []
+                projects: [],
+                totalProjects: 0
             }
         },
-        mounted() {
+        computed: {
+            current: function () {
+                return Math.ceil(this.offset / this.limit) + 1;
+            },
+            total: function () {
+                return Math.ceil(this.totalProjects / this.limit)
+            }
+        },
+        created() {
             this.update();
         },
         methods: {
             update: function() {
                 apiV2Request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
                     this.projects = response.result;
+                    this.totalProjects = response.pagination.count;
                 });
             },
             categoryFromId: function (id) {
@@ -90,6 +111,15 @@
             },
             filterTags: function (tags) {
                 return Platform.filterTags(tags);
+            },
+            previousPage: function() {
+                this.$emit('prevPage')
+            },
+            nextPage: function () {
+                this.$emit('nextPage')
+            },
+            jumpToPage: function (page) {
+                this.$emit('jumpToPage', page)
             }
         }
     }
@@ -99,6 +129,8 @@
     @import "./../scss/variables";
 
     .project-list {
+        margin-bottom: 0;
+
         .row {
             display: flex;
             flex-wrap: nowrap;
