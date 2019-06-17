@@ -44,9 +44,12 @@ function apiV2Request(url, method = "GET", data = {}) {
 function getApiSession() {
     return new Promise(function (resolve, reject) {
         let session;
+        const date = new Date();
+        date.setTime(date.getTime() + 60000);
+
         if (isLoggedIn) {
             session = localStorage.getItem('api_session');
-            if (session === null || new Date(JSON.parse(session).expires) < moment(new Date()).add(1, 'm').toDate()) {
+            if (session === null || new Date(JSON.parse(session).expires) < date) {
                 return $.ajax({
                     url: '/api/v2/authenticate/user',
                     method: 'POST',
@@ -66,7 +69,7 @@ function getApiSession() {
             }
         } else {
             session = localStorage.getItem('public_api_session');
-            if (session === null|| new Date(JSON.parse(session).expires) < moment(new Date()).add(1, 'm').toDate()) {
+            if (session === null|| new Date(JSON.parse(session).expires) < date) {
                 $.ajax({
                     url: '/api/v2/authenticate',
                     method: 'POST',
