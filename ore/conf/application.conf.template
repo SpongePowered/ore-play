@@ -157,6 +157,10 @@ ore {
     }
 }
 
+performance {
+    vcpus = -1
+}
+
 mail {
     username           =   "example"
     username           =   ${?ORE_EMAIL_USER}
