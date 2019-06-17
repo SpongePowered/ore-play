@@ -52,7 +52,7 @@
 </template>
 
 <script>
-    import ProjectList from "./components/ProjectList.vue"
+    import ProjectList from "./components/ProjectList"
     import queryString from "query-string"
     import {clearFromDefaults} from "./utils"
     import {Category, Platform, SortOptions} from "./home";

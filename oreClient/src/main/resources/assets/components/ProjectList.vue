@@ -58,11 +58,11 @@
 </template>
 
 <script>
-    import Tag from "./Tag.vue"
-    import { clearFromEmpty } from "./../utils"
+    import Tag from "./Tag"
+    import {clearFromEmpty} from "./../utils"
     import {Category, Platform} from "../home";
-    import Pagination from "./Pagination.vue";
-    import Icon from "./Icon.vue"
+    import Pagination from "./Pagination";
+    import Icon from "./Icon"
     import debounce from "lodash/debounce"
 
     export default {
