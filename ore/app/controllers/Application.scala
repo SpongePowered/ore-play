@@ -56,6 +56,7 @@ final class Application @Inject()(forms: OreForms)(
       JavaScriptReverseRouter("jsRoutes")(
         controllers.project.routes.javascript.Projects.show,
         controllers.project.routes.javascript.Versions.show,
+        controllers.routes.javascript.Users.showProjects
       )
     ).as("text/javascript")
   }

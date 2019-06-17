@@ -6,6 +6,12 @@ export function clearFromEmpty(object) {
 
 export function clearFromDefaults(object, defaults) {
     return Object.entries(object)
-        .filter(([key, value]) => value !== defaults[key])
+        .filter(([key, value]) => {
+            if(value instanceof Array && defaults[key] instanceof Array) {
+                return value.length !== defaults[key].length;
+            }
+
+            return value !== defaults[key];
+        })
         .reduce((acc, [key, value]) => ({...acc, [key]: value}), {})
 }

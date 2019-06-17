@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col-md-9">
             <div class="project-search">
-                <input type="text" class="form-control" v-model="q" :placeholder="'Search in ' + projectCountPlaceholder + ' projects, proudly made by the community...'" />
+                <input type="text" class="form-control" v-model="q" @keydown="resetPage" :placeholder="queryPlaceholder" />
             </div>
             <project-list v-bind="listBinding" ref="list" @prevPage="previousPage"
                           @nextPage="nextPage" @jumpToPage="jumpToPage($event)" v-bind:projectCount.sync="projectCount"></project-list>
@@ -102,8 +102,10 @@
             urlBinding: function () {
                 return clearFromDefaults(Object.assign({}, this.baseBinding, {page: this.page}), defaultData())
             },
-            projectCountPlaceholder: function () {
-                return this.projectCount === null ? "all" : this.projectCount;
+            queryPlaceholder: function () {
+                return `Search in ${this.projectCount === null ? "all" : this.projectCount} projects` +
+                    `${Object.keys(clearFromDefaults(this.baseBinding, defaultData())).length > 0 ? " fitting your filters" : ""}` +
+                    ", proudly made by the community...";
             }
         },
         methods: {

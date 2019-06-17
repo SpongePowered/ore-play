@@ -205,7 +205,6 @@ lazy val oreClient = project
     name := "ore-client",
     commonSettings,
     useYarn := true,
-    scalacOptions += "-P:scalajs:sjsDefinedByDefault",
     scalaJSUseMainModuleInitializer := false,
     scalaJSModuleKind := ModuleKind.CommonJSModule,
     webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
@@ -219,6 +218,7 @@ lazy val oreClient = project
     npmDependencies in Compile ++= Seq(
       "vue"    -> "2.6.10",
       "lodash" -> "4.17.11",
+      "query-string"                       -> "6.5.0",
     ),
     npmDevDependencies in Compile ++= Seq(
       "webpack-merge"                      -> "4.1.0",
@@ -235,7 +235,6 @@ lazy val oreClient = project
       "postcss-loader"                     -> "3.0.0",
       "autoprefixer"                       -> "9.5.1",
       "node-sass"                          -> "4.12.0",
-      "query-string"                       -> "6.5.0",
     )
   )
 

@@ -10,12 +10,14 @@
                     <div class="container-fluid">
                         <div class="row">
                             <div class="col-xs-12 col-sm-1">
-                                <img class="user-avatar user-avatar-sm" :src="project.icon_url" :alt="project.name" />
+                                <Icon extra-classes="user-avatar-sm" :src="project.icon_url" :name="project.name"></Icon>
                             </div>
                             <div class="col-xs-12 col-sm-11">
                                 <div class="row">
                                     <div class="col-sm-6">
-                                        <a class="title" :href="routes.Projects.show(project.namespace.owner, project.namespace.slug).absoluteURL()">{{ project.name }}</a>
+                                        <a class="title" :href="routes.Projects.show(project.namespace.owner, project.namespace.slug).absoluteURL()">
+                                            {{ project.name }}
+                                        </a>
                                     </div>
                                     <div class="col-sm-6 hidden-xs">
                                         <div class="info minor">
@@ -60,11 +62,13 @@
     import { clearFromEmpty } from "./../utils"
     import {Category, Platform} from "../home";
     import Pagination from "./Pagination.vue";
+    import Icon from "./Icon.vue"
 
     export default {
         components: {
             Tag,
-            Pagination
+            Pagination,
+            Icon
         },
         props: {
             q: String,
@@ -110,7 +114,6 @@
         },
         methods: {
             update: function() {
-                const vue = this;
                 apiV2Request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
                     this.projects = response.result;
                     this.totalProjects = response.pagination.count;
