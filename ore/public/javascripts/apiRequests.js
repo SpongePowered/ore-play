@@ -48,8 +48,8 @@ function getApiSession() {
         date.setTime(date.getTime() + 60000);
 
         if (isLoggedIn) {
-            session = localStorage.getItem('api_session');
-            if (session === null || new Date(JSON.parse(session).expires) < date) {
+            session = parseOrNull(localStorage.getItem('api_session'));
+            if (session === null || !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < date) {
                 return $.ajax({
                     url: '/api/v2/authenticate/user',
                     method: 'POST',
@@ -65,11 +65,11 @@ function getApiSession() {
                     reject(xhr.statusText)
                 })
             } else {
-                resolve(JSON.parse(session).session);
+                resolve(session.session);
             }
         } else {
-            session = localStorage.getItem('public_api_session');
-            if (session === null|| new Date(JSON.parse(session).expires) < date) {
+            session = parseOrNull(localStorage.getItem('public_api_session'));
+            if (session === null || !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < date) {
                 $.ajax({
                     url: '/api/v2/authenticate',
                     method: 'POST',
@@ -85,7 +85,7 @@ function getApiSession() {
                     reject(xhr.statusText)
                 })
             } else {
-                resolve(JSON.parse(session).session);
+                resolve(session.session);
             }
         }
     });
@@ -97,5 +97,13 @@ function invalidateApiSession() {
     }
     else {
         localStorage.removeItem('public_api_session')
+    }
+}
+
+function parseOrNull(jsonString) {
+    try {
+        return JSON.parse(jsonString);
+    } catch (e) {
+        return null;
     }
 }
