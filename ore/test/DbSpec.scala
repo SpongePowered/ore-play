@@ -19,7 +19,7 @@ trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAft
 
   implicit val runtime: zio.Runtime[Any] = new DefaultRuntime {}
 
-  implicit override def M: Effect[Task] = Effect[Task]
+  implicit override def M: Effect[Task] = taskEffectInstances
 
   lazy val database = Databases(
     "org.postgresql.Driver",
@@ -39,7 +39,7 @@ trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAft
   private lazy val transactEC   = ExecutionContext.fromExecutor(transactExec)
 
   lazy val transactor: Transactor.Aux[Task, DataSource] =
-    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)
+    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)(taskEffectInstances, zioContextShift)
 
   override def beforeAll(): Unit = Evolutions.applyEvolutions(database)
 
