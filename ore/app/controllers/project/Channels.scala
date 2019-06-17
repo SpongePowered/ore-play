@@ -15,8 +15,8 @@ import ore.permission.Permission
 import views.html.projects.{channels => views}
 import util.syntax._
 
-import scalaz.zio.{IO, Task}
-import scalaz.zio.interop.catz._
+import zio.{IO, Task}
+import zio.interop.catz._
 import slick.lifted.TableQuery
 
 /**

@@ -16,9 +16,8 @@ import cats.Monad
 import cats.data.{EitherT, OptionT}
 import cats.syntax.all._
 import cats.effect.syntax.all._
-import scalaz.zio
-import scalaz.zio.Task
-import scalaz.zio.interop.catz._
+import zio.Task
+import zio.interop.catz._
 
 /**
   * Represents submitted [[Channel]] data.

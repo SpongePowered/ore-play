@@ -26,8 +26,7 @@ import ore.models.project.factory.ProjectFactory
 import util.syntax._
 
 import cats.data.OptionT
-import scalaz.zio
-import scalaz.zio.UIO
+import zio.UIO
 
 /**
   * Collection of forms used in this application.

@@ -7,8 +7,8 @@ import ore.models.user.User
 import ore.util.OreMDC
 import util.syntax._
 
-import scalaz.zio.ZIO
-import scalaz.zio.blocking.Blocking
+import zio.ZIO
+import zio.blocking.Blocking
 
 case class ProjectListEntry(
     namespace: ProjectNamespace,
@@ -25,7 +25,6 @@ case class ProjectListEntry(
 
   def withIcon(
       implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
-      mdc: OreMDC,
       config: OreConfig
   ): ZIO[Blocking, Nothing, ProjectListEntryWithIcon] = {
     val iconF = projectFiles.getIconPath(namespace.ownerName, name).map(_.isDefined).map {

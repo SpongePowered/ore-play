@@ -27,9 +27,9 @@ import util.syntax._
 import views.html.projects.{pages => views}
 
 import cats.syntax.all._
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{IO, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{IO, Task, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Controller for handling Page related actions.
@@ -205,7 +205,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
               project.getOrCreatePage[UIO](pageName, parentId, content)
             }
 
-            val created = if (parts.size == 2) {
+            val created: UIO[Model[Page]] = if (parts.size == 2) {
               service
                 .runDBIO(
                   project

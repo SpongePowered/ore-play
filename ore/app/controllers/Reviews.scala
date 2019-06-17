@@ -26,7 +26,7 @@ import cats.data.NonEmptyList
 import cats.instances.option._
 import cats.syntax.all._
 import io.circe.Json
-import scalaz.zio.{UIO, ZIO}
+import zio.{UIO, ZIO}
 import slick.lifted.{Rep, TableQuery}
 
 /**
@@ -163,8 +163,7 @@ final class Reviews @Inject()(forms: OreForms)(
           )
         }
       }
-      .flatMap(service.bulkInsert(_))
-      .unit
+      .flatMap(service.bulkInsert(_).unit)
   }
 
   def takeoverReview(author: String, slug: String, versionString: String): Action[String] = {

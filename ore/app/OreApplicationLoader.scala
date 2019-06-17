@@ -43,11 +43,10 @@ import com.softwaremill.macwire._
 import cats.~>
 import cats.tagless.syntax.all._
 import com.typesafe.scalalogging.Logger
-import scalaz.zio
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{DefaultRuntime, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
-import scalaz.zio.interop.catz.implicits._
+import zio.blocking.Blocking
+import zio.{DefaultRuntime, Task, UIO, ZIO}
+import zio.interop.catz._
+import zio.interop.catz.implicits._
 import slick.basic.{BasicProfile, DatabaseConfig}
 
 class OreApplicationLoader extends ApplicationLoader {
@@ -71,7 +70,7 @@ class OreComponents(context: ApplicationLoader.Context)
   override lazy val router: Router          = wire[_root_.router.Routes]
   lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]
 
-  eager(prefix) //Gets around unused warning
+  use(prefix) //Gets around unused warning
 
   //override lazy val httpFilters: Seq[EssentialFilter] = enabledFilters.filters
   //lazy val enabledFilters: EnabledFilters             = wire[EnabledFilters] //TODO: This probably won't work
@@ -212,6 +211,11 @@ class OreComponents(context: ApplicationLoader.Context)
       override def apply[A](fa: Task[A]): ZIO[Blocking, Nothing, A] = fa.orDie
     })
 
+    // Schrodinger's values, are both used and not used at the same time.
+    // Trying to observe if they are will collapse the compile state into an error.
+    use(providedProjectFiles)
+    use(throwableFileIO)
+
     (wire[ProjectBase.ProjectBaseF[Task, ParTask]]: ProjectBase[Task]).mapK(taskToUIO)
   }
   implicit lazy val orgBase: OrganizationBase[UIO] =
@@ -229,6 +233,7 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val users: Users                       = wire[Users]
   lazy val projects: Projects = {
     implicit val throwableFileIO: ZIOFileIO = wire[ZIOFileIO]
+    use(throwableFileIO)
     wire[Projects]
   }
   lazy val pages: Pages                                         = wire[Pages]
@@ -250,8 +255,10 @@ class OreComponents(context: ApplicationLoader.Context)
   eager(userTask)
   eager(dbUpdateTask)
 
-  def eager[A](module: A): Unit = {
-    identity(module)
+  def eager[A](module: A): Unit = use(module)
+
+  def use[A](value: A): Unit = {
+    identity(value)
     ()
   }
 }

@@ -17,10 +17,9 @@ import ore.auth.SSOApi
 import ore.db.ModelService
 import ore.models.project.io.ProjectFiles
 
-import scalaz.zio
-import scalaz.zio.{UIO, ZIO}
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.clock.Clock
+import zio.{UIO, ZIO}
+import zio.blocking.Blocking
+import zio.clock.Clock
 
 trait OreControllerComponents extends ControllerComponents {
   def uioEffects: OreControllerEffects[UIO]

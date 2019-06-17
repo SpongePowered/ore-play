@@ -4,7 +4,7 @@ import ore.models.project.Channel
 import ore.db.Model
 
 import cats.data.OptionT
-import scalaz.zio.UIO
+import zio.UIO
 
 case class VersionDeployForm(
     apiKey: String,

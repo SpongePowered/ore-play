@@ -25,8 +25,6 @@ import ore.util.OreMDC
 import cats.{Functor, Monad}
 import cats.syntax.all._
 import cats.data.OptionT
-import scalaz.zio.ZIO
-import scalaz.zio.blocking.Blocking
 
 trait ModelSyntax {
 
@@ -121,18 +119,16 @@ object ModelSyntax extends ModelSyntax {
     def iconUrlOrPath[F[_]](
         implicit projectFiles: ProjectFiles[F],
         F: Functor[F],
-        mdc: OreMDC,
         config: OreConfig
     ): F[Either[String, Path]] =
       projectFiles.getIconPath(p).map(_.toRight(User.avatarUrl(p.ownerName)))
 
-    def hasIcon[F[_]](implicit projectFiles: ProjectFiles[F], F: Functor[F], mdc: OreMDC): F[Boolean] =
+    def hasIcon[F[_]](implicit projectFiles: ProjectFiles[F], F: Functor[F]): F[Boolean] =
       projectFiles.getIconPath(p).map(_.isDefined)
 
     def iconUrl[F[_]](
         implicit projectFiles: ProjectFiles[F],
         F: Functor[F],
-        mdc: OreMDC,
         header: RequestHeader,
         config: OreConfig
     ): F[String] =

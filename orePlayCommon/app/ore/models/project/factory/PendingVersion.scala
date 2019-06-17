@@ -17,9 +17,9 @@ import ore.models.user.User
 
 import cats.MonadError
 import cats.syntax.all._
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{Task, UIO, ZIO}
+import zio.interop.catz._
 import slick.lifted.TableQuery
 
 /**

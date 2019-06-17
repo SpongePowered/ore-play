@@ -7,7 +7,6 @@ import javax.inject.Inject
 
 import ore.OreEnv
 import ore.models.project.Project
-import ore.util.OreMDC
 import util.FileIO
 
 import cats.Monad
@@ -82,7 +81,7 @@ trait ProjectFiles[+F[_]] {
     * @param name   Project name
     * @return Project icon
     */
-  def getIconPath(owner: String, name: String)(implicit mdc: OreMDC): F[Option[Path]]
+  def getIconPath(owner: String, name: String): F[Option[Path]]
 
   /**
     * Returns the path to a custom [[Project]] icon, if any, None otherwise.
@@ -90,7 +89,7 @@ trait ProjectFiles[+F[_]] {
     * @param project Project to get icon for
     * @return Project icon
     */
-  def getIconPath(project: Project)(implicit mdc: OreMDC): F[Option[Path]]
+  def getIconPath(project: Project): F[Option[Path]]
 
   /**
     * Returns the directory that contains an icon that has not yet been saved.
@@ -108,7 +107,7 @@ trait ProjectFiles[+F[_]] {
     * @param project Project to get icon for
     * @return Pending icon path
     */
-  def getPendingIconPath(project: Project)(implicit mdc: OreMDC): F[Option[Path]]
+  def getPendingIconPath(project: Project): F[Option[Path]]
 
   /**
     * Returns the directory to a custom [[Project]] icon that has not yet been
@@ -118,7 +117,7 @@ trait ProjectFiles[+F[_]] {
     * @param name Name of the project to get icon for
     * @return Pending icon path
     */
-  def getPendingIconPath(ownerName: String, name: String)(implicit mdc: OreMDC): F[Option[Path]]
+  def getPendingIconPath(ownerName: String, name: String): F[Option[Path]]
 }
 object ProjectFiles {
 
@@ -141,21 +140,21 @@ object ProjectFiles {
 
     override def getIconDir(owner: String, name: String): Path = getIconsDir(owner, name).resolve("icon")
 
-    override def getIconPath(owner: String, name: String)(implicit mdc: OreMDC): F[Option[Path]] =
+    override def getIconPath(owner: String, name: String): F[Option[Path]] =
       findFirstFile(getIconDir(owner, name))
 
-    override def getIconPath(project: Project)(implicit mdc: OreMDC): F[Option[Path]] =
+    override def getIconPath(project: Project): F[Option[Path]] =
       getIconPath(project.ownerName, project.name)
 
     override def getPendingIconDir(owner: String, name: String): Path = getIconsDir(owner, name).resolve("pending")
 
-    override def getPendingIconPath(project: Project)(implicit mdc: OreMDC): F[Option[Path]] =
+    override def getPendingIconPath(project: Project): F[Option[Path]] =
       getPendingIconPath(project.ownerName, project.name)
 
-    override def getPendingIconPath(ownerName: String, name: String)(implicit mdc: OreMDC): F[Option[Path]] =
+    override def getPendingIconPath(ownerName: String, name: String): F[Option[Path]] =
       findFirstFile(getPendingIconDir(ownerName, name))
 
-    private def findFirstFile(dir: Path)(implicit MDC: OreMDC): F[Option[Path]] = {
+    private def findFirstFile(dir: Path): F[Option[Path]] = {
       import cats.instances.stream._
       val findFirst =
         fileIO.list(dir).flatMap(fs => fileIO.traverseLimited(fs)(f => fileIO.isDirectory(f).tupleLeft(f))).map {

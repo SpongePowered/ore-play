@@ -68,7 +68,6 @@ object ProjectData {
       F: MonadError[F, Throwable],
       files: ProjectFiles[F],
       par: Parallel[F, G],
-      mdc: OreMDC,
       header: RequestHeader,
       config: OreConfig
   ): F[ProjectData] = {

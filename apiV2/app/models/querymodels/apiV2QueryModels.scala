@@ -16,8 +16,8 @@ import util.syntax._
 
 import cats.syntax.all._
 import cats.instances.option._
-import scalaz.zio.ZIO
-import scalaz.zio.blocking.Blocking
+import zio.ZIO
+import zio.blocking.Blocking
 
 case class APIV2QueryProject(
     createdAt: LocalDateTime,
@@ -47,7 +47,6 @@ case class APIV2QueryProject(
   def asProtocol(
       implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
       requestHeader: RequestHeader,
-      mdc: OreMDC,
       config: OreConfig
   ): ZIO[Blocking, Nothing, APIV2.Project] = {
     val iconPath = projectFiles.getIconPath(namespace.ownerName, name)

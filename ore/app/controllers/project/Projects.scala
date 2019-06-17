@@ -44,10 +44,9 @@ import cats.data.EitherT
 import cats.instances.option._
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import scalaz.zio
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{IO, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{IO, Task, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Controller for handling Project related actions.
@@ -218,10 +217,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       .withSlug(author, slug)
       .get
       .constError(NotFound)
-      .flatMap { project =>
-        implicit val mdc: OreMDC.NoMDC.type = OreMDC.NoMDC
-        project.obj.iconUrlOrPath.map(_.fold(Redirect(_), showImage))
-      }
+      .flatMap(project => project.obj.iconUrlOrPath.map(_.fold(Redirect(_), showImage)))
   }
 
   private def showImage(path: Path) = {
@@ -443,7 +439,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val data       = request.data
           val pendingDir = projectFiles.getPendingIconDir(data.project.ownerName, data.project.name)
 
-          import scalaz.zio.blocking._
+          import zio.blocking._
 
           val notExist   = effectBlocking(Files.notExists(pendingDir))
           val createDir  = effectBlocking(Files.createDirectories(pendingDir))
@@ -474,7 +470,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     implicit request =>
       val project = request.project
 
-      import scalaz.zio.blocking._
+      import zio.blocking._
 
       val deleteFile = (p: Path) => effectBlocking(Files.delete(p))
 

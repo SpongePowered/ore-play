@@ -11,9 +11,8 @@ import ore.OreConfig
 import ore.util.OreMDC
 
 import com.typesafe.scalalogging
-import scalaz.zio
-import scalaz.zio.clock.Clock
-import scalaz.zio.{UIO, ZSchedule, duration}
+import zio.clock.Clock
+import zio.{UIO, ZSchedule, duration}
 
 @Singleton
 class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(

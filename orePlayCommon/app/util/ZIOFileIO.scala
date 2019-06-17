@@ -10,8 +10,8 @@ import ore.OreConfig
 
 import cats.Traverse
 import cats.syntax.all._
-import scalaz.zio.ZIO
-import scalaz.zio.blocking._
+import zio.ZIO
+import zio.blocking._
 
 class ZIOFileIO(config: OreConfig) extends FileIO[ZIO[Blocking, Throwable, ?]] {
 
@@ -25,13 +25,22 @@ class ZIOFileIO(config: OreConfig) extends FileIO[ZIO[Blocking, Throwable, ?]] {
 
   override def isDirectory(path: Path): BlockIO[Boolean] = effectBlocking(Files.isDirectory(path))
 
-  override def createDirectories(path: Path): BlockIO[Unit] = effectBlocking(Files.createDirectories(path))
+  override def createDirectories(path: Path): BlockIO[Unit] = effectBlocking {
+    Files.createDirectories(path)
+    ()
+  }
 
-  override def move(from: Path, to: Path): BlockIO[Unit] = effectBlocking(Files.move(from, to))
+  override def move(from: Path, to: Path): BlockIO[Unit] = effectBlocking {
+    Files.move(from, to)
+    ()
+  }
 
   override def delete(path: Path): BlockIO[Unit] = effectBlocking(Files.delete(path))
 
-  override def deleteIfExists(path: Path): BlockIO[Unit] = effectBlocking(Files.deleteIfExists(path))
+  override def deleteIfExists(path: Path): BlockIO[Unit] = effectBlocking {
+    Files.deleteIfExists(path)
+    ()
+  }
 
   override def traverseLimited[G[_]: Traverse, A, B](fs: G[A])(f: A => BlockIO[B]): BlockIO[List[B]] =
     ZIO.foreachParN(config.performance.nioBlockingFibers)(fs.toList)(f)

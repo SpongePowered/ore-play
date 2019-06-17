@@ -52,7 +52,6 @@ case class ProjectSettingsForm(
       implicit fileManager: ProjectFiles[F],
       fileIO: FileIO[F],
       mdc: OreMDC,
-      config: OreConfig,
       service: ModelService[F],
       F: Async[F],
       par: Parallel[F, G]
@@ -121,7 +120,7 @@ case class ProjectSettingsForm(
             notExist.ifM(createDirs, F.unit) *> deleteFiles *> move.void
           }
         }
-      } else F.pure(())
+      } else F.unit
 
       // Add new roles
       val dossier = project.memberships

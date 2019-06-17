@@ -76,7 +76,7 @@ lazy val playTestDeps = Seq(
 
 lazy val catsVersion         = "1.6.0"
 lazy val catsTaglessVersion  = "0.7"
-lazy val zioVersion          = "1.0-RC5"
+lazy val zioVersion          = "1.0.0-RC8-6"
 lazy val doobieVersion       = "0.6.0"
 lazy val flexmarkVersion     = "0.42.8"
 lazy val playSlickVersion    = "4.0.1"
@@ -168,9 +168,8 @@ lazy val orePlayCommon: Project = project
       "com.typesafe.play" %% "play-slick" % playSlickVersion,
     ),
     libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-zio"                % zioVersion,
-      "org.scalaz" %% "scalaz-zio-interop-cats"   % zioVersion,
-      "org.scalaz" %% "scalaz-zio-interop-future" % zioVersion
+      "dev.zio" %% "zio"              % zioVersion,
+      "dev.zio" %% "zio-interop-cats" % zioVersion
     ),
     aggregateReverseRoutes := Seq(ore)
   )

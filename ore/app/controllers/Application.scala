@@ -24,7 +24,6 @@ import ore.db.impl.schema.ProjectTableMain
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
-import ore.models.project.io.ProjectFiles
 import ore.models.project.{ProjectSortingStrategy, _}
 import ore.models.user._
 import ore.models.user.role._
@@ -37,10 +36,8 @@ import views.{html => views}
 import cats.Order
 import cats.instances.vector._
 import cats.syntax.all._
-import scalaz.zio
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{IO, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Main entry point for application.
@@ -364,7 +361,7 @@ final class Application @Inject()(forms: OreForms)(
               allowedCategory: RoleCategory,
               ownerType: Role,
               transferOwner: Model[M0] => UIO[Model[M0]]
-          ) = {
+          ): IO[Either[Status, Unit], Status] = {
             val id = (json \ "id").as[DbRef[M0]]
             action match {
               case "setRole" =>
@@ -400,7 +397,7 @@ final class Application @Inject()(forms: OreForms)(
               .flatMap(_.transferOwner(r.userId))
               .const(r)
 
-          val res = thing match {
+          val res: IO[Either[Status, Unit], Status] = thing match {
             case "orgRole" =>
               val update = updateRoleTable(OrganizationUserRole)(
                 user.organizationRoles(ModelView.now(OrganizationUserRole)),

@@ -31,10 +31,9 @@ import cats.data.NonEmptyList
 import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging
-import scalaz.zio
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{IO, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{IO, Task, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Manages the project and version creation pipeline.
@@ -299,7 +298,7 @@ trait ProjectFactory {
       service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).map(_.id).result)
     val notifications = watchingUserIds.map(_.map(notification))
 
-    notifications.flatMap(service.bulkInsert(_)).unit
+    notifications.flatMap(service.bulkInsert(_).unit)
   }
 
   /**

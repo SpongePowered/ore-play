@@ -15,10 +15,9 @@ import ore.models.api.ApiSession
 import ore.util.OreMDC
 
 import com.typesafe.scalalogging
-import scalaz.zio
-import scalaz.zio.{UIO, ZIO, ZSchedule}
-import scalaz.zio.clock.Clock
-import scalaz.zio.duration.Duration
+import zio.{UIO, ZIO, ZSchedule}
+import zio.clock.Clock
+import zio.duration.Duration
 
 @Singleton
 class UserTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(

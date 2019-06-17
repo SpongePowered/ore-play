@@ -16,7 +16,7 @@ import ore.models.project.{Project, Version, Visibility}
 import ore.permission.Permission
 import util.syntax._
 
-import scalaz.zio.IO
+import zio.IO
 
 /**
   * Represents a Secured base Controller for this application.

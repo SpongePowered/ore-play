@@ -32,9 +32,9 @@ import cats.data.{EitherT, OptionT}
 import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{Task, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Ore API (v1)

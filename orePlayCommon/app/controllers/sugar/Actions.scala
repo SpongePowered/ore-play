@@ -31,11 +31,10 @@ import util.syntax._
 import cats.Parallel
 import cats.syntax.all._
 import com.typesafe.scalalogging
-import scalaz.zio
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.clock.Clock
-import scalaz.zio.{IO, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.clock.Clock
+import zio.{IO, Task, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * A set of actions used by Ore.
@@ -286,14 +285,13 @@ trait Actions extends Calls with ActionHelpers { self =>
   private def maybeAuthRequest[A](
       request: Request[A],
       userF: IO[Unit, Model[User]]
-  ): Future[Either[Result, AuthRequest[A]]] =
-    zioToFuture(
-      userF
-        .flatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
-        .constError(onUnauthorized(request))
-        .flatMapError(identity)
-        .either
-    )
+  ): Future[Either[Result, AuthRequest[A]]] = {
+    val authRequest: IO[Result, AuthRequest[A]] =       userF
+      .flatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
+      .flatMapError(_ => onUnauthorized(request))
+
+    zioToFuture(authRequest.either)
+  }
 
   def projectAction(author: String, slug: String)(
       implicit ec: ExecutionContext

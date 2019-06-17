@@ -44,9 +44,9 @@ import enumeratum._
 import io.circe._
 import io.circe.generic.extras._
 import io.circe.syntax._
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{IO, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{IO, Task, UIO, ZIO}
+import zio.interop.catz._
 
 @Singleton
 class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
@@ -476,7 +476,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   //TODO: Do the async part at some point
   private def readFileAsync(file: Path): ZIO[Blocking, Throwable, String] = {
-    import scalaz.zio.blocking._
+    import zio.blocking._
     effectBlocking(java.nio.file.Files.readAllLines(file).asScala.mkString("\n"))
   }
 
@@ -484,7 +484,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     ApiAction(Permission.CreateVersion, APIScope.ProjectScope(pluginId))(parse.multipartFormData).asyncF {
       implicit request =>
         type TempFile = MultipartFormData.FilePart[Files.TemporaryFile]
-        import scalaz.zio.blocking._
+        import zio.blocking._
 
         val pluginInfoFromFileF = ZIO.bracket(
           acquire = UIO(request.body.file("plugin-info")).get.mapError(Left.apply),

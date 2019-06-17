@@ -42,10 +42,9 @@ import com.typesafe.scalalogging
 import _root_.io.circe.Json
 import _root_.io.circe.syntax._
 import cats.arrow.FunctionK
-import scalaz.zio.blocking.Blocking
-import scalaz.zio
-import scalaz.zio.{IO, Task, UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{IO, Task, UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Controller for handling Version related actions.

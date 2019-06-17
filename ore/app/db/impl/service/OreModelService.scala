@@ -15,8 +15,8 @@ import cats.effect.{Clock, ContextShift, Sync}
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
-import scalaz.zio.{Task, ZIO}
-import scalaz.zio.interop.catz._
+import zio.{Task, ZIO}
+import zio.interop.catz._
 import slick.jdbc.{JdbcDataSource, JdbcProfile}
 
 /**

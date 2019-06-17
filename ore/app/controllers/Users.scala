@@ -27,9 +27,9 @@ import util.syntax._
 import views.{html => views}
 
 import cats.syntax.all._
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.{IO, Task, ZIO}
-import scalaz.zio.interop.catz._
+import zio.blocking.Blocking
+import zio.{IO, Task, ZIO}
+import zio.interop.catz._
 
 /**
   * Controller for general user actions.

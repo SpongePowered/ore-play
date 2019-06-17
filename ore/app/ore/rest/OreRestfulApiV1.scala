@@ -22,8 +22,8 @@ import util.syntax._
 
 import cats.data.OptionT
 import cats.syntax.all._
-import scalaz.zio.{UIO, ZIO}
-import scalaz.zio.interop.catz._
+import zio.{UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * The Ore API

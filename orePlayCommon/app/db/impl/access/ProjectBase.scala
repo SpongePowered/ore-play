@@ -202,9 +202,9 @@ object ProjectBase {
     def exists(owner: String, name: String): F[Boolean] =
       withName(owner, name).map(_.isDefined)
 
-    def savePendingIcon(project: Project)(implicit mdc: OreMDC): F[Unit] = F.delay {
+    def savePendingIcon(project: Project)(implicit mdc: OreMDC): F[Unit] =
       this.fileManager.getPendingIconPath(project).flatMap { optIconPath =>
-        optIconPath.fold(F.pure(())) { iconPath =>
+        optIconPath.fold(F.unit) { iconPath =>
           val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
 
           val notExists  = fileIO.notExists(iconDir)
@@ -215,7 +215,6 @@ object ProjectBase {
           notExists.ifM(createDirs, F.unit) *> cleanDir *> moveDir.void
         }
       }
-    }
 
     def rename(
         project: Model[Project],
@@ -310,7 +309,9 @@ object ProjectBase {
       * @param project Project to delete
       */
     def delete(project: Model[Project])(implicit mdc: OreMDC): F[Int] = {
-      val fileEff = fileIO.executeBlocking(FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name)))
+      val fileEff = fileIO.executeBlocking(
+        FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
+      )
       val eff =
         if (project.topicId.isDefined)
           forums.deleteProjectTopic(project).void

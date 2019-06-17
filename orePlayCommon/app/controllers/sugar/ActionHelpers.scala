@@ -13,10 +13,9 @@ import controllers.sugar.Requests.OreRequest
 import cats.Monad
 import cats.data.{EitherT, OptionT}
 import com.google.common.base.Preconditions.checkArgument
-import scalaz.zio
-import scalaz.zio.blocking.Blocking
-import scalaz.zio.clock.Clock
-import scalaz.zio.{IO, ZIO}
+import zio.blocking.Blocking
+import zio.clock.Clock
+import zio.{IO, ZIO}
 
 /**
   * A helper class for some common functions of controllers.
@@ -191,11 +190,14 @@ object ActionHelpers {
       form.bindFromRequest().fold(left.andThen(EitherT.leftT[F, B](_)), EitherT.rightT[F, A](_))
   }
 
+  //This gets us around a warning about this being unreachable. Yes, we know
+  private def impossible[A](a: A): Throwable = new Exception(s"Got impossible nothing")
+
   private[sugar] def zioToFuture[A](
       io: ZIO[Blocking with Clock, Nothing, A]
   )(implicit runtime: zio.Runtime[Blocking with Clock]): Future[A] =
     //TODO: If Sentry can't differentiate different errors here, log the error, and throw an exception ignored by Sentry instead
-    runtime.unsafeRun(io.toFutureWith(_ => new Exception(s"Got impossible nothing")))
+    runtime.unsafeRun(io.toFutureWith(impossible))
 
   class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
 
