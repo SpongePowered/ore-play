@@ -2,7 +2,7 @@
 @import ore.OreConfig
 @import views.html.helper.CSPNonce
 
-@()(implicit messages: Messages, request: OreRequest[_])
+@()(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
 
 @*
 Mostly copied from swagger-ui's index file
@@ -14,20 +14,21 @@ Mostly copied from swagger-ui's index file
 
         <meta charset="utf-8">
 
+        <link rel="icon" href="@config.sponge.icon">
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
 
         <style>
             html {
-              box-sizing: border-box;
-              overflow: -moz-scrollbars-vertical;
-              overflow-y: scroll;
+                box-sizing: border-box;
+                overflow: -moz-scrollbars-vertical;
+                overflow-y: scroll;
             }
             *, *:before, *:after {
-              box-sizing: inherit;
+                box-sizing: inherit;
             }
             body {
-              margin:0;
-              background: #fafafa;
+                margin:0;
+                background: #fafafa;
             }
             .swagger-ui .topbar .download-url-wrapper, .swagger-ui .info hgroup.main a, .swagger-ui .info .description {
                 display: none;
@@ -40,10 +41,11 @@ Mostly copied from swagger-ui's index file
     <body>
         <div id="swagger-ui"></div>
 
-            <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-bundle.js")"></script>
-            <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
-            <script src="@routes.Assets.versioned("javascripts/apiRequests.js")"></script>
-            <script @CSPNonce.attr>
+        <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
+        <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-bundle.js")"></script>
+        <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
+        <script src="@routes.Assets.versioned("javascripts/apiRequests.js")"></script>
+        <script @CSPNonce.attr>
                 window.onload = () => {
                     window.ui = SwaggerUIBundle({
                         url: "@routes.Assets.versioned("swagger.json")",
