@@ -52,7 +52,7 @@
                     </div>
                 </li>
             </ul>
-            <Pagination :current="current" :total="total" @prev="previousPage" @next="nextPage" @jumpTo="jumpToPage($event)"></Pagination>
+            <Pagination :current="current" :total="total" @prev="$emit('prevPage')" @next="$emit('nextPage')" @jumpTo="$emit('jumpToPage', $event)"></Pagination>
         </div>
     </div>
 </template>
@@ -63,6 +63,7 @@
     import {Category, Platform} from "../home";
     import Pagination from "./Pagination.vue";
     import Icon from "./Icon.vue"
+    import debounce from "lodash/debounce"
 
     export default {
         components: {
@@ -111,6 +112,10 @@
         },
         created() {
             this.update();
+            this.deboundedUpdateProps = debounce(this.update, 500);
+            this.$watch(vm => [vm.q, vm.categories, vm.tags, vm.owner, vm.sort, vm.relevance, vm.limit, vm.offset].join(), () => {
+                this.deboundedUpdateProps();
+            });
         },
         methods: {
             update: function() {
@@ -126,15 +131,6 @@
             },
             filterTags: function (tags) {
                 return Platform.filterTags(tags);
-            },
-            previousPage: function() {
-                this.$emit('prevPage')
-            },
-            nextPage: function () {
-                this.$emit('nextPage')
-            },
-            jumpToPage: function (page) {
-                this.$emit('jumpToPage', page)
             }
         }
     }

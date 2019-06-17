@@ -214,11 +214,10 @@ lazy val oreClient = project
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     version in startWebpackDevServer := "3.1.4",
     version in webpack := "4.16.1",
-    //Probably not used as it's not used in the App anywhere
     npmDependencies in Compile ++= Seq(
-      "vue"    -> "2.6.10",
-      "lodash" -> "4.17.11",
-      "query-string"                       -> "6.5.0",
+      "vue"          -> "2.6.10",
+      "lodash"       -> "4.17.11",
+      "query-string" -> "6.5.0",
     ),
     npmDevDependencies in Compile ++= Seq(
       "webpack-merge"                      -> "4.1.0",

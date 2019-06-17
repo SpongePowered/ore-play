@@ -4,12 +4,12 @@
             <div class="project-search">
                 <input type="text" class="form-control" v-model="q" @keydown="resetPage" :placeholder="queryPlaceholder" />
             </div>
-            <project-list v-bind="listBinding" ref="list" @prevPage="previousPage"
-                          @nextPage="nextPage" @jumpToPage="jumpToPage($event)" v-bind:projectCount.sync="projectCount"></project-list>
+            <project-list v-bind="listBinding" ref="list" @prevPage="page--"
+                          @nextPage="page++" @jumpToPage="page = $event" v-bind:projectCount.sync="projectCount"></project-list>
         </div>
         <div class="col-md-3">
             <select class="form-control select-sort" v-model="sort" @change="resetPage">
-                <option v-for="option in sortOptions" :value="option.id">{{ option.name }}</option>
+                <option v-for="option in availableOptions.sort" :value="option.id">{{ option.name }}</option>
             </select>
 
             <div>
@@ -18,13 +18,13 @@
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">Categories</h3>
-                        <a class="category-reset" @click="clearCategory" v-if="categories.length > 0">
+                        <a class="category-reset" @click="categories = []" v-if="categories.length > 0">
                             <i class="fas fa-times white"></i>
                         </a>
                     </div>
 
                     <div class="list-group category-list">
-                        <a v-for="category in allCategories" class="list-group-item" @click="changeCategory(category)"
+                        <a v-for="category in availableOptions.category" class="list-group-item" @click="changeCategory(category)"
                            v-bind:class="{ active: categories.includes(category.id) }">
                             <i class="fas fa-fw" :class="'fa-' + category.icon"></i>
                             <strong>{{ category.name }}</strong>
@@ -37,10 +37,10 @@
                     </div>
 
                     <div class="list-group platform-list">
-                        <a class="list-group-item" @click="clearPlatform" v-bind:class="{ active: tags.length === 0 }">
+                        <a class="list-group-item" @click="tags = []" v-bind:class="{ active: tags.length === 0 }">
                             <span class="parent">Any</span>
                         </a>
-                        <a v-for="platform in platforms" class="list-group-item" @click="changePlatform(platform)"
+                        <a v-for="platform in availableOptions.platform" class="list-group-item" @click="tags = [platform.id]"
                            v-bind:class="{ active: tags.includes(platform.id) }">
                             <span :class="{parent: platform.parent}">{{ platform.name }}</span>
                         </a>
@@ -53,7 +53,6 @@
 
 <script>
     import ProjectList from "./components/ProjectList.vue"
-    import debounce from "lodash/debounce"
     import queryString from "query-string"
     import {clearFromDefaults} from "./utils"
     import {Category, Platform, SortOptions} from "./home";
@@ -68,7 +67,12 @@
             page: 1,
             offset: 0,
             limit: 25,
-            projectCount: null
+            projectCount: null,
+            availableOptions: {
+                category: Category.values,
+                platform: Platform.values,
+                sort: SortOptions
+            }
         };
     }
 
@@ -78,15 +82,6 @@
         },
         data: defaultData,
         computed: {
-            allCategories: function () {
-                return Category.values;
-            },
-            platforms: function () {
-                return Platform.values;
-            },
-            sortOptions: function () {
-                return SortOptions;
-            },
             baseBinding: function () {
                 return {
                     q: this.q,
@@ -115,54 +110,30 @@
             changeCategory: function(category) {
                 if(this.categories.includes(category.id)) {
                     this.categories.splice(this.categories.indexOf(category.id), 1);
-                    this.resetPage();
                 } else if(this.categories.length + 1 === Category.values.length) {
-                    this.clearCategory();
+                    this.categories = [];
                 } else {
                     this.categories.push(category.id);
-                    this.resetPage();
                 }
-            },
-            clearCategory: function() {
-                this.categories.splice(0, this.categories.length);
-                this.resetPage();
-            },
-            changePlatform: function(platform) {
-                this.clearPlatform();
-                this.tags.push(platform.id);
-                this.resetPage();
-            },
-            clearPlatform: function() {
-                this.tags.splice(0, this.tags.length);
-                this.resetPage();
-            },
-            updateProps: function () {
-                const query = queryString.stringify(this.urlBinding, {arrayFormat: 'bracket'});
-                window.history.pushState(null, null, query !== "" ? "?" + query : "/");
-                this.$refs.list.update();
-            },
-            nextPage: function () {
-                this.page++;
-                window.scrollTo(0,0);
-            },
-            previousPage: function () {
-                this.page--;
-                window.scrollTo(0,0);
-            },
-            jumpToPage: function (newPage) {
-                this.page = newPage;
-                window.scrollTo(0,0);
             }
         },
         created() {
-            this.deboundedUpdateProps = debounce(this.updateProps, 500);
-
             Object.entries(queryString.parse(location.search, {arrayFormat: 'bracket'}))
                 .filter(([key, value]) => defaultData().hasOwnProperty(key))
                 .forEach(([key, value]) => this.$data[key] = value);
+
+            this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags, vm.page].join(), () => {
+                const query = queryString.stringify(this.urlBinding, {arrayFormat: 'bracket'});
+                window.history.pushState(null, null, query !== "" ? "?" + query : "/");
+            });
+            this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags].join(), () => {
+                this.resetPage();
+            });
         },
-        updated() {
-            this.deboundedUpdateProps();
+        watch: {
+            page: function () {
+                window.scrollTo(0,0);
+            }
         }
     }
 </script>
