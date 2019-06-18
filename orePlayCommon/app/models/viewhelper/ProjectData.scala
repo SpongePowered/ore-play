@@ -12,7 +12,7 @@ import ore.models.user.role.ProjectUserRole
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer
-import ore.models.admin.{ProjectLogEntry, ProjectVisibilityChange}
+import ore.models.admin.ProjectVisibilityChange
 import ore.permission.role.RoleCategory
 import util.syntax._
 
@@ -30,7 +30,6 @@ case class ProjectData(
     publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
     settings: Model[ProjectSettings],
     members: Seq[(Model[ProjectUserRole], Model[User])],
-    projectLogSize: Int,
     flags: Seq[(Model[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
     noteCount: Int, // getNotes.size
     lastVisibilityChange: Option[ProjectVisibilityChange],
@@ -87,7 +86,6 @@ object ProjectData {
       project.user,
       project.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
-      project.loggerEntries(ModelView.now(ProjectLogEntry)).size,
       service.runDBIO(flagsWithNames.result),
       service.runDBIO(lastVisibilityChangeUserWithUser.result.headOption),
       project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[F, Model[Version]]).value
@@ -97,7 +95,6 @@ object ProjectData {
           projectOwner,
           versions,
           members,
-          logSize,
           flagData,
           lastVisibilityChangeInfo,
           recommendedVersion
@@ -110,7 +107,6 @@ object ProjectData {
           versions,
           settings,
           members.sortBy(_._1.role.permissions: Long).reverse, //This is stupid, but works
-          logSize,
           flagData,
           noteCount,
           lastVisibilityChangeInfo.map(_._1),

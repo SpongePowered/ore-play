@@ -24,7 +24,6 @@ import ore.db.impl.schema.UserTable
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
-import ore.models.admin.ProjectLogEntry
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
@@ -616,14 +615,6 @@ class Projects @Inject()(stats: StatTracker[IO], forms: OreForms, factory: Proje
       } else IO.unit
       effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
   }
-
-  def showLog(author: String, slug: String): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(Permission.ViewLogs)).andThen(ProjectAction(author, slug)).asyncF {
-      implicit request =>
-        service
-          .runDBIO(request.project.loggerEntries(ModelView.raw(ProjectLogEntry)).result)
-          .map(logs => Ok(views.log(request.project, logs)))
-    }
 
   /**
     * Irreversibly deletes the specified project.
