@@ -114,7 +114,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
             s"""|Request to create topic for project '${project.url}' might have been successful but there were errors along the way:
                 |Errors: $error""".stripMargin
           MDCLogger.warn(message)
-          project.logError(message).as(project)
+          F.pure(project)
       }
       .merge
       .onError {
@@ -148,7 +148,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
             |Title: $title
             |Errors: $error""".stripMargin
       MDCLogger.warn(message)
-      project.logError(message).as(as)
+      F.pure(as)
     }
 
     val updateTopicProgram =
@@ -206,7 +206,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
           content = Templates.versionRelease(project, version, version.description)
         )
       }
-      .leftSemiflatMap(error => project.logError(error).as(version))
+      .leftSemiflatMap(_ => F.pure(version))
       .semiflatMap(post => service.update(version)(_.copy(postId = Some(post.postId))))
       .merge
   }
@@ -230,7 +230,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
             |Title: $title
             |Errors: $error""".stripMargin
       MDCLogger.warn(message)
-      project.logError(message).as(as)
+      F.pure(as)
     }
 
     val updatePostProgram = (content: String) =>
