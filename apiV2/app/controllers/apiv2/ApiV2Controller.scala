@@ -11,7 +11,7 @@ import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
-import play.api.http.HttpErrorHandler
+import play.api.http.{HttpErrorHandler, Writeable}
 import play.api.i18n.Lang
 import play.api.libs.Files
 import play.api.mvc._
@@ -38,6 +38,7 @@ import ore.util.OreMDC
 import _root_.util.IOUtils
 import _root_.util.syntax._
 
+import akka.http.scaladsl.model.headers.{Authorization, HttpCredentials}
 import akka.stream.Materializer
 import akka.stream.scaladsl.FileIO
 import akka.util.ByteString
@@ -63,28 +64,47 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   private def limitOrDefault(limit: Option[Long], default: Long) = math.min(limit.getOrElse(default), default)
   private def offsetOrZero(offset: Long)                         = math.max(offset, 0)
 
+  private def parseAuthHeader(request: Request[_]): EitherT[IO, Either[Unit, Result], HttpCredentials] = {
+    lazy val authUrl                 = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+    def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
+
+    EitherT
+      .fromOption[IO](request.headers.get(AUTHORIZATION), Left(()))
+      .map(Authorization.parseFromValueString)
+      .map(_.leftMap { es =>
+        NonEmptyList
+          .fromList(es)
+          .fold(Right(unAuth(ApiError("Could not parse authorization header"))))(
+            es2 => Right(unAuth(ApiErrors(es2.map(_.summary))))
+          )
+      })
+      .subflatMap(identity)
+      .map(_.credentials)
+      .subflatMap { creds =>
+        if (creds.scheme == "OreApi")
+          Right(creds)
+        else
+          Left(Right(unAuth(ApiError("Invalid scheme for authorization. Needs to be OreApi"))))
+      }
+  }
+
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
-      val optToken = request.headers
-        .get(AUTHORIZATION)
-        .map(_.split(" ", 2))
-        .filter(_.length == 2)
-        .map(arr => arr.head -> arr(1))
-        .collect { case ("ApiSession", session) => session }
+      lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+      def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
-      lazy val authUrl                          = routes.ApiV2Controller.authenticate().absoluteURL()(request)
-      def unAuth(msg: ApiV2Controller.ApiError) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
-
-      optToken
-        .fold(EitherT.leftT[IO, ApiRequest[A]](unAuth(ApiError("No session specified")))) { token =>
+      parseAuthHeader(request)
+        .leftMap(_.leftMap(_ => unAuth("No authorization specified")).merge)
+        .flatMap(creds => EitherT.fromOption[IO](creds.params.get("session"), unAuth("No session specified")))
+        .flatMap { token =>
           OptionT(service.runDbCon(APIV2Queries.getApiAuthInfo(token).option))
-            .toRight(unAuth(ApiError("Invalid session")))
+            .toRight(unAuth("Invalid session"))
             .flatMap { info =>
               if (info.expires.isBefore(Instant.now())) {
                 EitherT
                   .left[ApiAuthInfo](service.deleteWhere(ApiSession)(_.token === token))
-                  .leftMap(_ => unAuth(ApiError("Api session expired")))
+                  .leftMap(_ => unAuth("Api session expired"))
               } else EitherT.rightT[IO, Result](info)
             }
             .map(info => ApiRequest(info, request))
@@ -178,29 +198,41 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   }
 
   private val uuidRegex = """[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"""
-  private val ApiKeyHeaderRegex =
-    s"""ApiKey ($uuidRegex).($uuidRegex)""".r
+  private val ApiKeyRegex =
+    s"""($uuidRegex).($uuidRegex)""".r
 
   def authenticateKeyPublic(): Action[AnyContent] = Action.asyncEitherT { implicit request =>
     lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
     lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
 
-    val authHeader = request.headers.get(AUTHORIZATION)
+    lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+    def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
     val uuidToken = UUID.randomUUID().toString
 
-    val sessionToInsert = authHeader match {
-      case Some(ApiKeyHeaderRegex(identifier, token)) =>
-        OptionT(service.runDbCon(APIV2Queries.findApiKey(identifier, token).option)).map {
-          case (keyId, keyOwnerId) =>
-            SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
+    val sessionToInsert2 = parseAuthHeader(request)
+      .flatMap[Either[Unit, Result], (SessionType, ApiSession)] { creds =>
+        creds.params.get("apikey") match {
+          case Some(ApiKeyRegex(identifier, token)) =>
+            OptionT(service.runDbCon(APIV2Queries.findApiKey(identifier, token).option))
+              .toRight(Right(unAuth("Invalid api key")): Either[Unit, Result])
+              .map {
+                case (keyId, keyOwnerId) =>
+                  SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
+              }
+          case _ =>
+            EitherT.leftT[IO, (SessionType, ApiSession)](
+              Right(unAuth("No apikey parameter found in Authorization")): Either[Unit, Result]
+            )
         }
-      case Some(_) => OptionT.none[IO, (SessionType, ApiSession)]
-      case None =>
-        OptionT.pure[IO](SessionType.Public -> ApiSession(uuidToken, None, None, publicSessionExpiration))
-    }
+      }
+      .leftFlatMap[(SessionType, ApiSession), Result] {
+        case Left(_) =>
+          EitherT.rightT[IO, Result](SessionType.Public -> ApiSession(uuidToken, None, None, publicSessionExpiration))
+        case Right(e) => EitherT.leftT[IO, (SessionType, ApiSession)](e)
+      }
 
-    sessionToInsert
+    sessionToInsert2
       .semiflatMap(t => service.insert(t._2).tupleLeft(t._1))
       .map {
         case (tpe, key) =>
@@ -212,10 +244,6 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
             )
           )
       }
-      .toRight(
-        Unauthorized(ApiError("Invalid api key"))
-          .withHeaders(WWW_AUTHENTICATE -> routes.ApiV2Controller.authenticate().absoluteURL())
-      )
   }
 
   def authenticateDev(): Action[AnyContent] = Action.asyncF {

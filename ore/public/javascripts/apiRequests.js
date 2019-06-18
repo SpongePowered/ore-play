@@ -21,7 +21,7 @@ function apiV2Request(url, method = "GET", data = {}) {
                 contentType: isFormData ? false : 'application/json',
                 data: data,
                 processData: isFormData ? false : undefined,
-                headers: {'Authorization': 'ApiSession ' + session}
+                headers: {'Authorization': 'OreApi session=' + session}
             }).done(function (data) {
                 resolve(data);
             }).fail(function (xhr) {

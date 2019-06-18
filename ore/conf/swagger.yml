@@ -78,10 +78,20 @@ components:
   securitySchemes:
     Session:
       type: http
-      scheme: ApiSession
+      scheme: OreApi
+      description: >-
+        Authentication using an API session. The session is passed as part of the
+        Authorization header in the form `Authorization: OreApi session="<my session here>"`.
+        You can get a session from the authentication endpoint.
     Key:
       type: http
-      scheme: ApiKey
+      scheme: OreApi
+      description: >-
+        Authentication using an API key. This should in most cases not be a
+        request that you execute repeatedly. The key is passed as part of the
+        Authorization header in the form `Authorization: OreApi apikey="<my key here>"`.
+        You can get an API key either from the web interface, or using the
+        create key endpoint with a more powerful key.
   responses:
     UnauthorizedError:
       description: Api session missing, invalid or expired
