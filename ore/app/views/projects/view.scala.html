@@ -205,10 +205,6 @@ Base template for Project overview.
                                 <li><a href="@appRoutes.showLog(None, None, Some(p.project.id), None, None, None, None)">
                                     User Action Logs</a></li>
                             }
-                            @if(request.headerData.globalPerm(Permission.ViewLogs)) {
-                                <li><a href="@Projects.showLog(p.project.ownerName, p.project.slug)">
-                                    System Logs (@p.projectLogSize) </a></li>
-                            }
                             <li><a href="https://forums.spongepowered.org/users/@p.project.ownerName">Owner on forum <i class="fas fa-external-link-alt" aria-hidden="true"></i></a></li>
                         </ul>
                     }
