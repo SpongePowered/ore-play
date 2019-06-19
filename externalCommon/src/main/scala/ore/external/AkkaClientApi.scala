@@ -19,7 +19,6 @@ import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
 import com.typesafe.scalalogging.Logger
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe.{Decoder, Json}
 
 abstract class AkkaClientApi[F[_], E[_]](serviceName: String, counter: Ref[F, Long], settings: ClientSettings)(
@@ -27,7 +26,7 @@ abstract class AkkaClientApi[F[_], E[_]](serviceName: String, counter: Ref[F, Lo
     mat: Materializer,
     F: Concurrent[F],
     E: Applicative[E]
-) extends FailFastCirceSupport {
+) {
 
   protected def Logger: Logger
 
@@ -82,13 +81,15 @@ abstract class AkkaClientApi[F[_], E[_]](serviceName: String, counter: Ref[F, Lo
 
   protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[String], A]
 
-  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[String], A]] =
+  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[String], A]] = {
+    import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
     EitherT
       .liftF(makeRequest(request))
       .flatMapF(gatherStatusErrors)
       .semiflatMap(unmarshallResponse[Json])
       .subflatMap(gatherJsonErrors[A])
       .value
+  }
 }
 object AkkaClientApi {
 

@@ -125,7 +125,6 @@ POST    /:author/:slug/manage/hardDelete                            @controllers
 POST    /:author/:slug/manage/delete                                @controllers.project.Projects.softDelete(author, slug)
 POST    /:author/:slug/manage/members/remove                        @controllers.project.Projects.removeMember(author, slug)
 
-GET     /:author/:slug/projectLog                                   @controllers.project.Projects.showLog(author, slug)
 GET     /:author/:slug/versionLog                                   @controllers.project.Versions.showLog(author, slug, versionString)
 GET     /:author/:slug/flags                                        @controllers.project.Projects.showFlags(author, slug)
 GET     /:author/:slug/notes                                        @controllers.project.Projects.showNotes(author, slug)

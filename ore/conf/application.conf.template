@@ -96,6 +96,7 @@ security {
 ore {
     debug       =  false
     debug-level =  3
+    staging     =  true
 
     homepage {
         update-interval = 10m

@@ -14,7 +14,7 @@ Accept: application/json
 ### Authenticate key
 POST http://localhost:9000/api/v2/authenticate
 Accept: application/json
-Authorization: ApiKey {{api_key}}
+Authorization: OreApi apikey={{api_key}}
 
 > {% client.global.set("api_session", response.body.session); %}
 
@@ -33,7 +33,7 @@ Accept: application/json
 
 ### Create a new key
 POST http://localhost:9000/api/v2/keys
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 Content-Type: application/json
 
@@ -49,7 +49,7 @@ Content-Type: application/json
 
 ### Delete a key
 DELETE http://localhost:9000/api/v2/keys?name=Foo
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 Content-Type: application/json
 
@@ -57,37 +57,37 @@ Content-Type: application/json
 
 ### Get current permissions
 GET http://localhost:9000/api/v2/permissions
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 
 ### Project list
 GET http://localhost:9000/api/v2/projects
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 
 ### Get single project
 GET http://localhost:9000/api/v2/projects/nucleus
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 
 ### Get project members
 GET http://localhost:9000/api/v2/projects/nucleus/members
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 
 ### Get project versions
 GET http://localhost:9000/api/v2/projects/nucleus/versions
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 
 ### Get single project versions
 GET http://localhost:9000/api/v2/projects/nucleus/versions/1.9.0-S7.1
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 
 ### Get user
 GET http://localhost:9000/api/v2/users/Spongie
-Authorization: ApiSession {{api_session}}
+Authorization: OreApi session={{api_session}}
 Accept: application/json
 
 ###

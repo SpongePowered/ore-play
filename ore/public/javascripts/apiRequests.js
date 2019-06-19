@@ -3,47 +3,37 @@
 let csrf = null;
 let isLoggedIn = false;
 
+//=====> SETUP
+
+$.ajaxSettings.traditional = true;
+
 //=====> HELPER FUNCTIONS
 
-function apiV2Request(url, method, data, isRetry) {
+function apiV2Request(url, method = "GET", data = {}) {
     return getApiSession().then(function (session) {
         return new Promise(function (resolve, reject) {
-            if(!data) {
-                data = {};
-            }
-
             const isFormData = data instanceof FormData;
-            let allData;
-            if(isFormData) {
-                data.append('csrfToken', csrf);
-                allData = data;
-            }
-            else {
-                allData = Object.assign(data, {csrfToken: csrf});
-            }
+            const isBodyRequest = (method === "POST" || method === "PUT" || method === "PATCH");
 
             $.ajax({
                 url: '/api/v2/' + url,
                 method: method,
                 dataType: 'json',
                 contentType: isFormData ? false : 'application/json',
-                data: isFormData ? allData : JSON.stringify(allData),
-                processData: isFormData ? false : undefined,
-                headers: {'Authorization': 'ApiSession ' + session}
+                data: isBodyRequest && !isFormData ? JSON.stringify(data) : data,
+                processData: !(isFormData || isBodyRequest),
+                headers: {'Authorization': 'OreApi session=' + session}
             }).done(function (data) {
                 resolve(data);
             }).fail(function (xhr) {
                 if (xhr.responseJSON && (xhr.responseJSON.error === 'Api session expired' || xhr.responseJSON.error === 'Invalid session')) {
-                    if (isRetry === true) {
-                        reject('Api session expired twice')
-                    } else {
-                        invalidateApiSession();
-                        apiV2Request(url, method, data, true).then(function (data) {
-                            resolve(data);
-                        }).catch(function (error) {
-                            reject(error);
-                        });
-                    }
+                    // This should never happen but just in case we catch it and invalidate the session to definitely get a new one
+                    invalidateApiSession();
+                    apiV2Request(url, method, data).then(function (data) {
+                        resolve(data);
+                    }).catch(function (error) {
+                        reject(error);
+                    });
                 } else {
                     reject(xhr.statusText)
                 }
@@ -55,51 +45,48 @@ function apiV2Request(url, method, data, isRetry) {
 function getApiSession() {
     return new Promise(function (resolve, reject) {
         let session;
+        const date = new Date();
+        date.setTime(date.getTime() + 60000);
+
         if (isLoggedIn) {
-            session = localStorage.getItem('api_session');
-            if (session === null) {
+            session = parseOrNull(localStorage.getItem('api_session'));
+            if (session === null || !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < date) {
                 return $.ajax({
                     url: '/api/v2/authenticate/user',
                     method: 'POST',
-                    dataType: 'json',
-                    data: {
-                        csrfToken: csrf
-                    }
+                    dataType: 'json'
                 }).done(function (data) {
                     if (data.type !== 'user') {
                         reject('Expected user session from user authentication');
                     } else {
-                        localStorage.setItem('api_session', data.session);
+                        localStorage.setItem('api_session', JSON.stringify(data));
                         resolve(data.session);
                     }
                 }).fail(function (xhr) {
                     reject(xhr.statusText)
                 })
             } else {
-                resolve(session);
+                resolve(session.session);
             }
         } else {
-            session = localStorage.getItem('public_api_session');
-            if (session === null) {
+            session = parseOrNull(localStorage.getItem('public_api_session'));
+            if (session === null || !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < date) {
                 $.ajax({
                     url: '/api/v2/authenticate',
                     method: 'POST',
-                    dataType: 'json',
-                    data: {
-                        csrfToken: csrf
-                    }
+                    dataType: 'json'
                 }).done(function (data) {
                     if (data.type !== 'public') {
                         reject('Expected public session from public authentication')
                     } else {
-                        localStorage.setItem('public_api_session', data.session);
+                        localStorage.setItem('public_api_session', JSON.stringify(data));
                         resolve(data.session);
                     }
                 }).fail(function (xhr) {
                     reject(xhr.statusText)
                 })
             } else {
-                resolve(session);
+                resolve(session.session);
             }
         }
     });
@@ -111,5 +98,13 @@ function invalidateApiSession() {
     }
     else {
         localStorage.removeItem('public_api_session')
+    }
+}
+
+function parseOrNull(jsonString) {
+    try {
+        return JSON.parse(jsonString);
+    } catch (e) {
+        return null;
     }
 }

@@ -39,11 +39,6 @@ class SchemaSpec extends DbSpec {
     check(sql"""SELECT user_id, project_id FROM project_stars""".query[(DbRef[User], DbRef[Project])])
   }
 
-  test("Project log entry") {
-    check(sql"""|SELECT project_id, tag, message, occurrences,
-                |last_occurrence FROM project_log_entries""".stripMargin.query[ProjectLogEntry])
-  }
-
   test("Page") {
     check(sql"""|SELECT project_id, parent_id, name, slug,
                 |is_deletable, contents FROM project_pages""".stripMargin.query[Page])

@@ -13,7 +13,7 @@ import ore.db.impl.common._
 import ore.db.impl.schema._
 import ore.db.impl.{ModelCompanionPartial, OrePostgresDriver}
 import ore.member.{Joinable, MembershipDossier}
-import ore.models.admin.{ProjectLogEntry, ProjectVisibilityChange}
+import ore.models.admin.ProjectVisibilityChange
 import ore.models.api.ProjectApiKey
 import ore.models.statistic.ProjectView
 import ore.models.user.role.ProjectUserRole
@@ -390,35 +390,6 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
           )
         )
       )
-    }
-
-    def loggerEntries[V[_, _]: QueryView](
-        view: V[ProjectLogEntryTable, Model[ProjectLogEntry]]
-    ): V[ProjectLogEntryTable, Model[ProjectLogEntry]] = view.filterView(_.projectId === self.id.value)
-
-    /**
-      * Adds a new log entry with an "error" tag to the log.
-      *
-      * @param message  Message to log
-      * @return         New entry
-      */
-    def logError[F[_]](message: String)(implicit service: ModelService[F], F: Monad[F]): F[Model[ProjectLogEntry]] = {
-      val tag = "error"
-      loggerEntries(ModelView.now(ProjectLogEntry))
-        .find(e => e.message === message && e.tag === tag)
-        .semiflatMap { entry =>
-          service.update(entry)(
-            _.copy(
-              occurrences = entry.occurrences + 1,
-              lastOccurrence = Instant.now()
-            )
-          )
-        }
-        .getOrElseF {
-          service.insert(
-            ProjectLogEntry(self.id, tag, message, lastOccurrence = Instant.now())
-          )
-        }
     }
   }
 }
