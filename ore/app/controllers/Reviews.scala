@@ -82,9 +82,8 @@ final class Reviews @Inject()(forms: OreForms)(
             reviewerId = None
           )
         )
-        _ <- service
-          .update(review)(_.copy(endedAt = None))
-          .flatMap(_.addMessage(Message("Reopened the review", System.currentTimeMillis(), "start")))
+        newReview <- service.update(review)(_.copy(endedAt = None))
+        _         <- newReview.addMessage(Message("Reopened the review", System.currentTimeMillis(), "start"))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }
@@ -94,11 +93,10 @@ final class Reviews @Inject()(forms: OreForms)(
       .andThen(PermissionAction(Permission.Reviewer))
       .asyncF(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
-          version <- getProjectVersion(author, slug, versionString)
-          review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toZIOWithError(notFound)
-          _ <- service
-            .update(review)(_.copy(endedAt = Some(Instant.now())))
-            .flatMap(_.addMessage(Message(request.body.trim, System.currentTimeMillis(), "stop")))
+          version   <- getProjectVersion(author, slug, versionString)
+          review    <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toZIOWithError(notFound)
+          newReview <- service.update(review)(_.copy(endedAt = Some(Instant.now())))
+          _         <- newReview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "stop"))
         } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
       }
   }

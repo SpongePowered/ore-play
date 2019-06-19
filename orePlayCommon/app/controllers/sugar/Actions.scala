@@ -76,7 +76,7 @@ trait Actions extends Calls with ActionHelpers { self =>
     ActionHelpers.zioToFuture(zio)
 
   /** Called when a [[User]] tries to make a request they do not have permission for */
-  def onUnauthorized(implicit request: Request[_]): UIO[Result] = {
+  def onUnauthorized(implicit request: Request[_]): IO[Result, Nothing] = {
     val noRedirect           = request.flash.get("noRedirect")
     implicit val mdc: OreMDC = OreMDC.NoMDC
     users.current.isEmpty
@@ -86,6 +86,7 @@ trait Actions extends Calls with ActionHelpers { self =>
         else
           Redirect(ShowHome)
       }
+      .flatMap(res => ZIO.fail(res))
   }
 
   /**
@@ -113,15 +114,15 @@ trait Actions extends Calls with ActionHelpers { self =>
         implicit val r: R[A] = request
 
         zioToFuture(
-          request.user
-            .permissionsIn(request)
-            .orDie
-            .map(_.has(p))
-            .flatMap { perm =>
-              log(success = perm, request)
-              if (!perm) onUnauthorized.orDie.map(Left.apply)
-              else UIO.succeed(Right(request))
-            }
+          for {
+            perms <- request.user.permissionsIn(request).orDie
+            hasPerm = perms.has(p)
+            _       = log(success = hasPerm, request)
+            res <- (
+              if (!hasPerm) onUnauthorized
+              else UIO.succeed(request)
+            ).either
+          } yield res
         )
       }
     }
@@ -286,11 +287,14 @@ trait Actions extends Calls with ActionHelpers { self =>
       request: Request[A],
       userF: IO[Unit, Model[User]]
   ): Future[Either[Result, AuthRequest[A]]] = {
-    val authRequest: IO[Result, AuthRequest[A]] =       userF
-      .flatMap(user => HeaderData.of(request).map(new AuthRequest(user, _, request)))
-      .flatMapError(_ => onUnauthorized(request))
+    val authRequest = for {
+      user       <- userF
+      headerData <- HeaderData.of(request)
+    } yield new AuthRequest(user, headerData, request)
 
-    zioToFuture(authRequest.either)
+    val withError = authRequest.flatMapError(_ => onUnauthorized(request).flip)
+
+    zioToFuture(withError.either)
   }
 
   def projectAction(author: String, slug: String)(
@@ -313,20 +317,19 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   private def maybeProjectRequest[A](
       r: OreRequest[A],
-      project: IO[Unit, Model[Project]]
+      projectF: IO[Unit, Model[Project]]
   ): Future[Either[Result, ProjectRequest[A]]] = {
     implicit val request: OreRequest[A] = r
-    zioToFuture(
-      project
-        .flatMap(processProject(_, request.headerData.currentUser))
-        .flatMap { p =>
-          toProjectRequest(p) {
-            case (data, scoped) => new ProjectRequest[A](data, scoped, r.headerData, r)
-          }
-        }
-        .constError(notFound)
-        .either
-    )
+
+    val projectRequest = for {
+      project    <- projectF
+      newProject <- processProject(project, request.headerData.currentUser)
+      res <- toProjectRequest(newProject) {
+        case (data, scoped) => new ProjectRequest[A](data, scoped, r.headerData, r)
+      }
+    } yield res
+
+    zioToFuture(projectRequest.constError(notFound).either)
   }
 
   private def toProjectRequest[T](project: Model[Project])(f: (ProjectData, ScopedProjectData) => T)(
@@ -337,22 +340,19 @@ trait Actions extends Calls with ActionHelpers { self =>
     (projectData.orDie, ScopedProjectData.of[UIO, ParUIO](request.headerData.currentUser, project)).parMapN(f)
   }
 
-  private def processProject(project: Model[Project], user: Option[Model[User]]): IO[Unit, Model[Project]] = {
+  private def processProject(project: Model[Project], optUser: Option[Model[User]]): IO[Unit, Model[Project]] = {
     if (project.visibility == Visibility.Public) {
       IO.succeed(project)
     } else {
-      ZIO
-        .fromOption(user)
-        .flatMap { user =>
-          val check1 = canEditAndNeedChangeOrApproval(project, user)
-          val check2 = user.permissionsIn(GlobalScope).map(_.has(Permission.SeeHidden))
+      for {
+        user <- ZIO.fromOption(optUser)
 
-          check1.race(check2)
-        }
-        .flatMap {
-          case true  => IO.succeed(project)
-          case false => IO.fail(())
-        }
+        check1 = canEditAndNeedChangeOrApproval(project, user)
+        check2 = user.permissionsIn(GlobalScope).map(_.has(Permission.SeeHidden))
+
+        canSeeProject <- check1.race(check2)
+        res           <- if (canSeeProject) IO.succeed(project) else IO.fail(())
+      } yield res
     }
   }
 
@@ -364,7 +364,7 @@ trait Actions extends Calls with ActionHelpers { self =>
       case _ => UIO.succeed(false)
     }
 
-  def authedProjectActionImpl(project: IO[Unit, Model[Project]])(
+  def authedProjectActionImpl(projectF: IO[Unit, Model[Project]])(
       implicit ec: ExecutionContext
   ): ActionRefiner[AuthRequest, AuthedProjectRequest] = new ActionRefiner[AuthRequest, AuthedProjectRequest] {
 
@@ -373,17 +373,15 @@ trait Actions extends Calls with ActionHelpers { self =>
     def refine[A](request: AuthRequest[A]): Future[Either[Result, AuthedProjectRequest[A]]] = {
       implicit val r: AuthRequest[A] = request
 
-      zioToFuture(
-        project
-          .flatMap(processProject(_, Some(request.user)))
-          .flatMap { p =>
-            toProjectRequest(p) {
-              case (data, scoped) => new AuthedProjectRequest[A](data, scoped, r.headerData, request)
-            }
-          }
-          .constError(notFound)
-          .either
-      )
+      val projectRequest = for {
+        project    <- projectF
+        newProject <- processProject(project, Some(request.user))
+        projectRequest <- toProjectRequest(newProject) {
+          case (data, scoped) => new AuthedProjectRequest[A](data, scoped, r.headerData, request)
+        }
+      } yield projectRequest
+
+      zioToFuture(projectRequest.constError(notFound).either)
     }
   }
 
@@ -403,16 +401,15 @@ trait Actions extends Calls with ActionHelpers { self =>
 
     def refine[A](request: OreRequest[A]): Future[Either[Result, OrganizationRequest[A]]] = {
       implicit val r: OreRequest[A] = request
-      zioToFuture(
-        getOrga(organization)
-          .flatMap { org =>
-            toOrgaRequest(org) {
-              case (data, scoped) => new OrganizationRequest[A](data, scoped, r.headerData, request)
-            }
-          }
-          .constError(notFound)
-          .either
-      )
+
+      val orgaRequest = for {
+        org <- getOrga(organization)
+        orgaRequest <- toOrgaRequest(org) {
+          case (data, scoped) => new OrganizationRequest[A](data, scoped, r.headerData, request)
+        }
+      } yield orgaRequest
+
+      zioToFuture(orgaRequest.constError(notFound).either)
     }
   }
 
@@ -424,16 +421,14 @@ trait Actions extends Calls with ActionHelpers { self =>
     def refine[A](request: AuthRequest[A]): Future[Either[Result, AuthedOrganizationRequest[A]]] = {
       implicit val r: AuthRequest[A] = request
 
-      zioToFuture(
-        getOrga(organization)
-          .flatMap { org =>
-            toOrgaRequest(org) {
-              case (data, scoped) => new AuthedOrganizationRequest[A](data, scoped, r.headerData, request)
-            }
-          }
-          .constError(notFound)
-          .either
-      )
+      val orgaRequest = for {
+        org <- getOrga(organization)
+        orgaRequest <- toOrgaRequest(org) {
+          case (data, scoped) => new AuthedOrganizationRequest[A](data, scoped, r.headerData, request)
+        }
+      } yield orgaRequest
+
+      zioToFuture(orgaRequest.constError(notFound).either)
     }
   }
 

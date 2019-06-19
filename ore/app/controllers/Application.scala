@@ -162,24 +162,19 @@ final class Application @Inject()(forms: OreForms)(
     */
   def setFlagResolved(flagId: DbRef[Flag], resolved: Boolean): Action[AnyContent] =
     FlagAction.asyncF { implicit request =>
-      ModelView
-        .now(Flag)
-        .get(flagId)
-        .semiflatMap { flag =>
-          for {
-            user        <- users.current.value
-            _           <- flag.markResolved(resolved, user)
-            flagCreator <- flag.user[Task].orDie
-            _ <- UserActionLogger.log(
-              request,
-              LoggedAction.ProjectFlagResolved,
-              flag.projectId,
-              s"Flag Resolved by ${user.fold("unknown")(_.name)}",
-              s"Flagged by ${flagCreator.name}"
-            )
-          } yield Ok
-        }
-        .getOrElse(NotFound)
+      for {
+        flag        <- ModelView.now(Flag).get(flagId).toZIOWithError(NotFound)
+        user        <- users.current.value
+        _           <- flag.markResolved(resolved, user)
+        flagCreator <- flag.user[Task].orDie
+        _ <- UserActionLogger.log(
+          request,
+          LoggedAction.ProjectFlagResolved,
+          flag.projectId,
+          s"Flag Resolved by ${user.fold("unknown")(_.name)}",
+          s"Flagged by ${flagCreator.name}"
+        )
+      } yield Ok
     }
 
   def showHealth(): Action[AnyContent] =
@@ -322,26 +317,22 @@ final class Application @Inject()(forms: OreForms)(
     Authenticated.andThen(PermissionAction(Permission.EditAllUserSettings))
 
   def userAdmin(user: String): Action[AnyContent] = UserAdminAction.asyncF { implicit request =>
-    users
-      .withName(user)
-      .toZIOWithError(notFound)
-      .flatMap { u =>
-        for {
-          orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
-          projectRoles <- orga.fold(
-            service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
-          )(orga => IO.succeed(Nil))
-          t2 <- (
-            UserData.of(request, u),
-            ZIO.foreachPar(projectRoles)(_.project[Task].orDie),
-            OrganizationData.of[Task, ParTask](orga).value.orDie
-          ).parTupled
-          (userData, projects, orgaData) = t2
-        } yield {
-          val pr = projects.zip(projectRoles)
-          Ok(views.users.admin.userAdmin(userData, orgaData, pr.map(t => t._1.obj -> t._2)))
-        }
-      }
+    for {
+      u    <- users.withName(user).toZIOWithError(notFound)
+      orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
+      projectRoles <- orga.fold(
+        service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
+      )(orga => IO.succeed(Nil))
+      t2 <- (
+        UserData.of(request, u),
+        ZIO.foreachPar(projectRoles)(_.project[Task].orDie),
+        OrganizationData.of[Task, ParTask](orga).value.orDie
+      ).parTupled
+      (userData, projects, orgaData) = t2
+    } yield {
+      val pr = projects.zip(projectRoles)
+      Ok(views.users.admin.userAdmin(userData, orgaData, pr.map(t => t._1.obj -> t._2)))
+    }
   }
 
   def updateUser(userName: String): Action[(String, String, String)] =

@@ -84,24 +84,21 @@ class Users @Inject()(
           this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
         ).map(_.flashing("url" -> returnPath.getOrElse(request.path)))
       } else {
-        // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
-        this.sso
-          .authenticate(sso.get, sig.get)(isNonceValid)
-          .get
-          .constError(Redirect(ShowHome).withError("error.loginFailed"))
-          .map(sponge => sponge.toUser -> sponge)
-          .flatMap {
-            case (fromSponge, sponge) =>
-              // Complete authentication
-              for {
-                user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
-                _    <- user.globalRoles.deleteAllFromParent
-                _ <- sponge.newGlobalRoles.fold(IO.unit) { roles =>
-                  ZIO.foreachPar_(roles.map(_.toDbRole.id))(user.globalRoles.addAssoc(_))
-                }
-                result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
-              } yield result
+        for {
+          // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
+          sponge <- this.sso
+            .authenticate(sso.get, sig.get)(isNonceValid)
+            .get
+            .constError(Redirect(ShowHome).withError("error.loginFailed"))
+          fromSponge = sponge.toUser
+          // Complete authentication
+          user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
+          _    <- user.globalRoles.deleteAllFromParent
+          _ <- sponge.newGlobalRoles.fold(IO.unit) { roles =>
+            ZIO.foreachPar_(roles.map(_.toDbRole.id))(user.globalRoles.addAssoc(_))
           }
+          result <- this.redirectBack(request.flash.get("url").getOrElse("/"), user)
+        } yield result
       }
     }
 
@@ -151,47 +148,45 @@ class Users @Inject()(
 
     val canHideProjects = request.headerData.globalPerm(Permission.SeeHidden)
 
-    users
-      .withName(username)
-      .toZIOWithError(notFound)
-      .flatMap { u =>
-        for {
-          // TODO include orga projects?
-          t1 <- (
-            service
-              .runDbCon(
-                UserPagesQueries
-                  .getProjects(
-                    username,
-                    request.headerData.currentUser.map(_.id.value),
-                    canHideProjects,
-                    ProjectSortingStrategy.MostStars,
-                    pageSize,
-                    offset
-                  )
-                  .to[Vector]
+    for {
+      u <- users
+        .withName(username)
+        .toZIOWithError(notFound)
+      // TODO include orga projects?
+      t1 <- (
+        service
+          .runDbCon(
+            UserPagesQueries
+              .getProjects(
+                username,
+                request.headerData.currentUser.map(_.id.value),
+                canHideProjects,
+                ProjectSortingStrategy.MostStars,
+                pageSize,
+                offset
               )
-              .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon)),
-            getOrga(username).option,
-            UserData.of(request, u),
-          ).parTupled
-          (projects, orga, userData) = t1
-          t2 <- (
-            OrganizationData.of[Task, ParTask](orga).value.orDie,
-            ScopedOrganizationData.of(request.currentUser, orga).value
-          ).parTupled
-          (orgaData, scopedOrgaData) = t2
-        } yield {
-          Ok(
-            views.users.projects(
-              userData,
-              orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-              projects,
-              pageNum
-            )
+              .to[Vector]
           )
-        }
-      }
+          .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon)),
+        getOrga(username).option,
+        UserData.of(request, u),
+      ).parTupled
+      (projects, orga, userData) = t1
+      t2 <- (
+        OrganizationData.of[Task, ParTask](orga).value.orDie,
+        ScopedOrganizationData.of(request.currentUser, orga).value
+      ).parTupled
+      (orgaData, scopedOrgaData) = t2
+    } yield {
+      Ok(
+        views.users.projects(
+          userData,
+          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
+          projects,
+          pageNum
+        )
+      )
+    }
   }
 
   /**
@@ -202,22 +197,25 @@ class Users @Inject()(
     */
   def saveTagline(username: String): Action[String] =
     UserEditAction(username).asyncF(parse.form(forms.UserTagline)) { implicit request =>
-      val maxLen = this.config.ore.users.maxTaglineLen
+      val maxLen  = this.config.ore.users.maxTaglineLen
+      val tagline = request.body
 
       for {
         user <- users.withName(username).toZIOWithError(NotFound)
-        res <- {
-          val tagline = request.body
+        _ <- {
           if (tagline.length > maxLen)
             IO.fail(Redirect(ShowUser(user)).withError(request.messages.apply("error.tagline.tooLong", maxLen)))
-          else {
-            val log = UserActionLogger
-              .log(request, LoggedAction.UserTaglineChanged, user.id, tagline, user.tagline.getOrElse("null"))
-            val insert = service.update(user)(_.copy(tagline = Some(tagline)))
-            (log *> insert).const(Redirect(ShowUser(user)))
-          }
+          else ZIO.succeed(())
         }
-      } yield res
+        _ <- UserActionLogger.log(
+          request,
+          LoggedAction.UserTaglineChanged,
+          user.id,
+          tagline,
+          user.tagline.getOrElse("null")
+        )
+        _ <- service.update(user)(_.copy(tagline = Some(tagline)))
+      } yield Redirect(ShowUser(user))
     }
 
   /**
@@ -230,11 +228,14 @@ class Users @Inject()(
   def setLocked(username: String, locked: Boolean, sso: Option[String], sig: Option[String]): Action[AnyContent] = {
     VerifiedAction(username, sso, sig).asyncF { implicit request =>
       val user = request.user
-      if (!locked)
+
+      if (!locked) {
         this.mailer.push(this.emails.create(user, this.emails.AccountUnlocked))
+      }
+
       service
         .update(user)(_.copy(isLocked = locked))
-        .as(Redirect(ShowUser(username)))
+        .const(Redirect(ShowUser(username)))
     }
   }
 
@@ -353,15 +354,18 @@ class Users @Inject()(
             service.runDbCon(UserQueries.allPossibleProjectPermissions(request.user.id).unique),
             service.runDbCon(UserQueries.allPossibleOrgPermissions(request.user.id).unique)
           ).parMapN(_.add(_).add(userData.userPerm))
-        } yield
+        } yield {
+          import cats.instances.option._
+
           Ok(
             views.users.apiKeys(
               userData,
-              orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
+              (orgaData, scopedOrgaData).tupled,
               Model.unwrapNested(keys),
               totalPerms.toNamedSeq
             )
           )
+        }
       } else IO.fail(Forbidden)
     }
 }

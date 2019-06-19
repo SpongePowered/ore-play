@@ -123,26 +123,24 @@ class Channels @Inject()(forms: OreForms)(
           channel.isNonReviewed || reviewedChannelsCount
         )
 
-      service
-        .runDBIO(query.result.headOption)
-        .get
-        .constError(NotFound)
-        .flatMap {
-          case (channel, notLast, notLastNonEmpty, notLastReviewed) =>
-            val errorSeq = Seq(
-              notLast         -> "error.channel.last",
-              notLastNonEmpty -> "error.channel.lastNonEmpty",
-              notLastReviewed -> "error.channel.lastReviewed"
-            ).collect {
-              case (success, msg) if !success => msg
-            }
+      for {
+        t <- service.runDBIO(query.result.headOption).get.constError(NotFound)
+        (channel, notLast, notLastNonEmpty, notLastReviewed) = t
+        _ <- {
+          val errorSeq = Seq(
+            notLast         -> "error.channel.last",
+            notLastNonEmpty -> "error.channel.lastNonEmpty",
+            notLastReviewed -> "error.channel.lastReviewed"
+          ).collect {
+            case (success, msg) if !success => msg
+          }
 
-            if (errorSeq.isEmpty)
-              IO.succeed(channel)
-            else
-              IO.fail(Redirect(self.showList(author, slug)).withErrors(errorSeq.toList))
+          if (errorSeq.isEmpty)
+            IO.succeed(())
+          else
+            IO.fail(Redirect(self.showList(author, slug)).withErrors(errorSeq.toList))
         }
-        .flatMap(channel => projects.deleteChannel(request.project, channel))
-        .const(Redirect(self.showList(author, slug)))
+        _ <- projects.deleteChannel(request.project, channel)
+      } yield Redirect(self.showList(author, slug))
     }
 }

@@ -103,39 +103,35 @@ trait ProjectFactory {
 
   def processSubsequentPluginUpload(uploadData: PluginUpload, owner: Model[User], project: Model[Project])(
       implicit messages: Messages
-  ): ZIO[Blocking, String, PendingVersion] = {
-    this
-      .processPluginUpload(uploadData, owner)
-      .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
-      .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
-      .flatMap { plugin =>
-        for {
-          t <- (
-            project
-              .channels(ModelView.now(Channel))
-              .one
-              .getOrElseF(UIO.die(new IllegalStateException("No channel found for project"))),
-            project.settings[Task].orDie
-          ).parTupled
-          (headChannel, settings) = t
-          version <- IO.fromEither(
-            this.startVersion(
-              plugin,
-              project.pluginId,
-              Some(project.id),
-              project.url,
-              settings.forumSync,
-              headChannel.name
-            )
-          )
-          modelExists <- version.exists[Task].orDie
-          res <- {
-            if (modelExists && this.config.ore.projects.fileValidate) IO.fail("error.version.duplicate")
-            else version.cache[Task].const(version).orDie
-          }
-        } yield res
+  ): ZIO[Blocking, String, PendingVersion] =
+    for {
+      plugin <- processPluginUpload(uploadData, owner)
+        .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
+        .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
+      t <- (
+        project
+          .channels(ModelView.now(Channel))
+          .one
+          .getOrElseF(UIO.die(new IllegalStateException("No channel found for project"))),
+        project.settings[Task].orDie
+      ).parTupled
+      (headChannel, settings) = t
+      version <- IO.fromEither(
+        this.startVersion(
+          plugin,
+          project.pluginId,
+          Some(project.id),
+          project.url,
+          settings.forumSync,
+          headChannel.name
+        )
+      )
+      modelExists <- version.exists[Task].orDie
+      res <- {
+        if (modelExists && this.config.ore.projects.fileValidate) IO.fail("error.version.duplicate")
+        else version.cache[Task].const(version).orDie
       }
-  }
+    } yield res
 
   /**
     * Returns the error ID to display to the User, if any, if they cannot

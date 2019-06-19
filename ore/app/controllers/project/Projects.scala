@@ -467,20 +467,21 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def resetIcon(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
     implicit request =>
-      val project = request.project
-
       import zio.blocking._
 
-      val deleteFile = (p: Path) => effectBlocking(Files.delete(p))
+      val project = request.project
+      val deleteOptFile = (op: Option[Path]) =>
+        op.fold(IO.succeed(()): ZIO[Blocking, Throwable, Unit])(p => effectBlocking(Files.delete(p)))
 
-      val deleteIcon    = projectFiles.getIconPath(project).flatMap(_.map(deleteFile).getOrElse(IO.succeed(())))
-      val deletePending = projectFiles.getPendingIconPath(project).flatMap(_.map(deleteFile).getOrElse(IO.succeed(())))
-      val deleteDir     = effectBlocking(Files.delete(projectFiles.getPendingIconDir(project.ownerName, project.name)))
-
-      //todo data
-      val log = UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id, "", "")
-
-      val res = deleteIcon *> deletePending *> deleteDir *> log.const(Ok)
+      val res = for {
+        icon        <- projectFiles.getIconPath(project)
+        _           <- deleteOptFile(icon)
+        pendingIcon <- projectFiles.getPendingIconPath(project)
+        _           <- deleteOptFile(pendingIcon)
+        _           <- effectBlocking(Files.delete(projectFiles.getPendingIconDir(project.ownerName, project.name)))
+        //todo data
+        _ <- UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id, "", "")
+      } yield Ok
       res.orDie
   }
 

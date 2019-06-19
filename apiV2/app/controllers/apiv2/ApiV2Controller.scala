@@ -61,24 +61,24 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     lazy val authUrl                 = routes.ApiV2Controller.authenticate().absoluteURL()(request)
     def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
-    ZIO.fromOption(request.headers.get(AUTHORIZATION))
-      .mapError(Left.apply)
-      .map(Authorization.parseFromValueString)
-      .map(_.leftMap { es =>
+    for {
+      stringAuth <- ZIO.fromOption(request.headers.get(AUTHORIZATION)).mapError(Left.apply)
+      parsedAuth = Authorization.parseFromValueString(stringAuth).leftMap { es =>
         NonEmptyList
           .fromList(es)
           .fold(Right(unAuth(ApiError("Could not parse authorization header"))))(
             es2 => Right(unAuth(ApiErrors(es2.map(_.summary))))
           )
-      })
-      .absolve
-      .map(_.credentials)
-      .flatMap { creds =>
+      }
+      auth <- ZIO.fromEither(parsedAuth)
+      creds = auth.credentials
+      res <- {
         if (creds.scheme == "OreApi")
           ZIO.succeed(creds)
         else
           ZIO.fail(Right(unAuth(ApiError("Invalid scheme for authorization. Needs to be OreApi"))))
       }
+    } yield res
   }
 
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
@@ -87,24 +87,24 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
       def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
-      zioToFuture(
-        parseAuthHeader(request)
+      val authRequest = for {
+        creds <- parseAuthHeader(request)
           .mapError(_.leftMap(_ => unAuth("No authorization specified")).merge)
-          .flatMap { creds =>
-            ZIO.fromOption(creds.params.get("session")).constError(unAuth("No session specified"))
-              .flatMap { token =>
-                service.runDbCon(APIV2Queries.getApiAuthInfo(token).option)
-                  .get
-                  .constError(unAuth("Invalid session"))
-                  .flatMap { info =>
-                    if (info.expires.isBefore(Instant.now())) {
-                      service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
-                    } else ZIO.succeed(ApiRequest(info, request))
-                  }
-              }
-          }
-          .either
-      )
+        token <- ZIO
+          .fromOption(creds.params.get("session"))
+          .constError(unAuth("No session specified"))
+        info <- service
+          .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
+          .get
+          .constError(unAuth("Invalid session"))
+        res <- {
+          if (info.expires.isBefore(Instant.now())) {
+            service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
+          } else ZIO.succeed(ApiRequest(info, request))
+        }
+      } yield res
+
+      zioToFuture(authRequest.either)
     }
   }
 
@@ -218,12 +218,14 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
     val uuidToken = UUID.randomUUID().toString
 
-    val sessionToInsert2 = parseAuthHeader(request)
+    val sessionToInsert = parseAuthHeader(request)
       .flatMap { creds =>
         creds.params.get("apikey") match {
           case Some(ApiKeyRegex(identifier, token)) =>
-            service.runDbCon(APIV2Queries.findApiKey(identifier, token).option)
-              .get.constError(Right(unAuth("Invalid api key")))
+            service
+              .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
+              .get
+              .constError(Right(unAuth("Invalid api key")))
               .map {
                 case (keyId, keyOwnerId) =>
                   SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
@@ -238,7 +240,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         case Right(e) => ZIO.fail(e)
       }
 
-    sessionToInsert2
+    sessionToInsert
       .flatMap(t => service.insert(t._2).tupleLeft(t._1))
       .map {
         case (tpe, key) =>
@@ -311,15 +313,12 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def deleteKey(name: String): Action[AnyContent] =
     ApiAction(Permission.EditApiKeys, APIScope.GlobalScope).asyncF { implicit request =>
-      ZIO
-        .fromOption(request.user)
-        .constError(BadRequest(ApiError("Public keys can't be used to delete")))
-        .flatMap { user =>
-          service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run).map {
-            case 0 => NotFound: Result
-            case _ => NoContent: Result
-          }
-        }
+      for {
+        user <- ZIO
+          .fromOption(request.user)
+          .constError(BadRequest(ApiError("Public keys can't be used to delete")))
+        rowsAffected <- service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run)
+      } yield if (rowsAffected == 0) NotFound else NoContent
     }
 
   def createApiScope(pluginId: Option[String], organizationName: Option[String]): Either[Result, APIScope] =
@@ -334,10 +333,11 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
   def permissionsInCreatedApiScope(pluginId: Option[String], organizationName: Option[String])(
       implicit request: ApiRequest[_]
   ): IO[Result, (APIScope, Permission)] =
-    ZIO
-      .fromEither(createApiScope(pluginId, organizationName))
-      .flatMap(t => apiScopeToRealScope(t).tupleLeft(t).constError(NotFound))
-      .flatMap(t => request.permissionIn(t._2).tupleLeft(t._1))
+    for {
+      apiScope <- ZIO.fromEither(createApiScope(pluginId, organizationName))
+      scope    <- apiScopeToRealScope(apiScope).constError(NotFound)
+      perms    <- request.permissionIn(scope)
+    } yield (apiScope, perms)
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
     ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
