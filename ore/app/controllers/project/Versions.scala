@@ -35,7 +35,6 @@ import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{versions => views}
 
-import cats.instances.option._
 import cats.syntax.all._
 import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging
@@ -459,7 +458,8 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               .on(_.createdBy === _.id)
               .result
           )
-        } yield
+        } yield {
+          import cats.instances.option._
           Ok(
             views.log(
               request.project,
@@ -467,6 +467,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               Model.unwrapNested[Seq[(Model[VersionVisibilityChange], Option[User])]](visChanges)
             )
           )
+        }
       }
   }
 
@@ -745,6 +746,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def downloadRecommended(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
+      import cats.instances.option._
       request.project
         .recommendedVersion(ModelView.now(Version))
         .sequence
@@ -851,6 +853,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def downloadRecommendedJar(author: String, slug: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
+      import cats.instances.option._
       request.project
         .recommendedVersion(ModelView.now(Version))
         .sequence
@@ -892,6 +895,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def downloadRecommendedJarById(pluginId: String, token: Option[String]): Action[AnyContent] = {
     ProjectAction(pluginId).asyncF { implicit request =>
+      import cats.instances.option._
       val data = request.data
       request.project
         .recommendedVersion(ModelView.now(Version))
