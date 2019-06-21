@@ -118,7 +118,7 @@
             }
         },
         created() {
-            Object.entries(queryString.parse(location.search, {arrayFormat: 'bracket'}))
+            Object.entries(queryString.parse(location.search, {arrayFormat: 'bracket', parseBooleans: true}))
                 .filter(([key, value]) => defaultData().hasOwnProperty(key))
                 .forEach(([key, value]) => this.$data[key] = value);
 

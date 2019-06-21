@@ -217,7 +217,7 @@ lazy val oreClient = project
     npmDependencies in Compile ++= Seq(
       "vue"          -> "2.6.10",
       "lodash"       -> "4.17.11",
-      "query-string" -> "6.5.0",
+      "query-string" -> "6.8.0",
     ),
     npmDevDependencies in Compile ++= Seq(
       "webpack-merge"                      -> "4.1.0",
