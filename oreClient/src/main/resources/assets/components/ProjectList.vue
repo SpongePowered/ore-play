@@ -5,54 +5,63 @@
             <span>Loading projects for you...</span>
         </div>
         <div v-show="!loading">
-            <ul class="list-group project-list">
-                <li v-for="project in projects" class="list-group-item project @entry.visibility.cssClass">
-                    <div class="container-fluid">
-                        <div class="row">
-                            <div class="col-xs-12 col-sm-1">
-                                <Icon extra-classes="user-avatar-sm" :src="project.icon_url" :name="project.name"></Icon>
-                            </div>
-                            <div class="col-xs-12 col-sm-11">
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <a class="title" :href="routes.Projects.show(project.namespace.owner, project.namespace.slug).absoluteURL()">
-                                            {{ project.name }}
-                                        </a>
-                                    </div>
-                                    <div class="col-sm-6 hidden-xs">
-                                        <div class="info minor">
-                                    <span class="stat recommended-version" title="Recommended version" v-if="project.recommended_version">
-                                            <i class="far fa-gem"></i>
-                                            <a :href="routes.Versions.show(project.namespace.owner, project.namespace.slug, project.recommended_version.version).absoluteURL()">
-                                                {{ project.recommended_version.version }}
+            <div v-if="projects.length > 0">
+                <ul class="list-group project-list">
+                    <li class="list-group-item project @entry.visibility.cssClass" v-for="project in projects">
+                        <div class="container-fluid">
+                            <div class="row">
+                                <div class="col-xs-12 col-sm-1">
+                                    <Icon :name="project.name" :src="project.icon_url"
+                                          extra-classes="user-avatar-sm"></Icon>
+                                </div>
+                                <div class="col-xs-12 col-sm-11">
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <a :href="routes.Projects.show(project.namespace.owner, project.namespace.slug).absoluteURL()"
+                                               class="title">
+                                                {{ project.name }}
                                             </a>
-                                    </span>
+                                        </div>
+                                        <div class="col-sm-6 hidden-xs">
+                                            <div class="info minor">
+                                                <span class="stat recommended-version" title="Recommended version" v-if="project.recommended_version">
+                                                    <i class="far fa-gem"></i>
+                                                    <a :href="routes.Versions.show(project.namespace.owner, project.namespace.slug, project.recommended_version.version).absoluteURL()">
+                                                        {{ project.recommended_version.version }}
+                                                    </a>
+                                                </span>
 
-                                            <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ project.stats.views }}</span>
-                                            <span class="stat" title="Download"><i class="fas fa-download"></i> {{ project.stats.downloads }}</span>
-                                            <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ project.stats.stars }}</span>
+                                                <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ project.stats.views }}</span>
+                                                <span class="stat" title="Download"><i class="fas fa-download"></i> {{ project.stats.downloads }}</span>
+                                                <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ project.stats.stars }}</span>
 
-                                            <span class="stat" :title="categoryFromId(project.category).name">
-                                            <i class="fas" :class="'fa-' + categoryFromId(project.category).icon"></i>
-                                    </span>
+                                                <span :title="categoryFromId(project.category).name" class="stat">
+                                                    <i :class="'fa-' + categoryFromId(project.category).icon" class="fas"></i>
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-7 description-column">
-                                        <div class="description">{{ project.description }}</div>
-                                    </div>
-                                    <div class="col-xs-12 col-sm-5 tags-line" v-if="project.recommended_version">
-                                        <Tag v-for="tag in filterTags(project.recommended_version.tags)"
-                                             v-bind="tag" v-bind:key="project.name + '-' + tag.name"></Tag>
+                                    <div class="row">
+                                        <div class="col-sm-7 description-column">
+                                            <div class="description">{{ project.description }}</div>
+                                        </div>
+                                        <div class="col-xs-12 col-sm-5 tags-line" v-if="project.recommended_version">
+                                            <Tag v-bind="tag"
+                                                 v-bind:key="project.name + '-' + tag.name" v-for="tag in filterTags(project.recommended_version.tags)"></Tag>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </li>
-            </ul>
-            <Pagination :current="current" :total="total" @prev="$emit('prevPage')" @next="$emit('nextPage')" @jumpTo="$emit('jumpToPage', $event)"></Pagination>
+                    </li>
+                </ul>
+                <Pagination :current="current" :total="total" @jumpTo="$emit('jumpToPage', $event)" @next="$emit('nextPage')"
+                            @prev="$emit('prevPage')"></Pagination>
+            </div>
+            <div v-else class="list-group-item empty-project-list">
+                <i class="far fa-2x fa-sad-tear"></i>
+                <span>Oops! No projects found matching your filters...</span>
+            </div>
         </div>
     </div>
 </template>
@@ -92,7 +101,7 @@
                 default: 0
             }
         },
-        data () {
+        data() {
             return {
                 projects: [],
                 totalProjects: 0,
@@ -118,7 +127,7 @@
             });
         },
         methods: {
-            update: function() {
+            update: function () {
                 apiV2Request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
                     this.projects = response.result;
                     this.totalProjects = response.pagination.count;
@@ -139,6 +148,14 @@
 <style lang="scss">
     @import "./../scss/variables";
 
+    .empty-project-list {
+        display: flex;
+        align-items: center;
+
+        span {
+            margin-left: 0.5rem;
+        }
+    }
     .project-list {
         margin-bottom: 0;
 

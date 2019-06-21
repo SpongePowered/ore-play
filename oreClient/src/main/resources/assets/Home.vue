@@ -1,8 +1,14 @@
 <template>
     <div class="row">
         <div class="col-md-9">
-            <div class="project-search">
+            <div class="project-search" :class="{'input-group': q.length > 0}">
                 <input type="text" class="form-control" v-model="q" @keydown="resetPage" :placeholder="queryPlaceholder" />
+                <span class="input-group-btn" v-if="q.length > 0">
+                    <button class="btn btn-default" type="button" @click="q = ''"><i class="fas fa-times"></i></button>
+                </span>
+            </div>
+            <div v-if="!isDefault" class="clearSelection">
+                <a @click="reset"><i class="fa fa-window-close"></i> Clear current search query, categories, platform, and sort</a>
             </div>
             <project-list v-bind="listBinding" ref="list" @prevPage="page--"
                           @nextPage="page++" @jumpToPage="page = $event" v-bind:projectCount.sync="projectCount"></project-list>
@@ -82,6 +88,9 @@
         },
         data: defaultData,
         computed: {
+            isDefault: function() {
+                return Object.keys(clearFromDefaults(this.baseBinding, defaultData())).length === 0;
+            },
             baseBinding: function () {
                 return {
                     q: this.q,
@@ -99,11 +108,14 @@
             },
             queryPlaceholder: function () {
                 return `Search in ${this.projectCount === null ? "all" : this.projectCount} projects` +
-                    `${Object.keys(clearFromDefaults(this.baseBinding, defaultData())).length > 0 ? " fitting your filters" : ""}` +
+                    `${!this.isDefault ? " matching your filters" : ""}` +
                     ", proudly made by the community...";
             }
         },
         methods: {
+            reset: function() {
+                Object.entries(defaultData()).forEach(([key, value]) => this.$data[key] = value)
+            },
             resetPage: function() {
                 this.page = 1;
             },
@@ -173,6 +185,13 @@
         }
         .parent {
             font-weight: bold;
+        }
+    }
+    .clearSelection {
+        margin-bottom: 1rem;
+        a {
+            cursor: pointer;
+            color: #586069;
         }
     }
 </style>
