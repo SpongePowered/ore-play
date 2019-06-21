@@ -153,25 +153,6 @@ final class ApiV1Controller @Inject()(
   }
 
   /**
-    * Almost like [[listVersions()]] but more intended for internal use. Shows all versions, but need authentification.
-    *
-    * @param pluginId Project plugin ID
-    * @param channels Channels to get versions from
-    * @param limit    Amount to take
-    * @param offset   Amount to drop
-    * @return         List of versions
-    */
-  def listAllVersions(
-      pluginId: String,
-      channels: Option[String],
-      limit: Option[Int],
-      offset: Option[Int]
-  ): Action[AnyContent] =
-    AuthedProjectActionById(pluginId).andThen(PermissionAction(Permission.Reviewer)).asyncF {
-      this.api.getVersionList(pluginId, channels, limit, offset, onlyPublic = false).map(Some.apply).map(ApiResult)
-    }
-
-  /**
     * Shows the specified Project Version.
     *
     * @param pluginId Project plugin ID

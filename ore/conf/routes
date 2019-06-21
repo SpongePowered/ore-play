@@ -24,29 +24,16 @@ GET     /statusz                                                    @controllers
 +nocsrf
 POST    /api/sync_sso                                               @controllers.ApiV1Controller.syncSso()
 
-GET     /api/projects                                               @controllers.ApiV1Controller.listProjects(categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
-GET     /api/projects/:pluginId                                     @controllers.ApiV1Controller.showProject(pluginId)
-
 POST    /api/projects/:pluginId/keys/new                            @controllers.ApiV1Controller.createKey(pluginId)
 POST    /api/projects/:pluginId/keys/revoke                         @controllers.ApiV1Controller.revokeKey(pluginId)
 
-GET     /api/projects/:pluginId/versions                            @controllers.ApiV1Controller.listVersions(pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
-GET     /api/projects/:pluginId/versions/:name                      @controllers.ApiV1Controller.showVersion(pluginId, name)
-POST    /api/projects/:pluginId/versions/:name                      @controllers.ApiV1Controller.deployVersion(pluginId, name)
-
-GET     /api/projects/:pluginId/pages                               @controllers.ApiV1Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
-
 GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
 GET     /api/projects/:pluginId/versions/:name/download             @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
-
-GET     /api/users                                                  @controllers.ApiV1Controller.listUsers(limit: Option[Int], offset: Option[Int])
-GET     /api/users/:user                                            @controllers.ApiV1Controller.showUser(user)
 
 GET     /api/v1/projects                                            @controllers.ApiV1Controller.listProjects(categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
 GET     /api/v1/projects/:pluginId                                  @controllers.ApiV1Controller.showProject(pluginId)
 
 GET     /api/v1/projects/:pluginId/versions                         @controllers.ApiV1Controller.listVersions(pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
-GET     /api/v1/projects/:pluginId/versionsAll                      @controllers.ApiV1Controller.listAllVersions(pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
 GET     /api/v1/projects/:pluginId/versions/:name                   @controllers.ApiV1Controller.showVersion(pluginId, name)
 POST    /api/v1/projects/:pluginId/versions/:name                   @controllers.ApiV1Controller.deployVersion(pluginId, name)
 
