@@ -9,7 +9,7 @@ import scala.concurrent.duration.FiniteDuration
 
 import ore.OreConfig
 import ore.db.{Model, ModelService}
-import ore.discourse.{DiscourseApi, DiscoursePost}
+import ore.discourse.{DiscourseApi, DiscourseError, DiscoursePost}
 import ore.models.project.{Project, Version}
 import ore.models.user.User
 import ore.util.StringUtils.readAndFormatFile
@@ -58,6 +58,12 @@ class OreDiscourseApiEnabled[F[_], G[_]](
   private val MDCLogger           = scalalogging.Logger.takingImplicit[DiscourseMDC]("Discourse")
   protected[discourse] val Logger = scalalogging.Logger(MDCLogger.underlying)
 
+  //TODO: At some point we should handle these errors better
+  private def errToString(err: DiscourseError): String = err match {
+    case DiscourseError.NotAvailable => "Could not connect to forums, please try again later."
+    case _                           => err.toString
+  }
+
   /**
     * Initializes and starts this API instance.
     */
@@ -89,7 +95,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
 
     val res = for {
       content <- EitherT.right[(String, String)](Templates.projectTopic(project))
-      topic   <- createTopicProgram(content).leftMap((_, content))
+      topic   <- EitherT(createTopicProgram(content)).leftMap(err => (errToString(err), content))
       // Topic created!
       // Catch some unexpected cases (should never happen)
       _ <- EitherT.right[(String, String)](sanityCheck(topic.isTopic, "project post isn't topic?"))
@@ -140,7 +146,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
 
     implicit val mdc: DiscourseMDC = DiscourseMDC(ownerName, topicId, title)
 
-    def logErrorsAs(error: String, as: Boolean): F[Boolean] = {
+    def logErrorsAs(error: DiscourseError, as: Boolean): F[Boolean] = {
       val message =
         s"""|Request to update project topic was successful but Discourse responded with errors:
             |Project: ${project.url}
@@ -161,8 +167,8 @@ class OreDiscourseApiEnabled[F[_], G[_]](
       // Set flag so that if we are interrupted we will remember to do it later
       _       <- EitherT.right[Boolean](service.update(project)(_.copy(isTopicDirty = true)))
       content <- EitherT.right[Boolean](Templates.projectTopic(project))
-      _       <- updateTopicProgram.leftSemiflatMap(logErrorsAs(_, as = false))
-      _       <- updatePostProgram(content).leftSemiflatMap(logErrorsAs(_, as = false))
+      _       <- EitherT(updateTopicProgram).leftSemiflatMap(logErrorsAs(_, as = false))
+      _       <- EitherT(updatePostProgram(content)).leftSemiflatMap(logErrorsAs(_, as = false))
       _ = MDCLogger.debug(s"Project topic updated for ${project.url}.")
       _ <- EitherT.right[Boolean](service.update(project)(_.copy(isTopicDirty = false)))
     } yield true
@@ -182,7 +188,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
     require(project.topicId.isDefined, "undefined topic id")
     api
       .createPost(poster = user.name, topicId = project.topicId.get, content = content)
-      .value
+      .map(_.leftMap(errToString))
       .orElse(F.pure(Left("Could not connect to forums, please try again later.")))
   }
 
@@ -220,7 +226,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
 
     implicit val mdc: DiscourseMDC = DiscourseMDC(ownerName, topicId, title)
 
-    def logErrorsAs(error: String, as: Boolean): F[Boolean] = {
+    def logErrorsAs(error: DiscourseError, as: Boolean): F[Boolean] = {
       val message =
         s"""|Request to update project topic was successful but Discourse responded with errors:
             |Project: ${project.url}
@@ -238,7 +244,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
       // Set flag so that if we are interrupted we will remember to do it later
       _ <- EitherT.right[Boolean](service.update(version)(_.copy(isPostDirty = true)))
       content = Templates.versionRelease(project, version, version.description)
-      _ <- updatePostProgram(content).leftSemiflatMap(logErrorsAs(_, as = false))
+      _ <- EitherT(updatePostProgram(content)).leftSemiflatMap(logErrorsAs(_, as = false))
       _ = MDCLogger.debug(s"Version post updated for ${project.url}.")
       _ <- EitherT.right[Boolean](service.update(version)(_.copy(isPostDirty = false)))
     } yield true
@@ -249,12 +255,12 @@ class OreDiscourseApiEnabled[F[_], G[_]](
   def changeTopicVisibility(project: Project, isVisible: Boolean): F[Unit] = {
     require(project.topicId.isDefined, "undefined topic id")
 
-    api
-      .updateTopic(admin, project.topicId.get, None, Some(if (isVisible) categoryDefault else categoryDeleted))
-      .fold(
+    EitherT(
+      api.updateTopic(admin, project.topicId.get, None, Some(if (isVisible) categoryDefault else categoryDeleted))
+    ).fold(
         errors =>
           F.raiseError[Unit](
-            new Exception(s"Couldn't hide topic for project: ${project.url}. Message: " + errors.mkString(" | "))
+            new Exception(s"Couldn't hide topic for project: ${project.url}. Message: $errors")
         ),
         _ => F.unit
       )
@@ -270,11 +276,11 @@ class OreDiscourseApiEnabled[F[_], G[_]](
   def deleteProjectTopic(project: Model[Project]): F[Model[Project]] = {
     require(project.topicId.isDefined, "undefined topic id")
 
-    def logFailure(e: String) =
+    def logFailure(e: DiscourseError) =
       F.delay(Logger.warn(s"Couldn't delete topic for project: ${project.url} because $e. Rescheduling..."))
 
     val deleteForums =
-      api.deleteTopic(admin, project.topicId.get).onError { case e => EitherT.liftF(logFailure(e)) }.value
+      EitherT(api.deleteTopic(admin, project.topicId.get)).onError { case e => EitherT.liftF(logFailure(e)) }.value
     deleteForums *> service.update(project)(_.copy(topicId = None, postId = None))
   }
 

@@ -25,7 +25,7 @@ class AkkaSpongeAuthApi[F[_]] private (
     implicit system: ActorSystem,
     mat: Materializer,
     F: Concurrent[F],
-) extends AkkaClientApi[F, List]("SpongeAuth", counter, settings)
+) extends AkkaClientApi[F, List, String]("SpongeAuth", counter, settings)
     with SpongeAuthApi[F] {
 
   protected val Logger = scalalogging.Logger("SpongeAuth")
@@ -37,6 +37,9 @@ class AkkaSpongeAuthApi[F[_]] private (
     else
       json.as[A].leftMap(e => List(e.show))
   }
+
+  override def createStatusError(statusCode: StatusCode, message: Option[String]): String =
+    s"SpongeAuth request failed. Response code $statusCode${message.fold("")(s => s": $s")}"
 
   override def createDummyUser(username: String, email: String): F[Either[List[String], AuthUser]] = {
     val params = Seq(
@@ -65,7 +68,7 @@ class AkkaSpongeAuthApi[F[_]] private (
     )
   }
 
-  override def getChangeAvatarToken(
+  private def getChangeAvatarToken(
       requester: String,
       organization: String
   ): F[Either[List[String], ChangeAvatarToken]] = {
@@ -83,8 +86,13 @@ class AkkaSpongeAuthApi[F[_]] private (
     )
   }
 
-  override def changeAvatarUri(organization: String, token: ChangeAvatarToken): Uri =
-    apiUri(_ / "accounts"/"user"/ organization / "change-avatar").withQuery(Uri.Query("key" -> token.signedData))
+  override def changeAvatarUri(requester: String, organization: String): F[Either[List[String], Uri]] =
+    getChangeAvatarToken(requester, organization).map {
+      _.map { token =>
+        apiUri(_ / "accounts" / "user" / organization / "change-avatar")
+          .withQuery(Uri.Query("key" -> token.signedData))
+      }
+    }
 }
 object AkkaSpongeAuthApi {
 

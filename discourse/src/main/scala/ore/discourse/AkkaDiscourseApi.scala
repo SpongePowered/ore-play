@@ -2,7 +2,7 @@ package ore.discourse
 
 import scala.language.higherKinds
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
 import ore.external.AkkaClientApi
@@ -14,6 +14,7 @@ import cats.data.EitherT
 import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
+import cats.instances.either._
 import com.typesafe.scalalogging
 import io.circe._
 
@@ -24,7 +25,7 @@ class AkkaDiscourseApi[F[_]] private (
     implicit system: ActorSystem,
     mat: Materializer,
     F: Concurrent[F]
-) extends AkkaClientApi[F, cats.Id]("Discourse", counter, settings)
+) extends AkkaClientApi[F, cats.Id, DiscourseError]("Discourse", counter, settings)
     with DiscourseApi[F] {
 
   protected val Logger = scalalogging.Logger("DiscourseApi")
@@ -37,12 +38,49 @@ class AkkaDiscourseApi[F[_]] private (
   private def apiQuery(poster: Option[String]) =
     Uri.Query("api_key" -> settings.apiKey, "api_username" -> poster.getOrElse(settings.adminUser))
 
-  protected def gatherJsonErrors[A: Decoder](json: Json): Either[String, A] = {
-    val success = json.hcursor.downField("success")
-    if (success.succeeded && !success.as[Boolean].getOrElse(false))
-      Left(json.hcursor.get[String]("message").getOrElse("No error message found"))
-    else
-      json.as[A].leftMap(_.show)
+  override def createStatusError(statusCode: StatusCode, message: Option[String]): DiscourseError = statusCode match {
+    case StatusCodes.TooManyRequests =>
+      message match {
+        case Some(jsonStr) =>
+          parser.parse(jsonStr).flatMap(_.hcursor.downField("extras").get[Int]("wait_seconds")) match {
+            case Right(value) =>
+              DiscourseError.RatelimitError(value.seconds)
+
+            case Left(ParsingFailure(errMessage, e)) =>
+              Logger.warn(s"Failed to parse JSON in 429 from Discourse. Error: $errMessage To parse: $jsonStr", e)
+
+              DiscourseError.RatelimitError(12.hours)
+            case Left(DecodingFailure(errMessage, ops)) =>
+              Logger.warn(
+                s"Failed to get wait time in 429 from Discourse. Error: $errMessage Path: ${CursorOp.opsToPath(ops)} Json: $jsonStr"
+              )
+
+              DiscourseError.RatelimitError(12.hours)
+          }
+
+        case None =>
+          Logger.warn("Received 429 from Discourse with no body. Assuming wait time of 12 hours")
+          DiscourseError.RatelimitError(12.hours)
+      }
+
+    case _ => DiscourseError.StatusError(statusCode, message)
+  }
+
+  protected def gatherJsonErrors[A: Decoder](json: Json): Either[DiscourseError, A] = {
+    val cursor = json.hcursor
+
+    if (cursor.downField("errors").succeeded || cursor.downField("error_type").succeeded) {
+      //If we can't find an error field here we just grab a sensible default
+      Left(
+        DiscourseError.UnknownError(
+          cursor.get[Seq[String]]("errors").getOrElse(Nil),
+          cursor.get[String]("error_type").getOrElse("unknown"),
+          cursor.get[Map[String, Json]]("extras").fold(_ => Map.empty, _.map(t => t._1 -> t._2.noSpaces))
+        )
+      )
+    } else {
+      json.as[A].leftMap(_ => DiscourseError.UnknownError(Seq("err.show"), "unknown", Map.empty))
+    }
   }
 
   override def createTopic(
@@ -50,7 +88,7 @@ class AkkaDiscourseApi[F[_]] private (
       title: String,
       content: String,
       categoryId: Option[Int]
-  ): EitherT[F, String, DiscoursePost] = {
+  ): F[Either[DiscourseError, DiscoursePost]] = {
     val base = startParams(Some(poster)) ++ Seq(
       "title" -> title,
       "raw"   -> content
@@ -58,30 +96,26 @@ class AkkaDiscourseApi[F[_]] private (
 
     val withCat = categoryId.fold(base)(i => base :+ ("category" -> i.toString))
 
-    EitherT(
-      makeUnmarshallRequestEither[DiscoursePost](
-        HttpRequest(
-          HttpMethods.POST,
-          apiUri(_ / "posts.json"),
-          entity = FormData(withCat: _*).toEntity
-        )
+    makeUnmarshallRequestEither[DiscoursePost](
+      HttpRequest(
+        HttpMethods.POST,
+        apiUri(_ / "posts.json"),
+        entity = FormData(withCat: _*).toEntity
       )
     )
   }
 
-  override def createPost(poster: String, topicId: Int, content: String): EitherT[F, String, DiscoursePost] = {
+  override def createPost(poster: String, topicId: Int, content: String): F[Either[DiscourseError, DiscoursePost]] = {
     val params = startParams(Some(poster)) ++ Seq(
       "topic_id" -> topicId.toString,
       "raw"      -> content
     )
 
-    EitherT(
-      makeUnmarshallRequestEither[DiscoursePost](
-        HttpRequest(
-          HttpMethods.POST,
-          apiUri(_ / "posts.json"),
-          entity = FormData(params: _*).toEntity
-        )
+    makeUnmarshallRequestEither[DiscoursePost](
+      HttpRequest(
+        HttpMethods.POST,
+        apiUri(_ / "posts.json"),
+        entity = FormData(params: _*).toEntity
       )
     )
   }
@@ -91,41 +125,37 @@ class AkkaDiscourseApi[F[_]] private (
       topicId: Int,
       title: Option[String],
       categoryId: Option[Int]
-  ): EitherT[F, String, Unit] = {
-    if (title.isEmpty && categoryId.isEmpty) EitherT.rightT[F, String](())
+  ): F[Either[DiscourseError, Unit]] = {
+    if (title.isEmpty && categoryId.isEmpty) F.pure(Right(()))
     else {
       val base = startParams(Some(poster)) :+ ("topic_id" -> topicId.toString)
 
       val withTitle = title.fold(base)(t => base :+ ("title"                      -> t))
       val withCat   = categoryId.fold(withTitle)(c => withTitle :+ ("category_id" -> c.toString))
 
-      EitherT(
-        makeUnmarshallRequestEither[Json](
-          HttpRequest(
-            HttpMethods.PUT,
-            apiUri(_ / "t" / "-" / s"$topicId.json"),
-            entity = FormData(withCat: _*).toEntity
-          )
-        )
-      ).void
-    }
-  }
-
-  override def updatePost(poster: String, postId: Int, content: String): EitherT[F, String, Unit] = {
-    val params = startParams(Some(poster)) :+ ("post[raw]" -> content)
-
-    EitherT(
       makeUnmarshallRequestEither[Json](
         HttpRequest(
           HttpMethods.PUT,
-          apiUri(_ / "posts" / s"$postId.json"),
-          entity = FormData(params: _*).toEntity
+          apiUri(_ / "t" / "-" / s"$topicId.json"),
+          entity = FormData(withCat: _*).toEntity
         )
-      )
-    ).void
+      ).map(_.void)
+    }
   }
 
-  override def deleteTopic(poster: String, topicId: Int): EitherT[F, String, Unit] =
+  override def updatePost(poster: String, postId: Int, content: String): F[Either[DiscourseError, Unit]] = {
+    val params = startParams(Some(poster)) :+ ("post[raw]" -> content)
+
+    makeUnmarshallRequestEither[Json](
+      HttpRequest(
+        HttpMethods.PUT,
+        apiUri(_ / "posts" / s"$postId.json"),
+        entity = FormData(params: _*).toEntity
+      )
+    ).map(_.void)
+  }
+
+  override def deleteTopic(poster: String, topicId: Int): F[Either[DiscourseError, Unit]] =
     EitherT
       .liftF(
         makeRequest(
@@ -138,8 +168,9 @@ class AkkaDiscourseApi[F[_]] private (
       .flatMapF(gatherStatusErrors)
       .semiflatMap(resp => F.delay(resp.discardEntityBytes()))
       .void
+      .value
 
-  override def isAvailable: F[Boolean] = breaker.isClosed.pure
+  override def isAvailable: F[Boolean] = breaker.isClosed.pure[F]
 }
 object AkkaDiscourseApi {
   def apply[F[_]: Concurrent](

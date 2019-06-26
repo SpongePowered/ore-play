@@ -28,7 +28,7 @@ class AkkaSSOApi[F[_]](
     secret: String,
     timeout: FiniteDuration,
     reset: FiniteDuration,
-    ref: Ref[F, Option[Boolean]]
+    cachedAvailable: Ref[F, Option[Boolean]]
 )(implicit F: Concurrent[F], cs: ContextShift[F], timer: Timer[F], system: ActorSystem, mat: Materializer)
     extends SSOApi[F] {
 
@@ -45,7 +45,7 @@ class AkkaSSOApi[F[_]](
   }
 
   override def isAvailable: F[Boolean] = {
-    ref.access.flatMap {
+    cachedAvailable.access.flatMap {
       case (Some(available), _) => available.pure
       case (None, setter) =>
         val ssoTestRequest =
@@ -55,7 +55,7 @@ class AkkaSSOApi[F[_]](
             .timeoutTo(timeout, false.pure)
 
         ssoTestRequest.flatMap { result =>
-          val scheduleReset = cs.shift *> timer.sleep(reset) *> ref.set(None)
+          val scheduleReset = cs.shift *> timer.sleep(reset) *> cachedAvailable.set(None)
 
           setter(Some(result))
             .flatMap {
@@ -72,27 +72,40 @@ class AkkaSSOApi[F[_]](
       .timeoutTo(timeout, false.pure)
   }
 
-  override def nonce(): String = BigInt(130, rand).toString(32)
+  private def nonce(): String = BigInt(130, rand).toString(32)
 
-  override def getLoginUrl(returnUrl: String, nonce: String): String = getUrl(returnUrl, loginUrl, nonce)
+  override def getLoginUrl(returnUrl: String): URLWithNonce = getUrl(returnUrl, loginUrl)
 
-  override def getSignupUrl(returnUrl: String, nonce: String): String = getUrl(returnUrl, signupUrl, nonce)
+  override def getSignupUrl(returnUrl: String): URLWithNonce = getUrl(returnUrl, signupUrl)
 
-  override def getVerifyUrl(returnUrl: String, nonce: String): String = getUrl(returnUrl, verifyUrl, nonce)
+  override def getVerifyUrl(returnUrl: String): URLWithNonce = getUrl(returnUrl, verifyUrl)
 
-  private def getUrl(returnUrl: String, baseUrl: String, nonce: String) = {
-    val payload    = generatePayload(returnUrl, nonce)
-    val sig        = generateSignature(payload)
-    val urlEncoded = URLEncoder.encode(payload, CharEncoding)
-    s"$baseUrl?sso=$urlEncoded&sig=$sig"
+  private def getUrl(returnUrl: String, baseUrl: String) = {
+    val generatedNonce = nonce()
+    val payload        = generatePayload(returnUrl, generatedNonce)
+    val sig            = generateSignature(payload)
+    val urlEncoded     = URLEncoder.encode(payload, CharEncoding)
+    URLWithNonce(s"$baseUrl?sso=$urlEncoded&sig=$sig", generatedNonce)
   }
 
-  override def generatePayload(returnUrl: String, nonce: String): String = {
+  /**
+    * Generates a new Base64 encoded SSO payload.
+    *
+    * @param returnUrl  URL to return to once authenticated
+    * @return           New payload
+    */
+  private def generatePayload(returnUrl: String, nonce: String): String = {
     val payload = s"return_sso_url=$returnUrl&nonce=$nonce"
     new String(Base64.getEncoder.encode(payload.getBytes(CharEncoding)))
   }
 
-  override def generateSignature(payload: String): String =
+  /**
+    * Generates a signature for the specified Base64 encoded payload.
+    *
+    * @param payload  Payload to sign
+    * @return         Signature of payload
+    */
+  private def generateSignature(payload: String): String =
     CryptoUtils.hmac_sha256(secret, payload.getBytes(this.CharEncoding))
 
   override def authenticate(payload: String, sig: String)(isNonceValid: String => F[Boolean]): F[Option[AuthUser]] = {

@@ -67,7 +67,7 @@ class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, 
         .flatMap { models =>
           use(models)
         }
-        .runAsync(TaskUtils.logCallbackNoMDC("Failed to create project topic", Logger))
+        .runAsync(TaskUtils.logCallbackNoMDC(error, Logger))
         .unsafeRunSync()
 
     runUpdates(toCreateProjects, "Failed to create project topic") { toCreate =>

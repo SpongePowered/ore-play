@@ -3,7 +3,7 @@ package discourse
 import scala.language.higherKinds
 
 import ore.db.Model
-import ore.discourse.DiscoursePost
+import ore.discourse.{DiscourseError, DiscoursePost}
 import ore.models.project.{Project, Version}
 import ore.models.user.User
 
@@ -37,7 +37,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param project  Project to post to
     * @param user     User who is posting
     * @param content  Post content
-    * @return         List of errors Discourse returns
+    * @return         Error Discourse returns
     */
   def postDiscussionReply(project: Project, user: User, content: String): F[Either[String, DiscoursePost]]
 

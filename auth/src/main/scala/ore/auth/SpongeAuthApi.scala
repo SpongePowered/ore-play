@@ -29,15 +29,7 @@ trait SpongeAuthApi[+F[_]] {
   def getUser(username: String): F[Either[List[String], AuthUser]]
 
   /**
-    * Returns the signed_data that can be used to construct the change-avatar
-    */
-  def getChangeAvatarToken(
-      requester: String,
-      organization: String
-  ): F[Either[List[String], ChangeAvatarToken]]
-
-  /**
     * Returns an url for changing the avatar of an organization.
     */
-  def changeAvatarUri(organization: String, token: ChangeAvatarToken): Uri
+  def changeAvatarUri(requester: String, organization: String): F[Either[List[String], Uri]]
 }

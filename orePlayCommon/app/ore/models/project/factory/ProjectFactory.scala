@@ -330,6 +330,7 @@ trait ProjectFactory {
           val setVisibility = (project: Model[Project]) => {
             project.setVisibility(Visibility.Public, "First upload", version.authorId).map(_._1)
           }
+
           val initProject =
             if (project.topicId.isEmpty) this.forums.createProjectTopic(project).flatMap(setVisibility)
             else setVisibility(project)

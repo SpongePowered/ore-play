@@ -18,17 +18,12 @@ trait SSOApi[F[_]] {
   def isAvailable: F[Boolean]
 
   /**
-    * Generates a new nonce
-    */
-  def nonce(): String
-
-  /**
     * Returns the login URL with a generated SSO payload to the SSO instance.
     *
     * @param returnUrl  URL to return to after authentication
     * @return           URL to SSO
     */
-  def getLoginUrl(returnUrl: String, nonce: String): String
+  def getLoginUrl(returnUrl: String): URLWithNonce
 
   /**
     * Returns the signup URL with a generated SSO payload to the SSO instance.
@@ -36,7 +31,7 @@ trait SSOApi[F[_]] {
     * @param returnUrl  URL to return to after authentication
     * @return           URL to SSO
     */
-  def getSignupUrl(returnUrl: String, nonce: String): String
+  def getSignupUrl(returnUrl: String): URLWithNonce
 
   /**
     * Returns the verify URL with a generated SSO payload to the SSO instance.
@@ -44,23 +39,7 @@ trait SSOApi[F[_]] {
     * @param returnUrl  URL to return to after authentication
     * @return           URL to SSO
     */
-  def getVerifyUrl(returnUrl: String, nonce: String): String
-
-  /**
-    * Generates a new Base64 encoded SSO payload.
-    *
-    * @param returnUrl  URL to return to once authenticated
-    * @return           New payload
-    */
-  def generatePayload(returnUrl: String, nonce: String): String
-
-  /**
-    * Generates a signature for the specified Base64 encoded payload.
-    *
-    * @param payload  Payload to sign
-    * @return         Signature of payload
-    */
-  def generateSignature(payload: String): String
+  def getVerifyUrl(returnUrl: String): URLWithNonce
 
   /**
     * Validates an incoming payload and extracts user information. The
@@ -81,17 +60,11 @@ object SSOApi {
     override def imapK[F[_], G[_]](af: SSOApi[F])(fk: F ~> G)(gK: G ~> F): SSOApi[G] = new SSOApi[G] {
       override def isAvailable: G[Boolean] = fk(af.isAvailable)
 
-      override def nonce(): String = af.nonce()
+      override def getLoginUrl(returnUrl: String): URLWithNonce = af.getLoginUrl(returnUrl)
 
-      override def getLoginUrl(returnUrl: String, nonce: String): String = af.getLoginUrl(returnUrl, nonce)
+      override def getSignupUrl(returnUrl: String): URLWithNonce = af.getSignupUrl(returnUrl)
 
-      override def getSignupUrl(returnUrl: String, nonce: String): String = af.getSignupUrl(returnUrl, nonce)
-
-      override def getVerifyUrl(returnUrl: String, nonce: String): String = af.getVerifyUrl(returnUrl, nonce)
-
-      override def generatePayload(returnUrl: String, nonce: String): String = af.generatePayload(returnUrl, nonce)
-
-      override def generateSignature(payload: String): String = af.generateSignature(payload)
+      override def getVerifyUrl(returnUrl: String): URLWithNonce = af.getVerifyUrl(returnUrl)
 
       override def authenticate(payload: String, sig: String)(isNonceValid: String => G[Boolean]): G[Option[AuthUser]] =
         fk(af.authenticate(payload, sig)(s => gK(isNonceValid(s))))

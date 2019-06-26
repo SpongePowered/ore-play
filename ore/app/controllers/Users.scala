@@ -10,6 +10,7 @@ import db.impl.query.UserPagesQueries
 import form.OreForms
 import mail.{EmailFactory, Mailer}
 import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
+import ore.auth.URLWithNonce
 import ore.data.Prompt
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
@@ -53,10 +54,7 @@ class Users @Inject()(
     * @return Logged in page
     */
   def signUp(): Action[AnyContent] = Action.asyncF {
-    val nonce = sso.nonce()
-    service.insert(SignOn(nonce = nonce)) *> redirectToSso(
-      this.sso.getSignupUrl(this.baseUrl + "/login", nonce)
-    )
+    redirectToSso(sso.getSignupUrl(s"$baseUrl/login"))
   }
 
   /**
@@ -79,10 +77,8 @@ class Users @Inject()(
           )
           .flatMap(fakeUser => this.redirectBack(returnPath.getOrElse(request.path), fakeUser))
       } else if (sso.isEmpty || sig.isEmpty) {
-        val nonce = this.sso.nonce()
-        service.insert(SignOn(nonce = nonce)) *> redirectToSso(
-          this.sso.getLoginUrl(this.baseUrl + "/login", nonce)
-        ).map(_.flashing("url" -> returnPath.getOrElse(request.path)))
+        redirectToSso(this.sso.getLoginUrl(s"$baseUrl/login"))
+          .map(_.flashing("url" -> returnPath.getOrElse(request.path)))
       } else {
         for {
           // Redirected from SpongeSSO, decode SSO payload and convert to Ore user
@@ -110,15 +106,17 @@ class Users @Inject()(
     * @return           Redirect to verification
     */
   def verify(returnPath: Option[String]): Action[AnyContent] = Authenticated.asyncF {
-    val nonce = sso.nonce()
-    service.insert(SignOn(nonce = nonce)) *> redirectToSso(
-      this.sso.getVerifyUrl(this.baseUrl + returnPath.getOrElse("/"), nonce)
-    )
+    redirectToSso(sso.getVerifyUrl(s"${this.baseUrl}${returnPath.getOrElse("/")}"))
   }
 
-  private def redirectToSso(url: String): IO[Result, Result] =
-    (this.sso.isAvailable: IO[Result, Boolean])
-      .ifM(IO.succeed(Redirect(url)), IO.fail(Redirect(ShowHome).withError("error.noLogin")))
+  private def redirectToSso(url: URLWithNonce): IO[Result, Result] = {
+    val available: IO[Result, Boolean] = sso.isAvailable
+
+    available.ifM(
+      service.insert(SignOn(url.nonce)).as(Redirect(url.url)),
+      IO.fail(Redirect(ShowHome).withError("error.noLogin"))
+    )
+  }
 
   private def redirectBack(url: String, user: User) =
     Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)

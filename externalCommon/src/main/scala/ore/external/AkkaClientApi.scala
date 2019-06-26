@@ -9,7 +9,8 @@ import ore.external.AkkaClientApi.ClientSettings
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import akka.http.scaladsl.model.headers.Accept
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, MediaRange, MediaRanges, MediaTypes, StatusCode, Uri}
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.pattern.CircuitBreaker
 import akka.stream.Materializer
@@ -21,12 +22,14 @@ import cats.syntax.all._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Json}
 
-abstract class AkkaClientApi[F[_], E[_]](serviceName: String, counter: Ref[F, Long], settings: ClientSettings)(
+abstract class AkkaClientApi[F[_], E[_], Error](serviceName: String, counter: Ref[F, Long], settings: ClientSettings)(
     implicit system: ActorSystem,
     mat: Materializer,
     F: Concurrent[F],
     E: Applicative[E]
 ) {
+
+  def createStatusError(statusCode: StatusCode, message: Option[String]): Error
 
   protected def Logger: Logger
 
@@ -67,24 +70,28 @@ abstract class AkkaClientApi[F[_], E[_]](serviceName: String, counter: Ref[F, Lo
   private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]): F[A] =
     futureToF(Unmarshal(response).to[A])
 
-  protected def gatherStatusErrors(response: HttpResponse): F[Either[E[String], HttpResponse]] = {
+  protected def gatherStatusErrors(response: HttpResponse): F[Either[E[Error], HttpResponse]] = {
     if (response.status.isSuccess()) F.pure(Right(response))
     else if (response.entity.isKnownEmpty())
-      F.delay(response.entity.discardBytes()).as(
-        Left(E.pure(s"$serviceName request failed. Response code ${response.status}"))
-      )
+      F.delay(response.entity.discardBytes())
+        .as(Left(E.pure(createStatusError(response.status, None))))
     else {
       unmarshallResponse[String](response)
-        .map(e => Left(E.pure(s"$serviceName request failed. Response code ${response.status}: $e")))
+        .map(e => Left(E.pure(createStatusError(response.status, Some(e)))))
     }
   }
 
-  protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[String], A]
+  protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[Error], A]
 
-  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[String], A]] = {
+  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[Error], A]] = {
     import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+
+    val requestWithAccept =
+      if (request.header[Accept].isDefined) request
+      else request.withHeaders(request.headers :+ Accept(MediaRange(MediaTypes.`application/json`)))
+
     EitherT
-      .liftF(makeRequest(request))
+      .liftF(makeRequest(requestWithAccept))
       .flatMapF(gatherStatusErrors)
       .semiflatMap(unmarshallResponse[Json])
       .subflatMap(gatherJsonErrors[A])
