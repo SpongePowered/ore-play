@@ -104,8 +104,8 @@ case class ProjectSettingsForm(
 
     modelUpdates.semiflatMap { t =>
       // Update icon
-      if (this.updateIcon) {
-        fileManager.getPendingIconPath(project).map { pendingPathOpt =>
+      val moveIcon = if (this.updateIcon) {
+        fileManager.getPendingIconPath(project).flatMap { pendingPathOpt =>
           pendingPathOpt.fold(F.unit) { pendingPath =>
             val iconDir = fileManager.getIconDir(project.ownerName, project.name)
 
@@ -124,7 +124,7 @@ case class ProjectSettingsForm(
 
       // Add new roles
       val dossier = project.memberships
-      this
+      val addRoles = this
         .build()
         .toVector
         .parTraverse { role =>
@@ -142,29 +142,32 @@ case class ProjectSettingsForm(
 
           service.bulkInsert(notifications)
         }
-        .productR {
-          // Update existing roles
-          val usersTable = TableQuery[UserTable]
-          // Select member userIds
-          service
-            .runDBIO(usersTable.filter(_.name.inSetBind(this.userUps)).map(_.id).result)
-            .flatMap { userIds =>
-              import cats.instances.list._
-              val roles = this.roleUps.traverse { role =>
-                Role.projectRoles
-                  .find(_.value == role)
-                  .fold(F.raiseError[Role](new RuntimeException("supplied invalid role type")))(F.pure)
-              }
 
-              roles.map(xs => userIds.zip(xs))
+      val updateExistingRoles = {
+        // Update existing roles
+        val usersTable = TableQuery[UserTable]
+        // Select member userIds
+        service
+          .runDBIO(usersTable.filter(_.name.inSetBind(this.userUps)).map(_.id).result)
+          .flatMap { userIds =>
+            import cats.instances.list._
+            val roles = this.roleUps.traverse { role =>
+              Role.projectRoles
+                .find(_.value == role)
+                .fold(F.raiseError[Role](new RuntimeException("supplied invalid role type")))(F.pure)
             }
-            .map {
-              _.map {
-                case (userId, role) => updateMemberShip(userId).update(role)
-              }
+
+            roles.map(xs => userIds.zip(xs))
+          }
+          .map {
+            _.map {
+              case (userId, role) => updateMemberShip(userId).update(role)
             }
-            .flatMap(updates => service.runDBIO(DBIO.sequence(updates)).as(t))
-        }
+          }
+          .flatMap(updates => service.runDBIO(DBIO.sequence(updates)))
+      }
+
+      moveIcon *> addRoles *> updateExistingRoles.as(t)
     }
   }
 

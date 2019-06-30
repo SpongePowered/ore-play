@@ -159,7 +159,7 @@ object ProjectFiles {
       val findFirst =
         fileIO.list(dir).flatMap(fs => fileIO.traverseLimited(fs)(f => fileIO.isDirectory(f).tupleLeft(f))).map {
           _.collectFirst {
-            case (p, true) => p
+            case (p, false) => p
           }
         }
 
