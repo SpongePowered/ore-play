@@ -22,14 +22,14 @@ import cats.syntax.all._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Json}
 
-abstract class AkkaClientApi[F[_], E[_], Error](serviceName: String, counter: Ref[F, Long], settings: ClientSettings)(
+abstract class AkkaClientApi[F[_], E[_], ErrorType](serviceName: String, counter: Ref[F, Long], settings: ClientSettings)(
     implicit system: ActorSystem,
     mat: Materializer,
     F: Concurrent[F],
     E: Applicative[E]
 ) {
 
-  def createStatusError(statusCode: StatusCode, message: Option[String]): Error
+  def createStatusError(statusCode: StatusCode, message: Option[String]): ErrorType
 
   protected def Logger: Logger
 
@@ -70,7 +70,7 @@ abstract class AkkaClientApi[F[_], E[_], Error](serviceName: String, counter: Re
   private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]): F[A] =
     futureToF(Unmarshal(response).to[A])
 
-  protected def gatherStatusErrors(response: HttpResponse): F[Either[E[Error], HttpResponse]] = {
+  protected def gatherStatusErrors(response: HttpResponse): F[Either[E[ErrorType], HttpResponse]] = {
     if (response.status.isSuccess()) F.pure(Right(response))
     else if (response.entity.isKnownEmpty())
       F.delay(response.entity.discardBytes())
@@ -81,9 +81,9 @@ abstract class AkkaClientApi[F[_], E[_], Error](serviceName: String, counter: Re
     }
   }
 
-  protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[Error], A]
+  protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[ErrorType], A]
 
-  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[Error], A]] = {
+  protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[ErrorType], A]] = {
     import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
     val requestWithAccept =
