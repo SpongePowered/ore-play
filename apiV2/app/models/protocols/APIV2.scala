@@ -66,7 +66,7 @@ object APIV2 {
       recommended_version: Option[RecommendedVersion],
       stats: ProjectStats,
       category: Category,
-      visibility: Visibility,
+      visibility: Visibility
   )
 
   @ConfiguredJsonCodec case class ProjectNamespace(owner: String, slug: String)

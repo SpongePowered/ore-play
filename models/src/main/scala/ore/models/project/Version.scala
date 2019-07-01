@@ -49,7 +49,7 @@ case class Version(
     fileName: String,
     createForumPost: Boolean = true,
     postId: Option[Int] = None,
-    isPostDirty: Boolean = false,
+    isPostDirty: Boolean = false
 ) extends Describable
     with Downloadable {
 

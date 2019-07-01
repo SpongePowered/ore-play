@@ -32,7 +32,7 @@ object HasForumRepresentation {
     override def updateForumContents(a: Model[Page])(contents: String): F[Model[Page]] = {
       require(
         (a.isHome && contents.length <= Page.maxLength) || contents.length <= Page.maxLengthPage,
-        "contents too long",
+        "contents too long"
       )
       for {
         updated <- service.update(a)(_.copy(contents = contents))

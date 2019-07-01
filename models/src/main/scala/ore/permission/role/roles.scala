@@ -64,7 +64,7 @@ object Role extends StringEnum[Role] {
           Perm.IsStaff,
           Perm.Reviewer,
           Perm.ModNotesAndFlags,
-          Perm.SeeHidden,
+          Perm.SeeHidden
         ),
         "Ore Moderator",
         Aqua

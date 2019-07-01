@@ -19,7 +19,7 @@ trait OreWrites {
       "keyType"   -> obj("id" -> 0, "name" -> "deployment"),
       "projectId" -> key.projectId,
       "value"     -> key.value
-  )
+    )
 
   implicit val pageWrites: Writes[Model[Page]] = (page: Model[Page]) =>
     obj(
@@ -28,7 +28,7 @@ trait OreWrites {
       "parentId"  -> page.parentId,
       "name"      -> page.name,
       "slug"      -> page.slug
-  )
+    )
 
   implicit val channelWrites: Writes[Channel] = (channel: Channel) =>
     obj("name" -> channel.name, "color" -> channel.color.hex, "nonReviewed" -> channel.isNonReviewed)

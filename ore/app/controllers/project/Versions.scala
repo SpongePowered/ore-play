@@ -162,7 +162,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             LoggedAction.VersionReviewStateChanged,
             version.id,
             newState.toString,
-            version.reviewState.toString,
+            version.reviewState.toString
           )
         } yield Redirect(self.show(author, slug, versionString))
       }
@@ -268,19 +268,18 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
         t <- (service.runDBIO(project.channels(ModelView.raw(Channel)).result), projectData).parTupled
         (channels, (projectName, pluginId, projectSlug, ownerName, projectDescription, forumSync)) = t
-      } yield
-        Ok(
-          views.create(
-            projectName,
-            pluginId,
-            projectSlug,
-            ownerName,
-            projectDescription,
-            forumSync,
-            Some(pendingVersion),
-            Model.unwrapNested(channels)
-          )
+      } yield Ok(
+        views.create(
+          projectName,
+          pluginId,
+          projectSlug,
+          ownerName,
+          projectDescription,
+          forumSync,
+          Some(pendingVersion),
+          Model.unwrapNested(channels)
         )
+      )
 
       suc2.constError(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }

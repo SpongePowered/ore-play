@@ -349,7 +349,7 @@ final class Application @Inject()(forms: OreForms)(
                 user.organizationRoles(ModelView.now(OrganizationUserRole)),
                 RoleCategory.Organization,
                 Role.OrganizationOwner,
-                transferOrgOwner,
+                transferOrgOwner
               )
 
               val isEmpty: IO[Either[Status, Unit], Boolean] = user
@@ -363,7 +363,7 @@ final class Application @Inject()(forms: OreForms)(
                   orgDossier.roles(orga),
                   RoleCategory.Organization,
                   Role.OrganizationOwner,
-                  transferOrgOwner,
+                  transferOrgOwner
                 )
               }
             case "projectRole" =>
@@ -371,7 +371,7 @@ final class Application @Inject()(forms: OreForms)(
                 user.projectRoles(ModelView.now(ProjectUserRole)),
                 RoleCategory.Project,
                 Role.ProjectOwner,
-                r => r.project[Task].orDie.flatMap(_.transferOwner[Task](r.userId).orDie).as(r),
+                r => r.project[Task].orDie.flatMap(_.transferOwner[Task](r.userId).orDie).as(r)
               )
 
               val isEmpty: IO[Either[Status, Unit], Boolean] =

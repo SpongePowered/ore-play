@@ -35,7 +35,7 @@ case class ProjectData(
     settings: Model[ProjectSettings],
     members: Seq[(Model[ProjectUserRole], Model[User])],
     flags: Seq[(Model[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
-    noteCount: Int, // getNotes.size
+    noteCount: Int,                                    // getNotes.size
     lastVisibilityChange: Option[ProjectVisibilityChange],
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
     recommendedVersion: Option[Model[Version]],

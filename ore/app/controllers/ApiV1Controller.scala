@@ -46,7 +46,7 @@ final class ApiV1Controller @Inject()(
     forms: OreForms,
     factory: ProjectFactory
 )(
-    implicit oreComponents: OreControllerComponents,
+    implicit oreComponents: OreControllerComponents
 ) extends OreBaseController
     with OreWrites {
 

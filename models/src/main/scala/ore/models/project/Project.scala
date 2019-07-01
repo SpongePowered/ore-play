@@ -240,7 +240,7 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
       * @return Users watching project
       */
     def watchers[F[_]: ModelService: Functor]
-      : ParentAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, F] =
+        : ParentAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, F] =
       new ModelAssociationAccessImpl(OrePostgresDriver)(Project, User).applyParent(self.id)
 
     /**
@@ -250,7 +250,7 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
       * @return Users who have starred this project
       */
     def stars[F[_]: ModelService: Functor]
-      : ChildAssociationAccess[ProjectStarsTable, User, Project, UserTable, ProjectTableMain, F] =
+        : ChildAssociationAccess[ProjectStarsTable, User, Project, UserTable, ProjectTableMain, F] =
       new ModelAssociationAccessImpl[ProjectStarsTable, User, Project, UserTable, ProjectTableMain, F](
         OrePostgresDriver
       )(

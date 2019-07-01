@@ -24,7 +24,7 @@ class OrganizationTable(tag: Tag) extends ModelTable[Organization](tag, "organiz
     }
 
     val unapplyFunc
-      : Model[Organization] => Option[(Option[DbRef[Organization]], Option[Instant], String, DbRef[User])] = {
+        : Model[Organization] => Option[(Option[DbRef[Organization]], Option[Instant], String, DbRef[User])] = {
       case Model(_, createdAt, Organization(id, username, ownerId)) =>
         Some((id.unsafeToOption, createdAt.unsafeToOption, username, ownerId))
     }

@@ -27,7 +27,7 @@ package object permission {
       scodec.bits.BitVector.fromBin(str).map(_.toLong(signed = false)).map(fromLong)
 
     val None = Permission(0)
-    val All  = Permission(0xFFFFFFFFFFFFFFFFL)
+    val All  = Permission(0XFFFFFFFFFFFFFFFFL)
 
     val ViewPublicInfo      = Permission(1L << 0)
     val EditOwnUserSettings = Permission(1L << 1)

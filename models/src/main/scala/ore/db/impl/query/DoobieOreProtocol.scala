@@ -115,15 +115,15 @@ trait DoobieOreProtocol {
   )(implicit meta: Meta[V]): Meta[E] =
     meta.timap[E](enum.withValue)(_.value)
 
-  implicit val colorMeta: Meta[Color]                        = enumeratumMeta(Color)
-  implicit val tagColorMeta: Meta[TagColor]                  = enumeratumMeta(TagColor)
-  implicit val roleTypeMeta: Meta[Role]                      = enumeratumMeta(Role)
-  implicit val categoryMeta: Meta[Category]                  = enumeratumMeta(Category)
-  implicit val flagReasonMeta: Meta[FlagReason]              = enumeratumMeta(FlagReason)
-  implicit val notificationTypeMeta: Meta[NotificationType]  = enumeratumMeta(NotificationType)
-  implicit val promptMeta: Meta[Prompt]                      = enumeratumMeta(Prompt)
-  implicit val downloadTypeMeta: Meta[DownloadType]          = enumeratumMeta(DownloadType)
-  implicit val visibilityMeta: Meta[Visibility]              = enumeratumMeta(Visibility)
+  implicit val colorMeta: Meta[Color]                       = enumeratumMeta(Color)
+  implicit val tagColorMeta: Meta[TagColor]                 = enumeratumMeta(TagColor)
+  implicit val roleTypeMeta: Meta[Role]                     = enumeratumMeta(Role)
+  implicit val categoryMeta: Meta[Category]                 = enumeratumMeta(Category)
+  implicit val flagReasonMeta: Meta[FlagReason]             = enumeratumMeta(FlagReason)
+  implicit val notificationTypeMeta: Meta[NotificationType] = enumeratumMeta(NotificationType)
+  implicit val promptMeta: Meta[Prompt]                     = enumeratumMeta(Prompt)
+  implicit val downloadTypeMeta: Meta[DownloadType]         = enumeratumMeta(DownloadType)
+  implicit val visibilityMeta: Meta[Visibility]             = enumeratumMeta(Visibility)
   implicit def loggedActionMeta[Ctx]: Meta[LoggedAction[Ctx]] =
     enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]] // scalafix:ok
   implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =

@@ -43,7 +43,7 @@ class Users @Inject()(
     emails: EmailFactory
 )(
     implicit oreComponents: OreControllerComponents,
-    messagesApi: MessagesApi,
+    messagesApi: MessagesApi
 ) extends OreBaseController {
 
   private val baseUrl = this.config.app.baseUrl
@@ -167,7 +167,7 @@ class Users @Inject()(
           )
           .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon)),
         getOrga(username).option,
-        UserData.of(request, u),
+        UserData.of(request, u)
       ).parTupled
       (projects, orga, userData) = t1
       t2 <- (

@@ -59,7 +59,7 @@ lazy val playCommonSettings = Seq(
     "ore.models.user._",
     "ore.models.user.role._",
     "ore.permission.NamedPermission",
-    "ore.data.project.Category",
+    "ore.data.project.Category"
   ).map(s => s"_root_.$s"),
   unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test"),
   pipelineStages := Seq(digest, gzip),
@@ -95,7 +95,7 @@ lazy val db = project.settings(
     "com.typesafe.slick" %% "slick"               % "3.3.0",
     "org.tpolecat"       %% "doobie-core"         % doobieVersion,
     "org.typelevel"      %% "cats-tagless-macros" % catsTaglessVersion,
-    "com.chuusai"        %% "shapeless"           % "2.3.3",
+    "com.chuusai"        %% "shapeless"           % "2.3.3"
   )
 )
 
@@ -114,15 +114,15 @@ lazy val externalCommon = project.settings(
     "com.typesafe.akka"          %% "akka-stream"          % akkaVersion,
     "de.heikoseeberger"          %% "akka-http-circe"      % "1.25.2",
     "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
-    "com.github.mpilquist"       %% "simulacrum"           % simulacrumVersion,
-  ),
+    "com.github.mpilquist"       %% "simulacrum"           % simulacrumVersion
+  )
 )
 
 lazy val discourse = project
   .dependsOn(externalCommon)
   .settings(
     commonSettings,
-    name := "ore-discourse",
+    name := "ore-discourse"
   )
 
 lazy val auth = project
@@ -150,7 +150,7 @@ lazy val models = project
       "com.github.mpilquist"       %% "simulacrum"            % simulacrumVersion,
       "io.circe"                   %% "circe-core"            % circeVersion,
       "io.circe"                   %% "circe-generic-extras"  % circeVersion,
-      "io.circe"                   %% "circe-parser"          % circeVersion,
+      "io.circe"                   %% "circe-parser"          % circeVersion
     )
   )
 
@@ -165,7 +165,7 @@ lazy val orePlayCommon: Project = project
     libraryDependencies ++= Seq(caffeine, ws),
     libraryDependencies ++= Seq(
       "org.spongepowered" % "plugin-meta" % "0.4.1",
-      "com.typesafe.play" %% "play-slick" % playSlickVersion,
+      "com.typesafe.play" %% "play-slick" % playSlickVersion
     ),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"              % zioVersion,
@@ -189,7 +189,7 @@ lazy val apiV2 = project
       "org.typelevel"              %% "cats-core"            % catsVersion,
       "io.circe"                   %% "circe-core"           % circeVersion,
       "io.circe"                   %% "circe-generic-extras" % circeVersion,
-      "io.circe"                   %% "circe-parser"         % circeVersion,
+      "io.circe"                   %% "circe-parser"         % circeVersion
     ),
     libraryDependencies ++= playTestDeps
   )
@@ -217,7 +217,7 @@ lazy val oreClient = project
     npmDependencies in Compile ++= Seq(
       "vue"          -> "2.6.10",
       "lodash"       -> "4.17.11",
-      "query-string" -> "6.8.0",
+      "query-string" -> "6.8.0"
     ),
     npmDevDependencies in Compile ++= Seq(
       "webpack-merge"                      -> "4.1.0",
@@ -233,7 +233,7 @@ lazy val oreClient = project
       "sass-loader"                        -> "7.1.0",
       "postcss-loader"                     -> "3.0.0",
       "autoprefixer"                       -> "9.5.1",
-      "node-sass"                          -> "4.12.0",
+      "node-sass"                          -> "4.12.0"
     )
   )
 
@@ -279,7 +279,7 @@ lazy val ore = project
     swaggerRoutesFile := "apiv2.routes",
     swaggerDomainNameSpaces := Seq(
       "models.protocols.APIV2",
-      "controllers.apiv2.ApiV2Controller",
+      "controllers.apiv2.ApiV2Controller"
     ),
     swaggerAPIVersion := "2.0",
     swaggerV3 := true,

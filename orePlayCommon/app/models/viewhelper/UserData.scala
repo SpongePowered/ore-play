@@ -71,7 +71,7 @@ object UserData {
     (
       user.permissionsIn(GlobalScope),
       user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.permissionsIn(_)).value,
-      user.globalRoles.allFromParent,
+      user.globalRoles.allFromParent
     ).parMapN { (userPerms, orgaPerms, globalRoles) =>
       (globalRoles.map(_.toRole).toSet, userPerms, orgaPerms.getOrElse(Permission.None))
     }

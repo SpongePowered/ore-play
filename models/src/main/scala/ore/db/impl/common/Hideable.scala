@@ -60,7 +60,7 @@ object Hideable {
   }
 
   class RawOps[M](private val m: M) extends AnyVal {
-    def isDeleted[F[_]](implicit hide: Hideable[F, M]): Boolean     = hide.isDeleted(m)
+    def isDeleted[F[_]](implicit hide: Hideable[F, M]): Boolean = hide.isDeleted(m)
   }
 
   class ModelOps[M](private val m: Model[M]) extends AnyVal {

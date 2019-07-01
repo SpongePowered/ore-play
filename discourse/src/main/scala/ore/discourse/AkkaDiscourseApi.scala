@@ -184,6 +184,6 @@ object AkkaDiscourseApi {
       apiUri: Uri,
       breakerMaxFailures: Int,
       breakerResetDur: FiniteDuration,
-      breakerTimeoutDur: FiniteDuration,
+      breakerTimeoutDur: FiniteDuration
   ) extends AkkaClientApi.ClientSettings
 }

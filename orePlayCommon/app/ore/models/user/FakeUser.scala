@@ -31,7 +31,7 @@ final class FakeUser @Inject()(config: OreConfig) {
         fullName = conf.name,
         name = username,
         email = conf.email,
-        joinDate = Some(Instant.now()),
+        joinDate = Some(Instant.now())
       )
     else sys.error("Tried to use disabled fake user")
 

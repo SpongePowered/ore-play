@@ -37,19 +37,18 @@ object DiscoursePost {
       content    <- c.get[String]("cooked")
       replyCount <- c.get[Int]("reply_count")
       postNum    <- c.get[Int]("post_number")
-    } yield
-      DiscoursePost(
-        postId,
-        topicId,
-        userId,
-        username,
-        topicSlug,
-        createdAt,
-        updatedAt,
-        deletedAt,
-        content,
-        replyCount,
-        postNum
-      )
+    } yield DiscoursePost(
+      postId,
+      topicId,
+      userId,
+      username,
+      topicSlug,
+      createdAt,
+      updatedAt,
+      deletedAt,
+      content,
+      replyCount,
+      postNum
+    )
   }
 }

@@ -22,7 +22,11 @@ import cats.syntax.all._
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Json}
 
-abstract class AkkaClientApi[F[_], E[_], ErrorType](serviceName: String, counter: Ref[F, Long], settings: ClientSettings)(
+abstract class AkkaClientApi[F[_], E[_], ErrorType](
+    serviceName: String,
+    counter: Ref[F, Long],
+    settings: ClientSettings
+)(
     implicit system: ActorSystem,
     mat: Materializer,
     F: Concurrent[F],

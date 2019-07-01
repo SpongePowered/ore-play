@@ -334,7 +334,7 @@ trait OreRestfulApiV1 extends OreWrites {
                 "parentId"  -> page.parentId,
                 "slug"      -> page.slug,
                 "fullSlug"  -> page.fullSlug(page.parentId.flatMap(pageById.get).map(_.obj))
-            )
+              )
           )
         )
       }

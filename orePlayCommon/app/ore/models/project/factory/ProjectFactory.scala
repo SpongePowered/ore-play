@@ -166,7 +166,7 @@ trait ProjectFactory {
       slug = slug,
       category = template.category,
       description = template.description,
-      visibility = Visibility.New,
+      visibility = Visibility.New
     )
 
     val projectSettings: DbRef[Project] => ProjectSettings = ProjectSettings(_)
@@ -288,7 +288,7 @@ trait ProjectFactory {
         notificationType = NotificationType.NewProjectVersion,
         messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
         action = Some(version.url(project))
-    )
+      )
 
     val watchingUserIds =
       service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).map(_.id).result)

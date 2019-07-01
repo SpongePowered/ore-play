@@ -141,7 +141,8 @@ object OrganizationBase {
             MDCLogger.debug("<SUCCESS> " + org)
             org
           }
-        }.value
+        }
+        .value
     }
 
     /**

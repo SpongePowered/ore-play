@@ -12,7 +12,7 @@ import play.api.mvc.{AnyContent, Request}
   */
 case class PluginUpload(
     pluginFile: TemporaryFile,
-    pluginFileName: String,
+    pluginFileName: String
 )
 
 object PluginUpload {

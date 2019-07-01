@@ -246,7 +246,7 @@ trait Actions extends Calls with ActionHelpers { self =>
             .requestPermission(request.user, username, Permission.EditOwnUserSettings)(request)
             .transform {
               case None    => Some(Unauthorized) // No Permission
-              case Some(_) => None // Permission granted => No Filter
+              case Some(_) => None               // Permission granted => No Filter
             }
             .value
         )

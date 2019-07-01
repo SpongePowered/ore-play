@@ -174,7 +174,7 @@ class OreComponents(context: ApplicationLoader.Context)
             forums.baseUrl,
             api.breaker.maxFailures,
             api.breaker.reset,
-            api.breaker.timeout,
+            api.breaker.timeout
           )
         )
       )

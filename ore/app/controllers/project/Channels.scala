@@ -115,13 +115,12 @@ class Channels @Inject()(forms: OreForms)(
 
       val query = for {
         channel <- ourChannel
-      } yield
-        (
-          channel,
-          moreThanOneChannelR,
-          isChannelEmptyR || nonEmptyChannelsR > 1,
-          channel.isNonReviewed || reviewedChannelsCount
-        )
+      } yield (
+        channel,
+        moreThanOneChannelR,
+        isChannelEmptyR || nonEmptyChannelsR > 1,
+        channel.isNonReviewed || reviewedChannelsCount
+      )
 
       for {
         t <- service.runDBIO(query.result.headOption).get.constError(NotFound)

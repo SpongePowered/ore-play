@@ -6,7 +6,7 @@ import java.util.Locale
 
 object StringLocaleFormatterUtils {
 
-  private val dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+  private val dateFormat     = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
   private val dateTimeFormat = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
 
   /**
@@ -15,7 +15,8 @@ object StringLocaleFormatterUtils {
     * @param instant Date to format
     * @return        Standard formatted date
     */
-  def prettifyDate(instant: Instant)(implicit locale: Locale): String = dateFormat.withLocale(locale).format(LocalDateTime.ofInstant(instant, ZoneOffset.UTC))
+  def prettifyDate(instant: Instant)(implicit locale: Locale): String =
+    dateFormat.withLocale(locale).format(LocalDateTime.ofInstant(instant, ZoneOffset.UTC))
 
   /**
     * Formats the specified date into the standard application form time.

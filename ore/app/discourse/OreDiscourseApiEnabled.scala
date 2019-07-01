@@ -89,7 +89,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
         title = title,
         content = content,
         categoryId = Some(categoryDefault)
-    )
+      )
 
     def sanityCheck(check: Boolean, msg: => String) = if (!check) F.raiseError[Unit](new Exception(msg)) else F.unit
 
@@ -261,7 +261,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
         errors =>
           F.raiseError[Unit](
             new Exception(s"Couldn't hide topic for project: ${project.url}. Message: $errors")
-        ),
+          ),
         _ => F.unit
       )
       .flatten

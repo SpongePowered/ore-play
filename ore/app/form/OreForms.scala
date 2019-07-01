@@ -131,7 +131,7 @@ class OreForms @Inject()(
         "update-icon"  -> boolean,
         "owner"        -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo)),
         "forum-sync"   -> boolean,
-        "keywords"     -> text,
+        "keywords"     -> text
       )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply)
     )
 

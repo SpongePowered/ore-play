@@ -178,7 +178,7 @@ final class Reviews @Inject()(forms: OreForms)(
               .flatMap { oldreview =>
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
-                  service.update(oldreview)(_.copy(endedAt = Some(Instant.now()))),
+                  service.update(oldreview)(_.copy(endedAt = Some(Instant.now())))
                 ).parTupled.unit
               }
               .either
@@ -252,7 +252,7 @@ final class Reviews @Inject()(forms: OreForms)(
           LoggedAction.VersionReviewStateChanged,
           version.id,
           newState.toString,
-          oldState.toString,
+          oldState.toString
         )
         _ <- service.update(version)(_.copy(reviewState = newState))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))

@@ -128,7 +128,7 @@ case class APIV2QueryCompactProject(
       stars
     ),
     category,
-    visibility,
+    visibility
   )
 }
 

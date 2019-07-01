@@ -29,7 +29,7 @@ trait OreProfile extends JdbcProfile {
     */
   abstract class AssociativeTable[A, B](
       tag: api.Tag,
-      name: String,
+      name: String
   ) extends Table[(DbRef[A], DbRef[B])](tag, name)
 
   /**
