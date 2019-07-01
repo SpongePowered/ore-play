@@ -239,11 +239,6 @@ sponge {
     # Sponsors from high to low donation amounts
     sponsors = [
         {
-          "name": "Enjin",
-          "image": "images/sponsors/enjin.png",
-          "link": "https://www.enjin.com/"
-        },
-        {
           "name": "MC Server Hosting",
           "image": "images/sponsors/mcserverhosting.png",
           "link": "https://mcserverhosting.net/?ref=sponge"
@@ -268,10 +263,5 @@ sponge {
           "image": "images/sponsors/yourkit.png",
           "link": "https://www.yourkit.com/"
         },
-        {
-          "name": "GameServerKings",
-          "image": "images/sponsors/gameserverkings.png",
-          "link": "https://www.gameserverkings.com/"
-        }
     ]
 }
