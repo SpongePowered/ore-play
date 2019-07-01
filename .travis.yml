@@ -45,4 +45,4 @@ before_cache:
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION ore/test
-  - ./scalafmt apiV2/app apiV2/test auth db discourse externalCommon models ore/app ore/test orePlayCommon/app build.sbt --test --non-interactive
+  - ./scalafmt apiV2/app auth db discourse externalCommon models ore/app ore/test orePlayCommon/app build.sbt --test --non-interactive
