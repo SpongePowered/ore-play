@@ -99,6 +99,8 @@ ore {
     debug-level =  3
     staging     =  true
 
+    log-timings = false
+
     homepage {
         update-interval = 10m
     }

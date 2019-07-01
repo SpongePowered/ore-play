@@ -22,6 +22,7 @@ import db.impl.DbUpdateTask
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.service.OreModelService
 import discourse.{OreDiscourseApi, OreDiscourseApiDisabled, OreDiscourseApiEnabled}
+import filters.LoggingFilter
 import form.OreForms
 import mail.{EmailFactory, Mailer, SpongeMailer}
 import ore.auth.{AkkaSSOApi, AkkaSpongeAuthApi, SSOApi, SpongeAuthApi}
@@ -90,6 +91,19 @@ class OreComponents(context: ApplicationLoader.Context)
   }
 
   lazy val enabledFilters: Seq[EssentialFilter] = {
+    val filterSeq = Seq(
+      //Base filters, always present
+      true -> Seq(
+        new CSPFilter(
+          new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration)))
+        )
+      ),
+      // Dev filters
+      context.devContext.isDefined -> Seq(new GzipFilter(GzipFilterConfig.fromConfiguration(configuration))),
+      // Timings filter
+      config.ore.logTimings -> Seq(new LoggingFilter())
+    )
+
     val baseFilters = Seq(
       new CSPFilter(new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration))))
     )
