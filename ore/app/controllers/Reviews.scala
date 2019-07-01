@@ -1,55 +1,45 @@
 package controllers
 
 import java.time.Instant
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
+import play.api.mvc.{Action, AnyContent}
 
-import play.api.cache.AsyncCacheApi
-import play.api.mvc.{Action, AnyContent, Result}
-
-import controllers.sugar.Bakery
 import controllers.sugar.Requests.AuthRequest
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
 import form.OreForms
 import ore.data.user.notification.NotificationType
-import ore.models.project.{Project, ReviewState, Version}
-import ore.models.user.{LoggedAction, Notification, User}
 import ore.db.access.ModelView
-import ore.db.{DbRef, Model, ModelService}
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{OrganizationMembersTable, OrganizationRoleTable, OrganizationTable, UserTable}
+import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.models.admin.{Message, Review}
+import ore.models.project.{Project, ReviewState, Version}
+import ore.models.user.{LoggedAction, Notification, User}
 import ore.permission.Permission
 import ore.permission.role.Role
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.UserActionLogger
+import util.syntax._
 import views.{html => views}
 
-import cats.data.{EitherT, NonEmptyList}
-import cats.effect.IO
+import cats.data.NonEmptyList
 import cats.instances.option._
 import cats.syntax.all._
 import io.circe.Json
+import zio.{UIO, ZIO}
 import slick.lifted.{Rep, TableQuery}
 
 /**
   * Controller for handling Review related actions.
   */
+@Singleton
 final class Reviews @Inject()(forms: OreForms)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
+    implicit oreComponents: OreControllerComponents,
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
   def showReviews(author: String, slug: String, versionString: String): Action[AnyContent] =
-    Authenticated.andThen(PermissionAction(Permission.Reviewer)).andThen(ProjectAction(author, slug)).asyncEitherT {
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).andThen(ProjectAction(author, slug)).asyncF {
       implicit request =>
         for {
           version <- getVersion(request.project, versionString)
@@ -59,7 +49,7 @@ final class Reviews @Inject()(forms: OreForms)(
             .on(_.userId === _.id)
             .map(t => t._1 -> t._2.map(_.name))
             .result
-          rv <- EitherT.right[Result](service.runDBIO(dbio))
+          rv <- service.runDBIO(dbio)
         } yield {
           val unfinished = rv.map(_._1).filter(_.endedAt.isEmpty).sorted(Review.ordering2).headOption
           Ok(views.users.admin.reviews(Model.unwrapNested(unfinished), rv, request.project, version))
@@ -67,38 +57,33 @@ final class Reviews @Inject()(forms: OreForms)(
     }
 
   def createReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT { implicit request =>
-      getProjectVersion(author, slug, versionString).semiflatMap { version =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncF { implicit request =>
+      getProjectVersion(author, slug, versionString).flatMap { version =>
         val review = Review(
           version.id,
           request.user.id,
           None,
           Json.obj()
         )
-        this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
+        this.service.insert(review).const(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
       }
     }
   }
 
   def reopenReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncF { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        review  <- version.mostRecentReviews(ModelView.now(Review)).one.toRight(notFound)
-        _ <- EitherT.right[Result](
-          service.update(version)(
-            _.copy(
-              reviewState = ReviewState.Unreviewed,
-              approvedAt = None,
-              reviewerId = None
-            )
+        review  <- version.mostRecentReviews(ModelView.now(Review)).one.toZIOWithError(notFound)
+        _ <- service.update(version)(
+          _.copy(
+            reviewState = ReviewState.Unreviewed,
+            approvedAt = None,
+            reviewerId = None
           )
         )
-        _ <- EitherT.right[Result](
-          service
-            .update(review)(_.copy(endedAt = None))
-            .flatMap(_.addMessage(Message("Reopened the review", System.currentTimeMillis(), "start")))
-        )
+        newReview <- service.update(review)(_.copy(endedAt = None))
+        _         <- newReview.addMessage(Message("Reopened the review", System.currentTimeMillis(), "start"))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }
@@ -106,32 +91,27 @@ final class Reviews @Inject()(forms: OreForms)(
   def stopReview(author: String, slug: String, versionString: String): Action[String] = {
     Authenticated
       .andThen(PermissionAction(Permission.Reviewer))
-      .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
+      .asyncF(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
-          version <- getProjectVersion(author, slug, versionString)
-          review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound)
-          _ <- EitherT.right[Result](
-            service
-              .update(review)(_.copy(endedAt = Some(Instant.now())))
-              .flatMap(_.addMessage(Message(request.body.trim, System.currentTimeMillis(), "stop")))
-          )
+          version   <- getProjectVersion(author, slug, versionString)
+          review    <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toZIOWithError(notFound)
+          newReview <- service.update(review)(_.copy(endedAt = Some(Instant.now())))
+          _         <- newReview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "stop"))
         } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
       }
   }
 
   def approveReview(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncF { implicit request =>
       for {
         project <- getProject(author, slug)
         version <- getVersion(project, versionString)
-        review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(notFound)
-        _ <- EitherT.right[Result](
-          (
-            service.update(review)(_.copy(endedAt = Some(Instant.now()))),
-            // send notification that review happened
-            sendReviewNotification(project, version, request.user)
-          ).parTupled
-        )
+        review  <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toZIOWithError(notFound)
+        _ <- (
+          service.update(review)(_.copy(endedAt = Some(Instant.now()))),
+          // send notification that review happened
+          sendReviewNotification(project, version, request.user)
+        ).parTupled
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }
@@ -162,7 +142,7 @@ final class Reviews @Inject()(forms: OreForms)(
       project: Model[Project],
       version: Version,
       requestUser: Model[User]
-  ): IO[Unit] = {
+  ): UIO[Unit] = {
     val usersF =
       service.runDBIO(notificationUsersQuery((project.id, version.authorId)).result).map { list =>
         list.collect {
@@ -181,30 +161,31 @@ final class Reviews @Inject()(forms: OreForms)(
           )
         }
       }
-      .flatMap(service.bulkInsert(_))
-      .void
+      .flatMap(service.bulkInsert(_).unit)
   }
 
   def takeoverReview(author: String, slug: String, versionString: String): Action[String] = {
     Authenticated
       .andThen(PermissionAction(Permission.Reviewer))
-      .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
+      .asyncF(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
           _ <- {
             // Close old review
             val closeOldReview = version
               .mostRecentUnfinishedReview(ModelView.now(Review))
-              .semiflatMap { oldreview =>
+              .toZIO
+              .flatMap { oldreview =>
                 (
                   oldreview.addMessage(Message(request.body.trim, System.currentTimeMillis(), "takeover")),
                   service.update(oldreview)(_.copy(endedAt = Some(Instant.now()))),
-                ).parTupled.void
+                ).parTupled.unit
               }
-              .getOrElse(())
+              .either
+              .map(_.merge)
 
             // Then make new one
-            val result = (
+            (
               closeOldReview,
               this.service.insert(
                 Review(
@@ -215,7 +196,6 @@ final class Reviews @Inject()(forms: OreForms)(
                 )
               )
             ).parTupled
-            EitherT.right[Result](result)
           }
         } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
       }
@@ -224,55 +204,57 @@ final class Reviews @Inject()(forms: OreForms)(
   def editReview(author: String, slug: String, versionString: String, reviewId: DbRef[Review]): Action[String] = {
     Authenticated
       .andThen(PermissionAction(Permission.Reviewer))
-      .asyncEitherT(parse.form(forms.ReviewDescription)) { implicit request =>
+      .asyncF(parse.form(forms.ReviewDescription)) { implicit request =>
         for {
           version <- getProjectVersion(author, slug, versionString)
-          review  <- version.reviewById(reviewId).toRight(notFound)
-          _       <- EitherT.right[Result](review.addMessage(Message(request.body.trim)))
+          review  <- version.reviewById(reviewId).toZIOWithError(notFound)
+          _       <- review.addMessage(Message(request.body.trim))
         } yield Ok("Review" + review)
       }
   }
 
   def addMessage(author: String, slug: String, versionString: String): Action[String] = {
-    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncEitherT(parse.form(forms.ReviewDescription)) {
+    Authenticated.andThen(PermissionAction(Permission.Reviewer)).asyncF(parse.form(forms.ReviewDescription)) {
       implicit request =>
         for {
-          version      <- getProjectVersion(author, slug, versionString)
-          recentReview <- version.mostRecentUnfinishedReview(ModelView.now(Review)).toRight(Ok("Review"))
-          currentUser  <- users.current.toRight(Ok("Review"))
+          version <- getProjectVersion(author, slug, versionString)
+          recentReview <- version
+            .mostRecentUnfinishedReview(ModelView.now(Review))
+            .toZIOWithError(Ok("Review"))
+          currentUser <- users.current.toZIOWithError(Ok("Review"))
           _ <- {
             if (recentReview.userId == currentUser.id.value) {
-              EitherT.right[Result](recentReview.addMessage(Message(request.body.trim)))
-            } else EitherT.rightT[IO, Result](0)
+              recentReview.addMessage(Message(request.body.trim))
+            } else UIO.succeed(0)
           }
         } yield Ok("Review")
     }
   }
 
   def backlogToggle(author: String, slug: String, versionString: String): Action[AnyContent] = {
-    Authenticated.andThen(PermissionAction[AuthRequest](Permission.Reviewer)).asyncEitherT { implicit request =>
+    Authenticated.andThen(PermissionAction[AuthRequest](Permission.Reviewer)).asyncF { implicit request =>
       for {
         version <- getProjectVersion(author, slug, versionString)
-        oldState <- EitherT.cond[IO](
-          Seq(ReviewState.Backlog, ReviewState.Unreviewed).contains(version.reviewState),
-          version.reviewState,
-          BadRequest("Invalid state for toggle backlog")
+        oldState <- ZIO.fromEither(
+          Either.cond(
+            Seq(ReviewState.Backlog, ReviewState.Unreviewed).contains(version.reviewState),
+            version.reviewState,
+            BadRequest("Invalid state for toggle backlog")
+          )
         )
         newState = oldState match {
           case ReviewState.Unreviewed => ReviewState.Backlog
           case ReviewState.Backlog    => ReviewState.Unreviewed
           case _                      => oldState
         }
-        _ <- EitherT.right[Result](
-          UserActionLogger.log(
-            request,
-            LoggedAction.VersionReviewStateChanged,
-            version.id,
-            newState.toString,
-            oldState.toString,
-          )
+        _ <- UserActionLogger.log(
+          request,
+          LoggedAction.VersionReviewStateChanged,
+          version.id,
+          newState.toString,
+          oldState.toString,
         )
-        _ <- EitherT.right[Result](service.update(version)(_.copy(reviewState = newState)))
+        _ <- service.update(version)(_.copy(reviewState = newState))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
   }

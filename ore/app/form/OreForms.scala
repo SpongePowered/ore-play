@@ -21,17 +21,23 @@ import ore.db.access.ModelView
 import ore.db.{DbRef, Model, ModelService}
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
+import ore.data.project.Category
 import ore.models.project.factory.ProjectFactory
 import util.syntax._
 
 import cats.data.OptionT
-import cats.effect.IO
+import zio.UIO
 
 /**
   * Collection of forms used in this application.
   */
 //noinspection ConvertibleToMethodValue
-class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, service: ModelService[IO]) {
+class OreForms @Inject()(
+    implicit config: OreConfig,
+    factory: ProjectFactory,
+    service: ModelService[UIO],
+    runtime: zio.Runtime[Any]
+) {
 
   val url: Mapping[String] = text.verifying("error.url.invalid", text => {
     if (text.isEmpty)
@@ -84,6 +90,26 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
       else Invalid(errors)
     }
 
+  val category: FieldMapping[Category] = of[Category](new Formatter[Category] {
+    override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], Category] =
+      data
+        .get(key)
+        .flatMap(s => Category.values.find(_.title == s))
+        .toRight(Seq(FormError(key, "error.project.categoryNotFound", Nil)))
+
+    override def unbind(key: String, value: Category): Map[String, String] = Map(key -> value.title)
+  })
+
+  def projectCreate(organisationUserCanUploadTo: Seq[DbRef[Organization]]) = Form(
+    mapping(
+      "name"        -> text,
+      "pluginId"    -> text,
+      "category"    -> category,
+      "description" -> optional(text),
+      "owner"       -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo))
+    )(ProjectCreateForm.apply)(ProjectCreateForm.unapply)
+  )
+
   /**
     * Submits settings changes for a Project.
     */
@@ -91,8 +117,10 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
     Form(
       mapping(
         "category"     -> text,
+        "homepage"     -> url,
         "issues"       -> url,
         "source"       -> url,
+        "support"      -> url,
         "license-name" -> text,
         "license-url"  -> url,
         "description"  -> text,
@@ -102,7 +130,8 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
         "roleUps"      -> list(text),
         "update-icon"  -> boolean,
         "owner"        -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo)),
-        "forum-sync"   -> boolean
+        "forum-sync"   -> boolean,
+        "keywords"     -> text,
       )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply)
     )
 
@@ -229,34 +258,34 @@ class OreForms @Inject()(implicit config: OreConfig, factory: ProjectFactory, se
 
   def required(key: String): Seq[FormError] = Seq(FormError(key, "error.required", Nil))
 
-  def projectApiKey: FieldMapping[OptionT[IO, Model[ProjectApiKey]]] =
-    of[OptionT[IO, Model[ProjectApiKey]]](new Formatter[OptionT[IO, Model[ProjectApiKey]]] {
-      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, Model[ProjectApiKey]]] =
+  def projectApiKey: FieldMapping[OptionT[UIO, Model[ProjectApiKey]]] =
+    of[OptionT[UIO, Model[ProjectApiKey]]](new Formatter[OptionT[UIO, Model[ProjectApiKey]]] {
+      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[UIO, Model[ProjectApiKey]]] =
         data
           .get(key)
           .flatMap(id => Try(id.toLong).toOption)
           .map(ModelView.now(ProjectApiKey).get(_))
           .toRight(required(key))
 
-      def unbind(key: String, value: OptionT[IO, Model[ProjectApiKey]]): Map[String, String] =
-        value.value.unsafeRunSync().map(_.id.toString).map(key -> _).toMap
+      def unbind(key: String, value: OptionT[UIO, Model[ProjectApiKey]]): Map[String, String] =
+        runtime.unsafeRun(value.value).map(_.id.toString).map(key -> _).toMap
     })
 
   def ProjectApiKeyRevoke = Form(single("id" -> projectApiKey))
 
-  def channel(implicit request: ProjectRequest[_]): FieldMapping[OptionT[IO, Model[Channel]]] =
-    of[OptionT[IO, Model[Channel]]](new Formatter[OptionT[IO, Model[Channel]]] {
-      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[IO, Model[Channel]]] =
+  def channel(implicit request: ProjectRequest[_]): FieldMapping[OptionT[UIO, Model[Channel]]] =
+    of[OptionT[UIO, Model[Channel]]](new Formatter[OptionT[UIO, Model[Channel]]] {
+      def bind(key: String, data: Map[String, String]): Either[Seq[FormError], OptionT[UIO, Model[Channel]]] =
         data
           .get(key)
           .map(channelOptF(_))
           .toRight(Seq(FormError(key, "api.deploy.channelNotFound", Nil)))
 
-      def unbind(key: String, value: OptionT[IO, Model[Channel]]): Map[String, String] =
-        value.value.unsafeRunSync().map(key -> _.name.toLowerCase).toMap
+      def unbind(key: String, value: OptionT[UIO, Model[Channel]]): Map[String, String] =
+        runtime.unsafeRun(value.value).map(key -> _.name.toLowerCase).toMap
     })
 
-  def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[IO, Model[Channel]] =
+  def channelOptF(c: String)(implicit request: ProjectRequest[_]): OptionT[UIO, Model[Channel]] =
     request.data.project.channels(ModelView.now(Channel)).find(_.name.toLowerCase === c.toLowerCase)
 
   def VersionDeploy(implicit request: ProjectRequest[_]) =

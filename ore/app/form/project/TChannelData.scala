@@ -14,8 +14,10 @@ import ore.util.StringUtils._
 
 import cats.Monad
 import cats.data.{EitherT, OptionT}
-import cats.effect.IO
 import cats.syntax.all._
+import cats.effect.syntax.all._
+import zio.Task
+import zio.interop.catz._
 
 /**
   * Represents submitted [[Channel]] data.
@@ -44,9 +46,13 @@ trait TChannelData {
     * @param project  Project to add Channel to
     * @return         Either the new channel or an error message
     */
-  def addTo(
+  def addTo[F[_]](
       project: Model[Project]
-  )(implicit service: ModelService[IO]): EitherT[IO, List[String], Model[Channel]] = {
+  )(
+      implicit service: ModelService[F],
+      F: cats.effect.Effect[F],
+      runtime: zio.Runtime[Any]
+  ): EitherT[F, List[String], Model[Channel]] = {
     val dbChannels = project.channels(ModelView.later(Channel))
     val conditions = (
       dbChannels.size <= config.ore.projects.maxChannels,
@@ -64,8 +70,10 @@ trait TChannelData {
           case (success, error) if !success => error
         }
 
-        if (errors.isEmpty) EitherT.leftT[IO, Model[Channel]](errors)
-        else EitherT.right[List[String]](factory.createChannel(project, channelName, color))
+        val eff: Task[Model[Channel]] = factory.createChannel(project, channelName, color)
+
+        if (errors.nonEmpty) EitherT.leftT[F, Model[Channel]](errors)
+        else EitherT.right[List[String]](eff.toIO.to[F])
     }
   }
 
@@ -109,7 +117,7 @@ trait TChannelData {
           )
         )
 
-        if (errors.isEmpty) EitherT.leftT[F, Unit](errors)
+        if (errors.nonEmpty) EitherT.leftT[F, Unit](errors)
         else EitherT.right[List[String]](effect.void)
     }
   }

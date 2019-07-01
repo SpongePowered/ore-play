@@ -2,8 +2,10 @@ package models.viewhelper
 
 import scala.language.higherKinds
 
+import play.api.mvc.RequestHeader
 import play.twirl.api.Html
 
+import ore.OreConfig
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectRoleTable, UserTable}
 import ore.models.project._
@@ -12,8 +14,10 @@ import ore.models.user.role.ProjectUserRole
 import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer
-import ore.models.admin.{ProjectLogEntry, ProjectVisibilityChange}
+import ore.models.project.io.ProjectFiles
+import ore.models.admin.ProjectVisibilityChange
 import ore.permission.role.RoleCategory
+import ore.util.OreMDC
 import util.syntax._
 
 import cats.{MonadError, Parallel}
@@ -30,12 +34,12 @@ case class ProjectData(
     publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
     settings: Model[ProjectSettings],
     members: Seq[(Model[ProjectUserRole], Model[User])],
-    projectLogSize: Int,
     flags: Seq[(Model[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
     noteCount: Int, // getNotes.size
     lastVisibilityChange: Option[ProjectVisibilityChange],
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
-    recommendedVersion: Option[Model[Version]]
+    recommendedVersion: Option[Model[Version]],
+    iconUrl: String
 ) extends JoinableData[ProjectUserRole, Project] {
 
   def flagCount: Int = flags.size
@@ -61,7 +65,10 @@ object ProjectData {
   def of[F[_], G[_]](project: Model[Project])(
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
-      par: Parallel[F, G]
+      files: ProjectFiles[F],
+      par: Parallel[F, G],
+      header: RequestHeader,
+      config: OreConfig
   ): F[ProjectData] = {
     val flagsWithNames = project
       .flags(ModelView.later(Flag))
@@ -87,20 +94,20 @@ object ProjectData {
       project.user,
       project.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
-      project.logger.flatMap(_.entries(ModelView.now(ProjectLogEntry)).size),
       service.runDBIO(flagsWithNames.result),
       service.runDBIO(lastVisibilityChangeUserWithUser.result.headOption),
-      project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[F, Model[Version]]).value
+      project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[F, Model[Version]]).value,
+      project.obj.iconUrl
     ).parMapN {
       case (
           settings,
           projectOwner,
           versions,
           members,
-          logSize,
           flagData,
           lastVisibilityChangeInfo,
-          recommendedVersion
+          recommendedVersion,
+          iconUrl
           ) =>
         val noteCount = project.decodeNotes.size
 
@@ -110,12 +117,12 @@ object ProjectData {
           versions,
           settings,
           members.sortBy(_._1.role.permissions: Long).reverse, //This is stupid, but works
-          logSize,
           flagData,
           noteCount,
           lastVisibilityChangeInfo.map(_._1),
           lastVisibilityChangeInfo.flatMap(_._2).getOrElse("Unknown"),
-          recommendedVersion
+          recommendedVersion,
+          iconUrl
         )
     }
   }

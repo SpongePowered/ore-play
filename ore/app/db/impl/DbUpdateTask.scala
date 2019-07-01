@@ -1,48 +1,40 @@
 package db.impl
 
-import javax.inject.Inject
-import javax.inject.Singleton
+import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.inject.ApplicationLifecycle
 
 import db.impl.access.ProjectBase
-import ore.{OreConfig, OreEnv}
-import ore.db.ModelService
+import ore.OreConfig
 import ore.util.OreMDC
 
-import akka.actor.ActorSystem
-import cats.effect.IO
 import com.typesafe.scalalogging
+import zio.clock.Clock
+import zio.{UIO, ZSchedule, duration}
 
 @Singleton
-class DbUpdateTask @Inject()(actorSystem: ActorSystem, config: OreConfig, lifecycle: ApplicationLifecycle)(
+class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
-    service: ModelService[IO],
-    env: OreEnv
-) extends Runnable {
+    projects: ProjectBase[UIO]
+) {
 
-  val interval: FiniteDuration = config.ore.homepage.updateInterval
+  val interval: duration.Duration = duration.Duration.fromScala(config.ore.homepage.updateInterval)
 
   private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("DbUpdateTask")
   implicit private val mdc: OreMDC = OreMDC.NoMDC
 
-  def start(): Unit = {
-    Logger.info("DbUpdateTask starting")
-    val task = this.actorSystem.scheduler.schedule(interval, interval, this)
-    lifecycle.addStopHook { () =>
-      Future {
-        task.cancel()
-      }
-    }
-    run()
-  }
+  Logger.info("DbUpdateTask starting")
 
-  override def run(): Unit = {
-    Logger.debug("Updating homepage view")
-    ProjectBase().refreshHomePage(Logger).unsafeRunSync()
-    ()
+  private val schedule: ZSchedule[Clock, Any, Int] = ZSchedule
+    .fixed(interval)
+    .logInput(_ => UIO(Logger.debug(s"Updating homepage view")))
+
+  private val task = runtime.unsafeRun(projects.refreshHomePage(Logger).option.unit.repeat(schedule).fork)
+  lifecycle.addStopHook { () =>
+    Future {
+      runtime.unsafeRun(task.interrupt)
+    }
   }
 }

@@ -2,13 +2,22 @@ package models.querymodels
 
 import java.time.LocalDateTime
 
+import play.api.mvc.RequestHeader
+
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import models.protocols.APIV2
+import ore.OreConfig
 import ore.data.project.{Category, ProjectNamespace}
+import ore.models.project.io.ProjectFiles
+import ore.models.user.User
 import ore.permission.role.Role
+import ore.util.OreMDC
+import util.syntax._
 
 import cats.syntax.all._
 import cats.instances.option._
+import zio.ZIO
+import zio.blocking.Blocking
 
 case class APIV2QueryProject(
     createdAt: LocalDateTime,
@@ -29,12 +38,78 @@ case class APIV2QueryProject(
     homepage: Option[String],
     issues: Option[String],
     sources: Option[String],
+    support: Option[String],
     licenseName: Option[String],
     licenseUrl: Option[String],
     forumSync: Boolean
 ) {
-  def asProtocol: APIV2.Project = APIV2.Project(
-    createdAt,
+
+  def asProtocol(
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
+      requestHeader: RequestHeader,
+      config: OreConfig
+  ): ZIO[Blocking, Nothing, APIV2.Project] = {
+    val iconPath = projectFiles.getIconPath(namespace.ownerName, name)
+    val iconUrlF = iconPath.map(_.isDefined).map {
+      case true  => controllers.project.routes.Projects.showIcon(namespace.ownerName, namespace.slug).absoluteURL()
+      case false => User.avatarUrl(namespace.ownerName)
+    }
+
+    iconUrlF.map { iconUrl =>
+      APIV2.Project(
+        createdAt,
+        pluginId,
+        name,
+        APIV2.ProjectNamespace(
+          namespace.ownerName,
+          namespace.slug
+        ),
+        (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
+          APIV2.RecommendedVersion(
+            version,
+            tags.map(_.asProtocol)
+          )
+        },
+        APIV2.ProjectStats(
+          views,
+          downloads,
+          stars
+        ),
+        category,
+        description,
+        lastUpdated,
+        visibility,
+        APIV2.UserActions(
+          userStarred,
+          userWatching
+        ),
+        APIV2.ProjectSettings(
+          homepage,
+          issues,
+          sources,
+          support,
+          APIV2.ProjectLicense(licenseName, licenseUrl),
+          forumSync
+        ),
+        iconUrl
+      )
+    }
+  }
+}
+
+case class APIV2QueryCompactProject(
+    pluginId: String,
+    name: String,
+    namespace: ProjectNamespace,
+    recommendedVersion: Option[String],
+    recommendedVersionTags: Option[List[APIV2QueryVersionTag]],
+    views: Long,
+    downloads: Long,
+    stars: Long,
+    category: Category,
+    visibility: Visibility
+) {
+  def asProtocol: APIV2.CompactProject = APIV2.CompactProject(
     pluginId,
     name,
     APIV2.ProjectNamespace(
@@ -53,19 +128,7 @@ case class APIV2QueryProject(
       stars
     ),
     category,
-    description,
-    lastUpdated,
     visibility,
-    APIV2.UserActions(
-      userStarred,
-      userWatching
-    ),
-    APIV2.ProjectSettings(
-      issues,
-      sources,
-      APIV2.ProjectLicense(licenseName, licenseUrl),
-      forumSync
-    )
   )
 }
 

@@ -8,6 +8,7 @@ Versions page within Project overview.
 @import views.html.helper.CSPNonce
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
+@import ore.models.project.io.ProjectFiles
 @(p: ProjectData,
         sp: ScopedProjectData,
         channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)

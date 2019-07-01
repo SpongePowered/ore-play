@@ -3,20 +3,27 @@ package db.impl.query
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
+import play.api.mvc.RequestHeader
+
 import controllers.sugar.Requests.ApiAuthInfo
 import models.protocols.APIV2
 import models.querymodels._
+import ore.OreConfig
 import ore.data.project.Category
 import ore.db.DbRef
 import ore.models.api.ApiKey
+import ore.models.project.io.ProjectFiles
 import ore.models.project.{ProjectSortingStrategy, TagColor}
 import ore.models.user.User
 import ore.permission.Permission
+import ore.util.OreMDC
 
 import cats.data.NonEmptyList
 import doobie._
 import doobie.implicits._
 import doobie.postgres.implicits._
+import zio.ZIO
+import zio.blocking.Blocking
 
 object APIV2Queries extends WebDoobieOreProtocol {
 
@@ -113,6 +120,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
         fr"""|       ps.homepage,
              |       ps.issues,
              |       ps.source,
+             |       ps.support,
              |       ps.license_name,
              |       ps.license_url,
              |       ps.forum_sync
@@ -126,8 +134,8 @@ object APIV2Queries extends WebDoobieOreProtocol {
     val visibilityFrag =
       if (canSeeHidden) None
       else
-        currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
-          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))")
+        currentUserId.fold(Some(fr"(p.visibility = 1)")) { id =>
+          Some(fr"(p.visibility = 1 OR (p.owner_id = $id AND p.visibility != 5))")
         }
 
     val filters = Fragments.whereAndOpt(
@@ -165,7 +173,11 @@ object APIV2Queries extends WebDoobieOreProtocol {
       orderWithRelevance: Boolean,
       limit: Long,
       offset: Long
-  ): Query0[APIV2.Project] = {
+  )(
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
+      requestHeader: RequestHeader,
+      config: OreConfig
+  ): Query0[ZIO[Blocking, Nothing, APIV2.Project]] = {
     val ordering = if (orderWithRelevance && query.nonEmpty) {
       val relevance = query.fold(fr"1") { q =>
         fr"ts_rank(p.search_words, websearch_to_tsquery($q)) DESC"
@@ -276,4 +288,108 @@ object APIV2Queries extends WebDoobieOreProtocol {
           |  WHERE u.name = $name
           |  GROUP BY u.id""".stripMargin.query[APIV2QueryUser].map(_.asProtocol)
 
+  private def actionFrag(
+      table: Fragment,
+      user: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]],
+  ): Fragment = {
+    val base =
+      sql"""|SELECT p.plugin_id,
+            |       p.name,
+            |       p.owner_name,
+            |       p.slug,
+            |       p.version_string,
+            |       array_remove(
+            |               array_append(array_agg(p.tag_name), CASE WHEN pc IS NULL THEN NULL ELSE 'Channel'::VARCHAR(255) END),
+            |               NULL)                                                          AS tag_names,
+            |       array_remove(array_append(array_agg(p.tag_data), pc.name), NULL)       AS tag_datas,
+            |       array_remove(array_append(array_agg(p.tag_color), pc.color + 9), NULL) AS tag_colors,
+            |       p.views,
+            |       p.downloads,
+            |       p.stars,
+            |       p.category,
+            |       p.visibility
+            |    FROM users u JOIN """.stripMargin ++ table ++
+        fr"""|ps ON u.id = ps.user_id
+             |             JOIN home_projects p ON ps.project_id = p.id
+             |             LEFT JOIN project_channels pc ON p.recommended_version_channel_id = pc.id""".stripMargin
+
+    val groupBy =
+      fr"""|GROUP BY p.plugin_id, p.name, p.owner_name, p.slug, p.version_string, p.views, p.downloads, p.stars,
+           |             p.category, p.visibility, p.last_updated, pc.id""".stripMargin
+
+    val visibilityFrag =
+      if (canSeeHidden) None
+      else
+        currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
+          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))")
+        }
+
+    val filters = Fragments.whereAndOpt(
+      Some(fr"u.name = $user"),
+      visibilityFrag
+    )
+
+    base ++ filters ++ groupBy
+  }
+
+  private def actionQuery(
+      table: Fragment,
+      user: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]],
+      order: ProjectSortingStrategy,
+      limit: Long,
+      offset: Long
+  ): Query0[APIV2.CompactProject] = {
+    val ordering = order.fragment
+
+    val select = actionFrag(table, user, canSeeHidden, currentUserId)
+    (select ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset")
+      .query[APIV2QueryCompactProject]
+      .map(_.asProtocol)
+  }
+
+  private def actionCountQuery(
+      table: Fragment,
+      user: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]]
+  ): Query0[Long] = {
+    val select = actionFrag(table, user, canSeeHidden, currentUserId)
+    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
+  }
+
+  def starredQuery(
+      user: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]],
+      order: ProjectSortingStrategy,
+      limit: Long,
+      offset: Long
+  ): Query0[APIV2.CompactProject] =
+    actionQuery(Fragment.const("project_stars"), user, canSeeHidden, currentUserId, order, limit, offset)
+
+  def starredCountQuery(
+      user: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]]
+  ): Query0[Long] = actionCountQuery(Fragment.const("project_stars"), user, canSeeHidden, currentUserId)
+
+  def watchingQuery(
+      user: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]],
+      order: ProjectSortingStrategy,
+      limit: Long,
+      offset: Long
+  ): Query0[APIV2.CompactProject] =
+    actionQuery(Fragment.const("project_watchers"), user, canSeeHidden, currentUserId, order, limit, offset)
+
+  def watchingCountQuery(
+      user: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]]
+  ): Query0[Long] = actionCountQuery(Fragment.const("project_watchers"), user, canSeeHidden, currentUserId)
 }

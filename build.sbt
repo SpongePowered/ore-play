@@ -1,3 +1,5 @@
+import com.typesafe.sbt.web.js.JS
+
 lazy val commonSettings = Seq(
   version := "1.8.2",
   scalaVersion := "2.12.8",
@@ -41,7 +43,7 @@ lazy val commonSettings = Seq(
     "-Ywarn-value-discard",
     "-Yrangepos"
   ),
-  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.10"),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.1"),
   addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)),
   addCompilerPlugin(scalafixSemanticdb("4.1.9")),
   // Disable generation of the API documentation for production builds
@@ -60,7 +62,9 @@ lazy val playCommonSettings = Seq(
     "ore.data.project.Category",
   ).map(s => s"_root_.$s"),
   unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test"),
-  pipelineStages := Seq(digest, gzip)
+  pipelineStages := Seq(digest, gzip),
+  pipelineStages in Assets := Seq(autoprefixer),
+  autoPrefixerBrowsers in Assets := JS.Array("> 1%", "last 4 versions", "Firefox ESR")
 )
 
 lazy val playTestDeps = Seq(
@@ -71,6 +75,8 @@ lazy val playTestDeps = Seq(
 )
 
 lazy val catsVersion         = "1.6.0"
+lazy val catsTaglessVersion  = "0.7"
+lazy val zioVersion          = "1.0.0-RC8-6"
 lazy val doobieVersion       = "0.6.0"
 lazy val flexmarkVersion     = "0.42.8"
 lazy val playSlickVersion    = "4.0.1"
@@ -79,23 +85,27 @@ lazy val circeVersion        = "0.11.1"
 lazy val akkaVersion         = "2.5.22"
 lazy val akkaHttpVersion     = "10.1.8"
 lazy val scalaLoggingVersion = "3.9.2"
+lazy val simulacrumVersion   = "0.16.0"
+lazy val macWireVersion      = "2.3.2"
 
 lazy val db = project.settings(
   commonSettings,
   name := "ore-db",
   libraryDependencies ++= Seq(
-    "com.typesafe.slick" %% "slick"       % "3.3.0",
-    "org.tpolecat"       %% "doobie-core" % doobieVersion,
-    "com.chuusai"        %% "shapeless"   % "2.3.3",
+    "com.typesafe.slick" %% "slick"               % "3.3.0",
+    "org.tpolecat"       %% "doobie-core"         % doobieVersion,
+    "org.typelevel"      %% "cats-tagless-macros" % catsTaglessVersion,
+    "com.chuusai"        %% "shapeless"           % "2.3.3",
   )
 )
 
-lazy val discourse = project.settings(
+lazy val externalCommon = project.settings(
   commonSettings,
-  name := "ore-discourse",
+  name := "ore-external",
   libraryDependencies ++= Seq(
     "org.typelevel"              %% "cats-core"            % catsVersion,
     "org.typelevel"              %% "cats-effect"          % "1.2.0",
+    "org.typelevel"              %% "cats-tagless-macros"  % catsTaglessVersion,
     "io.circe"                   %% "circe-core"           % circeVersion,
     "io.circe"                   %% "circe-generic-extras" % circeVersion,
     "io.circe"                   %% "circe-parser"         % circeVersion,
@@ -104,8 +114,23 @@ lazy val discourse = project.settings(
     "com.typesafe.akka"          %% "akka-stream"          % akkaVersion,
     "de.heikoseeberger"          %% "akka-http-circe"      % "1.25.2",
     "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
-  )
+    "com.github.mpilquist"       %% "simulacrum"           % simulacrumVersion,
+  ),
 )
+
+lazy val discourse = project
+  .dependsOn(externalCommon)
+  .settings(
+    commonSettings,
+    name := "ore-discourse",
+  )
+
+lazy val auth = project
+  .dependsOn(externalCommon)
+  .settings(
+    commonSettings,
+    name := "ore-auth"
+  )
 
 lazy val models = project
   .dependsOn(db)
@@ -122,7 +147,7 @@ lazy val models = project
       "com.beachape"               %% "enumeratum"            % "1.5.13",
       "com.beachape"               %% "enumeratum-slick"      % "1.5.15",
       "org.typelevel"              %% "cats-core"             % catsVersion,
-      "com.github.mpilquist"       %% "simulacrum"            % "0.16.0",
+      "com.github.mpilquist"       %% "simulacrum"            % simulacrumVersion,
       "io.circe"                   %% "circe-core"            % circeVersion,
       "io.circe"                   %% "circe-generic-extras"  % circeVersion,
       "io.circe"                   %% "circe-parser"          % circeVersion,
@@ -131,7 +156,7 @@ lazy val models = project
 
 lazy val orePlayCommon: Project = project
   .enablePlugins(PlayScala)
-  .dependsOn(discourse, models)
+  .dependsOn(discourse, auth, models)
   .settings(
     commonSettings,
     playCommonSettings,
@@ -141,6 +166,10 @@ lazy val orePlayCommon: Project = project
     libraryDependencies ++= Seq(
       "org.spongepowered" % "plugin-meta" % "0.4.1",
       "com.typesafe.play" %% "play-slick" % playSlickVersion,
+    ),
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"              % zioVersion,
+      "dev.zio" %% "zio-interop-cats" % zioVersion
     ),
     aggregateReverseRoutes := Seq(ore)
   )
@@ -170,14 +199,51 @@ def flexmarkDep(module: String) = {
   "com.vladsch.flexmark" % artifactId % flexmarkVersion
 }
 
+lazy val oreClient = project
+  .enablePlugins(ScalaJSBundlerPlugin)
+  .settings(
+    name := "ore-client",
+    commonSettings,
+    useYarn := true,
+    scalaJSUseMainModuleInitializer := false,
+    scalaJSModuleKind := ModuleKind.CommonJSModule,
+    webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
+    webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack.config.prod.js"),
+    webpackMonitoredDirectories += baseDirectory.value / "assets",
+    includeFilter in webpackMonitoredFiles := "*.vue" || "*.js",
+    webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
+    version in startWebpackDevServer := "3.1.4",
+    version in webpack := "4.16.1",
+    npmDependencies in Compile ++= Seq(
+      "vue"          -> "2.6.10",
+      "lodash"       -> "4.17.11",
+      "query-string" -> "6.8.0",
+    ),
+    npmDevDependencies in Compile ++= Seq(
+      "webpack-merge"                      -> "4.1.0",
+      "vue-loader"                         -> "15.7.0",
+      "vue-template-compiler"              -> "2.6.10",
+      "css-loader"                         -> "2.1.1",
+      "vue-style-loader"                   -> "4.1.2",
+      "babel-loader"                       -> "8.0.6",
+      "@babel/core"                        -> "7.4.5",
+      "terser-webpack-plugin"              -> "1.3.0",
+      "mini-css-extract-plugin"            -> "0.7.0",
+      "optimize-css-assets-webpack-plugin" -> "5.0.1",
+      "sass-loader"                        -> "7.1.0",
+      "postcss-loader"                     -> "3.0.0",
+      "autoprefixer"                       -> "9.5.1",
+      "node-sass"                          -> "4.12.0",
+    )
+  )
+
 lazy val ore = project
-  .enablePlugins(PlayScala, SwaggerPlugin)
+  .enablePlugins(PlayScala, SwaggerPlugin, WebScalaJSBundlerPlugin)
   .dependsOn(orePlayCommon, apiV2)
   .settings(
     commonSettings,
     playCommonSettings,
     name := "ore",
-    libraryDependencies += guice,
     libraryDependencies ++= Seq(
       "com.typesafe.play"          %% "play-slick-evolutions" % playSlickVersion,
       "com.typesafe.scala-logging" %% "scala-logging"         % scalaLoggingVersion,
@@ -187,6 +253,8 @@ lazy val ore = project
       "io.circe"                   %% "circe-core"            % circeVersion,
       "io.circe"                   %% "circe-generic-extras"  % circeVersion,
       "io.circe"                   %% "circe-parser"          % circeVersion,
+      "com.softwaremill.macwire"   %% "macros"                % macWireVersion % "provided",
+      "com.softwaremill.macwire"   %% "macrosakka"            % macWireVersion % "provided"
     ),
     libraryDependencies ++= Seq(
       "",
@@ -214,7 +282,12 @@ lazy val ore = project
       "controllers.apiv2.ApiV2Controller",
     ),
     swaggerAPIVersion := "2.0",
-    swaggerV3 := true
+    swaggerV3 := true,
+    scalaJSProjects := Seq(oreClient),
+    pipelineStages in Assets += scalaJSPipeline,
+    WebKeys.exportedMappings in Assets := Seq(),
+    PlayKeys.playMonitoredFiles += (oreClient / baseDirectory).value / "assets"
   )
 
-lazy val oreAll = project.in(file(".")).aggregate(db, ore, discourse, models)
+lazy val oreAll =
+  project.in(file(".")).aggregate(db, externalCommon, discourse, auth, models, orePlayCommon, apiV2, ore, oreClient)

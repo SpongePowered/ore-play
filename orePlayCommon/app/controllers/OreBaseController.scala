@@ -2,44 +2,31 @@ package controllers
 
 import scala.language.higherKinds
 
-import scala.concurrent.ExecutionContext
-
 import play.api.i18n.I18nSupport
 import play.api.mvc._
 
 import controllers.sugar.Requests.{AuthRequest, AuthedProjectRequest, OreRequest}
-import controllers.sugar.{Actions, Bakery, Requests}
+import controllers.sugar.{Actions, Requests}
+import ore.db.Model
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
-import ore.models.project.{Project, Version, Visibility}
-import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
+import ore.models.project.{Project, Version, Visibility}
 import ore.permission.Permission
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
+import util.syntax._
 
-import cats.data.EitherT
-import cats.effect.{ContextShift, IO}
+import zio.IO
 
 /**
   * Represents a Secured base Controller for this application.
   */
-abstract class OreBaseController(
-    implicit val env: OreEnv,
-    val config: OreConfig,
-    val service: ModelService[IO],
-    val bakery: Bakery,
-    val auth: SpongeAuthApi,
-    val sso: SingleSignOnConsumer
-) extends InjectedController
+abstract class OreBaseController(implicit val oreComponents: OreControllerComponents)
+    extends AbstractController(oreComponents)
     with Actions
     with I18nSupport {
 
   override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
-
-  implicit def ec: ExecutionContext
-  implicit def cs: ContextShift[IO] = IO.contextShift(ec)
 
   /**
     * Gets a project with the specified author and slug, or returns a notFound.
@@ -49,8 +36,8 @@ abstract class OreBaseController(
     * @param request  Incoming request
     * @return         NotFound or project
     */
-  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): EitherT[IO, Result, Model[Project]] =
-    projects.withSlug(author, slug).toRight(notFound)
+  def getProject(author: String, slug: String)(implicit request: OreRequest[_]): IO[Result, Model[Project]] =
+    projects.withSlug(author, slug).get.constError(notFound)
 
   private def versionFindFunc(versionString: String, canSeeHiden: Boolean): VersionTable => Rep[Boolean] = v => {
     val versionMatches = v.versionString.toLowerCase === versionString.toLowerCase
@@ -68,11 +55,11 @@ abstract class OreBaseController(
     */
   def getVersion(project: Model[Project], versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Model[Version]] =
+  ): IO[Result, Model[Version]] =
     project
       .versions(ModelView.now(Version))
       .find(versionFindFunc(versionString, request.headerData.globalPerm(Permission.SeeHidden)))
-      .toRight(notFound)
+      .toZIOWithError(notFound)
 
   /**
     * Gets a version with the specified author, project slug and version string
@@ -86,7 +73,7 @@ abstract class OreBaseController(
     */
   def getProjectVersion(author: String, slug: String, versionString: String)(
       implicit request: OreRequest[_]
-  ): EitherT[IO, Result, Model[Version]] =
+  ): IO[Result, Model[Version]] =
     for {
       project <- getProject(author, slug)
       version <- getVersion(project, versionString)
@@ -135,14 +122,6 @@ abstract class OreBaseController(
   ): ActionBuilder[AuthedProjectRequest, AnyContent] = {
     val first = if (requireUnlock) UserLock(ShowProject(author, slug)) else Authenticated
     first.andThen(authedProjectAction(author, slug))
-  }
-
-  def AuthedProjectActionById(
-      pluginId: String,
-      requireUnlock: Boolean = true
-  ): ActionBuilder[AuthedProjectRequest, AnyContent] = {
-    val first = if (requireUnlock) UserLock(ShowProject(pluginId)) else Authenticated
-    first.andThen(authedProjectActionById(pluginId))
   }
 
   /**

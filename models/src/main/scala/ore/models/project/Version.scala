@@ -79,7 +79,7 @@ case class Version(
     *
     * @return Base URL for version
     */
-  def url(implicit project: Project): String = project.url + "/versions/" + this.versionString
+  def url(project: Project): String = project.url + "/versions/" + this.versionString
 
   def author[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]): QOptRet =
     view.get(this.authorId)

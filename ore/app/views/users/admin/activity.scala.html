@@ -9,7 +9,7 @@
 @import models.querymodels.{FlagActivity, ReviewActivity}
 @(username: String, activities: Seq[Either[FlagActivity, ReviewActivity]])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
-@bootstrap.layout(messages("activity.title") + username) {
+@layout.base(messages("activity.title") + username) {
 
     <div class="row">
         <div class="col-md-12  header-flags">

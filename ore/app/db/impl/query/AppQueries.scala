@@ -36,8 +36,8 @@ object AppQueries extends WebDoobieOreProtocol {
     val visibilityFrag =
       if (canSeeHidden) None
       else
-        currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
-          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))")
+        currentUserId.fold(Some(fr"(p.visibility = 1)")) { id =>
+          Some(fr"(p.visibility = 1 OR (p.owner_id = $id AND p.visibility != 5))")
         }
     val queryFrag = query.map(q => fr"p.search_words @@ websearch_to_tsquery($q)")
 

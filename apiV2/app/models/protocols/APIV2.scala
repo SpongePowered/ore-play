@@ -55,7 +55,18 @@ object APIV2 {
       last_updated: LocalDateTime,
       visibility: Visibility,
       user_actions: UserActions,
-      settings: ProjectSettings
+      settings: ProjectSettings,
+      icon_url: String
+  )
+
+  @ConfiguredJsonCodec case class CompactProject(
+      plugin_id: String,
+      name: String,
+      namespace: ProjectNamespace,
+      recommended_version: Option[RecommendedVersion],
+      stats: ProjectStats,
+      category: Category,
+      visibility: Visibility,
   )
 
   @ConfiguredJsonCodec case class ProjectNamespace(owner: String, slug: String)
@@ -65,8 +76,10 @@ object APIV2 {
   @ConfiguredJsonCodec case class ProjectStats(views: Long, downloads: Long, stars: Long)
   @ConfiguredJsonCodec case class UserActions(starred: Boolean, watching: Boolean)
   @ConfiguredJsonCodec case class ProjectSettings(
+      homepage: Option[String],
       issues: Option[String],
       sources: Option[String],
+      support: Option[String],
       license: ProjectLicense,
       forum_sync: Boolean
   )

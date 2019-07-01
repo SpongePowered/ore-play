@@ -1,57 +1,63 @@
 package ore.models.project
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+
+import play.api.inject.ApplicationLifecycle
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.OreConfig
 import ore.db.ModelService
-import ore.db.access.ModelView
-import util.syntax._
+import ore.db.impl.schema.{ProjectTableMain, VersionTable}
+import util.TaskUtils
 
-import akka.actor.ActorSystem
-import cats.effect.{ContextShift, IO}
 import com.typesafe.scalalogging
+import zio.clock.Clock
+import zio.{UIO, ZIO, ZSchedule, duration}
 
 /**
   * Task that is responsible for publishing New projects
   */
 @Singleton
-class ProjectTask @Inject()(actorSystem: ActorSystem, config: OreConfig)(
+class ProjectTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
-    service: ModelService[IO]
-) extends Runnable {
-
-  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+    service: ModelService[UIO]
+) {
 
   private val Logger = scalalogging.Logger("ProjectTask")
 
-  val interval: FiniteDuration = this.config.ore.projects.checkInterval
-  val draftExpire: Long        = this.config.ore.projects.draftExpire.toMillis
+  val interval: duration.Duration = duration.Duration.fromScala(this.config.ore.projects.checkInterval)
+  val draftExpire: Long           = this.config.ore.projects.draftExpire.toMillis
 
-  private def dayAgo          = Instant.ofEpochMilli(System.currentTimeMillis() - draftExpire)
-  private val newFilter       = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
-  private def createdAtFilter = ModelFilter(Project)(_.createdAt < dayAgo)
-  private def newProjects     = service.runDBIO(ModelView.now(Project).query.filter(newFilter && createdAtFilter).result)
+  private val dayAgoF =
+    ZIO.accessM[Clock](_.clock.currentTime(TimeUnit.MILLISECONDS)).map(_ - draftExpire).map(Instant.ofEpochMilli)
+  private val newFilter        = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
+  private val hasVersions      = ModelFilter(Project)(p => TableQuery[VersionTable].filter(_.projectId === p.id).exists)
+  private val createdAtFilterF = dayAgoF.map(dayAgo => ModelFilter(Project)(_.createdAt < dayAgo))
+  private val updateFalseNewProjects = service.runDBIO(
+    TableQuery[ProjectTableMain].filter(newFilter && hasVersions).map(_.visibility).update(Visibility.Public)
+  )
 
-  /**
-    * Starts the task.
-    */
-  def start(): Unit = {
-    this.actorSystem.scheduler.schedule(this.interval, this.interval, this)
-    Logger.info(s"Initialized. First run in ${this.interval.toString}.")
-  }
+  private val deleteNewProjects =
+    createdAtFilterF.flatMap(createdAtFilter => service.deleteWhere(Project)(newFilter && createdAtFilter))
 
-  /**
-    * Task runner
-    */
-  def run(): Unit = newProjects.unsafeToFuture().foreach { projects =>
-    projects.foreach { project =>
-      Logger.debug(s"Changed ${project.ownerName}/${project.slug} from New to Public")
-      project.setVisibility(Visibility.Public, "Changed by task", project.ownerId).unsafeRunAsyncAndForget()
+  private val schedule: ZSchedule[Clock, Any, Int] = ZSchedule
+    .fixed(interval)
+    .logInput(_ => UIO(Logger.debug(s"Deleting draft projects")))
+
+  private val action = (updateFalseNewProjects *> deleteNewProjects).unit.delay(interval)
+
+  //TODO: Repeat in case of failure
+  private val task = runtime.unsafeRun(action.option.unit.repeat(schedule).fork)
+
+  lifecycle.addStopHook { () =>
+    Future {
+      runtime.unsafeRun(task.interrupt)
     }
   }
+  Logger.info(s"Initialized. First run in ${this.interval.asScala.toSeconds} seconds.")
 }

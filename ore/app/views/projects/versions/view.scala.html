@@ -10,6 +10,7 @@
 @import ore.data.Platform
 @import util.syntax._
 
+@import ore.models.project.io.ProjectFiles
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}

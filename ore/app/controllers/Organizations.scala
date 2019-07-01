@@ -1,43 +1,35 @@
 package controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.mvc.{Action, AnyContent}
 
-import controllers.sugar.Bakery
-import ore.db.impl.OrePostgresDriver.api._
 import form.OreForms
 import form.organization.{OrganizationMembersUpdate, OrganizationRoleSetBuilder}
-import ore.models.user.role.OrganizationUserRole
+import ore.auth.SpongeAuthApi
+import ore.db.DbRef
 import ore.db.access.ModelView
-import ore.db.{DbRef, ModelService}
+import ore.db.impl.OrePostgresDriver.api._
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
+import ore.models.user.role.OrganizationUserRole
 import ore.permission.Permission
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import util.syntax._
 import views.{html => views}
 
 import cats.data.OptionT
-import cats.effect.IO
 import cats.syntax.all._
+import zio.{IO, Task, UIO}
+import zio.interop.catz._
 
 /**
   * Controller for handling Organization based actions.
   */
+@Singleton
 class Organizations @Inject()(forms: OreForms)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO],
+    implicit oreComponents: OreControllerComponents,
+    auth: SpongeAuthApi[UIO],
     messagesApi: MessagesApi
 ) extends OreBaseController {
 
@@ -73,20 +65,21 @@ class Organizations @Inject()(forms: OreForms)(
       val failCall = routes.Organizations.showCreator()
 
       if (user.isLocked) {
-        IO.pure(BadRequest)
+        IO.fail(BadRequest)
       } else if (!this.config.ore.orgs.enabled) {
-        IO.pure(Redirect(failCall).withError("error.org.disabled"))
+        IO.fail(Redirect(failCall).withError("error.org.disabled"))
       } else {
         service
           .runDBIO((user.ownedOrganizations(ModelView.later(Organization)).size >= this.createLimit).result)
           .flatMap { limitReached =>
             if (limitReached)
-              IO.pure(BadRequest)
+              IO.fail(BadRequest)
             else {
               val formData = request.body
               organizations
                 .create(formData.name, user.id, formData.build())
-                .fold(
+                .absolve
+                .bimap(
                   error => Redirect(failCall).withErrors(error),
                   organization => Redirect(routes.Users.showProjects(organization.name, None))
                 )
@@ -107,16 +100,18 @@ class Organizations @Inject()(forms: OreForms)(
       request.user
         .organizationRoles(ModelView.now(OrganizationUserRole))
         .get(id)
-        .semiflatMap { role =>
+        .toZIO
+        .constError(notFound)
+        .flatMap { role =>
           import MembershipDossier._
           status match {
-            case STATUS_DECLINE  => role.organization.flatMap(org => org.memberships.removeRole(org)(role.id)).as(Ok)
-            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
-            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
-            case _               => IO.pure(BadRequest)
+            case STATUS_DECLINE =>
+              role.organization[Task].orDie.flatMap(org => org.memberships.removeRole(org)(role.id)).as(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).const(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).const(Ok)
+            case _               => IO.fail(BadRequest)
           }
         }
-        .getOrElse(notFound)
     }
 
   /**
@@ -131,11 +126,10 @@ class Organizations @Inject()(forms: OreForms)(
       .asyncF { implicit request =>
         implicit val lang: Lang = request.lang
 
-        auth.getChangeAvatarToken(request.user.name, organization).value.map {
+        auth.changeAvatarUri(request.user.name, organization).map {
           case Left(_) =>
             Redirect(routes.Users.showProjects(organization, None)).withError(messagesApi("organization.avatarFailed"))
-          case Right(token) =>
-            Redirect(auth.url + s"/accounts/user/$organization/change-avatar/?key=${token.signedData}")
+          case Right(uri) => Redirect(uri.toString())
         }
       }
 
@@ -169,6 +163,9 @@ class Organizations @Inject()(forms: OreForms)(
         parse.form(forms.OrganizationUpdateMembers)
       )
       .asyncF { implicit request =>
-        request.body.saveTo(request.data.orga).as(Redirect(ShowUser(organization)))
+        request.body
+          .saveTo[Task, ParTask](request.data.orga)
+          .orDie
+          .const(Redirect(ShowUser(organization)))
       }
 }

@@ -1,42 +1,30 @@
 package controllers.project
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
-
-import play.api.cache.AsyncCacheApi
 import play.api.mvc.{Action, AnyContent}
 
-import controllers.OreBaseController
-import controllers.sugar.Bakery
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{ChannelTable, VersionTable}
+import controllers.{OreBaseController, OreControllerComponents}
 import form.OreForms
 import form.project.ChannelData
-import ore.models.project.Channel
-import ore.db.ModelService
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{ChannelTable, VersionTable}
+import ore.models.project.Channel
 import ore.permission.Permission
-import ore.{OreConfig, OreEnv}
-import security.spauth.{SingleSignOnConsumer, SpongeAuthApi}
 import views.html.projects.{channels => views}
+import util.syntax._
 
-import cats.data.OptionT
-import cats.effect.IO
-import cats.syntax.all._
+import zio.{IO, Task}
+import zio.interop.catz._
 import slick.lifted.TableQuery
 
 /**
   * Controller for handling Channel related actions.
   */
+@Singleton
 class Channels @Inject()(forms: OreForms)(
-    implicit val ec: ExecutionContext,
-    bakery: Bakery,
-    auth: SpongeAuthApi,
-    sso: SingleSignOnConsumer,
-    env: OreEnv,
-    config: OreConfig,
-    service: ModelService[IO]
+    implicit oreComponents: OreControllerComponents
 ) extends OreBaseController {
 
   private val self = controllers.project.routes.Channels
@@ -68,13 +56,16 @@ class Channels @Inject()(forms: OreForms)(
     * @return Redirect to view of channels
     */
   def create(author: String, slug: String): Action[ChannelData] =
-    ChannelEditAction(author, slug).asyncEitherT(
+    ChannelEditAction(author, slug).asyncF(
       parse.form(forms.ChannelEdit, onErrors = FormError(self.showList(author, slug)))
     ) { request =>
       request.body
-        .addTo(request.project)
-        .leftMap(Redirect(self.showList(author, slug)).withErrors(_))
-        .map(_ => Redirect(self.showList(author, slug)))
+        .addTo[Task](request.project)
+        .value
+        .orDie
+        .absolve
+        .mapError(Redirect(self.showList(author, slug)).withErrors(_))
+        .const(Redirect(self.showList(author, slug)))
     }
 
   /**
@@ -86,13 +77,14 @@ class Channels @Inject()(forms: OreForms)(
     * @return View of channels
     */
   def save(author: String, slug: String, channelName: String): Action[ChannelData] =
-    ChannelEditAction(author, slug).asyncEitherT(
+    ChannelEditAction(author, slug).asyncF(
       parse.form(forms.ChannelEdit, onErrors = FormError(self.showList(author, slug)))
     ) { request =>
       request.body
         .saveTo(request.project, channelName)
-        .leftMap(Redirect(self.showList(author, slug)).withErrors(_))
-        .map(_ => Redirect(self.showList(author, slug)))
+        .toZIO
+        .mapError(Redirect(self.showList(author, slug)).withErrors(_))
+        .const(Redirect(self.showList(author, slug)))
     }
 
   /**
@@ -104,7 +96,7 @@ class Channels @Inject()(forms: OreForms)(
     * @return View of channels
     */
   def delete(author: String, slug: String, channelName: String): Action[AnyContent] =
-    ChannelEditAction(author, slug).asyncEitherT { implicit request =>
+    ChannelEditAction(author, slug).asyncF { implicit request =>
       val channelsAccess = request.project.channels(ModelView.later(Channel))
 
       val ourChannel = channelsAccess.find(_.name === channelName)
@@ -131,24 +123,24 @@ class Channels @Inject()(forms: OreForms)(
           channel.isNonReviewed || reviewedChannelsCount
         )
 
-      OptionT(service.runDBIO(query.result.headOption))
-        .toRight(NotFound)
-        .subflatMap {
-          case (channel, notLast, notLastNonEmpty, notLastReviewed) =>
-            val errorSeq = Seq(
-              notLast         -> "error.channel.last",
-              notLastNonEmpty -> "error.channel.lastNonEmpty",
-              notLastReviewed -> "error.channel.lastReviewed"
-            ).collect {
-              case (success, msg) if !success => msg
-            }
+      for {
+        t <- service.runDBIO(query.result.headOption).get.constError(NotFound)
+        (channel, notLast, notLastNonEmpty, notLastReviewed) = t
+        _ <- {
+          val errorSeq = Seq(
+            notLast         -> "error.channel.last",
+            notLastNonEmpty -> "error.channel.lastNonEmpty",
+            notLastReviewed -> "error.channel.lastReviewed"
+          ).collect {
+            case (success, msg) if !success => msg
+          }
 
-            if (errorSeq.isEmpty)
-              Right(channel)
-            else
-              Left(Redirect(self.showList(author, slug)).withErrors(errorSeq.toList))
+          if (errorSeq.isEmpty)
+            IO.succeed(())
+          else
+            IO.fail(Redirect(self.showList(author, slug)).withErrors(errorSeq.toList))
         }
-        .semiflatMap(channel => projects.deleteChannel(request.project, channel))
-        .as(Redirect(self.showList(author, slug)))
+        _ <- projects.deleteChannel(request.project, channel)
+      } yield Redirect(self.showList(author, slug))
     }
 }

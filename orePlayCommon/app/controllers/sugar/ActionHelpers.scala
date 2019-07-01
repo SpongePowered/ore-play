@@ -2,6 +2,8 @@ package controllers.sugar
 
 import scala.language.{higherKinds, implicitConversions}
 
+import scala.concurrent.Future
+
 import play.api.data.{Form, FormError}
 import play.api.mvc.Results.Redirect
 import play.api.mvc._
@@ -10,9 +12,10 @@ import controllers.sugar.Requests.OreRequest
 
 import cats.Monad
 import cats.data.{EitherT, OptionT}
-import cats.effect.syntax.all._
-import cats.effect.{Effect, IO}
 import com.google.common.base.Preconditions.checkArgument
+import zio.blocking.Blocking
+import zio.clock.Clock
+import zio.{IO, ZIO}
 
 /**
   * A helper class for some common functions of controllers.
@@ -61,8 +64,8 @@ trait ActionHelpers {
 
   implicit def toOreRequestBuilderOps[R[_], B](
       builder: ActionBuilder[R, B]
-  ): ActionHelpers.OreActionBuilderOps[R, IO, B] =
-    new ActionHelpers.OreActionBuilderOps[R, IO, B](builder)
+  ): ActionHelpers.OreActionBuilderOps[R, B] =
+    new ActionHelpers.OreActionBuilderOps[R, B](builder)
 }
 object ActionHelpers {
 
@@ -173,6 +176,9 @@ object ActionHelpers {
   }
 
   class FormBindOps[A](private val form: Form[A]) extends AnyVal {
+    def bindZIO[B](error: Form[A] => B)(implicit request: Request[_]): IO[B, A] =
+      form.bindFromRequest().fold(error.andThen(ZIO.fail), ZIO.succeed)
+
     def bindEitherT[F[_]] = new BindFormEitherTPartiallyApplied[F, A](form)
 
     def bindOptionT[F[_]](implicit F: Monad[F], request: Request[_]): OptionT[F, A] =
@@ -184,26 +190,30 @@ object ActionHelpers {
       form.bindFromRequest().fold(left.andThen(EitherT.leftT[F, B](_)), EitherT.rightT[F, A](_))
   }
 
-  class OreActionBuilderOps[R[_], F[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
+  //This gets us around a warning about this being unreachable. Yes, we know
+  private def impossible[A](a: A): Throwable = new Exception(s"Got impossible nothing")
 
-    def asyncF(fr: F[Result])(implicit F: Effect[F]): Action[AnyContent] = action.async(fr.toIO.unsafeToFuture())
+  private[sugar] def zioToFuture[A](
+      io: ZIO[Blocking with Clock, Nothing, A]
+  )(implicit runtime: zio.Runtime[Blocking with Clock]): Future[A] =
+    //TODO: If Sentry can't differentiate different errors here, log the error, and throw an exception ignored by Sentry instead
+    runtime.unsafeRun(io.toFutureWith(impossible))
 
-    def asyncF(fr: R[B] => F[Result])(implicit F: Effect[F]): Action[B] =
-      action.async(r => fr(r).toIO.unsafeToFuture())
+  class OreActionBuilderOps[R[_], B](private val action: ActionBuilder[R, B]) extends AnyVal {
+
+    def asyncF(
+        fr: ZIO[Blocking, Result, Result]
+    )(implicit runtime: zio.Runtime[Blocking with Clock]): Action[AnyContent] =
+      action.async(zioToFuture(fr.either.map(_.merge)))
+
+    def asyncF(
+        fr: R[B] => ZIO[Blocking, Result, Result]
+    )(implicit runtime: zio.Runtime[Blocking with Clock]): Action[B] =
+      action.async(r => zioToFuture(fr(r).either.map(_.merge)))
 
     def asyncF[A](
         bodyParser: BodyParser[A]
-    )(fr: R[A] => F[Result])(implicit F: Effect[F]): Action[A] =
-      action.async(bodyParser)(r => fr(r).toIO.unsafeToFuture())
-
-    def asyncEitherT(fr: EitherT[F, _ <: Result, Result])(implicit F: Effect[F]): Action[AnyContent] = asyncF(fr.merge)
-
-    def asyncEitherT(fr: R[B] => EitherT[F, _ <: Result, Result])(implicit F: Effect[F]): Action[B] =
-      asyncF(r => fr(r).merge)
-
-    def asyncEitherT[A](
-        bodyParser: BodyParser[A]
-    )(fr: R[A] => EitherT[F, _ <: Result, Result])(implicit F: Effect[F]): Action[A] =
-      asyncF(bodyParser)(r => fr(r).merge)
+    )(fr: R[A] => ZIO[Blocking, Result, Result])(implicit runtime: zio.Runtime[Blocking with Clock]): Action[A] =
+      action.async(bodyParser)(r => zioToFuture(fr(r).either.map(_.merge)))
   }
 }

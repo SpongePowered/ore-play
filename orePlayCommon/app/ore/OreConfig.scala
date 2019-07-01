@@ -50,6 +50,7 @@ final class OreConfig @Inject()(config: Configuration) {
     val raw: Configuration = root.get[Configuration]("ore")
     val debug: Boolean     = raw.get[Boolean]("debug")
     val debugLevel: Int    = raw.get[Int]("debug-level")
+    var staging: Boolean   = raw.get[Boolean]("staging")
 
     object homepage extends ConfigCategory {
       val raw: Configuration             = ore.raw.get[Configuration]("homepage")
@@ -85,7 +86,7 @@ final class OreConfig @Inject()(config: Configuration) {
       val staleAge: FiniteDuration      = raw.get[FiniteDuration]("staleAge")
       val checkInterval: FiniteDuration = raw.get[FiniteDuration]("check-interval")
       val draftExpire: FiniteDuration   = raw.getOptional[FiniteDuration]("draft-expire").getOrElse(1.day)
-      val stargazersPageSize: Int       = raw.get[Int]("stargazers-page-size")
+      val userGridPageSize: Int         = raw.get[Int]("user-grid-page-size")
     }
 
     object users extends ConfigCategory {
@@ -163,6 +164,13 @@ final class OreConfig @Inject()(config: Configuration) {
       val avatarUrl: String       = raw.get[String]("avatarUrl")
       val key: String             = raw.get[String]("key")
       val timeout: FiniteDuration = raw.get[FiniteDuration]("timeout")
+
+      object breaker extends ConfigCategory {
+        val raw: Configuration      = api.raw.get[Configuration]("breaker")
+        val maxFailures: Int        = raw.get[Int]("max-failures")
+        val reset: FiniteDuration   = raw.get[FiniteDuration]("reset")
+        val timeout: FiniteDuration = raw.get[FiniteDuration]("timeout")
+      }
     }
 
     object sso extends ConfigCategory {
@@ -172,6 +180,7 @@ final class OreConfig @Inject()(config: Configuration) {
       val verifyUrl: String       = raw.get[String]("verifyUrl")
       val secret: String          = raw.get[String]("secret")
       val timeout: FiniteDuration = raw.get[FiniteDuration]("timeout")
+      val reset: FiniteDuration   = raw.get[FiniteDuration]("reset")
       val apikey: String          = raw.get[String]("apikey")
     }
   }
@@ -187,6 +196,14 @@ final class OreConfig @Inject()(config: Configuration) {
     val interval: FiniteDuration  = raw.get[FiniteDuration]("interval")
 
     val properties: Map[String, String] = raw.get[Map[String, String]]("properties")
+  }
+
+  object performance extends ConfigCategory {
+    val raw: Configuration = root.get[Configuration]("performance")
+    private val rawVcpus   = raw.get[Int]("vcpus")
+    def vcpus: Int         = if (rawVcpus == -1) Runtime.getRuntime.availableProcessors() else rawVcpus
+
+    val nioBlockingFibers: Long = vcpus.toLong - 2
   }
 
   app.load()
@@ -209,6 +226,7 @@ final class OreConfig @Inject()(config: Configuration) {
   security.api.load()
   security.sso.load()
   mail.load()
+  performance.load()
 
   /**
     * The default color used for Channels.

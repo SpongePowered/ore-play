@@ -13,6 +13,7 @@ import slick.lifted.TableQuery
   * @param homepage     Project homepage
   * @param issues      Project issues URL
   * @param source      Project source URL
+  * @param support     Project support URL
   * @param licenseName Project license name
   * @param licenseUrl  Project license URL
   */
@@ -21,6 +22,7 @@ case class ProjectSettings(
     homepage: Option[String] = None,
     issues: Option[String] = None,
     source: Option[String] = None,
+    support: Option[String] = None,
     licenseName: Option[String] = None,
     licenseUrl: Option[String] = None,
     forumSync: Boolean = true

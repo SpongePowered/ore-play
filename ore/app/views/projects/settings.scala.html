@@ -8,9 +8,12 @@
 @import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
 @import ore.models.api.ProjectApiKey
+@import ore.util.OreMDC
+@import ore.models.project.io.ProjectFiles
 @import util.syntax._
 
-@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
+@(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]], iconUrl: String)(implicit messages: Messages, flash: Flash,
+        request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -65,12 +68,15 @@
                 <div class="panel-body">
                     @projects.helper.inputSettings(
                         form = "save",
+                        homepage = p.settings.homepage,
                         issues = p.settings.issues,
                         source = p.settings.source,
+                        support = p.settings.support,
                         licenseName = p.settings.licenseName,
                         licenseUrl = p.settings.licenseUrl,
                         selected = Some(p.project.category),
-                        forumSync = p.settings.forumSync
+                        forumSync = p.settings.forumSync,
+                        keywords = p.project.keywords
                     )
 
                         <!-- Description -->
@@ -102,7 +108,7 @@
                                 @utils.userAvatar(
                                     Some(p.projectOwner.name),
                                     p.projectOwner.avatarUrl,
-                                    call = projectRoutes.showIcon(p.project.ownerName, p.project.slug),
+                                    imgSrc = iconUrl,
                                     clazz = "user-avatar-md")
 
                                 <input class="form-control-static" type="file" id="icon" name="icon" />
@@ -217,9 +223,6 @@
 
             <!-- Side panel -->
         <div class="col-md-4">
-            <div class="alert alert-danger" role="alert" @if(flash.get("error").isEmpty) { style="display: none;" }>
-                <strong>Whoops!</strong> <span>@flash.get("error").getOrElse("")</span>
-            </div>
             @users.memberList(p,
                 editable = true,
                 perms = sp.permissions,

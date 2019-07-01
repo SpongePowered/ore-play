@@ -22,7 +22,9 @@ case class ProjectView(
     address: InetString,
     cookie: String,
     userId: Option[DbRef[User]]
-) extends StatEntry[Project]
+) extends StatEntry[Project, ProjectView] {
+  override def withUserId(userId: Option[DbRef[User]]): ProjectView = copy(userId = userId)
+}
 
 object ProjectView extends DefaultModelCompanion[ProjectView, ProjectViewsTable](TableQuery[ProjectViewsTable]) {
   implicit val query: ModelQuery[ProjectView] = ModelQuery.from(this)

@@ -19,7 +19,7 @@
     <script @CSPNonce.attr>versionPath = '@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)'</script>
 }
 
-@bootstrap.layout(messages("review.title", project.name, version.name), scripts) {
+@layout.base(messages("review.title", project.name, version.name), scripts) {
 
     <div class="row">
         <div class="col-md-12  header-flags">

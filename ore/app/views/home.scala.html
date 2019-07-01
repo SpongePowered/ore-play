@@ -10,16 +10,13 @@ sorted according to different criteria.
 @import ore.models.project.ProjectSortingStrategy._
 @import ore.models.project.ProjectSortingStrategy
 @import ore.OreConfig
-@import models.querymodels.ProjectListEntry
 @import views.html.utils.alert
 @import views.html.helper.CSPNonce
 @import ore.data.Platform
 @import ore.data.PlatformCategory
 @import ore.data.project.Category
-@(models: Seq[ProjectListEntry], visibleCategories: Option[Seq[Category]], query: Option[String], page: Int,
-        sort: ProjectSortingStrategy, platformCategory: Option[PlatformCategory], platform: Option[Platform],
-        orderWithRelevance: Boolean, totalProjects: Int)(implicit messages: Messages, flash: Flash,
-        request: OreRequest[_], config: OreConfig)
+@import ore.models.project.io.ProjectFiles
+@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @randomSponsor = @{
     val logos = config.sponge.sponsors
@@ -28,54 +25,8 @@ sorted according to different criteria.
     logos(index)
 }
 
-@generateQueryString(categories: Seq[Category]) = @{
-    categories.map(c => c.value).mkString(",")
-}
-
-@generateModifiedQueryString(categories: Seq[Category], modifiedCategory: Category) = @{
-    if (categories.isEmpty) {
-        Some(generateQueryString(Seq(modifiedCategory)))
-    } else if (categories.contains(modifiedCategory)) {
-        Some(generateQueryString((categories.toSet - modifiedCategory).toSeq))
-    } else if (categories.size + 1 == Category.visible.size) {
-        None
-    } else {
-        Some(generateQueryString((categories.toSet + modifiedCategory).toSeq))
-    }
-}
-
-@categoryString = @{
-    visibleCategories.flatMap(cat => Some(generateQueryString(cat)))
-}
-
-@orderingOption = @{
-    sort match {
-        case ProjectSortingStrategy.Default => None
-        case _ => Some(sort.id)
-    }
-}
-
-@relevanceOption = @{
-    Some(orderWithRelevance).filterNot(identity)
-}
-
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/home.js")"></script>
-    <script @CSPNonce.attr>
-    @if(visibleCategories.isDefined) {
-    CATEGORY_STRING = "@visibleCategories.get.map(_.value).mkString(",")";
-    }
-    @if(!sort.equals(ProjectSortingStrategy.Default)) {
-    SORT_STRING = "@sort.id";
-    }
-    @if(request.getQueryString("q").isDefined) {
-    QUERY_STRING = "@request.getQueryString("q").get";
-    }
-    @if(!orderWithRelevance) {
-    ORDER_WITH_RELEVANCE = "@orderWithRelevance";
-    }
-    currentlyLoaded = @models.size;
-    </script>
+    <script src="@routes.Assets.versioned("vue/home.js")"></script>
 }
 
 @meta = {
@@ -86,7 +37,11 @@ sorted according to different criteria.
     <meta property="og:description" content="@messages("general.description")" />
 }
 
-@bootstrap.layout(messages("general.title"), scripts, additionalMeta = meta) {
+@styling = {
+    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("vue/home.css")" />
+}
+
+@layout.base(messages("general.title"), scripts, additionalMeta = meta, additionalStyling = styling) {
 
     <!-- Header -->
     <div class="index-header">
@@ -117,129 +72,5 @@ sorted according to different criteria.
         </div>
     </div>
 
-   <!-- Main content -->
-    <div class="row project-content">
-        <!-- Project table -->
-        <div class="col-md-9">
-            <div class="project-search input-group">
-                <input type="text" class="form-control" placeholder="Search in @totalProjects projects, proudly made by the community...">
-                <span class="input-group-btn">
-                    <button class="btn yellow" type="button">Search</button>
-                </span>
-            </div>
-
-            @if(query.isDefined) {
-                <li class="list-group-item minor search-header">
-                    <span class="pull-left">Showing results for: <i>@query</i></span>
-                    <span class="dismiss pull-right"><i class="fas fa-times fa-1x"></i></span>
-                    <div class="clearfix"></div>
-                </li>
-            }
-
-            @projects.list(
-                models = models,
-                page = page,
-                pageSize = config.ore.projects.initLoad,
-                call = page => routes.Application.showHome(
-                    categoryString, query, orderingOption, Some(page),
-                    platformCategory.map(_.name) ,platform.map(_.name), relevanceOption)
-            )
-        </div>
-
-        <!-- Sidebar -->
-        <div class="col-md-3">
-            <!-- Ordering selection -->
-            <select class="form-control select-sort">
-                <option selected value="@sort.id">@sort.title</option>
-                @values.filterNot(_.equals(sort)).map { strategy =>
-                    <option value="@strategy.id">@strategy.title</option>
-                }
-            </select>
-
-            <div>
-                <input type="checkbox" id="relevanceBox" name="orderWithRelevance" @if(orderWithRelevance) { checked="checked" }>
-                <label for="relevanceBox">Sort with relevance</label>
-            </div>
-
-            <!-- Category table -->
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">@messages("project.category.plural")</h3>
-                    @if(visibleCategories.isDefined) {
-                        <a href="@routes.Application.showHome(
-                            None, None, None, None,
-                            platformCategory.map(_.name),
-                            platform.map(_.name), relevanceOption)">
-                            <i class="category-reset fas fa-times white"></i>
-                        </a>
-                    }
-                </div>
-
-                <div class="list-group category-list">
-                @for(category <- Category.visible) {
-                    <a class="list-group-item @if(visibleCategories.isDefined && visibleCategories.get.contains(category)){active}"
-                    href="@routes.Application.showHome(generateModifiedQueryString(visibleCategories.getOrElse(Seq()), category), None, None, None, platformCategory.map(_.name), platform.map(_.name), relevanceOption)">
-                        <i class="fas fa-fw @category.icon"></i>
-                        <strong>@category.title</strong>
-                    </a>
-                }
-                </div>
-            </div>
-
-            <!-- Platform list -->
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">@messages("general.platform")</h3>
-                </div>
-
-                <ul class="list-group">
-
-                    <a href="@routes.Application.showHome(
-                        categoryString,
-                        query,
-                        orderingOption,
-                        None,
-                        None, None,
-                        relevanceOption)"
-                    class="list-group-item @if(platform.isEmpty && platformCategory.isEmpty) { active }">
-                        <strong>@messages("general.any")</strong>
-                    </a>
-
-                    @for(pc <- PlatformCategory.getPlatformCategories) {
-                        <a href="@routes.Application.showHome(
-                            categoryString,
-                            query,
-                            orderingOption,
-                            None,
-                            Some(pc.name),
-                            None,
-                            relevanceOption)"
-                        class="list-group-item @if(platformCategory.map(_.name).getOrElse("") == pc.name) { active }">
-                            <strong>@pc.name</strong>
-                        </a>
-
-                        @defining(pc.getPlatforms) { platforms =>
-                            @if(platforms.size > 1) {
-                                @for(p <- platforms) {
-                                    <a href="@routes.Application.showHome(
-                                        categoryString,
-                                        query,
-                                        orderingOption,
-                                        None,
-                                        None,
-                                        Some(p.name),
-                                        relevanceOption)"
-                                    class="list-group-item @if(platform.map(_.name).getOrElse("") == p.name) { active }">
-                                            &nbsp;@p.name
-                                    </a>
-                                }
-                            }
-                        }
-                    }
-                </ul>
-            </div>
-
-        </div>
-    </div>
-
+    <div id="home"></div>
 }

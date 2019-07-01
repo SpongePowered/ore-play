@@ -118,16 +118,19 @@ object Platform extends IntEnum[Platform] {
   */
 sealed trait PlatformCategory {
   def name: String
+  def tagName: String
 
   def getPlatforms: Seq[Platform] = Platform.values.filter(_.platformCategory == this)
 }
 
 case object SpongeCategory extends PlatformCategory {
   val name = "Sponge Plugins"
+  val tagName = "Sponge"
 }
 
 case object ForgeCategory extends PlatformCategory {
   val name = "Forge Mods"
+  val tagName = "Forge"
 }
 
 object PlatformCategory {

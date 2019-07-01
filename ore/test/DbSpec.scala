@@ -8,12 +8,18 @@ import play.api.db.evolutions.Evolutions
 
 import ore.db.impl.query.DoobieOreProtocol
 
-import cats.effect.{ContextShift, IO}
+import cats.effect.Effect
 import doobie.Transactor
-import doobie.scalatest.IOChecker
+import doobie.scalatest.Checker
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
+import zio.{DefaultRuntime, Task}
+import zio.interop.catz._
 
-trait DbSpec extends FunSuite with Matchers with IOChecker with BeforeAndAfterAll with DoobieOreProtocol {
+trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAfterAll with DoobieOreProtocol {
+
+  implicit val runtime: zio.Runtime[Any] = new DefaultRuntime {}
+
+  implicit override def M: Effect[Task] = taskEffectInstances
 
   lazy val database = Databases(
     "org.postgresql.Driver",
@@ -32,10 +38,8 @@ trait DbSpec extends FunSuite with Matchers with IOChecker with BeforeAndAfterAl
   private lazy val connectEC    = ExecutionContext.fromExecutor(connectExec)
   private lazy val transactEC   = ExecutionContext.fromExecutor(transactExec)
 
-  implicit private val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
-
-  lazy val transactor: Transactor.Aux[IO, DataSource] =
-    Transactor.fromDataSource[IO](database.dataSource, connectEC, transactEC)
+  lazy val transactor: Transactor.Aux[Task, DataSource] =
+    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)(taskEffectInstances, zioContextShift)
 
   override def beforeAll(): Unit = Evolutions.applyEvolutions(database)
 

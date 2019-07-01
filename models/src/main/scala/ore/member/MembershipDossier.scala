@@ -107,7 +107,7 @@ object MembershipDossier {
     override def addRole(model: Model[M])(userId: DbRef[User], role: RoleType): F[RoleType] =
       for {
         exists <- roles(model).exists(_.userId === userId)
-        _      <- if (!exists) addMember(model.id, userId) else F.pure(())
+        _      <- if (!exists) addMember(model.id, userId) else F.unit
         ret    <- service.insertRaw(RoleType)(role)
       } yield ret
 
@@ -119,7 +119,7 @@ object MembershipDossier {
         userId <- service.runDBIO(RoleType.baseQuery.filter(_.id === role).map(t => t.userId).result.head)
         _      <- service.deleteWhere(RoleType)(_.id === role)
         exists <- roles(model).exists(_.userId === userId)
-        _      <- if (!exists) removeMember(model)(userId) else F.pure(())
+        _      <- if (!exists) removeMember(model)(userId) else F.unit
       } yield ()
 
     override def removeMember(model: Model[M])(user: DbRef[User]): F[Unit] =

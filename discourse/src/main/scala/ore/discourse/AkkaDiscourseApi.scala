@@ -2,44 +2,33 @@ package ore.discourse
 
 import scala.language.higherKinds
 
-import scala.concurrent.Future
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
+import ore.external.AkkaClientApi
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
-import akka.pattern.CircuitBreaker
 import akka.stream.Materializer
 import cats.data.EitherT
+import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
-import cats.effect.{Concurrent, ContextShift, Timer}
 import cats.syntax.all._
+import cats.instances.either._
 import com.typesafe.scalalogging
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
 import io.circe._
 
-class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
+class AkkaDiscourseApi[F[_]] private (
     settings: AkkaDiscourseSettings,
     counter: Ref[F, Long]
 )(
     implicit system: ActorSystem,
-    mat: Materializer
-) extends DiscourseApi[F]
-    with FailFastCirceSupport {
+    mat: Materializer,
+    F: Concurrent[F]
+) extends AkkaClientApi[F, cats.Id, DiscourseError]("Discourse", counter, settings)
+    with DiscourseApi[F] {
 
-  private val Logger = scalalogging.Logger("DiscourseApi")
-
-  private val breaker =
-    CircuitBreaker(system.scheduler, settings.breakerMaxFailures, settings.breakerTimeoutDur, settings.breakerResetDur)
-
-  breaker.onOpen {
-    Logger.error("Lost connection to Discourse. Circuit breaker opened")
-  }
-
-  private def nextCounter: F[Long] = counter.modify(c => (c + 1, c))
+  protected val Logger = scalalogging.Logger("DiscourseApi")
 
   private def startParams(poster: Option[String]) = Seq(
     "api_key"      -> settings.apiKey,
@@ -49,70 +38,57 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
   private def apiQuery(poster: Option[String]) =
     Uri.Query("api_key" -> settings.apiKey, "api_username" -> poster.getOrElse(settings.adminUser))
 
-  private def F: Concurrent[F] = Concurrent[F]
+  override def createStatusError(statusCode: StatusCode, message: Option[String]): DiscourseError = statusCode match {
+    case StatusCodes.TooManyRequests =>
+      message match {
+        case Some(jsonStr) =>
+          parser.parse(jsonStr).flatMap(_.hcursor.downField("extras").get[Int]("wait_seconds")) match {
+            case Right(value) =>
+              DiscourseError.RatelimitError(value.seconds)
 
-  private def apiUri(f: Uri.Path => Uri.Path) = settings.apiUri.withPath(f(settings.apiUri.path))
+            case Left(ParsingFailure(errMessage, e)) =>
+              Logger.warn(s"Failed to parse JSON in 429 from Discourse. Error: $errMessage To parse: $jsonStr", e)
 
-  private def futureToF[A](future: => Future[A]) = {
-    import system.dispatcher
-    F.async[A] { callback =>
-      future.onComplete(t => callback(t.toEither))
-    }
-  }
+              DiscourseError.RatelimitError(12.hours)
+            case Left(DecodingFailure(errMessage, ops)) =>
+              Logger.warn(
+                s"Failed to get wait time in 429 from Discourse. Error: $errMessage Path: ${CursorOp.opsToPath(ops)} Json: $jsonStr"
+              )
 
-  private def debugF[A](before: => String, after: A => String, fa: F[A]): F[A] = {
-    if (Logger.underlying.isDebugEnabled) {
-      nextCounter.flatMap { c =>
-        F.delay(Logger.debug(s"$c $before")) *> fa.flatTap(res => F.delay(Logger.debug(s"$c ${after(res)}")))
+              DiscourseError.RatelimitError(12.hours)
+          }
+
+        case None =>
+          Logger.warn("Received 429 from Discourse with no body. Assuming wait time of 12 hours")
+          DiscourseError.RatelimitError(12.hours)
       }
-    } else fa
+
+    case _ => DiscourseError.StatusError(statusCode, message)
   }
 
-  private def makeRequest(request: HttpRequest) =
-    debugF[HttpResponse](
-      s"Making request: $request",
-      res => s"Request response: $res",
-      futureToF(breaker.withCircuitBreaker(Http().singleRequest(request)))
-    )
+  protected def gatherJsonErrors[A: Decoder](json: Json): Either[DiscourseError, A] = {
+    val cursor = json.hcursor
 
-  private def unmarshallResponse[A](response: HttpResponse)(implicit um: Unmarshaller[HttpResponse, A]) =
-    futureToF(Unmarshal(response).to[A])
-
-  private def gatherStatusErrors(response: HttpResponse) = {
-    if (response.status.isSuccess()) {
-      EitherT.rightT[F, String](response)
-    } else if (response.entity.isKnownEmpty()) {
-      EitherT.left[HttpResponse](
-        F.delay(response.entity.discardBytes()).as(s"Discourse request failed. Response code ${response.status}")
+    if (cursor.downField("errors").succeeded || cursor.downField("error_type").succeeded) {
+      //If we can't find an error field here we just grab a sensible default
+      Left(
+        DiscourseError.UnknownError(
+          cursor.get[Seq[String]]("errors").getOrElse(Nil),
+          cursor.get[String]("error_type").getOrElse("unknown"),
+          cursor.get[Map[String, Json]]("extras").fold(_ => Map.empty, _.map(t => t._1 -> t._2.noSpaces))
+        )
       )
     } else {
-      EitherT
-        .left[HttpResponse](unmarshallResponse[String](response))
-        .leftMap(e => s"Discourse request failed. Response code ${response.status}: $e")
+      json.as[A].leftMap(_ => DiscourseError.UnknownError(Seq("err.show"), "unknown", Map.empty))
     }
   }
-
-  private def gatherJsonErrors[A: Decoder](json: Json) = {
-    val success = json.hcursor.downField("success")
-    if (success.succeeded && !success.as[Boolean].getOrElse(false))
-      Left(json.hcursor.get[String]("message").getOrElse("No error message found"))
-    else
-      json.as[A].leftMap(_.show)
-  }
-
-  private def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest) =
-    EitherT
-      .liftF(makeRequest(request))
-      .flatMap(gatherStatusErrors)
-      .semiflatMap(unmarshallResponse[Json])
-      .subflatMap(gatherJsonErrors[A])
 
   override def createTopic(
       poster: String,
       title: String,
       content: String,
       categoryId: Option[Int]
-  ): EitherT[F, String, DiscoursePost] = {
+  ): F[Either[DiscourseError, DiscoursePost]] = {
     val base = startParams(Some(poster)) ++ Seq(
       "title" -> title,
       "raw"   -> content
@@ -129,7 +105,7 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
     )
   }
 
-  override def createPost(poster: String, topicId: Int, content: String): EitherT[F, String, DiscoursePost] = {
+  override def createPost(poster: String, topicId: Int, content: String): F[Either[DiscourseError, DiscoursePost]] = {
     val params = startParams(Some(poster)) ++ Seq(
       "topic_id" -> topicId.toString,
       "raw"      -> content
@@ -149,8 +125,8 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
       topicId: Int,
       title: Option[String],
       categoryId: Option[Int]
-  ): EitherT[F, String, Unit] = {
-    if (title.isEmpty && categoryId.isEmpty) EitherT.rightT[F, String](())
+  ): F[Either[DiscourseError, Unit]] = {
+    if (title.isEmpty && categoryId.isEmpty) F.pure(Right(()))
     else {
       val base = startParams(Some(poster)) :+ ("topic_id" -> topicId.toString)
 
@@ -163,11 +139,11 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
           apiUri(_ / "t" / "-" / s"$topicId.json"),
           entity = FormData(withCat: _*).toEntity
         )
-      ).void
+      ).map(_.void)
     }
   }
 
-  override def updatePost(poster: String, postId: Int, content: String): EitherT[F, String, Unit] = {
+  override def updatePost(poster: String, postId: Int, content: String): F[Either[DiscourseError, Unit]] = {
     val params = startParams(Some(poster)) :+ ("post[raw]" -> content)
 
     makeUnmarshallRequestEither[Json](
@@ -176,10 +152,10 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
         apiUri(_ / "posts" / s"$postId.json"),
         entity = FormData(params: _*).toEntity
       )
-    ).void
+    ).map(_.void)
   }
 
-  override def deleteTopic(poster: String, topicId: Int): EitherT[F, String, Unit] =
+  override def deleteTopic(poster: String, topicId: Int): F[Either[DiscourseError, Unit]] =
     EitherT
       .liftF(
         makeRequest(
@@ -189,14 +165,15 @@ class AkkaDiscourseApi[F[_]: Concurrent: Timer: ContextShift] private (
           )
         )
       )
-      .flatMap(gatherStatusErrors)
+      .flatMapF(gatherStatusErrors)
       .semiflatMap(resp => F.delay(resp.discardEntityBytes()))
       .void
+      .value
 
-  override def isAvailable: F[Boolean] = breaker.isClosed.pure
+  override def isAvailable: F[Boolean] = breaker.isClosed.pure[F]
 }
 object AkkaDiscourseApi {
-  def apply[F[_]: Concurrent: Timer: ContextShift](
+  def apply[F[_]: Concurrent](
       settings: AkkaDiscourseSettings
   )(implicit system: ActorSystem, mat: Materializer): F[AkkaDiscourseApi[F]] =
     Ref.of[F, Long](0L).map(counter => new AkkaDiscourseApi(settings, counter))
@@ -208,5 +185,5 @@ object AkkaDiscourseApi {
       breakerMaxFailures: Int,
       breakerResetDur: FiniteDuration,
       breakerTimeoutDur: FiniteDuration,
-  )
+  ) extends AkkaClientApi.ClientSettings
 }

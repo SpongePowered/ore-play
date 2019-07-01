@@ -22,7 +22,9 @@ case class VersionDownload(
     address: InetString,
     cookie: String,
     userId: Option[DbRef[User]]
-) extends StatEntry[Version]
+) extends StatEntry[Version, VersionDownload] {
+  override def withUserId(userId: Option[DbRef[User]]): VersionDownload = copy(userId = userId)
+}
 object VersionDownload
     extends DefaultModelCompanion[VersionDownload, VersionDownloadsTable](TableQuery[VersionDownloadsTable]) {
 

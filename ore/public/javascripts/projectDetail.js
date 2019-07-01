@@ -218,7 +218,7 @@ $(function() {
 
         $.ajax({
             type: 'post',
-            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/watch/' + !watching,
+            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/watchers/' + !watching,
             data: { csrfToken: csrf }
         });
     });

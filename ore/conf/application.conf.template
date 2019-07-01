@@ -24,6 +24,7 @@ application {
 
 # Play configuration
 play {
+    application.loader                 =   "OreApplicationLoader"
     i18n.langs                         =   [ "en", "en-US" ]
     evolutions.autocommit              =   false
     evolutions.db.default.autoApply    =   true
@@ -71,6 +72,12 @@ security {
         key = "changeme"
         key = ${?SPONGE_AUTH_API_KEY}
         timeout = 10000ms
+
+        breaker {
+            max-failures =   5
+            timeout      =   10s
+            reset        =   5m
+        }
     }
 
     sso {
@@ -79,7 +86,8 @@ security {
         verifyUrl = ${security.api.url}"/sso/sudo/"
         secret = "changeme"
         secret = ${?SPONGE_AUTH_SSO_SECRET}
-        timeout = 10000ms
+        timeout = 2s
+        reset = 10m
         apikey = "changeme"
         apikey = ${?SPONGE_AUTH_SSO_API_KEY}
     }
@@ -89,6 +97,7 @@ security {
 ore {
     debug       =  false
     debug-level =  3
+    staging     =  true
 
     homepage {
         update-interval = 10m
@@ -120,7 +129,7 @@ ore {
         staleAge = 28d
         check-interval = 1h
         draft-expire = 1d
-        stargazers-page-size = 30
+        user-grid-page-size = 30
     }
 
     users {
@@ -148,6 +157,10 @@ ore {
             check-interval = 5m
         }
     }
+}
+
+performance {
+    vcpus = -1
 }
 
 mail {

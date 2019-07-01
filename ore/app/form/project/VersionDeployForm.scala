@@ -4,11 +4,11 @@ import ore.models.project.Channel
 import ore.db.Model
 
 import cats.data.OptionT
-import cats.effect.IO
+import zio.UIO
 
 case class VersionDeployForm(
     apiKey: String,
-    channel: OptionT[IO, Model[Channel]],
+    channel: OptionT[UIO, Model[Channel]],
     recommended: Boolean,
     createForumPost: Boolean,
     changelog: Option[String]
