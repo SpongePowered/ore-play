@@ -8,7 +8,7 @@ import models.querymodels._
 import ore.data.project.Category
 import ore.db.{DbRef, Model}
 import ore.models.admin.LoggedActionViewModel
-import ore.models.project.{Page, Project, ProjectSortingStrategy, ReviewState, Version}
+import ore.models.project._
 import ore.models.user.User
 
 import cats.syntax.all._

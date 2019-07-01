@@ -4,11 +4,11 @@ import scala.language.higherKinds
 
 import scala.collection.immutable
 
+import ore.db.Model
+import ore.db.access.QueryView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.NotificationTable
 import ore.models.user.Notification
-import ore.db.Model
-import ore.db.access.QueryView
 import util.syntax._
 
 import enumeratum.values._

@@ -1,9 +1,9 @@
 import play.api.Configuration
 
-import ore.db.impl.query.UserQueries
 import db.impl.access.UserBase.UserOrdering
 import db.impl.query.UserPagesQueries
 import ore.OreConfig
+import ore.db.impl.query.UserQueries
 
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner

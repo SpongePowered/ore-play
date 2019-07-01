@@ -8,7 +8,6 @@ import ore.models.project.{Project, Version}
 import ore.models.user.User
 
 import cats.Applicative
-import cats.data.EitherT
 
 class OreDiscourseApiDisabled[F[_]](implicit F: Applicative[F]) extends OreDiscourseApi[F] {
 

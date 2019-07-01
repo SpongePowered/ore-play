@@ -6,8 +6,8 @@ import play.api.i18n.{I18nSupport, Lang, MessagesApi}
 import play.api.mvc.Flash
 
 import controllers.sugar.Requests.OreRequest
-import ore.models.user.User
 import ore.OreConfig
+import ore.models.user.User
 import util.syntax._
 
 final class EmailFactory @Inject()(

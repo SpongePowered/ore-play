@@ -7,8 +7,8 @@ import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import scala.collection.immutable
 import scala.collection.JavaConverters._
+import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -30,7 +30,7 @@ import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
 import ore.db.{DbRef, Model}
 import ore.models.api.ApiSession
 import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.{PluginUpload, ProjectFiles}
+import ore.models.project.io.PluginUpload
 import ore.models.project.{Page, ProjectSortingStrategy}
 import ore.models.user.{FakeUser, User}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
@@ -45,8 +45,8 @@ import io.circe._
 import io.circe.generic.extras._
 import io.circe.syntax._
 import zio.blocking.Blocking
-import zio.{IO, Task, UIO, ZIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
 
 @Singleton
 class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(

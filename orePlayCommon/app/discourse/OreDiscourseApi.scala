@@ -3,7 +3,7 @@ package discourse
 import scala.language.higherKinds
 
 import ore.db.Model
-import ore.discourse.{DiscourseError, DiscoursePost}
+import ore.discourse.DiscoursePost
 import ore.models.project.{Project, Version}
 import ore.models.user.User
 

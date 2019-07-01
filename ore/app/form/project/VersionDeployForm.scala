@@ -1,7 +1,7 @@
 package form.project
 
-import ore.models.project.Channel
 import ore.db.Model
+import ore.models.project.Channel
 
 import cats.data.OptionT
 import zio.UIO

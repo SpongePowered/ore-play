@@ -1,9 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.Project
-@import ore.OreConfig
-@import ore.permission.Permission
 @import models.querymodels.ProjectNeedsApproval
-@import ore.models.project.Page
+@import ore.OreConfig
 @import ore.markdown.MarkdownRenderer
 @(needsApproval: Seq[ProjectNeedsApproval],
  waitingProjects: Seq[ProjectNeedsApproval])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)

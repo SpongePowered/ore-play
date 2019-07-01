@@ -10,9 +10,9 @@ import util.TaskUtils
 import util.syntax._
 
 import cats.MonadError
-import cats.syntax.all._
-import cats.effect.syntax.all._
 import cats.effect.Effect
+import cats.effect.syntax.all._
+import cats.syntax.all._
 import com.typesafe.scalalogging
 
 trait HasForumRepresentation[F[_], A] {

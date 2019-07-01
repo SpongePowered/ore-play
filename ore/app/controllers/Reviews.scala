@@ -26,8 +26,8 @@ import cats.data.NonEmptyList
 import cats.instances.option._
 import cats.syntax.all._
 import io.circe.Json
-import zio.{UIO, ZIO}
 import slick.lifted.{Rep, TableQuery}
+import zio.{UIO, ZIO}
 
 /**
   * Controller for handling Review related actions.

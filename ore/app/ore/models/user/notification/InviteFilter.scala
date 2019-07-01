@@ -4,11 +4,11 @@ import scala.language.higherKinds
 
 import scala.collection.immutable
 
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{Model, ModelService}
 import ore.models.user.User
 import ore.models.user.role.{OrganizationUserRole, ProjectUserRole, UserRoleModel}
-import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
 
 import cats.Parallel
 import enumeratum.values._

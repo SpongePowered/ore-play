@@ -12,8 +12,8 @@ import cats.effect.Effect
 import doobie.Transactor
 import doobie.scalatest.Checker
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
-import zio.{DefaultRuntime, Task}
 import zio.interop.catz._
+import zio.{DefaultRuntime, Task}
 
 trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAfterAll with DoobieOreProtocol {
 

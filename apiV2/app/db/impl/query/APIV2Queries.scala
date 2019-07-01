@@ -16,7 +16,6 @@ import ore.models.project.io.ProjectFiles
 import ore.models.project.{ProjectSortingStrategy, TagColor}
 import ore.models.user.User
 import ore.permission.Permission
-import ore.util.OreMDC
 
 import cats.data.NonEmptyList
 import doobie._

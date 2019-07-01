@@ -5,8 +5,8 @@ import scala.language.higherKinds
 import ore.db.{DbRef, Model, ModelCompanion, ModelService}
 
 import cats.arrow.FunctionK
-import cats.~>
 import cats.data.OptionT
+import cats.~>
 import slick.dbio.DBIO
 import slick.jdbc.JdbcProfile
 import slick.lifted.{Query, Rep}

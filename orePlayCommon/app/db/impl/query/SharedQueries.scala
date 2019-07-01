@@ -1,6 +1,5 @@
 package db.impl.query
 
-import doobie._
 import doobie.implicits._
 
 object SharedQueries {

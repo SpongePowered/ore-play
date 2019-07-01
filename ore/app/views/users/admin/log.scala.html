@@ -1,15 +1,12 @@
 @import controllers.project.{routes => projectRoutes}
-@import controllers.routes.{Users => userRoutes}
-@import controllers.routes.{Application => appRoutes}
+@import controllers.routes.{Application => appRoutes, Users => userRoutes}
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.{Page, Project, Version}
-@import ore.models.user.{LoggedAction, LoggedActionContext}
-@import ore.models.user.{LoggedAction, LoggedActionContext, User}
 @import ore.OreConfig
-@import ore.db.Model
-@import util.StringFormatterUtils._
-@import ore.db.DbRef
+@import ore.db.{DbRef, Model}
 @import ore.models.admin.LoggedActionViewModel
+@import ore.models.project.{Page, Project, Version}
+@import ore.models.user.{LoggedAction, LoggedActionContext, User}
+@import util.StringFormatterUtils._
 
 @(actions: Seq[Model[LoggedActionViewModel[_]]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],

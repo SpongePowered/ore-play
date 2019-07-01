@@ -2,15 +2,14 @@ package form.project
 
 import scala.language.higherKinds
 
-import ore.OreConfig
 import ore.data.project.Category
 import ore.data.user.notification.NotificationType
-import ore.models.user.{Notification, User}
-import ore.db.{DbRef, Model, ModelService}
-import ore.db.impl.schema.{ProjectRoleTable, UserTable}
 import ore.db.impl.OrePostgresDriver.api._
-import ore.models.project.{Project, ProjectSettings}
+import ore.db.impl.schema.{ProjectRoleTable, UserTable}
+import ore.db.{DbRef, Model, ModelService}
 import ore.models.project.io.ProjectFiles
+import ore.models.project.{Project, ProjectSettings}
+import ore.models.user.{Notification, User}
 import ore.permission.role.Role
 import ore.util.OreMDC
 import ore.util.StringUtils.noneIfEmpty
@@ -20,8 +19,8 @@ import util.syntax._
 import cats.Parallel
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Async
-import cats.syntax.all._
 import cats.instances.either._
+import cats.syntax.all._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
 

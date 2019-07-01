@@ -12,12 +12,12 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ChannelTable, VersionTable}
 import ore.models.project.Channel
 import ore.permission.Permission
-import views.html.projects.{channels => views}
 import util.syntax._
+import views.html.projects.{channels => views}
 
-import zio.{IO, Task}
-import zio.interop.catz._
 import slick.lifted.TableQuery
+import zio.interop.catz._
+import zio.{IO, Task}
 
 /**
   * Controller for handling Channel related actions.

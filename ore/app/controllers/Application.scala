@@ -16,16 +16,13 @@ import db.impl.query.AppQueries
 import form.OreForms
 import models.querymodels.{FlagActivity, ReviewActivity}
 import models.viewhelper.{OrganizationData, UserData}
-import ore.data.project.Category
-import ore.data.{Platform, PlatformCategory}
 import ore.db._
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.ProjectTableMain
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
-import ore.models.project.{ProjectSortingStrategy, _}
+import ore.models.project._
 import ore.models.user._
 import ore.models.user.role._
 import ore.permission._
@@ -37,8 +34,8 @@ import views.{html => views}
 import cats.Order
 import cats.instances.vector._
 import cats.syntax.all._
-import zio.{IO, Task, UIO, ZIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
 
 /**
   * Main entry point for application.

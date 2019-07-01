@@ -1,5 +1,5 @@
-@import ore.models.user.role.UserRoleModel
 @import ore.OreConfig
+@import ore.models.user.role.UserRoleModel
 @import util.syntax._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.userAvatar
@@ -7,7 +7,6 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.JoinableData
 @import ore.permission.Permission
-@import ore.member.Joinable
 @(j: JoinableData[_ <: UserRoleModel[_], _], perms: Permission, editable: Boolean = false, removeCall: Call = null,
         settingsCall: Call = null, saveCall: Call = null)(implicit messages: Messages, config: OreConfig, request: OreRequest[_])
 

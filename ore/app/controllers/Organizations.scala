@@ -20,8 +20,8 @@ import views.{html => views}
 
 import cats.data.OptionT
 import cats.syntax.all._
-import zio.{IO, Task, UIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO}
 
 /**
   * Controller for handling Organization based actions.

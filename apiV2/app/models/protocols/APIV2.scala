@@ -5,12 +5,12 @@ import java.time.LocalDateTime
 import ore.data.project.Category
 import ore.models.project.{ReviewState, Visibility}
 
+import enumeratum._
+import enumeratum.values._
 import io.circe._
 import io.circe.generic.extras._
 import io.circe.syntax._
 import shapeless.Typeable
-import enumeratum.values._
-import enumeratum._
 
 object APIV2 {
 

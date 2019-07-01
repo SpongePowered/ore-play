@@ -1,11 +1,9 @@
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.Channel
 @import models.viewhelper.ProjectData
 @import ore.OreConfig
 @import ore.db.Model
-@import views.html.helper.{CSRF, form}
-@import views.html.utils
-@import views.html.helper.CSPNonce
+@import ore.models.project.Channel
+@import views.html.helper.{CSPNonce, CSRF, form}
 @(p: ProjectData, channels: Seq[(Model[Channel], Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @channelRoutes = @{controllers.project.routes.Channels}

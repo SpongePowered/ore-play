@@ -14,9 +14,8 @@ import play.api.i18n.Messages
 import ore.db.Model
 import ore.models.user.{User, UserOwned}
 
-import cats.data.EitherT
-import cats.syntax.all._
 import cats.effect.{Resource, Sync}
+import cats.syntax.all._
 
 /**
   * Represents an uploaded plugin file.

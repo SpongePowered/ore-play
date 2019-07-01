@@ -13,8 +13,8 @@ import akka.stream.Materializer
 import cats.data.EitherT
 import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
-import cats.syntax.all._
 import cats.instances.either._
+import cats.syntax.all._
 import com.typesafe.scalalogging
 import io.circe._
 

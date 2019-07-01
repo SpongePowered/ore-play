@@ -6,9 +6,9 @@ import ore.db.impl.common.Hideable
 import ore.markdown.IsMarkdownRenderable
 import ore.member.Joinable
 import ore.models.organization.OrganizationOwned
-import ore.permission.scope.HasScope
 import ore.models.project.ProjectOwned
 import ore.models.user.UserOwned
+import ore.permission.scope.HasScope
 
 package object syntax
     extends HasScope.ToHasScopeOps

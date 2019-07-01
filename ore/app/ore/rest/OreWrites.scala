@@ -3,9 +3,9 @@ package ore.rest
 import play.api.libs.json.Json.obj
 import play.api.libs.json._
 
-import ore.models.project._
 import ore.db.Model
 import ore.models.api.ProjectApiKey
+import ore.models.project._
 
 /**
   * Contains implicit JSON [[Writes]] for the Ore API.

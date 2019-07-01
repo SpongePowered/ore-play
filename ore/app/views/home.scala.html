@@ -5,17 +5,7 @@ sorted according to different criteria.
 @import scala.util.Random
 
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.{Project, Version, VersionTag}
-@import ore.models.user.User
-@import ore.models.project.ProjectSortingStrategy._
-@import ore.models.project.ProjectSortingStrategy
 @import ore.OreConfig
-@import views.html.utils.alert
-@import views.html.helper.CSPNonce
-@import ore.data.Platform
-@import ore.data.PlatformCategory
-@import ore.data.project.Category
-@import ore.models.project.io.ProjectFiles
 @()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @randomSponsor = @{

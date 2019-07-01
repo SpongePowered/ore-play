@@ -9,10 +9,10 @@ import play.api.mvc.{RequestHeader, Result}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import _root_.db.impl.access.UserBase
-import ore.db.{ModelCompanion, _}
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.StatTable
+import ore.db.{ModelCompanion, _}
 import ore.models.project.Version
 import ore.models.statistic.{ProjectView, StatEntry, VersionDownload}
 import ore.models.user.User
@@ -21,8 +21,8 @@ import _root_.util.TaskUtils
 
 import cats.Parallel
 import cats.data.OptionT
-import cats.syntax.all._
 import cats.effect.syntax.all._
+import cats.syntax.all._
 import cats.tagless.autoInvariantK
 import com.github.tminglei.slickpg.InetString
 import com.typesafe.scalalogging

@@ -9,8 +9,8 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.control.NonFatal
 
 import ore.data.project.Dependency
-import ore.models.project.{TagColor, Version, VersionTag}
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.project.{TagColor, Version, VersionTag}
 
 import org.spongepowered.plugin.meta.McModInfo
 

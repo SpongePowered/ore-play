@@ -5,15 +5,13 @@ import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
 
 import play.api.inject.ApplicationLifecycle
 
-import ore.db.impl.OrePostgresDriver.api._
 import ore.OreConfig
 import ore.db.ModelService
+import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTableMain, VersionTable}
-import util.TaskUtils
 
 import com.typesafe.scalalogging
 import zio.clock.Clock

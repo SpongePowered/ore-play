@@ -4,7 +4,6 @@ import ore.data.project.{Category, ProjectNamespace}
 import ore.models.project.Visibility
 import ore.models.project.io.ProjectFiles
 import ore.models.user.User
-import ore.util.OreMDC
 import util.syntax._
 
 import zio.ZIO

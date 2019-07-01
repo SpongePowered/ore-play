@@ -8,16 +8,16 @@ import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.inject.ApplicationLifecycle
 
-import ore.db.impl.OrePostgresDriver.api._
 import ore.OreConfig
 import ore.db.ModelService
+import ore.db.impl.OrePostgresDriver.api._
 import ore.models.api.ApiSession
 import ore.util.OreMDC
 
 import com.typesafe.scalalogging
-import zio.{UIO, ZIO, ZSchedule}
 import zio.clock.Clock
 import zio.duration.Duration
+import zio.{UIO, ZIO, ZSchedule}
 
 @Singleton
 class UserTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(

@@ -8,8 +8,6 @@ import ore.models.user._
 import ore.models.user.role.{DbRole, OrganizationUserRole, ProjectUserRole}
 
 import doobie.implicits._
-import doobie.postgres.implicits._
-import doobie.postgres.circe.jsonb.implicits._
 import org.junit.runner._
 import org.scalatest.junit.JUnitRunner
 
