@@ -11,23 +11,23 @@ import controllers.{OreBaseController, OreControllerComponents}
 import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
-import ore.db.{DbRef, Model}
+import ore.StatTracker
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.PageTable
+import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.models.project.{Page, Project}
 import ore.models.user.LoggedAction
 import ore.permission.Permission
 import ore.util.StringUtils._
-import ore.StatTracker
 import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{pages => views}
 
 import cats.syntax.all._
-import zio.{IO, Task, UIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO}
 
 /**
   * Controller for handling Page related actions.

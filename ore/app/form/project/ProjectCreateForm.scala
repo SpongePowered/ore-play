@@ -10,7 +10,7 @@ case class ProjectCreateForm(
     pluginId: String,
     category: Category,
     description: Option[String],
-    ownerId: Option[DbRef[User]],
+    ownerId: Option[DbRef[User]]
 ) {
 
   def asTemplate: ProjectTemplate = ProjectTemplate(name, pluginId, category, description)

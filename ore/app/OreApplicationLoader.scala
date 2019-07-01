@@ -2,10 +2,10 @@ import scala.language.higherKinds
 
 import javax.inject.Provider
 
-import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
 import play.api.cache.caffeine.CaffeineCacheComponents
-import play.api.db.slick.{DatabaseConfigProvider, DbName, SlickComponents}
+import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
 import play.api.db.slick.evolutions.SlickEvolutionsComponents
+import play.api.db.slick.{DatabaseConfigProvider, DbName, SlickComponents}
 import play.api.i18n.MessagesApi
 import play.api.mvc.EssentialFilter
 import play.api.routing.Router
@@ -14,17 +14,16 @@ import play.filters.HttpFiltersComponents
 import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPResultProcessor}
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
 
+import controllers._
 import controllers.apiv2.ApiV2Controller
 import controllers.project.{Channels, Pages, Projects, Versions}
 import controllers.sugar.Bakery
-import controllers._
 import db.impl.DbUpdateTask
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.service.OreModelService
 import discourse.{OreDiscourseApi, OreDiscourseApiDisabled, OreDiscourseApiEnabled}
 import form.OreForms
 import mail.{EmailFactory, Mailer, SpongeMailer}
-import ore.{OreConfig, OreEnv, StatTracker}
 import ore.auth.{AkkaSSOApi, AkkaSpongeAuthApi, SSOApi, SpongeAuthApi}
 import ore.db.ModelService
 import ore.discourse.AkkaDiscourseApi
@@ -35,19 +34,20 @@ import ore.models.project.factory.{OreProjectFactory, ProjectFactory}
 import ore.models.project.io.ProjectFiles
 import ore.models.user.{FakeUser, UserTask}
 import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
+import ore.{OreConfig, OreEnv, StatTracker}
 import util.{FileIO, StatusZ, ZIOFileIO}
 
 import akka.actor.ActorSystem
 import cats.arrow.FunctionK
-import com.softwaremill.macwire._
-import cats.~>
 import cats.tagless.syntax.all._
+import cats.~>
+import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
+import slick.basic.{BasicProfile, DatabaseConfig}
 import zio.blocking.Blocking
-import zio.{DefaultRuntime, Task, UIO, ZIO}
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import slick.basic.{BasicProfile, DatabaseConfig}
+import zio.{DefaultRuntime, Task, UIO, ZIO}
 
 class OreApplicationLoader extends ApplicationLoader {
   override def load(context: ApplicationLoader.Context): PlayApplication = {
@@ -174,7 +174,7 @@ class OreComponents(context: ApplicationLoader.Context)
             forums.baseUrl,
             api.breaker.maxFailures,
             api.breaker.reset,
-            api.breaker.timeout,
+            api.breaker.timeout
           )
         )
       )

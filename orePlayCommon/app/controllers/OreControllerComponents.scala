@@ -17,9 +17,9 @@ import ore.auth.SSOApi
 import ore.db.ModelService
 import ore.models.project.io.ProjectFiles
 
-import zio.{UIO, ZIO}
 import zio.blocking.Blocking
 import zio.clock.Clock
+import zio.{UIO, ZIO}
 
 trait OreControllerComponents extends ControllerComponents {
   def uioEffects: OreControllerEffects[UIO]
@@ -56,5 +56,5 @@ case class DefaultOreControllerEffects[F[_]] @Inject()(
     sso: SSOApi[F],
     users: UserBase[F],
     projects: ProjectBase[F],
-    organizations: OrganizationBase[F],
+    organizations: OrganizationBase[F]
 ) extends OreControllerEffects[F]

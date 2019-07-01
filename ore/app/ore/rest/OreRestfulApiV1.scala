@@ -7,23 +7,21 @@ import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
 import db.impl.access.ProjectBase
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema._
-import ore.models.project._
-import ore.models.user.User
-import ore.models.user.role.ProjectUserRole
 import ore.OreConfig
 import ore.data.project.Category
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema._
 import ore.db.{DbRef, Model, ModelService}
+import ore.models.project.{ProjectSortingStrategy, _}
+import ore.models.user.User
+import ore.models.user.role.ProjectUserRole
 import ore.permission.role.Role
-import ore.models.project.ProjectSortingStrategy
 import util.syntax._
 
 import cats.data.OptionT
-import cats.syntax.all._
-import zio.{UIO, ZIO}
 import zio.interop.catz._
+import zio.{UIO, ZIO}
 
 /**
   * The Ore API
@@ -334,7 +332,7 @@ trait OreRestfulApiV1 extends OreWrites {
                 "parentId"  -> page.parentId,
                 "slug"      -> page.slug,
                 "fullSlug"  -> page.fullSlug(page.parentId.flatMap(pageById.get).map(_.obj))
-            )
+              )
           )
         )
       }
@@ -367,7 +365,6 @@ trait OreRestfulApiV1 extends OreWrites {
       userList: Seq[Model[User]]
   ): UIO[Seq[JsObject]] = {
     implicit def config: OreConfig = this.config
-    import cats.instances.vector._
 
     val query = queryProjectRV.filter {
       case (p, _, _) => p.userId.inSetBind(userList.map(_.id.value)) // query all projects with given users

@@ -124,12 +124,12 @@ sealed trait PlatformCategory {
 }
 
 case object SpongeCategory extends PlatformCategory {
-  val name = "Sponge Plugins"
+  val name    = "Sponge Plugins"
   val tagName = "Sponge"
 }
 
 case object ForgeCategory extends PlatformCategory {
-  val name = "Forge Mods"
+  val name    = "Forge Mods"
   val tagName = "Forge"
 }
 

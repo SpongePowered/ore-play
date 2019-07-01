@@ -5,17 +5,17 @@ import scala.language.higherKinds
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectRoleTable, ProjectTableMain}
+import ore.db.{DbRef, Model, ModelService}
+import ore.models.organization.Organization
 import ore.models.project.Project
 import ore.models.user.role.{OrganizationUserRole, ProjectUserRole}
 import ore.models.user.{User, UserOwned}
-import ore.db.{DbRef, Model, ModelService}
-import ore.models.organization.Organization
 import ore.permission.role.RoleCategory
 import util.syntax._
 
-import cats.{MonadError, Parallel}
 import cats.data.OptionT
 import cats.syntax.all._
+import cats.{MonadError, Parallel}
 import slick.lifted.TableQuery
 
 case class OrganizationData(

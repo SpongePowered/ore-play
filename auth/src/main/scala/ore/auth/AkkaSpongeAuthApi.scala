@@ -13,18 +13,18 @@ import akka.http.scaladsl.model._
 import akka.stream.Materializer
 import cats.effect.Concurrent
 import cats.effect.concurrent.Ref
-import cats.syntax.all._
 import cats.instances.list._
+import cats.syntax.all._
 import com.typesafe.scalalogging
 import io.circe.{Decoder, Json}
 
 class AkkaSpongeAuthApi[F[_]] private (
     settings: AkkaSpongeAuthSettings,
-    counter: Ref[F, Long],
+    counter: Ref[F, Long]
 )(
     implicit system: ActorSystem,
     mat: Materializer,
-    F: Concurrent[F],
+    F: Concurrent[F]
 ) extends AkkaClientApi[F, List, String]("SpongeAuth", counter, settings)
     with SpongeAuthApi[F] {
 
@@ -63,7 +63,7 @@ class AkkaSpongeAuthApi[F[_]] private (
     makeUnmarshallRequestEither(
       HttpRequest(
         HttpMethods.GET,
-        apiUri(_ / "api" / "users" / username).withQuery(Uri.Query("apiKey" -> settings.apiKey)),
+        apiUri(_ / "api" / "users" / username).withQuery(Uri.Query("apiKey" -> settings.apiKey))
       )
     )
   }
@@ -74,7 +74,7 @@ class AkkaSpongeAuthApi[F[_]] private (
   ): F[Either[List[String], ChangeAvatarToken]] = {
     val params = Seq(
       "api-key"          -> settings.apiKey,
-      "request_username" -> requester,
+      "request_username" -> requester
     )
 
     makeUnmarshallRequestEither(
@@ -97,11 +97,11 @@ class AkkaSpongeAuthApi[F[_]] private (
 object AkkaSpongeAuthApi {
 
   def apply[F[_]](
-      settings: AkkaSpongeAuthSettings,
+      settings: AkkaSpongeAuthSettings
   )(
       implicit system: ActorSystem,
       mat: Materializer,
-      F: Concurrent[F],
+      F: Concurrent[F]
   ): F[AkkaSpongeAuthApi[F]] =
     Ref.of[F, Long](0L).map(counter => new AkkaSpongeAuthApi(settings, counter))
 
@@ -110,7 +110,7 @@ object AkkaSpongeAuthApi {
       apiUri: Uri,
       breakerMaxFailures: Int,
       breakerResetDur: FiniteDuration,
-      breakerTimeoutDur: FiniteDuration,
+      breakerTimeoutDur: FiniteDuration
   ) extends AkkaClientApi.ClientSettings
 
   type LazyFuture[A] = () => Future[A]

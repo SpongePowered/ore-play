@@ -7,9 +7,9 @@ import play.api.libs.{json => playjson}
 import play.api.mvc.{BaseControllerHelpers, BodyParser, RequestHeader, Result}
 
 import akka.util.ByteString
+import cats.syntax.all._
 import io.circe._
 import io.circe.syntax._
-import cats.syntax.all._
 
 trait CircePlayController { self: BaseControllerHelpers =>
 

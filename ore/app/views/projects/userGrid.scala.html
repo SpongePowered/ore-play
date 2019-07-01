@@ -1,14 +1,9 @@
-@import java.text.NumberFormat
-
-@import controllers.project.routes
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
+@import ore.markdown.MarkdownRenderer
 @import ore.models.user.User
 @import util.syntax._
-
-@import ore.markdown.MarkdownRenderer
-@import ore.models.project.io.ProjectFiles
 @(title: String, call: Int => Call, p: ProjectData, sp: ScopedProjectData, users: Seq[User], page: Int, pageSize: Int)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @columns = @{

@@ -33,8 +33,8 @@ import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking
 import zio.clock.Clock
-import zio.{IO, Task, UIO, ZIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
 
 /**
   * A set of actions used by Ore.
@@ -246,7 +246,7 @@ trait Actions extends Calls with ActionHelpers { self =>
             .requestPermission(request.user, username, Permission.EditOwnUserSettings)(request)
             .transform {
               case None    => Some(Unauthorized) // No Permission
-              case Some(_) => None // Permission granted => No Filter
+              case Some(_) => None               // Permission granted => No Filter
             }
             .value
         )

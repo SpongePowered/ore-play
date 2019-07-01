@@ -6,18 +6,16 @@ Documentation page within Project overview.
 
 @import controllers.project.routes
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.Page
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.db.Model
-@import util.StringFormatterUtils._
-@import views.html.utils.editor
-@import views.html.helper.CSPNonce
-@import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
+@import ore.models.project.Page
+@import ore.permission.Permission
+@import util.StringFormatterUtils._
 @import util.syntax._
-
-@import ore.models.project.io.ProjectFiles
+@import views.html.helper.CSPNonce
+@import views.html.utils.editor
 @(p: ProjectData,
   sp: ScopedProjectData,
   rootPages: Seq[(Model[Page], Seq[Page])],

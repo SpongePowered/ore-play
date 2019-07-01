@@ -16,7 +16,6 @@ import ore.models.project.io.ProjectFiles
 import ore.models.project.{ProjectSortingStrategy, TagColor}
 import ore.models.user.User
 import ore.permission.Permission
-import ore.util.OreMDC
 
 import cats.data.NonEmptyList
 import doobie._
@@ -92,7 +91,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
-      currentUserId: Option[DbRef[User]],
+      currentUserId: Option[DbRef[User]]
   ): Fragment = {
     val userActionsTaken = currentUserId.fold(fr"FALSE, FALSE,") { id =>
       fr"""|EXISTS(SELECT * FROM project_stars s WHERE s.project_id = p.id AND s.user_id = $id)    AS user_stared,
@@ -203,7 +202,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
-      currentUserId: Option[DbRef[User]],
+      currentUserId: Option[DbRef[User]]
   ): Query0[Long] = {
     val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
     (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
@@ -223,7 +222,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
   def versionSelectFrag(
       pluginId: String,
       versionName: Option[String],
-      tags: List[String],
+      tags: List[String]
   ): Fragment = {
     val base =
       sql"""|SELECT pv.created_at,
@@ -292,7 +291,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       table: Fragment,
       user: String,
       canSeeHidden: Boolean,
-      currentUserId: Option[DbRef[User]],
+      currentUserId: Option[DbRef[User]]
   ): Fragment = {
     val base =
       sql"""|SELECT p.plugin_id,

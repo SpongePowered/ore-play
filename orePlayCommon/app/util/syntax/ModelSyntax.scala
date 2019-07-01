@@ -12,8 +12,8 @@ import db.impl.access.UserBase
 import ore.OreConfig
 import ore.auth.AuthUser
 import ore.db.access.ModelView
-import ore.db.{DbRef, Model, ModelService, ObjId}
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{DbRef, Model, ModelService, ObjId}
 import ore.markdown.MarkdownRenderer
 import ore.models.organization.Organization
 import ore.models.project.io.ProjectFiles
@@ -22,9 +22,9 @@ import ore.models.user.User
 import ore.permission.role.Role
 import ore.util.OreMDC
 
-import cats.{Functor, Monad}
-import cats.syntax.all._
 import cats.data.OptionT
+import cats.syntax.all._
+import cats.{Functor, Monad}
 
 trait ModelSyntax {
 

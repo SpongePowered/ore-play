@@ -60,7 +60,7 @@ class APIV2QueriesSpec extends DbSpec {
         Some("Foo"),
         Some("Foo"),
         canSeeHidden = false,
-        Some(0L),
+        Some(0L)
       )
     )
   }

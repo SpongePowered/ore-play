@@ -1,7 +1,8 @@
 import java.time.LocalDate
 
-import play.api.Configuration
 import scala.concurrent.duration._
+
+import play.api.Configuration
 
 import db.impl.query.AppQueries
 import ore.OreConfig

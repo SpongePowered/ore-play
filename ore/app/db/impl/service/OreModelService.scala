@@ -8,16 +8,16 @@ import scala.concurrent.{ExecutionContext, Future}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.inject.ApplicationLifecycle
 
-import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
 
 import cats.effect.{Clock, ContextShift, Sync}
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
-import zio.{Task, ZIO}
-import zio.interop.catz._
 import slick.jdbc.{JdbcDataSource, JdbcProfile}
+import zio.interop.catz._
+import zio.{Task, ZIO}
 
 /**
   * The Ore ModelService implementation. Contains registration of Ore-specific

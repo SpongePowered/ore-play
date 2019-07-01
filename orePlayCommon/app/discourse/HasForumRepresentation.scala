@@ -10,9 +10,9 @@ import util.TaskUtils
 import util.syntax._
 
 import cats.MonadError
-import cats.syntax.all._
-import cats.effect.syntax.all._
 import cats.effect.Effect
+import cats.effect.syntax.all._
+import cats.syntax.all._
 import com.typesafe.scalalogging
 
 trait HasForumRepresentation[F[_], A] {
@@ -32,7 +32,7 @@ object HasForumRepresentation {
     override def updateForumContents(a: Model[Page])(contents: String): F[Model[Page]] = {
       require(
         (a.isHome && contents.length <= Page.maxLength) || contents.length <= Page.maxLengthPage,
-        "contents too long",
+        "contents too long"
       )
       for {
         updated <- service.update(a)(_.copy(contents = contents))

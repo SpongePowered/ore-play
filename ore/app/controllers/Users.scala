@@ -18,7 +18,6 @@ import ore.db.impl.query.UserQueries
 import ore.db.impl.schema.{ApiKeyTable, UserTable}
 import ore.db.{DbRef, Model}
 import ore.models.project.ProjectSortingStrategy
-import ore.models.project.io.ProjectFiles
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.models.user.{FakeUser, _}
 import ore.permission.Permission
@@ -28,9 +27,8 @@ import util.syntax._
 import views.{html => views}
 
 import cats.syntax.all._
-import zio.blocking.Blocking
-import zio.{IO, Task, ZIO}
 import zio.interop.catz._
+import zio.{IO, Task, ZIO}
 
 /**
   * Controller for general user actions.
@@ -43,7 +41,7 @@ class Users @Inject()(
     emails: EmailFactory
 )(
     implicit oreComponents: OreControllerComponents,
-    messagesApi: MessagesApi,
+    messagesApi: MessagesApi
 ) extends OreBaseController {
 
   private val baseUrl = this.config.app.baseUrl
@@ -167,7 +165,7 @@ class Users @Inject()(
           )
           .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon)),
         getOrga(username).option,
-        UserData.of(request, u),
+        UserData.of(request, u)
       ).parTupled
       (projects, orga, userData) = t1
       t2 <- (

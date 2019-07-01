@@ -146,7 +146,13 @@ object MembershipDossier {
       implicit service: ModelService[F],
       F: Monad[F]
   ): MembershipDossier.Aux[F, Organization, OrganizationUserRole, OrganizationRoleTable] =
-    new AbstractMembershipDossier[F, Organization, OrganizationUserRole, OrganizationRoleTable, OrganizationMembersTable](
+    new AbstractMembershipDossier[
+      F,
+      Organization,
+      OrganizationUserRole,
+      OrganizationRoleTable,
+      OrganizationMembersTable
+    ](
       Organization,
       OrganizationUserRole
     ) {

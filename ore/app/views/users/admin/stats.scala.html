@@ -1,11 +1,12 @@
+@import java.time.LocalDate
+@import java.time.temporal.ChronoUnit
+
 @import play.api.libs.json.Json
 
 @import controllers.sugar.Requests.OreRequest
-@import ore.OreConfig
 @import models.querymodels.Stats
+@import ore.OreConfig
 @import views.html.helper.CSPNonce
-@import java.time.LocalDate
-@import java.time.temporal.ChronoUnit
 
 @(stats: List[Stats], fromTime: LocalDate, toTime: LocalDate)(implicit messages: Messages,
         request: OreRequest[_], config: OreConfig, flash: Flash)

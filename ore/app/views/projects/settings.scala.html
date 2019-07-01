@@ -2,15 +2,12 @@
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
 @import ore.db.Model
-@import views.html.helper.{CSRF, form}
-@import views.html.utils
-@import views.html.helper.CSPNonce
-@import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
 @import ore.models.api.ProjectApiKey
-@import ore.util.OreMDC
-@import ore.models.project.io.ProjectFiles
+@import ore.permission.Permission
 @import util.syntax._
+@import views.html.helper.{CSPNonce, CSRF, form}
+@import views.html.utils
 
 @(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]], iconUrl: String)(implicit messages: Messages, flash: Flash,
         request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)

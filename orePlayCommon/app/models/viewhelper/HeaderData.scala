@@ -6,15 +6,15 @@ import play.api.mvc.Request
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema._
+import ore.db.{DbRef, Model, ModelService}
 import ore.models.project.{ReviewState, Visibility}
 import ore.models.user.User
-import ore.db.{DbRef, Model, ModelService}
 import ore.permission._
 import ore.permission.scope.GlobalScope
 
-import cats.{Functor, Monad}
 import cats.data.OptionT
 import cats.syntax.all._
+import cats.{Functor, Monad}
 import slick.lifted.TableQuery
 
 /**

@@ -2,13 +2,12 @@
 Versions page within Project overview.
 *@
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.Channel
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import views.html.helper.CSPNonce
-@import ore.permission.Permission
 @import ore.markdown.MarkdownRenderer
-@import ore.models.project.io.ProjectFiles
+@import ore.models.project.Channel
+@import ore.permission.Permission
+@import views.html.helper.CSPNonce
 @(p: ProjectData,
         sp: ScopedProjectData,
         channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)

@@ -53,7 +53,7 @@ trait OrePostgresDriver
       mappedColumnTypeForValueEnum(NotificationType)
     implicit val promptTypeMapper: BaseColumnType[Prompt]             = mappedColumnTypeForValueEnum(Prompt)
     implicit val downloadTypeTypeMapper: BaseColumnType[DownloadType] = mappedColumnTypeForValueEnum(DownloadType)
-    implicit val visibilityTypeMapper: BaseColumnType[Visibility] = mappedColumnTypeForValueEnum(Visibility)
+    implicit val visibilityTypeMapper: BaseColumnType[Visibility]     = mappedColumnTypeForValueEnum(Visibility)
     implicit def loggedActionMapper[Ctx]: BaseColumnType[LoggedAction[Ctx]] =
       mappedColumnTypeForValueEnum(LoggedAction).asInstanceOf[BaseColumnType[LoggedAction[Ctx]]] // scalafix:ok
     implicit def loggedActionContextMapper[Ctx]: BaseColumnType[LoggedActionContext[Ctx]] =

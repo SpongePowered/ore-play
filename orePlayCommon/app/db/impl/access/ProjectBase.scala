@@ -7,23 +7,23 @@ import java.time.Instant
 
 import db.impl.query.SharedQueries
 import discourse.OreDiscourseApi
+import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
 import ore.db.{Model, ModelService}
 import ore.models.project._
 import ore.models.project.io.ProjectFiles
-import ore.util.{FileUtils, OreMDC}
-import ore.OreConfig
 import ore.util.StringUtils._
+import ore.util.{FileUtils, OreMDC}
 import util.syntax._
 import util.{FileIO, TaskUtils}
 
 import cats.Parallel
 import cats.effect.syntax.all._
-import cats.syntax.all._
-import cats.instances.vector._
 import cats.instances.option._
+import cats.instances.vector._
+import cats.syntax.all._
 import cats.tagless.autoFunctorK
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging.LoggerTakingImplicit

@@ -1,8 +1,8 @@
 package form
 
+import ore.db.DbRef
 import ore.models.user.User
 import ore.models.user.role.UserRoleModel
-import ore.db.DbRef
 import ore.permission.role.Role
 
 /**

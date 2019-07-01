@@ -11,14 +11,14 @@ import play.api.mvc._
 import controllers.sugar.Requests.AuthedProjectRequest
 import form.OreForms
 import ore.auth.CryptoUtils
-import ore.db.{DbRef, Model}
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ProjectApiKeyTable
+import ore.db.{DbRef, Model}
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.{PluginUpload, ProjectFiles}
+import ore.models.project.io.PluginUpload
 import ore.models.project.{Channel, Page, Project, Version}
 import ore.models.user.{LoggedAction, User}
 import ore.permission.Permission
@@ -33,8 +33,8 @@ import cats.instances.list._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking
-import zio.{Task, UIO, ZIO}
 import zio.interop.catz._
+import zio.{Task, UIO, ZIO}
 
 /**
   * Ore API (v1)
@@ -46,7 +46,7 @@ final class ApiV1Controller @Inject()(
     forms: OreForms,
     factory: ProjectFactory
 )(
-    implicit oreComponents: OreControllerComponents,
+    implicit oreComponents: OreControllerComponents
 ) extends OreBaseController
     with OreWrites {
 

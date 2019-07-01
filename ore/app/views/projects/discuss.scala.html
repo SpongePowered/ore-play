@@ -4,11 +4,9 @@ Discussion page within Project overview.
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.{ProjectData, ScopedProjectData}
 @import ore.OreConfig
-@import views.html.utils
-
-@import views.html.helper.CSPNonce
 @import ore.markdown.MarkdownRenderer
-@import ore.models.project.io.ProjectFiles
+@import views.html.helper.CSPNonce
+@import views.html.utils
 
 @(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_],
         flash: Flash, config: OreConfig, renderer: MarkdownRenderer)

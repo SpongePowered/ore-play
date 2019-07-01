@@ -2,11 +2,11 @@ package ore.db
 
 import scala.language.higherKinds
 
+import cats.tagless._
+import cats.~>
 import doobie.ConnectionIO
 import slick.dbio.DBIO
 import slick.lifted.Rep
-import cats.tagless._
-import cats.~>
 
 /**
   * Represents a service that creates, deletes, and manipulates Models.

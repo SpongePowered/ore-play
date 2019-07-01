@@ -4,16 +4,16 @@ import scala.language.higherKinds
 
 import ore.data.user.notification.NotificationType
 import ore.db.access.ModelView
-import ore.models.user.role.OrganizationUserRole
-import ore.models.user.{Notification, User}
 import ore.db.{DbRef, Model, ModelService}
 import ore.models.organization.Organization
+import ore.models.user.role.OrganizationUserRole
+import ore.models.user.{Notification, User}
 import ore.permission.role.Role
 import util.syntax._
 
-import cats.{MonadError, Parallel}
 import cats.data.NonEmptyList
 import cats.syntax.all._
+import cats.{MonadError, Parallel}
 
 /**
   * Saves new and old [[OrganizationUserRole]]s.

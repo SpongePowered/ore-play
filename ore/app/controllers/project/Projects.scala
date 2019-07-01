@@ -18,6 +18,7 @@ import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.{DiscussionReplyForm, FlagForm}
 import models.viewhelper.ScopedOrganizationData
+import ore.StatTracker
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.UserTable
@@ -26,26 +27,23 @@ import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
-import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.ProjectFiles
 import ore.models.project._
+import ore.models.project.factory.ProjectFactory
 import ore.models.user._
 import ore.models.user.role.ProjectUserRole
 import ore.permission._
 import ore.util.OreMDC
 import ore.util.StringUtils._
-import ore.StatTracker
 import _root_.util.syntax._
 import util.{FileIO, UserActionLogger}
 import views.html.{projects => views}
 
-import cats.data.EitherT
 import cats.instances.option._
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking
-import zio.{IO, Task, UIO, ZIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
 
 /**
   * Controller for handling Project related actions.

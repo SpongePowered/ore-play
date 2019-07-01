@@ -1,16 +1,14 @@
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.{ReviewState, Visibility}
 @import models.viewhelper.{ScopedProjectData, VersionData}
 @import ore.OreConfig
+@import ore.data.Platform
+@import ore.markdown.MarkdownRenderer
+@import ore.models.project.{ReviewState, Visibility}
+@import ore.permission.Permission
 @import util.StringFormatterUtils._
+@import util.syntax._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
-@import ore.permission.Permission
-@import ore.markdown.MarkdownRenderer
-@import ore.data.Platform
-@import util.syntax._
-
-@import ore.models.project.io.ProjectFiles
 @(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @projectRoutes = @{controllers.project.routes.Projects}

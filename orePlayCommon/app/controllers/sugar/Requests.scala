@@ -6,12 +6,12 @@ import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
 
-import ore.models.api.ApiKey
-import ore.models.project.Project
-import ore.models.user.User
 import models.viewhelper._
 import ore.db.{Model, ModelService}
+import ore.models.api.ApiKey
 import ore.models.organization.Organization
+import ore.models.project.Project
+import ore.models.user.User
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC

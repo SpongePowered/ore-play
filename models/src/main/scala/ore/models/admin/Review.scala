@@ -47,9 +47,10 @@ case class Review(
   * This modal is needed to convert the json
   */
 @JsonCodec case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
-  def getTime(implicit locale: Locale): String = StringLocaleFormatterUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
-  def isTakeover: Boolean                      = action.equalsIgnoreCase("takeover")
-  def isStop: Boolean                          = action.equalsIgnoreCase("stop")
+  def getTime(implicit locale: Locale): String =
+    StringLocaleFormatterUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
+  def isTakeover: Boolean = action.equalsIgnoreCase("takeover")
+  def isStop: Boolean     = action.equalsIgnoreCase("stop")
 }
 
 object Review extends DefaultModelCompanion[Review, ReviewTable](TableQuery[ReviewTable]) {

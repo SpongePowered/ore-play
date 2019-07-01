@@ -3,20 +3,20 @@ package models.viewhelper
 import scala.language.higherKinds
 
 import controllers.sugar.Requests.OreRequest
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{OrganizationRoleTable, OrganizationTable, UserTable}
-import ore.models.project.Project
-import ore.models.user.role.OrganizationUserRole
-import ore.models.user.User
-import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.models.organization.Organization
+import ore.models.project.Project
+import ore.models.user.User
+import ore.models.user.role.OrganizationUserRole
 import ore.permission._
 import ore.permission.role.Role
 import ore.permission.scope.GlobalScope
 
-import cats.{Monad, Parallel}
 import cats.syntax.all._
+import cats.{Monad, Parallel}
 import slick.lifted.TableQuery
 
 // TODO separate Scoped UserData
@@ -71,7 +71,7 @@ object UserData {
     (
       user.permissionsIn(GlobalScope),
       user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(user.permissionsIn(_)).value,
-      user.globalRoles.allFromParent,
+      user.globalRoles.allFromParent
     ).parMapN { (userPerms, orgaPerms, globalRoles) =>
       (globalRoles.map(_.toRole).toSet, userPerms, orgaPerms.getOrElse(Permission.None))
     }

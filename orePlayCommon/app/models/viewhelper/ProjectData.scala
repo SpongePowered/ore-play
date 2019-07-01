@@ -6,23 +6,22 @@ import play.api.mvc.RequestHeader
 import play.twirl.api.Html
 
 import ore.OreConfig
+import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectRoleTable, UserTable}
-import ore.models.project._
-import ore.models.user.{User, UserOwned}
-import ore.models.user.role.ProjectUserRole
-import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.markdown.MarkdownRenderer
-import ore.models.project.io.ProjectFiles
 import ore.models.admin.ProjectVisibilityChange
+import ore.models.project._
+import ore.models.project.io.ProjectFiles
+import ore.models.user.role.ProjectUserRole
+import ore.models.user.{User, UserOwned}
 import ore.permission.role.RoleCategory
-import ore.util.OreMDC
 import util.syntax._
 
-import cats.{MonadError, Parallel}
 import cats.data.OptionT
 import cats.syntax.all._
+import cats.{MonadError, Parallel}
 import slick.lifted.TableQuery
 
 /**
@@ -35,7 +34,7 @@ case class ProjectData(
     settings: Model[ProjectSettings],
     members: Seq[(Model[ProjectUserRole], Model[User])],
     flags: Seq[(Model[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
-    noteCount: Int, // getNotes.size
+    noteCount: Int,                                    // getNotes.size
     lastVisibilityChange: Option[ProjectVisibilityChange],
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
     recommendedVersion: Option[Model[Version]],

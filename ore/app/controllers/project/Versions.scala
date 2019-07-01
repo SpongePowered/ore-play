@@ -25,7 +25,7 @@ import ore.markdown.MarkdownRenderer
 import ore.models.admin.VersionVisibilityChange
 import ore.models.project._
 import ore.models.project.factory.ProjectFactory
-import ore.models.project.io.{PluginFile, PluginUpload, ProjectFiles}
+import ore.models.project.io.{PluginFile, PluginUpload}
 import ore.models.user.{LoggedAction, User}
 import ore.permission.Permission
 import ore.util.OreMDC
@@ -35,15 +35,15 @@ import util.UserActionLogger
 import util.syntax._
 import views.html.projects.{versions => views}
 
-import cats.syntax.all._
-import com.github.tminglei.slickpg.InetString
-import com.typesafe.scalalogging
 import _root_.io.circe.Json
 import _root_.io.circe.syntax._
 import cats.arrow.FunctionK
+import cats.syntax.all._
+import com.github.tminglei.slickpg.InetString
+import com.typesafe.scalalogging
 import zio.blocking.Blocking
-import zio.{IO, Task, UIO, ZIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
 
 /**
   * Controller for handling Version related actions.
@@ -162,7 +162,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             LoggedAction.VersionReviewStateChanged,
             version.id,
             newState.toString,
-            version.reviewState.toString,
+            version.reviewState.toString
           )
         } yield Redirect(self.show(author, slug, versionString))
       }
@@ -268,19 +268,18 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
         t <- (service.runDBIO(project.channels(ModelView.raw(Channel)).result), projectData).parTupled
         (channels, (projectName, pluginId, projectSlug, ownerName, projectDescription, forumSync)) = t
-      } yield
-        Ok(
-          views.create(
-            projectName,
-            pluginId,
-            projectSlug,
-            ownerName,
-            projectDescription,
-            forumSync,
-            Some(pendingVersion),
-            Model.unwrapNested(channels)
-          )
+      } yield Ok(
+        views.create(
+          projectName,
+          pluginId,
+          projectSlug,
+          ownerName,
+          projectDescription,
+          forumSync,
+          Some(pendingVersion),
+          Model.unwrapNested(channels)
         )
+      )
 
       suc2.constError(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }
@@ -800,7 +799,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val fileName = version.fileName
           val path     = projectFiles.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
           project.user[Task].orDie.flatMap { projectOwner =>
-            import cats.tagless.syntax._
             import cats.tagless._
             val newStats: StatTracker[RIO[Blocking, ?]] = InvariantK[StatTracker].imapK(stats) {
               new FunctionK[UIO, RIO[Blocking, ?]] {

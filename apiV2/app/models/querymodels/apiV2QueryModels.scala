@@ -4,18 +4,17 @@ import java.time.LocalDateTime
 
 import play.api.mvc.RequestHeader
 
-import ore.models.project.{ReviewState, TagColor, Visibility}
 import models.protocols.APIV2
 import ore.OreConfig
 import ore.data.project.{Category, ProjectNamespace}
 import ore.models.project.io.ProjectFiles
+import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.User
 import ore.permission.role.Role
-import ore.util.OreMDC
 import util.syntax._
 
-import cats.syntax.all._
 import cats.instances.option._
+import cats.syntax.all._
 import zio.ZIO
 import zio.blocking.Blocking
 
@@ -128,7 +127,7 @@ case class APIV2QueryCompactProject(
       stars
     ),
     category,
-    visibility,
+    visibility
   )
 }
 

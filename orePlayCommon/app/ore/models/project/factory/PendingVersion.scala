@@ -17,10 +17,10 @@ import ore.models.user.User
 
 import cats.MonadError
 import cats.syntax.all._
-import zio.blocking.Blocking
-import zio.{Task, UIO, ZIO}
-import zio.interop.catz._
 import slick.lifted.TableQuery
+import zio.blocking.Blocking
+import zio.interop.catz._
+import zio.{Task, ZIO}
 
 /**
   * Represents a pending version to be created later.

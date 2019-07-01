@@ -2,13 +2,12 @@
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
 @import ore.data.Prompt
-@import util.StringFormatterUtils._
-@import views.html.helper.{CSRF, form}
-@import views.html.utils.{modal, prompt, userAvatar}
-@import views.html.helper.CSPNonce
-@import ore.permission.Permission
-@import util.syntax._
 @import ore.data.project.Category
+@import ore.permission.Permission
+@import util.StringFormatterUtils._
+@import util.syntax._
+@import views.html.helper.{CSPNonce, CSRF, form}
+@import views.html.utils.{modal, prompt, userAvatar}
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgSettings = @{

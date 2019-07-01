@@ -1,13 +1,9 @@
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
-@import ore.util.StringUtils._
-@import views.html.helper.{CSRF, form}
-@import views.html.utils.{modal, prompt, userAvatar}
-@import views.html.helper.CSPNonce
-@import ore.permission.{NamedPermission, Permission}
-@import ore.data.Prompt
 @import ore.models.api.ApiKey
+@import ore.permission.NamedPermission
+@import views.html.helper.CSPNonce
 
 @(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], keys: Seq[ApiKey], perms: Seq[NamedPermission])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 

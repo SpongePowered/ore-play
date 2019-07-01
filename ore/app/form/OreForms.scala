@@ -11,18 +11,18 @@ import play.api.data.validation.{Constraint, Invalid, Valid, ValidationError}
 import play.api.data.{FieldMapping, Form, FormError, Mapping}
 
 import controllers.sugar.Requests.ProjectRequest
-import ore.db.impl.OrePostgresDriver.api._
 import form.organization.{OrganizationAvatarUpdate, OrganizationMembersUpdate, OrganizationRoleSetBuilder}
 import form.project._
-import ore.models.project.{Channel, Page}
-import ore.models.user.role.ProjectUserRole
 import ore.OreConfig
+import ore.data.project.Category
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{DbRef, Model, ModelService}
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
-import ore.data.project.Category
 import ore.models.project.factory.ProjectFactory
+import ore.models.project.{Channel, Page}
+import ore.models.user.role.ProjectUserRole
 import util.syntax._
 
 import cats.data.OptionT
@@ -131,7 +131,7 @@ class OreForms @Inject()(
         "update-icon"  -> boolean,
         "owner"        -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo)),
         "forum-sync"   -> boolean,
-        "keywords"     -> text,
+        "keywords"     -> text
       )(ProjectSettingsForm.apply)(ProjectSettingsForm.unapply)
     )
 

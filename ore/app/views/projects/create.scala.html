@@ -4,20 +4,12 @@ Page used for uploading and creating new projects.
 @import play.twirl.api.Html
 
 @import controllers.sugar.Requests.OreRequest
-@import ore.models.project.Project
 @import ore.OreConfig
 @import ore.data.project.Category
-@import views.html.helper.{CSRF, form}
-@import views.html.utils
-@import java.sql.Timestamp
-@import java.time.Instant
-
-@import ore.db.ObjId
-@import views.html.helper.CSPNonce
 @import ore.db.Model
-@import ore.models.user.User
 @import ore.models.organization.Organization
-@import models.querymodels.ViewTag
+@import ore.models.user.User
+@import views.html.helper.{CSRF, form}
 @(createProjectOrgas: Seq[Model[Organization]], user: Model[User])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @projectRoutes = @{controllers.project.routes.Projects}

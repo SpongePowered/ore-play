@@ -16,9 +16,9 @@ import akka.http.scaladsl.model.{HttpMethods, HttpRequest, Uri}
 import akka.stream.Materializer
 import cats.data.OptionT
 import cats.effect.concurrent.Ref
+import cats.effect.syntax.all._
 import cats.effect.{Concurrent, ContextShift, Timer}
 import cats.syntax.all._
-import cats.effect.syntax.all._
 import com.typesafe.scalalogging
 
 class AkkaSSOApi[F[_]](

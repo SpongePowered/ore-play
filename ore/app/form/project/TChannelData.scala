@@ -2,20 +2,20 @@ package form.project
 
 import scala.language.higherKinds
 
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.ChannelTable
-import ore.models.project.{Channel, Project}
-import ore.db.access.ModelView
-import ore.db.{Model, ModelService}
-import ore.models.project.factory.ProjectFactory
 import ore.OreConfig
 import ore.data.Color
+import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.ChannelTable
+import ore.db.{Model, ModelService}
+import ore.models.project.factory.ProjectFactory
+import ore.models.project.{Channel, Project}
 import ore.util.StringUtils._
 
 import cats.Monad
 import cats.data.{EitherT, OptionT}
-import cats.syntax.all._
 import cats.effect.syntax.all._
+import cats.syntax.all._
 import zio.Task
 import zio.interop.catz._
 

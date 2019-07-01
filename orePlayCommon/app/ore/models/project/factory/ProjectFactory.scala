@@ -8,20 +8,20 @@ import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
 import db.impl.access.ProjectBase
-import ore.db.impl.OrePostgresDriver.api._
 import discourse.OreDiscourseApi
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, Platform}
-import ore.models.project._
-import ore.models.user.role.ProjectUserRole
-import ore.models.user.{Notification, User}
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.MembershipDossier
-import ore.permission.role.Role
+import ore.models.project._
 import ore.models.project.io._
-import ore.util.{OreMDC, StringUtils}
+import ore.models.user.role.ProjectUserRole
+import ore.models.user.{Notification, User}
+import ore.permission.role.Role
 import ore.util.StringUtils._
+import ore.util.{OreMDC, StringUtils}
 import ore.{OreConfig, OreEnv}
 import util.FileIO
 import util.syntax._
@@ -32,8 +32,8 @@ import cats.syntax.all._
 import com.google.common.base.Preconditions._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking
-import zio.{IO, Task, UIO, ZIO}
 import zio.interop.catz._
+import zio.{IO, Task, UIO, ZIO}
 
 /**
   * Manages the project and version creation pipeline.
@@ -166,7 +166,7 @@ trait ProjectFactory {
       slug = slug,
       category = template.category,
       description = template.description,
-      visibility = Visibility.New,
+      visibility = Visibility.New
     )
 
     val projectSettings: DbRef[Project] => ProjectSettings = ProjectSettings(_)
@@ -288,7 +288,7 @@ trait ProjectFactory {
         notificationType = NotificationType.NewProjectVersion,
         messageArgs = NonEmptyList.of("notification.project.newVersion", project.name, version.name),
         action = Some(version.url(project))
-    )
+      )
 
     val watchingUserIds =
       service.runDBIO(project.watchers.allQueryFromParent.filter(_.id =!= version.authorId).map(_.id).result)

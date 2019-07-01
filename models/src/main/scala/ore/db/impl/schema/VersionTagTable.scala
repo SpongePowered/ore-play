@@ -25,7 +25,7 @@ class VersionTagTable(tag: Tag)
         )
     }
     val convertedUnapply
-      : PartialFunction[Model[VersionTag], (Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)] = {
+        : PartialFunction[Model[VersionTag], (Option[DbRef[VersionTag]], DbRef[Version], String, String, TagColor)] = {
       case Model(id, _, VersionTag(versionIds, name, data, color)) =>
         (id.unsafeToOption, versionIds, name, data, color)
     }

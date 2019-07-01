@@ -12,12 +12,12 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ChannelTable, VersionTable}
 import ore.models.project.Channel
 import ore.permission.Permission
-import views.html.projects.{channels => views}
 import util.syntax._
+import views.html.projects.{channels => views}
 
-import zio.{IO, Task}
-import zio.interop.catz._
 import slick.lifted.TableQuery
+import zio.interop.catz._
+import zio.{IO, Task}
 
 /**
   * Controller for handling Channel related actions.
@@ -115,13 +115,12 @@ class Channels @Inject()(forms: OreForms)(
 
       val query = for {
         channel <- ourChannel
-      } yield
-        (
-          channel,
-          moreThanOneChannelR,
-          isChannelEmptyR || nonEmptyChannelsR > 1,
-          channel.isNonReviewed || reviewedChannelsCount
-        )
+      } yield (
+        channel,
+        moreThanOneChannelR,
+        isChannelEmptyR || nonEmptyChannelsR > 1,
+        channel.isNonReviewed || reviewedChannelsCount
+      )
 
       for {
         t <- service.runDBIO(query.result.headOption).get.constError(NotFound)

@@ -1,16 +1,12 @@
 @*
 Collection of all projects.
 *@
-@import ore.models.project.{Project, Version, VersionTag}
-@import ore.models.user.User
+@import models.querymodels.ProjectListEntryWithIcon
 @import ore.OreConfig
 @import ore.data.project.Category
-@import models.querymodels.ViewTag
+@import ore.models.user.User
 @import util.syntax._
 @import views.html.utils
-@import ore.models.project.io.ProjectFiles
-@import ore.util.OreMDC
-@import models.querymodels.ProjectListEntryWithIcon
 @(models: Seq[ProjectListEntryWithIcon], page: Int, pageSize: Long, call: Int => Call)(implicit config: OreConfig)
 
 @projectRoutes = @{

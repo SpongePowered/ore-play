@@ -26,11 +26,11 @@ object AuthUser {
 
   implicit val decoder: Decoder[AuthUser] = (c: HCursor) => {
     for {
-      id <- c.get[Long]("id")
-      username <- c.get[String]("username")
-      email <- c.get[String]("email")
-      avatarUrl <- c.get[Option[String]]("avatar_url")
-      language <- c.get[Option[String]]("language").map(_.map(Locale.forLanguageTag))
+      id         <- c.get[Long]("id")
+      username   <- c.get[String]("username")
+      email      <- c.get[String]("email")
+      avatarUrl  <- c.get[Option[String]]("avatar_url")
+      language   <- c.get[Option[String]]("language").map(_.map(Locale.forLanguageTag))
       add_groups <- c.get[Option[String]]("add_groups")
     } yield AuthUser(id, username, email, avatarUrl, language, add_groups)
   }

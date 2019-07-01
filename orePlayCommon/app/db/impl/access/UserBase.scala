@@ -47,7 +47,9 @@ trait UserBase[F[_]] {
     *
     * @return the requested user
     */
-  def requestPermission(user: Model[User], name: String, perm: Permission)(implicit mdc: OreMDC): OptionT[F, Model[User]]
+  def requestPermission(user: Model[User], name: String, perm: Permission)(
+      implicit mdc: OreMDC
+  ): OptionT[F, Model[User]]
 
   /**
     * Attempts to find the specified User in the database or creates a new User
