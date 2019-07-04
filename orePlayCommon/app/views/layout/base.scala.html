@@ -26,7 +26,7 @@ this.
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("highlight/styles/default.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("bootstrap/css/bootstrap.min.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("stylesheets/main.css")" />
-        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/font-awesome/css/svg-with-js.min.css")" />
+        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("vue/commons.css")" />
         @additionalStyling
 
         <!-- See https://goo.gl/OOhYW5 -->
@@ -37,7 +37,7 @@ this.
 
         @if(scriptsEnabled) {
             <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
-            <script defer type="text/javascript" src="@routes.Assets.versioned("lib/font-awesome/js/all.min.js")" data-auto-add-css="false"></script>
+            <script type="text/javascript" src="@routes.Assets.versioned("vue/font-awesome.js")"></script>
         }
     </head>
     <body class="site">

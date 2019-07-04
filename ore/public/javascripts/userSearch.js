@@ -23,7 +23,7 @@ function initUserSearch(callback) {
         var username = input.val().trim();
         var icon = toggleSpinner($(this).find('[data-fa-i2svg]').toggleClass('fa-search'));
         $.ajax({
-            url: '/api/users/' + username,
+            url: '/api/v1/users/' + username,
             dataType: 'json',
 
             complete: function() {
