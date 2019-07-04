@@ -73,7 +73,7 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]
 
   use(prefix) //Gets around unused warning
-  applicationEvolutions
+  eager(applicationEvolutions)
 
   //override lazy val httpFilters: Seq[EssentialFilter] = enabledFilters.filters
   //lazy val enabledFilters: EnabledFilters             = wire[EnabledFilters] //TODO: This probably won't work

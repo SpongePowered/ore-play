@@ -1,0 +1,6 @@
+[0m[[0m[0minfo[0m] [0m[0mLoading settings for project global-plugins from idea.sbt,sbt-updates.sbt ...[0m
+[0m[[0m[0minfo[0m] [0m[0mLoading global plugins from /home/felix/.sbt/1.0/plugins[0m
+[0m[[0m[0minfo[0m] [0m[0mUpdating ProjectRef(uri("file:/home/felix/.sbt/1.0/plugins/"), "global-plugins")...[0m
+[0m[[0m[0minfo[0m] [0m[0mDone updating.[0m
+[0m[[0m[0minfo[0m] [0m[0mLoading settings for project ore-build from hydra.sbt,plugins.sbt ...[0m
+[0m[[0m[0minfo[0m] [0m[0mLoading project definition from /home/felix/Development/java/Ore/project[0m
