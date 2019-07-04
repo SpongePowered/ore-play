@@ -4,6 +4,7 @@ import javax.inject.Provider
 
 import play.api.cache.caffeine.CaffeineCacheComponents
 import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
+import play.api.db.evolutions.EvolutionsComponents
 import play.api.db.slick.evolutions.SlickEvolutionsComponents
 import play.api.db.slick.{DatabaseConfigProvider, DbName, SlickComponents}
 import play.api.i18n.MessagesApi
@@ -65,12 +66,14 @@ class OreComponents(context: ApplicationLoader.Context)
     with AssetsComponents
     with CaffeineCacheComponents
     with SlickComponents
-    with SlickEvolutionsComponents {
+    with SlickEvolutionsComponents
+    with EvolutionsComponents {
   val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
   lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]
 
   use(prefix) //Gets around unused warning
+  applicationEvolutions
 
   //override lazy val httpFilters: Seq[EssentialFilter] = enabledFilters.filters
   //lazy val enabledFilters: EnabledFilters             = wire[EnabledFilters] //TODO: This probably won't work
