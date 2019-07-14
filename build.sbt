@@ -216,7 +216,7 @@ lazy val oreClient = project
     version in webpack := "4.16.1",
     npmDependencies in Compile ++= Seq(
       "vue"          -> "2.6.10",
-      "lodash"       -> "4.17.11",
+      "lodash"       -> "4.17.14",
       "query-string" -> "6.8.0"
     ),
     npmDevDependencies in Compile ++= Seq(
@@ -226,13 +226,13 @@ lazy val oreClient = project
       "css-loader"                         -> "2.1.1",
       "vue-style-loader"                   -> "4.1.2",
       "babel-loader"                       -> "8.0.6",
-      "@babel/core"                        -> "7.4.5",
+      "@babel/core"                        -> "7.5.4",
       "terser-webpack-plugin"              -> "1.3.0",
       "mini-css-extract-plugin"            -> "0.7.0",
       "optimize-css-assets-webpack-plugin" -> "5.0.1",
       "sass-loader"                        -> "7.1.0",
       "postcss-loader"                     -> "3.0.0",
-      "autoprefixer"                       -> "9.5.1",
+      "autoprefixer"                       -> "9.6.1",
       "node-sass"                          -> "4.12.0"
     )
   )
