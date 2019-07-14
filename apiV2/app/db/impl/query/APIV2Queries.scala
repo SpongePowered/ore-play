@@ -353,7 +353,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] = {
     val select = actionFrag(table, user, canSeeHidden, currentUserId)
-    (sql"SELECT COUNT(*) FROM " ++ select ++ fr"sq").query[Long]
+    (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(select) ++ fr"sq").query[Long]
   }
 
   def starredQuery(

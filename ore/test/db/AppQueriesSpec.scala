@@ -1,3 +1,5 @@
+package db
+
 import java.time.LocalDate
 
 import scala.concurrent.duration._
@@ -8,7 +10,7 @@ import db.impl.query.AppQueries
 import ore.OreConfig
 
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
+import org.scalatestplus.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class AppQueriesSpec extends DbSpec {

@@ -1,5 +1,6 @@
 import scala.language.higherKinds
 
+import java.sql.Connection
 import javax.inject.Provider
 
 import play.api.cache.caffeine.CaffeineCacheComponents
@@ -7,10 +8,17 @@ import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
 import play.api.db.evolutions.EvolutionsComponents
 import play.api.db.slick.evolutions.SlickEvolutionsComponents
 import play.api.db.slick.{DatabaseConfigProvider, DbName, SlickComponents}
+import play.api.http.{HttpErrorHandler, JsonHttpErrorHandler}
 import play.api.i18n.MessagesApi
 import play.api.mvc.EssentialFilter
 import play.api.routing.Router
-import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator, Application => PlayApplication}
+import play.api.{
+  ApplicationLoader,
+  BuiltInComponentsFromContext,
+  LoggerConfigurator,
+  OptionalSourceMapper,
+  Application => PlayApplication
+}
 import play.filters.HttpFiltersComponents
 import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPResultProcessor}
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
@@ -22,6 +30,7 @@ import controllers.sugar.Bakery
 import db.impl.DbUpdateTask
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.service.OreModelService
+import db.impl.service.OreModelService.F
 import discourse.{OreDiscourseApi, OreDiscourseApiDisabled, OreDiscourseApiEnabled}
 import form.OreForms
 import mail.{EmailFactory, Mailer, SpongeMailer}
@@ -38,13 +47,18 @@ import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
 import ore.{OreConfig, OreEnv, StatTracker}
 import util.{FileIO, StatusZ, ZIOFileIO}
 
+import ErrorHandler.OreHttpErrorHandler
 import akka.actor.ActorSystem
 import cats.arrow.FunctionK
+import cats.effect.{ContextShift, Resource}
 import cats.tagless.syntax.all._
 import cats.~>
 import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
+import doobie.{ExecutionContexts, KleisliInterpreter, Transactor}
+import doobie.util.transactor.Strategy
 import slick.basic.{BasicProfile, DatabaseConfig}
+import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
@@ -104,6 +118,13 @@ class OreComponents(context: ApplicationLoader.Context)
     else baseFilters
   }
 
+  lazy val routerProvider: Provider[Router] = () => router
+
+  lazy val optionalSourceMapper: OptionalSourceMapper = new OptionalSourceMapper(devContext.map(_.sourceMapper))
+
+  override lazy val httpErrorHandler: HttpErrorHandler =
+    new ErrorHandler(wire[OreHttpErrorHandler], wire[JsonHttpErrorHandler])
+
   lazy val syncCacheApi: SyncCacheApi = new DefaultSyncCacheApi(defaultCacheApi)
   lazy val dbConfigProvider: DatabaseConfigProvider = new DatabaseConfigProvider {
     override def get[P <: BasicProfile]: DatabaseConfig[P] = slickApi.dbConfig(DbName("default"))
@@ -131,6 +152,26 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]] =
     wire[ProjectFiles.LocalProjectFiles[ZIO[Blocking, Nothing, ?]]]
 
+  implicit val transactor: Transactor[Task] = {
+    val cs = ContextShift[Task]
+
+    applicationResource {
+      for {
+        connectEC  <- ExecutionContexts.fixedThreadPool[F](32)
+        transactEC <- ExecutionContexts.cachedThreadPool[F]
+      } yield Transactor[F, JdbcDataSource](
+        dbConfigProvider.get[JdbcProfile].db.source,
+        source => {
+          val acquire                = cs.evalOn(connectEC)(F.delay(source.createConnection()))
+          def release(c: Connection) = cs.evalOn(transactEC)(F.delay(c.close()))
+          Resource.make(acquire)(release)
+        },
+        KleisliInterpreter[F](transactEC).ConnectionInterpreter,
+        Strategy.default
+      )
+    }
+  }
+
   lazy val oreRestfulAPIV1: OreRestfulApiV1                          = wire[OreRestfulServerV1]
   implicit lazy val projectFactory: ProjectFactory                   = wire[OreProjectFactory]
   implicit lazy val modelService: ModelService[UIO]                  = wire[OreModelService].mapK(taskToUIO)
@@ -143,7 +184,7 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val uioOreControllerEffects: OreControllerEffects[UIO]        = wire[DefaultOreControllerEffects[UIO]]
 
   lazy val statTracker: StatTracker[UIO] = (wire[StatTracker.StatTrackerInstant[Task, ParTask]]: StatTracker[Task])
-    .imapK(taskToUIO)(uioToTask) //wire[UIOStatTracker]
+    .imapK(taskToUIO)(uioToTask)
   lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
     val api = config.security.api
     runtime.unsafeRun(
@@ -263,6 +304,16 @@ class OreComponents(context: ApplicationLoader.Context)
   def use[A](value: A): Unit = {
     identity(value)
     ()
+  }
+
+  def applicationResource[A](resource: Resource[Task, A]): A = {
+    val (a, finalize) = runtime.unsafeRunSync(resource.allocated).toEither.toTry.get
+
+    applicationLifecycle.addStopHook { () =>
+      runtime.unsafeRunToFuture(finalize)
+    }
+
+    a
   }
 }
 object OreComponents {

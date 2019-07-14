@@ -1,22 +1,17 @@
 package db.impl.service
 
-import java.sql.Connection
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.ExecutionContext
-
 import play.api.db.slick.DatabaseConfigProvider
-import play.api.inject.ApplicationLifecycle
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
 import util.TaskUtils
 
-import cats.effect.{Clock, ContextShift, Resource, Sync}
+import cats.effect.{Clock, Sync}
 import doobie._
 import doobie.implicits._
-import doobie.util.transactor.Strategy
-import slick.jdbc.{JdbcDataSource, JdbcProfile}
+import slick.jdbc.JdbcProfile
 import zio.interop.catz._
 import zio.{Task, ZIO}
 
@@ -29,40 +24,17 @@ import zio.{Task, ZIO}
 @Singleton
 class OreModelService @Inject()(
     db: DatabaseConfigProvider,
-    lifecycle: ApplicationLifecycle
-)(implicit runtime: zio.Runtime[Any])
-    extends ModelService[OreModelService.F] {
+    transactor: Transactor[OreModelService.F]
+) extends ModelService[OreModelService.F] {
   import OreModelService.F
 
-  // Implement ModelService
   lazy val DB = db.get[JdbcProfile]
 
   implicit val clock: Clock[F] = Clock.create[F]
 
-  implicit val xa: Transactor.Aux[F, JdbcDataSource] = {
-    val cs = ContextShift[Task]
-
-    TaskUtils.applicationResource(
-      runtime,
-      for {
-        connectEC  <- ExecutionContexts.fixedThreadPool[F](32)
-        transactEC <- ExecutionContexts.cachedThreadPool[F]
-      } yield Transactor[F, JdbcDataSource](
-        DB.db.source,
-        source => {
-          val acquire                = cs.evalOn(connectEC)(F.delay(source.createConnection()))
-          def release(c: Connection) = cs.evalOn(transactEC)(F.delay(c.close()))
-          Resource.make(acquire)(release)
-        },
-        KleisliInterpreter[F](transactEC).ConnectionInterpreter,
-        Strategy.default
-      )
-    )(lifecycle)
-  }
-
   override def runDBIO[R](action: DBIO[R]): F[R] = ZIO.fromFuture(_ => DB.db.run(action))
 
-  override def runDbCon[R](program: ConnectionIO[R]): F[R] = program.transact(xa)
+  override def runDbCon[R](program: ConnectionIO[R]): F[R] = program.transact(transactor)
 
   override def insertRaw[M](companion: ModelCompanion[M])(model: M): F[Model[M]] =
     companion.insert[F](model).flatMap(runDBIO)
