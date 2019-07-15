@@ -33,6 +33,7 @@ env:
 
 # Caching taken from https://www.scala-sbt.org/1.0/docs/Travis-CI-with-sbt.html#Caching
 cache:
+  - yarn
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt
