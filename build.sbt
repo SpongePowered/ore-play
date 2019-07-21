@@ -43,9 +43,9 @@ lazy val commonSettings = Seq(
     "-Ywarn-value-discard",
     "-Yrangepos"
   ),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.1"),
+  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)),
-  addCompilerPlugin(scalafixSemanticdb("4.1.9")),
+  addCompilerPlugin(scalafixSemanticdb("4.2.0")),
   // Disable generation of the API documentation for production builds
   sources in (Compile, doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false
@@ -70,29 +70,29 @@ lazy val playCommonSettings = Seq(
 lazy val playTestDeps = Seq(
   jdbc % Test,
   //specs2 % Test,
-  "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.2"       % Test,
+  "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.3"       % Test,
   "org.tpolecat"           %% "doobie-scalatest"   % doobieVersion % Test
 )
 
-lazy val catsVersion         = "1.6.0"
-lazy val catsTaglessVersion  = "0.7"
+lazy val catsVersion         = "1.6.1"
+lazy val catsTaglessVersion  = "0.9"
 lazy val zioVersion          = "1.0.0-RC8-6"
 lazy val doobieVersion       = "0.6.0"
-lazy val flexmarkVersion     = "0.42.8"
-lazy val playSlickVersion    = "4.0.1"
+lazy val flexmarkVersion     = "0.42.12"
+lazy val playSlickVersion    = "4.0.2"
 lazy val slickPgVersion      = "0.17.2"
 lazy val circeVersion        = "0.11.1"
-lazy val akkaVersion         = "2.5.22"
-lazy val akkaHttpVersion     = "10.1.8"
+lazy val akkaVersion         = "2.5.23"
+lazy val akkaHttpVersion     = "10.1.9"
 lazy val scalaLoggingVersion = "3.9.2"
-lazy val simulacrumVersion   = "0.16.0"
-lazy val macWireVersion      = "2.3.2"
+lazy val simulacrumVersion   = "0.19.0"
+lazy val macWireVersion      = "2.3.3"
 
 lazy val db = project.settings(
   commonSettings,
   name := "ore-db",
   libraryDependencies ++= Seq(
-    "com.typesafe.slick" %% "slick"               % "3.3.0",
+    "com.typesafe.slick" %% "slick"               % "3.3.2",
     "org.tpolecat"       %% "doobie-core"         % doobieVersion,
     "org.typelevel"      %% "cats-tagless-macros" % catsTaglessVersion,
     "com.chuusai"        %% "shapeless"           % "2.3.3"
@@ -104,7 +104,7 @@ lazy val externalCommon = project.settings(
   name := "ore-external",
   libraryDependencies ++= Seq(
     "org.typelevel"              %% "cats-core"            % catsVersion,
-    "org.typelevel"              %% "cats-effect"          % "1.2.0",
+    "org.typelevel"              %% "cats-effect"          % "1.3.1",
     "org.typelevel"              %% "cats-tagless-macros"  % catsTaglessVersion,
     "io.circe"                   %% "circe-core"           % circeVersion,
     "io.circe"                   %% "circe-generic-extras" % circeVersion,
@@ -112,7 +112,7 @@ lazy val externalCommon = project.settings(
     "com.typesafe.akka"          %% "akka-http"            % akkaHttpVersion,
     "com.typesafe.akka"          %% "akka-http-core"       % akkaHttpVersion,
     "com.typesafe.akka"          %% "akka-stream"          % akkaVersion,
-    "de.heikoseeberger"          %% "akka-http-circe"      % "1.25.2",
+    "de.heikoseeberger"          %% "akka-http-circe"      % "1.27.0",
     "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
     "com.github.mpilquist"       %% "simulacrum"           % simulacrumVersion
   )
@@ -138,14 +138,14 @@ lazy val models = project
     commonSettings,
     name := "ore-models",
     libraryDependencies ++= Seq(
-      "org.postgresql"             % "postgresql"             % "42.2.5",
+      "org.postgresql"             % "postgresql"             % "42.2.6",
       "com.github.tminglei"        %% "slick-pg"              % slickPgVersion,
       "com.github.tminglei"        %% "slick-pg_circe-json"   % slickPgVersion,
       "org.tpolecat"               %% "doobie-postgres"       % doobieVersion,
       "org.tpolecat"               %% "doobie-postgres-circe" % doobieVersion,
       "com.typesafe.scala-logging" %% "scala-logging"         % scalaLoggingVersion,
       "com.beachape"               %% "enumeratum"            % "1.5.13",
-      "com.beachape"               %% "enumeratum-slick"      % "1.5.15",
+      "com.beachape"               %% "enumeratum-slick"      % "1.5.16",
       "org.typelevel"              %% "cats-core"             % catsVersion,
       "com.github.mpilquist"       %% "simulacrum"            % simulacrumVersion,
       "io.circe"                   %% "circe-core"            % circeVersion,
@@ -206,30 +206,30 @@ lazy val oreClient = project
     commonSettings,
     useYarn := true,
     scalaJSUseMainModuleInitializer := false,
-    scalaJSModuleKind := ModuleKind.CommonJSModule,
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
     webpackConfigFile in fastOptJS := Some(baseDirectory.value / "webpack.config.dev.js"),
     webpackConfigFile in fullOptJS := Some(baseDirectory.value / "webpack.config.prod.js"),
     webpackMonitoredDirectories += baseDirectory.value / "assets",
     includeFilter in webpackMonitoredFiles := "*.vue" || "*.js",
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
-    version in startWebpackDevServer := "3.1.11",
-    version in webpack := "4.16.1",
+    version in startWebpackDevServer := "3.7.2",
+    version in webpack := "4.36.1",
     npmDependencies in Compile ++= Seq(
       "vue"          -> "2.6.10",
-      "lodash"       -> "4.17.14",
-      "query-string" -> "6.8.0"
+      "lodash"       -> "4.17.15",
+      "query-string" -> "6.8.1"
     ),
     npmDevDependencies in Compile ++= Seq(
-      "webpack-merge"                      -> "4.1.0",
-      "vue-loader"                         -> "15.7.0",
+      "webpack-merge"                      -> "4.2.1",
+      "vue-loader"                         -> "15.7.1",
       "vue-template-compiler"              -> "2.6.10",
-      "css-loader"                         -> "2.1.1",
+      "css-loader"                         -> "3.1.0",
       "vue-style-loader"                   -> "4.1.2",
       "babel-loader"                       -> "8.0.6",
-      "@babel/core"                        -> "7.5.4",
+      "@babel/core"                        -> "7.5.5",
       "terser-webpack-plugin"              -> "1.3.0",
-      "mini-css-extract-plugin"            -> "0.7.0",
-      "optimize-css-assets-webpack-plugin" -> "5.0.1",
+      "mini-css-extract-plugin"            -> "0.8.0",
+      "optimize-css-assets-webpack-plugin" -> "5.0.3",
       "sass-loader"                        -> "7.1.0",
       "postcss-loader"                     -> "3.0.0",
       "autoprefixer"                       -> "9.6.1",
@@ -247,7 +247,7 @@ lazy val ore = project
     libraryDependencies ++= Seq(
       "com.typesafe.play"          %% "play-slick-evolutions" % playSlickVersion,
       "com.typesafe.scala-logging" %% "scala-logging"         % scalaLoggingVersion,
-      "io.sentry"                  % "sentry-logback"         % "1.7.22",
+      "io.sentry"                  % "sentry-logback"         % "1.7.24",
       "javax.mail"                 % "mail"                   % "1.4.7",
       "org.typelevel"              %% "cats-core"             % catsVersion,
       "io.circe"                   %% "circe-core"            % circeVersion,
@@ -268,12 +268,12 @@ lazy val ore = project
     ).map(flexmarkDep),
     libraryDependencies ++= Seq(
       "org.webjars.npm" % "jquery"       % "2.2.4",
-      "org.webjars"     % "font-awesome" % "5.8.1",
+      "org.webjars"     % "font-awesome" % "5.9.0",
       "org.webjars.npm" % "filesize"     % "3.6.1",
       "org.webjars.npm" % "moment"       % "2.24.0",
       "org.webjars.npm" % "clipboard"    % "2.0.4",
-      "org.webjars.npm" % "chart.js"     % "2.7.3",
-      "org.webjars"     % "swagger-ui"   % "3.22.0"
+      "org.webjars.npm" % "chart.js"     % "2.8.0",
+      "org.webjars"     % "swagger-ui"   % "3.23.0"
     ),
     libraryDependencies ++= playTestDeps,
     swaggerRoutesFile := "apiv2.routes",
