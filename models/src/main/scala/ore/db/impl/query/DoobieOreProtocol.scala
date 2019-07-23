@@ -34,8 +34,6 @@ trait DoobieOreProtocol {
 
   //implicit val logger = createLogger("Database")
 
-  def fragParens(frag: Fragment): Fragment = fr"(" ++ frag ++ fr")"
-
   def createLogger(name: String): LogHandler = {
     val logger = scalalogging.Logger(name)
 

@@ -143,13 +143,11 @@ object APIV2Queries extends WebDoobieOreProtocol {
       NonEmptyList
         .fromList(tags)
         .map { t =>
-          fragParens(
-            Fragments.or(
-              Fragments.in(fr"p.tag_name || ':' || p.tag_data", t),
-              Fragments.in(fr"p.tag_name", t),
-              Fragments.in(fr"'Channel:' || pc.name", t),
-              Fragments.in(fr"'Channel'", t)
-            )
+          Fragments.or(
+            Fragments.in(fr"p.tag_name || ':' || p.tag_data", t),
+            Fragments.in(fr"p.tag_name", t),
+            Fragments.in(fr"'Channel:' || pc.name", t),
+            Fragments.in(fr"'Channel'", t)
           )
         },
       query.map(q => fr"p.search_words @@ websearch_to_tsquery($q)"),
@@ -205,7 +203,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] = {
     val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
+    (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(select) ++ fr"sq").query[Long]
   }
 
   def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2.ProjectMember] =
@@ -251,13 +249,11 @@ object APIV2Queries extends WebDoobieOreProtocol {
       NonEmptyList
         .fromList(tags)
         .map { t =>
-          fragParens(
-            Fragments.or(
-              Fragments.in(fr"pvt.name || ':' || pvt.data", t),
-              Fragments.in(fr"pvt.name", t),
-              Fragments.in(fr"'Channel:' || pc.name", t),
-              Fragments.in(fr"'Channel'", t)
-            )
+          Fragments.or(
+            Fragments.in(fr"pvt.name || ':' || pvt.data", t),
+            Fragments.in(fr"pvt.name", t),
+            Fragments.in(fr"'Channel:' || pc.name", t),
+            Fragments.in(fr"'Channel'", t)
           )
         }
     )
@@ -277,7 +273,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       .map(_.asProtocol)
 
   def versionCountQuery(pluginId: String, tags: List[String]): Query0[Long] =
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Long]
+    (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Long]
 
   def userQuery(name: String): Query0[APIV2.User] =
     sql"""|SELECT u.created_at, u.name, u.tagline, u.join_date, array_agg(r.name)
@@ -357,7 +353,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] = {
     val select = actionFrag(table, user, canSeeHidden, currentUserId)
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
+    (sql"SELECT COUNT(*) FROM " ++ select ++ fr"sq").query[Long]
   }
 
   def starredQuery(
