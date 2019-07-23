@@ -42,14 +42,15 @@ class OreModelService @Inject()(
   implicit val xa: Transactor.Aux[F, JdbcDataSource] = {
     val cs = ContextShift[Task]
 
-    TaskUtils.applicationResource(runtime,
+    TaskUtils.applicationResource(
+      runtime,
       for {
-        connectEC <- ExecutionContexts.fixedThreadPool[F](32)
+        connectEC  <- ExecutionContexts.fixedThreadPool[F](32)
         transactEC <- ExecutionContexts.cachedThreadPool[F]
       } yield Transactor[F, JdbcDataSource](
         DB.db.source,
         source => {
-          val acquire = cs.evalOn(connectEC)(F.delay(source.createConnection()))
+          val acquire                = cs.evalOn(connectEC)(F.delay(source.createConnection()))
           def release(c: Connection) = cs.evalOn(transactEC)(F.delay(c.close()))
           Resource.make(acquire)(release)
         },

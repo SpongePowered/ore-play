@@ -27,7 +27,9 @@ object TaskUtils {
     case Left(e)  => logger.error(msg, e)
   }
 
-  def applicationResource[A](runtime: zio.Runtime[Any], resource: Resource[Task, A])(lifecycle: ApplicationLifecycle)(implicit bracket: Bracket[Task, Throwable]): A = {
+  def applicationResource[A](runtime: zio.Runtime[Any], resource: Resource[Task, A])(
+      lifecycle: ApplicationLifecycle
+  )(implicit bracket: Bracket[Task, Throwable]): A = {
     runtime.unsafeRunSync(resource.allocated).toEither match {
       case Right((a, finalize)) =>
         lifecycle.addStopHook { () =>
