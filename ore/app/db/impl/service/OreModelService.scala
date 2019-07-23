@@ -1,17 +1,18 @@
 package db.impl.service
 
-import java.util.concurrent.Executors
+import java.sql.Connection
 import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.inject.ApplicationLifecycle
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
+import util.TaskUtils
 
-import cats.effect.{Clock, ContextShift, Sync}
+import cats.effect.{Clock, ContextShift, Resource, Sync}
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Strategy
@@ -29,7 +30,7 @@ import zio.{Task, ZIO}
 class OreModelService @Inject()(
     db: DatabaseConfigProvider,
     lifecycle: ApplicationLifecycle
-)(implicit ec: ExecutionContext)
+)(implicit runtime: zio.Runtime[Any])
     extends ModelService[OreModelService.F] {
   import OreModelService.F
 
@@ -41,30 +42,21 @@ class OreModelService @Inject()(
   implicit val xa: Transactor.Aux[F, JdbcDataSource] = {
     val cs = ContextShift[Task]
 
-    val connectExec  = Executors.newFixedThreadPool(32)
-    val transactExec = Executors.newCachedThreadPool
-    val connectEC    = ExecutionContext.fromExecutor(connectExec)
-    val transactEC   = ExecutionContext.fromExecutor(transactExec)
-
-    //We stop them separately so one having problems stopping doesn't hinder the other one
-    lifecycle.addStopHook { () =>
-      Future {
-        connectExec.shutdown()
-      }
-    }
-
-    lifecycle.addStopHook { () =>
-      Future {
-        transactExec.shutdown()
-      }
-    }
-
-    Transactor[F, JdbcDataSource](
-      DB.db.source,
-      source => cs.evalOn(connectEC)(F.delay(source.createConnection())),
-      KleisliInterpreter[F](transactEC).ConnectionInterpreter,
-      Strategy.default
-    )
+    TaskUtils.applicationResource(runtime,
+      for {
+        connectEC <- ExecutionContexts.fixedThreadPool[F](32)
+        transactEC <- ExecutionContexts.cachedThreadPool[F]
+      } yield Transactor[F, JdbcDataSource](
+        DB.db.source,
+        source => {
+          val acquire = cs.evalOn(connectEC)(F.delay(source.createConnection()))
+          def release(c: Connection) = cs.evalOn(transactEC)(F.delay(c.close()))
+          Resource.make(acquire)(release)
+        },
+        KleisliInterpreter[F](transactEC).ConnectionInterpreter,
+        Strategy.default
+      )
+    )(lifecycle)
   }
 
   override def runDBIO[R](action: DBIO[R]): F[R] = ZIO.fromFuture(_ => DB.db.run(action))

@@ -1,7 +1,12 @@
 package util
 
-import cats.effect.IO
+import scala.concurrent.{ExecutionContext, Future}
+
+import play.api.inject.ApplicationLifecycle
+
+import cats.effect.{Bracket, IO, Resource}
 import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
+import zio.Task
 
 object TaskUtils {
 
@@ -20,5 +25,17 @@ object TaskUtils {
   def logCallbackUnitNoMDC[A](msg: => String, logger: Logger): Either[Throwable, _] => Unit = {
     case Right(_) =>
     case Left(e)  => logger.error(msg, e)
+  }
+
+  def applicationResource[A](runtime: zio.Runtime[Any], resource: Resource[Task, A])(lifecycle: ApplicationLifecycle)(implicit bracket: Bracket[Task, Throwable]): A = {
+    runtime.unsafeRunSync(resource.allocated).toEither match {
+      case Right((a, finalize)) =>
+        lifecycle.addStopHook { () =>
+          runtime.unsafeRunToFuture(finalize)
+        }
+
+        a
+      case Left(error) => throw error
+    }
   }
 }
