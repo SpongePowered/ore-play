@@ -215,13 +215,13 @@ lazy val oreClient = project
     version in startWebpackDevServer := "3.7.2",
     version in webpack := "4.36.1",
     npmDependencies in Compile ++= Seq(
-      "vue"          -> "2.6.10",
-      "lodash"       -> "4.17.15",
-      "query-string" -> "6.8.1",
-      "@fortawesome/fontawesome-svg-core" -> "1.2.19",
-      "@fortawesome/free-solid-svg-icons" -> "5.9.0",
+      "vue"                                 -> "2.6.10",
+      "lodash"                              -> "4.17.15",
+      "query-string"                        -> "6.8.1",
+      "@fortawesome/fontawesome-svg-core"   -> "1.2.19",
+      "@fortawesome/free-solid-svg-icons"   -> "5.9.0",
       "@fortawesome/free-regular-svg-icons" -> "5.9.0",
-      "@fortawesome/free-brands-svg-icons" -> "5.9.0"
+      "@fortawesome/free-brands-svg-icons"  -> "5.9.0"
     ),
     npmDevDependencies in Compile ++= Seq(
       "webpack-merge"                      -> "4.2.1",
