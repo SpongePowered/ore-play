@@ -20,6 +20,8 @@ This is required in order for Ore to run. Learn more about PostgreSQL [here](htt
 You will also need to enable a few extensions for Ore. These are:
 * [pgcrypto](https://www.postgresql.org/docs/11/pgcrypto.html)
 
+In addition, you need to install Yarn. You can find installation instructions [here](https://yarnpkg.com/lang/en/docs/install).
+
 After setting up a database, create a copy of `conf/application.conf.template` named `conf/application.conf` and 
 configure the application. This file is in the `.gitignore` so it will not appear in your commits. In a typical 
 development environment, most of the defaults will do except you must set `application.fakeUser` to `true` to disable
