@@ -34,7 +34,8 @@ module.exports = {
             },
             {
                 test: /\.js$/,
-                loader: 'babel-loader'
+                loader: 'babel-loader',
+                exclude: /node_modules/,
             },
             {
                 test: /\.css$/,
@@ -47,7 +48,7 @@ module.exports = {
         ]
     },
     resolve: {
-        extensions: ['*', '.js', '.vue'],
+        extensions: ['.js', '.vue'],
         alias: {
             'vue$': 'vue/dist/vue.esm.js'
         },
