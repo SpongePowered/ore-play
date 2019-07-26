@@ -237,7 +237,8 @@ lazy val oreClient = project
       "sass-loader"                        -> "7.1.0",
       "postcss-loader"                     -> "3.0.0",
       "autoprefixer"                       -> "9.6.1",
-      "node-sass"                          -> "4.12.0"
+      "node-sass"                          -> "4.12.0",
+      "copy-webpack-plugin"                -> "5.0.3"
     )
   )
 

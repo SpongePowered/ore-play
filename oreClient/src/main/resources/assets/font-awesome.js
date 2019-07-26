@@ -1,5 +1,4 @@
 import { library, dom, config } from '@fortawesome/fontawesome-svg-core'
-import '@fortawesome/fontawesome-svg-core/styles.css'
 import {
     faStar as fasStar, faEye, faDownload, faServer, faComment, faWrench, faMoneyBillAlt, faPuzzlePiece, faGamepad, faLock,
     faMagic, faGlobe, faAsterisk, faChevronUp, faChevronDown, faHome, faComments, faCode, faBook, faGraduationCap, faPlus,
