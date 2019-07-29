@@ -27,5 +27,5 @@
 }
 
 <a href="@url" @for((k, v) <- attr) { @(s"$k=$v") }>
-    <img class="user-avatar @clazz" title="@name" src="@src" />
+    <img class="user-avatar @clazz" title="@name" src="@src" alt="@name" />
 </a>

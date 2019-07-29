@@ -391,7 +391,7 @@ review.whystop = Please explain why you are stopping the review
 review.whytakeover = Please explain why you are takingover
 review.addmessage = Add message
 queue.review.none = There are no reviews in progress
-activity.title = Activity: 
+activity.title = Activity:
 admin.log.title = User Action Log
 
 notes = Notes

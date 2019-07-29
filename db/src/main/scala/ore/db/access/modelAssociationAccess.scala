@@ -51,6 +51,7 @@ class ParentAssociationAccess[Assoc <: OreProfile#AssociativeTable[P, C], P, C, 
 
   def contains(child: DbRef[C]): F[Boolean] = base.contains(parent, child)
 
+  //noinspection MutatorLikeMethodIsParameterless
   def deleteAllFromParent: F[Unit] = base.deleteAllFromParent(parent)
 
   def allQueryFromParent: Query[CT, Model[C], Seq] = base.allQueryFromParent(parent)
@@ -72,6 +73,7 @@ class ChildAssociationAccess[Assoc <: OreProfile#AssociativeTable[P, C], P, C, P
 
   def contains(parent: DbRef[P]): F[Boolean] = base.contains(parent, child)
 
+  //noinspection MutatorLikeMethodIsParameterless
   def deleteAllFromChild: F[Unit] = base.deleteAllFromChild(child)
 
   def allQueryFromChild: Query[PT, Model[P], Seq] = base.allQueryFromChild(child)

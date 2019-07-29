@@ -39,7 +39,7 @@ sorted according to different criteria.
             <div class="col-md-9 ore-banner">
                 <div class="row aligned-row">
                     <div class="col-xs-2 ore-logo">
-                        <img src="@routes.Assets.versioned("images/ore-colored.svg")" />
+                        <img src="@routes.Assets.versioned("images/ore-colored.svg")" alt="Ore logo" />
                     </div>
                     <div class="col-xs-10 text">
                         <div class="headline">Ore</div>
@@ -53,7 +53,7 @@ sorted according to different criteria.
                     <div class="panel-body">
                     @defining(randomSponsor) { sponsor =>
                         <a href="@sponsor.link">
-                            <img class="logo" src="@routes.Assets.versioned(sponsor.image)" />
+                            <img class="logo" src="@routes.Assets.versioned(sponsor.image)" alt="Sponsor" />
                         </a>
                     }
                     </div>

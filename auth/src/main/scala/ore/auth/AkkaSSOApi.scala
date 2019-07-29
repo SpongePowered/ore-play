@@ -65,11 +65,6 @@ class AkkaSSOApi[F[_]](
             .as(result)
         }
     }
-
-    futureToF(Http().singleRequest(HttpRequest(HttpMethods.HEAD, loginUrl)))
-      .flatTap(r => F.delay(r.discardEntityBytes()))
-      .map(_.status.isSuccess())
-      .timeoutTo(timeout, false.pure)
   }
 
   private def nonce(): String = BigInt(130, rand).toString(32)

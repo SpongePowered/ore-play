@@ -48,7 +48,7 @@ final class Application @Inject()(forms: OreForms)(
 
   private def FlagAction = Authenticated.andThen(PermissionAction[AuthRequest](Permission.ModNotesAndFlags))
 
-  def javascriptRoutes = Action { implicit request =>
+  def javascriptRoutes: Action[AnyContent] = Action { implicit request =>
     Ok(
       JavaScriptReverseRouter("jsRoutes")(
         controllers.project.routes.javascript.Projects.show,
@@ -274,7 +274,7 @@ final class Application @Inject()(forms: OreForms)(
       orga <- u.toMaybeOrganization(ModelView.now(Organization)).value
       projectRoles <- orga.fold(
         service.runDBIO(u.projectRoles(ModelView.raw(ProjectUserRole)).result)
-      )(orga => IO.succeed(Nil))
+      )(_ => IO.succeed(Nil))
       t2 <- (
         UserData.of(request, u),
         ZIO.foreachPar(projectRoles)(_.project[Task].orDie),

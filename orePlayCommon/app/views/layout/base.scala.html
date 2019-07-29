@@ -11,7 +11,7 @@ this.
         showFooter: Boolean = true, noContainer: Boolean = false, additionalMeta: Html = Html(""), additionalStyling: Html = Html(""))(content: Html)(implicit request: OreRequest[_], messages: Messages, config: OreConfig, flash: Flash)
 
 <!DOCTYPE html>
-<html>
+<html lang="@messages.lang.country">
     <head>
         <title>@title</title>
 
