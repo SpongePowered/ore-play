@@ -212,6 +212,7 @@ lazy val oreClient = project
     webpackMonitoredDirectories += baseDirectory.value / "assets",
     includeFilter in webpackMonitoredFiles := "*.vue" || "*.js",
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
+    webpackBundlingMode in fullOptJS := BundlingMode.LibraryOnly(),
     version in startWebpackDevServer := "3.7.2",
     version in webpack := "4.36.1",
     npmDependencies in Compile ++= Seq(
