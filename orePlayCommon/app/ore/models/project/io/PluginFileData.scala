@@ -82,7 +82,7 @@ class PluginFileData(data: Seq[DataValue]) {
     val buffer = new ArrayBuffer[VersionTag]
 
     if (containsMixins) {
-      val mixinTag = VersionTag(versionId, "Mixin", "", TagColor.Mixin)
+      val mixinTag = VersionTag(versionId, "Mixin", None, TagColor.Mixin)
       buffer += mixinTag
     }
 
@@ -174,7 +174,7 @@ object McModInfoHandler extends FileTypeHandler("mcmod.info") {
           dataValues += StringListValue("authors", metadata.getAuthors.asScala)
 
         if (metadata.getDependencies != null) {
-          val dependencies = metadata.getDependencies.asScala.map(p => Dependency(p.getId, p.getVersion)).toSeq
+          val dependencies = metadata.getDependencies.asScala.map(p => Dependency(p.getId, Option(p.getVersion))).toSeq
           dataValues += DependencyDataValue("dependencies", dependencies)
         }
 

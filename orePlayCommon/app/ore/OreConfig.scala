@@ -199,11 +199,8 @@ final class OreConfig @Inject()(config: Configuration) {
   }
 
   object performance extends ConfigCategory {
-    val raw: Configuration = root.get[Configuration]("performance")
-    private val rawVcpus   = raw.get[Int]("vcpus")
-    def vcpus: Int         = if (rawVcpus == -1) Runtime.getRuntime.availableProcessors() else rawVcpus
-
-    val nioBlockingFibers: Long = vcpus.toLong - 2
+    val raw: Configuration      = root.get[Configuration]("performance")
+    val nioBlockingFibers: Long = raw.get[Long]("nio-blocking-fibers")
   }
 
   app.load()

@@ -160,7 +160,7 @@ ore {
 }
 
 performance {
-    vcpus = -1
+    nio-blocking-fibers = 32
 }
 
 mail {

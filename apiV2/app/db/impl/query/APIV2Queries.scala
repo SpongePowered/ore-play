@@ -32,9 +32,9 @@ object APIV2Queries extends WebDoobieOreProtocol {
     viewTagListWrite.contramap(_.map(t => ViewTag(t.name, t.data, t.color)))
 
   implicit val apiV2TagOptRead: Read[Option[List[APIV2QueryVersionTag]]] =
-    Read[(Option[List[String]], Option[List[String]], Option[List[TagColor]])].map {
+    Read[(Option[List[String]], Option[List[Option[String]]], Option[List[TagColor]])].map {
       case (Some(name), Some(data), Some(color)) =>
-        Some(name.zip(data).zip(color).map(t => APIV2QueryVersionTag(t._1._1, t._1._2, t._2)))
+        Some(name.zip(data).zip(color).map { case ((n, d), c) => APIV2QueryVersionTag(n, d, c) })
       case _ => None
     }
 
@@ -105,16 +105,16 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.owner_name,
             |       p.slug,
             |       p.version_string,
-            |       array_remove(array_append(array_agg(p.tag_name), CASE WHEN pc IS NULL THEN NULL ELSE 'Channel'::VARCHAR(255) END),
-            |                    NULL)                                                 AS tag_names,
-            |       array_remove(array_append(array_agg(p.tag_data), pc.name), NULL)   AS tag_datas,
-            |       array_remove(array_append(array_agg(p.tag_color), pc.color + 9), NULL) AS tag_colors,
+            |       array_append(array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL ),
+            |                    CASE WHEN pc IS NULL THEN NULL ELSE 'Channel'::VARCHAR(255) END)              AS tag_names,
+            |       array_append(array_agg(p.tag_data) FILTER ( WHERE p.tag_name IS NOT NULL ), pc.name)       AS tag_datas,
+            |       array_append(array_agg(p.tag_color) FILTER ( WHERE p.tag_name IS NOT NULL ), pc.color + 9) AS tag_colors,
             |       p.views,
             |       p.downloads,
             |       p.stars,
             |       p.category,
             |       p.description,
-            |       coalesce(p.last_updated, p.created_at)                             AS last_updated,
+            |       COALESCE(p.last_updated, p.created_at)                                                     AS last_updated,
             |       p.visibility,""".stripMargin ++ userActionsTaken ++
         fr"""|       ps.homepage,
              |       ps.issues,

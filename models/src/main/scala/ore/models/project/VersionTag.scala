@@ -15,7 +15,7 @@ import slick.lifted.TableQuery
 case class VersionTag(
     versionId: DbRef[Version],
     name: String,
-    data: String,
+    data: Option[String],
     color: TagColor
 ) extends Named
 object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](TableQuery[VersionTagTable]) {

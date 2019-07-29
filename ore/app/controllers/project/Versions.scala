@@ -359,7 +359,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           VersionTag(
             versionId = version.id,
             name = "Unstable",
-            data = "",
+            data = None,
             color = TagColor.Unstable
           )
         )

@@ -3,6 +3,7 @@ package util
 import scala.language.higherKinds
 
 import java.nio.file.{Files, Path}
+import javax.inject.Inject
 
 import scala.collection.JavaConverters._
 

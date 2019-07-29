@@ -25,7 +25,7 @@ sealed abstract class Platform(
     val url: String
 ) extends IntEnumEntry {
 
-  def createGhostTag(versionId: DbRef[Version], version: String): VersionTag =
+  def createGhostTag(versionId: DbRef[Version], version: Option[String]): VersionTag =
     VersionTag(versionId, name, version, tagColor)
 }
 object Platform extends IntEnum[Platform] {

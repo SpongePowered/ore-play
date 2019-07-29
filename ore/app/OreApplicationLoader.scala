@@ -140,12 +140,12 @@ class OreComponents(context: ApplicationLoader.Context)
   val taskToUIO: Task ~> UIO = OreComponents.orDieFnK[Any]
   val uioToTask: UIO ~> Task = OreComponents.upcastFnK[UIO, Task]
 
-  implicit lazy val config: OreConfig                  = wire[OreConfig]
-  implicit lazy val env: OreEnv                        = wire[OreEnv]
-  implicit lazy val markdownRenderer: MarkdownRenderer = wire[FlexmarkRenderer]
-  //implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, ?]] = wire[ZIOFileIO]
+  implicit lazy val config: OreConfig                              = wire[OreConfig]
+  implicit lazy val env: OreEnv                                    = wire[OreEnv]
+  implicit lazy val markdownRenderer: MarkdownRenderer             = wire[FlexmarkRenderer]
+  implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, ?]] = ZIOFileIO(config)
 
-  implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, ?]] = wire[ZIOFileIO].imapK(OreComponents.orDieFnK[Blocking])(
+  implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, ?]] = fileIORaw.imapK(OreComponents.orDieFnK[Blocking])(
     OreComponents.upcastFnK[ZIO[Blocking, Nothing, ?], ZIO[Blocking, Throwable, ?]]
   )
 
@@ -270,16 +270,12 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val statusZ: StatusZ   = wire[StatusZ]
   lazy val fakeUser: FakeUser = wire[FakeUser]
 
-  lazy val applicationController: Application = wire[Application]
-  lazy val apiV1Controller: ApiV1Controller   = wire[ApiV1Controller]
-  lazy val apiV2Controller: ApiV2Controller   = wire[ApiV2Controller]
-  lazy val versions: Versions                 = wire[Versions]
-  lazy val users: Users                       = wire[Users]
-  lazy val projects: Projects = {
-    implicit val throwableFileIO: ZIOFileIO = wire[ZIOFileIO]
-    use(throwableFileIO)
-    wire[Projects]
-  }
+  lazy val applicationController: Application                   = wire[Application]
+  lazy val apiV1Controller: ApiV1Controller                     = wire[ApiV1Controller]
+  lazy val apiV2Controller: ApiV2Controller                     = wire[ApiV2Controller]
+  lazy val versions: Versions                                   = wire[Versions]
+  lazy val users: Users                                         = wire[Users]
+  lazy val projects: Projects                                   = wire[Projects]
   lazy val pages: Pages                                         = wire[Pages]
   lazy val organizations: Organizations                         = wire[Organizations]
   lazy val channels: Channels                                   = wire[Channels]
