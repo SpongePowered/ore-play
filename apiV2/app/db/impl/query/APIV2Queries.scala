@@ -105,16 +105,26 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.owner_name,
             |       p.slug,
             |       p.version_string,
-            |       array_append(array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL ),
-            |                    CASE WHEN pc IS NULL THEN NULL ELSE 'Channel'::VARCHAR(255) END)              AS tag_names,
-            |       array_append(array_agg(p.tag_data) FILTER ( WHERE p.tag_name IS NOT NULL ), pc.name)       AS tag_datas,
-            |       array_append(array_agg(p.tag_color) FILTER ( WHERE p.tag_name IS NOT NULL ), pc.color + 9) AS tag_colors,
+            |       array_cat(array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL ),
+            |                 CASE
+            |                     WHEN pc IS NULL THEN ARRAY []::VARCHAR(255)[]
+            |                     ELSE ARRAY ['Channel'::VARCHAR(255)] END)        AS tag_names,
+            |       array_cat(array_agg(p.tag_data) FILTER ( WHERE p.tag_name IS NOT NULL ),
+            |                 CASE
+            |                     WHEN pc IS NULL
+            |                         THEN ARRAY []::VARCHAR(255)[]
+            |                     ELSE ARRAY [pc.name] END)                        AS tag_datas,
+            |       array_cat(array_agg(p.tag_color) FILTER ( WHERE p.tag_name IS NOT NULL ),
+            |                 CASE
+            |                     WHEN pc IS NULL
+            |                         THEN ARRAY []::INTEGER[]
+            |                     ELSE ARRAY [pc.color + 9] END)                   AS tag_colors,
             |       p.views,
             |       p.downloads,
             |       p.stars,
             |       p.category,
             |       p.description,
-            |       COALESCE(p.last_updated, p.created_at)                                                     AS last_updated,
+            |       COALESCE(p.last_updated, p.created_at)                         AS last_updated,
             |       p.visibility,""".stripMargin ++ userActionsTaken ++
         fr"""|       ps.homepage,
              |       ps.issues,
