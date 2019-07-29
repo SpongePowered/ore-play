@@ -89,9 +89,6 @@ class OreComponents(context: ApplicationLoader.Context)
   use(prefix) //Gets around unused warning
   eager(applicationEvolutions)
 
-  //override lazy val httpFilters: Seq[EssentialFilter] = enabledFilters.filters
-  //lazy val enabledFilters: EnabledFilters             = wire[EnabledFilters] //TODO: This probably won't work
-
   override lazy val httpFilters: Seq[EssentialFilter] = {
     val filters              = super.httpFilters ++ enabledFilters
     val enabledFiltersConfig = configuration.get[Seq[String]]("play.filters.enabled")
@@ -111,11 +108,16 @@ class OreComponents(context: ApplicationLoader.Context)
       new CSPFilter(new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration))))
     )
 
-    if (context.devContext.isDefined)
-      baseFilters ++ Seq(
-        new GzipFilter(GzipFilterConfig.fromConfiguration(configuration))
-      )
-    else baseFilters
+    val gzipFilter = Seq(new GzipFilter(GzipFilterConfig.fromConfiguration(configuration)))
+
+    val filterSeq = Seq(
+      true                         -> baseFilters,
+      context.devContext.isDefined -> gzipFilter
+    )
+
+    filterSeq.collect {
+      case (true, seq) => seq
+    }.flatten
   }
 
   lazy val routerProvider: Provider[Router] = () => router
