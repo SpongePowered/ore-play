@@ -7,6 +7,7 @@ import java.util.Date
 import javax.inject.{Inject, Singleton}
 
 import scala.util.Try
+import scala.concurrent.duration._
 
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
 import play.api.routing.JavaScriptReverseRouter
@@ -55,7 +56,7 @@ final class Application @Inject()(forms: OreForms)(
         controllers.project.routes.javascript.Versions.show,
         controllers.routes.javascript.Users.showProjects
       )
-    ).as("text/javascript")
+    ).as("text/javascript").withHeaders(CACHE_CONTROL -> s"max-age=${1.hour.toSeconds}")
   }
 
   /**
