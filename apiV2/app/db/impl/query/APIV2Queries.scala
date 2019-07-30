@@ -32,9 +32,9 @@ object APIV2Queries extends WebDoobieOreProtocol {
     viewTagListWrite.contramap(_.map(t => ViewTag(t.name, t.data, t.color)))
 
   implicit val apiV2TagOptRead: Read[Option[List[APIV2QueryVersionTag]]] =
-    Read[(Option[List[String]], Option[List[String]], Option[List[TagColor]])].map {
+    Read[(Option[List[String]], Option[List[Option[String]]], Option[List[TagColor]])].map {
       case (Some(name), Some(data), Some(color)) =>
-        Some(name.zip(data).zip(color).map(t => APIV2QueryVersionTag(t._1._1, t._1._2, t._2)))
+        Some(name.zip(data).zip(color).map { case ((n, d), c) => APIV2QueryVersionTag(n, d, c) })
       case _ => None
     }
 
@@ -105,16 +105,26 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.owner_name,
             |       p.slug,
             |       p.version_string,
-            |       array_remove(array_append(array_agg(p.tag_name), CASE WHEN pc IS NULL THEN NULL ELSE 'Channel'::VARCHAR(255) END),
-            |                    NULL)                                                 AS tag_names,
-            |       array_remove(array_append(array_agg(p.tag_data), pc.name), NULL)   AS tag_datas,
-            |       array_remove(array_append(array_agg(p.tag_color), pc.color + 9), NULL) AS tag_colors,
+            |       array_cat(array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL ),
+            |                 CASE
+            |                     WHEN pc IS NULL THEN ARRAY []::VARCHAR(255)[]
+            |                     ELSE ARRAY ['Channel'::VARCHAR(255)] END)        AS tag_names,
+            |       array_cat(array_agg(p.tag_data) FILTER ( WHERE p.tag_name IS NOT NULL ),
+            |                 CASE
+            |                     WHEN pc IS NULL
+            |                         THEN ARRAY []::VARCHAR(255)[]
+            |                     ELSE ARRAY [pc.name] END)                        AS tag_datas,
+            |       array_cat(array_agg(p.tag_color) FILTER ( WHERE p.tag_name IS NOT NULL ),
+            |                 CASE
+            |                     WHEN pc IS NULL
+            |                         THEN ARRAY []::INTEGER[]
+            |                     ELSE ARRAY [pc.color + 9] END)                   AS tag_colors,
             |       p.views,
             |       p.downloads,
             |       p.stars,
             |       p.category,
             |       p.description,
-            |       coalesce(p.last_updated, p.created_at)                             AS last_updated,
+            |       COALESCE(p.last_updated, p.created_at)                         AS last_updated,
             |       p.visibility,""".stripMargin ++ userActionsTaken ++
         fr"""|       ps.homepage,
              |       ps.issues,
@@ -143,13 +153,11 @@ object APIV2Queries extends WebDoobieOreProtocol {
       NonEmptyList
         .fromList(tags)
         .map { t =>
-          fragParens(
-            Fragments.or(
-              Fragments.in(fr"p.tag_name || ':' || p.tag_data", t),
-              Fragments.in(fr"p.tag_name", t),
-              Fragments.in(fr"'Channel:' || pc.name", t),
-              Fragments.in(fr"'Channel'", t)
-            )
+          Fragments.or(
+            Fragments.in(fr"p.tag_name || ':' || p.tag_data", t),
+            Fragments.in(fr"p.tag_name", t),
+            Fragments.in(fr"'Channel:' || pc.name", t),
+            Fragments.in(fr"'Channel'", t)
           )
         },
       query.map(q => fr"p.search_words @@ websearch_to_tsquery($q)"),
@@ -205,7 +213,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] = {
     val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
+    (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(select) ++ fr"sq").query[Long]
   }
 
   def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2.ProjectMember] =
@@ -251,13 +259,11 @@ object APIV2Queries extends WebDoobieOreProtocol {
       NonEmptyList
         .fromList(tags)
         .map { t =>
-          fragParens(
-            Fragments.or(
-              Fragments.in(fr"pvt.name || ':' || pvt.data", t),
-              Fragments.in(fr"pvt.name", t),
-              Fragments.in(fr"'Channel:' || pc.name", t),
-              Fragments.in(fr"'Channel'", t)
-            )
+          Fragments.or(
+            Fragments.in(fr"pvt.name || ':' || pvt.data", t),
+            Fragments.in(fr"pvt.name", t),
+            Fragments.in(fr"'Channel:' || pc.name", t),
+            Fragments.in(fr"'Channel'", t)
           )
         }
     )
@@ -277,7 +283,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       .map(_.asProtocol)
 
   def versionCountQuery(pluginId: String, tags: List[String]): Query0[Long] =
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Long]
+    (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(versionSelectFrag(pluginId, None, tags)) ++ fr"sq").query[Long]
 
   def userQuery(name: String): Query0[APIV2.User] =
     sql"""|SELECT u.created_at, u.name, u.tagline, u.join_date, array_agg(r.name)
@@ -357,7 +363,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] = {
     val select = actionFrag(table, user, canSeeHidden, currentUserId)
-    (sql"SELECT COUNT(*) FROM " ++ fragParens(select) ++ fr"sq").query[Long]
+    (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(select) ++ fr"sq").query[Long]
   }
 
   def starredQuery(

@@ -19,7 +19,7 @@ The main header displayed on each layout.
         <!-- Left navbar -->
         <div id="sp-logo-container">
             <a class="logo" href="@routes.Application.showHome()">
-                <img src="@config.sponge.logo">
+                <img src="@config.sponge.logo" alt="Sponge logo" >
                 <span>@messages("general.projectName")</span>
                 <i class="fas fa-fw fa-chevron-down"></i>
             </a>
@@ -98,7 +98,7 @@ The main header displayed on each layout.
                         @if(request.headerData.hasNotice) {
                             <span class="unread"></span>
                         }
-                        <img height="32" width="32" class="user-avatar" src="@cu.avatarUrl" />
+                        <img height="32" width="32" class="user-avatar" src="@cu.avatarUrl" alt="@cu.name" />
                         <span class="caret"></span>
                     </a>
                     <ul class="user-dropdown dropdown-menu" aria-label="@messages("aria.dropdown.menu", 1)">

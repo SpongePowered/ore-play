@@ -1,3 +1,5 @@
+package db
+
 import play.api.Configuration
 
 import db.impl.access.UserBase.UserOrdering
@@ -6,7 +8,7 @@ import ore.OreConfig
 import ore.db.impl.query.UserQueries
 
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
+import org.scalatestplus.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class UserQueriesSpec extends DbSpec {

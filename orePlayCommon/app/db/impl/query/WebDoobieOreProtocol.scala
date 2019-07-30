@@ -10,10 +10,10 @@ import doobie.postgres.implicits._
 
 trait WebDoobieOreProtocol extends DoobieOreProtocol {
 
-  implicit val viewTagListRead: Read[List[ViewTag]] = Read[(List[String], List[String], List[TagColor])].map {
-    case (name, data, color) => name.zip(data).zip(color).map(t => ViewTag(t._1._1, t._1._2, t._2))
+  implicit val viewTagListRead: Read[List[ViewTag]] = Read[(List[String], List[Option[String]], List[TagColor])].map {
+    case (name, data, color) => name.zip(data).zip(color).map { case ((n, d), c) => ViewTag(n, d, c) }
   }
 
   implicit val viewTagListWrite: Write[List[ViewTag]] =
-    Write[(List[String], List[String], List[TagColor])].contramap(_.flatMap(ViewTag.unapply).unzip3)
+    Write[(List[String], List[Option[String]], List[TagColor])].contramap(_.flatMap(ViewTag.unapply).unzip3)
 }

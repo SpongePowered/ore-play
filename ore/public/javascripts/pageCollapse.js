@@ -13,7 +13,7 @@ function bindExpand(e) {
         var $this = $(this);
         $.ajax({
             method: 'get',
-            url: '/api/projects/' + pluginId + '/pages?parentId=' + pageId,
+            url: '/api/v1/projects/' + pluginId + '/pages?parentId=' + pageId,
             dataType: 'json',
             success: function(childPages) {
                 console.log(childPages);

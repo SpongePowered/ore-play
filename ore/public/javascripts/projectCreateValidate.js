@@ -28,7 +28,7 @@ function failed(selector, message) {
 
 function checkId(pluginId, name, owner, slug) {
     $.ajax({
-        url: '/api/projects/' + pluginId,
+        url: '/api/v1/projects/' + pluginId,
         statusCode: {
             404: function() {
                 success('.id-status', function() {

@@ -570,7 +570,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           val normalApiTags = tags.map(tag => APIV2QueryVersionTag(tag.name, tag.data, tag.color)).toList
           val channelApiTag = APIV2QueryVersionTag(
             "Channel",
-            channel.name,
+            Some(channel.name),
             channel.color.toTagColor
           )
           val apiTags = channelApiTag :: normalApiTags

@@ -1,3 +1,5 @@
+package db
+
 import play.api.Configuration
 
 import db.impl.query.APIV2Queries
@@ -6,7 +8,7 @@ import ore.data.project.Category
 import ore.permission.Permission
 
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
+import org.scalatestplus.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class APIV2QueriesSpec extends DbSpec {

@@ -3,6 +3,7 @@ package util
 import scala.language.higherKinds
 
 import java.nio.file.{Files, Path}
+import javax.inject.Inject
 
 import scala.collection.JavaConverters._
 
@@ -13,7 +14,7 @@ import cats.syntax.all._
 import zio.ZIO
 import zio.blocking._
 
-class ZIOFileIO(config: OreConfig) extends FileIO[ZIO[Blocking, Throwable, ?]] {
+class ZIOFileIO(nioBlockingFibers: Long) extends FileIO[ZIO[Blocking, Throwable, ?]] {
 
   type BlockIO[A] = ZIO[Blocking, Throwable, A]
 
@@ -43,7 +44,10 @@ class ZIOFileIO(config: OreConfig) extends FileIO[ZIO[Blocking, Throwable, ?]] {
   }
 
   override def traverseLimited[G[_]: Traverse, A, B](fs: G[A])(f: A => BlockIO[B]): BlockIO[List[B]] =
-    ZIO.foreachParN(config.performance.nioBlockingFibers)(fs.toList)(f)
+    ZIO.foreachParN(nioBlockingFibers)(fs.toList)(f)
 
   override def executeBlocking[A](block: => A): BlockIO[A] = effectBlocking(block)
+}
+object ZIOFileIO {
+  def apply(config: OreConfig): ZIOFileIO = new ZIOFileIO(config.performance.nioBlockingFibers)
 }

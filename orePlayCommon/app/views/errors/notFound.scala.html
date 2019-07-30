@@ -5,7 +5,7 @@
 @layout.base(messages("error.notFound.title"), authEnabled = false, noContainer = true) {
 
     <div class="container-error container">
-        <img src="@routes.Assets.versioned("images/ore-dark.png")" />
+        <img src="@routes.Assets.versioned("images/ore-dark.png")" alt="Ore logo" />
         <h1 class="minor">@messages("error.notFound.title")</h1>
         <h3 class="minor">@messages("error.notFound.message", requestHeader.uri)</h3>
     </div>

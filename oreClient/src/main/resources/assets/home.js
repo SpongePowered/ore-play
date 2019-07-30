@@ -51,6 +51,22 @@ export const SortOptions = [
     {id: "only_relevance", name: "Only relevance"}
 ];
 
+export class Visibility {
+    static get values() {
+        return [
+            { name: "public",        class: ""},
+            { name: "new",           class: "project-new"},
+            { name: "needsChanges",  class: "striped project-needsChanges"},
+            { name: "needsApproval", class: "striped project-needsChanges"},
+            { name: "softDelete",    class: "striped project-hidden"},
+        ];
+    }
+
+    static fromName(name) {
+        return this.values.filter(visibility => visibility.name === name)[0];
+    }
+}
+
 const root = require('./Home.vue').default;
 const app = new Vue({
     el: '#home',

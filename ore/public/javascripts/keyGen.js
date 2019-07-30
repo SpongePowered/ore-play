@@ -14,7 +14,7 @@ function bindKeyGen(e) {
         var spinner = $(this).find('.spinner').toggle();
         var $this = $(this);
         $.ajax({
-            url: '/api/projects/' + pluginId + '/keys/new',
+            url: '/api/v1/projects/' + pluginId + '/keys/new',
             method: 'post',
             data: {csrfToken: csrf, 'key-type': KEY_TYPE_DEPLOYMENT},
             dataType: 'json',
@@ -41,7 +41,7 @@ function bindKeyRevoke(e) {
         var spinner = $(this).find('.spinner').toggle();
         var $this = $(this);
         $.ajax({
-            url: '/api/projects/' + pluginId + '/keys/revoke',
+            url: '/api/v1/projects/' + pluginId + '/keys/revoke',
             method: 'post',
             data: {csrfToken: csrf, 'id': $(this).data('key-id')},
             success: function() {

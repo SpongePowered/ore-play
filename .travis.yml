@@ -34,6 +34,7 @@ env:
 # Caching taken from https://www.scala-sbt.org/1.0/docs/Travis-CI-with-sbt.html#Caching
 cache:
   directories:
+    - $HOME/.cache/yarn
     - $HOME/.ivy2/cache
     - $HOME/.sbt
     - $HOME/.coursier/cache
@@ -44,5 +45,5 @@ before_cache:
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION ore/test
+  - sbt ++$TRAVIS_SCALA_VERSION ";ore/test ;oreClient/fastOptJS::webpack"
   - ./scalafmt apiV2/app auth db discourse externalCommon models ore/app ore/test orePlayCommon/app build.sbt --test --non-interactive

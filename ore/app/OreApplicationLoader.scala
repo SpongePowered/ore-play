@@ -1,15 +1,24 @@
 import scala.language.higherKinds
 
+import java.sql.Connection
 import javax.inject.Provider
 
 import play.api.cache.caffeine.CaffeineCacheComponents
 import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
+import play.api.db.evolutions.EvolutionsComponents
 import play.api.db.slick.evolutions.SlickEvolutionsComponents
 import play.api.db.slick.{DatabaseConfigProvider, DbName, SlickComponents}
+import play.api.http.{HttpErrorHandler, JsonHttpErrorHandler}
 import play.api.i18n.MessagesApi
 import play.api.mvc.EssentialFilter
 import play.api.routing.Router
-import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator, Application => PlayApplication}
+import play.api.{
+  ApplicationLoader,
+  BuiltInComponentsFromContext,
+  LoggerConfigurator,
+  OptionalSourceMapper,
+  Application => PlayApplication
+}
 import play.filters.HttpFiltersComponents
 import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPResultProcessor}
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
@@ -21,6 +30,7 @@ import controllers.sugar.Bakery
 import db.impl.DbUpdateTask
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.service.OreModelService
+import db.impl.service.OreModelService.F
 import discourse.{OreDiscourseApi, OreDiscourseApiDisabled, OreDiscourseApiEnabled}
 import filters.LoggingFilter
 import form.OreForms
@@ -38,13 +48,18 @@ import ore.rest.{OreRestfulApiV1, OreRestfulServerV1}
 import ore.{OreConfig, OreEnv, StatTracker}
 import util.{FileIO, StatusZ, ZIOFileIO}
 
+import ErrorHandler.OreHttpErrorHandler
 import akka.actor.ActorSystem
 import cats.arrow.FunctionK
+import cats.effect.{ContextShift, Resource}
 import cats.tagless.syntax.all._
 import cats.~>
 import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
+import doobie.{ExecutionContexts, KleisliInterpreter, Transactor}
+import doobie.util.transactor.Strategy
 import slick.basic.{BasicProfile, DatabaseConfig}
+import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
@@ -66,15 +81,14 @@ class OreComponents(context: ApplicationLoader.Context)
     with AssetsComponents
     with CaffeineCacheComponents
     with SlickComponents
-    with SlickEvolutionsComponents {
+    with SlickEvolutionsComponents
+    with EvolutionsComponents {
   val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
   lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]
 
   use(prefix) //Gets around unused warning
-
-  //override lazy val httpFilters: Seq[EssentialFilter] = enabledFilters.filters
-  //lazy val enabledFilters: EnabledFilters             = wire[EnabledFilters] //TODO: This probably won't work
+  eager(applicationEvolutions)
 
   override lazy val httpFilters: Seq[EssentialFilter] = {
     val filters              = super.httpFilters ++ enabledFilters
@@ -91,29 +105,29 @@ class OreComponents(context: ApplicationLoader.Context)
   }
 
   lazy val enabledFilters: Seq[EssentialFilter] = {
-    val filterSeq = Seq(
-      //Base filters, always present
-      true -> Seq(
-        new CSPFilter(
-          new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration)))
-        )
-      ),
-      // Dev filters
-      context.devContext.isDefined -> Seq(new GzipFilter(GzipFilterConfig.fromConfiguration(configuration))),
-      // Timings filter
-      config.ore.logTimings -> Seq(new LoggingFilter())
-    )
-
     val baseFilters = Seq(
       new CSPFilter(new DefaultCSPResultProcessor(new DefaultCSPProcessor(CSPConfig.fromConfiguration(configuration))))
     )
 
-    if (context.devContext.isDefined)
-      baseFilters ++ Seq(
-        new GzipFilter(GzipFilterConfig.fromConfiguration(configuration))
-      )
-    else baseFilters
+    val devFilters = Seq(new GzipFilter(GzipFilterConfig.fromConfiguration(configuration)))
+
+    val filterSeq = Seq(
+      true                         -> baseFilters,
+      context.devContext.isDefined -> devFilters,
+      config.ore.logTimings        -> Seq(new LoggingFilter())
+    )
+
+    filterSeq.collect {
+      case (true, seq) => seq
+    }.flatten
   }
+
+  lazy val routerProvider: Provider[Router] = () => router
+
+  lazy val optionalSourceMapper: OptionalSourceMapper = new OptionalSourceMapper(devContext.map(_.sourceMapper))
+
+  override lazy val httpErrorHandler: HttpErrorHandler =
+    new ErrorHandler(wire[OreHttpErrorHandler], wire[JsonHttpErrorHandler])
 
   lazy val syncCacheApi: SyncCacheApi = new DefaultSyncCacheApi(defaultCacheApi)
   lazy val dbConfigProvider: DatabaseConfigProvider = new DatabaseConfigProvider {
@@ -130,17 +144,37 @@ class OreComponents(context: ApplicationLoader.Context)
   val taskToUIO: Task ~> UIO = OreComponents.orDieFnK[Any]
   val uioToTask: UIO ~> Task = OreComponents.upcastFnK[UIO, Task]
 
-  implicit lazy val config: OreConfig                  = wire[OreConfig]
-  implicit lazy val env: OreEnv                        = wire[OreEnv]
-  implicit lazy val markdownRenderer: MarkdownRenderer = wire[FlexmarkRenderer]
-  //implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, ?]] = wire[ZIOFileIO]
+  implicit lazy val config: OreConfig                              = wire[OreConfig]
+  implicit lazy val env: OreEnv                                    = wire[OreEnv]
+  implicit lazy val markdownRenderer: MarkdownRenderer             = wire[FlexmarkRenderer]
+  implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, ?]] = ZIOFileIO(config)
 
-  implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, ?]] = wire[ZIOFileIO].imapK(OreComponents.orDieFnK[Blocking])(
+  implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, ?]] = fileIORaw.imapK(OreComponents.orDieFnK[Blocking])(
     OreComponents.upcastFnK[ZIO[Blocking, Nothing, ?], ZIO[Blocking, Throwable, ?]]
   )
 
   implicit lazy val projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]] =
     wire[ProjectFiles.LocalProjectFiles[ZIO[Blocking, Nothing, ?]]]
+
+  implicit val transactor: Transactor[Task] = {
+    val cs = ContextShift[Task]
+
+    applicationResource {
+      for {
+        connectEC  <- ExecutionContexts.fixedThreadPool[F](32)
+        transactEC <- ExecutionContexts.cachedThreadPool[F]
+      } yield Transactor[F, JdbcDataSource](
+        dbConfigProvider.get[JdbcProfile].db.source,
+        source => {
+          val acquire                = cs.evalOn(connectEC)(F.delay(source.createConnection()))
+          def release(c: Connection) = cs.evalOn(transactEC)(F.delay(c.close()))
+          Resource.make(acquire)(release)
+        },
+        KleisliInterpreter[F](transactEC).ConnectionInterpreter,
+        Strategy.default
+      )
+    }
+  }
 
   lazy val oreRestfulAPIV1: OreRestfulApiV1                          = wire[OreRestfulServerV1]
   implicit lazy val projectFactory: ProjectFactory                   = wire[OreProjectFactory]
@@ -154,7 +188,7 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val uioOreControllerEffects: OreControllerEffects[UIO]        = wire[DefaultOreControllerEffects[UIO]]
 
   lazy val statTracker: StatTracker[UIO] = (wire[StatTracker.StatTrackerInstant[Task, ParTask]]: StatTracker[Task])
-    .imapK(taskToUIO)(uioToTask) //wire[UIOStatTracker]
+    .imapK(taskToUIO)(uioToTask)
   lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
     val api = config.security.api
     runtime.unsafeRun(
@@ -240,16 +274,12 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val statusZ: StatusZ   = wire[StatusZ]
   lazy val fakeUser: FakeUser = wire[FakeUser]
 
-  lazy val applicationController: Application = wire[Application]
-  lazy val apiV1Controller: ApiV1Controller   = wire[ApiV1Controller]
-  lazy val apiV2Controller: ApiV2Controller   = wire[ApiV2Controller]
-  lazy val versions: Versions                 = wire[Versions]
-  lazy val users: Users                       = wire[Users]
-  lazy val projects: Projects = {
-    implicit val throwableFileIO: ZIOFileIO = wire[ZIOFileIO]
-    use(throwableFileIO)
-    wire[Projects]
-  }
+  lazy val applicationController: Application                   = wire[Application]
+  lazy val apiV1Controller: ApiV1Controller                     = wire[ApiV1Controller]
+  lazy val apiV2Controller: ApiV2Controller                     = wire[ApiV2Controller]
+  lazy val versions: Versions                                   = wire[Versions]
+  lazy val users: Users                                         = wire[Users]
+  lazy val projects: Projects                                   = wire[Projects]
   lazy val pages: Pages                                         = wire[Pages]
   lazy val organizations: Organizations                         = wire[Organizations]
   lazy val channels: Channels                                   = wire[Channels]
@@ -274,6 +304,16 @@ class OreComponents(context: ApplicationLoader.Context)
   def use[A](value: A): Unit = {
     identity(value)
     ()
+  }
+
+  def applicationResource[A](resource: Resource[Task, A]): A = {
+    val (a, finalize) = runtime.unsafeRunSync(resource.allocated).toEither.toTry.get
+
+    applicationLifecycle.addStopHook { () =>
+      runtime.unsafeRunToFuture(finalize)
+    }
+
+    a
   }
 }
 object OreComponents {

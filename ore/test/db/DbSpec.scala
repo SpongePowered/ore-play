@@ -1,3 +1,5 @@
+package db
+
 import java.util.concurrent.Executors
 import javax.sql.DataSource
 
@@ -12,7 +14,7 @@ import cats.effect.Effect
 import doobie.Transactor
 import doobie.scalatest.Checker
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
-import zio.interop.catz._
+import zio.interop.catz.{taskEffectInstances, zioContextShift}
 import zio.{DefaultRuntime, Task}
 
 trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAfterAll with DoobieOreProtocol {

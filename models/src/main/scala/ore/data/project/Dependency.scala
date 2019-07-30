@@ -15,7 +15,7 @@ import cats.data.OptionT
   * @param pluginId   Unique plugin ID
   * @param version    Version of dependency
   */
-case class Dependency(pluginId: String, version: String) {
+case class Dependency(pluginId: String, version: Option[String]) {
 
   /**
     * Tries to resolve this dependency as a Project and returns the result.

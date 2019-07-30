@@ -185,13 +185,13 @@ case class APIV2QueryVersion(
 
 case class APIV2QueryVersionTag(
     name: String,
-    data: String,
+    data: Option[String],
     color: TagColor
 ) {
 
   def asProtocol: APIV2.VersionTag = APIV2.VersionTag(
     name,
-    Some(data).filter(_.nonEmpty).filter(_ != "null"),
+    data,
     APIV2.VersionTagColor(
       color.foreground,
       color.background

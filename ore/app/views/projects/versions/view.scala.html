@@ -13,6 +13,7 @@
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
+@reviewRoutes = @{controllers.routes.Reviews}
 @appRoutes = @{controllers.routes.Application}
 
 @projects.view(v.p, sp, "#versions", noButtons = true) {
@@ -81,9 +82,9 @@
 
                         @if(request.headerData.globalPerm(Permission.Reviewer)) {
                             @if(v.v.reviewState.isChecked) {
-                                <a href="@v.fullSlug/reviews" class="btn btn-info">@messages("review.log")</a>
+                                <a href="@reviewRoutes.showReviews(v.p.project.ownerName, v.p.project.slug, v.v.versionString)" class="btn btn-info">@messages("review.log")</a>
                             } else {
-                                <a href="@v.fullSlug/reviews" class="btn btn-success">
+                                <a href="@reviewRoutes.showReviews(v.p.project.ownerName, v.p.project.slug, v.v.versionString)" class="btn btn-success">
                                     <i class="fas fa-play"></i> @messages("review.start")
                                 </a>
                             }

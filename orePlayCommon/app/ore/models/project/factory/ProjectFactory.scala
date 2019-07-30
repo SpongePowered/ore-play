@@ -53,7 +53,7 @@ trait ProjectFactory {
   protected def fileIO: FileIO[ZIO[Blocking, Nothing, ?]]
   protected def fileManager: ProjectFiles[ZIO[Blocking, Nothing, ?]]
   protected def cacheApi: SyncCacheApi
-  protected val dependencyVersionRegex: Regex = "^[0-9a-zA-Z\\.\\,\\[\\]\\(\\)-]+$".r
+  protected val dependencyVersionRegex: Regex = """^[0-9a-zA-Z.,\[\]()-]+$""".r
 
   implicit protected def config: OreConfig
   implicit protected def forums: OreDiscourseApi[UIO]
@@ -356,7 +356,7 @@ trait ProjectFactory {
       .createPlatformTags(
         version.id,
         // filter valid dependency versions
-        version.dependencies.filter(d => dependencyVersionRegex.pattern.matcher(d.version).matches())
+        version.dependencies.filter(_.version.forall(dependencyVersionRegex.pattern.matcher(_).matches()))
       )
 
   private def getOrCreateChannel(pending: PendingVersion, project: Model[Project]) =

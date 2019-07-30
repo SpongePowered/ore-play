@@ -322,7 +322,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         else ZIO.succeed(())
 
         project <- getProject(author, slug)
-        foo = project
+        _ <- project
           .channels(ModelView.now(Channel))
           .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))
           .toZIO
@@ -359,7 +359,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           VersionTag(
             versionId = version.id,
             name = "Unstable",
-            data = "",
+            data = None,
             color = TagColor.Unstable
           )
         )

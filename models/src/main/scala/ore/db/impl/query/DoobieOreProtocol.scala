@@ -35,8 +35,6 @@ trait DoobieOreProtocol {
   //implicit val logger = createLogger("Database")
   implicit val timingsLogger: doobie.LogHandler = createTimingsLogger
 
-  def fragParens(frag: Fragment): Fragment = fr"(" ++ frag ++ fr")"
-
   def createTimingsLogger: LogHandler = {
     val timingsLogger = scalalogging.Logger("Timings")
 
