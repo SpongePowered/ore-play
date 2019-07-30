@@ -2,44 +2,34 @@ package filters
 
 import javax.inject.Inject
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext
 
 import play.api.mvc._
 
-import akka.stream.Materializer
 import com.typesafe.scalalogging.Logger
 
-class LoggingFilter @Inject()(implicit val mat: Materializer, ec: ExecutionContext) extends Filter {
+class LoggingFilter @Inject()(implicit ec: ExecutionContext) extends EssentialFilter {
 
   val timingsLogger = Logger("Timings")
 
-  def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
+  override def apply(nextFilter: EssentialAction): EssentialAction = (requestHeader: RequestHeader) => {
     val startTime = System.currentTimeMillis
 
-    nextFilter(requestHeader).transform {
-      case Success(result) =>
-        val endTime     = System.currentTimeMillis
-        val requestTime = endTime - startTime
+    nextFilter(requestHeader).map { result =>
+      val endTime     = System.currentTimeMillis
+      val requestTime = endTime - startTime
 
-        if (requestTime > 1000) {
-          timingsLogger.warn(
-            s"${requestHeader.method} ${requestHeader.uri} took ${requestTime}ms and returned ${result.header.status}"
-          )
-        } else {
-          timingsLogger.info(
-            s"${requestHeader.method} ${requestHeader.uri} took ${requestTime}ms and returned ${result.header.status}"
-          )
-        }
+      if (requestTime > 1000) {
+        timingsLogger.warn(
+          s"${requestHeader.method} ${requestHeader.uri} took ${requestTime}ms and returned ${result.header.status}"
+        )
+      } else {
+        timingsLogger.info(
+          s"${requestHeader.method} ${requestHeader.uri} took ${requestTime}ms and returned ${result.header.status}"
+        )
+      }
 
-        Success(result.withHeaders("Request-Time" -> requestTime.toString))
-      case Failure(e) =>
-        val endTime     = System.currentTimeMillis
-        val requestTime = endTime - startTime
-
-        timingsLogger.info(s"${requestHeader.method} ${requestHeader.uri} failed and took ${requestTime}ms")
-        //The failure is probably logged elsewhere
-        Failure(e)
+      result.withHeaders("Request-Time" -> requestTime.toString)
     }
   }
 }
