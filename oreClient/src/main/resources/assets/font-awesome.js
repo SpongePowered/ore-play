@@ -5,21 +5,23 @@ import {
     faUsers, faUserTie, faUser, faBell, faFlag, faThumbsUp as fasThumbsUp, faChartArea, faHeartbeat, faList, faSignOutAlt,
     faTrash, faPlay, faInfoCircle, faQuestionCircle, faExclamationCircle, faSpinner, faCircle, faArrowRight, faCheck,
     faReply, faSave, faTimes, faPencilAlt, faArrowLeft, faCog, faPlayCircle, faEdit, faKey, faCalendar, faUpload,
-    faPaperPlane, faSearch, faExternalLinkAlt, faBug, faTerminal, faStopCircle, faClipboard, faWindowClose, faUnlockAlt
+    faPaperPlane, faSearch, faExternalLinkAlt, faBug, faTerminal, faStopCircle, faClipboard, faWindowClose, faUnlockAlt,
+    faGem as fasGem, faLink
 } from '@fortawesome/free-solid-svg-icons'
 
 import {
-    faGem, faThumbsUp as farThumbsUp, faFile, faStar as farStar, faPlusSquare, faMinusSquare, faFileArchive, faSadTear
+    faGem as farGem, faThumbsUp as farThumbsUp, faFile, faStar as farStar, faPlusSquare, faMinusSquare, faFileArchive,
+    faSadTear, faCheckCircle
 } from '@fortawesome/free-regular-svg-icons'
 
 config.autoAddCss = false;
 
-library.add(fasStar, faGem, faEye, faDownload, faServer, faComment, faWrench, faMoneyBillAlt, faPuzzlePiece, faGamepad,
+library.add(fasStar, fasGem, faEye, faDownload, faServer, faComment, faWrench, faMoneyBillAlt, faPuzzlePiece, faGamepad,
     faLock, faMagic, faGlobe, faAsterisk, faChevronUp, faChevronDown, faHome, faComments, faCode, faBook, faGraduationCap,
     faPlus, faUsers, faUserTie, faUser, faBell, faFlag, fasThumbsUp, faChartArea, faHeartbeat, faList, faSignOutAlt,
     farThumbsUp, faTrash, faPlay, faInfoCircle, faQuestionCircle, faExclamationCircle, faSpinner, faCircle, faArrowRight,
     faCheck, faReply, faSave, faTimes, faPencilAlt, faArrowLeft, faCog, faPlayCircle, faEdit, faKey, faCalendar, faFile,
     faUpload, faPaperPlane, faPlusSquare, faSearch, farStar, faExternalLinkAlt, faMinusSquare, faBug, faFileArchive,
-    faTerminal, faStopCircle, faClipboard, faWindowClose, faSadTear, faUnlockAlt);
+    faTerminal, faStopCircle, faClipboard, faWindowClose, faSadTear, faUnlockAlt, farGem, faLink, faCheckCircle);
 
 dom.watch();
