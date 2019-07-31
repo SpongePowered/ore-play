@@ -86,6 +86,7 @@ trait ProjectFiles[+F[_]] {
   /**
     * Returns the path to a custom [[Project]] icon, if any, None otherwise.
     *
+    * @param project Project to get icon for
     * @return Project icon
     */
   def getIconPath(project: Project): F[Option[Path]]
