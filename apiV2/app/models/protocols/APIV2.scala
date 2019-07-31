@@ -48,7 +48,7 @@ object APIV2 {
       plugin_id: String,
       name: String,
       namespace: ProjectNamespace,
-      recommended_version: Option[RecommendedVersion],
+      promoted_versions: Seq[PromotedVersion],
       stats: ProjectStats,
       category: Category,
       description: Option[String],
@@ -63,14 +63,14 @@ object APIV2 {
       plugin_id: String,
       name: String,
       namespace: ProjectNamespace,
-      recommended_version: Option[RecommendedVersion],
+      promoted_versions: Seq[PromotedVersion],
       stats: ProjectStats,
       category: Category,
       visibility: Visibility
   )
 
   @ConfiguredJsonCodec case class ProjectNamespace(owner: String, slug: String)
-  @ConfiguredJsonCodec case class RecommendedVersion(version: String, tags: List[VersionTag])
+  @ConfiguredJsonCodec case class PromotedVersion(version: String, tag: VersionTag)
   @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
   @ConfiguredJsonCodec case class VersionTagColor(foreground: String, background: String)
   @ConfiguredJsonCodec case class ProjectStats(views: Long, downloads: Long, stars: Long)

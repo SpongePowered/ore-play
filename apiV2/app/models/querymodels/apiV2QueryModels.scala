@@ -13,8 +13,10 @@ import ore.models.user.User
 import ore.permission.role.Role
 import util.syntax._
 
-import cats.instances.option._
+import cats.instances.either._
+import cats.instances.vector._
 import cats.syntax.all._
+import io.circe.{DecodingFailure, Json}
 import zio.ZIO
 import zio.blocking.Blocking
 
@@ -23,8 +25,7 @@ case class APIV2QueryProject(
     pluginId: String,
     name: String,
     namespace: ProjectNamespace,
-    recommendedVersion: Option[String],
-    recommendedVersionTags: Option[List[APIV2QueryVersionTag]],
+    promotedVersions: Json,
     views: Long,
     downloads: Long,
     stars: Long,
@@ -54,7 +55,10 @@ case class APIV2QueryProject(
       case false => User.avatarUrl(namespace.ownerName)
     }
 
-    iconUrlF.map { iconUrl =>
+    for {
+      promotedVersionDecoded <- ZIO.fromEither(APIV2QueryProject.decodePromotedVersions(promotedVersions)).orDie
+      iconUrl                <- iconUrlF
+    } yield {
       APIV2.Project(
         createdAt,
         pluginId,
@@ -63,12 +67,7 @@ case class APIV2QueryProject(
           namespace.ownerName,
           namespace.slug
         ),
-        (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
-          APIV2.RecommendedVersion(
-            version,
-            tags.map(_.asProtocol)
-          )
-        },
+        promotedVersionDecoded,
         APIV2.ProjectStats(
           views,
           downloads,
@@ -95,40 +94,69 @@ case class APIV2QueryProject(
     }
   }
 }
+object APIV2QueryProject {
+  def decodePromotedVersions(promotedVersions: Json): Either[DecodingFailure, Vector[APIV2.PromotedVersion]] =
+    for {
+      jsons <- promotedVersions.hcursor.values.toRight(DecodingFailure("Invalid promoted versions", Nil))
+      res <- jsons.toVector.traverse { json =>
+        val cursor = json.hcursor
+
+        for {
+          version <- cursor.get[String]("version_string")
+          tagName <- cursor.get[String]("tag_name")
+          data    <- cursor.get[Option[String]]("tag_version")
+          color <- cursor
+            .get[Int]("tag_color")
+            .flatMap { i =>
+              TagColor
+                .withValueOpt(i)
+                .toRight(DecodingFailure(s"Invalid TagColor $i", cursor.downField("tag_color").history))
+            }
+        } yield APIV2.PromotedVersion(
+          version,
+          APIV2.VersionTag(
+            tagName,
+            data,
+            APIV2.VersionTagColor(
+              color.foreground,
+              color.background
+            )
+          )
+        )
+      }
+    } yield res
+}
 
 case class APIV2QueryCompactProject(
     pluginId: String,
     name: String,
     namespace: ProjectNamespace,
-    recommendedVersion: Option[String],
-    recommendedVersionTags: Option[List[APIV2QueryVersionTag]],
+    promotedVersions: Json,
     views: Long,
     downloads: Long,
     stars: Long,
     category: Category,
     visibility: Visibility
 ) {
-  def asProtocol: APIV2.CompactProject = APIV2.CompactProject(
-    pluginId,
-    name,
-    APIV2.ProjectNamespace(
-      namespace.ownerName,
-      namespace.slug
-    ),
-    (recommendedVersion, recommendedVersionTags).mapN { (version, tags) =>
-      APIV2.RecommendedVersion(
-        version,
-        tags.map(_.asProtocol)
+  def asProtocol: Either[DecodingFailure, APIV2.CompactProject] =
+    APIV2QueryProject.decodePromotedVersions(promotedVersions).map { decodedPromotedVersions =>
+      APIV2.CompactProject(
+        pluginId,
+        name,
+        APIV2.ProjectNamespace(
+          namespace.ownerName,
+          namespace.slug
+        ),
+        decodedPromotedVersions,
+        APIV2.ProjectStats(
+          views,
+          downloads,
+          stars
+        ),
+        category,
+        visibility
       )
-    },
-    APIV2.ProjectStats(
-      views,
-      downloads,
-      stars
-    ),
-    category,
-    visibility
-  )
+    }
 }
 
 case class APIV2QueryProjectMember(

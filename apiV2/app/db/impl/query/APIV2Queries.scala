@@ -1,5 +1,7 @@
 package db.impl.query
 
+import scala.language.higherKinds
+
 import java.sql.Timestamp
 import java.time.LocalDateTime
 
@@ -17,10 +19,16 @@ import ore.models.project.{ProjectSortingStrategy, TagColor}
 import ore.models.user.User
 import ore.permission.Permission
 
+import cats.Reducible
 import cats.data.NonEmptyList
+import cats.syntax.all._
+import cats.instances.list._
 import doobie._
 import doobie.implicits._
 import doobie.postgres.implicits._
+import doobie.postgres.circe.jsonb.implicits._
+import doobie.util.Put
+import io.circe.DecodingFailure
 import zio.ZIO
 import zio.blocking.Blocking
 
@@ -84,10 +92,14 @@ object APIV2Queries extends WebDoobieOreProtocol {
   def deleteApiKey(name: String, ownerId: DbRef[User]): doobie.Update0 =
     sql"""DELETE FROM api_keys k WHERE k.name = $name AND k.owner_id = $ownerId""".update
 
+  //Like in, but takes a tuple
+  def in2[F[_]: Reducible, A: Put, B: Put](f: Fragment, fs: F[(A, B)]): Fragment =
+    fs.toList.map { case (a, b) => fr0"($a, $b)" }.foldSmash1(f ++ fr0"IN (", fr",", fr")")
+
   def projectSelectFrag(
       pluginId: Option[String],
       category: List[Category],
-      tags: List[String],
+      tags: List[(String, Option[String])],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -104,27 +116,13 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.name,
             |       p.owner_name,
             |       p.slug,
-            |       p.version_string,
-            |       array_cat(array_agg(p.tag_name) FILTER ( WHERE p.tag_name IS NOT NULL ),
-            |                 CASE
-            |                     WHEN pc IS NULL THEN ARRAY []::VARCHAR(255)[]
-            |                     ELSE ARRAY ['Channel'::VARCHAR(255)] END)        AS tag_names,
-            |       array_cat(array_agg(p.tag_data) FILTER ( WHERE p.tag_name IS NOT NULL ),
-            |                 CASE
-            |                     WHEN pc IS NULL
-            |                         THEN ARRAY []::VARCHAR(255)[]
-            |                     ELSE ARRAY [pc.name] END)                        AS tag_datas,
-            |       array_cat(array_agg(p.tag_color) FILTER ( WHERE p.tag_name IS NOT NULL ),
-            |                 CASE
-            |                     WHEN pc IS NULL
-            |                         THEN ARRAY []::INTEGER[]
-            |                     ELSE ARRAY [pc.color + 9] END)                   AS tag_colors,
+            |       p.promoted_versions,
             |       p.views,
             |       p.downloads,
             |       p.stars,
             |       p.category,
             |       p.description,
-            |       COALESCE(p.last_updated, p.created_at)                         AS last_updated,
+            |       COALESCE(p.last_updated, p.created_at) AS last_updated,
             |       p.visibility,""".stripMargin ++ userActionsTaken ++
         fr"""|       ps.homepage,
              |       ps.issues,
@@ -134,11 +132,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
              |       ps.license_url,
              |       ps.forum_sync
              |  FROM home_projects p
-             |         JOIN project_settings ps ON p.id = ps.project_id
-             |         LEFT JOIN project_channels pc ON p.recommended_version_channel_id = pc.id""".stripMargin
-    val groupBy =
-      fr"""|GROUP BY p.created_at, p.plugin_id, p.name, p.owner_name, p.slug, p.version_string, p.views, p.downloads, p.stars,
-           |           p.category, p.description, p.last_updated, p.visibility, p.id, ps.id, pc.id, p.search_words""".stripMargin
+             |         JOIN project_settings ps ON p.id = ps.project_id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
@@ -147,31 +141,38 @@ object APIV2Queries extends WebDoobieOreProtocol {
           Some(fr"(p.visibility = 1 OR (p.owner_id = $id AND p.visibility != 5))")
         }
 
+    val (tagsWithData, tagsWithoutData) = tags.partitionEither {
+      case (name, Some(data)) => Left((name, data))
+      case (name, None)       => Right(name)
+    }
+
     val filters = Fragments.whereAndOpt(
       pluginId.map(id => fr"p.plugin_id = $id"),
       NonEmptyList.fromList(category).map(Fragments.in(fr"p.category", _)),
-      NonEmptyList
-        .fromList(tags)
-        .map { t =>
-          Fragments.or(
-            Fragments.in(fr"p.tag_name || ':' || p.tag_data", t),
-            Fragments.in(fr"p.tag_name", t),
-            Fragments.in(fr"'Channel:' || pc.name", t),
-            Fragments.in(fr"'Channel'", t)
-          )
-        },
+      if (tags.nonEmpty) {
+        val jsSelect =
+          sql"""|SELECT pv.tag_name 
+                |          FROM jsonb_to_recordset(p.promoted_versions) AS pv(tag_name TEXT, tag_version TEXT) """.stripMargin ++
+            Fragments.whereAndOpt(
+              NonEmptyList.fromList(tagsWithData).map(t => in2(fr"(pv.tag_name, pv.tag_version)", t)),
+              NonEmptyList.fromList(tagsWithoutData).map(t => Fragments.in(fr"pv.tag_name", t))
+            )
+
+        Some(fr"EXISTS" ++ Fragments.parentheses(jsSelect))
+      } else
+        None,
       query.map(q => fr"p.search_words @@ websearch_to_tsquery($q)"),
       owner.map(o => fr"p.owner_name = $o"),
       visibilityFrag
     )
 
-    base ++ filters ++ groupBy
+    base ++ filters
   }
 
   def projectQuery(
       pluginId: Option[String],
       category: List[Category],
-      tags: List[String],
+      tags: List[(String, Option[String])],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -206,7 +207,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
   def projectCountQuery(
       pluginId: Option[String],
       category: List[Category],
-      tags: List[String],
+      tags: List[(String, Option[String])],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -304,12 +305,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.name,
             |       p.owner_name,
             |       p.slug,
-            |       p.version_string,
-            |       array_remove(
-            |               array_append(array_agg(p.tag_name), CASE WHEN pc IS NULL THEN NULL ELSE 'Channel'::VARCHAR(255) END),
-            |               NULL)                                                          AS tag_names,
-            |       array_remove(array_append(array_agg(p.tag_data), pc.name), NULL)       AS tag_datas,
-            |       array_remove(array_append(array_agg(p.tag_color), pc.color + 9), NULL) AS tag_colors,
+            |       p.promoted_versions,
             |       p.views,
             |       p.downloads,
             |       p.stars,
@@ -317,12 +313,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.visibility
             |    FROM users u JOIN """.stripMargin ++ table ++
         fr"""|ps ON u.id = ps.user_id
-             |             JOIN home_projects p ON ps.project_id = p.id
-             |             LEFT JOIN project_channels pc ON p.recommended_version_channel_id = pc.id""".stripMargin
-
-    val groupBy =
-      fr"""|GROUP BY p.plugin_id, p.name, p.owner_name, p.slug, p.version_string, p.views, p.downloads, p.stars,
-           |             p.category, p.visibility, p.last_updated, pc.id""".stripMargin
+             |             JOIN home_projects p ON ps.project_id = p.id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None
@@ -336,7 +327,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       visibilityFrag
     )
 
-    base ++ filters ++ groupBy
+    base ++ filters
   }
 
   private def actionQuery(
@@ -347,7 +338,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       order: ProjectSortingStrategy,
       limit: Long,
       offset: Long
-  ): Query0[APIV2.CompactProject] = {
+  ): Query0[Either[DecodingFailure, APIV2.CompactProject]] = {
     val ordering = order.fragment
 
     val select = actionFrag(table, user, canSeeHidden, currentUserId)
@@ -373,7 +364,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       order: ProjectSortingStrategy,
       limit: Long,
       offset: Long
-  ): Query0[APIV2.CompactProject] =
+  ): Query0[Either[DecodingFailure, APIV2.CompactProject]] =
     actionQuery(Fragment.const("project_stars"), user, canSeeHidden, currentUserId, order, limit, offset)
 
   def starredCountQuery(
@@ -389,7 +380,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       order: ProjectSortingStrategy,
       limit: Long,
       offset: Long
-  ): Query0[APIV2.CompactProject] =
+  ): Query0[Either[DecodingFailure, APIV2.CompactProject]] =
     actionQuery(Fragment.const("project_watchers"), user, canSeeHidden, currentUserId, order, limit, offset)
 
   def watchingCountQuery(

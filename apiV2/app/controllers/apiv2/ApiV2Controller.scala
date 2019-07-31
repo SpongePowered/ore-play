@@ -392,11 +392,17 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
       val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
       val realOffset = offsetOrZero(offset)
+
+      val parsedTags = tags.map { s =>
+        val splitted = s.split(":", 2)
+        (splitted(0), splitted.lift(1))
+      }
+
       val getProjects = APIV2Queries
         .projectQuery(
           None,
           categories.toList,
-          tags.toList,
+          parsedTags.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -412,7 +418,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
         .projectCountQuery(
           None,
           categories.toList,
-          tags.toList,
+          parsedTags.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -627,7 +633,7 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           ProjectSortingStrategy,
           Long,
           Long
-      ) => doobie.Query0[APIV2.CompactProject],
+      ) => doobie.Query0[Either[DecodingFailure, APIV2.CompactProject]],
       countQuery: (String, Boolean, Option[DbRef[User]]) => doobie.Query0[Long]
   ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { request =>
     val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
@@ -647,14 +653,15 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       request.user.map(_.id)
     ).unique
 
-    (service.runDbCon(getProjects), service.runDbCon(countProjects)).parMapN { (projects, count) =>
-      Ok(
-        PaginatedCompactProjectResult(
-          Pagination(realLimit, offset, count),
-          projects
+    (service.runDbCon(getProjects).flatMap(ZIO.foreach(_)(ZIO.fromEither(_))).orDie, service.runDbCon(countProjects))
+      .parMapN { (projects, count) =>
+        Ok(
+          PaginatedCompactProjectResult(
+            Pagination(realLimit, offset, count),
+            projects
+          )
         )
-      )
-    }
+      }
   }
 }
 object ApiV2Controller {
