@@ -58,7 +58,7 @@ class APIV2QueriesSpec extends DbSpec {
       APIV2Queries.projectCountQuery(
         Some("foo"),
         List(Category.AdminTools),
-        List("Foo:Bar"),
+        List("Foo" -> Some("Bar")),
         Some("Foo"),
         Some("Foo"),
         canSeeHidden = false,
