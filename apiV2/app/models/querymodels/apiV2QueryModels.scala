@@ -114,12 +114,14 @@ object APIV2QueryProject {
             }
         } yield APIV2.PromotedVersion(
           version,
-          APIV2.VersionTag(
-            tagName,
-            data,
-            APIV2.VersionTagColor(
-              color.foreground,
-              color.background
+          Seq(
+            APIV2.VersionTag(
+              tagName,
+              data,
+              APIV2.VersionTagColor(
+                color.foreground,
+                color.background
+              )
             )
           )
         )
