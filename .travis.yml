@@ -5,6 +5,7 @@ notifications:
 language: scala
 jdk:
   - openjdk8
+  - openjdk11
 
 scala:
   - 2.12.8
