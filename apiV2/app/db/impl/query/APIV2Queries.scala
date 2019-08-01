@@ -246,8 +246,8 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       u.name,
             |       pv.review_state,
             |       array_append(array_agg(pvt.name) FILTER ( WHERE pvt.name IS NOT NULL ), 'Channel')  AS tag_names,
-            |       array_append(array_agg(pvt.data) FILTER ( WHERE pvt.data IS NOT NULL ), pc.name)    AS tag_datas,
-            |       array_append(array_agg(pvt.color) FILTER ( WHERE pvt.color IS NOT NULL ), pc.color + 9) AS tag_colors
+            |       array_append(array_agg(pvt.data) FILTER ( WHERE pvt.name IS NOT NULL ), pc.name)    AS tag_datas,
+            |       array_append(array_agg(pvt.color) FILTER ( WHERE pvt.name IS NOT NULL ), pc.color + 9) AS tag_colors
             |    FROM projects p
             |             JOIN project_versions pv ON p.id = pv.project_id
             |             LEFT JOIN users u ON pv.author_id = u.id
