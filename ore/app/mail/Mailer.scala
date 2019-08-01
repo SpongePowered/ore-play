@@ -14,7 +14,6 @@ import scala.concurrent.duration._
 import ore.OreConfig
 
 import akka.actor.{ActorSystem, Scheduler}
-import com.sun.net.ssl.internal.ssl.Provider
 import com.typesafe.scalalogging
 
 /**
@@ -61,7 +60,7 @@ trait Mailer extends Runnable {
     * Configures, initializes, and starts this Mailer.
     */
   def start()(implicit ec: ExecutionContext): Unit = {
-    Security.addProvider(new Provider)
+    Security.addProvider(Security.getProvider("SunJSSE"))
     val props = System.getProperties
     for (prop <- this.properties.keys)
       props.setProperty(prop, this.properties(prop).toString)
