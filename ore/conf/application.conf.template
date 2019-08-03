@@ -212,6 +212,7 @@ slick.dbs.default {
 # Discourse SSO
 discourse {
     baseUrl            =   "https://forums.spongepowered.org"
+    cdnUrl             =   "https://forums-cdn.spongepowered.org"
     retryRate          =   60000ms
     categoryDefault    =   -1
     categoryDefault    =   ${?DISCOURSE_CATEGORY_OPEN}
@@ -235,7 +236,6 @@ discourse {
 # Sponge stuff
 sponge {
     logo = "https://www.spongepowered.org/assets/img/icons/spongie-mark.svg"
-    icon = "https://www.spongepowered.org/favicon.ico"
     service = "Ore"
 
     # Sponsors from high to low donation amounts

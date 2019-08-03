@@ -127,6 +127,7 @@ final class OreConfig @Inject()(config: Configuration) {
   object forums extends ConfigCategory {
     val raw: Configuration        = root.get[Configuration]("discourse")
     val baseUrl: String           = raw.get[String]("baseUrl")
+    val cdnUrl: String            = raw.get[String]("cdnUrl")
     val categoryDefault: Int      = raw.get[Int]("categoryDefault")
     val categoryDeleted: Int      = raw.get[Int]("categoryDeleted")
     val retryRate: FiniteDuration = raw.get[FiniteDuration]("retryRate")
@@ -149,7 +150,6 @@ final class OreConfig @Inject()(config: Configuration) {
   object sponge extends ConfigCategory {
     val raw: Configuration  = root.get[Configuration]("sponge")
     val logo: String        = raw.get[String]("logo")
-    val icon: String        = raw.get[String]("icon")
     val service: String     = raw.getOptional[String]("service").getOrElse("unknown")
     val sponsors: Seq[Logo] = raw.get[Seq[Logo]]("sponsors")
   }

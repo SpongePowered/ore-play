@@ -2,7 +2,7 @@
 @import ore.OreConfig
 @import views.html.helper.CSPNonce
 
-@()(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@()(implicit messages: Messages, request: OreRequest[_])
 
 @*
 Mostly copied from swagger-ui's index file
@@ -14,7 +14,7 @@ Mostly copied from swagger-ui's index file
 
         <meta charset="utf-8">
 
-        <link rel="icon" href="@config.sponge.icon">
+        <link rel="icon" href="@routes.Assets.versioned("images/favicon.ico")">
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
 
         <style>
