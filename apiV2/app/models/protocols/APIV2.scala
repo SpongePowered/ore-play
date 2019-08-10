@@ -74,8 +74,8 @@ object APIV2 {
   @ConfiguredJsonCodec case class PromotedVersionTag(
       name: String,
       data: Option[String],
-      displayData: Option[String],
-      minecraftVersion: Option[String],
+      display_data: Option[String],
+      minecraft_version: Option[String],
       color: VersionTagColor
   )
   @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
