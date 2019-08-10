@@ -2,6 +2,9 @@ package models.querymodels
 
 import java.time.LocalDateTime
 
+import scala.collection.JavaConverters._
+import scala.util.Try
+
 import play.api.mvc.RequestHeader
 
 import models.protocols.APIV2
@@ -15,8 +18,10 @@ import util.syntax._
 
 import cats.instances.either._
 import cats.instances.vector._
+import cats.kernel.Order
 import cats.syntax.all._
 import io.circe.{DecodingFailure, Json}
+import org.spongepowered.plugin.meta.version.{ArtifactVersion, DefaultArtifactVersion, VersionRange}
 import zio.ZIO
 import zio.blocking.Blocking
 
@@ -95,6 +100,13 @@ case class APIV2QueryProject(
   }
 }
 object APIV2QueryProject {
+  private val MajorMinor                = """(\d+\.\d+)(?:\.\d+)?(?>-SNAPSHOT)?(?>-[a-z0-9]{7,9})?""".r
+  private val SpongeForgeMajorMinorMC   = """(\d+\.\d+)\.\d+-\d+-(\d+\.\d+\.\d+)(?:(?:-BETA-\d+)|(?:-RC\d+))?""".r
+  private val SpongeVanillaMajorMinorMC = """(\d+\.\d+)\.\d+-(\d+\.\d+\.\d+)(?:(?:-BETA-\d+)|(?:-RC\d+))?""".r
+  private val OldForgeBuildNum          = """\d+\.\d+\.\d+\.(\d+)""".r
+
+  implicit private val artifactVersionOrder: Order[ArtifactVersion] = Order.fromComparable[ArtifactVersion]
+
   def decodePromotedVersions(promotedVersions: Json): Either[DecodingFailure, Vector[APIV2.PromotedVersion]] =
     for {
       jsons <- promotedVersions.hcursor.values.toRight(DecodingFailure("Invalid promoted versions", Nil))
@@ -112,19 +124,73 @@ object APIV2QueryProject {
                 .withValueOpt(i)
                 .toRight(DecodingFailure(s"Invalid TagColor $i", cursor.downField("tag_color").history))
             }
-        } yield APIV2.PromotedVersion(
-          version,
-          Seq(
-            APIV2.VersionTag(
-              tagName,
-              data,
-              APIV2.VersionTagColor(
-                color.foreground,
-                color.background
+        } yield {
+
+          val displayAndMc = data.map { rawData =>
+            lazy val lowerBoundVersion = for {
+              range <- Try(VersionRange.createFromVersionSpec(rawData)).toOption
+              version <- Option(range.getRecommendedVersion)
+                .orElse(range.getRestrictions.asScala.flatMap(r => Option(r.getLowerBound)).toVector.minimumOption)
+            } yield version
+
+            lazy val lowerBoundVersionStr = lowerBoundVersion.map(_.toString)
+
+            def unzipOptions[A, B](fab: Option[(A, B)]): (Option[A], Option[B]) = fab match {
+              case Some((a, b)) => Some(a) -> Some(b)
+              case None         => (None, None)
+            }
+
+            tagName match {
+              case "Sponge" =>
+                lowerBoundVersionStr.collect {
+                  case MajorMinor(version) => version
+                } -> None //TODO
+              case "SpongeForge" =>
+                unzipOptions(
+                  lowerBoundVersionStr.collect {
+                    case SpongeForgeMajorMinorMC(version, mcVersion) => version -> mcVersion
+                  }
+                )
+              case "SpongeVanilla" =>
+                unzipOptions(
+                  lowerBoundVersionStr.collect {
+                    case SpongeVanillaMajorMinorMC(version, mcVersion) => version -> mcVersion
+                  }
+                )
+              case "Forge" =>
+                lowerBoundVersion.flatMap {
+                  //This will crash and burn if the implementation becomes
+                  //something else, but better that, than failing silently
+                  case version: DefaultArtifactVersion =>
+                    if (BigInt(version.getVersion.getFirstInteger) >= 28) {
+                      Some(version.toString) //Not sure what we really want to do here
+                    } else {
+                      version.toString match {
+                        case OldForgeBuildNum(num) => Some(num)
+                        case _                     => None
+                      }
+                    }
+                } -> None //TODO
+              case _ => None -> None
+            }
+          }
+
+          APIV2.PromotedVersion(
+            version,
+            Seq(
+              APIV2.PromotedVersionTag(
+                tagName,
+                data,
+                displayAndMc.flatMap(_._1),
+                displayAndMc.flatMap(_._2),
+                APIV2.VersionTagColor(
+                  color.foreground,
+                  color.background
+                )
               )
             )
           )
-        )
+        }
       }
     } yield res
 }

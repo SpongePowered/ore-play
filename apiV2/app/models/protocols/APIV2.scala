@@ -70,7 +70,14 @@ object APIV2 {
   )
 
   @ConfiguredJsonCodec case class ProjectNamespace(owner: String, slug: String)
-  @ConfiguredJsonCodec case class PromotedVersion(version: String, tags: Seq[VersionTag])
+  @ConfiguredJsonCodec case class PromotedVersion(version: String, tags: Seq[PromotedVersionTag])
+  @ConfiguredJsonCodec case class PromotedVersionTag(
+      name: String,
+      data: Option[String],
+      displayData: Option[String],
+      minecraftVersion: Option[String],
+      color: VersionTagColor
+  )
   @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
   @ConfiguredJsonCodec case class VersionTagColor(foreground: String, background: String)
   @ConfiguredJsonCodec case class ProjectStats(views: Long, downloads: Long, stars: Long)
