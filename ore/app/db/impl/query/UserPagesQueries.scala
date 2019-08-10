@@ -15,56 +15,6 @@ import doobie.implicits._
 
 object UserPagesQueries extends WebDoobieOreProtocol {
 
-  def getProjects(
-      username: String,
-      currentUserId: Option[DbRef[User]],
-      canSeeHidden: Boolean,
-      order: ProjectSortingStrategy,
-      pageSize: Long,
-      offset: Long
-  ): Query0[ProjectListEntry] = {
-    val visibilityFrag =
-      if (canSeeHidden) None
-      else
-        currentUserId.fold(Some(fr"(p.visibility = 1)")) { id =>
-          Some(fr"(p.visibility = 1 OR (p.owner_id = $id AND p.visibility != 5))")
-        }
-
-    val fragments =
-      sql"""|SELECT p.owner_name,
-            |       p.slug,
-            |       p.visibility,
-            |       p.views,
-            |       p.downloads,
-            |       p.stars,
-            |       p.category,
-            |       p.description,
-            |       p.name,
-            |       p.version_string,
-            |       array_remove(array_agg(p.tag_name), NULL)  AS tag_names,
-            |       array_remove(array_agg(p.tag_data), NULL)  AS tag_datas,
-            |       array_remove(array_agg(p.tag_color), NULL) AS tag_colors
-            |  FROM home_projects p
-            |  WHERE p.owner_name = $username """.stripMargin ++ visibilityFrag.fold(fr0"")(frag => fr"AND" ++ frag) ++
-        fr"""|GROUP BY (p.owner_name,
-             |          p.slug,
-             |          p.visibility,
-             |          p.views,
-             |          p.downloads,
-             |          p.stars,
-             |          p.category,
-             |          p.description,
-             |          p.name,
-             |          p.created_at,
-             |          p.last_updated,
-             |          p.version_string,
-             |          p.search_words)""".stripMargin ++
-        fr"ORDER BY" ++ order.fragment ++
-        fr"LIMIT $pageSize OFFSET $offset"
-
-    fragments.query[ProjectListEntry]
-  }
-
   private def userFragOrder(reverse: Boolean, sortStr: String) = {
     val sort = if (reverse) fr"ASC" else fr"DESC"
 

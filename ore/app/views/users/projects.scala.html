@@ -7,9 +7,8 @@
 @import ore.permission.Permission
 @import ore.permission.role.Role
 @import util.syntax._
-@import views.html.projects.{list => projectList}
 @import views.html.utils.userAvatar
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], models: Seq[ProjectListEntryWithIcon],
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)],
         page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgMembers = @{
@@ -29,13 +28,6 @@
 
     <div class="row">
         <div class="col-md-8">
-        @projectList(
-            models = models,
-            page = page,
-            pageSize = config.ore.users.projectPageSize,
-            call = page => routes.Users.showProjects(u.user.name, Some(page))
-        )
-        </div>
 
         <div class="col-md-4">
             @if(u.isOrga && o.isDefined && canEditOrgMembers) {

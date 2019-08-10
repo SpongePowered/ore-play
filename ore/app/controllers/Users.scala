@@ -138,11 +138,7 @@ class Users @Inject()(
     * @return           View of user projects page
     */
   def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    val pageSize = this.config.ore.users.projectPageSize
-    val pageNum  = page.getOrElse(1)
-    val offset   = (pageNum - 1) * pageSize
-
-    val canHideProjects = request.headerData.globalPerm(Permission.SeeHidden)
+    val pageNum = page.getOrElse(1)
 
     for {
       u <- users
@@ -150,24 +146,10 @@ class Users @Inject()(
         .toZIOWithError(notFound)
       // TODO include orga projects?
       t1 <- (
-        service
-          .runDbCon(
-            UserPagesQueries
-              .getProjects(
-                username,
-                request.headerData.currentUser.map(_.id.value),
-                canHideProjects,
-                ProjectSortingStrategy.MostStars,
-                pageSize,
-                offset
-              )
-              .to[Vector]
-          )
-          .flatMap(entries => ZIO.foreachParN(config.performance.nioBlockingFibers)(entries)(_.withIcon)),
         getOrga(username).option,
         UserData.of(request, u)
       ).parTupled
-      (projects, orga, userData) = t1
+      (orga, userData) = t1
       t2 <- (
         OrganizationData.of[Task, ParTask](orga).value.orDie,
         ScopedOrganizationData.of(request.currentUser, orga).value
@@ -178,7 +160,6 @@ class Users @Inject()(
         views.users.projects(
           userData,
           orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-          projects,
           pageNum
         )
       )
