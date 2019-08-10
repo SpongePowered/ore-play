@@ -103,7 +103,7 @@ object APIV2QueryProject {
   private val MajorMinor                = """(\d+\.\d+)(?:\.\d+)?(?>-SNAPSHOT)?(?>-[a-z0-9]{7,9})?""".r
   private val SpongeForgeMajorMinorMC   = """(\d+\.\d+)\.\d+-\d+-(\d+\.\d+\.\d+)(?:(?:-BETA-\d+)|(?:-RC\d+))?""".r
   private val SpongeVanillaMajorMinorMC = """(\d+\.\d+)\.\d+-(\d+\.\d+\.\d+)(?:(?:-BETA-\d+)|(?:-RC\d+))?""".r
-  private val OldForgeBuildNum          = """\d+\.\d+\.\d+\.(\d+)""".r
+  private val OldForgeVersion           = """\d+\.(\d+\.\d+\.\d+)""".r
 
   implicit private val artifactVersionOrder: Order[ArtifactVersion] = Order.fromComparable[ArtifactVersion]
 
@@ -166,8 +166,8 @@ object APIV2QueryProject {
                       Some(version.toString) //Not sure what we really want to do here
                     } else {
                       version.toString match {
-                        case OldForgeBuildNum(num) => Some(num)
-                        case _                     => None
+                        case OldForgeVersion(version) => Some(version)
+                        case _                        => None
                       }
                     }
                 } -> None //TODO
