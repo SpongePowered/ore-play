@@ -6,12 +6,12 @@ import {
     faTrash, faPlay, faInfoCircle, faQuestionCircle, faExclamationCircle, faSpinner, faCircle, faArrowRight, faCheck,
     faReply, faSave, faTimes, faPencilAlt, faArrowLeft, faCog, faPlayCircle, faEdit, faKey, faCalendar, faUpload,
     faPaperPlane, faSearch, faExternalLinkAlt, faBug, faTerminal, faStopCircle, faClipboard, faWindowClose, faUnlockAlt,
-    faGem as fasGem, faLink
+    faGem as fasGem, faLink, faInfo
 } from '@fortawesome/free-solid-svg-icons'
 
 import {
     faGem as farGem, faThumbsUp as farThumbsUp, faFile, faStar as farStar, faPlusSquare, faMinusSquare, faFileArchive,
-    faSadTear, faCheckCircle
+    faSadTear, faCheckCircle, faClock
 } from '@fortawesome/free-regular-svg-icons'
 
 config.autoAddCss = false;
@@ -22,6 +22,7 @@ library.add(fasStar, fasGem, faEye, faDownload, faServer, faComment, faWrench, f
     farThumbsUp, faTrash, faPlay, faInfoCircle, faQuestionCircle, faExclamationCircle, faSpinner, faCircle, faArrowRight,
     faCheck, faReply, faSave, faTimes, faPencilAlt, faArrowLeft, faCog, faPlayCircle, faEdit, faKey, faCalendar, faFile,
     faUpload, faPaperPlane, faPlusSquare, faSearch, farStar, faExternalLinkAlt, faMinusSquare, faBug, faFileArchive,
-    faTerminal, faStopCircle, faClipboard, faWindowClose, faSadTear, faUnlockAlt, farGem, faLink, faCheckCircle);
+    faTerminal, faStopCircle, faClipboard, faWindowClose, faSadTear, faUnlockAlt, farGem, faLink, faCheckCircle, faClock,
+    faInfo);
 
 dom.watch();
