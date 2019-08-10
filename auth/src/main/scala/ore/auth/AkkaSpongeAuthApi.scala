@@ -80,7 +80,7 @@ class AkkaSpongeAuthApi[F[_]] private (
     makeUnmarshallRequestEither(
       HttpRequest(
         HttpMethods.POST,
-        apiUri(_ / "api" / "users" / organization / "change-avatar-token"),
+        apiUri(_ / "api" / "users" / organization / "change-avatar-token" ++ Uri.Path.SingleSlash),
         entity = FormData(params: _*).toEntity
       )
     )
@@ -89,7 +89,7 @@ class AkkaSpongeAuthApi[F[_]] private (
   override def changeAvatarUri(requester: String, organization: String): F[Either[List[String], Uri]] =
     getChangeAvatarToken(requester, organization).map {
       _.map { token =>
-        apiUri(_ / "accounts" / "user" / organization / "change-avatar")
+        apiUri(_ / "accounts" / "user" / organization / "change-avatar" ++ Uri.Path.SingleSlash)
           .withQuery(Uri.Query("key" -> token.signedData))
       }
     }
