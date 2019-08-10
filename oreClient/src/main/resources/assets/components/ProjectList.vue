@@ -152,22 +152,8 @@
                 Platform.values.forEach(platform => {
                     let versions = [];
                     tagsArray.filter(tag => tag.name === platform.id).reverse().forEach(tag => {
-                        versions.push(tag.data);
+                        versions.push(tag.display_data || tag.data);
                     });
-
-                    if(platform.id === "Sponge") {
-                        versions = versions.map(version => {
-                            return version.substring(0, version.lastIndexOf("."));
-                        })
-                    } else if(platform.id === "Forge") {
-                        versions = versions.map(version => {
-                            if(version.includes("-")) {
-                                return version.substring(0, version.indexOf("."))
-                            } else {
-                                return version.substring(0, version.indexOf(".", version.indexOf(".") + 1))
-                            }
-                        })
-                    }
 
                     if(versions.length > 0) {
                         reducedTags.push({
