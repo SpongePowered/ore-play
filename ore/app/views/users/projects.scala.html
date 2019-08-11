@@ -19,6 +19,7 @@
 }
 
 @scripts = {
+  <script type="text/javascript" src="@routes.Assets.versioned("vue/user-profile.js")"></script>
   @if(u.isOrga && o.isDefined && canEditOrgMembers) {
       <script type="text/javascript" src="@routes.Assets.versioned("javascripts/orgInvites.js")"></script>
   }
@@ -28,7 +29,8 @@
 
     <div class="row">
         <div class="col-md-8">
-
+            <div id="user-profile"></div>
+        </div>
         <div class="col-md-4">
             @if(u.isOrga && o.isDefined && canEditOrgMembers) {
                 <div class="panel-user-info panel panel-default">

@@ -39,6 +39,7 @@ this.
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("bootstrap/css/bootstrap.min.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/main.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/font-awesome.css")" />
+        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("vue/commons.css")" />
         @additionalStyling
 
         <!-- See https://goo.gl/OOhYW5 and https://goo.gl/qRE0vM -->
@@ -82,6 +83,7 @@ this.
 
         @if(scriptsEnabled) {
             <script type="text/javascript" src="@routes.Application.javascriptRoutes"></script>
+            <script type="text/javascript" src="@routes.Assets.versioned("vue/vendors.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("build/font-awesome.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("build/commons.js")"></script>

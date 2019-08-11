@@ -5,16 +5,18 @@ const CopyPlugin = require('copy-webpack-plugin');
 const Path = require('path');
 const rootDir = Path.resolve(__dirname, '../../../..');
 const resourcesDir = Path.resolve(rootDir, 'src', 'main', 'resources');
+const entryDir = Path.resolve(resourcesDir, 'assets', 'entries');
 const modulesDir = Path.resolve(__dirname, 'node_modules');
 const outputDir = Path.resolve(__dirname, 'build');
 
 module.exports = {
     entry: {
         main: Path.resolve(resourcesDir, 'assets', 'scss', 'main.scss'),
-        home: Path.resolve(resourcesDir, 'assets', 'home.js'),
-        'font-awesome': Path.resolve(resourcesDir, 'assets', 'font-awesome.js'),
-        'ore-client-fastopt': Path.resolve(resourcesDir, 'assets', 'dummy.js'),
-        'ore-client-opt': Path.resolve(resourcesDir, 'assets', 'dummy.js')
+        home: Path.resolve(entryDir, 'home.js'),
+        'font-awesome': Path.resolve(entryDir, 'font-awesome.js'),
+        'user-profile': Path.resolve(entryDir, 'user-profile.js'),
+        'ore-client-fastopt': Path.resolve(entryDir, 'dummy.js'),
+        'ore-client-opt': Path.resolve(entryDir, 'dummy.js')
     },
     output: {
         path: outputDir,
@@ -70,8 +72,14 @@ module.exports = {
             cacheGroups: {
                 vendors: {
                     test: /[\\/]node_modules[\\/]/,
+                    name: 'vendors',
+                    chunks: 'all',
+                    priority: -10
+                },
+                commons: {
                     name: 'commons',
-                    chunks: 'all'
+                    chunks: 'all',
+                    priority: -20
                 },
             }
         },

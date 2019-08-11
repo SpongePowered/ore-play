@@ -60,7 +60,7 @@
             </div>
             <div v-else class="list-group-item empty-project-list">
                 <i class="far fa-2x fa-sad-tear"></i>
-                <span>Oops! No projects found matching your filters...</span>
+                <span>Oops! No projects found...</span>
             </div>
         </div>
     </div>
@@ -69,7 +69,7 @@
 <script>
     import Tag from "./Tag"
     import {clearFromEmpty} from "./../utils"
-    import {Category, Platform, Visibility} from "../home";
+    import {Category, Platform, Visibility} from "../enums";
     import Pagination from "./Pagination";
     import Icon from "./Icon"
     import debounce from "lodash/debounce"
@@ -200,8 +200,8 @@
             padding: 10px 0;
             margin-bottom: 0.25rem;
 
-            &:first-child {
-                margin-top: 0.25rem;
+            &:last-child {
+                margin-bottom: 0;
             }
         }
 

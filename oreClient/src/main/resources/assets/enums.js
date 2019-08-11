@@ -1,5 +1,3 @@
-import Vue from 'vue'
-
 export class Category {
     static get values() {
         return [
@@ -66,9 +64,3 @@ export class Visibility {
         return this.values.filter(visibility => visibility.name === name)[0];
     }
 }
-
-const root = require('./Home.vue').default;
-const app = new Vue({
-    el: '#home',
-    render: createElement => createElement(root),
-});
