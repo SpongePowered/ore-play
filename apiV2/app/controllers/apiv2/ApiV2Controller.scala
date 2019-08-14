@@ -9,11 +9,12 @@ import javax.inject.{Inject, Singleton}
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.http.{HttpErrorHandler, Writeable}
 import play.api.i18n.Lang
+import play.api.inject.ApplicationLifecycle
 import play.api.libs.Files
 import play.api.mvc._
 
@@ -49,10 +50,22 @@ import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
 
 @Singleton
-class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpErrorHandler, fakeUser: FakeUser)(
+class ApiV2Controller @Inject()(
+    factory: ProjectFactory,
+    val errorHandler: HttpErrorHandler,
+    fakeUser: FakeUser,
+    lifecycle: ApplicationLifecycle
+)(
     implicit oreComponents: OreControllerComponents
 ) extends OreBaseController
     with CircePlayController {
+
+  implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, ?]] =
+    scalacache.CatsEffect.modes.async[ZIO[R, Throwable, ?]]
+
+  private val resultCache = scalacache.caffeine.CaffeineCache[Either[Result, Result]]
+
+  lifecycle.addStopHook(() => zioRuntime.unsafeRunToFuture(resultCache.close[Task]()))
 
   private def limitOrDefault(limit: Option[Long], default: Long) = math.min(limit.getOrElse(default), default)
   private def offsetOrZero(offset: Long)                         = math.max(offset, 0)
@@ -150,42 +163,6 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
 
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     Action.andThen(apiAction).andThen(permApiAction(perms, scope))
-
-  def apiDbAction[A: Encoder](perms: Permission, scope: APIScope)(
-      action: ApiRequest[AnyContent] => doobie.ConnectionIO[A]
-  ): Action[AnyContent] =
-    ApiAction(perms, scope).asyncF { request =>
-      service.runDbCon(action(request)).map(a => Ok(a.asJson))
-    }
-
-  def apiOptDbAction[A: Encoder](perms: Permission, scope: APIScope)(
-      action: ApiRequest[AnyContent] => doobie.ConnectionIO[Option[A]]
-  ): Action[AnyContent] =
-    ApiAction(perms, scope).asyncF { request =>
-      service.runDbCon(action(request)).map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
-    }
-
-  def apiEitherDbAction[A: Encoder](perms: Permission, scope: APIScope)(
-      action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[A]]
-  ): Action[AnyContent] =
-    ApiAction(perms, scope).asyncF { request =>
-      action(request).bimap(UIO.succeed, service.runDbCon(_).map(a => Ok(a.asJson))).merge
-    }
-
-  def apiEitherVecDbAction[A: Encoder](perms: Permission, scope: APIScope)(
-      action: ApiRequest[AnyContent] => Either[Result, doobie.ConnectionIO[Vector[A]]]
-  ): Action[AnyContent] =
-    ApiAction(perms, scope).asyncF { request =>
-      action(request).bimap(UIO.succeed, service.runDbCon).map(_.map(a => Ok(a.asJson))).merge
-    }
-
-  def apiVecDbAction[A: Encoder](
-      perms: Permission,
-      scope: APIScope
-  )(action: ApiRequest[AnyContent] => doobie.ConnectionIO[Vector[A]]): Action[AnyContent] =
-    ApiAction(perms, scope).asyncF { request =>
-      service.runDbCon(action(request)).map(xs => Ok(xs.asJson))
-    }
 
   private def expiration(duration: FiniteDuration) = Instant.now().plusSeconds(duration.toSeconds)
 
@@ -342,26 +319,51 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       perms    <- request.permissionIn(scope)
     } yield (apiScope, perms)
 
+  def cachingF[R, A, B](
+      cacheKey: String
+  )(parts: Any*)(fa: ZIO[R, Result, Result])(implicit request: ApiRequest[B]): ZIO[R, Result, Result] =
+    resultCache
+      .cachingF[ZIO[R, Throwable, ?]](
+        cacheKey +: parts :+
+          request.apiInfo.key.map(_.tokenIdentifier) :+
+          //We do both the user and the token for authentication methods that don't use a token
+          request.apiInfo.user.map(_.id) :+
+          request.body
+      )(
+        Some(1.minute)
+      )(fa.either)
+      .constError(InternalServerError)
+      .absolve
+
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
     ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      permissionsInCreatedApiScope(pluginId, organizationName).map {
-        case (scope, perms) =>
-          Ok(
-            KeyPermissions(
-              scope.tpe,
-              perms.toNamedSeq.toList
+      cachingF("showPermissions")(pluginId, organizationName) {
+        permissionsInCreatedApiScope(pluginId, organizationName).map {
+          case (scope, perms) =>
+            Ok(
+              KeyPermissions(
+                scope.tpe,
+                perms.toNamedSeq.toList
+              )
             )
-          )
+        }
       }
     }
 
-  def has(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])(
+  def has(
+      cacheKey: String,
+      permissions: Seq[NamedPermission],
+      pluginId: Option[String],
+      organizationName: Option[String]
+  )(
       check: (Seq[NamedPermission], Permission) => Boolean
   ): Action[AnyContent] =
     ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      permissionsInCreatedApiScope(pluginId, organizationName).map {
-        case (scope, perms) =>
-          Ok(PermissionCheck(scope.tpe, check(permissions, perms)))
+      cachingF(cacheKey)(permissions, pluginId, organizationName) {
+        permissionsInCreatedApiScope(pluginId, organizationName).map {
+          case (scope, perms) =>
+            Ok(PermissionCheck(scope.tpe, check(permissions, perms)))
+        }
       }
     }
 
@@ -370,14 +372,14 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       pluginId: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has(permissions, pluginId, organizationName)((seq, perm) => seq.forall(p => perm.has(p.permission)))
+    has("hasAll", permissions, pluginId, organizationName)((seq, perm) => seq.forall(p => perm.has(p.permission)))
 
   def hasAny(
       permissions: Seq[NamedPermission],
       pluginId: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(p => perm.has(p.permission)))
+    has("hasAny", permissions, pluginId, organizationName)((seq, perm) => seq.exists(p => perm.has(p.permission)))
 
   def listProjects(
       q: Option[String],
@@ -390,81 +392,91 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       offset: Long
   ): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
-      val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
-      val realOffset = offsetOrZero(offset)
+      cachingF("listProjects")(q, categories, tags, owner, sort, relevance, limit, offset) {
+        val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
+        val realOffset = offsetOrZero(offset)
 
-      val parsedTags = tags.map { s =>
-        val splitted = s.split(":", 2)
-        (splitted(0), splitted.lift(1))
-      }
+        val parsedTags = tags.map { s =>
+          val splitted = s.split(":", 2)
+          (splitted(0), splitted.lift(1))
+        }
 
-      val getProjects = APIV2Queries
-        .projectQuery(
-          None,
-          categories.toList,
-          parsedTags.toList,
-          q,
-          owner,
-          request.globalPermissions.has(Permission.SeeHidden),
-          request.user.map(_.id),
-          sort.getOrElse(ProjectSortingStrategy.Default),
-          relevance.getOrElse(true),
-          realLimit,
-          realOffset
-        )
-        .to[Vector]
-
-      val countProjects = APIV2Queries
-        .projectCountQuery(
-          None,
-          categories.toList,
-          parsedTags.toList,
-          q,
-          owner,
-          request.globalPermissions.has(Permission.SeeHidden),
-          request.user.map(_.id)
-        )
-        .unique
-
-      (
-        service.runDbCon(getProjects).flatMap(ZIO.foreachParN(config.performance.nioBlockingFibers)(_)(identity)),
-        service.runDbCon(countProjects)
-      ).parMapN { (projects, count) =>
-        Ok(
-          PaginatedProjectResult(
-            Pagination(realLimit, realOffset, count),
-            projects
+        val getProjects = APIV2Queries
+          .projectQuery(
+            None,
+            categories.toList,
+            parsedTags.toList,
+            q,
+            owner,
+            request.globalPermissions.has(Permission.SeeHidden),
+            request.user.map(_.id),
+            sort.getOrElse(ProjectSortingStrategy.Default),
+            relevance.getOrElse(true),
+            realLimit,
+            realOffset
           )
-        )
+          .to[Vector]
+
+        val countProjects = APIV2Queries
+          .projectCountQuery(
+            None,
+            categories.toList,
+            parsedTags.toList,
+            q,
+            owner,
+            request.globalPermissions.has(Permission.SeeHidden),
+            request.user.map(_.id)
+          )
+          .unique
+
+        (
+          service.runDbCon(getProjects).flatMap(ZIO.foreachParN(config.performance.nioBlockingFibers)(_)(identity)),
+          service.runDbCon(countProjects)
+        ).parMapN { (projects, count) =>
+          Ok(
+            PaginatedProjectResult(
+              Pagination(realLimit, realOffset, count),
+              projects
+            )
+          )
+        }
       }
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      val dbCon = APIV2Queries
-        .projectQuery(
-          Some(pluginId),
-          Nil,
-          Nil,
-          None,
-          None,
-          request.globalPermissions.has(Permission.SeeHidden),
-          request.user.map(_.id),
-          ProjectSortingStrategy.Default,
-          orderWithRelevance = false,
-          1,
-          0
-        )
-        .option
+      cachingF("showProject")(pluginId) {
+        val dbCon = APIV2Queries
+          .projectQuery(
+            Some(pluginId),
+            Nil,
+            Nil,
+            None,
+            None,
+            request.globalPermissions.has(Permission.SeeHidden),
+            request.user.map(_.id),
+            ProjectSortingStrategy.Default,
+            orderWithRelevance = false,
+            1,
+            0
+          )
+          .option
 
-      service.runDbCon(dbCon).get.flatMap(identity).bimap(_ => NotFound, Ok(_))
+        service.runDbCon(dbCon).get.flatMap(identity).bimap(_ => NotFound, Ok(_))
+      }
     }
 
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
-    apiVecDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
-      APIV2Queries
-        .projectMembers(pluginId, limitOrDefault(limit, 25), offsetOrZero(offset))
-        .to[Vector]
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      cachingF("showMembers")(pluginId, limit, offset) {
+        service
+          .runDbCon(
+            APIV2Queries
+              .projectMembers(pluginId, limitOrDefault(limit, 25), offsetOrZero(offset))
+              .to[Vector]
+          )
+          .map(xs => Ok(xs.asJson))
+      }
     }
 
   def listVersions(
@@ -473,34 +485,40 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
-      val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
-      val realOffset = offsetOrZero(offset)
-      val getVersions = APIV2Queries
-        .versionQuery(
-          pluginId,
-          None,
-          tags.toList,
-          realLimit,
-          realOffset
-        )
-        .to[Vector]
-
-      val countVersions = APIV2Queries.versionCountQuery(pluginId, tags.toList).unique
-
-      (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
-        Ok(
-          PaginatedVersionResult(
-            Pagination(realLimit, realOffset, count),
-            versions
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      cachingF("listVersions")(pluginId, tags, limit, offset) {
+        val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
+        val realOffset = offsetOrZero(offset)
+        val getVersions = APIV2Queries
+          .versionQuery(
+            pluginId,
+            None,
+            tags.toList,
+            realLimit,
+            realOffset
           )
-        )
+          .to[Vector]
+
+        val countVersions = APIV2Queries.versionCountQuery(pluginId, tags.toList).unique
+
+        (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
+          Ok(
+            PaginatedVersionResult(
+              Pagination(realLimit, realOffset, count),
+              versions
+            )
+          )
+        }
       }
     }
 
   def showVersion(pluginId: String, name: String): Action[AnyContent] =
-    apiOptDbAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)) { _ =>
-      APIV2Queries.versionQuery(pluginId, Some(name), Nil, 1, 0).option
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      cachingF("showVersion")(pluginId, name) {
+        service
+          .runDbCon(APIV2Queries.versionQuery(pluginId, Some(name), Nil, 1, 0).option)
+          .map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
+      }
     }
 
   //TODO: Do the async part at some point
@@ -603,7 +621,11 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     }
 
   def showUser(user: String): Action[AnyContent] =
-    apiOptDbAction(Permission.ViewPublicInfo, APIScope.GlobalScope)(_ => APIV2Queries.userQuery(user).option)
+    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
+      cachingF("showUser")(user) {
+        service.runDbCon(APIV2Queries.userQuery(user).option).map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
+      }
+    }
 
   def showStarred(
       user: String,
@@ -611,7 +633,14 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    showUserAction(user, sort, limit, offset, APIV2Queries.starredQuery, APIV2Queries.starredCountQuery)
+    showUserAction("showStarred")(
+      user,
+      sort,
+      limit,
+      offset,
+      APIV2Queries.starredQuery,
+      APIV2Queries.starredCountQuery
+    )
 
   def showWatching(
       user: String,
@@ -619,9 +648,16 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    showUserAction(user, sort, limit, offset, APIV2Queries.watchingQuery, APIV2Queries.watchingCountQuery)
+    showUserAction("showWatching")(
+      user,
+      sort,
+      limit,
+      offset,
+      APIV2Queries.watchingQuery,
+      APIV2Queries.watchingCountQuery
+    )
 
-  def showUserAction(
+  def showUserAction(cacheKey: String)(
       user: String,
       sort: Option[ProjectSortingStrategy],
       limit: Option[Long],
@@ -635,33 +671,35 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
           Long
       ) => doobie.Query0[Either[DecodingFailure, APIV2.CompactProject]],
       countQuery: (String, Boolean, Option[DbRef[User]]) => doobie.Query0[Long]
-  ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { request =>
-    val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
+  ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
+    cachingF(cacheKey)(user, sort, limit, offset) {
+      val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
 
-    val getProjects = query(
-      user,
-      request.globalPermissions.has(Permission.SeeHidden),
-      request.user.map(_.id),
-      sort.getOrElse(ProjectSortingStrategy.Default),
-      realLimit,
-      offset
-    ).to[Vector]
+      val getProjects = query(
+        user,
+        request.globalPermissions.has(Permission.SeeHidden),
+        request.user.map(_.id),
+        sort.getOrElse(ProjectSortingStrategy.Default),
+        realLimit,
+        offset
+      ).to[Vector]
 
-    val countProjects = countQuery(
-      user,
-      request.globalPermissions.has(Permission.SeeHidden),
-      request.user.map(_.id)
-    ).unique
+      val countProjects = countQuery(
+        user,
+        request.globalPermissions.has(Permission.SeeHidden),
+        request.user.map(_.id)
+      ).unique
 
-    (service.runDbCon(getProjects).flatMap(ZIO.foreach(_)(ZIO.fromEither(_))).orDie, service.runDbCon(countProjects))
-      .parMapN { (projects, count) =>
-        Ok(
-          PaginatedCompactProjectResult(
-            Pagination(realLimit, offset, count),
-            projects
+      (service.runDbCon(getProjects).flatMap(ZIO.foreach(_)(ZIO.fromEither(_))).orDie, service.runDbCon(countProjects))
+        .parMapN { (projects, count) =>
+          Ok(
+            PaginatedCompactProjectResult(
+              Pagination(realLimit, offset, count),
+              projects
+            )
           )
-        )
-      }
+        }
+    }
   }
 }
 object ApiV2Controller {

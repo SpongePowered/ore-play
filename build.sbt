@@ -85,6 +85,7 @@ lazy val akkaHttpVersion     = "10.1.9"
 lazy val scalaLoggingVersion = "3.9.2"
 lazy val simulacrumVersion   = "0.19.0"
 lazy val macWireVersion      = "2.3.3"
+lazy val scalaCacheVersion   = "0.28.0"
 
 lazy val db = project.settings(
   commonSettings,
@@ -183,11 +184,13 @@ lazy val apiV2 = project
       "util.APIBinders._"
     ).map(s => s"_root_.$s"),
     libraryDependencies ++= Seq(
-      "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
-      "org.typelevel"              %% "cats-core"            % catsVersion,
-      "io.circe"                   %% "circe-core"           % circeVersion,
-      "io.circe"                   %% "circe-generic-extras" % circeVersion,
-      "io.circe"                   %% "circe-parser"         % circeVersion
+      "com.typesafe.scala-logging" %% "scala-logging"          % scalaLoggingVersion,
+      "org.typelevel"              %% "cats-core"              % catsVersion,
+      "io.circe"                   %% "circe-core"             % circeVersion,
+      "io.circe"                   %% "circe-generic-extras"   % circeVersion,
+      "io.circe"                   %% "circe-parser"           % circeVersion,
+      "com.github.cb372"           %% "scalacache-caffeine"    % scalaCacheVersion,
+      "com.github.cb372"           %% "scalacache-cats-effect" % scalaCacheVersion
     ),
     libraryDependencies ++= playTestDeps
   )
