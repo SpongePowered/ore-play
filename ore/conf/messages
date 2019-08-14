@@ -334,6 +334,7 @@ user.apiKeys.keyDeleteColumn       = Delete
 user.apiKeys.keyDeleteButton       = Delete key
 user.apiKeys.error.noPermsSet      = No permissions specified
 user.apiKeys.error.noNameSet       = No name specified
+user.apiKeys.error.tooLongName     = Too long name
 user.apiKeys.error.nameAlreadyUsed = Name already used
 
 organization.avatarFailed   =   Failed to request token for changing the organization avatar.

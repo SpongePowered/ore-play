@@ -282,7 +282,10 @@ class ApiV2Controller @Inject()(factory: ProjectFactory, val errorHandler: HttpE
     ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncF {
       implicit request =>
         val permsVal = NamedPermission.parseNamed(request.body.permissions).toValidNel("Invalid permission name")
-        val nameVal  = Some(request.body.name).filter(_.nonEmpty).toValidNel("Name was empty")
+        val nameVal = Some(request.body.name)
+          .filter(_.nonEmpty)
+          .toValidNel("Name was empty")
+          .ensure(NonEmptyList.one("Name too long"))(_.length < 255)
 
         (permsVal, nameVal)
           .mapN { (perms, name) =>

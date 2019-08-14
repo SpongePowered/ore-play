@@ -2,6 +2,7 @@
 
 var NO_PERMS_SET = null;
 var NO_NAME_SET = null;
+var TOO_LONG_NAME = null;
 var NAMED_USED = null;
 var DELETE_KEY = null;
 
@@ -47,6 +48,12 @@ $(function () {
                 showError(NO_NAME_SET);
                 return;
             }
+
+            if(name.length > 255) {
+                showError(TOO_LONG_NAME);
+                return;
+            }
+
             var nameTaken = $('.api-key-name:contains(' + name + ')').size();
             if (nameTaken !== 0) {
                 showError(NAMED_USED);
@@ -71,7 +78,7 @@ $(function () {
                 var row = $('<tr>');
                 var token = newKey.key;
 
-                row.append($('<th>').text(name));
+                row.append($('<th>').addClass('api-key-name').text(name));
                 row.append($('<th>').text(token));
                 row.append($('<th>'));
                 row.append($('<th>').text(namedPerms));
