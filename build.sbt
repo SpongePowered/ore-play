@@ -62,7 +62,7 @@ lazy val playCommonSettings = Seq(
     "ore.data.project.Category"
   ).map(s => s"_root_.$s"),
   unmanagedResourceDirectories in Test += (baseDirectory.value / "target/web/public/test"),
-  pipelineStages := Seq(digest, gzip),
+  pipelineStages := Seq(digest, gzip)
 )
 
 lazy val playTestDeps = Seq(
