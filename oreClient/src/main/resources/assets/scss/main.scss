@@ -1,3 +1,4 @@
+@import "variables";
 @import 'admin';
 @import 'creator';
 @import 'discuss';
@@ -40,6 +41,13 @@ body {
   padding: 0.25rem 0;
   color: white;
   margin-bottom: 1.5rem;
+}
+
+.sponge-headline {
+  font-family: $sponge_headline_font;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-decoration: none;
 }
 
 .modal-body {

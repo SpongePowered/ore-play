@@ -23,7 +23,7 @@ this.
         <link rel="prefetch" href="@routes.Assets.versioned("highlight/styles/default.css")">
         <link rel="prefetch" href="@routes.Assets.versioned("bootstrap/css/bootstrap.min.css")">
         <link rel="prefetch" href="@routes.Assets.versioned("stylesheets/main.css")">
-        <link rel="prefetch" href="@routes.Assets.versioned("vue/font-awesome.css")">
+        <link rel="prefetch" href="@routes.Assets.versioned("build/font-awesome.css")">
         <link rel="prefetch" href="@routes.Assets.versioned("manifest/manifest.json")">
 
         <title>@title</title>
@@ -37,8 +37,8 @@ this.
         <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("highlight/styles/default.css")" />
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("bootstrap/css/bootstrap.min.css")" />
-        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("stylesheets/main.css")" />
-        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("vue/font-awesome.css")" />
+        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/main.css")" />
+        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/font-awesome.css")" />
         @additionalStyling
 
         <!-- See https://goo.gl/OOhYW5 and https://goo.gl/qRE0vM -->
@@ -82,9 +82,9 @@ this.
 
         @if(scriptsEnabled) {
             <script type="text/javascript" src="@routes.Application.javascriptRoutes"></script>
-            <script type="text/javascript" src="@routes.Assets.versioned("vue/font-awesome.js")"></script>
+            <script type="text/javascript" src="@routes.Assets.versioned("build/font-awesome.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
-            <script type="text/javascript" src="@routes.Assets.versioned("vue/commons.js")"></script>
+            <script type="text/javascript" src="@routes.Assets.versioned("build/commons.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/moment/min/moment.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("bootstrap/js/bootstrap.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/filesize/lib/filesize.js")"></script>

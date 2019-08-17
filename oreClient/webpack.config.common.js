@@ -6,10 +6,11 @@ const Path = require('path');
 const rootDir = Path.resolve(__dirname, '../../../..');
 const resourcesDir = Path.resolve(rootDir, 'src', 'main', 'resources');
 const modulesDir = Path.resolve(__dirname, 'node_modules');
-const outputDir = Path.resolve(__dirname, 'vue');
+const outputDir = Path.resolve(__dirname, 'build');
 
 module.exports = {
     entry: {
+        main: Path.resolve(resourcesDir, 'assets', 'scss', 'main.scss'),
         home: Path.resolve(resourcesDir, 'assets', 'home.js'),
         'font-awesome': Path.resolve(resourcesDir, 'assets', 'font-awesome.js'),
         'ore-client-fastopt': Path.resolve(resourcesDir, 'assets', 'dummy.js'),

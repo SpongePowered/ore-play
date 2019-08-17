@@ -16,7 +16,7 @@ sorted according to different criteria.
 }
 
 @scripts = {
-    <script src="@routes.Assets.versioned("vue/home.js")"></script>
+    <script src="@routes.Assets.versioned("build/home.js")"></script>
 }
 
 @meta = {
@@ -28,7 +28,7 @@ sorted according to different criteria.
 }
 
 @styling = {
-    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("vue/home.css")" />
+    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/home.css")" />
 }
 
 @layout.base(messages("general.title"), scripts, additionalMeta = meta, additionalStyling = styling) {
