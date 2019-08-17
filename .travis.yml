@@ -46,5 +46,5 @@ before_cache:
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION ";ore/test ;oreClient/fastOptJS::webpack"
-  - ./scalafmt apiV2/app auth db discourse externalCommon models ore/app ore/test orePlayCommon/app build.sbt --test --non-interactive
+  - sbt ++$TRAVIS_SCALA_VERSION ";ore/test ;ore/assets"
+  - ./scalafmt --test --non-interactive
