@@ -78,7 +78,9 @@ module.exports = {
                 },
                 commons: {
                     name: 'commons',
-                    chunks: 'all',
+                    chunks (chunk) {
+                        return chunk.name !== 'main';
+                    },
                     priority: -20
                 },
             }
