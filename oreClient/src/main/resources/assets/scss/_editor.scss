@@ -34,6 +34,14 @@
     color: black;
   }
 
+  a code {
+    color: #337ab7;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
   h1, h2 {
     border-bottom: 1px solid $lighter;
     padding-bottom: 5px;
