@@ -23,8 +23,11 @@ Base template for Project overview.
     <script @CSPNonce.attr>
             var projectOwner = "@p.project.ownerName";
             var projectSlug = "@p.project.slug";
+            var projectId = "@p.project.pluginId";
             var alreadyStarred = @sp.starred;
+            $(function() { $(".nav").find("@active").addClass("active"); });
     </script>
+    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pageEdit.js")"></script>
     @additionalScripts
 }
 
@@ -163,27 +166,6 @@ Base template for Project overview.
                         </div>
                     }
 
-                        <!-- Download button -->
-                    @if(p.project.visibility != Visibility.SoftDelete) {
-                        <div class="btn-group btn-download">
-                            @p.recommendedVersion.map { v =>
-                                <a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)"
-                                title="@messages("project.download.recommend")" data-toggle="tooltip"
-                                data-placement="bottom" class="btn btn-primary">
-                                    <i class="fas fa-download"></i> @messages("general.download")
-                                </a>
-                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <span class="caret"></span>
-                                    <span class="sr-only">Toggle Dropdown</span>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-right">
-                                    <li><a href="@Versions.downloadRecommended(p.project.ownerName, p.project.slug, None)">@messages("general.download")</a></li>
-                                    <li><a href="#" class="copy-url" data-clipboard-text="@config.app.baseUrl@Versions.download(p.project.ownerName, p.project.slug, v.versionString, None)">Copy URL</a></li>
-                                </ul>
-                            }
-                        </div>
-                    }
-
                     @if(request.hasUser && (request.headerData.globalPerm(Permission.ModNotesAndFlags) || request.headerData.globalPerm(Permission.ViewLogs))) {
                         <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                             Admin actions
@@ -281,7 +263,6 @@ Base template for Project overview.
                                 </li>
                             }
                         </ul>
-                        <script @CSPNonce.attr>$(function() { $(".nav").find("@active").addClass("active"); });</script>
                     </div>
                 </div>
             </div>

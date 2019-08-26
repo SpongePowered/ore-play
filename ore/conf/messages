@@ -151,6 +151,7 @@ project.rename.info             =   Changing your projects name can have undesir
 project.discuss                 =   Discuss
 project.discuss.postAs          =   Posting as:
 project.docs                    =   Docs
+project.promotedVersions        =   Promoted Versions
 project.settings                =   Settings
 project.settings.members        =   Members
 project.settings.license        =   License

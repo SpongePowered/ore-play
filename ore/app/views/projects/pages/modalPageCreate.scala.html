@@ -6,7 +6,6 @@
 
 @(model: Project, rootPages: Seq[Model[Page]])(implicit messages: Messages, request: RequestHeader, config: OreConfig)
 
-<script type="text/javascript" src="@routes.Assets.versioned("javascripts/pageEdit.js")"></script>
 <script @CSPNonce.attr>
     PROJECT_OWNER = '@model.ownerName';
     PROJECT_SLUG = '@model.slug';

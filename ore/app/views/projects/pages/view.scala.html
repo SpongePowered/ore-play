@@ -76,6 +76,15 @@ Documentation page within Project overview.
 
             <div class="panel panel-default">
                 <div class="panel-heading">
+                    <h3 class="panel-title">@messages("project.promotedVersions")</h3>
+                </div>
+                <ul class="list-group promoted-list">
+
+                </ul>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
                     <h3 class="pull-left panel-title">@messages("page.plural")</h3>
                     @if(canEditPages && pageCount < config.ore.projects.maxPages) {
                         <button data-toggle="modal" data-target="#new-page" title="New"
