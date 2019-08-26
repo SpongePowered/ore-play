@@ -62,6 +62,7 @@ object AppQueries extends WebDoobieOreProtocol {
 
   def flags(userId: DbRef[User]): Query0[ShownFlag] = {
     sql"""|SELECT pf.id        AS flag_id,
+          |       pf.created_at AS flag_creation_date,
           |       pf.reason    AS flag_reason,
           |       pf.comment   AS flag_comment,
           |       fu.name      AS reporter,
@@ -71,9 +72,6 @@ object AppQueries extends WebDoobieOreProtocol {
           |  FROM project_flags pf
           |         JOIN projects p ON pf.project_id = p.id
           |         JOIN users fu ON pf.user_id = fu.id
-          |         JOIN users ru ON ru.id = 9001
-          |         JOIN user_global_roles rgr ON ru.id = rgr.user_id
-          |         JOIN roles rr ON rgr.role_id = rr.id
           |  WHERE NOT pf.is_resolved
           |  GROUP BY pf.id, fu.id, p.id;""".stripMargin.query[ShownFlag]
   }

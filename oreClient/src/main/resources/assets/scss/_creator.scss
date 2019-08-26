@@ -28,19 +28,10 @@
   color: green;
 }
 
-.create-blurb {
-  @include padding-vert(10px, 10px);
-  margin-bottom: 0;
-}
-
 .status-org-name {
   position: absolute;
   bottom: 30px;
   right: 30px;
-}
-
-.create-body {
-  padding-bottom: 3px;
 }
 
 .plugin-meta {
@@ -73,14 +64,6 @@
 
 #continue {
   margin-top: 4px;
-}
-
-#form-upload > label {
-  @include towardsBottomLeft(10px, 4px);
-}
-
-#form-publish .btn {
-  margin-top: 5px;
 }
 
 .alert-file {

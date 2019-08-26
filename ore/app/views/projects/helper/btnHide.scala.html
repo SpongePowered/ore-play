@@ -2,8 +2,8 @@
 @import ore.models.project.Visibility
 @(namespace: ProjectNamespace, projectVisibility: Visibility)(implicit messages: Messages)
 
-<div class="btn-group btn-group-sm">
-    <button class="btn btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-project="@namespace" style="color: black">
+<div class="btn-group">
+    <button class="btn btn-sm btn-alert btn-hide-dropdown dropdown-toggle" type="button" id="visibility-actions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-project="@namespace" style="color: black">
         <i class="fas fa-eye"></i> Visibility actions
         <span class="caret"></span>
     </button>
