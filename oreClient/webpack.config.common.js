@@ -26,10 +26,7 @@ module.exports = {
     },
     plugins: [
         new VueLoaderPlugin(),
-        new MiniCssExtractPlugin({
-            filename: '[name].css',
-            chunkFilename: '[id].css',
-        }),
+        new MiniCssExtractPlugin(),
         new CopyPlugin([
             {
                 from: Path.resolve(modulesDir, '@fortawesome', 'fontawesome-svg-core', 'styles.css'),
@@ -78,9 +75,7 @@ module.exports = {
                 },
                 commons: {
                     name: 'commons',
-                    chunks (chunk) {
-                        return chunk.name !== 'main';
-                    },
+                    chunks: 'all',
                     priority: -20
                 },
             }
