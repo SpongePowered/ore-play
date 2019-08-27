@@ -19,7 +19,7 @@
 }
 
 @scripts = {
-  <script type="text/javascript" src="@routes.Assets.versioned("vue/user-profile.js")"></script>
+  <script type="text/javascript" src="@routes.Assets.versioned("build/user-profile.js")"></script>
   @if(u.isOrga && o.isDefined && canEditOrgMembers) {
       <script type="text/javascript" src="@routes.Assets.versioned("javascripts/orgInvites.js")"></script>
   }
