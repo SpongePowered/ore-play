@@ -23,6 +23,8 @@
   @if(u.isOrga && o.isDefined && canEditOrgMembers) {
       <script type="text/javascript" src="@routes.Assets.versioned("javascripts/orgInvites.js")"></script>
   }
+  <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
+  <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
 }
 
 @users.view(u, o, additionalScripts = scripts) {

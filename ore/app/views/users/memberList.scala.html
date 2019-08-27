@@ -15,9 +15,6 @@
 @if(j.members.nonEmpty) {
 
     @if(editable && perms.has(Permission.ManageSubjectMembers)) {
-        <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
-        <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
-
         @users.invite.roleSelect(
             roleCategory = j.roleCategory,
             id = "select-role",
