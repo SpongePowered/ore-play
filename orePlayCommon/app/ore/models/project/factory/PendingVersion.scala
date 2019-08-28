@@ -31,7 +31,7 @@ import zio.{Task, ZIO}
   */
 case class PendingVersion(
     versionString: String,
-    dependencyIds: List[String],
+    dependencies: List[Dependency],
     description: Option[String],
     projectId: Option[DbRef[Project]], // Version might be for an uncreated project
     fileSize: Long,
@@ -53,12 +53,6 @@ case class PendingVersion(
     free[Task].orDie *> factory.createVersion(project, this)
 
   override def key: String = projectUrl + '/' + versionString
-
-  def dependencies: List[Dependency] =
-    for (depend <- dependencyIds) yield {
-      val data = depend.split(":", 2)
-      Dependency(data(0), data.lift(1))
-    }
 
   def dependenciesAsGhostTags: Seq[VersionTag] =
     Platform.ghostTags(-1L, dependencies)
@@ -95,7 +89,10 @@ case class PendingVersion(
 
   def asVersion(projectId: DbRef[Project], channelId: DbRef[Channel]): Version = Version(
     versionString = versionString,
-    dependencyIds = dependencyIds,
+    dependencyIds = dependencies.map {
+      case Dependency(pluginId, Some(version)) => s"$pluginId:$version"
+      case Dependency(pluginId, None)          => pluginId
+    },
     description = description,
     projectId = projectId,
     channelId = channelId,

@@ -227,7 +227,7 @@ trait ProjectFactory {
       Right(
         PendingVersion(
           versionString = StringUtils.slugify(metaData.version.get),
-          dependencyIds = metaData.dependencies.map(d => d.pluginId + ":" + d.version).toList,
+          dependencies = metaData.dependencies.toList,
           description = metaData.description,
           projectId = projectId,
           fileSize = path.toFile.length,

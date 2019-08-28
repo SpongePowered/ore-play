@@ -90,14 +90,9 @@ object Platform extends IntEnum[Platform] {
       .toSeq
   }
 
-  def ghostTags(versionId: DbRef[Version], dependencies: Seq[Dependency]): Seq[VersionTag] = {
-    Platform.values
-      .filter(p => dependencies.map(_.pluginId).contains(p.dependencyId))
-      .groupBy(_.platformCategory)
-      .flatMap(_._2.groupBy(_.priority).maxBy(_._1)._2)
+  def ghostTags(versionId: DbRef[Version], dependencies: Seq[Dependency]): Seq[VersionTag] =
+    getPlatforms(dependencies.map(_.pluginId))
       .map(p => p.createGhostTag(versionId, dependencies.find(_.pluginId == p.dependencyId).get.version))
-      .toSeq
-  }
 
   def createPlatformTags[F[_]](versionId: DbRef[Version], dependencies: Seq[Dependency])(
       implicit service: ModelService[F]
