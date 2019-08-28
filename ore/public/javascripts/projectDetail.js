@@ -245,11 +245,13 @@ $(function() {
     });
 
     apiV2Request("projects/" + projectId).then((response) => {
-        let html = "";
-        response.promoted_versions.forEach((version) => {
-            const href = jsRoutes.controllers.project.Versions.show(projectOwner, projectSlug, version.version).absoluteURL();
-            html = html + "<li class='list-group-item'><a href='" + href + "'>" + version.version +  "</a></li>";
-        });
-        $(".promoted-list").html(html);
+        if(response.promoted_versions) {
+            let html = "";
+            response.promoted_versions.forEach((version) => {
+                const href = jsRoutes.controllers.project.Versions.show(projectOwner, projectSlug, version.version).absoluteURL();
+                html = html + "<li class='list-group-item'><a href='" + href + "'>" + version.version +  "</a></li>";
+            });
+            $(".promoted-list").html(html);
+        }
     })
 });
