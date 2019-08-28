@@ -63,7 +63,7 @@ class ApiV2Controller @Inject()(
   implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, ?]] =
     scalacache.CatsEffect.modes.async[ZIO[R, Throwable, ?]]
 
-  private val resultCache = scalacache.caffeine.CaffeineCache[Either[Result, Result]]
+  private val resultCache = scalacache.caffeine.CaffeineCache[IO[Result, Result]]
 
   lifecycle.addStopHook(() => zioRuntime.unsafeRunToFuture(resultCache.close[Task]()))
 
@@ -321,7 +321,7 @@ class ApiV2Controller @Inject()(
 
   def cachingF[R, A, B](
       cacheKey: String
-  )(parts: Any*)(fa: ZIO[R, Result, Result])(implicit request: ApiRequest[B]): ZIO[R, Result, Result] =
+  )(parts: Any*)(fa: ZIO[R, Result, Result])(implicit request: ApiRequest[B]): ZIO[R, Result, Result] = {
     resultCache
       .cachingF[ZIO[R, Throwable, ?]](
         cacheKey +: parts :+
@@ -331,9 +331,10 @@ class ApiV2Controller @Inject()(
           request.body
       )(
         Some(1.minute)
-      )(fa.either)
+      )(fa.memoize)
       .constError(InternalServerError)
-      .absolve
+      .flatten
+  }
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
     ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
