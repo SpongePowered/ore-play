@@ -47,9 +47,12 @@ class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, 
   private val versionTopicFilter = ModelFilter(Version)(_.postId.isEmpty)
   private val versionDirtyFilter = ModelFilter(Version)(_.isPostDirty)
 
-  private val toCreateVersions = versionsQueryBase.filter(v => versionTopicFilter(v._2)).to[Vector]
+  private val toCreateVersions =
+    versionsQueryBase.filter(v => !projectTopicFilter(v._1) && versionTopicFilter(v._2)).to[Vector]
   private val dirtyPostVersions =
-    versionsQueryBase.filter(v => !versionTopicFilter(v._2) && versionDirtyFilter(v._2)).to[Vector]
+    versionsQueryBase
+      .filter(v => !projectTopicFilter(v._1) && !versionTopicFilter(v._2) && versionDirtyFilter(v._2))
+      .to[Vector]
 
   /**
     * Starts the recovery task to be run at the specified interval.
