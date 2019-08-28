@@ -138,7 +138,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       if (canSeeHidden) None
       else
         currentUserId.fold(Some(fr"(p.visibility = 1)")) { id =>
-          Some(fr"(p.visibility = 1 OR (p.owner_id = $id AND p.visibility != 5))")
+          Some(fr"(p.visibility = 1 OR ($id IN p.project_members AND p.visibility != 5))")
         }
 
     val (tagsWithData, tagsWithoutData) = tags.partitionEither {
@@ -319,7 +319,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       if (canSeeHidden) None
       else
         currentUserId.fold(Some(fr"(p.visibility = 1 OR p.visibility = 2)")) { id =>
-          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR (p.owner_id = $id AND p.visibility != 5))")
+          Some(fr"(p.visibility = 1 OR p.visibility = 2 OR ($id IN p.project_members AND p.visibility != 5))")
         }
 
     val filters = Fragments.whereAndOpt(
