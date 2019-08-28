@@ -34,8 +34,9 @@ class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, 
   private val projectDirtyFilter = ModelFilter(Project)(_.isTopicDirty)
   private val visibleFilter      = Visibility.isPublicFilter[ProjectTableMain]
 
-  private val toCreateProjects   = ModelView.raw(Project).filter(projectTopicFilter && visibleFilter).to[Vector]
-  private val dirtyTopicProjects = ModelView.raw(Project).filter(projectDirtyFilter && visibleFilter).to[Vector]
+  private val toCreateProjects = ModelView.raw(Project).filter(projectTopicFilter && visibleFilter).to[Vector]
+  private val dirtyTopicProjects =
+    ModelView.raw(Project).filter(!projectTopicFilter && projectDirtyFilter && visibleFilter).to[Vector]
 
   private val versionsQueryBase = for {
     (version, project) <- TableQuery[VersionTable].join(TableQuery[ProjectTableMain]).on(_.projectId === _.id)
@@ -46,8 +47,9 @@ class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, 
   private val versionTopicFilter = ModelFilter(Version)(_.postId.isEmpty)
   private val versionDirtyFilter = ModelFilter(Version)(_.isPostDirty)
 
-  private val toCreateVersions  = versionsQueryBase.filter(v => versionTopicFilter(v._2)).to[Vector]
-  private val dirtyPostVersions = versionsQueryBase.filter(v => versionDirtyFilter(v._2)).to[Vector]
+  private val toCreateVersions = versionsQueryBase.filter(v => versionTopicFilter(v._2)).to[Vector]
+  private val dirtyPostVersions =
+    versionsQueryBase.filter(v => !versionTopicFilter(v._2) && versionDirtyFilter(v._2)).to[Vector]
 
   /**
     * Starts the recovery task to be run at the specified interval.

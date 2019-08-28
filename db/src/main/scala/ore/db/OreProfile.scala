@@ -57,6 +57,12 @@ trait OreProfile extends JdbcProfile {
       * @return New filter
       */
     def ||(that: T => Rep[Boolean]): T => Rep[Boolean] = m => fn(m) || that(m)
+
+    /**
+      * Applies ! to the wrapped function and returns a new filter.
+      * @return New filter
+      */
+    def unary_! : T => Rep[Boolean] = m => !fn(m)
   }
   object ModelFilter {
     def apply[M](model: ModelCompanion[M])(f: model.T => api.Rep[Boolean]): model.T => api.Rep[Boolean] = f
