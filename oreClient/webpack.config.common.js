@@ -44,6 +44,9 @@ module.exports = {
                 test: /\.js$/,
                 loader: 'babel-loader',
                 include: resourcesDir,
+                options: {
+                    presets: ['@babel/preset-env']
+                }
             },
             {
                 test: /\.css$/,

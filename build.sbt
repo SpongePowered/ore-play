@@ -233,6 +233,7 @@ lazy val oreClient = project
       "vue-style-loader"                   -> "4.1.2",
       "babel-loader"                       -> "8.0.6",
       "@babel/core"                        -> "7.5.5",
+      "@babel/preset-env"                  -> "7.5.5",
       "terser-webpack-plugin"              -> "1.3.0",
       "mini-css-extract-plugin"            -> "0.8.0",
       "optimize-css-assets-webpack-plugin" -> "5.0.3",
