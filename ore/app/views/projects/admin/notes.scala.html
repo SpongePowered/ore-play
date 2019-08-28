@@ -8,12 +8,12 @@
 @import util.StringFormatterUtils._
 @import util.syntax._
 @import views.html.helper.CSPNonce
-@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
+@(project: Project, notes: Seq[(Note, Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @scripts = {
-    <script @CSPNonce.attr type="text/javascript" src="@routes.Assets.versioned("javascripts/notes.js")"></script>
+    <script @CSPNonce.attr type="text/javascript" src="@assetsFinder.path("javascripts/notes.js")"></script>
     <script @CSPNonce.attr>resourcePath = '@project.ownerName/@project.slug'</script>
 }
 

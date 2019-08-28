@@ -10,13 +10,13 @@ Page used for uploading and creating new projects.
 @import ore.models.organization.Organization
 @import ore.models.user.User
 @import views.html.helper.{CSRF, form}
-@(createProjectOrgas: Seq[Model[Organization]], user: Model[User])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(createProjectOrgas: Seq[Model[Organization]], user: Model[User])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectCreateValidate.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pluginUpload.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/projectCreateValidate.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/pluginUpload.js")"></script>
 }
 
 @layout.base(messages("project.create"), scripts) {

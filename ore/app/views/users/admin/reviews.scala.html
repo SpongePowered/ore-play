@@ -9,13 +9,13 @@
 @import views.html.helper.CSPNonce
 
 @(mostRecentUnfinishedReview: Option[Review], reviews: Seq[(Model[Review], Option[String])], project: Project, version: Model[Version])(implicit messages: Messages,
-        request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
+        request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}
 
 @scripts = {
-    <script @CSPNonce.attr type="text/javascript" src="@routes.Assets.versioned("javascripts/review.js")"></script>
+    <script @CSPNonce.attr type="text/javascript" src="@assetsFinder.path("javascripts/review.js")"></script>
     <script @CSPNonce.attr>versionPath = '@helper.urlEncode(project.ownerName)/@helper.urlEncode(project.slug)/versions/@helper.urlEncode(version.name)'</script>
 }
 

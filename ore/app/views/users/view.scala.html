@@ -8,7 +8,7 @@
 @import util.syntax._
 @import views.html.helper.{CSPNonce, CSRF, form}
 @import views.html.utils.{modal, prompt, userAvatar}
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)], additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
 
 @canEditOrgSettings = @{
     u.isOrga &&
@@ -18,7 +18,7 @@
 }
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userPage.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/userPage.js")"></script>
     <script @CSPNonce.attr>
             USERNAME = '@u.user.name';
             @for(category <- Category.values) {

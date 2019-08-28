@@ -10,17 +10,17 @@
 @import views.html.utils
 
 @(p: ProjectData, sp: ScopedProjectData, deploymentKey: Option[Model[ProjectApiKey]], iconUrl: String)(implicit messages: Messages, flash: Flash,
-        request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer)
+        request: OreRequest[_], config: OreConfig, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectManage.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/iconUpload.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/keyGen.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/projectManage.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/hideProject.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/iconUpload.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/keyGen.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/userSearch.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/memberList.js")"></script>
     <script @CSPNonce.attr>
             projectName = "@p.project.name";
             PROJECT_OWNER = "@p.project.ownerName";

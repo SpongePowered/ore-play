@@ -10,16 +10,16 @@ Versions page within Project overview.
 @import views.html.helper.CSPNonce
 @(p: ProjectData,
         sp: ScopedProjectData,
-        channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+        channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{ controllers.project.routes.Projects }
 @versionRoutes = @{ controllers.project.routes.Versions }
 @channelRoutes = @{ controllers.project.routes.Channels }
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/versionList.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/versionList.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/userSearch.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/memberList.js")"></script>
     <script @CSPNonce.attr>
             PLUGIN_ID = '@p.project.pluginId';
             PROJECT_OWNER = '@p.project.ownerName';

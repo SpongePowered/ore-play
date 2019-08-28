@@ -22,16 +22,16 @@ Documentation page within Project overview.
   page: Page,
   parentPage: Option[Page],
   pageCount: Int,
-  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+  editorOpen: Boolean = false)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @canEditPages = @{
     sp.perms(Permission.EditPage)
 }
 
 @scripts = {
-    <script type="text/javascript" src="@controllers.routes.Assets.versioned("javascripts/pageCollapse.js")"></script>
-    <script type="text/javascript" src="@controllers.routes.Assets.versioned("javascripts/userSearch.js")"></script>
-    <script type="text/javascript" src="@controllers.routes.Assets.versioned("javascripts/memberList.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/pageCollapse.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/userSearch.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/memberList.js")"></script>
     <script @CSPNonce.attr>
             pluginId = '@p.project.pluginId';
             namespace = '@p.project.namespace';

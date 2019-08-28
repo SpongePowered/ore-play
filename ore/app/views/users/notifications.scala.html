@@ -10,7 +10,7 @@
 
 @import cats.data.{NonEmptyList => NEL}
 @(notifications: Seq[(Model[Notification], Option[User])], invites: Seq[(Model[UserRoleModel[_]], Visitable)], notificationFilter: NotificationFilter,
-        inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+        inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @notificationFilterOption(option: NotificationFilter) = @{
     if (option.equals(notificationFilter)) {
@@ -32,7 +32,7 @@
 }
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/notifications.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/notifications.js")"></script>
 }
 
 @layout.base(messages("notification.plural"), scripts) {

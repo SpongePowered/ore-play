@@ -7,7 +7,7 @@ The main header displayed on each layout.
 @import ore.permission.Permission
 @import util.syntax._
 
-@(authEnabled: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig)
+@(authEnabled: Boolean = true)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
 
 
 @tooltip(title: String) = @{
@@ -19,7 +19,7 @@ The main header displayed on each layout.
         <!-- Left navbar -->
         <div id="sp-logo-container">
             <a class="logo" href="@routes.Application.showHome()">
-                <img src="@routes.Assets.versioned("images/spongie-mark.svg")" alt="Sponge logo" >
+                <img src="@assetsFinder.path("images/spongie-mark.svg")" alt="Sponge logo" >
                 <span>@messages("general.projectName")</span>
                 <i class="fas fa-fw fa-chevron-down"></i>
             </a>
@@ -42,7 +42,7 @@ The main header displayed on each layout.
                         <i class="fa-fw fas fa-graduation-cap"></i>@messages("general.javadocs")
                     </a></li>
                     <li class="active"><a href="@routes.Application.showHome()">
-                        <img src="@routes.Assets.versioned("images/ore-nav.svg")" alt="" class="fa-fw ore-nav">@messages("general.plugins") (@messages("general.appName"))
+                        <img src="@assetsFinder.path("images/ore-nav.svg")" alt="" class="fa-fw ore-nav">@messages("general.plugins") (@messages("general.appName"))
                     </a></li>
                     <li><a href="https://www.spongepowered.org/downloads">
                         <i class="fa-fw fas fa-download"></i>@messages("general.getsponge")

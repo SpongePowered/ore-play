@@ -6,7 +6,7 @@
 @(project: Project,
         target: Version,
         isTargetChannelNonReviewed: Boolean,
-        downloadType: DownloadType)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+        downloadType: DownloadType)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @versionRoutes = @{ controllers.project.routes.Versions }
 
