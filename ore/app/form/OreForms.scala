@@ -26,6 +26,7 @@ import ore.models.user.role.ProjectUserRole
 import util.syntax._
 
 import cats.data.OptionT
+import org.spongepowered.plugin.meta.PluginMetadata
 import zio.UIO
 
 /**
@@ -102,8 +103,9 @@ class OreForms @Inject()(
 
   def projectCreate(organisationUserCanUploadTo: Seq[DbRef[Organization]]) = Form(
     mapping(
-      "name"        -> text,
-      "pluginId"    -> text,
+      "name" -> text,
+      "pluginId" -> nonEmptyText(maxLength = 64)
+        .verifying("Not a valid plugin id", PluginMetadata.ID_PATTERN.matcher(_).matches()),
       "category"    -> category,
       "description" -> optional(text),
       "owner"       -> optional(longNumber).verifying(ownerIdInList(organisationUserCanUploadTo))
