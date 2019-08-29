@@ -81,7 +81,7 @@ $(function() {
         resultRow.find('.username').attr('href', '/' + user.username).text(user.username);
         resultRow.find('input').attr('form', 'save').val(user.id);
         resultRow.find('select').attr('form', 'save');
-        resultRow.find('i').click(function() {
+        resultRow.find('svg').click(function() {
             $(this).parent().remove();
             updateIndices();
         });
