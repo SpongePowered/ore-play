@@ -34,7 +34,7 @@ $(function() {
             contentType: false,
             processData: false,
             success: function() {
-                preview.attr('src', url + '/pending');
+                preview.attr('src', url + '/pending?' + performance.now());
                 toggleSpinner($('#form-icon .btn-upload').find('[data-fa-i2svg]').toggleClass('fa-upload'));
                 $('#update-icon').val('true');
                 input.val('');
