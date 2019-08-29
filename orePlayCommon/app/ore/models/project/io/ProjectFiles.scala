@@ -133,7 +133,12 @@ object ProjectFiles {
 
     override def renameProject(owner: String, oldName: String, newName: String): F[Unit] = {
       val newProjectDir = getProjectDir(owner, newName)
-      fileIO.move(getProjectDir(owner, oldName), newProjectDir)
+      val oldProjectDir = getProjectDir(owner, oldName)
+
+      F.ifM(fileIO.exists(oldProjectDir))(
+        ifTrue = fileIO.move(oldProjectDir, newProjectDir),
+        ifFalse = F.unit
+      )
     }
 
     override def getIconsDir(owner: String, name: String): Path = getProjectDir(owner, name).resolve("icons")
