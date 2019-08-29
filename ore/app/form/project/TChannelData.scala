@@ -95,7 +95,7 @@ trait TChannelData {
         channel,
         otherDbChannels.forall(!equalsIgnoreCase[ChannelTable](_.name, this.channelName)(_)),
         otherDbChannels.forall(_.color =!= this.color),
-        otherDbChannels.count(!_.isNonReviewed) < 1 && nonReviewed
+        !(otherDbChannels.forall(_.isNonReviewed) && nonReviewed)
       )
     }
 
