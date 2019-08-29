@@ -1,5 +1,5 @@
 ---
-name: Bug report for the production instance
+name: Bug report for the staging instance
 about: Create a bug report for https://ore.stage.spongemc.org
 title: ''
 labels: 'status: needs testing, type: bug report, environment: staging'
