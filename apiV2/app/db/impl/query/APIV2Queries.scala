@@ -252,7 +252,6 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       array_append(array_agg(pvt.color) FILTER ( WHERE pvt.name IS NOT NULL ), pc.color + 9) AS tag_colors
             |    FROM projects p
             |             JOIN project_versions pv ON p.id = pv.project_id
-            |             JOIN project_members_all pm ON p.id = pm.id
             |             LEFT JOIN users u ON pv.author_id = u.id
             |             LEFT JOIN project_version_tags pvt ON pv.id = pvt.version_id
             |             LEFT JOIN project_channels pc ON pv.channel_id = pc.id """.stripMargin
@@ -261,7 +260,9 @@ object APIV2Queries extends WebDoobieOreProtocol {
       if (canSeeHidden) None
       else
         currentUserId.fold(Some(fr"(pv.visibility = 1)")) { id =>
-          Some(fr"(pv.visibility = 1 OR ($id = ANY(p.project_members) AND pv.visibility != 5))")
+          Some(
+            fr"(pv.visibility = 1 OR ($id IN (SELECT pm.user_id FROM project_members_all pm WHERE pm.id = p.id) AND pv.visibility != 5))"
+          )
         }
 
     val filters = Fragments.whereAndOpt(
@@ -280,7 +281,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       visibilityFrag
     )
 
-    base ++ filters ++ fr"GROUP BY pv.id, u.id, pc.id, pm.id"
+    base ++ filters ++ fr"GROUP BY pv.id, u.id, pc.id"
   }
 
   def versionQuery(

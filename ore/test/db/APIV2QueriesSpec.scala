@@ -72,7 +72,7 @@ class APIV2QueriesSpec extends DbSpec {
   }
 
   test("VersionCountQuery") {
-    check(APIV2Queries.versionCountQuery("Foo", List("Foo:Bar")))
+    check(APIV2Queries.versionCountQuery("Foo", List("Foo:Bar"), canSeeHidden = false, Some(0L)))
   }
 
   test("UserQuery") {
