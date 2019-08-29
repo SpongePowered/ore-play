@@ -34,7 +34,7 @@ import com.typesafe.scalalogging
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.interop.catz._
-import zio.{IO, Task, UIO, ZIO}
+import zio.{Exit, Fiber, IO, Task, UIO, ZIO}
 
 /**
   * A set of actions used by Ore.
@@ -344,14 +344,24 @@ trait Actions extends Calls with ActionHelpers { self =>
     if (project.visibility == Visibility.Public) {
       IO.succeed(project)
     } else {
+
+      def tryOther[E](e: Exit[E, Boolean], other: Fiber[E, Boolean]): IO[E, Boolean] =
+        e.fold(ZIO.halt, ZIO.succeed).flatMap {
+          case true  => other.interrupt.const(true)
+          case false => other.join
+        }
+
       for {
         user <- ZIO.fromOption(optUser)
 
         check1 = canEditAndNeedChangeOrApproval(project, user)
         check2 = user.permissionsIn(GlobalScope).map(_.has(Permission.SeeHidden))
 
-        canSeeProject <- check1.race(check2)
-        res           <- if (canSeeProject) IO.succeed(project) else IO.fail(())
+        canSeeProject <- check1.raceWith(check2)(
+          { case (l, f) => tryOther(l, f) },
+          { case (r, f) => tryOther(r, f) }
+        )
+        res <- if (canSeeProject) IO.succeed(project) else IO.fail(())
       } yield res
     }
   }
