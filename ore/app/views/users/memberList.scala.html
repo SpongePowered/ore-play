@@ -60,6 +60,10 @@
         </div>
     }
 
+    <div class="alert alert-danger member-error" style="display: none">
+        <span>error</span>
+    </div>
+
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3 class="pull-left panel-title">@messages("project.settings.members")</h3>
@@ -114,7 +118,7 @@
             }
 
             <!-- User search -->
-            @if(perms.has(Permission.ManageSubjectMembers)) {
+            @if(perms.has(Permission.ManageSubjectMembers) && editable) {
                 <li class="list-group-item">
                     @users.invite.userSearch()
                 </li>

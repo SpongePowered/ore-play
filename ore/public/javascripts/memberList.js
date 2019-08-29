@@ -57,7 +57,7 @@ $(function() {
     initMember($('.list-members').find('.list-group-item'));
 
     initUserSearch(function(result) {
-        var alert = $('.alert-danger');
+        var alert = $('.member-error');
         var message = alert.find('span');
         if (!result.isSuccess) {
             message.text('Could not find user with name "' + result.username + '".');
