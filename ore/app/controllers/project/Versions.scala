@@ -624,7 +624,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
                     "token" := token
                   )
                   .spaces4
-              ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
+              ).withHeaders(CONTENT_DISPOSITION -> "inline; filename=\"README.txt\"").as("application/json")
             )
           } else {
             val userAgent = request.headers.get("User-Agent").map(_.toLowerCase)
@@ -632,13 +632,13 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             if (userAgent.exists(_.startsWith("wget/"))) {
               IO.succeed(
                 MultipleChoices(this.messagesApi("version.download.confirm.wget"))
-                  .withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
+                  .withHeaders(CONTENT_DISPOSITION -> "inline; filename=\"README.txt\"")
               )
             } else if (userAgent.exists(_.startsWith("curl/"))) {
               (removeWarnings *> addWarning).as(
                 MultipleChoices(
                   apiMsg + "\n" + curlInstruction + "\n"
-                ).withHeaders("Content-Disposition" -> "inline; filename=\"README.txt\"")
+                ).withHeaders(CONTENT_DISPOSITION -> "inline; filename=\"README.txt\"")
               )
             } else {
               version.channel[Task].orDie.map(_.isNonReviewed).map { nonReviewed =>
