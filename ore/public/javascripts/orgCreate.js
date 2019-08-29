@@ -32,13 +32,13 @@ $(function() {
                 statusCode: {
                     404: function() {
                         if (event === events) {
-                            resetStatus(status).addClass('fa-check-circle');
+                            resetStatus($('.status-org-name')).addClass('fa-check-circle');
                             continueBtn.prop('disabled', false);
                         }
                     },
                     200: function() {
                         if (event === events)
-                            resetStatus(status).addClass('fa-times-circle');
+                            resetStatus($('.status-org-name')).addClass('fa-times-circle');
                     }
                 }
             });
