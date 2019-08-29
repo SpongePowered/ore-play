@@ -494,12 +494,21 @@ class ApiV2Controller @Inject()(
             pluginId,
             None,
             tags.toList,
+            request.globalPermissions.has(Permission.SeeHidden),
+            request.user.map(_.id),
             realLimit,
             realOffset
           )
           .to[Vector]
 
-        val countVersions = APIV2Queries.versionCountQuery(pluginId, tags.toList).unique
+        val countVersions = APIV2Queries
+          .versionCountQuery(
+            pluginId,
+            tags.toList,
+            request.globalPermissions.has(Permission.SeeHidden),
+            request.user.map(_.id)
+          )
+          .unique
 
         (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
           Ok(
@@ -516,7 +525,19 @@ class ApiV2Controller @Inject()(
     ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
       cachingF("showVersion")(pluginId, name) {
         service
-          .runDbCon(APIV2Queries.versionQuery(pluginId, Some(name), Nil, 1, 0).option)
+          .runDbCon(
+            APIV2Queries
+              .versionQuery(
+                pluginId,
+                Some(name),
+                Nil,
+                request.globalPermissions.has(Permission.SeeHidden),
+                request.user.map(_.id),
+                1,
+                0
+              )
+              .option
+          )
           .map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
       }
     }
