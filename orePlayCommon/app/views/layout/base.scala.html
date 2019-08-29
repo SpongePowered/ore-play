@@ -25,6 +25,7 @@ this.
         <link rel="prefetch" href="@routes.Assets.versioned("build/commons.css")">
         <link rel="prefetch" href="@routes.Assets.versioned("build/font-awesome.css")">
         <link rel="prefetch" href="@routes.Assets.versioned("manifest/manifest.json")">
+        <link rel="prefetch" href="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")">
 
         <title>@title</title>
 
@@ -44,6 +45,8 @@ this.
         <!-- See https://goo.gl/OOhYW5 and https://goo.gl/qRE0vM -->
         <link rel="manifest" href="@routes.Assets.versioned("manifest/manifest.json")">
         <meta name="theme-color" content="#333">
+
+        <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
     </head>
     <body class="site">
         @if(showHeader) {
@@ -84,7 +87,6 @@ this.
             <script type="text/javascript" src="@routes.Application.javascriptRoutes"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("build/vendors.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("build/font-awesome.js")"></script>
-            <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("build/commons.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("lib/moment/min/moment.min.js")"></script>
             <script type="text/javascript" src="@routes.Assets.versioned("bootstrap/js/bootstrap.min.js")"></script>
