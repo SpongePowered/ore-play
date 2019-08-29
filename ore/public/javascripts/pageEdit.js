@@ -1,9 +1,3 @@
-//=====> EXTERNAL CONSTANTS
-
-var PROJECT_OWNER = null;
-var PROJECT_SLUG = null;
-
-
 //=====> DOCUMENT READY
 
 $(function() {
@@ -19,7 +13,7 @@ $(function() {
 
     $('#continue-page').click(function() {
         var pageName = $('#page-name').val().trim();
-        var url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/pages/' + slugify(pageName) + '/edit';
+        var url = '/' + projectOwner + '/' + projectSlug + '/pages/' + slugify(pageName) + '/edit';
         var parent = $('.select-parent').find(':selected');
         var parentId = null;
 
@@ -27,7 +21,7 @@ $(function() {
             parentId = parent.val() === "-1" ? null : parent.val();
 
             if (parentId !== null)
-                url = '/' + PROJECT_OWNER + '/' + PROJECT_SLUG + '/pages/' + parent.data('slug') + '/' + slugify(pageName) + '/edit';
+                url = '/' + projectOwner + '/' + projectSlug + '/pages/' + parent.data('slug') + '/' + slugify(pageName) + '/edit';
         }
         $.ajax({
             method: 'post',

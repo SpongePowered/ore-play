@@ -21,6 +21,7 @@ Base template for Project overview.
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDetail.js")"></script>
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/pageEdit.js")"></script>
+    @additionalScripts
     <script @CSPNonce.attr>
             var projectOwner = "@p.project.ownerName";
             var projectSlug = "@p.project.slug";
@@ -28,8 +29,6 @@ Base template for Project overview.
             var alreadyStarred = @sp.starred;
             $(function() { $(".nav").find("@active").addClass("active"); });
     </script>
-
-    @additionalScripts
 }
 
 @meta = {

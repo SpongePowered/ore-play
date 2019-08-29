@@ -58,7 +58,7 @@ $(function() {
                 reset.empty().text('Reset');
             },
             success: function() {
-                preview.css('background-image', 'url(' + url + ')');
+                preview.attr('src', url);
                 input.val('');
                 updateButton();
                 $('.setting-icon .alert').detach();
