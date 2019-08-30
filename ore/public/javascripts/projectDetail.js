@@ -244,14 +244,16 @@ $(function() {
         increment *= -1;
     });
 
-    apiV2Request("projects/" + projectId).then((response) => {
-        if(response.promoted_versions) {
-            let html = "";
-            response.promoted_versions.forEach((version) => {
-                const href = jsRoutes.controllers.project.Versions.show(projectOwner, projectSlug, version.version).absoluteURL();
-                html = html + "<li class='list-group-item'><a href='" + href + "'>" + version.version +  "</a></li>";
-            });
-            $(".promoted-list").html(html);
-        }
-    })
+    if(projectId) {
+        apiV2Request("projects/" + projectId).then((response) => {
+            if(response.promoted_versions) {
+                let html = "";
+                response.promoted_versions.forEach((version) => {
+                    const href = jsRoutes.controllers.project.Versions.show(projectOwner, projectSlug, version.version).absoluteURL();
+                    html = html + "<li class='list-group-item'><a href='" + href + "'>" + version.version +  "</a></li>";
+                });
+                $(".promoted-list").html(html);
+            }
+        })
+    }
 });
