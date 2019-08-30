@@ -53,6 +53,5 @@ $(function() {
 
         $('#channel-settings').modal('hide');
         initChannelNew(DEFAULT_COLOR);
-        console.log("test")
     }
 });
