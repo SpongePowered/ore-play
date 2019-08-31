@@ -1,6 +1,6 @@
 //=====> EXTERNAL CONSTANTS
 
-var USERNAME = null;
+var USERNAME = window.USERNAME;
 var NO_ACTION_MESSAGE = {};
 var CATEGORY_TITLE = {};
 var CATEGORY_ICON = {};

@@ -19,6 +19,10 @@ sorted according to different criteria.
     <script src="@routes.Assets.versioned("build/home.js")"></script>
 }
 
+@stylesheets = {
+    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/home.css")" />
+}
+
 @meta = {
     <meta property="og:title" content="@messages("general.appName")">
     <meta property="og:type" content="website" />
@@ -27,7 +31,7 @@ sorted according to different criteria.
     <meta property="og:description" content="@messages("general.description")" />
 }
 
-@layout.base(messages("general.title"), scripts, additionalMeta = meta) {
+@layout.base(messages("general.title"), scripts, additionalMeta = meta, additionalStyling = stylesheets) {
 
     <!-- Header -->
     <div class="index-header">

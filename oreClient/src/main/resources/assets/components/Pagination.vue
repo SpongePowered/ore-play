@@ -77,8 +77,43 @@
 </script>
 
 <style lang="scss">
+    @import "./../scss/variables";
+
     .pagination {
         display: flex;
         justify-content: center;
+
+        > li {
+            margin-right: 1rem;
+            cursor: pointer;
+
+            &:last-child {
+                margin-right: 0;
+            }
+
+            &.disabled a, &.disabled a:hover {
+                background: transparent;
+                border: 1px solid #ddd;
+                color: inherit;
+            }
+
+            a {
+                border: 1px solid #ddd;
+                padding: 0.85rem 1.6rem;
+                background: #ffffff;
+                color: $sponge_grey;
+
+                &:first-child, &:last-child {
+                    border-radius: 0;
+                }
+            }
+
+            &.active {
+                > a, > a:hover {
+                    cursor: pointer;
+                    color: darken($sponge_yellow, 30);
+                }
+            }
+        }
     }
 </style>

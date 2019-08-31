@@ -1,0 +1,130 @@
+<template>
+    <div class="version-list">
+        <div class="row text-center">
+            <div class="col-xs-12">
+                <a v-if="canUpload" class="btn yellow">Upload a New Version</a>
+            </div>
+        </div>
+        <div class="list-group">
+            <a v-for="version in versions" :href="routes.Versions.show(projectOwner, projectSlug, version.name).absoluteURL()" class="list-group-item">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-xs-6 col-sm-3" :set="channel = version.tags.find(filterTag => filterTag.name === 'Channel')">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <span class="text-bold">{{ version.name }}</span>
+                                </div>
+                                <div class="col-xs-12">
+                                    <span class="channel" v-bind:style="{ background: channel.color.background }">{{ channel.data }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-6 col-sm-3">
+                            <Tag v-for="tag in version.tags.filter(filterTag => filterTag.name !== 'Channel')"
+                                 v-bind:key="tag.name + ':' + tag.data" v-bind="tag"></Tag>
+                        </div>
+                        <div class="col-xs-3 hidden-xs">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <i class="fas fa-fw fa-calendar"></i>
+                                    {{ formatDate(version.created_at) }}
+                                </div>
+                                <div class="col-xs-12">
+                                    <i class="far fa-fw fa-file"></i>
+                                    {{ formatSize(version.file_info.size_bytes) }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-3 hidden-xs">
+                            <div class="row">
+                                <div class="col-xs-12">
+                                    <i class="fas fa-fw fa-user-tag"></i>
+                                    {{ version.author }}
+                                </div>
+                                <div class="col-xs-12">
+                                    <i class="fas fa-fw fa-download"></i>
+                                    {{ version.stats.downloads }} Downloads
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <Pagination :current="current" :total="total" @prev="page--" @next="page++" @jumpTo="page = $event"></Pagination>
+    </div>
+</template>
+
+<script>
+    import Tag from "./components/Tag";
+    import Pagination from "./components/Pagination";
+
+    export default {
+        components: {
+            Tag,
+            Pagination
+        },
+        data() {
+            return {
+                page: 1,
+                limit: 10,
+                pluginId: window.PLUGIN_ID,
+                projectOwner: window.PROJECT_OWNER,
+                projectSlug: window.PROJECT_SLUG,
+                versions: [],
+                totalVersions: 0,
+                canUpload: false
+            }
+        },
+        created() {
+            this.update();
+            apiV2Request("permissions", "GET", window.PLUGIN_ID).then((response) => {
+               this.canUpload = response.permissions.includes("create_version")
+            });
+            this.$watch(vm => vm.page, () => {
+                this.update();
+                window.scrollTo(0,0);
+            });
+        },
+        methods: {
+            update() {
+                apiV2Request("projects/" + this.pluginId + "/versions", "GET", { limit: this.limit, offset: this.offset}).then((response) => {
+                    this.versions = response.result;
+                    this.totalVersions = response.pagination.count;
+                });
+            },
+            formatSize(size) {
+                return window.filesize(size);
+            },
+            formatDate(date) {
+                return window.moment(date).format("MMM D, YYYY")
+            }
+        },
+        computed: {
+            routes() {
+                return jsRoutes.controllers.project;
+            },
+            offset() {
+                return (this.page - 1) * this.limit
+            },
+            current() {
+                return Math.ceil(this.offset / this.limit) + 1;
+            },
+            total() {
+                return Math.ceil(this.totalVersions / this.limit)
+            }
+        }
+    }
+</script>
+
+<style lang="scss">
+    .version-list {
+        .list-group > .list-group-item > .container-fluid > .row {
+            display: flex;
+            align-items: center;
+        }
+        .btn {
+            margin-bottom: 1rem;
+        }
+    }
+</style>

@@ -20,7 +20,7 @@
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userPage.js")"></script>
     <script @CSPNonce.attr>
-            USERNAME = '@u.user.name';
+            window.USERNAME ='@u.user.name';
             @for(category <- Category.values) {
                 CATEGORY_TITLE['@category.apiName'] = '@category.title';
                 CATEGORY_ICON['@category.apiName'] = '@category.icon';

@@ -13,7 +13,7 @@ Base template for Project overview.
 @import util.syntax._
 @import views.html.helper.{CSPNonce, CSRF, form}
 
-@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages,
+@(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""), additionalStyling: Html = Html(""))(content: Html)(implicit messages: Messages,
         request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
 
 @appRoutes = @{controllers.routes.Application}
@@ -42,7 +42,7 @@ Base template for Project overview.
     }
 }
 
-@layout.base(p.project.ownerName + " / " + p.project.name, scripts, additionalMeta = meta) {
+@layout.base(p.project.ownerName + " / " + p.project.name, scripts, additionalStyling = additionalStyling, additionalMeta = meta) {
     <div class="project-header-container">
         @if(p.visibility != Visibility.Public) {
             <div class="row">

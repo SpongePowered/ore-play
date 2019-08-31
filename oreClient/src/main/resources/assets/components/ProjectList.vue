@@ -56,7 +56,7 @@
                     </li>
                 </ul>
                 <Pagination :current="current" :total="total" @jumpTo="$emit('jumpToPage', $event)" @next="$emit('nextPage')"
-                            @prev="$emit('prevPage')" class="project-pagination"></Pagination>
+                            @prev="$emit('prevPage')"></Pagination>
             </div>
             <div v-else class="list-group-item empty-project-list">
                 <i class="far fa-2x fa-sad-tear"></i>
@@ -127,7 +127,7 @@
             });
         },
         methods: {
-            update: function () {
+            update() {
                 apiV2Request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
                     this.projects = response.result;
                     this.totalProjects = response.pagination.count;
@@ -135,13 +135,13 @@
                     this.$emit('update:projectCount', this.totalProjects);
                 });
             },
-            categoryFromId: function (id) {
+            categoryFromId(id) {
                 return Category.fromId(id);
             },
-            visibilityFromName: function(name) {
+            visibilityFromName(name) {
                 return Visibility.fromName(name);
             },
-            tagsFromPromoted: function (promotedVersions) {
+            tagsFromPromoted(promotedVersions) {
                 let tagsArray = [];
                 promotedVersions
                     .map(version => version.tags)
@@ -257,32 +257,6 @@
                 &.recommended-version a {
                     font-weight: bold;
                     color: #636363;
-                }
-            }
-        }
-    }
-    .project-pagination {
-        li {
-            margin-right: 1rem;
-
-            &:last-child {
-                margin-right: 0;
-            }
-
-            &.disabled a, &.disabled a:hover {
-                background: transparent;
-                border: 1px solid #ddd;
-                color: inherit;
-            }
-
-            a {
-                border: 1px solid #ddd;
-                padding: 0.85rem 1.6rem;
-                background: #ffffff;
-                color: $sponge_grey;
-
-                &:first-child, &:last-child {
-                    border-radius: 0;
                 }
             }
         }
