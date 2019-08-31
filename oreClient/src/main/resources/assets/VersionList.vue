@@ -6,7 +6,8 @@
             </div>
         </div>
         <div class="list-group">
-            <a v-for="version in versions" :href="routes.Versions.show(projectOwner, projectSlug, version.name).absoluteURL()" class="list-group-item">
+            <a v-for="version in versions" :href="routes.Versions.show(projectOwner, projectSlug, version.name).absoluteURL()" class="list-group-item"
+                :class="[classForVisibility(version.visibility)]">
                 <div class="container-fluid">
                     <div class="row">
                         <div class="col-xs-6 col-sm-3" :set="channel = version.tags.find(filterTag => filterTag.name === 'Channel')">
@@ -58,6 +59,7 @@
 <script>
     import Tag from "./components/Tag";
     import Pagination from "./components/Pagination";
+    import {Visibility} from "./enums";
 
     export default {
         components: {
@@ -98,6 +100,9 @@
             },
             formatDate(date) {
                 return window.moment(date).format("MMM D, YYYY")
+            },
+            classForVisibility(visibility) {
+                return Visibility.fromName(visibility).class;
             }
         },
         computed: {
