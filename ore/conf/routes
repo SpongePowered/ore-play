@@ -24,11 +24,13 @@ GET     /statusz                                                    @controllers
 +nocsrf
 POST    /api/sync_sso                                               @controllers.ApiV1Controller.syncSso()
 
-POST    /api/projects/:pluginId/keys/new                            @controllers.ApiV1Controller.createKey(pluginId)
-POST    /api/projects/:pluginId/keys/revoke                         @controllers.ApiV1Controller.revokeKey(pluginId)
+POST    /api/v1/projects/:pluginId/keys/new                         @controllers.ApiV1Controller.createKey(pluginId)
+POST    /api/v1/projects/:pluginId/keys/revoke                      @controllers.ApiV1Controller.revokeKey(pluginId)
 
 GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
 GET     /api/projects/:pluginId/versions/:name/download             @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
+GET     /api/v1/projects/:pluginId/versions/recommended/download    @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
+GET     /api/v1/projects/:pluginId/versions/:name/download          @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
 
 GET     /api/v1/projects                                            @controllers.ApiV1Controller.listProjects(categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
 GET     /api/v1/projects/:pluginId                                  @controllers.ApiV1Controller.showProject(pluginId)
