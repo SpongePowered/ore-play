@@ -8,7 +8,6 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/approve',
-            data: { csrfToken: csrf },
             complete: function() { toggleSpinner($('.btn-approve').find('[data-fa-i2svg]').addClass('fa-thumbs-up')); },
             success: function() {
                 $.when(listItem.fadeOut('slow')).done(function() { 

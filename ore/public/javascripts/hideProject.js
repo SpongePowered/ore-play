@@ -37,7 +37,7 @@ $(function() {
         $.ajax({
             type: 'post',
             url: _url,
-            data: { csrfToken: csrf, comment: comment },
+            data: { comment: comment },
             fail: function () {
                 toggleSpinner($('button[data-project="'  + project + '"]').find('[data-fa-i2svg]').toggleClass(ICON));
             },

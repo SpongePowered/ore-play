@@ -1,12 +1,3 @@
-//=====> EXTERNAL CONSTANTS
-
-let csrf = null;
-let isLoggedIn = false;
-
-//=====> SETUP
-
-$.ajaxSettings.traditional = true;
-
 //=====> HELPER FUNCTIONS
 
 function apiV2Request(url, method = "GET", data = {}) {
@@ -48,7 +39,7 @@ function getApiSession() {
         const date = new Date();
         date.setTime(date.getTime() + 60000);
 
-        if (isLoggedIn) {
+        if (window.isLoggedIn) {
             session = parseOrNull(localStorage.getItem('api_session'));
             if (session === null || !isNaN(new Date(session.expires).getTime()) && new Date(session.expires) < date) {
                 return $.ajax({
@@ -93,7 +84,7 @@ function getApiSession() {
 }
 
 function invalidateApiSession() {
-    if (isLoggedIn) {
+    if (window.isLoggedIn) {
         localStorage.removeItem('api_session')
     }
     else {

@@ -16,7 +16,7 @@ function bindKeyGen(e) {
         $.ajax({
             url: '/api/v1/projects/' + pluginId + '/keys/new',
             method: 'post',
-            data: {csrfToken: csrf, 'key-type': KEY_TYPE_DEPLOYMENT},
+            data: {'key-type': KEY_TYPE_DEPLOYMENT},
             dataType: 'json',
             success: function(key) {
                 console.log(key);
@@ -43,7 +43,7 @@ function bindKeyRevoke(e) {
         $.ajax({
             url: '/api/v1/projects/' + pluginId + '/keys/revoke',
             method: 'post',
-            data: {csrfToken: csrf, 'id': $(this).data('key-id')},
+            data: {'id': $(this).data('key-id')},
             success: function() {
                 $('.input-key').val('');
                 $this.removeClass('btn-key-revoke btn-danger')

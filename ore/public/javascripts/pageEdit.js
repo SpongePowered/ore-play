@@ -26,7 +26,7 @@ $(function() {
         $.ajax({
             method: 'post',
             url: url,
-            data: {csrfToken: csrf, 'parent-id': parentId, 'content': '# ' + pageName + '\n', 'name': pageName},
+            data: {'parent-id': parentId, 'content': '# ' + pageName + '\n', 'name': pageName},
             success: function() {
                 go(url);
             },

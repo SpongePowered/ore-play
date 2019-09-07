@@ -117,7 +117,7 @@ function initBtnEdit() {
 
             $.ajax({
                 type: 'post',
-                url: '/pages/preview?csrfToken=' + csrf,
+                url: '/pages/preview',
                 data: JSON.stringify({ raw: raw }),
                 contentType: 'application/json',
                 dataType: 'html',
@@ -219,8 +219,7 @@ $(function() {
 
         $.ajax({
             type: 'post',
-            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/watchers/' + !watching,
-            data: { csrfToken: csrf }
+            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/watchers/' + !watching
         });
     });
 
@@ -231,8 +230,7 @@ $(function() {
         starred.html(' ' + (parseInt(starred.text()) + increment).toString());
         $.ajax({
             type: 'post',
-            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/stars/toggle',
-            data: { csrfToken: csrf }
+            url: decodeHtml('/' + projectOwner + '/' + projectSlug) + '/stars/toggle'
         });
 
         if (increment > 0) {

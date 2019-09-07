@@ -19,9 +19,6 @@ $(function() {
 
     input.on('change', function() { updateButton(); });
 
-    var formData = new FormData(form[0]);
-    formData.append('csrfToken', csrf);
-
     // Upload button
     btn.click(function(e) {
         e.preventDefault();

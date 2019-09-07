@@ -73,6 +73,7 @@
     import Pagination from "./Pagination";
     import Icon from "./Icon"
     import debounce from "lodash/debounce"
+    import {API} from "../api";
 
     export default {
         components: {
@@ -128,7 +129,7 @@
         },
         methods: {
             update: function () {
-                apiV2Request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
+                API.request("projects", "GET", clearFromEmpty(this.$props)).then((response) => {
                     this.projects = response.result;
                     this.totalProjects = response.pagination.count;
                     this.loading = false;

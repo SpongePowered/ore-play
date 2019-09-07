@@ -15,3 +15,11 @@ export function clearFromDefaults(object, defaults) {
         })
         .reduce((acc, [key, value]) => ({...acc, [key]: value}), {})
 }
+
+export function parseJsonOrNull(jsonString) {
+    try {
+        return JSON.parse(jsonString);
+    } catch (e) {
+        return null;
+    }
+}

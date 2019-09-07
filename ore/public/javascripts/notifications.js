@@ -6,7 +6,6 @@ function markRead(notification) {
     $.ajax({
         type: 'post',
         url: '/notifications/read/' + notification.data('id'),
-        data: { csrfToken: csrf },
         complete: function() {
             toggleSpinner(notification.find('.btn-mark-read').addClass('btn-mark-read fa-check'));
         },
@@ -26,7 +25,6 @@ function replyToInvite(invite, reply, success, error) {
     $.ajax({
         type: 'post',
         url: url,
-        data: { csrfToken: csrf },
         success: success,
         error: error
     });
