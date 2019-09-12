@@ -47,7 +47,7 @@ class ModelServiceSpec extends FunSuite with Matchers with BeforeAndAfterAll { s
   private lazy val transactEC   = ExecutionContext.fromExecutor(transactExec)
 
   lazy val transactor: Transactor.Aux[Task, DataSource] =
-    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)(taskEffectInstances, zioContextShift)
+    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)(taskEffectInstance, zioContextShift)
 
   val service = new OreModelService(
     new DatabaseConfigProvider { provider =>
