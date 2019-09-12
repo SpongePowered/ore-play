@@ -348,11 +348,12 @@ class Users @Inject()(
 
   import controllers.project.{routes => projectRoutes}
 
-  private val projectEndpoints: Seq[(String, String) => Call] = Seq(
-    projectRoutes.Projects.show,
-    projectRoutes.Projects.showStargazers(_, _, None),
-    projectRoutes.Projects.showWatchers(_, _, None),
-    projectRoutes.Projects.showDiscussion
+  private val projectEndpoints: Seq[((String, String) => Call, Option[Sitemap.ChangeFreq])] = Seq(
+    (projectRoutes.Projects.show, None),
+    (projectRoutes.Versions.showList, Some(Sitemap.ChangeFreq.Daily)),
+    (projectRoutes.Projects.showStargazers(_, _, None), Some(Sitemap.ChangeFreq.Monthly)),
+    (projectRoutes.Projects.showWatchers(_, _, None), Some(Sitemap.ChangeFreq.Monthly)),
+    (projectRoutes.Projects.showDiscussion, None)
   )
 
   def userSitemap(user: String): Action[AnyContent] = Action.asyncF { implicit request =>
@@ -401,7 +402,7 @@ class Users @Inject()(
       val projectEntries = for {
         project  <- projects
         endpoint <- projectEndpoints
-      } yield Sitemap.Entry(endpoint(user, project))
+      } yield Sitemap.Entry(endpoint._1(user, project), changeFreq = endpoint._2)
 
       val versionEntries =
         for ((project, version) <- versions)
@@ -419,7 +420,10 @@ class Users @Inject()(
         Sitemap.asString(
           projectEntries ++
             versionEntries ++
-            pageEntries :+ Sitemap.Entry(routes.Users.showProjects(user, None)): _*
+            pageEntries :+ Sitemap.Entry(
+            routes.Users.showProjects(user, None),
+            changeFreq = Some(Sitemap.ChangeFreq.Weekly)
+          ): _*
         )
       ).as("application/xml")
     }

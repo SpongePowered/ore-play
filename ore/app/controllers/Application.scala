@@ -426,7 +426,8 @@ final class Application @Inject()(forms: OreForms)(
   val globalSitemap: Action[AnyContent] = Action { implicit requests =>
     Ok(
       Sitemap.asString(
-        Sitemap.Entry(routes.Application.showHome()),
+        Sitemap.Entry(routes.Application.showHome(), changeFreq = Some(Sitemap.ChangeFreq.Hourly)),
+        Sitemap.Entry(routes.Users.showAuthors(None, None), changeFreq = Some(Sitemap.ChangeFreq.Monthly)),
         Sitemap.Entry(routes.Application.swagger())
       )
     ).as("application/xml")
