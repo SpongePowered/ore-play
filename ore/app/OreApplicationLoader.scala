@@ -187,7 +187,7 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val oreControllerComponents: OreControllerComponents = wire[DefaultOreControllerComponents]
   lazy val uioOreControllerEffects: OreControllerEffects[UIO]        = wire[DefaultOreControllerEffects[UIO]]
 
-  lazy val statTracker: StatTracker[UIO] = (wire[StatTracker.StatTrackerInstant[Task, ParTask]]: StatTracker[Task])
+  lazy val statTracker: StatTracker[UIO] = (wire[StatTracker.StatTrackerInstant[Task]]: StatTracker[Task])
     .imapK(taskToUIO)(uioToTask)
   lazy val spongeAuthApiTask: SpongeAuthApi[Task] = {
     val api = config.security.api
@@ -264,10 +264,10 @@ class OreComponents(context: ApplicationLoader.Context)
     use(providedProjectFiles)
     use(throwableFileIO)
 
-    (wire[ProjectBase.ProjectBaseF[Task, ParTask]]: ProjectBase[Task]).mapK(taskToUIO)
+    (wire[ProjectBase.ProjectBaseF[Task]]: ProjectBase[Task]).mapK(taskToUIO)
   }
   implicit lazy val orgBase: OrganizationBase[UIO] =
-    (wire[OrganizationBase.OrganizationBaseF[Task, ParTask]]: OrganizationBase[Task]).mapK(taskToUIO)
+    (wire[OrganizationBase.OrganizationBaseF[Task]]: OrganizationBase[Task]).mapK(taskToUIO)
 
   lazy val bakery: Bakery     = wire[Bakery]
   lazy val forms: OreForms    = wire[OreForms]

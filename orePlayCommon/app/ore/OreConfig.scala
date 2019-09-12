@@ -200,8 +200,8 @@ final class OreConfig @Inject()(config: Configuration) {
   }
 
   object performance extends ConfigCategory {
-    val raw: Configuration      = root.get[Configuration]("performance")
-    val nioBlockingFibers: Long = raw.get[Long]("nio-blocking-fibers")
+    val raw: Configuration     = root.get[Configuration]("performance")
+    val nioBlockingFibers: Int = raw.get[Int]("nio-blocking-fibers")
   }
 
   app.load()

@@ -51,17 +51,13 @@ trait Actions extends Calls with ActionHelpers { self =>
   type RIO[-R, +A]    = ZIO[R, Nothing, A]
   type ParRIO[-R, +A] = zio.interop.ParIO[R, Nothing, A]
 
-  implicit val parUIO: Parallel[UIO, ParUIO]                                  = parallelInstance[Any, Nothing]
-  implicit val parTask: Parallel[Task, ParTask]                               = parallelInstance[Any, Throwable]
-  implicit val parBlockingIO: Parallel[RIO[Blocking, ?], ParRIO[Blocking, ?]] = parallelInstance[Blocking, Nothing]
-
   implicit def service: ModelService[UIO]           = oreComponents.uioEffects.service
   def sso: SSOApi[UIO]                              = oreComponents.uioEffects.sso
   implicit def users: UserBase[UIO]                 = oreComponents.uioEffects.users
   implicit def projects: ProjectBase[UIO]           = oreComponents.uioEffects.projects
   implicit def organizations: OrganizationBase[UIO] = oreComponents.uioEffects.organizations
 
-  implicit def projectFiles: ProjectFiles[RIO[Blocking, ?]] = oreComponents.projectFiles
+  implicit def projectFiles: ProjectFiles[RIO[Blocking, *]] = oreComponents.projectFiles
 
   implicit def ec: ExecutionContext = oreComponents.executionContext
 
@@ -191,7 +187,7 @@ trait Actions extends Calls with ActionHelpers { self =>
         if (signOn.isCompleted || Instant.now().toEpochMilli - signOn.createdAt.toEpochMilli > 600000)
           UIO.succeed(false)
         else {
-          service.update(signOn)(_.copy(isCompleted = true)).const(true)
+          service.update(signOn)(_.copy(isCompleted = true)).as(true)
         }
       }
       .exists(identity)
@@ -329,15 +325,15 @@ trait Actions extends Calls with ActionHelpers { self =>
       }
     } yield res
 
-    zioToFuture(projectRequest.constError(notFound).either)
+    zioToFuture(projectRequest.asError(notFound).either)
   }
 
   private def toProjectRequest[T](project: Model[Project])(f: (ProjectData, ScopedProjectData) => T)(
       implicit
       request: OreRequest[_]
   ) = {
-    val projectData = ProjectData.of[ZIO[Blocking, Throwable, ?], zio.interop.ParIO[Blocking, Throwable, ?]](project)
-    (projectData.orDie, ScopedProjectData.of[UIO, ParUIO](request.headerData.currentUser, project)).parMapN(f)
+    val projectData = ProjectData.of[ZIO[Blocking, Throwable, *]](project)
+    (projectData.orDie, ScopedProjectData.of[UIO](request.headerData.currentUser, project)).parMapN(f)
   }
 
   private def processProject(project: Model[Project], optUser: Option[Model[User]]): IO[Unit, Model[Project]] = {
@@ -347,7 +343,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
       def tryOther[E](e: Exit[E, Boolean], other: Fiber[E, Boolean]): IO[E, Boolean] =
         e.fold(ZIO.halt, ZIO.succeed).flatMap {
-          case true  => other.interrupt.const(true)
+          case true  => other.interrupt.as(true)
           case false => other.join
         }
 
@@ -391,7 +387,7 @@ trait Actions extends Calls with ActionHelpers { self =>
         }
       } yield projectRequest
 
-      zioToFuture(projectRequest.constError(notFound).either)
+      zioToFuture(projectRequest.asError(notFound).either)
     }
   }
 
@@ -419,7 +415,7 @@ trait Actions extends Calls with ActionHelpers { self =>
         }
       } yield orgaRequest
 
-      zioToFuture(orgaRequest.constError(notFound).either)
+      zioToFuture(orgaRequest.asError(notFound).either)
     }
   }
 
@@ -438,14 +434,14 @@ trait Actions extends Calls with ActionHelpers { self =>
         }
       } yield orgaRequest
 
-      zioToFuture(orgaRequest.constError(notFound).either)
+      zioToFuture(orgaRequest.asError(notFound).either)
     }
   }
 
   private def toOrgaRequest[T](orga: Model[Organization])(f: (OrganizationData, ScopedOrganizationData) => T)(
       implicit request: OreRequest[_]
   ) = {
-    val orgData = OrganizationData.of[Task, ParTask](orga)
+    val orgData = OrganizationData.of[Task](orga)
     (orgData.orDie, ScopedOrganizationData.of(request.headerData.currentUser, orga)).parMapN(f)
   }
 

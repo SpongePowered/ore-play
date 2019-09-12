@@ -30,10 +30,10 @@ case class OrganizationMembersUpdate(
     roleUps: List[String]
 ) extends TOrganizationRoleSetBuilder {
 
-  def saveTo[F[_], G[_]](organization: Model[Organization])(
+  def saveTo[F[_]](organization: Model[Organization])(
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): F[Unit] = {
     import cats.instances.list._
     import cats.instances.option._

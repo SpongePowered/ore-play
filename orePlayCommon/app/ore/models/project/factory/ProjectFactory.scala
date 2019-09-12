@@ -47,9 +47,6 @@ trait ProjectFactory {
   type ParUIO[+A]  = zio.interop.ParIO[Any, Nothing, A]
   type RIO[-R, +A] = ZIO[R, Nothing, A]
 
-  implicit val parUIO: Parallel[UIO, ParUIO]    = parallelInstance[Any, Nothing]
-  implicit val parTask: Parallel[Task, ParTask] = parallelInstance[Any, Throwable]
-
   protected def fileIO: FileIO[ZIO[Blocking, Nothing, ?]]
   protected def fileManager: ProjectFiles[ZIO[Blocking, Nothing, ?]]
   protected def cacheApi: SyncCacheApi
@@ -129,7 +126,7 @@ trait ProjectFactory {
       modelExists <- version.exists[Task].orDie
       res <- {
         if (modelExists && this.config.ore.projects.fileValidate) IO.fail("error.version.duplicate")
-        else version.cache[Task].const(version).orDie
+        else version.cache[Task].as(version).orDie
       }
     } yield res
 
@@ -382,7 +379,7 @@ trait ProjectFactory {
       val movePath  = fileIO.move(oldPath, newPath)
       val deleteOld = fileIO.deleteIfExists(oldPath)
 
-      createDirs *> movePath *> deleteOld.const(Right(()))
+      createDirs *> movePath *> deleteOld.as(Right(()))
     }
 
     fileIO.exists(newPath).ifM(UIO.succeed(Left("error.plugin.fileName")), move).orDie.absolve

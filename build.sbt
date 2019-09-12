@@ -1,8 +1,6 @@
-import com.typesafe.sbt.web.js.JS
-
 lazy val commonSettings = Seq(
   version := "1.8.2",
-  scalaVersion := "2.12.8",
+  scalaVersion := "2.12.10",
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -45,7 +43,7 @@ lazy val commonSettings = Seq(
   ),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)),
-  addCompilerPlugin(scalafixSemanticdb("4.2.0")),
+  //addCompilerPlugin(scalafixSemanticdb("4.2.0")),
   // Disable generation of the API documentation for production builds
   sources in (Compile, doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false
@@ -72,14 +70,15 @@ lazy val playTestDeps = Seq(
   "org.tpolecat"           %% "doobie-scalatest"   % doobieVersion % Test
 )
 
-lazy val catsVersion         = "1.6.1"
+lazy val catsVersion         = "2.0.0"
 lazy val catsTaglessVersion  = "0.9"
-lazy val zioVersion          = "1.0.0-RC8-6"
+lazy val zioVersion          = "1.0.0-RC12-1"
+lazy val zioCatsVersion      = "2.0.0.0-RC3"
 lazy val doobieVersion       = "0.7.0"
-lazy val flexmarkVersion     = "0.42.12"
+lazy val flexmarkVersion     = "0.50.40"
 lazy val playSlickVersion    = "4.0.2"
-lazy val slickPgVersion      = "0.17.2"
-lazy val circeVersion        = "0.11.1"
+lazy val slickPgVersion      = "0.18.0"
+lazy val circeVersion        = "0.12.1"
 lazy val akkaVersion         = "2.5.23"
 lazy val akkaHttpVersion     = "10.1.9"
 lazy val scalaLoggingVersion = "3.9.2"
@@ -137,7 +136,7 @@ lazy val models = project
     commonSettings,
     name := "ore-models",
     libraryDependencies ++= Seq(
-      "org.postgresql"             % "postgresql"             % "42.2.6",
+      "org.postgresql"             % "postgresql"             % "42.2.7",
       "com.github.tminglei"        %% "slick-pg"              % slickPgVersion,
       "com.github.tminglei"        %% "slick-pg_circe-json"   % slickPgVersion,
       "org.tpolecat"               %% "doobie-postgres"       % doobieVersion,
@@ -168,7 +167,7 @@ lazy val orePlayCommon: Project = project
     ),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"              % zioVersion,
-      "dev.zio" %% "zio-interop-cats" % zioVersion
+      "dev.zio" %% "zio-interop-cats" % zioCatsVersion
     ),
     aggregateReverseRoutes := Seq(ore)
   )
@@ -255,7 +254,7 @@ lazy val ore = project
     libraryDependencies ++= Seq(
       "com.typesafe.play"          %% "play-slick-evolutions" % playSlickVersion,
       "com.typesafe.scala-logging" %% "scala-logging"         % scalaLoggingVersion,
-      "io.sentry"                  % "sentry-logback"         % "1.7.24",
+      "io.sentry"                  % "sentry-logback"         % "1.7.27",
       "javax.mail"                 % "mail"                   % "1.4.7",
       "org.typelevel"              %% "cats-core"             % catsVersion,
       "io.circe"                   %% "circe-core"            % circeVersion,
@@ -276,12 +275,12 @@ lazy val ore = project
     ).map(flexmarkDep),
     libraryDependencies ++= Seq(
       "org.webjars.npm" % "jquery"       % "2.2.4",
-      "org.webjars"     % "font-awesome" % "5.9.0",
+      "org.webjars"     % "font-awesome" % "5.10.1",
       "org.webjars.npm" % "filesize"     % "3.6.1",
       "org.webjars.npm" % "moment"       % "2.24.0",
       "org.webjars.npm" % "clipboard"    % "2.0.4",
       "org.webjars.npm" % "chart.js"     % "2.8.0",
-      "org.webjars"     % "swagger-ui"   % "3.23.0"
+      "org.webjars"     % "swagger-ui"   % "3.23.8"
     ),
     libraryDependencies ++= playTestDeps,
     swaggerRoutesFile := "apiv2.routes",

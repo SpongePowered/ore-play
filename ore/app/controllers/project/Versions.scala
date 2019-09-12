@@ -80,7 +80,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     ProjectAction(author, slug).asyncF { implicit request =>
       for {
         version  <- getVersion(request.project, versionString)
-        data     <- VersionData.of[Task, ParTask](request, version).orDie
+        data     <- VersionData.of[Task](request, version).orDie
         response <- this.stats.projectViewed(UIO.succeed(Ok(views.view(data, request.scoped))))
       } yield response
     }
@@ -281,7 +281,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         )
       )
 
-      suc2.constError(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
+      suc2.asError(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
     }
 
   /**
@@ -300,7 +300,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         pendingVersion <- ZIO
           .fromOption(this.factory.getPendingVersion(author, slug, versionString))
           // Not found
-          .constError(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
+          .asError(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
         // Get submitted channel
         versionData <- this.forms.VersionCreate.bindZIO(
           // Invalid channel
@@ -529,7 +529,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               warn.isConfirmed
             }
             .toZIO
-          res <- if (warn.hasExpired) service.delete(warn).const(false) else UIO.succeed(true)
+          res <- if (warn.hasExpired) service.delete(warn).as(false) else UIO.succeed(true)
         } yield res
 
         withError.catchAll(_ => UIO.succeed(false))
@@ -668,7 +668,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         )
         .flatMap { version =>
           confirmDownload0(version.id, downloadType, token)
-            .constError(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload"))
+            .asError(Redirect(ShowProject(author, slug)).withError("error.plugin.noConfirmDownload"))
         }
         .map {
           case (dl, optNewSession) =>
@@ -831,7 +831,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
                   }
                   .tapError(e => IO(MDCLogger.error("an error occurred while trying to send a plugin", e)))
                   .orDie
-                  .const(Ok.sendPath(jarPath, onClose = () => Files.delete(jarPath)))
+                  .as(Ok.sendPath(jarPath, onClose = () => Files.delete(jarPath)))
               }
             }
           }
@@ -876,7 +876,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       getVersion(project, versionString).flatMap { version =>
         optToken
           .map { token =>
-            confirmDownload0(version.id, Some(DownloadType.JarFile.value), Some(token)).constError(notFound) *>
+            confirmDownload0(version.id, Some(DownloadType.JarFile.value), Some(token)).asError(notFound) *>
               sendJar(project, version, optToken, api = true)
           }
           .getOrElse(sendJar(project, version, optToken, api = true))

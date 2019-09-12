@@ -279,7 +279,7 @@ final class Application @Inject()(forms: OreForms)(
       t2 <- (
         UserData.of(request, u),
         ZIO.foreachPar(projectRoles)(_.project[Task].orDie),
-        OrganizationData.of[Task, ParTask](orga).value.orDie
+        OrganizationData.of[Task](orga).value.orDie
       ).parTupled
       (userData, projects, orgaData) = t2
     } yield {
@@ -313,9 +313,9 @@ final class Application @Inject()(forms: OreForms)(
                   val roleType = Role.withValue((json \ "role").as[String])
 
                   if (roleType == ownerType)
-                    transferOwner(role).const(Ok)
+                    transferOwner(role).as(Ok)
                   else if (roleType.category == allowedCategory && roleType.isAssignable)
-                    service.update(role)(_.withRole(roleType)).const(Ok)
+                    service.update(role)(_.withRole(roleType)).as(Ok)
                   else
                     IO.fail(Left(BadRequest))
                 }
@@ -339,7 +339,7 @@ final class Application @Inject()(forms: OreForms)(
             r.organization[Task]
               .orDie
               .flatMap(_.transferOwner(r.userId))
-              .const(r)
+              .as(r)
 
           val res: IO[Either[Status, Unit], Status] = thing match {
             case "orgRole" =>

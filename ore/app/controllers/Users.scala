@@ -83,7 +83,7 @@ class Users @Inject()(
           sponge <- this.sso
             .authenticate(sso.get, sig.get)(isNonceValid)
             .get
-            .constError(Redirect(ShowHome).withError("error.loginFailed"))
+            .asError(Redirect(ShowHome).withError("error.loginFailed"))
           fromSponge = sponge.toUser
           // Complete authentication
           user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
@@ -151,7 +151,7 @@ class Users @Inject()(
       ).parTupled
       (orga, userData) = t1
       t2 <- (
-        OrganizationData.of[Task, ParTask](orga).value.orDie,
+        OrganizationData.of[Task](orga).value.orDie,
         ScopedOrganizationData.of(request.currentUser, orga).value
       ).parTupled
       (orgaData, scopedOrgaData) = t2
@@ -212,7 +212,7 @@ class Users @Inject()(
 
       service
         .update(user)(_.copy(isLocked = locked))
-        .const(Redirect(ShowUser(username)))
+        .as(Redirect(ShowUser(username)))
     }
   }
 
@@ -294,7 +294,7 @@ class Users @Inject()(
     request.user
       .notifications(ModelView.now(Notification))
       .get(id)
-      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).const(Ok))
+      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).as(Ok))
       .getOrElse(notFound)
   }
 
@@ -308,7 +308,7 @@ class Users @Inject()(
   def markPromptRead(id: Int): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     Prompt.values.find(_.value == id) match {
       case None         => IO.fail(BadRequest)
-      case Some(prompt) => request.user.markPromptAsRead(prompt).const(Ok)
+      case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)
     }
   }
 
@@ -323,7 +323,7 @@ class Users @Inject()(
           ).parTupled
           (orga, userData, keys) = t1
           t2 <- (
-            OrganizationData.of[Task, ParTask](orga).value.orDie,
+            OrganizationData.of[Task](orga).value.orDie,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2

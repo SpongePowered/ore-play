@@ -28,6 +28,7 @@ import cats.syntax.all._
 import io.circe.Json
 import slick.lifted.{Rep, TableQuery}
 import zio.{UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Controller for handling Review related actions.
@@ -65,7 +66,7 @@ final class Reviews @Inject()(forms: OreForms)(
           None,
           Json.obj()
         )
-        this.service.insert(review).const(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
+        this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
       }
     }
   }

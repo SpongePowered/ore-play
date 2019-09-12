@@ -105,11 +105,11 @@ class ApiV2Controller @Inject()(
           .mapError(_.leftMap(_ => unAuth("No authorization specified")).merge)
         token <- ZIO
           .fromOption(creds.params.get("session"))
-          .constError(unAuth("No session specified"))
+          .asError(unAuth("No session specified"))
         info <- service
           .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
           .get
-          .constError(unAuth("Invalid session"))
+          .asError(unAuth("Invalid session"))
         res <- {
           if (info.expires.isBefore(Instant.now())) {
             service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
@@ -155,7 +155,7 @@ class ApiV2Controller @Inject()(
       //but then we wouldn't get the 404 on a non existent scope.
       val scopePerms: IO[Unit, Permission] =
         apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, ?]](_))
-      val res = scopePerms.constError(NotFound).ensure(Forbidden)(_.has(perms))
+      val res = scopePerms.asError(NotFound).ensure(Forbidden)(_.has(perms))
 
       zioToFuture(res.either.map(_.swap.toOption))
     }
@@ -202,7 +202,7 @@ class ApiV2Controller @Inject()(
             service
               .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
               .get
-              .constError(Right(unAuth("Invalid api key")))
+              .asError(Right(unAuth("Invalid api key")))
               .map {
                 case (keyId, keyOwnerId) =>
                   SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
@@ -296,7 +296,7 @@ class ApiV2Controller @Inject()(
       for {
         user <- ZIO
           .fromOption(request.user)
-          .constError(BadRequest(ApiError("Public keys can't be used to delete")))
+          .asError(BadRequest(ApiError("Public keys can't be used to delete")))
         rowsAffected <- service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run)
       } yield if (rowsAffected == 0) NotFound else NoContent
     }
@@ -315,7 +315,7 @@ class ApiV2Controller @Inject()(
   ): IO[Result, (APIScope, Permission)] =
     for {
       apiScope <- ZIO.fromEither(createApiScope(pluginId, organizationName))
-      scope    <- apiScopeToRealScope(apiScope).constError(NotFound)
+      scope    <- apiScopeToRealScope(apiScope).asError(NotFound)
       perms    <- request.permissionIn(scope)
     } yield (apiScope, perms)
 
@@ -332,7 +332,7 @@ class ApiV2Controller @Inject()(
       )(
         Some(1.minute)
       )(fa.either)
-      .constError(InternalServerError)
+      .asError(InternalServerError)
       .absolve
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
@@ -588,9 +588,9 @@ class ApiV2Controller @Inject()(
         }
 
         for {
-          user            <- ZIO.fromOption(request.user).constError(BadRequest(ApiError("No user found for session")))
+          user            <- ZIO.fromOption(request.user).asError(BadRequest(ApiError("No user found for session")))
           _               <- uploadErrors(user)
-          project         <- projects.withPluginId(pluginId).get.constError(NotFound)
+          project         <- projects.withPluginId(pluginId).get.asError(NotFound)
           projectSettings <- project.settings[Task].orDie
           data            <- dataF
           file            <- fileF

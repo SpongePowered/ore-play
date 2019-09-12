@@ -101,14 +101,14 @@ class Organizations @Inject()(forms: OreForms)(
         .organizationRoles(ModelView.now(OrganizationUserRole))
         .get(id)
         .toZIO
-        .constError(notFound)
+        .asError(notFound)
         .flatMap { role =>
           import MembershipDossier._
           status match {
             case STATUS_DECLINE =>
               role.organization[Task].orDie.flatMap(org => org.memberships.removeRole(org)(role.id)).as(Ok)
-            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).const(Ok)
-            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).const(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.fail(BadRequest)
           }
         }
@@ -164,8 +164,8 @@ class Organizations @Inject()(forms: OreForms)(
       )
       .asyncF { implicit request =>
         request.body
-          .saveTo[Task, ParTask](request.data.orga)
+          .saveTo[Task](request.data.orga)
           .orDie
-          .const(Redirect(ShowUser(organization)))
+          .as(Redirect(ShowUser(organization)))
       }
 }
