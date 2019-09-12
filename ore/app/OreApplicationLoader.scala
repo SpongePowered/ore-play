@@ -122,7 +122,6 @@ class OreComponents(context: ApplicationLoader.Context)
     }.flatten
   }
 
-  lazy val assetsProvider: Provider[Assets] = () => assets
   lazy val routerProvider: Provider[Router] = () => router
 
   lazy val optionalSourceMapper: OptionalSourceMapper = new OptionalSourceMapper(devContext.map(_.sourceMapper))
