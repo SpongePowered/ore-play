@@ -8,7 +8,7 @@ jdk:
   - openjdk11
 
 scala:
-  - 2.12.8
+  - 2.12.10
 
 services: postgresql
 
