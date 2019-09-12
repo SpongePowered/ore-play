@@ -350,10 +350,7 @@ class Users @Inject()(
 
   private val projectEndpoints: Seq[((String, String) => Call, Option[Sitemap.ChangeFreq])] = Seq(
     (projectRoutes.Projects.show, None),
-    (projectRoutes.Versions.showList, Some(Sitemap.ChangeFreq.Daily)),
-    (projectRoutes.Projects.showStargazers(_, _, None), Some(Sitemap.ChangeFreq.Monthly)),
-    (projectRoutes.Projects.showWatchers(_, _, None), Some(Sitemap.ChangeFreq.Monthly)),
-    (projectRoutes.Projects.showDiscussion, None)
+    (projectRoutes.Versions.showList, Some(Sitemap.ChangeFreq.Daily))
   )
 
   def userSitemap(user: String): Action[AnyContent] = Action.asyncF { implicit request =>
