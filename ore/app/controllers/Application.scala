@@ -1,5 +1,6 @@
 package controllers
 
+import java.io.StringWriter
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDate}
@@ -28,7 +29,7 @@ import ore.models.user._
 import ore.models.user.role._
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
-import util.UserActionLogger
+import util.{Sitemap, UserActionLogger}
 import util.syntax._
 import views.{html => views}
 
@@ -398,5 +399,36 @@ final class Application @Inject()(forms: OreForms)(
 
   def swagger(): Action[AnyContent] = OreAction { implicit request =>
     Ok(views.swagger())
+  }
+
+  def sitemapIndex(): Action[AnyContent] = Action.asyncF { implicit request =>
+    service.runDbCon(AppQueries.sitemapIndexUsers.to[Vector]).map { users =>
+      def userSitemap(user: String) =
+        <sitemap>
+          <loc>{routes.Users.userSitemap(user).absoluteURL()}</loc>
+        </sitemap>
+
+      val sitemapIndex =
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          {users.map(userSitemap)}
+          <sitemap>
+            <loc>{routes.Application.globalSitemap().absoluteURL()}</loc>
+          </sitemap>
+        </sitemapindex>
+
+      val writer = new StringWriter()
+      xml.XML.write(writer, sitemapIndex, "UTF-8", xmlDecl = true, null)
+
+      Ok(writer.toString).as("application/xml")
+    }
+  }
+
+  val globalSitemap: Action[AnyContent] = Action { implicit requests =>
+    Ok(
+      Sitemap.asString(
+        Sitemap.Entry(routes.Application.showHome()),
+        Sitemap.Entry(routes.Application.swagger())
+      )
+    ).as("application/xml")
   }
 }

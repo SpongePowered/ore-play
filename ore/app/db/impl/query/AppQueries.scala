@@ -177,4 +177,11 @@ object AppQueries extends WebDoobieOreProtocol {
           |  WHERE vc.resolved_at IS NULL
           |    AND p.visibility = 3""".stripMargin.query[ProjectNeedsApproval]
   }
+
+  val sitemapIndexUsers: Query0[String] = {
+    sql"""|SELECT u.name
+          |    FROM users u
+          |    ORDER BY (SELECT COUNT(*) FROM project_members_all pma WHERE pma.user_id = u.id) DESC
+          |    LIMIT 49000""".stripMargin.query[String]
+  }
 }

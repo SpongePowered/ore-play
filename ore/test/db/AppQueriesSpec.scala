@@ -75,4 +75,8 @@ class AppQueriesSpec extends DbSpec {
   test("GetVisibilityWaitingProject") {
     check(AppQueries.getVisibilityWaitingProject)
   }
+
+  test("SitemapIndexUsers") {
+    check(AppQueries.sitemapIndexUsers)
+  }
 }
