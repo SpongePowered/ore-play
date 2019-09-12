@@ -4,7 +4,7 @@ evictionWarningOptions in update := EvictionWarningOptions.default
   .withWarnDirectEvictions(false)
   .withWarnScalaVersionEviction(false)
 
-resolvers += "Typesafe repository".at("http://repo.typesafe.com/typesafe/releases/")
+resolvers += "Typesafe repository".at("https://repo.typesafe.com/typesafe/releases/")
 
 addSbtPlugin("com.typesafe.play" % "sbt-plugin"              % "2.7.3")
 addSbtPlugin("com.typesafe.sbt"  % "sbt-digest"              % "1.1.4")

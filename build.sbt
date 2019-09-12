@@ -43,11 +43,15 @@ lazy val commonSettings = Seq(
   ),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   addCompilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)),
-  //addCompilerPlugin(scalafixSemanticdb("4.2.0")),
   // Disable generation of the API documentation for production builds
   sources in (Compile, doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false
 )
+
+ThisBuild / turbo := true
+
+ThisBuild / semanticdbEnabled := true
+Global / semanticdbVersion := "4.2.3"
 
 lazy val playCommonSettings = Seq(
   routesImport ++= Seq(
