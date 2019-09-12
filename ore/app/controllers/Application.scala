@@ -440,7 +440,7 @@ final class Application @Inject()(forms: OreForms)(
           |Disallow: /staff$$
           |Disallow: /organizations/*
 
-          |Allow: /*
+          |Allow: /$
           |Allow: /*/$$
           |Allow: /*/*/$$
           |Allow: /*/*/pages/*/$$
