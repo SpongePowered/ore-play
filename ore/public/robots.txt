@@ -1,0 +1,14 @@
+user-agent: *
+
+Disallow: /*/settings/*
+Disallow: /*/notifications/*
+Disallow: /staff$
+Disallow: /organizations/*
+
+Allow: /$
+Allow: /*/$
+Allow: /*/*/$
+Allow: /*/*/pages/*/$
+Allow: /*/*/versions/*/$
+
+Disallow: /

@@ -432,6 +432,4 @@ final class Application @Inject()(forms: OreForms)(
       )
     ).as("application/xml")
   }
-
-  val robots: Action[AnyContent] = TODO
 }
