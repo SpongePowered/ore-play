@@ -348,11 +348,6 @@ class Users @Inject()(
 
   import controllers.project.{routes => projectRoutes}
 
-  private val projectEndpoints: Seq[((String, String) => Call, Option[Sitemap.ChangeFreq])] = Seq(
-    (projectRoutes.Projects.show, None),
-    (projectRoutes.Versions.showList, Some(Sitemap.ChangeFreq.Daily))
-  )
-
   def userSitemap(user: String): Action[AnyContent] = Action.asyncF { implicit request =>
     val projectsQuery = for {
       u <- TableQuery[UserTable]
@@ -396,10 +391,7 @@ class Users @Inject()(
       }
       ((projects, versions), pages) = res
     } yield {
-      val projectEntries = for {
-        project  <- projects
-        endpoint <- projectEndpoints
-      } yield Sitemap.Entry(endpoint._1(user, project), changeFreq = endpoint._2)
+      val projectEntries = for (project <- projects) yield Sitemap.Entry(projectRoutes.Projects.show(user, project))
 
       val versionEntries =
         for ((project, version) <- versions)

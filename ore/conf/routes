@@ -61,6 +61,7 @@ POST    /verify                                                     @controllers
 GET     /javascriptRoutes                                           @controllers.Application.javascriptRoutes
 GET     /global-sitemap.xml                                         @controllers.Application.globalSitemap
 GET     /sitemap.xml                                                @controllers.Application.sitemapIndex()
+GET     /robots.txt                                                 @controllers.Application.robots()
 
 # ---------- Projects ----------
 
