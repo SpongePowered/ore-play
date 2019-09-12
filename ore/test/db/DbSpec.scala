@@ -14,14 +14,14 @@ import cats.effect.Effect
 import doobie.Transactor
 import doobie.scalatest.Checker
 import org.scalatest.{BeforeAndAfterAll, FunSuite, Matchers}
-import zio.interop.catz.{taskEffectInstances, zioContextShift}
+import zio.interop.catz.{taskEffectInstance, zioContextShift}
 import zio.{DefaultRuntime, Task}
 
 trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAfterAll with DoobieOreProtocol {
 
   implicit val runtime: zio.Runtime[Any] = new DefaultRuntime {}
 
-  implicit override def M: Effect[Task] = taskEffectInstances
+  implicit override def M: Effect[Task] = taskEffectInstance
 
   lazy val database = Databases(
     "org.postgresql.Driver",
@@ -41,7 +41,7 @@ trait DbSpec extends FunSuite with Matchers with Checker[Task] with BeforeAndAft
   private lazy val transactEC   = ExecutionContext.fromExecutor(transactExec)
 
   lazy val transactor: Transactor.Aux[Task, DataSource] =
-    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)(taskEffectInstances, zioContextShift)
+    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)(taskEffectInstance, zioContextShift)
 
   override def beforeAll(): Unit = Evolutions.applyEvolutions(database)
 
