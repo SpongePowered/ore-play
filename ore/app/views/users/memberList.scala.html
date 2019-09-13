@@ -46,7 +46,7 @@
                     </div>
                     <div class="modal-body">@messages("project.removeMember.confirm")</div>
                     <div class="modal-footer">
-                        @form(action = removeCall, 'class -> "form-inline") {
+                        @form(action = removeCall, Symbol("class") -> "form-inline") {
                             @CSRF.formField
                             <input type="hidden" name="username" />
                             <button type="button" class="btn btn-default" data-dismiss="modal">
@@ -78,7 +78,7 @@
                     }
 
                     @if(saveCall != null) {
-                        @form(action = saveCall, 'id -> "save") {
+                        @form(action = saveCall, Symbol("id") -> "save") {
                             @CSRF.formField
                             <button class="btn-members-save btn btn-default btn-panel btn-xs" data-toggle="tooltip"
                                     data-placement="top" data-title="@messages("org.users.save")" style="display: none;">
@@ -95,7 +95,7 @@
             @j.filteredMembers.map { case (role, user) =>
                 <li class="list-group-item">
                     @userAvatar(Some(user.name), user.avatarUrl, clazz = "user-avatar-xs")
-                <a class="username" href="@routes.Users.showProjects(user.name, None)">
+                <a class="username" href="@routes.Users.showProjects(user.name)">
                 @user.name
                 </a>
                     <p style="display: none;" class="role-id">@role.id</p>

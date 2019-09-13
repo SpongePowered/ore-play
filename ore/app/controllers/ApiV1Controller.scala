@@ -109,7 +109,11 @@ final class ApiV1Controller @Inject()(
               ""
             )
           )
-        } yield Created(Json.toJson(pak))
+        } yield {
+          //Gets around unused warning
+          identity(exists)
+          Created(Json.toJson(pak))
+        }
         res.getOrElse(BadRequest)
     }
 

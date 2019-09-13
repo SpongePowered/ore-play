@@ -98,11 +98,7 @@ final class Application @Inject()(forms: OreForms)(
     */
   def showFlags(): Action[AnyContent] = FlagAction.asyncF { implicit request =>
     service
-      .runDbCon(
-        AppQueries
-          .flags(request.user.id)
-          .to[Vector]
-      )
+      .runDbCon(AppQueries.flags.to[Vector])
       .map(flagSeq => Ok(views.users.admin.flags(flagSeq)))
   }
 

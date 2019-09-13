@@ -6,6 +6,8 @@ import java.time.Instant
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
+import scala.annotation.unused
+
 import play.api.i18n.{Lang, MessagesApi}
 import play.api.mvc
 import play.api.mvc.{Action, AnyContent, Result}
@@ -568,7 +570,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       target: String,
       downloadType: Option[Int],
       api: Option[Boolean],
-      dummy: Option[String]
+      @unused dummy: Option[String]
   ): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
       val dlType              = downloadType.flatMap(DownloadType.withValueOpt).getOrElse(DownloadType.UploadedFile)
@@ -659,7 +661,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       target: String,
       downloadType: Option[Int],
       token: Option[String],
-      dummy: Option[String] //A parameter to get around Chrome's cache
+      @unused dummy: Option[String] //A parameter to get around Chrome's cache
   ): Action[AnyContent] = {
     ProjectAction(author, slug).asyncF { implicit request =>
       getVersion(request.data.project, target)

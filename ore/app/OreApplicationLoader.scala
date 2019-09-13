@@ -157,17 +157,17 @@ class OreComponents(context: ApplicationLoader.Context)
     wire[ProjectFiles.LocalProjectFiles[ZIO[Blocking, Nothing, ?]]]
 
   implicit val transactor: Transactor[Task] = {
-    val cs = ContextShift[Task]
+    val cs: ContextShift[Task] = ContextShift[Task]
 
     applicationResource {
       for {
         connectEC  <- ExecutionContexts.fixedThreadPool[F](32)
-        transactEC <- ExecutionContexts.cachedThreadPool[F]
+        transactEC <- cats.effect.Blocker[F]
       } yield Transactor[F, JdbcDataSource](
         dbConfigProvider.get[JdbcProfile].db.source,
         source => {
           val acquire                = cs.evalOn(connectEC)(F.delay(source.createConnection()))
-          def release(c: Connection) = cs.evalOn(transactEC)(F.delay(c.close()))
+          def release(c: Connection) = transactEC.blockOn(F.delay(c.close()))
           Resource.make(acquire)(release)
         },
         KleisliInterpreter[F](transactEC).ConnectionInterpreter,

@@ -111,7 +111,7 @@ final class Reviews @Inject()(forms: OreForms)(
         _ <- (
           service.update(review)(_.copy(endedAt = Some(Instant.now()))),
           // send notification that review happened
-          sendReviewNotification(project, version, request.user)
+          sendReviewNotification(project, version)
         ).parTupled
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
@@ -141,8 +141,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private def sendReviewNotification(
       project: Model[Project],
-      version: Version,
-      requestUser: Model[User]
+      version: Version
   ): UIO[Unit] = {
     val usersF =
       service.runDBIO(notificationUsersQuery((project.id, version.authorId)).result).map { list =>

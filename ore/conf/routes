@@ -90,7 +90,7 @@ POST    /notifications/read/:id                                     @controllers
 
 POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: Int)
 
-GET     /:user                                                      @controllers.Users.showProjects(user, page: Option[Int])
+GET     /:user                                                      @controllers.Users.showProjects(user)
 POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)
 POST    /:user/settings/lock/:locked                                @controllers.Users.setLocked(user, locked: Boolean, sso: Option[String], sig: Option[String])
 GET     /:user/settings/apiKeys                                     @controllers.Users.editApiKeys(user)

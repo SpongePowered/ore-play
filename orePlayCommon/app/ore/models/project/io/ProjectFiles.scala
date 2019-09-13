@@ -160,7 +160,8 @@ object ProjectFiles {
       findFirstFile(getPendingIconDir(ownerName, name))
 
     private def findFirstFile(dir: Path): F[Option[Path]] = {
-      import cats.instances.stream._
+      import cats.instances.lazyList._
+
       val findFirst =
         fileIO.list(dir).flatMap(fs => fileIO.traverseLimited(fs)(f => fileIO.isDirectory(f).tupleLeft(f))).map {
           _.collectFirst {

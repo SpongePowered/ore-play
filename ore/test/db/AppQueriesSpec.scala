@@ -43,7 +43,7 @@ class AppQueriesSpec extends DbSpec {
   }
 
   test("Flags") {
-    check(AppQueries.flags(0))
+    check(AppQueries.flags)
   }
 
   test("GetUnhealtyProjects") {

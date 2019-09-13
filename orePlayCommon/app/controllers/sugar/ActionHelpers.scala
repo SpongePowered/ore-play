@@ -2,6 +2,7 @@ package controllers.sugar
 
 import scala.language.{higherKinds, implicitConversions}
 
+import scala.annotation.unused
 import scala.concurrent.Future
 
 import play.api.data.{Form, FormError}
@@ -191,7 +192,7 @@ object ActionHelpers {
   }
 
   //This gets us around a warning about this being unreachable. Yes, we know
-  private def impossible[A](a: A): Throwable = new Exception(s"Got impossible nothing")
+  private def impossible[A](@unused a: A): Throwable = new Exception(s"Got impossible nothing")
 
   private[sugar] def zioToFuture[A](
       io: ZIO[Blocking with Clock, Nothing, A]

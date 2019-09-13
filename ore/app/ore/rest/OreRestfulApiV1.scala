@@ -3,6 +3,8 @@ package ore.rest
 import java.lang.Math._
 import javax.inject.{Inject, Singleton}
 
+import scala.annotation.unused
+
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
@@ -99,7 +101,7 @@ trait OreRestfulApiV1 extends OreWrites {
     } yield (r, u)
 
   def writeMembers(members: Seq[(Model[ProjectUserRole], Model[User])]): Seq[JsObject] = {
-    val allRoles = members.groupBy(_._1.userId).mapValues(_.map(_._1.role))
+    val allRoles = members.groupBy(_._1.userId).view.mapValues(_.map(_._1.role))
     members.map {
       case (_, user) =>
         val roles                      = allRoles(user.id)
@@ -124,7 +126,7 @@ trait OreRestfulApiV1 extends OreWrites {
         chans.groupBy(_.projectId)
       }
       vTags <- service.runDBIO(queryVersionTags(versionIds).result).map { p =>
-        p.groupBy(_._1).mapValues(_.map(_._2))
+        p.groupBy(_._1).view.mapValues(_.map(_._2))
       }
       members <- service.runDBIO(getMembers(projectIds).result).map(_.groupBy(_._1.projectId))
     } yield {
@@ -139,7 +141,7 @@ trait OreRestfulApiV1 extends OreWrites {
               "name"        -> p.name,
               "owner"       -> p.ownerName,
               "description" -> p.description,
-              "href"        -> ('/' + p.ownerName + '/' + p.slug),
+              "href"        -> s"/${p.ownerName}/${p.slug}",
               "members"     -> writeMembers(members.getOrElse(p.id.value, Seq.empty)),
               "channels"    -> toJson(chans.getOrElse(p.id.value, Seq.empty).map(_.obj)),
               "recommended" -> toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.value, Seq.empty))),
@@ -174,7 +176,7 @@ trait OreRestfulApiV1 extends OreWrites {
       "md5"           -> v.hash,
       "staffApproved" -> v.reviewState.isChecked,
       "reviewState"   -> v.reviewState.toString,
-      "href"          -> ('/' + v.url(p)),
+      "href"          -> ("/" + v.url(p)),
       "tags"          -> tags.map(toJson(_)),
       "downloads"     -> v.downloadCount,
       "description"   -> v.description
@@ -198,13 +200,18 @@ trait OreRestfulApiV1 extends OreWrites {
       t <- TableQuery[VersionTagTable] if t.versionId === v.id
     } yield (v.id, t)
 
-  private def queryProjectRV =
+  private def queryProjectRV = {
+    //Gets around unused warning
+    def use[A](@unused a: A): Unit = ()
+
     for {
       p <- TableQuery[ProjectTableMain]
       v <- TableQuery[VersionTable] if p.recommendedVersionId === v.id
       c <- TableQuery[ChannelTable] if v.channelId === c.id
+      _ = use(c)
       if Visibility.isPublicFilter[ProjectTableMain](p)
     } yield (p, v, c)
+  }
 
   /**
     * Returns a Json value of the Project with the specified ID.
@@ -259,7 +266,7 @@ trait OreRestfulApiV1 extends OreWrites {
 
     for {
       data  <- service.runDBIO(limited.result) // Get Project Version Channel and AuthorName
-      vTags <- service.runDBIO(queryVersionTags(data.map(_._3)).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
+      vTags <- service.runDBIO(queryVersionTags(data.map(_._3)).result).map(_.groupBy(_._1).view.mapValues(_.map(_._2)))
     } yield {
       val list = data.map {
         case (p, v, vId, c, uName) =>
@@ -372,11 +379,11 @@ trait OreRestfulApiV1 extends OreWrites {
 
     for {
       allProjects     <- service.runDBIO(query.result)
-      stars           <- service.runDBIO(queryStars(userList).result).map(_.groupBy(_._1).mapValues(_.map(_._2)))
+      stars           <- service.runDBIO(queryStars(userList).result).map(_.groupBy(_._1).view.mapValues(_.map(_._2)))
       jsonProjects    <- writeProjects(allProjects)
       userGlobalRoles <- ZIO.foreachParN(config.performance.nioBlockingFibers)(userList)(_.globalRoles.allFromParent)
     } yield {
-      val projectsByUser = jsonProjects.groupBy(_._1.ownerId).mapValues(_.map(_._2))
+      val projectsByUser = jsonProjects.groupBy(_._1.ownerId).view.mapValues(_.map(_._2))
       userList.zip(userGlobalRoles).map {
         case (user, globalRoles) =>
           obj(

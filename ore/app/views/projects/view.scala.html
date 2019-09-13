@@ -75,7 +75,7 @@ Base template for Project overview.
             <div class="col-md-6">
                 <div class="project-header">
                     <div class="project-path">
-                        <a href="@routes.Users.showProjects(p.project.ownerName, None)">@p.project.ownerName</a>
+                        <a href="@routes.Users.showProjects(p.project.ownerName)">@p.project.ownerName</a>
                         /
                         <a class="project-name" href="@Projects.show(p.project.ownerName, p.project.slug)">@p.project.name</a>
                     </div>

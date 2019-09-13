@@ -2,8 +2,7 @@ package ore.db
 
 import scala.language.{higherKinds, implicitConversions}
 
-import scala.collection.TraversableLike
-import scala.collection.generic.CanBuildFrom
+import scala.collection.Factory
 
 import cats.Functor
 import cats.syntax.all._
@@ -56,13 +55,13 @@ object Model {
     }
   }
   trait LowPriorityUnwrappers extends TupleUnwrappers {
-    implicit def seqUnwrapper[A, InnerOut, CC[X] <: TraversableLike[X, CC[X]]](
+    implicit def seqUnwrapper[A, InnerOut, CC[X] <: Iterable[X]](
         implicit inner: Unwrapper.Aux[A, InnerOut],
-        buildFrom: CanBuildFrom[CC[A], InnerOut, CC[InnerOut]]
+        factory: Factory[InnerOut, CC[InnerOut]]
     ): Unwrapper.Aux[CC[A], CC[InnerOut]] =
       new Unwrapper[CC[A]] {
         override type Out = CC[InnerOut]
-        override def apply(t: CC[A]): Out = t.map(inner(_))(buildFrom)
+        override def apply(t: CC[A]): Out = t.map(inner(_)).to(factory)
       }
   }
   trait SuperLowPriorityUnwrappers {

@@ -66,7 +66,7 @@
                             <tr>
                                 <td><b>@{offset + index + 1}</b></td>
                                 <td>
-                                    <a href="@userRoutes.showProjects(action.uName, None)">@action.uName</a>
+                                    <a href="@userRoutes.showProjects(action.uName)">@action.uName</a>
                                     <small class="filter-user">(<a href="@appRoutes.showLog(Some(page), Some(action.userId), projectFilter, versionFilter, pageFilter, actionFilter, subjectFilter)">@action.userId</a>)</small>
                                 </td>
 
@@ -80,7 +80,7 @@
                                 </td>
                                 @if(action.actionType == LoggedActionContext.User || action.actionType == LoggedActionContext.Organization) {
                                     <td>
-                                        <a href="@userRoutes.showProjects(action.sName.getOrElse(""), None)">@action.sName</a>
+                                        <a href="@userRoutes.showProjects(action.sName.getOrElse(""))">@action.sName</a>
                                         <small class="filter-subject">(<a href="@appRoutes.showLog(Some(page), userFilter, projectFilter, versionFilter, pageFilter, actionFilter, action.sId)">@action.sId</a>)</small>
                                     </td>
                                 } else { @if(action.pId.isEmpty || action.filterProject.getOrElse(-1) == -1) {

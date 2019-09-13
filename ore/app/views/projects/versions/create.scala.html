@@ -147,7 +147,7 @@
                     }
 
                     @form(action = projectRoutes.Versions.upload(ownerName, projectSlug),
-                        'enctype -> "multipart/form-data", 'id -> "form-upload") {
+                        Symbol("enctype") -> "multipart/form-data", Symbol("id") -> "form-upload") {
                         @CSRF.formField
                             <label class="btn btn-default pull-left" for="pluginFile">
                                 <input id="pluginFile" name="pluginFile" type="file" style="display: none;">
@@ -162,7 +162,7 @@
                         @defining(pending.get) { version: PendingVersion =>
                             @form(action = projectRoutes.Versions.publish(
                                 ownerName, projectSlug, version.versionString),
-                                'id -> "form-publish", 'class -> "pull-right") {
+                                Symbol("id") -> "form-publish", Symbol("class") -> "pull-right") {
                                 @CSRF.formField
                                 <input type="hidden" class="channel-color-input" name="channel-color-input"
                                 value="@config.defaultChannelColor.hex" />

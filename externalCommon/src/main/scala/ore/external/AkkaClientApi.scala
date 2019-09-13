@@ -88,7 +88,9 @@ abstract class AkkaClientApi[F[_], E[_], ErrorType](
   protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[ErrorType], A]
 
   protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[ErrorType], A]] = {
-    import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+    //import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+    //TODO: Use akka-http-circe again when it updates
+    implicit def dummyJsomUnmarshaller[B: Decoder]: Unmarshaller[HttpResponse, B] = ???
 
     val requestWithAccept =
       if (request.header[Accept].isDefined) request

@@ -7,7 +7,7 @@ import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -42,7 +42,7 @@ import akka.http.scaladsl.model.headers.{Authorization, HttpCredentials}
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import enumeratum._
-import io.circe._
+import io.circe.{Codec => CirceCodec, _}
 import io.circe.generic.extras._
 import io.circe.syntax._
 import zio.blocking.Blocking
@@ -742,8 +742,7 @@ object ApiV2Controller {
 
     val values: immutable.IndexedSeq[APIScopeType] = findValues
 
-    implicit val encoder: Encoder[APIScopeType] = APIV2.enumEncoder(APIScopeType)(_.entryName)
-    implicit val decoder: Decoder[APIScopeType] = APIV2.enumDecoder(APIScopeType)(_.entryName)
+    implicit val codec: CirceCodec[APIScopeType] = APIV2.enumCodec(APIScopeType)(_.entryName)
   }
 
   sealed abstract class SessionType extends EnumEntry with EnumEntry.Snakecase
@@ -755,8 +754,7 @@ object ApiV2Controller {
 
     val values: immutable.IndexedSeq[SessionType] = findValues
 
-    implicit val encoder: Encoder[SessionType] = APIV2.enumEncoder(SessionType)(_.entryName)
-    implicit val decoder: Decoder[SessionType] = APIV2.enumDecoder(SessionType)(_.entryName)
+    implicit val codec: CirceCodec[SessionType] = APIV2.enumCodec(SessionType)(_.entryName)
   }
 
   @ConfiguredJsonCodec case class ApiError(error: String)
@@ -800,8 +798,7 @@ object ApiV2Controller {
       count: Long
   )
 
-  implicit val namedPermissionEncoder: Encoder[NamedPermission] = APIV2.enumEncoder(NamedPermission)(_.entryName)
-  implicit val namedPermissionDecoder: Decoder[NamedPermission] = APIV2.enumDecoder(NamedPermission)(_.entryName)
+  implicit val namedPermissionCodec: CirceCodec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
 
   @ConfiguredJsonCodec case class KeyPermissions(
       @JsonKey("type") tpe: APIScopeType,

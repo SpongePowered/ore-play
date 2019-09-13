@@ -5,7 +5,7 @@ import java.security.MessageDigest
 import java.util.Base64
 import javax.inject.{Inject, Singleton}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 
 import play.api.i18n.MessagesApi
@@ -444,7 +444,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
           val deleteFiles = effectBlocking(Files.list(pendingDir))
             .map(_.iterator().asScala)
-            .flatMap(it => ZIO.foreachParN_(config.performance.nioBlockingFibers)(it.toIterable)(deleteFile))
+            .flatMap(it => ZIO.foreachParN_(config.performance.nioBlockingFibers)(it.to(Iterable))(deleteFile))
 
           val moveFile = effectBlocking(tmpFile.ref.moveFileTo(pendingDir.resolve(tmpFile.filename), replace = true))
 

@@ -137,9 +137,7 @@ class Users @Inject()(
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    val pageNum = page.getOrElse(1)
-
+  def showProjects(username: String): Action[AnyContent] = OreAction.asyncF { implicit request =>
     for {
       u <- users
         .withName(username)
@@ -159,8 +157,7 @@ class Users @Inject()(
       Ok(
         views.users.projects(
           userData,
-          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-          pageNum
+          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b)))
         )
       )
     }

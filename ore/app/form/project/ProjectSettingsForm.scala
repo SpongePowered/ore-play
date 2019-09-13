@@ -111,7 +111,7 @@ case class ProjectSettingsForm(
             val notExist   = fileIO.notExists(iconDir)
             val createDirs = fileIO.createDirectories(iconDir)
             val deleteFiles = fileIO.list(iconDir).flatMap { ps =>
-              import cats.instances.stream._
+              import cats.instances.lazyList._
               fileIO.traverseLimited(ps)(p => fileIO.delete(p))
             }
             val move = fileIO.move(pendingPath, iconDir.resolve(pendingPath.getFileName))

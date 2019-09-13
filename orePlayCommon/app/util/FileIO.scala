@@ -9,7 +9,7 @@ import cats.{Traverse, ~>}
 
 trait FileIO[F[_]] {
 
-  def list(path: Path): F[Stream[Path]]
+  def list(path: Path): F[LazyList[Path]]
 
   def exists(path: Path): F[Boolean]
 
@@ -32,7 +32,7 @@ trait FileIO[F[_]] {
 object FileIO {
   implicit val fileIOInvariantK: InvariantK[FileIO] = new InvariantK[FileIO] {
     override def imapK[F[_], G[_]](af: FileIO[F])(fk: F ~> G)(gK: G ~> F): FileIO[G] = new FileIO[G] {
-      override def list(path: Path): G[Stream[Path]] = fk(af.list(path))
+      override def list(path: Path): G[LazyList[Path]] = fk(af.list(path))
 
       override def exists(path: Path): G[Boolean] = fk(af.exists(path))
 

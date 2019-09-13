@@ -2,7 +2,7 @@ package ore
 
 import javax.inject.{Inject, Singleton}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 
 import play.api.{ConfigLoader, Configuration}
@@ -258,18 +258,6 @@ final class OreConfig @Inject()(config: Configuration) {
     name.length >= 1 && name.length <= c.maxNameLen && name.matches(c.nameRegex)
   }
 
-  /**
-    * Attempts to determine a Channel name from the specified version string.
-    * This is attained using a ComparableVersion and finding the first
-    * StringItem within the parsed version. (e.g. 1.0.0-alpha) would return
-    * "alpha".
-    *
-    * @param version  Version string to parse
-    * @return         Suggested channel name
-    */
-  def getSuggestedNameForVersion(version: String): String =
-    this.defaultChannelName
-
   /** Returns true if the application is running in debug mode. */
   def isDebug: Boolean = this.ore.debug
 
@@ -287,12 +275,17 @@ trait ConfigCategory {
 case class Logo(name: String, image: String, link: String)
 object Logo {
   implicit val configSeqLoader: ConfigLoader[Seq[Logo]] = ConfigLoader { cfg => path =>
-    cfg.getConfigList(path).asScala.map { innerCfg =>
-      Logo(
-        innerCfg.getString("name"),
-        innerCfg.getString("image"),
-        innerCfg.getString("link")
-      )
-    }
+    cfg
+      .getConfigList(path)
+      .asScala
+      .view
+      .map { innerCfg =>
+        Logo(
+          innerCfg.getString("name"),
+          innerCfg.getString("image"),
+          innerCfg.getString("link")
+        )
+      }
+      .to(Seq)
   }
 }
