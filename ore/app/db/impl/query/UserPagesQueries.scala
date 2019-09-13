@@ -3,11 +3,7 @@ package db.impl.query
 import java.time.Instant
 
 import db.impl.access.UserBase.UserOrdering
-import models.querymodels.ProjectListEntry
 import ore.OreConfig
-import ore.db.DbRef
-import ore.models.project.ProjectSortingStrategy
-import ore.models.user.User
 import ore.permission.role.Role
 
 import doobie._

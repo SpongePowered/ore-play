@@ -3,7 +3,7 @@ package util.syntax
 import scala.language.implicitConversions
 
 import cats.data.{EitherT, OptionT}
-import zio.{IO, UIO, ZIO}
+import zio.{IO, UIO}
 
 trait ZIOSyntax {
 

@@ -5,8 +5,8 @@ import java.security.MessageDigest
 import java.util.Base64
 import javax.inject.{Inject, Singleton}
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 import play.api.i18n.MessagesApi
 import play.api.libs.Files.TemporaryFile

@@ -17,7 +17,6 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.query.UserQueries
 import ore.db.impl.schema.{ApiKeyTable, UserTable}
 import ore.db.{DbRef, Model}
-import ore.models.project.ProjectSortingStrategy
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.models.user.{FakeUser, _}
 import ore.permission.Permission

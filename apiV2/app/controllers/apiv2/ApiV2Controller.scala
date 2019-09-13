@@ -7,10 +7,10 @@ import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import scala.jdk.CollectionConverters._
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 import play.api.http.{HttpErrorHandler, Writeable}
 import play.api.i18n.Lang
@@ -42,9 +42,9 @@ import akka.http.scaladsl.model.headers.{Authorization, HttpCredentials}
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import enumeratum._
-import io.circe.{Codec => CirceCodec, _}
 import io.circe.generic.extras._
 import io.circe.syntax._
+import io.circe.{Codec => CirceCodec, _}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}

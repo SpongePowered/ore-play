@@ -4,8 +4,8 @@ import scala.language.higherKinds
 
 import java.io.BufferedReader
 
-import scala.jdk.CollectionConverters._
 import scala.collection.mutable.ArrayBuffer
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 import ore.data.project.Dependency

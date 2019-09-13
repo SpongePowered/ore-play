@@ -28,13 +28,12 @@ import ore.permission.scope.{GlobalScope, HasScope}
 import ore.util.OreMDC
 import util.syntax._
 
-import cats.Parallel
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.blocking.Blocking
 import zio.clock.Clock
 import zio.interop.catz._
-import zio.{Exit, Fiber, IO, Task, UIO, ZIO}
+import zio._
 
 /**
   * A set of actions used by Ore.

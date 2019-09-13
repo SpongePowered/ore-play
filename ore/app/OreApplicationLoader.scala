@@ -56,8 +56,8 @@ import cats.tagless.syntax.all._
 import cats.~>
 import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
-import doobie.{ExecutionContexts, KleisliInterpreter, Transactor}
 import doobie.util.transactor.Strategy
+import doobie.{ExecutionContexts, KleisliInterpreter, Transactor}
 import slick.basic.{BasicProfile, DatabaseConfig}
 import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking

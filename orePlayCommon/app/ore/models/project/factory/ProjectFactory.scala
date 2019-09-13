@@ -26,7 +26,6 @@ import ore.{OreConfig, OreEnv}
 import util.FileIO
 import util.syntax._
 
-import cats.Parallel
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import com.google.common.base.Preconditions._

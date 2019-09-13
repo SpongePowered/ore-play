@@ -5,13 +5,11 @@ import java.time.LocalDate
 import scala.concurrent.duration.FiniteDuration
 
 import models.querymodels._
-import ore.data.project.Category
 import ore.db.{DbRef, Model}
 import ore.models.admin.LoggedActionViewModel
 import ore.models.project._
 import ore.models.user.User
 
-import cats.syntax.all._
 import doobie._
 import doobie.implicits._
 

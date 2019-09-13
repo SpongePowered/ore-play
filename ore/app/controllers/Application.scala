@@ -6,8 +6,8 @@ import java.time.{Instant, LocalDate}
 import java.util.Date
 import javax.inject.{Inject, Singleton}
 
-import scala.util.Try
 import scala.concurrent.duration._
+import scala.util.Try
 
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
 import play.api.routing.JavaScriptReverseRouter

@@ -2,9 +2,9 @@
 @import models.querymodels.ShownFlag
 @import ore.OreConfig
 @import ore.models.user.User
+@import util.StringFormatterUtils._
 @import util.syntax._
 @import views.html.utils.userAvatar
-@import util.StringFormatterUtils._
 
 @* project perms for all visibilities *@
 @(flags: Seq[ShownFlag])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)

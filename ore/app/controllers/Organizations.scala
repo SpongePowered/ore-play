@@ -19,7 +19,6 @@ import util.syntax._
 import views.{html => views}
 
 import cats.data.OptionT
-import cats.syntax.all._
 import zio.interop.catz._
 import zio.{IO, Task, UIO}
 

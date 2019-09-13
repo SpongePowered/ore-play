@@ -9,8 +9,8 @@ import ore.external.AkkaClientApi.ClientSettings
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.pattern.CircuitBreaker
 import akka.stream.Materializer
