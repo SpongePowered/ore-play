@@ -435,17 +435,15 @@ final class Application @Inject()(forms: OreForms)(
 
   val robots: Action[AnyContent] = Action {
     Ok(s"""user-agent: *
-          |Disallow: /*/settings/*
-          |Disallow: /*/notifications/*
-          |Disallow: /staff$$
-          |Disallow: /organizations/*
 
-          |Allow: /$$
-          |Allow: /*/$$
-          |Allow: /*/*/$$
-          |Allow: /*/*/pages/*/$$
-          |Allow: /*/*/versions/*/$$
-          |Disallow: /
+          |Disallow: /*/*/versions
+          |Disallow: /*/*/watchers
+          |Disallow: /*/*/stars
+          |Disallow: /*/*/discuss
+          |Disallow: /*/*/channels
+          
+          |Allow: /*/*/versions/*
+
           |Sitemap: ${config.app.baseUrl}/sitemap.xml
       """.stripMargin).as("text/plain")
   }
