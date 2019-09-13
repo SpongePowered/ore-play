@@ -34,7 +34,9 @@ lazy val commonSettings = Seq(
     "-Wunused:privates",
     "-Wvalue-discard",
     "-Yrangepos",
-    "-Ymacro-annotations"
+    "-Ymacro-annotations",
+    "-Ybackend-parallelism",
+    "6"
   ),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
   // Disable generation of the API documentation for production builds
@@ -44,7 +46,7 @@ lazy val commonSettings = Seq(
 
 ThisBuild / turbo := true
 
-ThisBuild / semanticdbEnabled := true
+//ThisBuild / semanticdbEnabled := true
 Global / semanticdbVersion := "4.2.3"
 
 lazy val playCommonSettings = Seq(
