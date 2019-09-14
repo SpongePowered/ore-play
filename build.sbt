@@ -102,18 +102,17 @@ lazy val externalCommon = project.settings(
   commonSettings,
   name := "ore-external",
   libraryDependencies ++= Seq(
-    "org.typelevel"     %% "cats-core"            % catsVersion,
-    "org.typelevel"     %% "cats-effect"          % catsEffectVersion,
-    "org.typelevel"     %% "cats-tagless-macros"  % catsTaglessVersion,
-    "io.circe"          %% "circe-core"           % circeVersion,
-    "io.circe"          %% "circe-generic-extras" % circeVersion,
-    "io.circe"          %% "circe-parser"         % circeVersion,
-    "com.typesafe.akka" %% "akka-http"            % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-http-core"       % akkaHttpVersion,
-    "com.typesafe.akka" %% "akka-stream"          % akkaVersion,
-    //"de.heikoseeberger"          %% "akka-http-circe"      % "1.27.0",
-    "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
-    "com.github.mpilquist"       %% "simulacrum"    % simulacrumVersion
+    "org.typelevel"              %% "cats-core"            % catsVersion,
+    "org.typelevel"              %% "cats-effect"          % catsEffectVersion,
+    "org.typelevel"              %% "cats-tagless-macros"  % catsTaglessVersion,
+    "io.circe"                   %% "circe-core"           % circeVersion,
+    "io.circe"                   %% "circe-generic-extras" % circeVersion,
+    "io.circe"                   %% "circe-parser"         % circeVersion,
+    "com.typesafe.akka"          %% "akka-http"            % akkaHttpVersion,
+    "com.typesafe.akka"          %% "akka-http-core"       % akkaHttpVersion,
+    "com.typesafe.akka"          %% "akka-stream"          % akkaVersion,
+    "com.typesafe.scala-logging" %% "scala-logging"        % scalaLoggingVersion,
+    "com.github.mpilquist"       %% "simulacrum"           % simulacrumVersion
   )
 )
 
