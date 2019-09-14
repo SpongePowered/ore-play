@@ -13,6 +13,7 @@ Mostly copied from swagger-ui's index file
         <title>@messages("general.openapi")</title>
 
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
         <link rel="icon" href="@routes.Assets.versioned("images/favicon.ico")">
         <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
@@ -35,6 +36,9 @@ Mostly copied from swagger-ui's index file
             }
             .swagger-ui .info {
                 margin: 2rem 0;
+            }
+            .model-container, .responses-inner {
+                overflow-x: auto;
             }
         </style>
     </head>
