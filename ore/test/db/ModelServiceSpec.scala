@@ -14,6 +14,7 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.{DefaultModelCompanion, OrePostgresDriver}
 import ore.db.{Model, ModelQuery, ObjId, ObjInstant}
 
+import cats.effect.Blocker
 import com.typesafe.config.{Config, ConfigFactory}
 import doobie.util.transactor.Transactor
 import org.junit.runner.RunWith
@@ -41,13 +42,14 @@ class ModelServiceSpec extends FunSuite with Matchers with BeforeAndAfterAll { s
     )
   )
 
-  private lazy val connectExec  = Executors.newFixedThreadPool(32)
-  private lazy val transactExec = Executors.newCachedThreadPool
-  private lazy val connectEC    = ExecutionContext.fromExecutor(connectExec)
-  private lazy val transactEC   = ExecutionContext.fromExecutor(transactExec)
+  private lazy val connectEC  = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(32))
+  private lazy val transactEC = ExecutionContext.fromExecutorService(Executors.newCachedThreadPool)
 
   lazy val transactor: Transactor.Aux[Task, DataSource] =
-    Transactor.fromDataSource[Task](database.dataSource, connectEC, transactEC)(taskEffectInstance, zioContextShift)
+    Transactor.fromDataSource[Task](database.dataSource, connectEC, Blocker.liftExecutionContext(transactEC))(
+      taskEffectInstance,
+      zioContextShift
+    )
 
   val service = new OreModelService(
     new DatabaseConfigProvider { provider =>
@@ -156,8 +158,8 @@ class ModelServiceSpec extends FunSuite with Matchers with BeforeAndAfterAll { s
     runtime.unsafeRun(service.runDBIO(TableQuery[MyObjTable].schema.dropIfExists))
 
     database.shutdown()
-    connectExec.shutdown()
-    transactExec.shutdown()
+    connectEC.shutdown()
+    transactEC.shutdown()
   }
 
 }
