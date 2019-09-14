@@ -204,6 +204,12 @@ final class OreConfig @Inject()(config: Configuration) {
     val nioBlockingFibers: Long = raw.get[Long]("nio-blocking-fibers")
   }
 
+  object analytics extends ConfigCategory {
+    val raw: Configuration = root.get[Configuration]("analytics")
+    val enabled: Boolean   = raw.get[Boolean]("enabled")
+    val siteId: Int        = raw.get[Int]("site-id")
+  }
+
   app.load()
   app.fakeUser.load()
   play.load()
@@ -225,6 +231,7 @@ final class OreConfig @Inject()(config: Configuration) {
   security.sso.load()
   mail.load()
   performance.load()
+  analytics.load()
 
   /**
     * The default color used for Channels.

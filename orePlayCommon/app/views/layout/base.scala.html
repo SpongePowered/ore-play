@@ -49,6 +49,21 @@ this.
         <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
     </head>
     <body class="site">
+        @if(config.analytics.enabled) {
+            <script type="text/javascript" @CSPNonce.attr>
+                var _paq = window._paq || [];
+                _paq.push(['trackPageView']);
+                _paq.push(['enableLinkTracking']);
+                (function() {
+                    var u="https://analytics.spongeproject.net/";
+                    _paq.push(['setTrackerUrl', u+'matomo.php']);
+                    _paq.push(['setSiteId', '@config.analytics.siteId']);
+                    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+                    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+                })();
+            </script>
+        }
+
         @if(showHeader) {
             @layout.header(authEnabled)
         }

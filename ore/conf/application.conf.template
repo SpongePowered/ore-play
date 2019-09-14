@@ -37,11 +37,11 @@ play {
         csp {
             directives = {
                 block-all-mixed-content = ""
-                script-src = ${play.filters.csp.nonce.pattern} "'self' https://forums.spongepowered.org https://forums-cdn.spongepowered.org"
+                script-src = ${play.filters.csp.nonce.pattern} "'self' https://forums.spongepowered.org https://forums-cdn.spongepowered.org" "https://analytics.spongeproject.net"
                 style-src = "'self' 'unsafe-inline' https://fonts.googleapis.com https://forums-cdn.spongepowered.org"
                 img-src = "'self' data: https: http:"
                 font-src = "'self' https://fonts.gstatic.com"
-                frame-src = "https://forums.spongepowered.org"
+                frame-src = "https://forums.spongepowered.org" "https://analytics.spongeproject.net"
                 frame-ancestors = "'none'"
             }
         }
@@ -163,6 +163,11 @@ ore {
 
 performance {
     nio-blocking-fibers = 32
+}
+
+analytics {
+    enabled = false
+    site-id = 1
 }
 
 mail {
