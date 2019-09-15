@@ -55,11 +55,12 @@ this.
                 _paq.push(['trackPageView']);
                 _paq.push(['enableLinkTracking']);
                 (function() {
-                    var u="https://analytics.spongeproject.net/";
-                    _paq.push(['setTrackerUrl', u+'matomo.php']);
+                    var u="@config.analytics.url";
+                    _paq.push(['setAPIUrl', u]);
+                    _paq.push(['setTrackerUrl', u+'/js/']);
                     _paq.push(['setSiteId', '@config.analytics.siteId']);
                     var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
-                    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+                    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'/js/'; s.parentNode.insertBefore(g,s);
                 })();
             </script>
         }
