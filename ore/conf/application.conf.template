@@ -167,6 +167,7 @@ performance {
 
 analytics {
     enabled = false
+    url = "https://analytics.spongeproject.net"
     site-id = 1
 }
 

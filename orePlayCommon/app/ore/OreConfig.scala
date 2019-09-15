@@ -207,6 +207,7 @@ final class OreConfig @Inject()(config: Configuration) {
   object analytics extends ConfigCategory {
     val raw: Configuration = root.get[Configuration]("analytics")
     val enabled: Boolean   = raw.get[Boolean]("enabled")
+    val url: String        = raw.get[String]("url")
     val siteId: Int        = raw.get[Int]("site-id")
   }
 
