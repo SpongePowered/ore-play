@@ -435,14 +435,33 @@ final class Application @Inject()(forms: OreForms)(
 
   val robots: Action[AnyContent] = Action {
     Ok(s"""user-agent: *
-
+          |Disallow: /login
+          |Disallow: /signup
+          |Disallow: /logout
+          |Disallow: /linkout
+          |Disallow: /admin
+          |Disallow: /api
           |Disallow: /*/*/versions
           |Disallow: /*/*/watchers
           |Disallow: /*/*/stars
           |Disallow: /*/*/discuss
           |Disallow: /*/*/channels
+          |Disallow: /*/*/manage
+          |Disallow: /*/*/versionLog
+          |Disallow: /*/*/flags
+          |Disallow: /*/*/notes
+          |Disallow: /*/*/channels
           
           |Allow: /*/*/versions/*
+          |Allow: /api$$
+          
+          |Disallow: /*/*/versions/*/download
+          |Disallow: /*/*/versions/*/recommended/download
+          |Disallow: /*/*/versions/*/jar
+          |Disallow: /*/*/versions/*/recommended/jar
+          |Disallow: /*/*/versions/*/reviews
+          |Disallow: /*/*/versions/*/new
+          |Disallow: /*/*/versions/*/confirm
 
           |Sitemap: ${config.app.baseUrl}/sitemap.xml
       """.stripMargin).as("text/plain")
