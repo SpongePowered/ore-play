@@ -96,11 +96,11 @@
                         @if(entry.isUnfinished) {
                             @entry.reviewerName
                             <br>
-                            <span data-ago="@entry.reviewStarted.toEpochMilli" data-title="started "></span>
+                            <span data-ago="@entry.reviewStarted.toInstant.toEpochMilli" data-title="started "></span>
                         } else {
                             <strike>@entry.reviewerName</strike>
                             <br>
-                            <span data-ago="@entry.reviewStarted.toEpochMilli" data-title="abandoned "></span>
+                            <span data-ago="@entry.reviewStarted.toInstant.toEpochMilli" data-title="abandoned "></span>
                         }
                         </td>
                         <td style="vertical-align: middle; text-align: right; padding-right: 15px;">
@@ -144,7 +144,7 @@
                                 </th>
                             </tr>
                         }
-                        @versions.sortWith(_.versionCreatedAt.toEpochMilli < _.versionCreatedAt.toEpochMilli).map { entry =>
+                        @versions.sortWith((a, b) => a.versionCreatedAt.compareTo(b.versionCreatedAt) < 0).map { entry =>
                         <tr data-version="@helper.urlEncode(entry.namespace.ownerName)/@helper.urlEncode(entry.namespace.slug)/versions/@helper.urlEncode(entry.versionString)">
                             <td>
                             @userAvatar(Some(entry.namespace.ownerName), User.avatarUrl(entry.namespace.ownerName), clazz = "user-avatar-xs")

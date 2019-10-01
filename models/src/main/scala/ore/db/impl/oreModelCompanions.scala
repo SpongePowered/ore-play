@@ -2,11 +2,11 @@ package ore.db.impl
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.concurrent.TimeUnit
 
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.{Model, ModelCompanion, ObjId, ObjInstant}
+import ore.db.{Model, ModelCompanion, ObjId, ObjOffsetDateTime}
 
 import cats._
 import cats.effect.Clock
@@ -16,7 +16,9 @@ trait OreModelCompanion[M] extends ModelCompanion[M] {
   override val profile: OrePostgresDriver.type = ore.db.impl.OrePostgresDriver
 
   private def timeF[F[_]: Functor](implicit clock: Clock[F]) =
-    clock.realTime(TimeUnit.MILLISECONDS).map(t => ObjInstant(Instant.ofEpochMilli(t)))
+    clock
+      .realTime(TimeUnit.MILLISECONDS)
+      .map(t => ObjOffsetDateTime(OffsetDateTime.ofInstant(Instant.ofEpochMilli(t), ZoneOffset.UTC)))
 
   /**
     * Creates the specified model in it's table.
@@ -81,5 +83,5 @@ abstract class ModelCompanionPartial[M, T0 <: ModelTable[M]](val baseQuery: Quer
 }
 abstract class DefaultModelCompanion[M, T0 <: ModelTable[M]](baseQuery: Query[T0, Model[M], Seq])
     extends ModelCompanionPartial(baseQuery) {
-  override def asDbModel(model: M, id: ObjId[M], time: ObjInstant): Model[M] = Model(id, time, model)
+  override def asDbModel(model: M, id: ObjId[M], time: ObjOffsetDateTime): Model[M] = Model(id, time, model)
 }

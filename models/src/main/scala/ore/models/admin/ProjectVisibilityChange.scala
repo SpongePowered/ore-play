@@ -1,6 +1,6 @@
 package ore.models.admin
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.common.VisibilityChange
@@ -15,7 +15,7 @@ case class ProjectVisibilityChange(
     createdBy: Option[DbRef[User]],
     projectId: DbRef[Project],
     comment: String,
-    resolvedAt: Option[Instant],
+    resolvedAt: Option[OffsetDateTime],
     resolvedBy: Option[DbRef[User]],
     visibility: Visibility
 ) extends VisibilityChange

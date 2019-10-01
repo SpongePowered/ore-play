@@ -1,12 +1,12 @@
 package ore.db.impl.schema
 
-import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.Locale
 
 import ore.data.Prompt
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.NameColumn
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
 import ore.models.user.User
 
 class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn[User] {
@@ -18,7 +18,7 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
   def email       = column[String]("email")
   def isLocked    = column[Boolean]("is_locked")
   def tagline     = column[String]("tagline")
-  def joinDate    = column[Instant]("join_date")
+  def joinDate    = column[OffsetDateTime]("join_date")
   def readPrompts = column[List[Prompt]]("read_prompts")
   def lang        = column[Locale]("language")
 
@@ -26,12 +26,12 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
     val applyFunc: (
         (
             Option[DbRef[User]],
-            Option[Instant],
+            Option[OffsetDateTime],
             Option[String],
             String,
             Option[String],
             Option[String],
-            Option[Instant],
+            Option[OffsetDateTime],
             List[Prompt],
             Boolean,
             Option[Locale]
@@ -40,7 +40,7 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
       case (id, time, fullName, name, email, tagline, joinDate, prompts, locked, lang) =>
         Model(
           ObjId.unsafeFromOption(id),
-          ObjInstant.unsafeFromOption(time),
+          ObjOffsetDateTime.unsafeFromOption(time),
           User(
             ObjId.unsafeFromOption(id),
             fullName,
@@ -58,12 +58,12 @@ class UserTable(tag: Tag) extends ModelTable[User](tag, "users") with NameColumn
     val unapplyFunc: Model[User] => Option[
       (
           Option[DbRef[User]],
-          Option[Instant],
+          Option[OffsetDateTime],
           Option[String],
           String,
           Option[String],
           Option[String],
-          Option[Instant],
+          Option[OffsetDateTime],
           List[Prompt],
           Boolean,
           Option[Locale]

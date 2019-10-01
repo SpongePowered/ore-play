@@ -8,7 +8,7 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectRoleTable, UserTable}
 import ore.db.{DbRef, Model, ModelService}
 import ore.models.project.io.ProjectFiles
-import ore.models.project.{Project, ProjectSettings}
+import ore.models.project.Project
 import ore.models.user.{Notification, User}
 import ore.permission.role.Role
 import ore.util.OreMDC
@@ -19,7 +19,6 @@ import util.syntax._
 import cats.Parallel
 import cats.data.{EitherT, NonEmptyList}
 import cats.effect.Async
-import cats.instances.either._
 import cats.syntax.all._
 import com.typesafe.scalalogging.LoggerTakingImplicit
 import slick.lifted.TableQuery
@@ -47,20 +46,20 @@ case class ProjectSettingsForm(
     keywordsRaw: String
 ) extends TProjectRoleSetBuilder {
 
-  def save[F[_], G[_]](settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
+  def save[F[_], G[_]](project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
       implicit fileManager: ProjectFiles[F],
       fileIO: FileIO[F],
       mdc: OreMDC,
       service: ModelService[F],
       F: Async[F],
       par: Parallel[F, G]
-  ): EitherT[F, String, (Model[Project], Model[ProjectSettings])] = {
+  ): EitherT[F, String, Model[Project]] = {
     import cats.instances.vector._
     logger.debug("Saving project settings")
     logger.debug(this.toString)
     val newOwnerId = this.ownerId.getOrElse(project.ownerId)
 
-    val queryOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
+    val queryNewOwnerName = TableQuery[UserTable].filter(_.id === newOwnerId).map(_.name)
 
     val keywords = keywordsRaw.split(" ").iterator.map(_.trim).filter(_.nonEmpty).toList
 
@@ -73,100 +72,99 @@ case class ProjectSettingsForm(
         Right(keywords)
     }
 
-    val updateProject = checkedKeywordsF.semiflatMap { checkedKeywords =>
-      service.runDBIO(queryOwnerName.result.head).flatMap { ownerName =>
-        service.update(project)(
-          _.copy(
-            category = Category.values.find(_.title == this.categoryName).get,
-            description = noneIfEmpty(this.description),
-            ownerId = newOwnerId,
-            ownerName = ownerName,
-            keywords = checkedKeywords
-          )
-        )
+    val updateProject = checkedKeywordsF.flatMapF { checkedKeywords =>
+      service.runDBIO(queryNewOwnerName.result.headOption).flatMap[Either[String, (Model[Project], String)]] {
+        case Some(newOwnerName) =>
+          service
+            .update(project)(
+              _.copy(
+                category = Category.values.find(_.title == this.categoryName).get,
+                description = noneIfEmpty(this.description),
+                ownerId = newOwnerId,
+                settings = Project.ProjectSettings(
+                  keywords = checkedKeywords,
+                  homepage = noneIfEmpty(this.homepage),
+                  issues = noneIfEmpty(this.issues),
+                  source = noneIfEmpty(this.source),
+                  support = noneIfEmpty(this.support),
+                  licenseUrl = noneIfEmpty(this.licenseUrl),
+                  licenseName = if (this.licenseUrl.nonEmpty) Some(this.licenseName) else project.settings.licenseName,
+                  forumSync = this.forumSync
+                )
+              )
+            )
+            .map(p => Right(p -> newOwnerName))
+        case None => F.pure(Left("user.notFound"))
       }
     }
 
-    val updateSettings = service.update(settings)(
-      _.copy(
-        homepage = noneIfEmpty(this.homepage),
-        issues = noneIfEmpty(this.issues),
-        source = noneIfEmpty(this.source),
-        support = noneIfEmpty(this.support),
-        licenseUrl = noneIfEmpty(this.licenseUrl),
-        licenseName = if (this.licenseUrl.nonEmpty) Some(this.licenseName) else settings.licenseName,
-        forumSync = this.forumSync
-      )
-    )
+    updateProject.semiflatMap {
+      case (newProject, newOwnerName) =>
+        // Update icon
+        val moveIcon = if (this.updateIcon) {
+          fileManager.getPendingIconPath(newOwnerName, newProject.name).flatMap { pendingPathOpt =>
+            pendingPathOpt.fold(F.unit) { pendingPath =>
+              val iconDir = fileManager.getIconDir(newOwnerName, newProject.name)
 
-    val modelUpdates = EitherT((updateProject.value, updateSettings.map(_.asRight[String])).parTupled.map(_.tupled))
+              val notExist   = fileIO.notExists(iconDir)
+              val createDirs = fileIO.createDirectories(iconDir)
+              val deleteFiles = fileIO.list(iconDir).flatMap { ps =>
+                import cats.instances.stream._
+                fileIO.traverseLimited(ps)(p => fileIO.delete(p))
+              }
+              val move = fileIO.move(pendingPath, iconDir.resolve(pendingPath.getFileName))
 
-    modelUpdates.semiflatMap { t =>
-      // Update icon
-      val moveIcon = if (this.updateIcon) {
-        fileManager.getPendingIconPath(project).flatMap { pendingPathOpt =>
-          pendingPathOpt.fold(F.unit) { pendingPath =>
-            val iconDir = fileManager.getIconDir(project.ownerName, project.name)
-
-            val notExist   = fileIO.notExists(iconDir)
-            val createDirs = fileIO.createDirectories(iconDir)
-            val deleteFiles = fileIO.list(iconDir).flatMap { ps =>
-              import cats.instances.stream._
-              fileIO.traverseLimited(ps)(p => fileIO.delete(p))
-            }
-            val move = fileIO.move(pendingPath, iconDir.resolve(pendingPath.getFileName))
-
-            notExist.ifM(createDirs, F.unit) *> deleteFiles *> move.void
-          }
-        }
-      } else F.unit
-
-      // Add new roles
-      val dossier = project.memberships
-      val addRoles = this
-        .build()
-        .toVector
-        .parTraverse { role =>
-          dossier.addRole(project)(role.userId, role.copy(projectId = project.id))
-        }
-        .flatMap { roles =>
-          val notifications = roles.map { role =>
-            Notification(
-              userId = role.userId,
-              originId = Some(project.ownerId),
-              notificationType = NotificationType.ProjectInvite,
-              messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, project.name)
-            )
-          }
-
-          service.bulkInsert(notifications)
-        }
-
-      val updateExistingRoles = {
-        // Update existing roles
-        val usersTable = TableQuery[UserTable]
-        // Select member userIds
-        service
-          .runDBIO(usersTable.filter(_.name.inSetBind(this.userUps)).map(_.id).result)
-          .flatMap { userIds =>
-            import cats.instances.list._
-            val roles = this.roleUps.traverse { role =>
-              Role.projectRoles
-                .find(_.value == role)
-                .fold(F.raiseError[Role](new RuntimeException("supplied invalid role type")))(F.pure)
-            }
-
-            roles.map(xs => userIds.zip(xs))
-          }
-          .map {
-            _.map {
-              case (userId, role) => updateMemberShip(userId).update(role)
+              notExist.ifM(createDirs, F.unit) *> deleteFiles *> move.void
             }
           }
-          .flatMap(updates => service.runDBIO(DBIO.sequence(updates)))
-      }
+        } else F.unit
 
-      moveIcon *> addRoles *> updateExistingRoles.as(t)
+        // Add new roles
+        val dossier = newProject.memberships
+        val addRoles = this
+          .build()
+          .toVector
+          .parTraverse { role =>
+            dossier.addRole(newProject)(role.userId, role.copy(projectId = newProject.id))
+          }
+          .flatMap { roles =>
+            val notifications = roles.map { role =>
+              Notification(
+                userId = role.userId,
+                originId = Some(newProject.ownerId),
+                notificationType = NotificationType.ProjectInvite,
+                messageArgs = NonEmptyList.of("notification.project.invite", role.role.title, newProject.name)
+              )
+            }
+
+            service.bulkInsert(notifications)
+          }
+
+        val updateExistingRoles = {
+          // Update existing roles
+          val usersTable = TableQuery[UserTable]
+          // Select member userIds
+          service
+            .runDBIO(usersTable.filter(_.name.inSetBind(this.userUps)).map(_.id).result)
+            .flatMap { userIds =>
+              import cats.instances.list._
+              val roles = this.roleUps.traverse { role =>
+                Role.projectRoles
+                  .find(_.value == role)
+                  .fold(F.raiseError[Role](new RuntimeException("supplied invalid role type")))(F.pure)
+              }
+
+              roles.map(xs => userIds.zip(xs))
+            }
+            .map {
+              _.map {
+                case (userId, role) => updateMemberShip(userId).update(role)
+              }
+            }
+            .flatMap(updates => service.runDBIO(DBIO.sequence(updates)))
+        }
+
+        moveIcon *> addRoles *> updateExistingRoles.as(newProject)
     }
   }
 

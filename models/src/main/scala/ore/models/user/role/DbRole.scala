@@ -1,10 +1,10 @@
 package ore.models.user.role
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.impl.ModelCompanionPartial
 import ore.db.impl.schema.DbRoleTable
-import ore.db.{Model, ModelQuery, ObjId, ObjInstant}
+import ore.db.{Model, ModelQuery, ObjId, ObjOffsetDateTime}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
 
@@ -27,8 +27,8 @@ object DbRole extends ModelCompanionPartial[DbRole, DbRoleTable](TableQuery[DbRo
   override def asDbModel(
       model: DbRole,
       id: ObjId[DbRole],
-      time: ObjInstant
-  ): Model[DbRole] = Model(id, ObjInstant(Instant.EPOCH), model)
+      time: ObjOffsetDateTime
+  ): Model[DbRole] = Model(id, ObjOffsetDateTime(OffsetDateTime.MIN), model)
 
   implicit val query: ModelQuery[DbRole] = ModelQuery.from(this)
 }

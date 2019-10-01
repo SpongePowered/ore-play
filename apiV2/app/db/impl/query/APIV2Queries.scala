@@ -132,7 +132,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
              |       ps.license_url,
              |       ps.forum_sync
              |  FROM home_projects p
-             |         JOIN project_settings ps ON p.id = ps.project_id""".stripMargin
+             |         JOIN projects ps ON p.id = ps.id""".stripMargin
 
     val visibilityFrag =
       if (canSeeHidden) None

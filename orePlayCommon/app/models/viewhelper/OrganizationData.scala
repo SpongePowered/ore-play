@@ -4,7 +4,7 @@ import scala.language.higherKinds
 
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{ProjectRoleTable, ProjectTableMain}
+import ore.db.impl.schema.{ProjectRoleTable, ProjectTable}
 import ore.db.{DbRef, Model, ModelService}
 import ore.models.organization.Organization
 import ore.models.project.Project
@@ -55,7 +55,7 @@ object OrganizationData {
 
   private def queryProjectRoles(userId: DbRef[User]) =
     for {
-      (role, project) <- TableQuery[ProjectRoleTable].join(TableQuery[ProjectTableMain]).on(_.projectId === _.id)
+      (role, project) <- TableQuery[ProjectRoleTable].join(TableQuery[ProjectTable]).on(_.projectId === _.id)
       if role.userId === userId
     } yield (role, project)
 

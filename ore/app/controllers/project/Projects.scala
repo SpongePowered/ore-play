@@ -52,7 +52,7 @@ import zio.{IO, Task, UIO, ZIO}
 class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
     implicit oreComponents: OreControllerComponents,
     forums: OreDiscourseApi[UIO],
-    fileIO: FileIO[ZIO[Blocking, Throwable, ?]],
+    fileIO: FileIO[ZIO[Blocking, Throwable, *]],
     messagesApi: MessagesApi,
     renderer: MarkdownRenderer
 ) extends OreBaseController {
@@ -106,7 +106,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         )
       project <- factory.createProject(owner, settings.asTemplate).mapError(Redirect(self.showCreator()).withError(_))
       _       <- projects.refreshHomePage(MDCLogger)
-    } yield Redirect(self.show(project._1.ownerName, project._1.slug))
+    } yield Redirect(self.show(project.name, project.slug))
   }
 
   private def orgasUserCanUploadTo(user: Model[User]): UIO[Set[DbRef[Organization]]] = {
@@ -249,11 +249,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             .productR(
               UserActionLogger.log(
                 request.request,
-                LoggedAction.ProjectFlagged,
+                LoggedActionType.ProjectFlagged,
                 project.id,
                 s"Flagged by ${user.name}",
                 s"Not flagged by ${user.name}"
-              )
+              )(LoggedActionProject.apply)
             )
             .const(Redirect(self.show(author, slug)).flashing("reported" -> "true"))
       }
@@ -449,7 +449,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val moveFile = effectBlocking(tmpFile.ref.moveFileTo(pendingDir.resolve(tmpFile.filename), replace = true))
 
           //todo data
-          val log = UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id, "", "")
+          val log = UserActionLogger.log(request.request, LoggedActionType.ProjectIconChanged, data.project.id, "", "")(
+            LoggedActionProject.apply
+          )
 
           val res = ZIO.whenM(notExist)(createDir) *> deleteFiles *> moveFile *> log.const(Ok)
           res.orDie
@@ -478,7 +480,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         _           <- deleteOptFile(pendingIcon)
         _           <- effectBlocking(Files.delete(projectFiles.getPendingIconDir(project.ownerName, project.name)))
         //todo data
-        _ <- UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, project.id, "", "")
+        _ <- UserActionLogger.log(request.request, LoggedActionType.ProjectIconChanged, project.id, "", "")(
+          LoggedActionProject.apply
+        )
       } yield Ok
       res.orDie
   }
@@ -493,7 +497,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def showPendingIcon(author: String, slug: String): Action[AnyContent] =
     ProjectAction(author, slug).asyncF { implicit request =>
-      projectFiles.getPendingIconPath(request.project).map {
+      projectFiles.getPendingIconPath(request.project.ownerName, request.project.name).map {
         case None       => notFound
         case Some(path) => showImage(path)
       }
@@ -519,11 +523,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             .zipRight(
               UserActionLogger.log(
                 request.request,
-                LoggedAction.ProjectMemberRemoved,
+                LoggedActionType.ProjectMemberRemoved,
                 project.id,
                 s"'${user.name}' is not a member of ${project.ownerName}/${project.name}",
                 s"'${user.name}' is a member of ${project.ownerName}/${project.name}"
-              )
+              )(LoggedActionProject.apply)
             )
             .const(Redirect(self.showSettings(author, slug)))
         }
@@ -545,8 +549,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           .ProjectSave(organisationUserCanUploadTo.toSeq)
           .bindZIO(FormErrorLocalized(self.showSettings(author, slug)))
         _ <- formData
-          .save[ZIO[Blocking, Throwable, ?], zio.interop.ParIO[Blocking, Throwable, ?]](
-            data.settings,
+          .save[ZIO[Blocking, Throwable, *], zio.interop.ParIO[Blocking, Throwable, *]](
             data.project,
             MDCLogger
           )
@@ -557,11 +560,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         _ <- projects.refreshHomePage(MDCLogger)
         _ <- UserActionLogger.log(
           request.request,
-          LoggedAction.ProjectSettingsChanged,
+          LoggedActionType.ProjectSettingsChanged,
           request.data.project.id,
           "",
           ""
-        )
+        )(LoggedActionProject.apply)
       } yield Redirect(self.show(author, slug))
   }
 
@@ -586,11 +589,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         _ <- projects.rename(project, newName)
         _ <- UserActionLogger.log(
           request.request,
-          LoggedAction.ProjectRenamed,
+          LoggedActionType.ProjectRenamed,
           request.project.id,
           s"$author/$newName",
           s"$author/$oldName"
-        )
+        )(LoggedActionProject.apply)
         _ <- projects.refreshHomePage(MDCLogger)
       } yield Redirect(self.show(author, project.slug))
     }
@@ -624,11 +627,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
         val log = UserActionLogger.log(
           request.request,
-          LoggedAction.ProjectVisibilityChange,
+          LoggedActionType.ProjectVisibilityChange,
           request.project.id,
           newVisibility.nameKey,
           Visibility.NeedsChanges.nameKey
-        )
+        )(LoggedActionProject.apply)
 
         (forumVisbility, projectVisibility).parTupled
           .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
@@ -648,11 +651,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         val visibility = request.project.setVisibility(Visibility.NeedsApproval, "", request.user.id)
         val log = UserActionLogger.log(
           request.request,
-          LoggedAction.ProjectVisibilityChange,
+          LoggedActionType.ProjectVisibilityChange,
           request.project.id,
           Visibility.NeedsApproval.nameKey,
           Visibility.NeedsChanges.nameKey
-        )
+        )(LoggedActionProject.apply)
 
         visibility *> log.unit
       } else IO.unit
@@ -679,11 +682,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     projects.delete(project) *>
       UserActionLogger.log(
         request,
-        LoggedAction.ProjectVisibilityChange,
+        LoggedActionType.ProjectVisibilityChange,
         project.id.value,
         "deleted",
         project.visibility.nameKey
-      ) *>
+      )(LoggedActionProject.apply) *>
       projects.refreshHomePage(MDCLogger)
   }
 
@@ -708,11 +711,11 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val forumVisibility = this.forums.changeTopicVisibility(oldProject, isVisible = false)
           val log = UserActionLogger.log(
             request.request,
-            LoggedAction.ProjectVisibilityChange,
+            LoggedActionType.ProjectVisibilityChange,
             oldProject.id,
             Visibility.SoftDelete.nameKey,
             oldProject.visibility.nameKey
-          )
+          )(LoggedActionProject.apply)
 
           (oreVisibility, forumVisibility).parTupled
             .zipRight((log, projects.refreshHomePage(MDCLogger)).parTupled)

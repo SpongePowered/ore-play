@@ -23,7 +23,7 @@ case class ProjectListEntry(
 ) {
 
   def withIcon(
-      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, *]],
       config: OreConfig
   ): ZIO[Blocking, Nothing, ProjectListEntryWithIcon] = {
     val iconF = projectFiles.getIconPath(namespace.ownerName, name).map(_.isDefined).map {

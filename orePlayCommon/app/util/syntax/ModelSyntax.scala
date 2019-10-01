@@ -8,7 +8,6 @@ import play.api.i18n.Lang
 import play.api.mvc.RequestHeader
 import play.twirl.api.Html
 
-import db.impl.access.UserBase
 import ore.OreConfig
 import ore.auth.AuthUser
 import ore.db.access.ModelView
@@ -20,7 +19,6 @@ import ore.models.project.io.ProjectFiles
 import ore.models.project.{Page, Project}
 import ore.models.user.User
 import ore.permission.role.Role
-import ore.util.OreMDC
 
 import cats.data.OptionT
 import cats.syntax.all._
@@ -194,8 +192,8 @@ object ModelSyntax extends ModelSyntax {
       *
       * @return This Organization as a User
       */
-    def toUser[F[_]](implicit users: UserBase[F], mdc: OreMDC): OptionT[F, Model[User]] =
-      users.withName(o.username)
+    def toUser[F[_]](implicit service: ModelService[F]): OptionT[F, Model[User]] =
+      ModelView.now(User).get(o.userId)
   }
 
   class AuthUserSyntax(private val u: AuthUser) extends AnyVal {

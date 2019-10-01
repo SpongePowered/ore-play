@@ -5,6 +5,7 @@ import scala.language.higherKinds
 import play.api.mvc.RequestHeader
 import play.twirl.api.Html
 
+import db.impl.query.SharedQueries
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
@@ -31,14 +32,15 @@ case class ProjectData(
     joinable: Model[Project],
     projectOwner: Model[User],
     publicVersions: Int, // project.versions.count(_.visibility === VisibilityTypes.Public)
-    settings: Model[ProjectSettings],
     members: Seq[(Model[ProjectUserRole], Model[User])],
     flags: Seq[(Model[Flag], String, Option[String])], // (Flag, user.name, resolvedBy)
     noteCount: Int,                                    // getNotes.size
     lastVisibilityChange: Option[ProjectVisibilityChange],
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
     recommendedVersion: Option[Model[Version]],
-    iconUrl: String
+    iconUrl: String,
+    starCount: Int,
+    watcherCount: Int
 ) extends JoinableData[ProjectUserRole, Project] {
 
   def flagCount: Int = flags.size
@@ -89,24 +91,24 @@ object ProjectData {
       }
 
     (
-      project.settings,
       project.user,
       project.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility)),
       members(project),
       service.runDBIO(flagsWithNames.result),
       service.runDBIO(lastVisibilityChangeUserWithUser.result.headOption),
       project.recommendedVersion(ModelView.now(Version)).getOrElse(OptionT.none[F, Model[Version]]).value,
-      project.obj.iconUrl
+      project.obj.iconUrl,
+      service.runDbCon(SharedQueries.watcherStartProject(project.id).unique)
     ).parMapN {
       case (
-          settings,
           projectOwner,
           versions,
           members,
           flagData,
           lastVisibilityChangeInfo,
           recommendedVersion,
-          iconUrl
+          iconUrl,
+          (starCount, watcherCount)
           ) =>
         val noteCount = project.decodeNotes.size
 
@@ -114,14 +116,15 @@ object ProjectData {
           project,
           projectOwner,
           versions,
-          settings,
           members.sortBy(_._1.role.permissions: Long).reverse, //This is stupid, but works
           flagData,
           noteCount,
           lastVisibilityChangeInfo.map(_._1),
           lastVisibilityChangeInfo.flatMap(_._2).getOrElse("Unknown"),
           recommendedVersion,
-          iconUrl
+          iconUrl,
+          starCount,
+          watcherCount
         )
     }
   }

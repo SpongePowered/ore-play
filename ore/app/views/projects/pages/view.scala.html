@@ -64,14 +64,13 @@ Documentation page within Project overview.
                 <p>@messages("project.category.info", p.project.category.title)</p>
                 <p>@messages("project.publishDate", prettifyDate(p.project.createdAt))</p>
                 <p>@p.project.viewCount views</p>
-                <p>@p.project.starCount <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.slug, None)">stars</a></p>
-                @* TODO Show count here too once API is released and we can start to break the old one *@
-                <p><a href="@routes.Projects.showWatchers(p.project.ownerName, p.project.slug, None)">watchers</a></p>
+                <p>@p.starCount <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.slug, None)">stars</a></p>
+                <p>@p.watcherCount <a href="@routes.Projects.showWatchers(p.project.ownerName, p.project.slug, None)">watchers</a></p>
                 <p>@NumberFormat.getInstance.format(p.project.downloadCount) total downloads</p>
-                @p.settings.licenseName.map { licenseName =>
+                @p.project.settings.licenseName.map { licenseName =>
                     <p>
                         @Html(messages("project.license.link"))
-                    <a target="_blank" rel="noopener" href="@p.settings.licenseUrl">@licenseName</a>
+                    <a target="_blank" rel="noopener" href="@p.project.settings.licenseUrl">@licenseName</a>
                     </p>
                 }
             </div>

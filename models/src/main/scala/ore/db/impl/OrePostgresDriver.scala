@@ -1,14 +1,17 @@
 package ore.db.impl
 
 import java.sql.{PreparedStatement, ResultSet}
+import java.time.OffsetDateTime
 import java.util.Locale
+
+import scala.reflect.ClassTag
 
 import ore.data.project.{Category, FlagReason}
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, DownloadType, Prompt}
 import ore.db.OreProfile
 import ore.models.project.{ReviewState, TagColor, Visibility}
-import ore.models.user.{LoggedAction, LoggedActionContext}
+import ore.models.user.{LoggedActionContext, LoggedActionType}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
 
@@ -16,7 +19,7 @@ import cats.data.{NonEmptyList => NEL}
 import com.github.tminglei.slickpg._
 import com.github.tminglei.slickpg.agg.PgAggFuncSupport
 import com.github.tminglei.slickpg.window.PgWindowFuncSupport
-import enumeratum.values.SlickValueEnumSupport
+import enumeratum.values.{SlickValueEnumSupport, StringEnum, StringEnumEntry}
 import org.postgresql.util.PGobject
 import slick.jdbc.JdbcType
 
@@ -34,15 +37,33 @@ trait OrePostgresDriver
     with PgEnumSupport
     with SlickValueEnumSupport { self =>
 
+  override val columnTypes = new JdbcTypes
+
   override val api: OreDriver.type = OreDriver
 
   def pgjson = "jsonb"
+
+  class JdbcTypes extends super.JdbcTypes {
+
+    override val offsetDateTimeType: OffsetDateTimeJdbcType = new OffsetDateTimeJdbcType {
+      override def sqlType: Int = java.sql.JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber
+
+      override def setValue(v: OffsetDateTime, p: PreparedStatement, idx: Int): Unit = p.setObject(idx, v, sqlType)
+
+      override def getValue(r: ResultSet, idx: Int): OffsetDateTime = r.getObject(idx, classOf[OffsetDateTime])
+
+      override def updateValue(v: OffsetDateTime, r: ResultSet, idx: Int): Unit = r.updateObject(idx, v, sqlType)
+    }
+  }
 
   object OreDriver extends API with ArrayImplicits with NetImplicits with JsonImplicits {
     type ModelTable[M]          = self.ModelTable[M]
     type AssociativeTable[A, B] = self.AssociativeTable[A, B]
     type ModelFilter[T]         = self.ModelFilter[T]
     val ModelFilter: self.ModelFilter.type = self.ModelFilter
+
+    def pgEnumForValueEnum[E <: StringEnumEntry: ClassTag](typeName: String, enum: StringEnum[E]): JdbcType[E] =
+      createEnumJdbcType[E](typeName, _.value, enum.withValue, quoteName = false)
 
     implicit val colorTypeMapper: BaseColumnType[Color]           = mappedColumnTypeForValueEnum(Color)
     implicit val tagColorTypeMapper: BaseColumnType[TagColor]     = mappedColumnTypeForValueEnum(TagColor)
@@ -54,8 +75,9 @@ trait OrePostgresDriver
     implicit val promptTypeMapper: BaseColumnType[Prompt]             = mappedColumnTypeForValueEnum(Prompt)
     implicit val downloadTypeTypeMapper: BaseColumnType[DownloadType] = mappedColumnTypeForValueEnum(DownloadType)
     implicit val visibilityTypeMapper: BaseColumnType[Visibility]     = mappedColumnTypeForValueEnum(Visibility)
-    implicit def loggedActionMapper[Ctx]: BaseColumnType[LoggedAction[Ctx]] =
-      mappedColumnTypeForValueEnum(LoggedAction).asInstanceOf[BaseColumnType[LoggedAction[Ctx]]] // scalafix:ok
+    implicit def loggedActionTypeMapper[Ctx]: BaseColumnType[LoggedActionType[Ctx]] =
+      pgEnumForValueEnum("LOGGED_ACTION_TYPE", LoggedActionType)
+        .asInstanceOf[BaseColumnType[LoggedActionType[Ctx]]] // scalafix:ok
     implicit def loggedActionContextMapper[Ctx]: BaseColumnType[LoggedActionContext[Ctx]] =
       mappedColumnTypeForValueEnum(LoggedActionContext)
         .asInstanceOf[BaseColumnType[LoggedActionContext[Ctx]]] // scalafix:ok
@@ -108,20 +130,7 @@ trait OrePostgresDriver
       value => utils.SimpleArrayUtils.mkString[Prompt](_.value.toString)(value)
     ).to(_.toList)
 
-    implicit val roleCategoryTypeMapper: JdbcType[RoleCategory] = createEnumJdbcType[RoleCategory](
-      sqlEnumTypeName = "ROLE_CATEGORY",
-      enumToString = {
-        case RoleCategory.Global       => "global"
-        case RoleCategory.Project      => "project"
-        case RoleCategory.Organization => "organization"
-      },
-      stringToEnum = {
-        case "global"       => RoleCategory.Global
-        case "project"      => RoleCategory.Project
-        case "organization" => RoleCategory.Organization
-      },
-      quoteName = false
-    )
+    implicit val roleCategoryTypeMapper: JdbcType[RoleCategory] = pgEnumForValueEnum("ROLE_CATEGORY", RoleCategory)
 
     implicit def nelArrayMapper[A](
         implicit base: BaseColumnType[List[A]]

@@ -3,14 +3,13 @@ package db.impl.access
 import scala.language.higherKinds
 
 import java.io.IOException
-import java.time.Instant
 
 import db.impl.query.SharedQueries
 import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{PageTable, ProjectTableMain, VersionTable}
+import ore.db.impl.schema.{PageTable, ProjectTable, VersionTable}
 import ore.db.{Model, ModelService}
 import ore.models.project._
 import ore.models.project.io.ProjectFiles
@@ -34,13 +33,6 @@ trait ProjectBase[+F[_]] {
   def missingFile: F[Seq[Model[Version]]]
 
   def refreshHomePage(logger: LoggerTakingImplicit[OreMDC])(implicit mdc: OreMDC): F[Unit]
-
-  /**
-    * Returns projects that have not beein updated in a while.
-    *
-    * @return Stale projects
-    */
-  def stale: F[Seq[Model[Project]]]
 
   /**
     * Returns the Project with the specified owner name and name.
@@ -81,15 +73,6 @@ trait ProjectBase[+F[_]] {
     * @return True if exists
     */
   def exists(owner: String, name: String): F[Boolean]
-
-  /**
-    * Saves any pending icon that has been uploaded for the specified [[Project]].
-    *
-    * FIXME: Weird behavior
-    *
-    * @param project Project to save icon for
-    */
-  def savePendingIcon(project: Project)(implicit mdc: OreMDC): F[Unit]
 
   /**
     * Renames the specified [[Project]].
@@ -140,7 +123,7 @@ object ProjectBase {
       def allVersions =
         for {
           v <- TableQuery[VersionTable]
-          p <- TableQuery[ProjectTableMain] if v.projectId === p.id
+          p <- TableQuery[ProjectTable] if v.projectId === p.id
         } yield (p.ownerName, p.name, v)
 
       service.runDBIO(allVersions.result).flatMap { versions =>
@@ -173,14 +156,6 @@ object ProjectBase {
         .runAsync(TaskUtils.logCallback("Failed to refresh home page", logger))
         .to[F]
 
-    def stale: F[Seq[Model[Project]]] =
-      service.runDBIO(
-        ModelView
-          .raw(Project)
-          .filter(_.lastUpdated > Instant.now().minusMillis(config.ore.projects.staleAge.toMillis))
-          .result
-      )
-
     def withName(owner: String, name: String): F[Option[Model[Project]]] =
       ModelView
         .now(Project)
@@ -201,20 +176,6 @@ object ProjectBase {
 
     def exists(owner: String, name: String): F[Boolean] =
       withName(owner, name).map(_.isDefined)
-
-    def savePendingIcon(project: Project)(implicit mdc: OreMDC): F[Unit] =
-      this.fileManager.getPendingIconPath(project).flatMap { optIconPath =>
-        optIconPath.fold(F.unit) { iconPath =>
-          val iconDir = this.fileManager.getIconDir(project.ownerName, project.name)
-
-          val notExists  = fileIO.notExists(iconDir)
-          val createDirs = fileIO.createDirectories(iconDir)
-          val cleanDir   = fileIO.executeBlocking(FileUtils.cleanDirectory(iconDir))
-          val moveDir    = fileIO.move(iconPath, iconDir.resolve(iconPath.getFileName))
-
-          notExists.ifM(createDirs, F.unit) *> cleanDir *> moveDir.void
-        }
-      }
 
     def rename(
         project: Model[Project],

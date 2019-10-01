@@ -50,8 +50,8 @@ trait ProjectFactory {
   implicit val parUIO: Parallel[UIO, ParUIO]    = parallelInstance[Any, Nothing]
   implicit val parTask: Parallel[Task, ParTask] = parallelInstance[Any, Throwable]
 
-  protected def fileIO: FileIO[ZIO[Blocking, Nothing, ?]]
-  protected def fileManager: ProjectFiles[ZIO[Blocking, Nothing, ?]]
+  protected def fileIO: FileIO[ZIO[Blocking, Nothing, *]]
+  protected def fileManager: ProjectFiles[ZIO[Blocking, Nothing, *]]
   protected def cacheApi: SyncCacheApi
   protected val dependencyVersionRegex: Regex = """^[0-9a-zA-Z.,\[\]()-]+$""".r
 
@@ -101,28 +101,23 @@ trait ProjectFactory {
     }
   }
 
-  def processSubsequentPluginUpload(uploadData: PluginUpload, owner: Model[User], project: Model[Project])(
+  def processSubsequentPluginUpload(uploadData: PluginUpload, uploader: Model[User], project: Model[Project])(
       implicit messages: Messages
   ): ZIO[Blocking, String, PendingVersion] =
     for {
-      plugin <- processPluginUpload(uploadData, owner)
+      plugin <- processPluginUpload(uploadData, uploader)
         .ensure("error.version.invalidPluginId")(_.data.id.contains(project.pluginId))
         .ensure("error.version.illegalVersion")(!_.data.version.contains("recommended"))
-      t <- (
-        project
-          .channels(ModelView.now(Channel))
-          .one
-          .getOrElseF(UIO.die(new IllegalStateException("No channel found for project"))),
-        project.settings[Task].orDie
-      ).parTupled
-      (headChannel, settings) = t
+      headChannel <- project
+        .channels(ModelView.now(Channel))
+        .one
+        .getOrElseF(UIO.die(new IllegalStateException("No channel found for project")))
       version <- IO.fromEither(
         this.startVersion(
           plugin,
           project.pluginId,
-          Some(project.id),
-          project.url,
-          settings.forumSync,
+          project.id,
+          project.settings.forumSync,
           headChannel.name
         )
       )
@@ -155,21 +150,19 @@ trait ProjectFactory {
   def createProject(
       owner: Model[User],
       template: ProjectTemplate
-  ): IO[String, (Model[Project], Model[ProjectSettings])] = {
+  ): IO[String, Model[Project]] = {
     val name = template.name
     val slug = slugify(name)
     val project = Project(
       pluginId = template.pluginId,
-      ownerName = owner.name,
       ownerId = owner.id,
+      ownerName = owner.name,
       name = name,
       slug = slug,
       category = template.category,
       description = template.description,
       visibility = Visibility.New
     )
-
-    val projectSettings: DbRef[Project] => ProjectSettings = ProjectSettings(_)
 
     val channel: DbRef[Project] => Channel = Channel(_, config.defaultChannelName, config.defaultChannelColor)
 
@@ -182,13 +175,12 @@ trait ProjectFactory {
         this.projects.isNamespaceAvailable(owner.name, slug)
       ).parTupled
       (existsId, existsName, available) = t
-      _           <- cond(!existsName, "project with that name already exists")
-      _           <- cond(!existsId, "project with that plugin id already exists")
-      _           <- cond(available, "slug not available")
-      _           <- cond(config.isValidProjectName(name), "invalid name")
-      newProject  <- service.insert(project)
-      newSettings <- service.insert(projectSettings(newProject.id.value))
-      _           <- service.insert(channel(newProject.id.value))
+      _          <- cond(!existsName, "project with that name already exists")
+      _          <- cond(!existsId, "project with that plugin id already exists")
+      _          <- cond(available, "slug not available")
+      _          <- cond(config.isValidProjectName(name), "invalid name")
+      newProject <- service.insert(project)
+      _          <- service.insert(channel(newProject.id.value))
       _ <- {
         MembershipDossier
           .projectHasMemberships[UIO]
@@ -197,21 +189,19 @@ trait ProjectFactory {
             ProjectUserRole(owner.id, newProject.id, Role.ProjectOwner, isAccepted = true)
           )
       }
-    } yield (newProject, newSettings)
+    } yield newProject
   }
 
   /**
     * Starts the construction process of a [[Version]].
     *
     * @param plugin  Plugin file
-    * @param project Parent project
     * @return PendingVersion instance
     */
   def startVersion(
       plugin: PluginFileWithData,
       pluginId: String,
-      projectId: Option[DbRef[Project]],
-      projectUrl: String,
+      projectId: DbRef[Project],
       forumSync: Boolean,
       channelName: String
   ): Either[String, PendingVersion] = {
@@ -234,7 +224,6 @@ trait ProjectFactory {
           hash = plugin.md5,
           fileName = path.getFileName.toString,
           authorId = plugin.user.id,
-          projectUrl = projectUrl,
           channelName = channelName,
           channelColor = this.config.defaultChannelColor,
           plugin = plugin,
@@ -328,7 +317,9 @@ trait ProjectFactory {
       firstTimeUploadProject <- {
         if (project.visibility == Visibility.New) {
           val setVisibility = (project: Model[Project]) => {
-            project.setVisibility(Visibility.Public, "First upload", version.authorId).map(_._1)
+            project
+              .setVisibility(Visibility.Public, "First upload", version.authorId.getOrElse(project.ownerId))
+              .map(_._1)
           }
 
           val initProject =
@@ -398,6 +389,6 @@ class OreProjectFactory @Inject()(
     val cacheApi: SyncCacheApi,
     val env: OreEnv,
     val projects: ProjectBase[UIO],
-    val fileManager: ProjectFiles[ZIO[Blocking, Nothing, ?]],
-    val fileIO: FileIO[ZIO[Blocking, Nothing, ?]]
+    val fileManager: ProjectFiles[ZIO[Blocking, Nothing, *]],
+    val fileIO: FileIO[ZIO[Blocking, Nothing, *]]
 ) extends ProjectFactory

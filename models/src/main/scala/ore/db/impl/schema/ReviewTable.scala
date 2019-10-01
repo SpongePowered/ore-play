@@ -1,6 +1,6 @@
 package ore.db.impl.schema
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
@@ -14,7 +14,7 @@ class ReviewTable(tag: Tag) extends ModelTable[Review](tag, "project_version_rev
 
   def versionId = column[DbRef[Version]]("version_id")
   def userId    = column[DbRef[User]]("user_id")
-  def endedAt   = column[Instant]("ended_at")
+  def endedAt   = column[OffsetDateTime]("ended_at")
   def comment   = column[Json]("comment")
 
   override def * =

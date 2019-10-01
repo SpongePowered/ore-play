@@ -1,4 +1,4 @@
-@import java.time.Instant
+@import java.time.{Instant, OffsetDateTime, ZoneOffset}
 
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
@@ -52,7 +52,7 @@
                 <tbody>
                 @notes.map { case (note, user) =>
                 <tr>
-                    <td class="note-fixed-with">@prettifyDateAndTime(Instant.ofEpochMilli(note.time))</td>
+                    <td class="note-fixed-with">@prettifyDateAndTime(OffsetDateTime.ofInstant(Instant.ofEpochMilli(note.time), ZoneOffset.UTC))</td>
                     <td class="note-fixed-with"><strong>@user.map(_.name).getOrElse("Unknown")</strong></td>
                     <td>@note.render</td>
                 </tr>

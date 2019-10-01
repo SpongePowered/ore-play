@@ -1,6 +1,6 @@
 package ore.models.project
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
@@ -11,7 +11,7 @@ import play.api.inject.ApplicationLifecycle
 import ore.OreConfig
 import ore.db.ModelService
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{ProjectTableMain, VersionTable}
+import ore.db.impl.schema.{ProjectTable, VersionTable}
 
 import com.typesafe.scalalogging
 import zio.clock.Clock
@@ -32,12 +32,16 @@ class ProjectTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, 
   val draftExpire: Long           = this.config.ore.projects.draftExpire.toMillis
 
   private val dayAgoF =
-    ZIO.accessM[Clock](_.clock.currentTime(TimeUnit.MILLISECONDS)).map(_ - draftExpire).map(Instant.ofEpochMilli)
+    ZIO
+      .accessM[Clock](_.clock.currentTime(TimeUnit.MILLISECONDS))
+      .map(_ - draftExpire)
+      .map(Instant.ofEpochMilli)
+      .map(OffsetDateTime.ofInstant(_, ZoneOffset.UTC))
   private val newFilter        = ModelFilter(Project)(_.visibility === (Visibility.New: Visibility))
   private val hasVersions      = ModelFilter(Project)(p => TableQuery[VersionTable].filter(_.projectId === p.id).exists)
   private val createdAtFilterF = dayAgoF.map(dayAgo => ModelFilter(Project)(_.createdAt < dayAgo))
   private val updateFalseNewProjects = service.runDBIO(
-    TableQuery[ProjectTableMain].filter(newFilter && hasVersions).map(_.visibility).update(Visibility.Public)
+    TableQuery[ProjectTable].filter(newFilter && hasVersions).map(_.visibility).update(Visibility.Public)
   )
 
   private val deleteNewProjects =

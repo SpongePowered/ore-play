@@ -2,7 +2,7 @@ package ore.models.user
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.Locale
 
 import ore.data.Prompt
@@ -39,7 +39,7 @@ case class User(
     name: String = "",
     email: Option[String] = None,
     tagline: Option[String] = None,
-    joinDate: Option[Instant] = None,
+    joinDate: Option[OffsetDateTime] = None,
     readPrompts: List[Prompt] = Nil,
     isLocked: Boolean = false,
     lang: Option[Locale] = None
@@ -50,7 +50,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
   override def asDbModel(
       model: User,
       id: ObjId[User],
-      time: ObjInstant
+      time: ObjOffsetDateTime
   ): Model[User] = Model(model.id, time, model)
 
   implicit val query: ModelQuery[User] =
@@ -103,7 +103,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
     def watching[F[_]](
         implicit service: ModelService[F],
         F: Functor[F]
-    ): ChildAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, F] =
+    ): ChildAssociationAccess[ProjectWatchersTable, Project, User, ProjectTable, UserTable, F] =
       new ModelAssociationAccessImpl(OrePostgresDriver)(Project, User).applyChild(self.id)
 
     /**
@@ -148,11 +148,11 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       * @return Projects user has starred
       */
     def starred[F[_]](implicit service: ModelService[F]): F[Seq[Model[Project]]] = {
-      val filter = Visibility.isPublicFilter[ProjectTableMain]
+      val filter = Visibility.isPublicFilter[ProjectTable]
 
       val baseQuery = for {
         assoc   <- TableQuery[ProjectStarsTable] if assoc.userId === self.id.value
-        project <- TableQuery[ProjectTableMain] if assoc.projectId === project.id
+        project <- TableQuery[ProjectTable] if assoc.projectId === project.id
         if filter(project)
       } yield project
 
@@ -165,9 +165,9 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
       * @return Projects owned by user
       */
     def projects[V[_, _]: QueryView](
-        view: V[ProjectTableMain, Model[Project]]
-    ): V[ProjectTableMain, Model[Project]] =
-      view.filterView(_.userId === self.id.value)
+        view: V[ProjectTable, Model[Project]]
+    ): V[ProjectTable, Model[Project]] =
+      view.filterView(_.ownerId === self.id.value)
 
     /**
       * Returns a [[ModelView]] of [[ProjectUserRole]]s.
@@ -187,7 +187,7 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
     def ownedOrganizations[V[_, _]: QueryView](
         view: V[OrganizationTable, Model[Organization]]
     ): V[OrganizationTable, Model[Organization]] =
-      view.filterView(_.userId === self.id.value)
+      view.filterView(_.ownerId === self.id.value)
 
     /**
       * Returns a [[ModelView]] of [[OrganizationUserRole]]s.

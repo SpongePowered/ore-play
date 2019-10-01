@@ -1,4 +1,4 @@
-@import java.time.Instant
+@import java.time.OffsetDateTime
 
 @import controllers.sugar.Requests.OreRequest
 @import models.querymodels.{FlagActivity, ReviewActivity}
@@ -31,7 +31,7 @@
                             case Right(review) => {
                                 <tr>
                                     <td>Review approved</td>
-                                    <td>@prettifyDateAndTime(review.endedAt.getOrElse(Instant.EPOCH)))</td>
+                                    <td>@prettifyDateAndTime(review.endedAt.getOrElse(OffsetDateTime.MIN)))</td>
                                     <td>for:
                                         <a href="@controllers.routes.Reviews.showReviews(review.project.ownerName, review.project.slug, review.id.toString)">
                                             @review.project.ownerName / @review.project.slug
@@ -42,7 +42,7 @@
                             case Left(flag) => {
                                 <tr>
                                     <td>Flag resolved</td>
-                                    <td>@prettifyDateAndTime(flag.resolvedAt.getOrElse(Instant.EPOCH)))</td>
+                                    <td>@prettifyDateAndTime(flag.resolvedAt.getOrElse(OffsetDateTime.MIN)))</td>
                                     <td>for:
                                         <a href="@controllers.project.routes.Projects.show(flag.project.ownerName, flag.project.slug)">
                                             @flag.project.ownerName / @flag.project.slug

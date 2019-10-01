@@ -27,22 +27,20 @@ import slick.lifted.TableQuery
   */
 case class Organization(
     private val id: ObjId[Organization],
-    username: String,
+    userId: DbRef[User],
+    name: String,
     ownerId: DbRef[User]
 ) extends Named
     with Visitable {
-
-  override val name: String = this.username
-  override def url: String  = this.username
+  override def url: String = name
 }
-
 object Organization extends ModelCompanionPartial[Organization, OrganizationTable](TableQuery[OrganizationTable]) {
   implicit val orgHasScope: HasScope[Organization] = HasScope.orgScope(_.id.value)
 
   override def asDbModel(
       model: Organization,
       id: ObjId[Organization],
-      time: ObjInstant
+      time: ObjOffsetDateTime
   ): Model[Organization] = Model(model.id, time, model)
 
   implicit val query: ModelQuery[Organization] =

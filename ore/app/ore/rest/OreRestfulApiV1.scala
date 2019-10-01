@@ -7,6 +7,7 @@ import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
 import db.impl.access.ProjectBase
+import db.impl.query.AppQueries
 import ore.OreConfig
 import ore.data.project.Category
 import ore.db.access.ModelView
@@ -54,39 +55,19 @@ trait OreRestfulApiV1 extends OreWrites {
     val maxLoad = this.config.ore.projects.initLoad
     val lim     = max(min(limit.getOrElse(maxLoad), maxLoad), 0)
 
-    def filteredProjects(offset: Option[Long], lim: Long) = {
-      val query = queryProjectRV.filter {
-        case (p, _, _) =>
-          val query = "%" + q.map(_.toLowerCase).getOrElse("") + "%"
-          p.name.toLowerCase.like(query) ||
-          p.description.toLowerCase.like(query) ||
-          p.ownerName.toLowerCase.like(query) ||
-          p.pluginId.toLowerCase.like(query)
-      }
-      //categories.map(_.toSeq).map { cats =>
-      val filtered = cats
-        .map { ca =>
-          query.filter {
-            case (p, _, _) =>
-              p.category.inSetBind(ca)
-          }
-        }
-        .getOrElse(query)
-
-      filtered
-        .sortBy {
-          case (p, _, _) =>
-            ordering.fn.apply(p)
-        }
-        .drop(offset.getOrElse(0L))
-        .take(lim)
-    }
-
-    val query = filteredProjects(offset, lim)
-
     for {
-      projects <- service.runDBIO(query.result)
-      json     <- writeProjects(projects)
+      preSearch <- service.runDbCon(
+        AppQueries
+          .apiV1IdSearch(q, cats.fold(Nil: List[Category])(_.toList), ordering, lim.toInt, offset.getOrElse(0L).toInt)
+          .to[Vector]
+      )
+      unsortedProjects <- service.runDBIO(queryProjectRV.filter(_._1.id.inSetBind(preSearch)).result)
+      sortedProjects = for {
+        id <- preSearch
+        t  <- unsortedProjects
+        if t._1.id.value == id
+      } yield t
+      json <- writeProjects(sortedProjects)
     } yield {
       toJson(json.map(_._2))
     }
@@ -146,7 +127,7 @@ trait OreRestfulApiV1 extends OreWrites {
               "category"    -> obj("title" -> p.category.title, "icon" -> p.category.icon),
               "views"       -> p.viewCount,
               "downloads"   -> p.downloadCount,
-              "stars"       -> p.starCount
+              "stars"       -> 0
             )
           )
       }
@@ -200,10 +181,10 @@ trait OreRestfulApiV1 extends OreWrites {
 
   private def queryProjectRV =
     for {
-      p <- TableQuery[ProjectTableMain]
+      p <- TableQuery[ProjectTable]
       v <- TableQuery[VersionTable] if p.recommendedVersionId === v.id
       c <- TableQuery[ChannelTable] if v.channelId === c.id
-      if Visibility.isPublicFilter[ProjectTableMain](p)
+      if Visibility.isPublicFilter[ProjectTable](p)
     } yield (p, v, c)
 
   /**
@@ -297,7 +278,7 @@ trait OreRestfulApiV1 extends OreWrites {
 
   private def queryVersions(onlyPublic: Boolean = true) =
     for {
-      p      <- TableQuery[ProjectTableMain]
+      p      <- TableQuery[ProjectTable]
       (v, u) <- TableQuery[VersionTable].joinLeft(TableQuery[UserTable]).on(_.authorId === _.id)
       c      <- TableQuery[ChannelTable]
       if v.channelId === c.id && p.id === v.projectId && (if (onlyPublic)
@@ -342,7 +323,7 @@ trait OreRestfulApiV1 extends OreWrites {
   private def queryStars(users: Seq[Model[User]]) =
     for {
       s <- TableQuery[ProjectStarsTable] if s.userId.inSetBind(users.map(_.id.value))
-      p <- TableQuery[ProjectTableMain] if s.projectId === p.id
+      p <- TableQuery[ProjectTable] if s.projectId === p.id
     } yield (s.userId, p.pluginId)
 
   /**
@@ -367,7 +348,7 @@ trait OreRestfulApiV1 extends OreWrites {
     implicit def config: OreConfig = this.config
 
     val query = queryProjectRV.filter {
-      case (p, _, _) => p.userId.inSetBind(userList.map(_.id.value)) // query all projects with given users
+      case (p, _, _) => p.ownerId.inSetBind(userList.map(_.id.value)) // query all projects with given users
     }
 
     for {

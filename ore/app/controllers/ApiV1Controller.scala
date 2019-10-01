@@ -1,6 +1,5 @@
 package controllers
 
-import java.time.Instant
 import java.util.{Base64, UUID}
 import javax.inject.{Inject, Singleton}
 
@@ -20,7 +19,7 @@ import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.PluginUpload
 import ore.models.project.{Channel, Page, Project, Version}
-import ore.models.user.{LoggedAction, User}
+import ore.models.user.{LoggedActionProject, LoggedActionType, User}
 import ore.permission.Permission
 import ore.permission.role.Role
 import ore.rest.{OreRestfulApiV1, OreWrites}
@@ -103,11 +102,11 @@ final class ApiV1Controller @Inject()(
           _ <- OptionT.liftF(
             UserActionLogger.log(
               request.request,
-              LoggedAction.ProjectSettingsChanged,
+              LoggedActionType.ProjectSettingsChanged,
               projectId,
               s"${request.user.name} created a new ApiKey",
               ""
-            )
+            )(LoggedActionProject.apply)
           )
         } yield Created(Json.toJson(pak))
         res.getOrElse(BadRequest)
@@ -124,11 +123,11 @@ final class ApiV1Controller @Inject()(
           _ <- OptionT.liftF(
             UserActionLogger.log(
               request.request,
-              LoggedAction.ProjectSettingsChanged,
+              LoggedActionType.ProjectSettingsChanged,
               request.data.project.id,
               s"${request.user.name} removed an ApiKey",
               ""
-            )
+            )(LoggedActionProject.apply)
           )
         } yield Ok
         res.getOrElse(BadRequest)
@@ -172,7 +171,7 @@ final class ApiV1Controller @Inject()(
       val project     = projectData.project
 
       forms.VersionDeploy
-        .bindEitherT[ZIO[Blocking, Nothing, ?]](
+        .bindEitherT[ZIO[Blocking, Nothing, *]](
           hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))
         )
         .flatMap { formData =>
@@ -200,7 +199,7 @@ final class ApiV1Controller @Inject()(
             )
 
             EitherT
-              .liftF[ZIO[Blocking, Nothing, ?], Result, (Boolean, Boolean)](service.runDBIO(query.result.head))
+              .liftF[ZIO[Blocking, Nothing, *], Result, (Boolean, Boolean)](service.runDBIO(query.result.head))
               .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
               .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
               .semiflatMap(_ => project.user[Task].orDie)
@@ -215,7 +214,7 @@ final class ApiV1Controller @Inject()(
                   .toLeft(PluginUpload.bindFromRequest())
                   .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
 
-                EitherT.fromEither[ZIO[Blocking, Nothing, ?]](pluginUpload).flatMap { data =>
+                EitherT.fromEither[ZIO[Blocking, Nothing, *]](pluginUpload).flatMap { data =>
                   EitherT(
                     this.factory
                       .processSubsequentPluginUpload(data, owner, project)
@@ -237,12 +236,11 @@ final class ApiV1Controller @Inject()(
                     if (formData.recommended)
                       service.update(project)(
                         _.copy(
-                          recommendedVersionId = Some(newVersion.id),
-                          lastUpdated = Instant.now()
+                          recommendedVersionId = Some(newVersion.id)
                         )
                       )
                     else
-                      service.update(project)(_.copy(lastUpdated = Instant.now()))
+                      ZIO.unit
 
                   update.as(Created(api.writeVersion(newVersion, newProject, channel, None, tags)))
               }

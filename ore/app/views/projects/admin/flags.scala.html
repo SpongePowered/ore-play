@@ -1,4 +1,4 @@
-@import java.time.Instant
+@import java.time.OffsetDateTime
 
 @import controllers.sugar.Requests.OreRequest
 @import models.viewhelper.ProjectData
@@ -46,7 +46,7 @@
                             <td>@prettifyDateAndTime(flag.createdAt)</td>
                             @if(flag.isResolved) {
                                 <td>@resolvedBy.get
-                                    at @prettifyDateAndTime(flag.resolvedAt.getOrElse(Instant.EPOCH)))</td>
+                                    at @prettifyDateAndTime(flag.resolvedAt.getOrElse(OffsetDateTime.MIN)))</td>
                             } else {
                                 <td>-not resolved-</td>
                             }

@@ -5,12 +5,12 @@
 @import ore.db.{DbRef, Model}
 @import ore.models.admin.LoggedActionViewModel
 @import ore.models.project.{Page, Project, Version}
-@import ore.models.user.{LoggedAction, LoggedActionContext, User}
+@import ore.models.user.{LoggedActionType, LoggedActionContext, User}
 @import util.StringFormatterUtils._
 
 @(actions: Seq[Model[LoggedActionViewModel[_]]], limit: Int, offset: Int, page: Int, size: Int, userFilter: Option[DbRef[User]],
         projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]],
-        actionFilter: Option[Int], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+        actionFilter: Option[String], subjectFilter: Option[DbRef[_]], canViewIP: Boolean)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @scripts = {
     <script type="text/javascript" src="@routes.Assets.versioned("diff-match-patch/javascript/diff_match_patch.js")"></script>
@@ -32,7 +32,7 @@
                 <tr><td class="filter-project">Project</td> <td>@projectFilter.getOrElse("-")</td></tr>
                 <tr><td class="filter-version">Version</td> <td>@versionFilter.getOrElse("-")</td></tr>
                 <tr><td class="filter-page">Page</td><td>@pageFilter.getOrElse("-") </td></tr>
-                <tr><td class="filter-action">Action</td><td>@LoggedAction.withValueOpt(actionFilter.getOrElse(-1)).getOrElse("-")</td></tr>
+                <tr><td class="filter-action">Action</td><td>@LoggedActionType.withValueOpt(actionFilter.getOrElse("")).getOrElse("-")</td></tr>
                 <tr><td class="filter-subject">Subject</td><td>@subjectFilter.getOrElse("-")</td></tr>
             </table>
         </div>
@@ -111,7 +111,7 @@
                                     </td>
                                 } } } } }
                                 @* Show diff only when page edit *@
-                                @if(action.action == LoggedAction.ProjectPageEdited || action.action == LoggedAction.VersionDescriptionEdited) {
+                                @if(action.action == LoggedActionType.ProjectPageEdited || action.action == LoggedActionType.VersionDescriptionEdited) {
                                     <td>
                                         <a href="#" class="data-view-old" data-view="@{offset + index}">View</a>
                                         <textarea style="display: none" data-oldstate="@{offset + index}">@action.oldState</textarea>

@@ -1,5 +1,5 @@
 package models.querymodels
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.data.Color
 import ore.data.project.ProjectNamespace
@@ -10,14 +10,14 @@ case class UnsortedQueueEntry(
     namespace: ProjectNamespace,
     projectName: String,
     versionString: String,
-    versionCreatedAt: Instant,
+    versionCreatedAt: OffsetDateTime,
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String],
     reviewerId: Option[DbRef[User]],
     reviewerName: Option[String],
-    reviewStarted: Option[Instant],
-    reviewEnded: Option[Instant]
+    reviewStarted: Option[OffsetDateTime],
+    reviewEnded: Option[OffsetDateTime]
 ) {
 
   def sort: Either[ReviewedQueueEntry, NotStartedQueueEntry] =
@@ -56,14 +56,14 @@ case class ReviewedQueueEntry(
     namespace: ProjectNamespace,
     projectName: String,
     versionString: String,
-    versionCreatedAt: Instant,
+    versionCreatedAt: OffsetDateTime,
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String],
     reviewerId: DbRef[User],
     reviewerName: String,
-    reviewStarted: Instant,
-    reviewEnded: Option[Instant]
+    reviewStarted: OffsetDateTime,
+    reviewEnded: Option[OffsetDateTime]
 ) {
 
   def isUnfinished: Boolean = reviewEnded.nonEmpty
@@ -73,7 +73,7 @@ case class NotStartedQueueEntry(
     namespace: ProjectNamespace,
     projectName: String,
     versionString: String,
-    versionCreatedAt: Instant,
+    versionCreatedAt: OffsetDateTime,
     channelName: String,
     channelColor: Color,
     versionAuthor: Option[String]

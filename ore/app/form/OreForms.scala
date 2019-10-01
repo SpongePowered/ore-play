@@ -296,7 +296,7 @@ class OreForms @Inject()(
         "apiKey"      -> nonEmptyText,
         "channel"     -> channel,
         "recommended" -> default(boolean, true),
-        "forumPost"   -> default(boolean, request.data.settings.forumSync),
+        "forumPost"   -> default(boolean, request.data.project.settings.forumSync),
         "changelog"   -> optional(text(minLength = Page.minLength, maxLength = Page.maxLength))
       )(VersionDeployForm.apply)(VersionDeployForm.unapply)
     )

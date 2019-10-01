@@ -1,6 +1,6 @@
 package ore.db.impl.common
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.DbRef
 import ore.models.project.Visibility
@@ -10,7 +10,7 @@ trait VisibilityChange {
 
   def createdBy: Option[DbRef[User]]
   def comment: String
-  def resolvedAt: Option[Instant]
+  def resolvedAt: Option[OffsetDateTime]
   def resolvedBy: Option[DbRef[User]]
   def visibility: Visibility
 

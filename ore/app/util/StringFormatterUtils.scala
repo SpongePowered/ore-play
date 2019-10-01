@@ -1,6 +1,6 @@
 package util
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime}
 
 import play.api.i18n.Messages
 
@@ -11,18 +11,18 @@ object StringFormatterUtils {
   /**
     * Formats the specified date into the standard application form.
     *
-    * @param instant Date to format
+    * @param dateTime Date to format
     * @return        Standard formatted date
     */
-  def prettifyDate(instant: Instant)(implicit messages: Messages): String =
-    StringLocaleFormatterUtils.prettifyDate(instant)(messages.lang.locale)
+  def prettifyDate(dateTime: OffsetDateTime)(implicit messages: Messages): String =
+    StringLocaleFormatterUtils.prettifyDate(dateTime)(messages.lang.locale)
 
   /**
     * Formats the specified date into the standard application form time.
     *
-    * @param instant Date to format
+    * @param dateTime Date to format
     * @return        Standard formatted date
     */
-  def prettifyDateAndTime(instant: Instant)(implicit messages: Messages): String =
-    StringLocaleFormatterUtils.prettifyDateAndTime(instant)(messages.lang.locale)
+  def prettifyDateAndTime(dateTime: OffsetDateTime)(implicit messages: Messages): String =
+    StringLocaleFormatterUtils.prettifyDateAndTime(dateTime)(messages.lang.locale)
 }

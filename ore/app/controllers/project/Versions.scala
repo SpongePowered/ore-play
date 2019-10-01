@@ -2,7 +2,8 @@ package controllers.project
 
 import java.nio.file.Files._
 import java.nio.file.{Files, StandardCopyOption}
-import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.time.OffsetDateTime
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
@@ -26,7 +27,7 @@ import ore.models.admin.VersionVisibilityChange
 import ore.models.project._
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginFile, PluginUpload}
-import ore.models.user.{LoggedAction, User}
+import ore.models.user.{LoggedActionType, LoggedActionVersion, User}
 import ore.permission.Permission
 import ore.util.OreMDC
 import ore.util.StringUtils._
@@ -102,11 +103,11 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         _ <- version.updateForumContents[Task](newDescription).orDie
         _ <- UserActionLogger.log(
           request.request,
-          LoggedAction.VersionDescriptionEdited,
+          LoggedActionType.VersionDescriptionEdited,
           version.id,
           newDescription,
           oldDescription
-        )
+        )(LoggedActionVersion(_, version.projectId))
       } yield Redirect(self.show(author, slug, versionString))
     }
   }
@@ -124,13 +125,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       for {
         version <- getVersion(request.project, versionString)
         _       <- service.update(request.project)(_.copy(recommendedVersionId = Some(version.id)))
-        _ <- UserActionLogger.log(
-          request.request,
-          LoggedAction.VersionAsRecommended,
-          version.id,
-          "recommended version",
-          "listed version"
-        )
       } yield Redirect(self.show(author, slug, versionString))
     }
   }
@@ -154,16 +148,16 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             _.copy(
               reviewState = newState,
               reviewerId = Some(request.user.id),
-              approvedAt = Some(Instant.now())
+              approvedAt = Some(OffsetDateTime.now())
             )
           )
           _ <- UserActionLogger.log(
             request.request,
-            LoggedAction.VersionReviewStateChanged,
+            LoggedActionType.VersionReviewStateChanged,
             version.id,
             newState.toString,
             version.reviewState.toString
-          )
+          )(LoggedActionVersion(_, version.projectId))
         } yield Redirect(self.show(author, slug, versionString))
       }
   }
@@ -213,7 +207,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             project.slug,
             project.ownerName,
             project.description,
-            forumSync = request.data.settings.forumSync,
+            forumSync = request.data.project.settings.forumSync,
             None,
             Model.unwrapNested(channels)
           )
@@ -261,21 +255,15 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       val suc2 = for {
         pendingVersion <- ZIO.fromOption(this.factory.getPendingVersion(author, slug, versionString))
         project        <- projects.withSlug(author, slug).get
-
-        projectData = project.settings[Task].orDie.map { settings =>
-          (project.name, project.pluginId, project.slug, project.ownerName, project.description, settings.forumSync)
-        }
-
-        t <- (service.runDBIO(project.channels(ModelView.raw(Channel)).result), projectData).parTupled
-        (channels, (projectName, pluginId, projectSlug, ownerName, projectDescription, forumSync)) = t
+        channels       <- service.runDBIO(project.channels(ModelView.raw(Channel)).result)
       } yield Ok(
         views.create(
-          projectName,
-          pluginId,
-          projectSlug,
-          ownerName,
-          projectDescription,
-          forumSync,
+          project.name,
+          project.pluginId,
+          project.slug,
+          project.ownerName,
+          project.description,
+          project.settings.forumSync,
           Some(pendingVersion),
           Model.unwrapNested(channels)
         )
@@ -333,21 +321,19 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         _ <- {
           if (versionData.recommended)
             service
-              .update(newProject)(_.copy(recommendedVersionId = Some(newVersion.id), lastUpdated = Instant.now()))
+              .update(newProject)(_.copy(recommendedVersionId = Some(newVersion.id)))
               .unit
           else
-            service
-              .update(newProject)(_.copy(lastUpdated = Instant.now()))
-              .unit
+            ZIO.unit
         }
         _ <- addUnstableTag(newVersion, versionData.unstable)
         _ <- UserActionLogger.log(
           request,
-          LoggedAction.VersionUploaded,
+          LoggedActionType.VersionUploaded,
           newVersion.id,
           "published",
           "null"
-        )
+        )(LoggedActionVersion(_, newVersion.projectId))
       } yield Redirect(self.show(author, slug, versionString))
     }
   }
@@ -386,11 +372,11 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           _       <- projects.deleteVersion(version)
           _ <- UserActionLogger.log(
             request,
-            LoggedAction.VersionDeleted,
+            LoggedActionType.VersionDeleted,
             version.id,
             s"Deleted: $comment",
             s"$version.visibility"
-          )
+          )(LoggedActionVersion(_, version.projectId))
         } yield Redirect(self.showList(author, slug))
       }
   }
@@ -414,11 +400,11 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           _       <- version.setVisibility(Visibility.SoftDelete, comment, request.user.id)
           _ <- UserActionLogger.log(
             request.request,
-            LoggedAction.VersionDeleted,
+            LoggedActionType.VersionDeleted,
             version.id,
             s"SoftDelete: $comment",
             ""
-          )
+          )(LoggedActionVersion(_, version.projectId))
         } yield Redirect(self.showList(author, slug))
       }
 
@@ -438,7 +424,9 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         for {
           version <- getProjectVersion(author, slug, versionString)
           _       <- version.setVisibility(Visibility.Public, comment, request.user.id)
-          _       <- UserActionLogger.log(request, LoggedAction.VersionDeleted, version.id, s"Restore: $comment", "")
+          _ <- UserActionLogger.log(request, LoggedActionType.VersionDeleted, version.id, s"Restore: $comment", "")(
+            LoggedActionVersion(_, version.projectId)
+          )
         } yield Redirect(self.showList(author, slug))
       }
   }
@@ -582,11 +570,11 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           // generate a unique "warning" object to ensure the user has landed
           // on the warning before downloading
           val token      = UUID.randomUUID().toString
-          val expiration = Instant.now().plusMillis(this.config.security.unsafeDownloadMaxAge)
+          val expiration = OffsetDateTime.now().plus(this.config.security.unsafeDownloadMaxAge, ChronoUnit.MILLIS)
           val address    = InetString(StatTracker.remoteAddress)
           // remove old warning attached to address that are expired (or duplicated for version)
           val removeWarnings = service.deleteWhere(DownloadWarning) { warning =>
-            (warning.address === address || warning.expiration < Instant
+            (warning.address === address || warning.expiration < OffsetDateTime
               .now()) && warning.versionId === version.id.value
           }
           // create warning
@@ -800,12 +788,12 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val path     = projectFiles.getVersionDir(project.ownerName, project.name, version.name).resolve(fileName)
           project.user[Task].orDie.flatMap { projectOwner =>
             import cats.tagless._
-            val newStats: StatTracker[RIO[Blocking, ?]] = InvariantK[StatTracker].imapK(stats) {
-              new FunctionK[UIO, RIO[Blocking, ?]] {
+            val newStats: StatTracker[RIO[Blocking, *]] = InvariantK[StatTracker].imapK(stats) {
+              new FunctionK[UIO, RIO[Blocking, *]] {
                 override def apply[A](fa: UIO[A]): RIO[Blocking, A] = fa
               }
             } {
-              new FunctionK[RIO[Blocking, ?], UIO] {
+              new FunctionK[RIO[Blocking, *], UIO] {
                 override def apply[A](fa: RIO[Blocking, A]): UIO[A] = fa.provide(zioRuntime.Environment)
               }
             }
@@ -820,7 +808,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
                 import zio.blocking._
                 pluginFile
-                  .newJarStream[ZIO[Blocking, Throwable, ?]]
+                  .newJarStream[ZIO[Blocking, Throwable, *]]
                   .use { jarIn =>
                     jarIn
                       .fold(

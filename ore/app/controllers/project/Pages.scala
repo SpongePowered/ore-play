@@ -18,7 +18,7 @@ import ore.db.impl.schema.PageTable
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
 import ore.models.project.{Page, Project}
-import ore.models.user.LoggedAction
+import ore.models.user.{LoggedActionPage, LoggedActionType}
 import ore.permission.Permission
 import ore.util.StringUtils._
 import util.UserActionLogger
@@ -235,11 +235,11 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
           val oldPage = createdPage.contents
           UserActionLogger.log(
             request.request,
-            LoggedAction.ProjectPageEdited,
+            LoggedActionType.ProjectPageEdited,
             createdPage.id,
             newPage,
             oldPage
-          ) *> createdPage.updateForumContents[Task](newPage).orDie
+          )(LoggedActionPage(_, createdPage.projectId)) *> createdPage.updateForumContents[Task](newPage).orDie
         }
       } yield Redirect(self.show(author, slug, page))
     }

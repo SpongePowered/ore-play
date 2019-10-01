@@ -1,6 +1,6 @@
 package ore.models.project
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import scala.collection.immutable
 
@@ -23,8 +23,8 @@ object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](Tab
   override def asDbModel(
       model: VersionTag,
       id: ObjId[VersionTag],
-      time: ObjInstant
-  ): Model[VersionTag] = Model(id, ObjInstant(Instant.EPOCH), model)
+      time: ObjOffsetDateTime
+  ): Model[VersionTag] = Model(id, ObjOffsetDateTime(OffsetDateTime.MIN), model)
 
   implicit val query: ModelQuery[VersionTag] = ModelQuery.from(this)
 }

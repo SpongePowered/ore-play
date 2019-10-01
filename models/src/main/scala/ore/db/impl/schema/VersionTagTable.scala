@@ -1,10 +1,10 @@
 package ore.db.impl.schema
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.table.common.NameColumn
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
 import ore.models.project.{TagColor, Version, VersionTag}
 
 class VersionTagTable(tag: Tag)
@@ -21,7 +21,7 @@ class VersionTagTable(tag: Tag)
       case (id, versionIds, name, data, color) =>
         Model(
           ObjId.unsafeFromOption(id),
-          ObjInstant(Instant.EPOCH),
+          ObjOffsetDateTime(OffsetDateTime.MIN),
           VersionTag(versionIds, name, data, color)
         )
     }

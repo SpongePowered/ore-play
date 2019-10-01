@@ -2,7 +2,7 @@ package ore.models.project
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.data.project.FlagReason
 import ore.db.impl.DefaultModelCompanion
@@ -26,7 +26,7 @@ case class Flag(
     reason: FlagReason,
     comment: String,
     isResolved: Boolean = false,
-    resolvedAt: Option[Instant] = None,
+    resolvedAt: Option[OffsetDateTime] = None,
     resolvedBy: Option[DbRef[User]] = None
 )
 object Flag extends DefaultModelCompanion[Flag, FlagTable](TableQuery[FlagTable]) {
@@ -50,7 +50,7 @@ object Flag extends DefaultModelCompanion[Flag, FlagTable](TableQuery[FlagTable]
     )(implicit service: ModelService[F]): F[Model[Flag]] = {
       val (at, by) =
         if (resolved)
-          (Some(Instant.now), user.map(_.id.value): Option[DbRef[User]])
+          (Some(OffsetDateTime.now), user.map(_.id.value): Option[DbRef[User]])
         else
           (None, None)
 

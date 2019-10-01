@@ -4,7 +4,7 @@ import ore.db._
 import ore.db.impl.ModelCompanionPartial
 import ore.db.impl.schema.LoggedActionViewTable
 import ore.models.project.{Page, Project, Version}
-import ore.models.user.{LoggedAction, LoggedActionContext, User, UserOwned}
+import ore.models.user.{LoggedActionType, LoggedActionContext, User, UserOwned}
 
 import com.github.tminglei.slickpg.InetString
 import slick.lifted.TableQuery
@@ -22,7 +22,7 @@ case class LoggedSubject(sId: Option[DbRef[_]], sName: Option[String])
 case class LoggedActionViewModel[Ctx](
     userId: DbRef[User],
     address: InetString,
-    action: LoggedAction[Ctx],
+    action: LoggedActionType[Ctx],
     actionContext: LoggedActionContext[Ctx],
     actionContextId: DbRef[Ctx],
     newState: String,
@@ -64,7 +64,7 @@ object LoggedActionViewModel
   override def asDbModel(
       model: LoggedActionViewModel[Any],
       id: ObjId[LoggedActionViewModel[Any]],
-      time: ObjInstant
+      time: ObjOffsetDateTime
   ): Model[LoggedActionViewModel[Any]] = Model(ObjId(0L), time, model)
 
   implicit val isUserOwned: UserOwned[LoggedActionViewModel[_]] = (a: LoggedActionViewModel[_]) => a.userId

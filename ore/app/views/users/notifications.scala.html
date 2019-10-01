@@ -13,13 +13,13 @@
         inviteFilter: InviteFilter)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
 
 @notificationFilterOption(option: NotificationFilter) = @{
-    if (option.equals(notificationFilter)) {
+    if (option == notificationFilter) {
         Html("selected")
     }
 }
 
 @inviteFilterOption(option: InviteFilter) = @{
-    if (option.equals(inviteFilter)) {
+    if (option == inviteFilter) {
         Html("selected")
     }
 }

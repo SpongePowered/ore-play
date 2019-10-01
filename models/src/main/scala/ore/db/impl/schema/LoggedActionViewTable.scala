@@ -1,12 +1,12 @@
 package ore.db.impl.schema
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
 import ore.models.admin._
 import ore.models.project.{Page, Project, Version}
-import ore.models.user.{LoggedAction, LoggedActionContext, User}
+import ore.models.user.{LoggedActionContext, LoggedActionType, User}
 
 import com.github.tminglei.slickpg.InetString
 
@@ -14,7 +14,7 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
 
   def userId          = column[DbRef[User]]("user_id")
   def address         = column[InetString]("address")
-  def action          = column[LoggedAction[Ctx]]("action")
+  def action          = column[LoggedActionType[Ctx]]("action")
   def actionContext   = column[LoggedActionContext[Ctx]]("action_context")
   def actionContextId = column[DbRef[Ctx]]("action_context_id")
   def newState        = column[String]("new_state")
@@ -40,10 +40,10 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
 
   private def rawApply(
       id: Option[DbRef[LoggedActionViewModel[Ctx]]],
-      createdAt: Option[Instant],
+      createdAt: Option[OffsetDateTime],
       userId: DbRef[User],
       address: InetString,
-      action: LoggedAction[Ctx],
+      action: LoggedActionType[Ctx],
       actionContext: LoggedActionContext[Ctx],
       actionContextId: DbRef[Ctx],
       newState: String,
@@ -61,7 +61,7 @@ class LoggedActionViewTable[Ctx](tag: Tag) extends ModelTable[LoggedActionViewMo
       filterAction: Option[Int]
   ) = Model(
     ObjId.unsafeFromOption(id),
-    ObjInstant.unsafeFromOption(createdAt),
+    ObjOffsetDateTime.unsafeFromOption(createdAt),
     LoggedActionViewModel[Ctx](
       userId,
       address,

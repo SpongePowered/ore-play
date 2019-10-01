@@ -1,7 +1,7 @@
 package ore.util
 
+import java.time.OffsetDateTime
 import java.time.format.{DateTimeFormatter, FormatStyle}
-import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.Locale
 
 object StringLocaleFormatterUtils {
@@ -12,18 +12,18 @@ object StringLocaleFormatterUtils {
   /**
     * Formats the specified date into the standard application form.
     *
-    * @param instant Date to format
+    * @param dateTime Date to format
     * @return        Standard formatted date
     */
-  def prettifyDate(instant: Instant)(implicit locale: Locale): String =
-    dateFormat.withLocale(locale).format(LocalDateTime.ofInstant(instant, ZoneOffset.UTC))
+  def prettifyDate(dateTime: OffsetDateTime)(implicit locale: Locale): String =
+    dateFormat.withLocale(locale).format(dateTime)
 
   /**
     * Formats the specified date into the standard application form time.
     *
-    * @param instant Date to format
+    * @param dateTime Date to format
     * @return        Standard formatted date
     */
-  def prettifyDateAndTime(instant: Instant)(implicit locale: Locale): String =
-    dateTimeFormat.withLocale(locale).format(LocalDateTime.ofInstant(instant, ZoneOffset.UTC))
+  def prettifyDateAndTime(dateTime: OffsetDateTime)(implicit locale: Locale): String =
+    dateTimeFormat.withLocale(locale).format(dateTime)
 }

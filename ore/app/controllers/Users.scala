@@ -15,9 +15,8 @@ import ore.data.Prompt
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.query.UserQueries
-import ore.db.impl.schema.{ApiKeyTable, PageTable, ProjectTableMain, UserTable, VersionTable}
+import ore.db.impl.schema.{ApiKeyTable, PageTable, ProjectTable, UserTable, VersionTable}
 import ore.db.{DbRef, Model}
-import ore.models.project.ProjectSortingStrategy
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.models.user.{FakeUser, _}
 import ore.permission.Permission
@@ -116,7 +115,7 @@ class Users @Inject()(
     )
   }
 
-  private def redirectBack(url: String, user: User) =
+  private def redirectBack(url: String, user: Model[User]) =
     Redirect(this.baseUrl + url).authenticatedAs(user, this.config.play.sessionMaxAge.toSeconds.toInt)
 
   /**
@@ -186,11 +185,11 @@ class Users @Inject()(
         }
         _ <- UserActionLogger.log(
           request,
-          LoggedAction.UserTaglineChanged,
+          LoggedActionType.UserTaglineChanged,
           user.id,
           tagline,
           user.tagline.getOrElse("null")
-        )
+        )(LoggedActionUser.apply)
         _ <- service.update(user)(_.copy(tagline = Some(tagline)))
       } yield Redirect(ShowUser(user))
     }
@@ -351,20 +350,20 @@ class Users @Inject()(
   def userSitemap(user: String): Action[AnyContent] = Action.asyncF { implicit request =>
     val projectsQuery = for {
       u <- TableQuery[UserTable]
-      p <- TableQuery[ProjectTableMain] if u.id === p.userId
+      p <- TableQuery[ProjectTable] if u.id === p.ownerId
       if u.name === user
     } yield p.slug
 
     val versionQuery = for {
       u  <- TableQuery[UserTable]
-      p  <- TableQuery[ProjectTableMain] if u.id === p.userId
+      p  <- TableQuery[ProjectTable] if u.id === p.ownerId
       pv <- TableQuery[VersionTable] if p.id === pv.projectId
       if u.name === user
     } yield (p.slug, pv.versionString)
 
     val pageQuery = for {
       u  <- TableQuery[UserTable]
-      p  <- TableQuery[ProjectTableMain] if u.id === p.userId
+      p  <- TableQuery[ProjectTable] if u.id === p.ownerId
       pp <- TableQuery[PageTable] if p.id === pp.projectId
       if u.name === user
     } yield (p.slug, pp.name)

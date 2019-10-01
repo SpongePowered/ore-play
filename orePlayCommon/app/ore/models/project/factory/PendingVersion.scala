@@ -33,12 +33,11 @@ case class PendingVersion(
     versionString: String,
     dependencies: List[Dependency],
     description: Option[String],
-    projectId: Option[DbRef[Project]], // Version might be for an uncreated project
+    projectId: DbRef[Project],
     fileSize: Long,
     hash: String,
     fileName: String,
     authorId: DbRef[User],
-    projectUrl: String,
     channelName: String,
     channelColor: Color,
     plugin: PluginFileWithData,
@@ -52,7 +51,7 @@ case class PendingVersion(
   ): ZIO[Blocking, Nothing, (Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
     free[Task].orDie *> factory.createVersion(project, this)
 
-  override def key: String = projectUrl + '/' + versionString
+  override def key: String = projectId + '/' + versionString
 
   def dependenciesAsGhostTags: Seq[VersionTag] =
     Platform.ghostTags(-1L, dependencies)
@@ -73,18 +72,16 @@ case class PendingVersion(
 
     val hashExistsQuery = hashExistsBaseQuery.exists
 
-    projectId.fold(F.pure(false)) { projectId =>
-      for {
-        project <- ModelView
-          .now(Project)
-          .get(projectId)
-          .getOrElseF(F.raiseError(new Exception(s"No project found for id $projectId")))
-        versionExistsQuery = project
-          .versions(ModelView.later(Version))
-          .exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
-        res <- service.runDBIO(Query((hashExistsQuery, versionExistsQuery)).map(t => t._1 && t._2).result.head)
-      } yield res
-    }
+    for {
+      project <- ModelView
+        .now(Project)
+        .get(projectId)
+        .getOrElseF(F.raiseError(new Exception(s"No project found for id $projectId")))
+      versionExistsQuery = project
+        .versions(ModelView.later(Version))
+        .exists(_.versionString.toLowerCase === this.versionString.toLowerCase)
+      res <- service.runDBIO(Query((hashExistsQuery, versionExistsQuery)).map(t => t._1 && t._2).result.head)
+    } yield res
   }
 
   def asVersion(projectId: DbRef[Project], channelId: DbRef[Channel]): Version = Version(
@@ -98,7 +95,7 @@ case class PendingVersion(
     channelId = channelId,
     fileSize = fileSize,
     hash = hash,
-    authorId = authorId,
+    authorId = Some(authorId),
     fileName = fileName,
     createForumPost = createForumPost
   )

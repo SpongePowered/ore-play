@@ -11,6 +11,7 @@ import ore.models.admin.LoggedActionViewModel
 import ore.models.project._
 import ore.models.user.User
 
+import cats.data.NonEmptyList
 import cats.syntax.all._
 import doobie._
 import doobie.implicits._
@@ -77,12 +78,12 @@ object AppQueries extends WebDoobieOreProtocol {
   }
 
   def getUnhealtyProjects(staleTime: FiniteDuration): Query0[UnhealtyProject] = {
-    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, p.is_topic_dirty, p.last_updated, p.visibility
-          |  FROM projects p
+    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, p.is_topic_dirty, hp.last_updated, p.visibility
+          |  FROM projects p JOIN home_projects hp ON p.id = hp.id
           |  WHERE p.topic_id IS NULL
           |     OR p.post_id IS NULL
           |     OR p.is_topic_dirty
-          |     OR p.last_updated > (now() - $staleTime::INTERVAL)
+          |     OR hp.last_updated > (now() - $staleTime::INTERVAL)
           |     OR p.visibility != 1""".stripMargin.query[UnhealtyProject]
   }
 
@@ -128,7 +129,7 @@ object AppQueries extends WebDoobieOreProtocol {
       projectFilter: Option[DbRef[Project]],
       versionFilter: Option[DbRef[Version]],
       pageFilter: Option[DbRef[Page]],
-      actionFilter: Option[Int],
+      actionFilter: Option[String],
       subjectFilter: Option[DbRef[_]]
   ): Query0[Model[LoggedActionViewModel[Any]]] = {
     val pageSize = 50L
@@ -183,5 +184,29 @@ object AppQueries extends WebDoobieOreProtocol {
           |    FROM users u
           |    ORDER BY (SELECT COUNT(*) FROM project_members_all pma WHERE pma.user_id = u.id) DESC
           |    LIMIT 49000""".stripMargin.query[String]
+  }
+
+  def apiV1IdSearch(
+      q: Option[String],
+      categories: List[Category],
+      ordering: ProjectSortingStrategy,
+      limit: Int,
+      offset: Int
+  ): Query0[DbRef[Project]] = {
+    val query = s"%${q.getOrElse("")}%"
+    val queryFilter =
+      fr"p.name ILIKE $query OR p.description ILIKE $query OR p.owner_name ILIKE $query OR p.plugin_id ILIKE $query"
+    val catFilter = NonEmptyList.fromList(categories).map(Fragments.in(fr"p.category", _))
+
+    val res = (
+      sql"SELECT p.id FROM home_projects p " ++
+        Fragments.whereAndOpt(Some(queryFilter), catFilter) ++
+        fr"ORDER BY" ++
+        ordering.fragment ++
+        fr"LIMIT $limit OFFSET $offset"
+    ).query[DbRef[Project]]
+
+    println(res.sql)
+    res
   }
 }

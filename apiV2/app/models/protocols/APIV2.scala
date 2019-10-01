@@ -1,6 +1,6 @@
 package models.protocols
 
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
 
 import ore.data.project.Category
 import ore.models.project.{ReviewState, Visibility}
@@ -44,7 +44,7 @@ object APIV2 {
 
   //Project
   @ConfiguredJsonCodec case class Project(
-      created_at: LocalDateTime,
+      created_at: OffsetDateTime,
       plugin_id: String,
       name: String,
       namespace: ProjectNamespace,
@@ -52,7 +52,7 @@ object APIV2 {
       stats: ProjectStats,
       category: Category,
       description: Option[String],
-      last_updated: LocalDateTime,
+      last_updated: OffsetDateTime,
       visibility: Visibility,
       user_actions: UserActions,
       settings: ProjectSettings,
@@ -106,7 +106,7 @@ object APIV2 {
 
   //Version
   @ConfiguredJsonCodec case class Version(
-      created_at: LocalDateTime,
+      created_at: OffsetDateTime,
       name: String,
       dependencies: List[VersionDependency],
       visibility: Visibility,
@@ -124,10 +124,10 @@ object APIV2 {
 
   //User
   @ConfiguredJsonCodec case class User(
-      created_at: LocalDateTime,
+      created_at: OffsetDateTime,
       name: String,
       tagline: Option[String],
-      join_date: Option[LocalDateTime],
+      join_date: Option[OffsetDateTime],
       roles: List[Role]
   )
 }

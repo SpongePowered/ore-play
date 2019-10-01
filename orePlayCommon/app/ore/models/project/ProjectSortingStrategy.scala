@@ -2,13 +2,9 @@ package ore.models.project
 
 import scala.collection.immutable
 
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.ProjectTableMain
-
 import doobie._
 import doobie.implicits._
 import enumeratum.values._
-import slick.lifted.ColumnOrdered
 
 /**
   * Represents a strategy used to sort [[ore.models.project.Project]]s.
@@ -16,7 +12,6 @@ import slick.lifted.ColumnOrdered
 sealed abstract class ProjectSortingStrategy(
     val value: Int,
     val title: String,
-    val fn: ProjectTableMain => ColumnOrdered[_],
     val fragment: Fragment,
     val apiName: String
 ) extends IntEnumEntry {
@@ -34,16 +29,13 @@ object ProjectSortingStrategy extends IntEnum[ProjectSortingStrategy] {
   /** The default strategy. */
   val Default: RecentlyUpdated.type = RecentlyUpdated
 
-  case object MostStars
-      extends ProjectSortingStrategy(0, "Most stars", _.stars.desc, fr"p.stars DESC, p.name ASC", "stars")
-  case object MostDownloads
-      extends ProjectSortingStrategy(1, "Most downloads", _.downloads.desc, fr"p.downloads DESC", "downloads")
-  case object MostViews extends ProjectSortingStrategy(2, "Most views", _.views.desc, fr"p.views DESC", "views")
-  case object Newest    extends ProjectSortingStrategy(3, "Newest", _.createdAt.desc, fr"p.created_at DESC", "newest")
-  case object RecentlyUpdated
-      extends ProjectSortingStrategy(4, "Recently updated", _.lastUpdated.desc, fr"p.last_updated DESC", "updated")
+  case object MostStars       extends ProjectSortingStrategy(0, "Most stars", fr"p.stars DESC, p.name ASC", "stars")
+  case object MostDownloads   extends ProjectSortingStrategy(1, "Most downloads", fr"p.downloads DESC", "downloads")
+  case object MostViews       extends ProjectSortingStrategy(2, "Most views", fr"p.views DESC", "views")
+  case object Newest          extends ProjectSortingStrategy(3, "Newest", fr"p.created_at DESC", "newest")
+  case object RecentlyUpdated extends ProjectSortingStrategy(4, "Recently updated", fr"p.last_updated DESC", "updated")
   case object OnlyRelevance
-      extends ProjectSortingStrategy(5, "Only relevance", _.lastUpdated.desc, fr"p.last_updated DESC", "only_relevance")
+      extends ProjectSortingStrategy(5, "Only relevance", fr"p.last_updated DESC", "only_relevance")
 
   /**
     * Parses a string as a sorting strategy.

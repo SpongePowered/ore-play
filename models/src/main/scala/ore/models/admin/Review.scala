@@ -2,7 +2,7 @@ package ore.models.admin
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.Locale
 
 import ore.db.impl.DefaultModelCompanion
@@ -28,7 +28,7 @@ import slick.lifted.TableQuery
 case class Review(
     versionId: DbRef[Version],
     userId: DbRef[User],
-    endedAt: Option[Instant],
+    endedAt: Option[OffsetDateTime],
     message: Json
 ) {
 
@@ -48,7 +48,7 @@ case class Review(
   */
 @JsonCodec case class Message(message: String, time: Long = System.currentTimeMillis(), action: String = "message") {
   def getTime(implicit locale: Locale): String =
-    StringLocaleFormatterUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
+    StringLocaleFormatterUtils.prettifyDateAndTime(OffsetDateTime.ofInstant(Instant.ofEpochMilli(time), ZoneOffset.UTC))
   def isTakeover: Boolean = action.equalsIgnoreCase("takeover")
   def isStop: Boolean     = action.equalsIgnoreCase("stop")
 }

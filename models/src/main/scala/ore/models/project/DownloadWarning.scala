@@ -1,6 +1,6 @@
 package ore.models.project
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.common.Expirable
@@ -21,7 +21,7 @@ import slick.lifted.TableQuery
   * @param downloadId  Download ID
   */
 case class DownloadWarning(
-    expiration: Instant,
+    expiration: OffsetDateTime,
     token: String,
     versionId: DbRef[Version],
     address: InetString,

@@ -59,7 +59,7 @@ object HeaderData {
   private def getSessionUser[F[_]](token: String)(implicit service: ModelService[F], F: Functor[F]) = {
     val query = for {
       s <- TableQuery[SessionTable] if s.token === token
-      u <- TableQuery[UserTable] if s.username === u.name
+      u <- TableQuery[UserTable] if s.userId === u.id.value
     } yield (s, u)
 
     OptionT(service.runDBIO(query.result.headOption)).collect {
@@ -68,8 +68,8 @@ object HeaderData {
   }
 
   private def projectApproval(user: Model[User]) =
-    TableQuery[ProjectTableMain]
-      .filter(p => p.userId === user.id.value && p.visibility === (Visibility.NeedsApproval: Visibility))
+    TableQuery[ProjectTable]
+      .filter(p => p.ownerId === user.id.value && p.visibility === (Visibility.NeedsApproval: Visibility))
       .exists
 
   private def reviewQueue: Rep[Boolean] =

@@ -6,7 +6,6 @@ import play.api.db.slick.DatabaseConfigProvider
 
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{Model, ModelCompanion, ModelQuery, ModelService}
-import util.TaskUtils
 
 import cats.effect.{Clock, Sync}
 import doobie._

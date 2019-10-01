@@ -1,6 +1,6 @@
 package ore.db.impl.schema
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
@@ -23,7 +23,7 @@ class VersionTable(tag: Tag)
   def authorId        = column[DbRef[User]]("author_id")
   def reviewStatus    = column[ReviewState]("review_state")
   def reviewerId      = column[DbRef[User]]("reviewer_id")
-  def approvedAt      = column[Instant]("approved_at")
+  def approvedAt      = column[OffsetDateTime]("approved_at")
   def fileName        = column[String]("file_name")
   def createForumPost = column[Boolean]("create_forum_post")
   def postId          = column[Option[Int]]("post_id")
@@ -40,7 +40,7 @@ class VersionTable(tag: Tag)
         channelId,
         fileSize,
         hash,
-        authorId,
+        authorId.?,
         description.?,
         downloads,
         reviewStatus,

@@ -1,6 +1,6 @@
 package models.querymodels
 
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -26,7 +26,7 @@ import zio.ZIO
 import zio.blocking.Blocking
 
 case class APIV2QueryProject(
-    createdAt: LocalDateTime,
+    createdAt: OffsetDateTime,
     pluginId: String,
     name: String,
     namespace: ProjectNamespace,
@@ -36,7 +36,7 @@ case class APIV2QueryProject(
     stars: Long,
     category: Category,
     description: Option[String],
-    lastUpdated: LocalDateTime,
+    lastUpdated: OffsetDateTime,
     visibility: Visibility,
     userStarred: Boolean,
     userWatching: Boolean,
@@ -50,7 +50,7 @@ case class APIV2QueryProject(
 ) {
 
   def asProtocol(
-      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, *]],
       requestHeader: RequestHeader,
       config: OreConfig
   ): ZIO[Blocking, Nothing, APIV2.Project] = {
@@ -245,7 +245,7 @@ case class APIV2QueryProjectMember(
 }
 
 case class APIV2QueryVersion(
-    createdAt: LocalDateTime,
+    createdAt: OffsetDateTime,
     name: String,
     dependenciesIds: List[String],
     visibility: Visibility,
@@ -296,10 +296,10 @@ case class APIV2QueryVersionTag(
 }
 
 case class APIV2QueryUser(
-    createdAt: LocalDateTime,
+    createdAt: OffsetDateTime,
     name: String,
     tagline: Option[String],
-    joinDate: Option[LocalDateTime],
+    joinDate: Option[OffsetDateTime],
     roles: List[Role]
 ) {
 

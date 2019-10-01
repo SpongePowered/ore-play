@@ -1,9 +1,9 @@
 package ore.db.impl.schema
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime}
 
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
 import ore.models.user.role.DbRole
 import ore.permission.Permission
 import ore.permission.role.RoleCategory
@@ -24,7 +24,7 @@ class DbRoleTable(tag: Tag) extends ModelTable[DbRole](tag, "roles") {
       case (id, name, category, permission, title, color, isAssignable, rank) =>
         Model(
           ObjId.unsafeFromOption(id),
-          ObjInstant(Instant.EPOCH),
+          ObjOffsetDateTime(OffsetDateTime.MIN),
           DbRole(name, category, permission, title, color, isAssignable, rank)
         )
     }

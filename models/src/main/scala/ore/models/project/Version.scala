@@ -2,7 +2,7 @@ package ore.models.project
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 import ore.data.project.Dependency
 import ore.db.access.{ModelView, QueryView}
@@ -39,12 +39,12 @@ case class Version(
     channelId: DbRef[Channel],
     fileSize: Long,
     hash: String,
-    authorId: DbRef[User],
+    authorId: Option[DbRef[User]],
     description: Option[String],
     downloadCount: Long = 0,
     reviewState: ReviewState = ReviewState.Unreviewed,
     reviewerId: Option[DbRef[User]] = None,
-    approvedAt: Option[Instant] = None,
+    approvedAt: Option[OffsetDateTime] = None,
     visibility: Visibility = Visibility.Public,
     fileName: String,
     createForumPost: Boolean = true,
@@ -81,8 +81,8 @@ case class Version(
     */
   def url(project: Project): String = project.url + "/versions/" + this.versionString
 
-  def author[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]): QOptRet =
-    view.get(this.authorId)
+  def author[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]): Option[QOptRet] =
+    this.authorId.map(view.get)
 
   def reviewer[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, UserTable, Model[User]]): Option[QOptRet] =
     this.reviewerId.map(view.get)
@@ -142,7 +142,7 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
         .semiflatMap { vc =>
           service.update(vc)(
             _.copy(
-              resolvedAt = Some(Instant.now()),
+              resolvedAt = Some(OffsetDateTime.now()),
               resolvedBy = Some(creator)
             )
           )

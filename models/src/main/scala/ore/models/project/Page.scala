@@ -6,7 +6,7 @@ import ore.db.access.{ModelView, QueryView}
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common.Named
-import ore.db.impl.schema.{PageTable, ProjectTableMain}
+import ore.db.impl.schema.{PageTable, ProjectTable}
 import ore.db.{DbRef, Model, ModelQuery}
 import ore.syntax._
 import ore.util.StringUtils._
@@ -37,7 +37,7 @@ case class Page private (
     *
     * @return Optional Project
     */
-  def parentProject[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, ProjectTableMain, Model[Project]]): QOptRet =
+  def parentProject[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, ProjectTable, Model[Project]]): QOptRet =
     view.get(projectId)
 
   def parentPage[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, PageTable, Model[Page]]): Option[QOptRet] =

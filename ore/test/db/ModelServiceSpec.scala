@@ -12,7 +12,7 @@ import play.api.db.slick.DatabaseConfigProvider
 import db.impl.service.OreModelService
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.{DefaultModelCompanion, OrePostgresDriver}
-import ore.db.{Model, ModelQuery, ObjId, ObjInstant}
+import ore.db.{Model, ModelQuery, ObjId, ObjOffsetDateTime}
 
 import com.typesafe.config.{Config, ConfigFactory}
 import doobie.util.transactor.Transactor
@@ -76,7 +76,7 @@ class ModelServiceSpec extends FunSuite with Matchers with BeforeAndAfterAll { s
 
     def * =
       (id.?, createdAt.?, (foo, bar, baz).<>[MyObj]((MyObj.apply _).tupled, MyObj.unapply)).<>[Model[MyObj]](
-        { case (id, time, obj) => Model(ObjId.unsafeFromOption(id), ObjInstant.unsafeFromOption(time), obj) },
+        { case (id, time, obj) => Model(ObjId.unsafeFromOption(id), ObjOffsetDateTime.unsafeFromOption(time), obj) },
         (Model.unapply[MyObj] _)
           .andThen(_.map { case (id, time, obj) => (id.unsafeToOption, time.unsafeToOption, obj) })
       )

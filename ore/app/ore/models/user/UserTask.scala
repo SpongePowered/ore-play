@@ -1,6 +1,6 @@
 package ore.models.user
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.concurrent.TimeUnit
 import javax.inject.{Inject, Singleton}
 
@@ -33,6 +33,7 @@ class UserTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, run
   private val action = ZIO
     .accessM[Clock](_.clock.currentTime(TimeUnit.MILLISECONDS))
     .map(Instant.ofEpochMilli)
+    .map(OffsetDateTime.ofInstant(_, ZoneOffset.UTC))
     .flatMap(now => service.deleteWhere(ApiSession)(_.expires < now))
     .unit
 

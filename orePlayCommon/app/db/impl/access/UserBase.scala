@@ -2,7 +2,8 @@ package db.impl.access
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.UUID
 
 import play.api.mvc.Request
@@ -72,7 +73,7 @@ trait UserBase[F[_]] {
     *
     * @return     Newly created session
     */
-  def createSession(user: User): F[Model[Session]]
+  def createSession(user: Model[User]): F[Model[Session]]
 
   /**
     * Returns the currently authenticated User.c
@@ -123,11 +124,11 @@ object UserBase {
       }
     }
 
-    def createSession(user: User): F[Model[Session]] = {
+    def createSession(user: Model[User]): F[Model[Session]] = {
       val maxAge     = config.play.sessionMaxAge
-      val expiration = Instant.now().plusMillis(maxAge.toMillis)
+      val expiration = OffsetDateTime.now().plus(maxAge.toMillis, ChronoUnit.MILLIS)
       val token      = UUID.randomUUID().toString
-      service.insert(Session(expiration, user.name, token))
+      service.insert(Session(expiration, user.id, token))
     }
 
     /**
@@ -149,7 +150,7 @@ object UserBase {
       OptionT
         .fromOption[F](session.cookies.get("_oretoken"))
         .flatMap(cookie => getSession(cookie.value))
-        .flatMap(s => withName(s.username))
+        .flatMap(s => ModelView.now(User).get(s.userId))
   }
 
   def apply[F[_]](implicit userBase: UserBase[F]): UserBase[F] = userBase

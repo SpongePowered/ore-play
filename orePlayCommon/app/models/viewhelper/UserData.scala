@@ -47,7 +47,7 @@ object UserData {
       role    <- TableQuery[OrganizationRoleTable] if role.userId === user.id.value
       org     <- TableQuery[OrganizationTable] if role.organizationId === org.id
       orgUser <- TableQuery[UserTable] if org.id === orgUser.id
-      owner   <- TableQuery[UserTable] if org.userId === owner.id
+      owner   <- TableQuery[UserTable] if org.ownerId === owner.id
     } yield (org, orgUser, role, owner)
 
   def of[F[_], G[_]](request: OreRequest[_], user: Model[User])(

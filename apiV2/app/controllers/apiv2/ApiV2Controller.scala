@@ -3,7 +3,7 @@ package controllers.apiv2
 import scala.language.higherKinds
 
 import java.nio.file.Path
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.OffsetDateTime
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
@@ -27,7 +27,7 @@ import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2QueryVersionTag}
 import ore.data.project.Category
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTableMain}
+import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTable, UserTable}
 import ore.db.{DbRef, Model}
 import ore.models.api.ApiSession
 import ore.models.project.factory.ProjectFactory
@@ -60,8 +60,8 @@ class ApiV2Controller @Inject()(
 ) extends OreBaseController
     with CircePlayController {
 
-  implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, ?]] =
-    scalacache.CatsEffect.modes.async[ZIO[R, Throwable, ?]]
+  implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, *]] =
+    scalacache.CatsEffect.modes.async[ZIO[R, Throwable, *]]
 
   private val resultCache = scalacache.caffeine.CaffeineCache[Either[Result, Result]]
 
@@ -111,7 +111,7 @@ class ApiV2Controller @Inject()(
           .get
           .constError(unAuth("Invalid session"))
         res <- {
-          if (info.expires.isBefore(Instant.now())) {
+          if (info.expires.isBefore(OffsetDateTime.now())) {
             service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
           } else ZIO.succeed(ApiRequest(info, request))
         }
@@ -126,7 +126,7 @@ class ApiV2Controller @Inject()(
     case APIScope.ProjectScope(pluginId) =>
       service
         .runDBIO(
-          TableQuery[ProjectTableMain]
+          TableQuery[ProjectTable]
             .filter(_.pluginId === pluginId)
             .map(_.id)
             .result
@@ -135,14 +135,14 @@ class ApiV2Controller @Inject()(
         .get
         .map(ProjectScope)
     case APIScope.OrganizationScope(organizationName) =>
+      val q = for {
+        u <- TableQuery[UserTable]
+        if u.name === organizationName
+        o <- TableQuery[OrganizationTable] if u.id === o.id
+      } yield o.id
+
       service
-        .runDBIO(
-          TableQuery[OrganizationTable]
-            .filter(_.name === organizationName)
-            .map(_.id)
-            .result
-            .headOption
-        )
+        .runDBIO(q.result.headOption)
         .get
         .map(OrganizationScope)
   }
@@ -154,7 +154,7 @@ class ApiV2Controller @Inject()(
       //Techically we could make this faster by first checking if the global perms have the needed perms,
       //but then we wouldn't get the 404 on a non existent scope.
       val scopePerms: IO[Unit, Permission] =
-        apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, ?]](_))
+        apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, *]](_))
       val res = scopePerms.constError(NotFound).ensure(Forbidden)(_.has(perms))
 
       zioToFuture(res.either.map(_.swap.toOption))
@@ -164,7 +164,7 @@ class ApiV2Controller @Inject()(
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     Action.andThen(apiAction).andThen(permApiAction(perms, scope))
 
-  private def expiration(duration: FiniteDuration) = Instant.now().plusSeconds(duration.toSeconds)
+  private def expiration(duration: FiniteDuration) = OffsetDateTime.now().plusSeconds(duration.toSeconds)
 
   def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     val sessionExpiration = expiration(config.ore.api.session.expiration)
@@ -175,7 +175,7 @@ class ApiV2Controller @Inject()(
       Ok(
         ReturnedApiSession(
           key.token,
-          LocalDateTime.ofInstant(key.expires, ZoneOffset.UTC),
+          key.expires,
           SessionType.User
         )
       )
@@ -224,7 +224,7 @@ class ApiV2Controller @Inject()(
           Ok(
             ReturnedApiSession(
               key.token,
-              LocalDateTime.ofInstant(key.expires, ZoneOffset.UTC),
+              key.expires,
               tpe
             )
           )
@@ -243,7 +243,7 @@ class ApiV2Controller @Inject()(
         Ok(
           ReturnedApiSession(
             key.token,
-            LocalDateTime.ofInstant(key.expires, ZoneOffset.UTC),
+            key.expires,
             SessionType.Dev
           )
         )
@@ -323,7 +323,7 @@ class ApiV2Controller @Inject()(
       cacheKey: String
   )(parts: Any*)(fa: ZIO[R, Result, Result])(implicit request: ApiRequest[B]): ZIO[R, Result, Result] =
     resultCache
-      .cachingF[ZIO[R, Throwable, ?]](
+      .cachingF[ZIO[R, Throwable, *]](
         cacheKey +: parts :+
           request.apiInfo.key.map(_.tokenIdentifier) :+
           //We do both the user and the token for authentication methods that don't use a token
@@ -588,12 +588,11 @@ class ApiV2Controller @Inject()(
         }
 
         for {
-          user            <- ZIO.fromOption(request.user).constError(BadRequest(ApiError("No user found for session")))
-          _               <- uploadErrors(user)
-          project         <- projects.withPluginId(pluginId).get.constError(NotFound)
-          projectSettings <- project.settings[Task].orDie
-          data            <- dataF
-          file            <- fileF
+          user    <- ZIO.fromOption(request.user).constError(BadRequest(ApiError("No user found for session")))
+          _       <- uploadErrors(user)
+          project <- projects.withPluginId(pluginId).get.constError(NotFound)
+          data    <- dataF
+          file    <- fileF
           pendingVersion <- factory
             .processSubsequentPluginUpload(PluginUpload(file.ref, file.filename), user, project)
             .leftMap { s =>
@@ -602,7 +601,7 @@ class ApiV2Controller @Inject()(
             }
             .map { v =>
               v.copy(
-                createForumPost = data.create_forum_post.getOrElse(projectSettings.forumSync),
+                createForumPost = data.create_forum_post.getOrElse(project.settings.forumSync),
                 channelName = data.tags.getOrElse("Channel", v.channelName),
                 description = data.description
               )
@@ -623,7 +622,7 @@ class ApiV2Controller @Inject()(
           )
           val apiTags = channelApiTag :: normalApiTags
           val apiVersion = APIV2QueryVersion(
-            LocalDateTime.ofInstant(version.createdAt, ZoneOffset.UTC),
+            version.createdAt,
             version.versionString,
             version.dependencyIds,
             version.visibility,
@@ -775,7 +774,7 @@ object ApiV2Controller {
 
   @ConfiguredJsonCodec case class ReturnedApiSession(
       session: String,
-      expires: LocalDateTime,
+      expires: OffsetDateTime,
       @JsonKey("type") tpe: SessionType
   )
 

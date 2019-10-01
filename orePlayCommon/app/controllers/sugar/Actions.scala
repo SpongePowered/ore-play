@@ -2,7 +2,8 @@ package controllers.sugar
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.time.OffsetDateTime
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -53,7 +54,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
   implicit val parUIO: Parallel[UIO, ParUIO]                                  = parallelInstance[Any, Nothing]
   implicit val parTask: Parallel[Task, ParTask]                               = parallelInstance[Any, Throwable]
-  implicit val parBlockingIO: Parallel[RIO[Blocking, ?], ParRIO[Blocking, ?]] = parallelInstance[Blocking, Nothing]
+  implicit val parBlockingIO: Parallel[RIO[Blocking, *], ParRIO[Blocking, *]] = parallelInstance[Blocking, Nothing]
 
   implicit def service: ModelService[UIO]           = oreComponents.uioEffects.service
   def sso: SSOApi[UIO]                              = oreComponents.uioEffects.sso
@@ -61,7 +62,7 @@ trait Actions extends Calls with ActionHelpers { self =>
   implicit def projects: ProjectBase[UIO]           = oreComponents.uioEffects.projects
   implicit def organizations: OrganizationBase[UIO] = oreComponents.uioEffects.organizations
 
-  implicit def projectFiles: ProjectFiles[RIO[Blocking, ?]] = oreComponents.projectFiles
+  implicit def projectFiles: ProjectFiles[RIO[Blocking, *]] = oreComponents.projectFiles
 
   implicit def ec: ExecutionContext = oreComponents.executionContext
 
@@ -159,7 +160,7 @@ trait Actions extends Calls with ActionHelpers { self =>
       * @param maxAge Maximum session age
       * @return Result with token
       */
-    def authenticatedAs(user: User, maxAge: Int = -1): UIO[Result] = {
+    def authenticatedAs(user: Model[User], maxAge: Int = -1): UIO[Result] = {
       val session = users.createSession(user)
       val age     = if (maxAge == -1) None else Some(maxAge)
       session.map { s =>
@@ -188,7 +189,9 @@ trait Actions extends Calls with ActionHelpers { self =>
       .now(SignOn)
       .find(_.nonce === nonce)
       .semiflatMap { signOn =>
-        if (signOn.isCompleted || Instant.now().toEpochMilli - signOn.createdAt.toEpochMilli > 600000)
+        val millisSinceCreated = signOn.createdAt.until(OffsetDateTime.now(), ChronoUnit.MILLIS)
+
+        if (signOn.isCompleted || millisSinceCreated > 600000)
           UIO.succeed(false)
         else {
           service.update(signOn)(_.copy(isCompleted = true)).const(true)
@@ -336,7 +339,7 @@ trait Actions extends Calls with ActionHelpers { self =>
       implicit
       request: OreRequest[_]
   ) = {
-    val projectData = ProjectData.of[ZIO[Blocking, Throwable, ?], zio.interop.ParIO[Blocking, Throwable, ?]](project)
+    val projectData = ProjectData.of[ZIO[Blocking, Throwable, *], zio.interop.ParIO[Blocking, Throwable, *]](project)
     (projectData.orDie, ScopedProjectData.of[UIO, ParUIO](request.headerData.currentUser, project)).parMapN(f)
   }
 

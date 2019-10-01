@@ -3,7 +3,7 @@ package controllers
 import java.io.StringWriter
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
-import java.time.{Instant, LocalDate}
+import java.time.{LocalDate, OffsetDateTime}
 import java.util.Date
 import javax.inject.{Inject, Singleton}
 
@@ -21,6 +21,13 @@ import models.viewhelper.{OrganizationData, UserData}
 import ore.db._
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{
+  LoggedActionOrganizationTable,
+  LoggedActionPageTable,
+  LoggedActionProjectTable,
+  LoggedActionUserTable,
+  LoggedActionVersionTable
+}
 import ore.markdown.MarkdownRenderer
 import ore.member.MembershipDossier
 import ore.models.organization.Organization
@@ -123,11 +130,11 @@ final class Application @Inject()(forms: OreForms)(
         flagCreator <- flag.user[Task].orDie
         _ <- UserActionLogger.log(
           request,
-          LoggedAction.ProjectFlagResolved,
+          LoggedActionType.ProjectFlagResolved,
           flag.projectId,
           s"Flag Resolved by ${user.fold("unknown")(_.name)}",
           s"Flagged by ${flagCreator.name}"
-        )
+        )(LoggedActionProject.apply)
       } yield Ok
     }
 
@@ -194,14 +201,10 @@ final class Application @Inject()(forms: OreForms)(
       o1: Either[FlagActivity, ReviewActivity],
       o2: Either[FlagActivity, ReviewActivity]
   ): Boolean = {
-    val o1Time: Long = o1 match {
-      case Right(review) => review.endedAt.getOrElse(Instant.EPOCH).toEpochMilli
-      case _             => 0
-    }
-    val o2Time: Long = o2 match {
-      case Left(flag) => flag.resolvedAt.getOrElse(Instant.EPOCH).toEpochMilli
-      case _          => 0
-    }
+    val o1Time                                = o1.toOption.flatMap(_.endedAt).getOrElse(OffsetDateTime.MIN)
+    val o2Time                                = o2.toOption.flatMap(_.endedAt).getOrElse(OffsetDateTime.MIN)
+    implicit val order: Order[OffsetDateTime] = Order.fromComparable[OffsetDateTime]
+
     o1Time > o2Time
   }
 
@@ -233,7 +236,7 @@ final class Application @Inject()(forms: OreForms)(
       projectFilter: Option[DbRef[Project]],
       versionFilter: Option[DbRef[Version]],
       pageFilter: Option[DbRef[Page]],
-      actionFilter: Option[Int],
+      actionFilter: Option[String],
       subjectFilter: Option[DbRef[_]]
   ): Action[AnyContent] = Authenticated.andThen(PermissionAction(Permission.ViewLogs)).asyncF { implicit request =>
     val pageSize = 50
@@ -246,7 +249,15 @@ final class Application @Inject()(forms: OreForms)(
           .getLog(oPage, userFilter, projectFilter, versionFilter, pageFilter, actionFilter, subjectFilter)
           .to[Vector]
       ),
-      ModelView.now(LoggedActionModel).size
+      service.runDBIO(
+        (
+          TableQuery[LoggedActionProjectTable].size +
+            TableQuery[LoggedActionVersionTable].size +
+            TableQuery[LoggedActionPageTable].size +
+            TableQuery[LoggedActionUserTable].size +
+            TableQuery[LoggedActionOrganizationTable].size
+        ).result
+      )
     ).parMapN { (actions, size) =>
       Ok(
         views.users.admin.log(
@@ -434,36 +445,38 @@ final class Application @Inject()(forms: OreForms)(
   }
 
   val robots: Action[AnyContent] = Action {
-    Ok(s"""user-agent: *
-          |Disallow: /login
-          |Disallow: /signup
-          |Disallow: /logout
-          |Disallow: /linkout
-          |Disallow: /admin
-          |Disallow: /api
-          |Disallow: /*/*/versions
-          |Disallow: /*/*/watchers
-          |Disallow: /*/*/stars
-          |Disallow: /*/*/discuss
-          |Disallow: /*/*/channels
-          |Disallow: /*/*/manage
-          |Disallow: /*/*/versionLog
-          |Disallow: /*/*/flags
-          |Disallow: /*/*/notes
-          |Disallow: /*/*/channels
+    Ok(
+      s"""user-agent: *
+         |Disallow: /login
+         |Disallow: /signup
+         |Disallow: /logout
+         |Disallow: /linkout
+         |Disallow: /admin
+         |Disallow: /api
+         |Disallow: /*/*/versions
+         |Disallow: /*/*/watchers
+         |Disallow: /*/*/stars
+         |Disallow: /*/*/discuss
+         |Disallow: /*/*/channels
+         |Disallow: /*/*/manage
+         |Disallow: /*/*/versionLog
+         |Disallow: /*/*/flags
+         |Disallow: /*/*/notes
+         |Disallow: /*/*/channels
           
-          |Allow: /*/*/versions/*
-          |Allow: /api$$
+         |Allow: /*/*/versions/*
+         |Allow: /api$$
           
-          |Disallow: /*/*/versions/*/download
-          |Disallow: /*/*/versions/*/recommended/download
-          |Disallow: /*/*/versions/*/jar
-          |Disallow: /*/*/versions/*/recommended/jar
-          |Disallow: /*/*/versions/*/reviews
-          |Disallow: /*/*/versions/*/new
-          |Disallow: /*/*/versions/*/confirm
+         |Disallow: /*/*/versions/*/download
+         |Disallow: /*/*/versions/*/recommended/download
+         |Disallow: /*/*/versions/*/jar
+         |Disallow: /*/*/versions/*/recommended/jar
+         |Disallow: /*/*/versions/*/reviews
+         |Disallow: /*/*/versions/*/new
+         |Disallow: /*/*/versions/*/confirm
 
-          |Sitemap: ${config.app.baseUrl}/sitemap.xml
-      """.stripMargin).as("text/plain")
+         |Sitemap: ${config.app.baseUrl}/sitemap.xml
+         |""".stripMargin
+    ).as("text/plain")
   }
 }

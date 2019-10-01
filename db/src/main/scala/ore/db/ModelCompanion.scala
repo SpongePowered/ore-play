@@ -12,7 +12,7 @@ trait ModelCompanion[M] {
 
   def baseQuery: Query[T, Model[M], Seq]
 
-  def asDbModel(model: M, id: ObjId[M], time: ObjInstant): Model[M]
+  def asDbModel(model: M, id: ObjId[M], time: ObjOffsetDateTime): Model[M]
 
   /**
     * Creates the specified model in it's table.

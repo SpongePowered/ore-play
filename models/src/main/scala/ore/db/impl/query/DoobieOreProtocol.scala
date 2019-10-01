@@ -1,7 +1,7 @@
 package ore.db.impl.query
 
 import java.net.InetAddress
-import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -12,10 +12,10 @@ import scala.reflect.runtime.universe.TypeTag
 import ore.data.project.{Category, FlagReason}
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, DownloadType, Prompt}
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
 import ore.models.api.ApiKey
 import ore.models.project.{ReviewState, TagColor, Visibility}
-import ore.models.user.{LoggedAction, LoggedActionContext, User}
+import ore.models.user.{LoggedActionContext, LoggedActionType, User}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
 
@@ -112,12 +112,23 @@ trait DoobieOreProtocol {
 
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
     Meta[Long].timap(ObjId.apply[A])(_.value)
-  implicit val objInstantMeta: Meta[ObjInstant] = Meta[Instant].timap(ObjInstant.apply)(_.value)
 
-  implicit def modelRead[A](implicit raw: Read[(ObjId[A], ObjInstant, A)]): Read[Model[A]] = raw.map {
+  implicit val offsetDateTimeMeta: Meta[OffsetDateTime] =
+    Meta.Basic.one[OffsetDateTime](
+      JdbcType.TimestampWithTimezone,
+      List(JdbcType.Char, JdbcType.VarChar, JdbcType.LongVarChar, JdbcType.Date, JdbcType.Time, JdbcType.Timestamp),
+      _.getObject(_, classOf[OffsetDateTime]),
+      _.setObject(_, _, java.sql.JDBCType.TIMESTAMP_WITH_TIMEZONE),
+      _.updateObject(_, _, java.sql.JDBCType.TIME_WITH_TIMEZONE)
+    )
+
+  implicit val objOffsetDateTimeMeta: Meta[ObjOffsetDateTime] =
+    offsetDateTimeMeta.timap(ObjOffsetDateTime.apply)(_.value)
+
+  implicit def modelRead[A](implicit raw: Read[(ObjId[A], ObjOffsetDateTime, A)]): Read[Model[A]] = raw.map {
     case (id, time, obj) => Model(id, time, obj)
   }
-  implicit def modelWrite[A](implicit raw: Write[(ObjId[A], ObjInstant, A)]): Write[Model[A]] = raw.contramap {
+  implicit def modelWrite[A](implicit raw: Write[(ObjId[A], ObjOffsetDateTime, A)]): Write[Model[A]] = raw.contramap {
     case Model(id, createdAt, obj) => (id, createdAt, obj)
   }
 
@@ -151,6 +162,9 @@ trait DoobieOreProtocol {
   )(implicit meta: Meta[V]): Meta[E] =
     meta.timap[E](enum.withValue)(_.value)
 
+  def pgEnumEnumeratumMeta[E <: StringEnumEntry: TypeTag](typeName: String, enum: StringEnum[E]): Meta[E] =
+    pgEnumString(typeName, enum.withValue, _.value)
+
   implicit val colorMeta: Meta[Color]                       = enumeratumMeta(Color)
   implicit val tagColorMeta: Meta[TagColor]                 = enumeratumMeta(TagColor)
   implicit val roleTypeMeta: Meta[Role]                     = enumeratumMeta(Role)
@@ -160,8 +174,9 @@ trait DoobieOreProtocol {
   implicit val promptMeta: Meta[Prompt]                     = enumeratumMeta(Prompt)
   implicit val downloadTypeMeta: Meta[DownloadType]         = enumeratumMeta(DownloadType)
   implicit val visibilityMeta: Meta[Visibility]             = enumeratumMeta(Visibility)
-  implicit def loggedActionMeta[Ctx]: Meta[LoggedAction[Ctx]] =
-    enumeratumMeta(LoggedAction).asInstanceOf[Meta[LoggedAction[Ctx]]] // scalafix:ok
+  implicit def loggedActionTypeMeta[Ctx]: Meta[LoggedActionType[Ctx]] =
+    pgEnumEnumeratumMeta("LOGGED_ACTION_TYPE", LoggedActionType)
+      .asInstanceOf[Meta[LoggedActionType[Ctx]]] // scalafix:ok
   implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
     enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]] // scalafix:ok
   implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
@@ -193,19 +208,7 @@ trait DoobieOreProtocol {
       }
     )
 
-  implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumString[RoleCategory](
-    name = "ROLE_CATEGORY",
-    f = {
-      case "global"       => RoleCategory.Global
-      case "project"      => RoleCategory.Project
-      case "organization" => RoleCategory.Organization
-    },
-    g = {
-      case RoleCategory.Global       => "global"
-      case RoleCategory.Project      => "project"
-      case RoleCategory.Organization => "organization"
-    }
-  )
+  implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumEnumeratumMeta("ROLE_CATEGORY", RoleCategory)
 
   def metaFromGetPut[A](implicit get: Get[A], put: Put[A]): Meta[A] = new Meta(get, put)
 
@@ -227,8 +230,8 @@ trait DoobieOreProtocol {
     listPut.tcontramap(_.toList)
 
   implicit val userModelRead: Read[Model[User]] =
-    Read[ObjId[User] :: ObjInstant :: Option[String] :: String :: Option[String] :: Option[String] :: Option[
-      Instant
+    Read[ObjId[User] :: ObjOffsetDateTime :: Option[String] :: String :: Option[String] :: Option[String] :: Option[
+      OffsetDateTime
     ] :: List[Prompt] :: Boolean :: Option[Locale] :: HNil].map {
       case id :: createdAt :: fullName :: name :: email :: tagline :: joinDate :: readPrompts :: isLocked :: lang :: HNil =>
         Model(
@@ -249,9 +252,9 @@ trait DoobieOreProtocol {
     }
 
   implicit val userModelOptRead: Read[Option[Model[User]]] =
-    Read[Option[ObjId[User]] :: Option[ObjInstant] :: Option[String] :: Option[String] :: Option[String] :: Option[
+    Read[Option[ObjId[User]] :: Option[ObjOffsetDateTime] :: Option[String] :: Option[String] :: Option[String] :: Option[
       String
-    ] :: Option[Instant] :: Option[List[Prompt]] :: Option[Boolean] :: Option[
+    ] :: Option[OffsetDateTime] :: Option[List[Prompt]] :: Option[Boolean] :: Option[
       Locale
     ] :: HNil].map {
       case Some(id) :: Some(createdAt) :: fullName :: Some(name) :: email :: tagline :: joinDate :: Some(readPrompts) :: Some(

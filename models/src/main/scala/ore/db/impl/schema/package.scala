@@ -1,18 +1,18 @@
 package ore.db.impl
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
-import ore.db.{DbRef, Model, ObjId, ObjInstant}
+import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
 
 // Alias Slick's Tag type because we have our own Tag type
 package object schema {
 
-  def mkApply[A, Rest](restApply: Rest => A): ((Option[DbRef[A]], Option[Instant], Rest)) => Model[A] =
-    t => Model(ObjId.unsafeFromOption(t._1), ObjInstant.unsafeFromOption(t._2), restApply(t._3))
+  def mkApply[A, Rest](restApply: Rest => A): ((Option[DbRef[A]], Option[OffsetDateTime], Rest)) => Model[A] =
+    t => Model(ObjId.unsafeFromOption(t._1), ObjOffsetDateTime.unsafeFromOption(t._2), restApply(t._3))
 
   def mkUnapply[A, Rest](
       restUnapply: A => Option[Rest]
-  ): Model[A] => Option[(Option[DbRef[A]], Option[Instant], Rest)] = model => {
+  ): Model[A] => Option[(Option[DbRef[A]], Option[OffsetDateTime], Rest)] = model => {
     for {
       t <- Model.unapply(model)
       (id, time, inner) = t

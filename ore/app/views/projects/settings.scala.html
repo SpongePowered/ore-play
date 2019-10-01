@@ -68,15 +68,15 @@
                 <div class="panel-body">
                     @projects.helper.inputSettings(
                         form = "save",
-                        homepage = p.settings.homepage,
-                        issues = p.settings.issues,
-                        source = p.settings.source,
-                        support = p.settings.support,
-                        licenseName = p.settings.licenseName,
-                        licenseUrl = p.settings.licenseUrl,
+                        homepage = p.project.settings.homepage,
+                        issues = p.project.settings.issues,
+                        source = p.project.settings.source,
+                        support = p.project.settings.support,
+                        licenseName = p.project.settings.licenseName,
+                        licenseUrl = p.project.settings.licenseUrl,
                         selected = Some(p.project.category),
-                        forumSync = p.settings.forumSync,
-                        keywords = p.project.keywords
+                        forumSync = p.project.settings.forumSync,
+                        keywords = p.project.settings.keywords
                     )
 
                         <!-- Description -->

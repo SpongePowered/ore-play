@@ -2,7 +2,7 @@ package ore.models.project
 
 import scala.language.higherKinds
 
-import java.time.Instant
+import java.time.{Instant, OffsetDateTime, ZoneOffset}
 import java.util.Locale
 
 import ore.data.project.{Category, FlagReason, ProjectNamespace}
@@ -11,10 +11,11 @@ import ore.db.access._
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.common._
 import ore.db.impl.schema._
-import ore.db.impl.{ModelCompanionPartial, OrePostgresDriver}
+import ore.db.impl.{DefaultModelCompanion, OrePostgresDriver}
 import ore.member.{Joinable, MembershipDossier}
 import ore.models.admin.ProjectVisibilityChange
 import ore.models.api.ProjectApiKey
+import ore.models.project.Project.ProjectSettings
 import ore.models.statistic.ProjectView
 import ore.models.user.role.ProjectUserRole
 import ore.models.user.{User, UserOwned}
@@ -42,14 +43,12 @@ import slick.lifted.{Rep, TableQuery}
   * @param name                   Name of plugin
   * @param slug                   URL slug
   * @param recommendedVersionId   The ID of this project's recommended version
-  * @param starCount                  Star count
-  * @param viewCount                  View count
-  * @param downloadCount              How many times this project has been downloaded in total
+  * @param viewCount              View count
+  * @param downloadCount          How many times this project has been downloaded in total
   * @param topicId                ID of forum topic
   * @param postId                 ID of forum topic post ID
   * @param isTopicDirty           Whether this project's forum topic needs to be updated
   * @param visibility             Whether this project is visible to the default user
-  * @param lastUpdated            Instant of last version release
   * @param notes                  JSON notes
   */
 case class Project(
@@ -61,16 +60,14 @@ case class Project(
     recommendedVersionId: Option[DbRef[Version]] = None,
     category: Category = Category.Undefined,
     description: Option[String],
-    starCount: Long = 0,
     viewCount: Long = 0,
     downloadCount: Long = 0,
     topicId: Option[Int] = None,
     postId: Option[Int] = None,
     isTopicDirty: Boolean = false,
     visibility: Visibility = Visibility.Public,
-    lastUpdated: Instant = Instant.now(),
     notes: Json = Json.obj(),
-    keywords: List[String] = Nil
+    settings: ProjectSettings = ProjectSettings()
 ) extends Downloadable
     with Named
     with Describable
@@ -100,18 +97,23 @@ case class Project(
   */
 @JsonCodec case class Note(message: String, user: DbRef[User], time: Long = System.currentTimeMillis()) {
   def printTime(implicit locale: Locale): String =
-    StringLocaleFormatterUtils.prettifyDateAndTime(Instant.ofEpochMilli(time))
+    StringLocaleFormatterUtils.prettifyDateAndTime(OffsetDateTime.ofInstant(Instant.ofEpochMilli(time), ZoneOffset.UTC))
 }
 
-object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQuery[ProjectTableMain]) {
+object Project extends DefaultModelCompanion[Project, ProjectTable](TableQuery[ProjectTable]) {
+
+  case class ProjectSettings(
+      keywords: List[String] = Nil,
+      homepage: Option[String] = None,
+      issues: Option[String] = None,
+      source: Option[String] = None,
+      support: Option[String] = None,
+      licenseName: Option[String] = None,
+      licenseUrl: Option[String] = None,
+      forumSync: Boolean = true
+  )
 
   implicit val query: ModelQuery[Project] = ModelQuery.from(this)
-
-  override def asDbModel(
-      model: Project,
-      id: ObjId[Project],
-      time: ObjInstant
-  ): Model[Project] = Model(id, time, model.copy(lastUpdated = time))
 
   implicit val assocWatchersQuery: AssociationQuery[ProjectWatchersTable, Project, User] =
     AssociationQuery.from[ProjectWatchersTable, Project, User](TableQuery[ProjectWatchersTable])(_.projectId, _.userId)
@@ -152,7 +154,7 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
         .semiflatMap { vc =>
           service.update(vc)(
             _.copy(
-              resolvedAt = Some(Instant.now()),
+              resolvedAt = Some(OffsetDateTime.now()),
               resolvedBy = Some(creator)
             )
           )
@@ -220,8 +222,7 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
     private def setOwner(m: Model[Project])(user: Model[User]): F[Model[Project]] = {
       service.update(m)(
         _.copy(
-          ownerId = user.id,
-          ownerName = user.name
+          ownerId = user.id
         )
       )
     }
@@ -240,7 +241,7 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
       * @return Users watching project
       */
     def watchers[F[_]: ModelService: Functor]
-        : ParentAssociationAccess[ProjectWatchersTable, Project, User, ProjectTableMain, UserTable, F] =
+        : ParentAssociationAccess[ProjectWatchersTable, Project, User, ProjectTable, UserTable, F] =
       new ModelAssociationAccessImpl(OrePostgresDriver)(Project, User).applyParent(self.id)
 
     /**
@@ -250,24 +251,13 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
       * @return Users who have starred this project
       */
     def stars[F[_]: ModelService: Functor]
-        : ChildAssociationAccess[ProjectStarsTable, User, Project, UserTable, ProjectTableMain, F] =
-      new ModelAssociationAccessImpl[ProjectStarsTable, User, Project, UserTable, ProjectTableMain, F](
+        : ChildAssociationAccess[ProjectStarsTable, User, Project, UserTable, ProjectTable, F] =
+      new ModelAssociationAccessImpl[ProjectStarsTable, User, Project, UserTable, ProjectTable, F](
         OrePostgresDriver
       )(
         User,
         Project
       ).applyChild(self.id)
-
-    /**
-      * Returns this [[Project]]'s [[ProjectSettings]].
-      *
-      * @return Project settings
-      */
-    def settings[F[_]](implicit service: ModelService[F], F: MonadError[F, Throwable]): F[Model[ProjectSettings]] =
-      ModelView
-        .now(ProjectSettings)
-        .find(_.projectId === self.id.value)
-        .getOrElseF(F.raiseError(new NoSuchElementException("Get on None")))
 
     /**
       * Returns this Project's recommended version.
@@ -290,10 +280,10 @@ object Project extends ModelCompanionPartial[Project, ProjectTableMain](TableQue
       for {
         contains <- self.stars.contains(user.id)
         res <- if (contains)
-          self.stars.removeAssoc(user.id) *> service.update(self)(_.copy(starCount = self.starCount - 1))
+          self.stars.removeAssoc(user.id)
         else
-          self.stars.addAssoc(user.id) *> service.update(self)(_.copy(starCount = self.starCount + 1))
-      } yield res
+          self.stars.addAssoc(user.id)
+      } yield self
 
     /**
       * Returns the record of unique Project views.

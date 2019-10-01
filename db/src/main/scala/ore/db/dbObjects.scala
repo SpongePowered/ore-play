@@ -2,7 +2,7 @@ package ore.db
 
 import scala.language.implicitConversions
 
-import java.time.Instant
+import java.time.OffsetDateTime
 
 sealed trait DbInitialized[+A] {
   def value: A
@@ -45,11 +45,11 @@ object ObjId {
   }
 }
 
-sealed trait ObjInstant extends DbInitialized[Instant] {
+sealed trait ObjOffsetDateTime extends DbInitialized[OffsetDateTime] {
 
   override def equals(other: Any): Boolean = other match {
-    case that: ObjInstant => value == that.value
-    case _                => false
+    case that: ObjOffsetDateTime => value == that.value
+    case _                       => false
   }
 
   override def hashCode(): Int = {
@@ -57,22 +57,22 @@ sealed trait ObjInstant extends DbInitialized[Instant] {
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
-object ObjInstant {
-  implicit def unwrapObjTimestamp(objTimestamp: ObjInstant): Instant = objTimestamp.value
+object ObjOffsetDateTime {
+  implicit def unwrapObjTimestamp(objTimestamp: ObjOffsetDateTime): OffsetDateTime = objTimestamp.value
 
-  object UnsafeUninitialized extends ObjInstant {
+  object UnsafeUninitialized extends ObjOffsetDateTime {
     override def value: Nothing                  = sys.error("Tried to access uninitialized ObjTimestamp. This should be impossible")
     override def unsafeToOption: Option[Nothing] = None
   }
 
-  private class RealObjInstant(val value: Instant) extends ObjInstant {
-    override def unsafeToOption: Option[Instant] = Some(value)
+  private class RealObjOffsetDateTime(val value: OffsetDateTime) extends ObjOffsetDateTime {
+    override def unsafeToOption: Option[OffsetDateTime] = Some(value)
   }
 
-  def apply(timestamp: Instant): ObjInstant = new RealObjInstant(timestamp)
+  def apply(timestamp: OffsetDateTime): ObjOffsetDateTime = new RealObjOffsetDateTime(timestamp)
 
-  def unsafeFromOption(option: Option[Instant]): ObjInstant = option match {
-    case Some(time) => ObjInstant(time)
+  def unsafeFromOption(option: Option[OffsetDateTime]): ObjOffsetDateTime = option match {
+    case Some(time) => ObjOffsetDateTime(time)
     case None       => UnsafeUninitialized
   }
 }

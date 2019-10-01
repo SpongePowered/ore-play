@@ -6,12 +6,14 @@ import ore.OreConfig
 import ore.auth.SpongeAuthApi
 import ore.data.user.notification.NotificationType
 import ore.db.access.ModelView
+import ore.db.impl.OrePostgresDriver.api._
+import ore.db.impl.schema.{OrganizationTable, UserTable}
 import ore.db.{DbRef, Model, ModelService, ObjId}
 import ore.models.organization.Organization
 import ore.models.user.role.OrganizationUserRole
 import ore.models.user.{Notification, User}
 import ore.permission.role.Role
-import ore.util.{OreMDC, StringUtils}
+import ore.util.OreMDC
 import util.syntax._
 
 import cats.Parallel
@@ -20,6 +22,7 @@ import cats.effect.Sync
 import cats.syntax.all._
 import cats.tagless.autoFunctorK
 import com.typesafe.scalalogging
+import slick.lifted.TableQuery
 
 @autoFunctorK
 trait OrganizationBase[+F[_]] {
@@ -57,8 +60,7 @@ object OrganizationBase {
       config: OreConfig,
       auth: SpongeAuthApi[F],
       F: Sync[F],
-      par: Parallel[F, G],
-      users: UserBase[F]
+      par: Parallel[F, G]
   ) extends OrganizationBase[F] {
 
     private val Logger    = scalalogging.Logger("Organizations")
@@ -99,7 +101,14 @@ object OrganizationBase {
           // reference to the Sponge user ID, the organization's username and a
           // reference to the User owner of the organization.
           MDCLogger.info("Creating on Ore...")
-          service.insert(Organization(id = ObjId(spongeUser.id), username = name, ownerId = ownerId))
+          service.insert(
+            Organization(
+              id = ObjId(spongeUser.id),
+              userId = spongeUser.id,
+              ownerId = ownerId,
+              name = spongeUser.username
+            )
+          )
         }
         .semiflatMap { org =>
           // Every organization model has a regular User companion. Organizations
@@ -131,7 +140,7 @@ object OrganizationBase {
                       userId = role.userId,
                       originId = Some(org.id),
                       notificationType = NotificationType.OrganizationInvite,
-                      messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, org.username)
+                      messageArgs = NonEmptyList.of("notification.organization.invite", role.role.title, userOrg.name)
                     )
                   )
                 }
@@ -152,8 +161,7 @@ object OrganizationBase {
       * @return     Organization with name if exists, None otherwise
       */
     def withName(name: String): F[Option[Model[Organization]]] =
-      ModelView.now(Organization).find(StringUtils.equalsIgnoreCase(_.name, name)).value
-
+      ModelView.now(Organization).find(_.name.toLowerCase === name.toLowerCase).value
   }
 
   def apply[F[_]](implicit organizationBase: OrganizationBase[F]): OrganizationBase[F] = organizationBase

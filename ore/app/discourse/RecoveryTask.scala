@@ -8,7 +8,7 @@ import scala.concurrent.duration.FiniteDuration
 import ore.db.ModelService
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.schema.{ProjectTableMain, VersionTable}
+import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.models.project.{Project, Version, Visibility}
 import util.TaskUtils
 
@@ -32,14 +32,14 @@ class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, 
 
   private val projectTopicFilter = ModelFilter(Project)(_.topicId.isEmpty)
   private val projectDirtyFilter = ModelFilter(Project)(_.isTopicDirty)
-  private val visibleFilter      = Visibility.isPublicFilter[ProjectTableMain]
+  private val visibleFilter      = Visibility.isPublicFilter[ProjectTable]
 
   private val toCreateProjects = ModelView.raw(Project).filter(projectTopicFilter && visibleFilter).to[Vector]
   private val dirtyTopicProjects =
     ModelView.raw(Project).filter(!projectTopicFilter && projectDirtyFilter && visibleFilter).to[Vector]
 
   private val versionsQueryBase = for {
-    (version, project) <- TableQuery[VersionTable].join(TableQuery[ProjectTableMain]).on(_.projectId === _.id)
+    (version, project) <- TableQuery[VersionTable].join(TableQuery[ProjectTable]).on(_.projectId === _.id)
     if version.createForumPost
     if visibleFilter(project)
   } yield (project, version)
