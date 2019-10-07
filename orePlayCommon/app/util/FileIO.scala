@@ -4,12 +4,12 @@ import scala.language.higherKinds
 
 import java.nio.file.Path
 
-import cats.tagless.InvariantK
-import cats.{Traverse, ~>}
+import cats.{Applicative, Defer, Traverse, ~>}
+import cats.effect.{Bracket, Resource}
 
-trait FileIO[F[_]] {
+trait FileIO[F[_]] { self =>
 
-  def list(path: Path): F[Stream[Path]]
+  def list(path: Path): Resource[F, Stream[Path]]
 
   def exists(path: Path): F[Boolean]
 
@@ -28,30 +28,31 @@ trait FileIO[F[_]] {
   def traverseLimited[G[_]: Traverse, A, B](fs: G[A])(f: A => F[B]): F[List[B]]
 
   def executeBlocking[A](block: => A): F[A]
-}
-object FileIO {
-  implicit val fileIOInvariantK: InvariantK[FileIO] = new InvariantK[FileIO] {
-    override def imapK[F[_], G[_]](af: FileIO[F])(fk: F ~> G)(gK: G ~> F): FileIO[G] = new FileIO[G] {
-      override def list(path: Path): G[Stream[Path]] = fk(af.list(path))
 
-      override def exists(path: Path): G[Boolean] = fk(af.exists(path))
+  def imapK[G[_]](
+      f: F ~> G,
+      g: G ~> F
+  )(implicit F: Bracket[F, Throwable], GD: Defer[G], GA: Applicative[G]): FileIO[G] =
+    new FileIO[G] {
+      override def list(path: Path): Resource[G, Stream[Path]] = self.list(path).mapK(f)
 
-      override def notExists(path: Path): G[Boolean] = fk(af.notExists(path))
+      override def exists(path: Path): G[Boolean] = f(self.exists(path))
 
-      override def isDirectory(path: Path): G[Boolean] = fk(af.isDirectory(path))
+      override def notExists(path: Path): G[Boolean] = f(self.notExists(path))
 
-      override def createDirectories(path: Path): G[Unit] = fk(af.createDirectories(path))
+      override def isDirectory(path: Path): G[Boolean] = f(self.isDirectory(path))
 
-      override def move(from: Path, to: Path): G[Unit] = fk(af.move(from, to))
+      override def createDirectories(path: Path): G[Unit] = f(self.createDirectories(path))
 
-      override def delete(path: Path): G[Unit] = fk(af.delete(path))
+      override def move(from: Path, to: Path): G[Unit] = f(self.move(from, to))
 
-      override def deleteIfExists(path: Path): G[Unit] = fk(af.deleteIfExists(path))
+      override def delete(path: Path): G[Unit] = f(self.delete(path))
 
-      override def traverseLimited[T[_]: Traverse, A, B](fs: T[A])(f: A => G[B]): G[List[B]] =
-        fk(af.traverseLimited(fs)(a => gK(f(a))))
+      override def deleteIfExists(path: Path): G[Unit] = f(self.deleteIfExists(path))
 
-      override def executeBlocking[A](block: => A): G[A] = fk(af.executeBlocking(block))
+      override def traverseLimited[H[_]: Traverse, A, B](fs: H[A])(h: A => G[B]): G[List[B]] =
+        f(self.traverseLimited(fs)(a => g(h(a))))
+
+      override def executeBlocking[A](block: => A): G[A] = f(self.executeBlocking(block))
     }
-  }
 }

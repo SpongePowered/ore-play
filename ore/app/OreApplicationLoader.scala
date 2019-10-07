@@ -52,8 +52,9 @@ import ErrorHandler.OreHttpErrorHandler
 import akka.actor.ActorSystem
 import cats.arrow.FunctionK
 import cats.effect.{ContextShift, Resource}
+import cats.tagless.FunctorK
 import cats.tagless.syntax.all._
-import cats.~>
+import cats.{Defer, ~>}
 import com.softwaremill.macwire._
 import com.typesafe.scalalogging.Logger
 import doobie.{ExecutionContexts, KleisliInterpreter, Transactor}
@@ -83,6 +84,8 @@ class OreComponents(context: ApplicationLoader.Context)
     with SlickComponents
     with SlickEvolutionsComponents
     with EvolutionsComponents {
+  import OreComponents.zioDefer
+
   val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
   lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]
@@ -147,14 +150,16 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val config: OreConfig                              = wire[OreConfig]
   implicit lazy val env: OreEnv                                    = wire[OreEnv]
   implicit lazy val markdownRenderer: MarkdownRenderer             = wire[FlexmarkRenderer]
-  implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, ?]] = ZIOFileIO(config)
+  implicit lazy val fileIORaw: FileIO[ZIO[Blocking, Throwable, *]] = ZIOFileIO(config)
 
-  implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, ?]] = fileIORaw.imapK(OreComponents.orDieFnK[Blocking])(
-    OreComponents.upcastFnK[ZIO[Blocking, Nothing, ?], ZIO[Blocking, Throwable, ?]]
+  implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, *]] = fileIORaw.imapK(
+    OreComponents.orDieFnK[Blocking],
+    OreComponents.upcastFnK[ZIO[Blocking, Nothing, *], ZIO[Blocking, Throwable, ?]]
   )
 
-  implicit lazy val projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]] =
-    wire[ProjectFiles.LocalProjectFiles[ZIO[Blocking, Nothing, ?]]]
+  implicit lazy val projectFiles: ProjectFiles[ZIO[Blocking, Nothing, *]] =
+    (wire[ProjectFiles.LocalProjectFiles[ZIO[Blocking, Throwable, *]]]: ProjectFiles[ZIO[Blocking, Throwable, *]])
+      .mapK(OreComponents.orDieFnK[Blocking])
 
   implicit val transactor: Transactor[Task] = {
     val cs = ContextShift[Task]
@@ -253,16 +258,18 @@ class OreComponents(context: ApplicationLoader.Context)
     implicit val providedProjectFiles: ProjectFiles[Task] =
       projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.Environment))
 
-    implicit val throwableFileIO: FileIO[Task] = fileIO.imapK(new FunctionK[ZIO[Blocking, Nothing, ?], Task] {
-      override def apply[A](fa: ZIO[Blocking, Nothing, A]): Task[A] = fa.provide(runtime.Environment)
-    })(new FunctionK[Task, ZIO[Blocking, Nothing, ?]] {
-      override def apply[A](fa: Task[A]): ZIO[Blocking, Nothing, A] = fa.orDie
-    })
+    implicit lazy val fileIOTask: FileIO[Task] =
+      fileIORaw.imapK(
+        new FunctionK[ZIO[Blocking, Throwable, *], Task] {
+          def apply[A](fa: ZIO[Blocking, Throwable, A]): Task[A] = fa.provide(runtime.Environment)
+        },
+        OreComponents.upcastFnK[Task, ZIO[Blocking, Throwable, *]]
+      )
 
     // Schrodinger's values, are both used and not used at the same time.
     // Trying to observe if they are will collapse the compile state into an error.
     use(providedProjectFiles)
-    use(throwableFileIO)
+    use(fileIOTask)
 
     (wire[ProjectBase.ProjectBaseF[Task, ParTask]]: ProjectBase[Task]).mapK(taskToUIO)
   }
@@ -328,4 +335,8 @@ object OreComponents {
     new FunctionK[ZIO[R, Throwable, ?], ZIO[R, Nothing, ?]] {
       override def apply[A](fa: ZIO[R, Throwable, A]): ZIO[R, Nothing, A] = fa.orDie
     }
+
+  implicit def zioDefer[R, E]: Defer[ZIO[R, E, *]] = new Defer[ZIO[R, E, *]] {
+    override def defer[A](fa: => ZIO[R, E, A]): ZIO[R, E, A] = ZIO.suspend(fa)
+  }
 }
