@@ -1,7 +1,7 @@
 import com.typesafe.sbt.web.js.JS
 
 lazy val commonSettings = Seq(
-  version := "1.8.2",
+  version := "2.0.0-M1",
   scalaVersion := "2.12.8",
   scalacOptions ++= Seq(
     "-deprecation",
