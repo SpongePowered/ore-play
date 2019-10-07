@@ -1,0 +1,419 @@
+# Routes
+# This file defines all API V2 routes (Higher priority routes first)
+# ~~~~
+
+###
+#  summary: Creates an API session
+#  description: >-
+#    Creates a new API session. Pass an API key to create an authenticated
+#    session, pass an API key in the Authorization header, to create a public session,
+#    don't pass an Authorization header.
+#  tags:
+#    - Authentification
+#  security:
+#    - Key: []
+#    - {}
+#  parameters:
+#    - name: fake
+#      description: Used in testing. Can normally be ignored.
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ReturnedApiSession'
+#
+#    401:
+#      description: Api key missing or invalid
+#      headers:
+#        WWW_Authenticate:
+#          schema:
+#            type: string
+###
++nocsrf
+POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate(fake: Boolean ?= false)
+
+### NoDocs ###
+POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
+
+###
+#  summary: Creates an API key
+#  description: Creates an API key. Requires the `edit_api_keys` permission.
+#  tags:
+#    - Keys
+#  requestBody:
+#    required: true
+#    content:
+#      application/json:
+#        schema:
+#          $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.KeyToCreate'
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.CreatedApiKey'
+#
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
++nocsrf
+POST    /keys                                                @controllers.apiv2.ApiV2Controller.createKey()
+
+###
+#  summary: Delete an API key
+#  description: Delete an API key. Requires the `edit_api_keys` permission.
+#  tags:
+#    - Keys
+#  parameters:
+#    - name: name
+#      description: The name of the key to delete
+#  responses:
+#    204:
+#      description: Key deleted
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
++nocsrf
+DELETE  /keys                                                @controllers.apiv2.ApiV2Controller.deleteKey(name)
+
+
+
+###
+#  summary: Checks your permissions
+#  description: Checks your permissions with a given session in a given context
+#  tags:
+#    - Permissions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: organizationName
+#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.KeyPermissions'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
+GET     /permissions                                         @controllers.apiv2.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
+
+###
+#  summary: Do an AND permission check
+#  description: Checks that you have all the permissions passed in with a given session in a given context
+#  tags:
+#    - Permissions
+#  parameters:
+#    - name: permissions
+#      description: The permissions to check
+#    - name: pluginId
+#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: organizationName
+#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PermissionCheck'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
+GET     /permissions/hasAll                                  @controllers.apiv2.ApiV2Controller.hasAll(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
+
+###
+#  summary: Do an OR permission check
+#  description: Checks that you have any of the permissions passed in with a given session in a given context
+#  tags:
+#    - Permissions
+#  parameters:
+#    - name: permissions
+#      description: The permissions to check
+#    - name: pluginId
+#      description: The plugin to check permissions in. Must not be used together with `organizationName`
+#    - name: organizationName
+#      description: The organization to check permissions in. Must not be used together with `pluginId`
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PermissionCheck'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+###
+GET     /permissions/hasAny                                  @controllers.apiv2.ApiV2Controller.hasAny(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
+
+
+
+###
+#  summary: Searches the projects on Ore
+#  description: Searches all the projects on ore, or for a single user. Requires the `view_public_info` permission.
+#  tags:
+#    - Projects
+#  parameters:
+#    - name: q
+#      description: The query to use when searching
+#    - name: categories
+#      description: Restrict your search to a list of categories
+#      required: false
+#    - name: tags
+#      required: false
+#      description: A list of tags all the returned projects should have. Should be formated either as `tagname` or `tagname:tagdata`.
+#    - name: owner
+#      description: Limit the search to a specific user
+#    - name: sort
+#      description: How to sort the projects
+#    - name: relevance
+#      description: If how relevant the project is to the given query should be used when sorting the projects
+#    - name: limit
+#      description: The maximum amount of projects to return
+#    - name: offset
+#      description: Where to start searching
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedProjectResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /projects                                            @controllers.apiv2.ApiV2Controller.listProjects(q: Option[String], categories: Seq[Category], tags: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+
+###
+#  summary: Returns info on a specific project
+#  description: Returns info on a specific project. Requires the `view_public_info` permission.
+#  tags:
+#    - Projects
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Project'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /projects/:pluginId                                  @controllers.apiv2.ApiV2Controller.showProject(pluginId)
+
+###
+#  summary: Returns the members of a project
+#  description: Returns the members of a project. Requires the `view_public_info` permission.
+#  tags:
+#    - Projects
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return members for
+#    - name: limit
+#      description: The maximum amount of members to return
+#    - name: offset
+#      description: Where to start returning
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.ProjectMember'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /projects/:pluginId/members                          @controllers.apiv2.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
+
+
+
+###
+#  summary: Returns the versions of a project
+#  description: Returns the versions of a project. Requires the `view_public_info` permission in the project or owning organization.
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return versions for
+#    - name: tags
+#      required: false
+#      description: A list of tags all the returned versions should have. Should be formated either as `tagname` or `tagname:tagdata`.
+#    - name: limit
+#      description: The maximum amount of versions to return
+#    - name: offset
+#      description: Where to start returning
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedVersionResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+
+###
+#  summary: Returns a specific version of a project
+#  description: Returns a specific version of a project. Requires the `view_public_info` permission in the project or owning organization.
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return the version for
+#    - name: name
+#      description: The name of the version to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Version'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.showVersion(pluginId, name)
+
+###
+#  summary: Creates a new version
+#  description: Creates a new version for a project. Requires the `create_version` permission in the project or owning organization.
+#  tags:
+#    - Versions
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to create the version for
+#  requestBody:
+#    required: true
+#    content:
+#      multipart/form-data:
+#        schema:
+#          type: object
+#          properties:
+#            plugin-info:
+#              $ref: '#/components/schemas/DeployVersionInfo'
+#            plugin-file:
+#              type: string
+#              format: binary
+#              description: The jar/zip file to upload
+#        encoding:
+#          plugin-info:
+#            contentType: application/json, application/octet-stream
+#  responses:
+#    201:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ReturnedApiSession'
+#
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
++nocsrf
+POST    /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.deployVersion(pluginId)
+
+#GET     /projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
+
+###
+#  summary: Gets a specific user
+#  description: Gets a specific user. Requires the `view_public_info` permission.
+#  tags:
+#    - Users
+#  parameters:
+#    - name: user
+#      description: The user to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.User'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /users/:user                                         @controllers.apiv2.ApiV2Controller.showUser(user)
+
+###
+#  summary: Gets the starred projects for a specific user
+#  description: Gets the starred projects for a specific user. Requires the `view_public_info` permission.
+#  tags:
+#    - Users
+#  parameters:
+#    - name: user
+#      description: The user to return for
+#    - name: sort
+#      description: How to sort the projects
+#    - name: limit
+#      description: The maximum amount of projects to return
+#    - name: offset
+#      description: Where to start searching
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /users/:user/starred                                 @controllers.apiv2.ApiV2Controller.showStarred(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)
+
+###
+#  summary: Gets the watched projects for a specific user
+#  description: Gets the watched projects for a specific user. Requires the `view_public_info` permission.
+#  tags:
+#    - Users
+#  parameters:
+#    - name: user
+#      description: The user to return for
+#    - name: sort
+#      description: How to sort the projects
+#    - name: limit
+#      description: The maximum amount of projects to return
+#    - name: offset
+#      description: Where to start searching
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /users/:user/watching                                @controllers.apiv2.ApiV2Controller.showWatching(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)

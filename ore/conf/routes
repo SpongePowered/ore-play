@@ -1,0 +1,189 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+GET     /*path/                                                     @controllers.Application.removeTrail(path)
+GET     /assets/*file                                               controllers.Assets.versioned(path="/public", file: Asset)
+
+# ---------- Admin ----------
+
+GET     /admin/user/:user                                           @controllers.Application.userAdmin(user)
+POST    /admin/user/:user/update                                    @controllers.Application.updateUser(user)
+GET     /admin/approval/versions                                    @controllers.Application.showQueue()
+GET     /admin/approval/projects                                    @controllers.Application.showProjectVisibility()
+GET     /admin/flags                                                @controllers.Application.showFlags()
+GET     /admin/flags/:id/resolve/:resolved                          @controllers.Application.setFlagResolved(id: DbRef[Flag], resolved: Boolean)
+GET     /admin/health                                               @controllers.Application.showHealth()
+GET     /admin/activities/:user                                     @controllers.Application.showActivities(user: String)
+GET     /admin/stats                                                @controllers.Application.showStats(from: Option[String], to: Option[String])
+GET     /admin/log                                                  @controllers.Application.showLog(page: Option[Int], userFilter: Option[DbRef[User]], projectFilter: Option[DbRef[Project]], versionFilter: Option[DbRef[Version]], pageFilter: Option[DbRef[Page]], actionFilter: Option[Int], subjectFilter: Option[DbRef[_]])
+
+GET     /statusz                                                    @controllers.ApiV1Controller.showStatusZ()
+
+# ---------- API (v1) ----------
++nocsrf
+POST    /api/sync_sso                                               @controllers.ApiV1Controller.syncSso()
+
+POST    /api/v1/projects/:pluginId/keys/new                         @controllers.ApiV1Controller.createKey(pluginId)
+POST    /api/v1/projects/:pluginId/keys/revoke                      @controllers.ApiV1Controller.revokeKey(pluginId)
+
+GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
+GET     /api/projects/:pluginId/versions/:name/download             @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
+GET     /api/v1/projects/:pluginId/versions/recommended/download    @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
+GET     /api/v1/projects/:pluginId/versions/:name/download          @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
+
+GET     /api/v1/projects                                            @controllers.ApiV1Controller.listProjects(categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
+GET     /api/v1/projects/:pluginId                                  @controllers.ApiV1Controller.showProject(pluginId)
+
+GET     /api/v1/projects/:pluginId/versions                         @controllers.ApiV1Controller.listVersions(pluginId, channels: Option[String], limit: Option[Int], offset: Option[Int])
+GET     /api/v1/projects/:pluginId/versions/:name                   @controllers.ApiV1Controller.showVersion(pluginId, name)
+POST    /api/v1/projects/:pluginId/versions/:name                   @controllers.ApiV1Controller.deployVersion(pluginId, name)
+
+GET     /api/v1/projects/:pluginId/pages                            @controllers.ApiV1Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
+
+GET     /api/v1/users                                               @controllers.ApiV1Controller.listUsers(limit: Option[Int], offset: Option[Int])
+GET     /api/v1/users/:user                                         @controllers.ApiV1Controller.showUser(user)
+
+GET     /api/v1/projects/:plugin/tags/:versionName                  @controllers.ApiV1Controller.listTags(plugin, versionName)
+GET     /api/v1/tags/:tagId                                         @controllers.ApiV1Controller.tagColor(tagId)
+
+GET     /api                                                        @controllers.Application.swagger()
+->      /api/v2                                                     apiv2.Routes
+
+# ---------- Application ----------
+
+GET     /                                                           @controllers.Application.showHome()
+GET     /linkout                                                    @controllers.Application.linkOut(remoteUrl: String)
+GET     /signup                                                     @controllers.Users.signUp()
+GET     /login                                                      @controllers.Users.logIn(sso: Option[String], sig: Option[String], returnUrl: Option[String])
+GET     /logout                                                     @controllers.Users.logOut()
+POST    /verify                                                     @controllers.Users.verify(returnPath: Option[String])
+GET     /javascriptRoutes                                           @controllers.Application.javascriptRoutes
+GET     /global-sitemap.xml                                         @controllers.Application.globalSitemap
+GET     /sitemap.xml                                                @controllers.Application.sitemapIndex()
+GET     /robots.txt                                                 @controllers.Application.robots()
+
+# ---------- Projects ----------
+
+GET     /new                                                        @controllers.project.Projects.showCreator()
+POST    /new                                                        @controllers.project.Projects.createProject()
+
+POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: DbRef[ProjectUserRole], status)
+POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String)
+
+POST    /pages/preview                                              @controllers.project.Pages.showPreview()
+
+# ---------- Organizations ----------
+
+GET     /organizations/new                                          @controllers.Organizations.showCreator()
+POST    /organizations/new                                          @controllers.Organizations.create()
+
+POST    /organizations/invite/:id/:status                           @controllers.Organizations.setInviteStatus(id: DbRef[OrganizationUserRole], status)
+
+GET     /organizations/:organization/settings/avatar                @controllers.Organizations.updateAvatar(organization)
+POST    /organizations/:organization/settings/members               @controllers.Organizations.updateMembers(organization)
+POST    /organizations/:organization/settings/members/remove        @controllers.Organizations.removeMember(organization)
+
+# ---------- Users ----------
+GET     /authors                                                    @controllers.Users.showAuthors(sort: Option[String], page: Option[Int])
+GET     /staff                                                      @controllers.Users.showStaff(sort: Option[String], page: Option[Int])
+
+GET     /notifications                                              @controllers.Users.showNotifications(notificationFilter: Option[String], inviteFilter: Option[String])
+POST    /notifications/read/:id                                     @controllers.Users.markNotificationRead(id: DbRef[Notification])
+
+POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: Int)
+
+GET     /:user                                                      @controllers.Users.showProjects(user, page: Option[Int])
+GET     /:user/sitemap.xml                                          @controllers.Users.userSitemap(user)
+POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)
+POST    /:user/settings/lock/:locked                                @controllers.Users.setLocked(user, locked: Boolean, sso: Option[String], sig: Option[String])
+GET     /:user/settings/apiKeys                                     @controllers.Users.editApiKeys(user)
+# -------- End Users --------
+
+GET     /:author/:slug                                              @controllers.project.Projects.show(author, slug)
+GET     /:author/:slug/stars                                        @controllers.project.Projects.showStargazers(author, slug, page: Option[Int])
+POST    /:author/:slug/stars/toggle                                 @controllers.project.Projects.toggleStarred(author, slug)
+POST    /:author/:slug/flag                                         @controllers.project.Projects.flag(author, slug)
+POST    /:author/:slug/visible/:visibility                          @controllers.project.Projects.setVisible(author, slug, visibility: Int)
+GET     /:author/:slug/watchers                                     @controllers.project.Projects.showWatchers(author, slug, page: Option[Int])
+POST    /:author/:slug/watchers/:watching                           @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
+
+GET     /:author/:slug/discuss                                      @controllers.project.Projects.showDiscussion(author, slug)
+POST    /:author/:slug/discuss/reply                                @controllers.project.Projects.postDiscussionReply(author, slug)
+
+GET     /:author/:slug/manage                                       @controllers.project.Projects.showSettings(author, slug)
+GET     /:author/:slug/manage/sendforapproval                       @controllers.project.Projects.sendForApproval(author, slug)
+POST    /:author/:slug/manage/save                                  @controllers.project.Projects.save(author, slug)
+POST    /:author/:slug/manage/rename                                @controllers.project.Projects.rename(author, slug)
+POST    /:author/:slug/manage/hardDelete                            @controllers.project.Projects.delete(author, slug)
+POST    /:author/:slug/manage/delete                                @controllers.project.Projects.softDelete(author, slug)
+POST    /:author/:slug/manage/members/remove                        @controllers.project.Projects.removeMember(author, slug)
+
+GET     /:author/:slug/versionLog                                   @controllers.project.Versions.showLog(author, slug, versionString)
+GET     /:author/:slug/flags                                        @controllers.project.Projects.showFlags(author, slug)
+GET     /:author/:slug/notes                                        @controllers.project.Projects.showNotes(author, slug)
+POST    /:author/:slug/notes/addmessage                             @controllers.project.Projects.addMessage(author, slug)
+
+GET     /:author/:slug/icon                                         @controllers.project.Projects.showIcon(author, slug)
+POST    /:author/:slug/icon                                         @controllers.project.Projects.uploadIcon(author, slug)
+POST    /:author/:slug/icon/reset                                   @controllers.project.Projects.resetIcon(author, slug)
+GET     /:author/:slug/icon/pending                                 @controllers.project.Projects.showPendingIcon(author, slug)
+# ------- End Projects ---------
+
+
+# ---------- Pages ----------
+
+GET     /:author/:slug/pages/*page/edit                             @controllers.project.Pages.showEditor(author, slug, page)
+POST    /:author/:slug/pages/*page/edit                             @controllers.project.Pages.save(author, slug, page)
+POST    /:author/:slug/pages/*page/delete                           @controllers.project.Pages.delete(author, slug, page)
+GET     /:author/:slug/pages/*page                                  @controllers.project.Pages.show(author, slug, page)
+
+
+# ---------- Channels ----------
+
+GET     /:author/:slug/channels                                     @controllers.project.Channels.showList(author, slug)
+POST    /:author/:slug/channels                                     @controllers.project.Channels.create(author, slug)
+POST    /:author/:slug/channels/:channel                            @controllers.project.Channels.save(author, slug, channel)
+POST    /:author/:slug/channels/:channel/delete                     @controllers.project.Channels.delete(author, slug, channel)
+
+
+# ---------- Versions ----------
+
+GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug)
+
+POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version, partial: Boolean = false)
+POST    /:author/:slug/versions/:version/approvePartial             @controllers.project.Versions.approve(author, slug, version, partial: Boolean = true)
+POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)
+POST    /:author/:slug/versions/:version/restore                    @controllers.project.Versions.restore(author, slug, version)
+POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
+
+GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean], dummy: Option[String])
++nocsrf
+POST    /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.confirmDownload(author, slug, version, downloadType: Option[Int], token: Option[String], dummy: Option[String])
+
+GET     /:author/:slug/versions/recommended/download                @controllers.project.Versions.downloadRecommended(author, slug, token: Option[String])
+GET     /:author/:slug/versions/:version/download                   @controllers.project.Versions.download(author, slug, version, token: Option[String])
+
+GET     /:author/:slug/versions/recommended/jar                     @controllers.project.Versions.downloadRecommendedJar(author, slug, token: Option[String])
+GET     /:author/:slug/versions/:version/jar                        @controllers.project.Versions.downloadJar(author, slug, version, token: Option[String])
+
+GET     /:author/:slug/versions/new                                 @controllers.project.Versions.showCreator(author, slug)
+POST    /:author/:slug/versions/new/upload                          @controllers.project.Versions.upload(author, slug)
+GET     /:author/:slug/versions/new/:version                        @controllers.project.Versions.showCreatorWithMeta(author, slug, version)
+
+POST    /:author/:slug/versions/:version                            @controllers.project.Versions.publish(author, slug, version)
+GET     /:author/:slug/versions/:version                            @controllers.project.Versions.show(author, slug, version)
+POST    /:author/:slug/versions/:version/save                       @controllers.project.Versions.saveDescription(author, slug, version)
+POST    /:author/:slug/versions/:version/recommended                @controllers.project.Versions.setRecommended(author, slug, version)
+
+
+# ---------- Reviews ----------
+GET     /:author/:slug/versions/:version/reviews                    @controllers.Reviews.showReviews(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/init               @controllers.Reviews.createReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/stop               @controllers.Reviews.stopReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/approve            @controllers.Reviews.approveReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/takeover           @controllers.Reviews.takeoverReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/addmessage         @controllers.Reviews.addMessage(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/edit/:review       @controllers.Reviews.editReview(author, slug, version, review: DbRef[Review])
+POST    /:author/:slug/versions/:version/reviews/reopen             @controllers.Reviews.reopenReview(author, slug, version)
+POST    /:author/:slug/versions/:version/reviews/reviewtoggle       @controllers.Reviews.backlogToggle(author, slug, version)

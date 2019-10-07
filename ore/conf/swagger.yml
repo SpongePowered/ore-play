@@ -1,0 +1,106 @@
+openapi: 3.0.0
+info:
+  title: "Ore API"
+  description: "Ore REST API"
+
+servers:
+  - url: /api/v2
+
+components:
+  schemas:
+    DeployVersionInfo:
+      description: Information about the version to create. Can be passed either as a file, or a string.
+      properties:
+        recommended:
+          type: boolean
+        create_forum_post:
+          type: boolean
+        description:
+          type: string
+        tags:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - tags
+    NamedPermission:
+      type: string
+      enum:
+        - view_public_info
+        - edit_own_user_settings
+        - edit_api_keys
+        - edit_subject_settings
+        - manage_subject_members
+        - is_subject_owner
+        - create_project
+        - edit_page
+        - delete_project
+        - create_version
+        - edit_version
+        - delete_version
+        - edit_tags
+        - create_organization
+        - post_as_organization
+        - mod_notes_and_flags
+        - see_hidden
+        - is_staff
+        - reviewer
+        - view_health
+        - view_ip
+        - view_stats
+        - view_logs
+        - manual_value_changes
+        - hard_delete_project
+        - hard_delete_version
+        - edit_all_user_settings
+    Category:
+      type: string
+      enum:
+        - admin_tools
+        - chat
+        - dev_tools
+        - economy
+        - gameplay
+        - games
+        - protection
+        - role_playing
+        - world_management
+        - misc
+    ProjectSortingStrategy:
+      type: string
+      enum:
+        - stars
+        - downloads
+        - views
+        - newest
+        - updated
+        - only_relevance
+  securitySchemes:
+    Session:
+      type: http
+      scheme: OreApi
+      description: >-
+        Authentication using an API session. The session is passed as part of the
+        Authorization header in the form `Authorization: OreApi session="<my session here>"`.
+        You can get a session from the authentication endpoint.
+    Key:
+      type: http
+      scheme: OreApi
+      description: >-
+        Authentication using an API key. This should in most cases not be a
+        request that you execute repeatedly. The key is passed as part of the
+        Authorization header in the form `Authorization: OreApi apikey="<my key here>"`.
+        You can get an API key either from the web interface, or using the
+        create key endpoint with a more powerful key.
+  responses:
+    UnauthorizedError:
+      description: Api session missing, invalid or expired
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+    ForbiddenError:
+      description: Not enough permissions to use this endpoint
+
+security:
+  - Session: []

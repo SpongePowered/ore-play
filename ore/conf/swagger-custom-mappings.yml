@@ -1,0 +1,51 @@
+- type: java\.time\.LocalDateTime
+  specAsParameter:
+    - type: string
+      format: date-time
+- type: ore\.permission\.NamedPermission
+  specAsParameter:
+    - $ref: '#/components/schemas/NamedPermission'
+- type: NamedPermission
+  specAsParameter:
+    - $ref: '#/components/schemas/NamedPermission'
+- type: ore\.data\.project\.Category
+  specAsParameter:
+    - $ref: '#/components/schemas/Category'
+- type: Category
+  specAsParameter:
+    - $ref: '#/components/schemas/Category'
+- type: ore\.models\.project\.Visibility
+  specAsParameter:
+    - type: string
+      enum:
+        - public
+        - new
+        - needsChanges
+        - needsApproval
+        - softDelete
+- type: ore\.models\.project\.ReviewState
+  specAsParameter:
+    - type: string
+      enum:
+        - unreviewed
+        - reviewed
+        - backlog
+        - partially_reviewed
+- type: controllers\.apiv2\.ApiV2Controller\.APIScopeType
+  specAsParameter:
+    - type: string
+      enum:
+        - global
+        - project
+        - organization
+- type: controllers\.apiv2\.ApiV2Controller\.SessionType
+  specAsParameter:
+    - type: string
+      enum:
+        - key
+        - user
+        - public
+        - dev
+- type: ProjectSortingStrategy
+  specAsParameter:
+    - $ref: '#/components/schemas/ProjectSortingStrategy'

@@ -1,0 +1,90 @@
+@import controllers.sugar.Requests.OreRequest
+@import ore.OreConfig
+@import views.html.helper.CSPNonce
+
+@()(implicit messages: Messages, request: OreRequest[_])
+
+@*
+Mostly copied from swagger-ui's index file
+*@
+<!DOCTYPE html>
+<html lang="@messages.lang.language">
+    <head>
+        <title>@messages("general.openapi")</title>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="icon" href="@routes.Assets.versioned("images/favicon.ico")">
+        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
+
+        <style>
+            html {
+                box-sizing: border-box;
+                overflow: -moz-scrollbars-vertical;
+                overflow-y: scroll;
+            }
+            *, *:before, *:after {
+                box-sizing: inherit;
+            }
+            body {
+                margin:0;
+                background: #fafafa;
+            }
+            .swagger-ui .topbar .download-url-wrapper, .swagger-ui .info hgroup.main a, .swagger-ui .info .description {
+                display: none;
+            }
+            .swagger-ui .info {
+                margin: 2rem 0;
+            }
+            .model-container, .responses-inner {
+                overflow-x: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+
+        <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
+        <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-bundle.js")"></script>
+        <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
+        <script src="@routes.Assets.versioned("javascripts/apiRequests.js")"></script>
+        <script @CSPNonce.attr>
+                window.onload = () => {
+                    window.ui = SwaggerUIBundle({
+                        url: "@routes.Assets.versioned("swagger.json")",
+                        dom_id: '#swagger-ui',
+                        deepLinking: true,
+                        presets: [
+                            SwaggerUIBundle.presets.apis,
+                            SwaggerUIStandalonePreset
+                        ],
+                        plugins: [
+                            SwaggerUIBundle.plugins.DownloadUrl
+                        ],
+                        layout: "StandaloneLayout",
+                        requestInterceptor: (req) => {
+                            if (!req.loadSpec) {
+                                const promise = getApiSession().then((session) => {
+                                    req.headers.authorization = 'OreApi session=' + session;
+                                    return req;
+                                });
+                                // Workaround for fixing the curl URL
+                                // https://github.com/swagger-api/swagger-ui/issues/4778#issuecomment-456403631
+                                promise.url = req.url;
+                                return promise;
+                            } else {
+                                return req;
+                            }
+                        }
+                    })
+                }
+            </script>
+            @if(request != null) {
+                <script @CSPNonce.attr>
+                        csrf = '@play.filters.csrf.CSRF.getToken.get.value';
+                        isLoggedIn = @request.hasUser;
+                </script>
+            }
+    </body>
+</html>

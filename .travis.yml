@@ -5,6 +5,7 @@ notifications:
 language: scala
 jdk:
   - openjdk8
+  - openjdk11
 
 scala:
   - 2.12.8
@@ -21,7 +22,8 @@ addons:
 
 before_script:
   - psql -c "ALTER USER travis WITH PASSWORD 'travis';"
-  - cp conf/application.conf.template conf/application.conf
+  - psql -c "CREATE EXTENSION pgcrypto;"
+  - cp ore/conf/application.conf.template ore/conf/application.conf
 
 env:
   global:
@@ -33,6 +35,7 @@ env:
 # Caching taken from https://www.scala-sbt.org/1.0/docs/Travis-CI-with-sbt.html#Caching
 cache:
   directories:
+    - $HOME/.cache/yarn
     - $HOME/.ivy2/cache
     - $HOME/.sbt
     - $HOME/.coursier/cache
@@ -43,5 +46,5 @@ before_cache:
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION test
-  - ./scalafmt app test build.sbt --test --non-interactive
+  - sbt ++$TRAVIS_SCALA_VERSION ";ore/test ;ore/assets"
+  - ./scalafmt --test --non-interactive
