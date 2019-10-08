@@ -15,7 +15,7 @@ import zio.ZIO
 import zio.blocking._
 import zio.interop.catz._
 
-class ZIOFileIO(nioBlockingFibers: Int) extends FileIO[ZIO[Blocking, Throwable, ?]] {
+class ZIOFileIO(nioBlockingFibers: Int) extends FileIO[ZIO[Blocking, Throwable, *]] {
 
   type BlockIO[A] = ZIO[Blocking, Throwable, A]
 

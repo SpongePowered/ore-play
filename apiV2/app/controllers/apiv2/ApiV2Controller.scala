@@ -60,8 +60,8 @@ class ApiV2Controller @Inject()(
 ) extends OreBaseController
     with CircePlayController {
 
-  implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, ?]] =
-    scalacache.CatsEffect.modes.async[ZIO[R, Throwable, ?]]
+  implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, *]] =
+    scalacache.CatsEffect.modes.async[ZIO[R, Throwable, *]]
 
   private val resultCache = scalacache.caffeine.CaffeineCache[IO[Result, Result]]
 
@@ -154,7 +154,7 @@ class ApiV2Controller @Inject()(
       //Techically we could make this faster by first checking if the global perms have the needed perms,
       //but then we wouldn't get the 404 on a non existent scope.
       val scopePerms: IO[Unit, Permission] =
-        apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, ?]](_))
+        apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, *]](_))
       val res = scopePerms.asError(NotFound).ensure(Forbidden)(_.has(perms))
 
       zioToFuture(res.either.map(_.swap.toOption))
