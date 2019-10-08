@@ -10,15 +10,17 @@ import ore.OreConfig
 
 import cats.Traverse
 import cats.syntax.all._
+import cats.effect.Resource
 import zio.ZIO
 import zio.blocking._
+import zio.interop.catz._
 
 class ZIOFileIO(nioBlockingFibers: Int) extends FileIO[ZIO[Blocking, Throwable, ?]] {
 
   type BlockIO[A] = ZIO[Blocking, Throwable, A]
 
-  override def list(path: Path): BlockIO[LazyList[Path]] =
-    effectBlocking(Files.list(path).iterator.asScala.to(LazyList))
+  override def list(path: Path): Resource[BlockIO, LazyList[Path]] =
+    Resource.fromAutoCloseable(effectBlocking(Files.list(path))).map(_.iterator.asScala.to(LazyList))
 
   override def exists(path: Path): BlockIO[Boolean] = effectBlocking(Files.exists(path))
 
