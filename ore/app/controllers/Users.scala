@@ -345,9 +345,15 @@ class Users @Inject()(
   import controllers.project.{routes => projectRoutes}
 
   def userSitemap(user: String): Action[AnyContent] = Action.asyncF { implicit request =>
+    def use[A](a: A): Unit = {
+      if (false) println(a)
+      ()
+    }
+
     val projectsQuery = for {
       u <- TableQuery[UserTable]
       p <- TableQuery[ProjectTableMain] if u.id === p.userId
+      _ = use(p)
       if u.name === user
     } yield p.slug
 
@@ -355,6 +361,7 @@ class Users @Inject()(
       u  <- TableQuery[UserTable]
       p  <- TableQuery[ProjectTableMain] if u.id === p.userId
       pv <- TableQuery[VersionTable] if p.id === pv.projectId
+      _ = use(pv)
       if u.name === user
     } yield (p.slug, pv.versionString)
 
@@ -362,6 +369,7 @@ class Users @Inject()(
       u  <- TableQuery[UserTable]
       p  <- TableQuery[ProjectTableMain] if u.id === p.userId
       pp <- TableQuery[PageTable] if p.id === pp.projectId
+      _ = use(pp)
       if u.name === user
     } yield (p.slug, pp.name)
 
@@ -406,7 +414,7 @@ class Users @Inject()(
           projectEntries ++
             versionEntries ++
             pageEntries :+ Sitemap.Entry(
-            routes.Users.showProjects(user, None),
+            routes.Users.showProjects(user),
             changeFreq = Some(Sitemap.ChangeFreq.Weekly)
           ): _*
         )
