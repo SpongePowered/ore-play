@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
   version := "1.8.2",
-  scalaVersion := "2.13.0",
+  scalaVersion := "2.13.1",
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -38,7 +38,7 @@ lazy val commonSettings = Seq(
     "-Ybackend-parallelism",
     "6"
   ),
-  addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
+  addCompilerPlugin(("org.typelevel" %% "kind-projector" % "0.11.0").cross(CrossVersion.full)),
   // Disable generation of the API documentation for production builds
   sources in (Compile, doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false
@@ -72,16 +72,16 @@ lazy val playTestDeps = Seq(
 
 lazy val catsVersion         = "2.0.0"
 lazy val catsEffectVersion   = "2.0.0"
-lazy val catsTaglessVersion  = "0.9"
-lazy val zioVersion          = "1.0.0-RC12-1"
-lazy val zioCatsVersion      = "2.0.0.0-RC3"
-lazy val doobieVersion       = "0.8.0-RC1"
+lazy val catsTaglessVersion  = "0.10"
+lazy val zioVersion          = "1.0.0-RC14"
+lazy val zioCatsVersion      = "2.0.0.0-RC5"
+lazy val doobieVersion       = "0.8.4"
 lazy val flexmarkVersion     = "0.50.40"
 lazy val playSlickVersion    = "4.0.2"
 lazy val slickPgVersion      = "0.18.0"
-lazy val circeVersion        = "0.12.1"
+lazy val circeVersion        = "0.12.2"
 lazy val akkaVersion         = "2.5.23"
-lazy val akkaHttpVersion     = "10.1.9"
+lazy val akkaHttpVersion     = "10.1.10"
 lazy val scalaLoggingVersion = "3.9.2"
 lazy val simulacrumVersion   = "0.19.0"
 lazy val macWireVersion      = "2.3.3"
@@ -136,7 +136,7 @@ lazy val models = project
     commonSettings,
     name := "ore-models",
     libraryDependencies ++= Seq(
-      "org.postgresql"             % "postgresql"             % "42.2.7",
+      "org.postgresql"             % "postgresql"             % "42.2.8",
       "com.github.tminglei"        %% "slick-pg"              % slickPgVersion,
       "com.github.tminglei"        %% "slick-pg_circe-json"   % slickPgVersion,
       "org.tpolecat"               %% "doobie-postgres"       % doobieVersion,
