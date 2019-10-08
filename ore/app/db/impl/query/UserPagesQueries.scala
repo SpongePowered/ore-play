@@ -44,21 +44,23 @@ object UserPagesQueries extends WebDoobieOreProtocol {
             |       sq.role,
             |       sq.donator_role,
             |       sq.count
-            |  FROM (SELECT u.name,
-            |               u.join_date,
-            |               u.created_at,
-            |               r.name                                                      AS role,
-            |               r.permission,
-            |               (SELECT COUNT(*) FROM projects WHERE owner_id = u.id)       AS count,
-            |               CASE WHEN dr.rank IS NULL THEN NULL ELSE dr.name END        AS donator_role,
-            |               row_number() OVER (PARTITION BY u.id ORDER BY r.permission::BIGINT DESC, dr.rank ASC NULLS LAST) AS row
-            |          FROM projects p
-            |                 JOIN users u ON p.owner_id = u.id
-            |                 LEFT JOIN user_global_roles gr ON gr.user_id = u.id
-            |                 LEFT JOIN roles r ON gr.role_id = r.id
-            |                 LEFT JOIN user_global_roles dgr on dgr.user_id = u.id
-            |                 LEFT JOIN roles dr ON dgr.role_id = dr.id) sq
-            |  WHERE sq.row = 1 """.stripMargin ++
+            |    FROM (SELECT u.name,
+            |                 u.join_date,
+            |                 u.created_at,
+            |                 r.name                                                                                           AS role,
+            |                 r.permission,
+            |                 (SELECT COUNT(*)
+            |                      FROM project_members_all pma
+            |                      WHERE pma.user_id = u.id)                                                                   AS count,
+            |                 CASE WHEN dr.rank IS NULL THEN NULL ELSE dr.name END                                             AS donator_role,
+            |                 row_number() OVER (PARTITION BY u.id ORDER BY r.permission::BIGINT DESC, dr.rank ASC NULLS LAST) AS row
+            |              FROM projects p
+            |                       JOIN users u ON p.owner_id = u.id
+            |                       LEFT JOIN user_global_roles gr ON gr.user_id = u.id
+            |                       LEFT JOIN roles r ON gr.role_id = r.id
+            |                       LEFT JOIN user_global_roles dgr ON dgr.user_id = u.id
+            |                       LEFT JOIN roles dr ON dgr.role_id = dr.id) sq
+            |    WHERE sq.row = 1 """.stripMargin ++
         userFragOrder(reverse, sort) ++
         fr"""OFFSET $offset LIMIT $pageSize"""
 

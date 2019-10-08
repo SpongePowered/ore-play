@@ -59,6 +59,9 @@ GET     /login                                                      @controllers
 GET     /logout                                                     @controllers.Users.logOut()
 POST    /verify                                                     @controllers.Users.verify(returnPath: Option[String])
 GET     /javascriptRoutes                                           @controllers.Application.javascriptRoutes
+GET     /global-sitemap.xml                                         @controllers.Application.globalSitemap
+GET     /sitemap.xml                                                @controllers.Application.sitemapIndex()
+GET     /robots.txt                                                 @controllers.Application.robots()
 
 # ---------- Projects ----------
 
@@ -91,6 +94,7 @@ POST    /notifications/read/:id                                     @controllers
 POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: Int)
 
 GET     /:user                                                      @controllers.Users.showProjects(user, page: Option[Int])
+GET     /:user/sitemap.xml                                          @controllers.Users.userSitemap(user)
 POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)
 POST    /:user/settings/lock/:locked                                @controllers.Users.setLocked(user, locked: Boolean, sso: Option[String], sig: Option[String])
 GET     /:user/settings/apiKeys                                     @controllers.Users.editApiKeys(user)

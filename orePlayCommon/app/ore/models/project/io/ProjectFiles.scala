@@ -9,7 +9,7 @@ import ore.OreEnv
 import ore.models.project.Project
 import util.FileIO
 
-import cats.Monad
+import cats.effect.Bracket
 import cats.syntax.all._
 import cats.tagless.autoFunctorK
 
@@ -121,7 +121,7 @@ trait ProjectFiles[+F[_]] {
 }
 object ProjectFiles {
 
-  class LocalProjectFiles[F[_]] @Inject()(val env: OreEnv)(implicit fileIO: FileIO[F], F: Monad[F])
+  class LocalProjectFiles[F[_]] @Inject()(val env: OreEnv)(implicit fileIO: FileIO[F], F: Bracket[F, Throwable])
       extends ProjectFiles[F] {
 
     override def getProjectDir(owner: String, name: String): Path = getUserDir(owner).resolve(name)
@@ -161,12 +161,13 @@ object ProjectFiles {
 
     private def findFirstFile(dir: Path): F[Option[Path]] = {
       import cats.instances.stream._
-      val findFirst =
-        fileIO.list(dir).flatMap(fs => fileIO.traverseLimited(fs)(f => fileIO.isDirectory(f).tupleLeft(f))).map {
+      val findFirst = fileIO.list(dir).use { fs =>
+        fileIO.traverseLimited(fs)(f => fileIO.isDirectory(f).tupleLeft(f)).map {
           _.collectFirst {
             case (p, false) => p
           }
         }
+      }
 
       fileIO.exists(dir).ifM(findFirst, F.pure(None))
     }

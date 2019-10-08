@@ -1,5 +1,6 @@
 package controllers
 
+import java.io.StringWriter
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDate}
@@ -28,7 +29,7 @@ import ore.models.user._
 import ore.models.user.role._
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
-import util.UserActionLogger
+import util.{Sitemap, UserActionLogger}
 import util.syntax._
 import views.{html => views}
 
@@ -398,5 +399,71 @@ final class Application @Inject()(forms: OreForms)(
 
   def swagger(): Action[AnyContent] = OreAction { implicit request =>
     Ok(views.swagger())
+  }
+
+  def sitemapIndex(): Action[AnyContent] = Action.asyncF { implicit request =>
+    service.runDbCon(AppQueries.sitemapIndexUsers.to[Vector]).map { users =>
+      def userSitemap(user: String) =
+        <sitemap>
+          <loc>{routes.Users.userSitemap(user).absoluteURL()}</loc>
+        </sitemap>
+
+      val sitemapIndex =
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          {users.map(userSitemap)}
+          <sitemap>
+            <loc>{routes.Application.globalSitemap().absoluteURL()}</loc>
+          </sitemap>
+        </sitemapindex>
+
+      val writer = new StringWriter()
+      xml.XML.write(writer, sitemapIndex, "UTF-8", xmlDecl = true, null)
+
+      Ok(writer.toString).as("application/xml")
+    }
+  }
+
+  val globalSitemap: Action[AnyContent] = Action { implicit requests =>
+    Ok(
+      Sitemap.asString(
+        Sitemap.Entry(routes.Application.showHome(), changeFreq = Some(Sitemap.ChangeFreq.Hourly)),
+        Sitemap.Entry(routes.Users.showAuthors(None, None), changeFreq = Some(Sitemap.ChangeFreq.Monthly)),
+        Sitemap.Entry(routes.Application.swagger())
+      )
+    ).as("application/xml")
+  }
+
+  val robots: Action[AnyContent] = Action {
+    Ok(s"""user-agent: *
+          |Disallow: /login
+          |Disallow: /signup
+          |Disallow: /logout
+          |Disallow: /linkout
+          |Disallow: /admin
+          |Disallow: /api
+          |Disallow: /*/*/versions
+          |Disallow: /*/*/watchers
+          |Disallow: /*/*/stars
+          |Disallow: /*/*/discuss
+          |Disallow: /*/*/channels
+          |Disallow: /*/*/manage
+          |Disallow: /*/*/versionLog
+          |Disallow: /*/*/flags
+          |Disallow: /*/*/notes
+          |Disallow: /*/*/channels
+          
+          |Allow: /*/*/versions/*
+          |Allow: /api$$
+          
+          |Disallow: /*/*/versions/*/download
+          |Disallow: /*/*/versions/*/recommended/download
+          |Disallow: /*/*/versions/*/jar
+          |Disallow: /*/*/versions/*/recommended/jar
+          |Disallow: /*/*/versions/*/reviews
+          |Disallow: /*/*/versions/*/new
+          |Disallow: /*/*/versions/*/confirm
+
+          |Sitemap: ${config.app.baseUrl}/sitemap.xml
+      """.stripMargin).as("text/plain")
   }
 }

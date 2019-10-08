@@ -110,7 +110,7 @@ case class ProjectSettingsForm(
 
             val notExist   = fileIO.notExists(iconDir)
             val createDirs = fileIO.createDirectories(iconDir)
-            val deleteFiles = fileIO.list(iconDir).flatMap { ps =>
+            val deleteFiles = fileIO.list(iconDir).use { ps =>
               import cats.instances.stream._
               fileIO.traverseLimited(ps)(p => fileIO.delete(p))
             }
