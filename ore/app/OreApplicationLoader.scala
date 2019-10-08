@@ -154,7 +154,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
   implicit lazy val fileIO: FileIO[ZIO[Blocking, Nothing, *]] = fileIORaw.imapK(
     OreComponents.orDieFnK[Blocking],
-    OreComponents.upcastFnK[ZIO[Blocking, Nothing, *], ZIO[Blocking, Throwable, ?]]
+    OreComponents.upcastFnK[ZIO[Blocking, Nothing, *], ZIO[Blocking, Throwable, *]]
   )
 
   implicit lazy val projectFiles: ProjectFiles[ZIO[Blocking, Nothing, *]] =
@@ -328,15 +328,15 @@ object OreComponents {
   def upcastFnK[From[_], To[A] >: From[A]]: From ~> To = new FunctionK[From, To] {
     override def apply[A](fa: From[A]): To[A] = fa
   }
-  def provideFnK[R, E](environment: R): ZIO[R, E, ?] ~> ZIO[Any, E, ?] = new FunctionK[ZIO[R, E, ?], ZIO[Any, E, ?]] {
+  def provideFnK[R, E](environment: R): ZIO[R, E, *] ~> ZIO[Any, E, *] = new FunctionK[ZIO[R, E, *], ZIO[Any, E, *]] {
     override def apply[A](fa: ZIO[R, E, A]): ZIO[Any, E, A] = fa.provide(environment)
   }
-  def orDieFnK[R]: ZIO[R, Throwable, ?] ~> ZIO[R, Nothing, ?] =
-    new FunctionK[ZIO[R, Throwable, ?], ZIO[R, Nothing, ?]] {
+  def orDieFnK[R]: ZIO[R, Throwable, *] ~> ZIO[R, Nothing, *] =
+    new FunctionK[ZIO[R, Throwable, *], ZIO[R, Nothing, *]] {
       override def apply[A](fa: ZIO[R, Throwable, A]): ZIO[R, Nothing, A] = fa.orDie
     }
 
   implicit def zioDefer[R, E]: Defer[ZIO[R, E, *]] = new Defer[ZIO[R, E, *]] {
-    override def defer[A](fa: => ZIO[R, E, A]): ZIO[R, E, A] = ZIO.suspend(fa)
+    override def defer[A](fa: => ZIO[R, E, A]): ZIO[R, E, A] = ZIO.effectSuspendTotal(fa)
   }
 }
