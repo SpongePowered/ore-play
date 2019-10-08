@@ -570,7 +570,7 @@ class ApiV2Controller @Inject()(
 
         val dataF = dataStringF
           .flatMap(s => ZIO.fromEither(parser.decode[DeployVersionInfo](s).leftMap(_.show)))
-          .ensure("Description too long")(_.description.forall(_.length > Page.maxLength))
+          .ensure("Description too long")(_.description.forall(_.length < Page.maxLength))
           .mapError(e => BadRequest(ApiError(e)))
 
         val fileF = ZIO.fromEither(
