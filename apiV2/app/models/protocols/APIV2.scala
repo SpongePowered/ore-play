@@ -21,26 +21,20 @@ object APIV2 {
   ): Either[DecodingFailure, A] =
     opt(s).toRight(DecodingFailure(s"$s is not a valid ${tpe.describe}", history))
 
-  def valueEnumEncoder[V, A <: ValueEnumEntry[V]](enumObj: ValueEnum[V, A])(name: A => String): Encoder[A] =
+  def valueEnumCodec[V, A <: ValueEnumEntry[V]: Typeable](enumObj: ValueEnum[V, A])(name: A => String): Codec[A] =
+    Codec.from(
+      (c: HCursor) => c.as[String].flatMap(optionToResult(_, s => enumObj.values.find(a => name(a) == s), c.history)),
+      (a: A) => name(a).asJson
+    )
+
+  def enumCodec[A <: EnumEntry: Typeable](enumObj: Enum[A])(name: A => String): Codec[A] = Codec.from(
+    (c: HCursor) => c.as[String].flatMap(optionToResult(_, s => enumObj.values.find(a => name(a) == s), c.history)),
     (a: A) => name(a).asJson
+  )
 
-  def valueEnumDecoder[V, A <: ValueEnumEntry[V]: Typeable](enumObj: ValueEnum[V, A])(name: A => String): Decoder[A] =
-    (c: HCursor) => c.as[String].flatMap(optionToResult(_, s => enumObj.values.find(a => name(a) == s), c.history))
-
-  def enumEncoder[A <: EnumEntry](enumObj: Enum[A])(name: A => String): Encoder[A] =
-    (a: A) => name(a).asJson
-
-  def enumDecoder[A <: EnumEntry: Typeable](enumObj: Enum[A])(name: A => String): Decoder[A] =
-    (c: HCursor) => c.as[String].flatMap(optionToResult(_, s => enumObj.values.find(a => name(a) == s), c.history))
-
-  implicit val visibilityDecoder: Decoder[Visibility] = valueEnumDecoder(Visibility)(_.nameKey)
-  implicit val visibilityEncoder: Encoder[Visibility] = valueEnumEncoder(Visibility)(_.nameKey)
-
-  implicit val categoryDecoder: Decoder[Category] = valueEnumDecoder(Category)(_.apiName)
-  implicit val categoryEncoder: Encoder[Category] = valueEnumEncoder(Category)(_.apiName)
-
-  implicit val reviewStateDecoder: Decoder[ReviewState] = valueEnumDecoder(ReviewState)(_.apiName)
-  implicit val reviewStateEncoder: Encoder[ReviewState] = valueEnumEncoder(ReviewState)(_.apiName)
+  implicit val visibilityCodec: Codec[Visibility]   = valueEnumCodec(Visibility)(_.nameKey)
+  implicit val categoryCodec: Codec[Category]       = valueEnumCodec(Category)(_.apiName)
+  implicit val reviewStateCodec: Codec[ReviewState] = valueEnumCodec(ReviewState)(_.apiName)
 
   //Project
   @ConfiguredJsonCodec case class Project(

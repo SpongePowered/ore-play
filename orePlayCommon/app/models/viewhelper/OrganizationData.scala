@@ -35,10 +35,10 @@ object OrganizationData {
 
   def cacheKey(orga: Model[Organization]): String = "organization" + orga.id
 
-  def of[F[_], G[_]](orga: Model[Organization])(
+  def of[F[_]](orga: Model[Organization])(
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): F[OrganizationData] = {
     import cats.instances.vector._
     for {
@@ -59,9 +59,9 @@ object OrganizationData {
       if role.userId === userId
     } yield (role, project)
 
-  def of[F[_], G[_]](orga: Option[Model[Organization]])(
+  def of[F[_]](orga: Option[Model[Organization]])(
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
-      par: Parallel[F, G]
-  ): OptionT[F, OrganizationData] = OptionT.fromOption[F](orga).semiflatMap(of[F, G])
+      par: Parallel[F]
+  ): OptionT[F, OrganizationData] = OptionT.fromOption[F](orga).semiflatMap(of[F])
 }

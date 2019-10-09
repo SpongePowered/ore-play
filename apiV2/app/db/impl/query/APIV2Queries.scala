@@ -21,8 +21,8 @@ import ore.permission.Permission
 
 import cats.Reducible
 import cats.data.NonEmptyList
-import cats.syntax.all._
 import cats.instances.list._
+import cats.syntax.all._
 import doobie._
 import doobie.implicits._
 import doobie.postgres.implicits._

@@ -2,6 +2,8 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 
+import scala.annotation.unused
+
 import play.api.i18n.MessagesApi
 import play.api.mvc._
 
@@ -82,7 +84,7 @@ class Users @Inject()(
           sponge <- this.sso
             .authenticate(sso.get, sig.get)(isNonceValid)
             .get
-            .constError(Redirect(ShowHome).withError("error.loginFailed"))
+            .asError(Redirect(ShowHome).withError("error.loginFailed"))
           fromSponge = sponge.toUser
           // Complete authentication
           user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
@@ -136,9 +138,7 @@ class Users @Inject()(
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    val pageNum = page.getOrElse(1)
-
+  def showProjects(username: String): Action[AnyContent] = OreAction.asyncF { implicit request =>
     for {
       u <- users
         .withName(username)
@@ -150,7 +150,7 @@ class Users @Inject()(
       ).parTupled
       (orga, userData) = t1
       t2 <- (
-        OrganizationData.of[Task, ParTask](orga).value.orDie,
+        OrganizationData.of[Task](orga).value.orDie,
         ScopedOrganizationData.of(request.currentUser, orga).value
       ).parTupled
       (orgaData, scopedOrgaData) = t2
@@ -158,8 +158,7 @@ class Users @Inject()(
       Ok(
         views.users.projects(
           userData,
-          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-          pageNum
+          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b)))
         )
       )
     }
@@ -211,7 +210,7 @@ class Users @Inject()(
 
       service
         .update(user)(_.copy(isLocked = locked))
-        .const(Redirect(ShowUser(username)))
+        .as(Redirect(ShowUser(username)))
     }
   }
 
@@ -293,7 +292,7 @@ class Users @Inject()(
     request.user
       .notifications(ModelView.now(Notification))
       .get(id)
-      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).const(Ok))
+      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).as(Ok))
       .getOrElse(notFound)
   }
 
@@ -307,7 +306,7 @@ class Users @Inject()(
   def markPromptRead(id: Int): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     Prompt.values.find(_.value == id) match {
       case None         => IO.fail(BadRequest)
-      case Some(prompt) => request.user.markPromptAsRead(prompt).const(Ok)
+      case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)
     }
   }
 
@@ -322,7 +321,7 @@ class Users @Inject()(
           ).parTupled
           (orga, userData, keys) = t1
           t2 <- (
-            OrganizationData.of[Task, ParTask](orga).value.orDie,
+            OrganizationData.of[Task](orga).value.orDie,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2
@@ -348,9 +347,13 @@ class Users @Inject()(
   import controllers.project.{routes => projectRoutes}
 
   def userSitemap(user: String): Action[AnyContent] = Action.asyncF { implicit request =>
+    def use[A](@unused a: A): Unit = ()
+
     val projectsQuery = for {
       u <- TableQuery[UserTable]
+
       p <- TableQuery[ProjectTable] if u.id === p.ownerId
+      _ = use(p)
       if u.name === user
     } yield p.slug
 
@@ -358,6 +361,7 @@ class Users @Inject()(
       u  <- TableQuery[UserTable]
       p  <- TableQuery[ProjectTable] if u.id === p.ownerId
       pv <- TableQuery[VersionTable] if p.id === pv.projectId
+      _ = use(pv)
       if u.name === user
     } yield (p.slug, pv.versionString)
 
@@ -365,6 +369,7 @@ class Users @Inject()(
       u  <- TableQuery[UserTable]
       p  <- TableQuery[ProjectTable] if u.id === p.ownerId
       pp <- TableQuery[PageTable] if p.id === pp.projectId
+      _ = use(pp)
       if u.name === user
     } yield (p.slug, pp.name)
 
@@ -409,7 +414,7 @@ class Users @Inject()(
           projectEntries ++
             versionEntries ++
             pageEntries :+ Sitemap.Entry(
-            routes.Users.showProjects(user, None),
+            routes.Users.showProjects(user),
             changeFreq = Some(Sitemap.ChangeFreq.Weekly)
           ): _*
         )

@@ -20,7 +20,7 @@ import com.vladsch.flexmark.html.renderer.{LinkResolverContext, LinkStatus, Link
 import com.vladsch.flexmark.html.{HtmlRenderer, LinkResolver, LinkResolverFactory}
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.util.ast.Node
-import com.vladsch.flexmark.util.options.MutableDataSet
+import com.vladsch.flexmark.util.data.MutableDataSet
 
 @Singleton
 class FlexmarkRenderer @Inject()(config: OreConfig) extends MarkdownRenderer {
@@ -79,7 +79,7 @@ object FlexmarkRenderer {
 
       override def affectsGlobalScope(): Boolean = false
 
-      override def create(context: LinkResolverContext): LinkResolver = new ExternalLinkResolver(this.config)
+      override def apply(context: LinkResolverContext): LinkResolver = new ExternalLinkResolver(this.config)
     }
     // scalafix:on
   }

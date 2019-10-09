@@ -1,16 +1,14 @@
 package controllers.apiv2
 
-import scala.language.higherKinds
-
 import java.nio.file.Path
 import java.time.OffsetDateTime
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import scala.collection.JavaConverters._
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 import play.api.http.{HttpErrorHandler, Writeable}
 import play.api.i18n.Lang
@@ -42,9 +40,9 @@ import akka.http.scaladsl.model.headers.{Authorization, HttpCredentials}
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import enumeratum._
-import io.circe._
 import io.circe.generic.extras._
 import io.circe.syntax._
+import io.circe.{Codec => CirceCodec, _}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
@@ -63,7 +61,7 @@ class ApiV2Controller @Inject()(
   implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, *]] =
     scalacache.CatsEffect.modes.async[ZIO[R, Throwable, *]]
 
-  private val resultCache = scalacache.caffeine.CaffeineCache[Either[Result, Result]]
+  private val resultCache = scalacache.caffeine.CaffeineCache[IO[Result, Result]]
 
   lifecycle.addStopHook(() => zioRuntime.unsafeRunToFuture(resultCache.close[Task]()))
 
@@ -105,11 +103,11 @@ class ApiV2Controller @Inject()(
           .mapError(_.leftMap(_ => unAuth("No authorization specified")).merge)
         token <- ZIO
           .fromOption(creds.params.get("session"))
-          .constError(unAuth("No session specified"))
+          .asError(unAuth("No session specified"))
         info <- service
           .runDbCon(APIV2Queries.getApiAuthInfo(token).option)
           .get
-          .constError(unAuth("Invalid session"))
+          .asError(unAuth("Invalid session"))
         res <- {
           if (info.expires.isBefore(OffsetDateTime.now())) {
             service.deleteWhere(ApiSession)(_.token === token) *> IO.fail(unAuth("Api session expired"))
@@ -155,7 +153,7 @@ class ApiV2Controller @Inject()(
       //but then we wouldn't get the 404 on a non existent scope.
       val scopePerms: IO[Unit, Permission] =
         apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, *]](_))
-      val res = scopePerms.constError(NotFound).ensure(Forbidden)(_.has(perms))
+      val res = scopePerms.asError(NotFound).ensure(Forbidden)(_.has(perms))
 
       zioToFuture(res.either.map(_.swap.toOption))
     }
@@ -202,7 +200,7 @@ class ApiV2Controller @Inject()(
             service
               .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
               .get
-              .constError(Right(unAuth("Invalid api key")))
+              .asError(Right(unAuth("Invalid api key")))
               .map {
                 case (keyId, keyOwnerId) =>
                   SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
@@ -296,7 +294,7 @@ class ApiV2Controller @Inject()(
       for {
         user <- ZIO
           .fromOption(request.user)
-          .constError(BadRequest(ApiError("Public keys can't be used to delete")))
+          .asError(BadRequest(ApiError("Public keys can't be used to delete")))
         rowsAffected <- service.runDbCon(APIV2Queries.deleteApiKey(name, user.id.value).run)
       } yield if (rowsAffected == 0) NotFound else NoContent
     }
@@ -315,7 +313,7 @@ class ApiV2Controller @Inject()(
   ): IO[Result, (APIScope, Permission)] =
     for {
       apiScope <- ZIO.fromEither(createApiScope(pluginId, organizationName))
-      scope    <- apiScopeToRealScope(apiScope).constError(NotFound)
+      scope    <- apiScopeToRealScope(apiScope).asError(NotFound)
       perms    <- request.permissionIn(scope)
     } yield (apiScope, perms)
 
@@ -331,9 +329,9 @@ class ApiV2Controller @Inject()(
           request.body
       )(
         Some(1.minute)
-      )(fa.either)
-      .constError(InternalServerError)
-      .absolve
+      )(fa.memoize)
+      .asError(InternalServerError)
+      .flatten
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
     ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
@@ -570,7 +568,7 @@ class ApiV2Controller @Inject()(
 
         val dataF = dataStringF
           .flatMap(s => ZIO.fromEither(parser.decode[DeployVersionInfo](s).leftMap(_.show)))
-          .ensure("Description too long")(_.description.forall(_.length > Page.maxLength))
+          .ensure("Description too long")(_.description.forall(_.length < Page.maxLength))
           .mapError(e => BadRequest(ApiError(e)))
 
         val fileF = ZIO.fromEither(
@@ -588,9 +586,9 @@ class ApiV2Controller @Inject()(
         }
 
         for {
-          user    <- ZIO.fromOption(request.user).constError(BadRequest(ApiError("No user found for session")))
+          user    <- ZIO.fromOption(request.user).asError(BadRequest(ApiError("No user found for session")))
           _       <- uploadErrors(user)
-          project <- projects.withPluginId(pluginId).get.constError(NotFound)
+          project <- projects.withPluginId(pluginId).get.asError(NotFound)
           data    <- dataF
           file    <- fileF
           pendingVersion <- factory
@@ -741,8 +739,7 @@ object ApiV2Controller {
 
     val values: immutable.IndexedSeq[APIScopeType] = findValues
 
-    implicit val encoder: Encoder[APIScopeType] = APIV2.enumEncoder(APIScopeType)(_.entryName)
-    implicit val decoder: Decoder[APIScopeType] = APIV2.enumDecoder(APIScopeType)(_.entryName)
+    implicit val codec: CirceCodec[APIScopeType] = APIV2.enumCodec(APIScopeType)(_.entryName)
   }
 
   sealed abstract class SessionType extends EnumEntry with EnumEntry.Snakecase
@@ -754,8 +751,7 @@ object ApiV2Controller {
 
     val values: immutable.IndexedSeq[SessionType] = findValues
 
-    implicit val encoder: Encoder[SessionType] = APIV2.enumEncoder(SessionType)(_.entryName)
-    implicit val decoder: Decoder[SessionType] = APIV2.enumDecoder(SessionType)(_.entryName)
+    implicit val codec: CirceCodec[SessionType] = APIV2.enumCodec(SessionType)(_.entryName)
   }
 
   @ConfiguredJsonCodec case class ApiError(error: String)
@@ -799,8 +795,7 @@ object ApiV2Controller {
       count: Long
   )
 
-  implicit val namedPermissionEncoder: Encoder[NamedPermission] = APIV2.enumEncoder(NamedPermission)(_.entryName)
-  implicit val namedPermissionDecoder: Decoder[NamedPermission] = APIV2.enumDecoder(NamedPermission)(_.entryName)
+  implicit val namedPermissionCodec: CirceCodec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
 
   @ConfiguredJsonCodec case class KeyPermissions(
       @JsonKey("type") tpe: APIScopeType,

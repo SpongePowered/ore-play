@@ -24,7 +24,7 @@
                 <div class="project-body panel-body">
                     <p class="minor"> @messages("org.info")</p>
 
-                    @form(action = routes.Organizations.create(), 'id -> "form-continue") {
+                    @form(action = routes.Organizations.create(), Symbol("id") -> "form-continue") {
                         @CSRF.formField
                         <div class="setting">
                             <div class="setting-description">

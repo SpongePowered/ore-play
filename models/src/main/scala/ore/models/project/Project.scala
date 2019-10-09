@@ -130,10 +130,10 @@ object Project extends DefaultModelCompanion[Project, ProjectTable](TableQuery[P
 
   lazy val roleForTrustQuery = lifted.Compiled(queryRoleForTrust _)
 
-  implicit def projectHideable[F[_], G[_]](
+  implicit def projectHideable[F[_]](
       implicit service: ModelService[F],
       F: Monad[F],
-      parallel: Parallel[F, G]
+      parallel: Parallel[F]
   ): Hideable.Aux[F, Project, ProjectVisibilityChange, ProjectVisibilityChangeTable] = new Hideable[F, Project] {
     override type MVisibilityChange      = ProjectVisibilityChange
     override type MVisibilityChangeTable = ProjectVisibilityChangeTable
@@ -191,10 +191,10 @@ object Project extends DefaultModelCompanion[Project, ProjectTable](TableQuery[P
 
   implicit val isUserOwned: UserOwned[Project] = (a: Project) => a.ownerId
 
-  implicit def projectJoinable[F[_], G[_]](
+  implicit def projectJoinable[F[_]](
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): Joinable.Aux[F, Project, ProjectUserRole, ProjectRoleTable] = new Joinable[F, Project] {
     type RoleType      = ProjectUserRole
     type RoleTypeTable = ProjectRoleTable
@@ -279,7 +279,7 @@ object Project extends DefaultModelCompanion[Project, ProjectTable](TableQuery[P
     )(implicit service: ModelService[F], F: Monad[F]): F[Project] =
       for {
         contains <- self.stars.contains(user.id)
-        res <- if (contains)
+        _ <- if (contains)
           self.stars.removeAssoc(user.id)
         else
           self.stars.addAssoc(user.id)

@@ -38,7 +38,7 @@ import com.typesafe.scalalogging
   * @param baseUrl The base URL for this instance
   * @param admin An admin account to fall back to if no user is specified as poster
   */
-class OreDiscourseApiEnabled[F[_], G[_]](
+class OreDiscourseApiEnabled[F[_]](
     api: DiscourseApi[F],
     categoryDefault: Int,
     categoryDeleted: Int,
@@ -52,7 +52,7 @@ class OreDiscourseApiEnabled[F[_], G[_]](
     implicit service: ModelService[F],
     config: OreConfig,
     F: Effect[F],
-    par: Parallel[F, G]
+    par: Parallel[F]
 ) extends OreDiscourseApi[F] {
 
   private val MDCLogger           = scalalogging.Logger.takingImplicit[DiscourseMDC]("Discourse")

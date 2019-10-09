@@ -1,15 +1,14 @@
 @import controllers.project.{routes => projectRoutes}
 @import controllers.routes.{Users => userRoutes}
 @import controllers.sugar.Requests.OreRequest
-@import models.querymodels.ProjectListEntryWithIcon
 @import models.viewhelper.{OrganizationData, ScopedOrganizationData, UserData}
 @import ore.OreConfig
 @import ore.permission.Permission
 @import ore.permission.role.Role
 @import util.syntax._
 @import views.html.utils.userAvatar
-@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)],
-        page: Int)(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(u: UserData, o: Option[(OrganizationData, ScopedOrganizationData)])(
+        implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
 
 @canEditOrgMembers = @{
     u.isOrga &&
@@ -76,7 +75,7 @@
                             <tr>
                                 <td>
                                     @userAvatar(Some(organization.name), user.avatarUrl, clazz = "user-avatar-xxs")
-                                <a href="@userRoutes.showProjects(organization.name, None)">
+                                <a href="@userRoutes.showProjects(organization.name)">
                                 @organization.name
                                 </a>
                                 <div class="pull-right">

@@ -21,10 +21,10 @@ import com.typesafe.scalalogging
 /**
   * Task to periodically retry failed Discourse requests.
   */
-class RecoveryTask[F[_], G[_]](scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApi[F])(
+class RecoveryTask[F[_]](scheduler: Scheduler, retryRate: FiniteDuration, api: OreDiscourseApi[F])(
     implicit ec: ExecutionContext,
     service: ModelService[F],
-    par: Parallel[F, G],
+    par: Parallel[F],
     effect: cats.effect.Effect[F]
 ) extends Runnable {
 

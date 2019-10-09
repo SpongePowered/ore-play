@@ -66,7 +66,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        @form(action = deleteCall, 'class -> "form-inline") {
+                        @form(action = deleteCall, Symbol("class") -> "form-inline") {
                             @CSRF.formField
                             <button type="submit" class="btn btn-danger">Delete</button>
                         }
@@ -89,7 +89,7 @@
     <div class="page-preview page-rendered" style="display: none ;"></div>
 
     @if(savable) {
-        @form(action = saveCall, 'id -> "form-editor-save") {
+        @form(action = saveCall, Symbol("id") -> "form-editor-save") {
             @CSRF.formField
             @if(extraFormValue != null) {
                 <input type="hidden" value="@extraFormValue" name="name">

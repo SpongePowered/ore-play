@@ -123,10 +123,10 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
 
   implicit val isProjectOwned: ProjectOwned[Version] = (a: Version) => a.projectId
 
-  implicit def versionIsHideable[F[_], G[_]](
+  implicit def versionIsHideable[F[_]](
       implicit service: ModelService[F],
       F: Monad[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): Hideable.Aux[F, Version, VersionVisibilityChange, VersionVisibilityChangeTable] = new Hideable[F, Version] {
     override type MVisibilityChange      = VersionVisibilityChange
     override type MVisibilityChangeTable = VersionVisibilityChangeTable

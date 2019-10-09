@@ -55,12 +55,12 @@ object OrganizationBase {
   /**
     * Default live implementation of [[OrganizationBase]]
     */
-  class OrganizationBaseF[F[_], G[_]](
+  class OrganizationBaseF[F[_]](
       implicit val service: ModelService[F],
       config: OreConfig,
       auth: SpongeAuthApi[F],
       F: Sync[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ) extends OrganizationBase[F] {
 
     private val Logger    = scalalogging.Logger("Organizations")

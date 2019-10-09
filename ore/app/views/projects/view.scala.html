@@ -10,7 +10,6 @@ Base template for Project overview.
 @import ore.markdown.MarkdownRenderer
 @import ore.models.project.Visibility
 @import ore.permission.Permission
-@import util.syntax._
 @import views.html.helper.{CSPNonce, CSRF, form}
 
 @(p: ProjectData, sp: ScopedProjectData, active: String, noButtons: Boolean = false, additionalScripts: Html = Html(""))(content: Html)(implicit messages: Messages,
@@ -75,7 +74,7 @@ Base template for Project overview.
             <div class="col-md-6">
                 <div class="project-header">
                     <div class="project-path">
-                        <a href="@routes.Users.showProjects(p.project.ownerName, None)">@p.project.ownerName</a>
+                        <a href="@routes.Users.showProjects(p.project.ownerName)">@p.project.ownerName</a>
                         /
                         <a class="project-name" href="@Projects.show(p.project.ownerName, p.project.slug)">@p.project.name</a>
                     </div>
