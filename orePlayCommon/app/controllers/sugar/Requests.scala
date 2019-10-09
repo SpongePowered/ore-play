@@ -1,7 +1,5 @@
 package controllers.sugar
 
-import scala.language.higherKinds
-
 import java.time.Instant
 
 import play.api.mvc.{Request, WrappedRequest}
@@ -25,7 +23,13 @@ import org.slf4j.MDC
   */
 object Requests {
 
-  case class ApiAuthInfo(user: Option[Model[User]], key: Option[ApiKey], expires: Instant, globalPerms: Permission)
+  case class ApiAuthInfo(
+      user: Option[Model[User]],
+      key: Option[ApiKey],
+      session: Option[String],
+      expires: Instant,
+      globalPerms: Permission
+  )
 
   case class ApiRequest[A](apiInfo: ApiAuthInfo, request: Request[A]) extends WrappedRequest[A](request) with OreMDC {
     def user: Option[Model[User]] = apiInfo.user

@@ -164,10 +164,15 @@ class ApiV2Controller @Inject()(
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     Action.andThen(apiAction).andThen(permApiAction(perms, scope))
 
-  private def expiration(duration: FiniteDuration) = Instant.now().plusSeconds(duration.toSeconds)
+  private def expiration(duration: FiniteDuration, userChoice: Option[Long]) = {
+    val durationSeconds = duration.toSeconds
+    val expirationTime  = userChoice.fold(durationSeconds)(Math.max(_, durationSeconds))
+
+    Instant.now().plusSeconds(expirationTime)
+  }
 
   def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
-    val sessionExpiration = expiration(config.ore.api.session.expiration)
+    val sessionExpiration = expiration(config.ore.api.session.expiration, None)
     val uuidToken         = UUID.randomUUID().toString
     val sessionToInsert   = ApiSession(uuidToken, None, Some(request.user.id), sessionExpiration)
 
@@ -186,9 +191,9 @@ class ApiV2Controller @Inject()(
   private val ApiKeyRegex =
     s"""($uuidRegex).($uuidRegex)""".r
 
-  def authenticateKeyPublic(): Action[AnyContent] = Action.asyncF { implicit request =>
-    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
-    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
+  def authenticateKeyPublic(expiresIn: Option[Long]): Action[AnyContent] = Action.asyncF { implicit request =>
+    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, expiresIn)
+    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, expiresIn)
 
     lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
     def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
@@ -235,7 +240,7 @@ class ApiV2Controller @Inject()(
     if (fakeUser.isEnabled) {
       config.checkDebug()
 
-      val sessionExpiration = expiration(config.ore.api.session.expiration)
+      val sessionExpiration = expiration(config.ore.api.session.expiration, None)
       val uuidToken         = UUID.randomUUID().toString
       val sessionToInsert   = ApiSession(uuidToken, None, Some(fakeUser.id), sessionExpiration)
 
@@ -253,7 +258,21 @@ class ApiV2Controller @Inject()(
     }
   }
 
-  def authenticate(fake: Boolean): Action[AnyContent] = if (fake) authenticateDev() else authenticateKeyPublic()
+  def authenticate(fake: Boolean, expiresIn: Option[Long]): Action[AnyContent] =
+    if (fake) authenticateDev() else authenticateKeyPublic(expiresIn)
+
+  def deleteSession(session: String): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
+    implicit request =>
+      val sameSessionError = BadRequest("Can only invalidate the session you use to make the request")
+
+      ZIO
+        .succeed(request.apiInfo.session)
+        .get
+        .asError(sameSessionError)
+        .filterOrFail(_ == session)(sameSessionError)
+        .andThen(service.deleteWhere(ApiSession)(_.token === session))
+        .as(NoContent)
+  }
 
   def createKey(): Action[KeyToCreate] =
     ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncF {

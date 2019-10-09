@@ -63,6 +63,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
           |       ak.owner_id,
           |       ak.token,
           |       ak.raw_key_permissions,
+          |       aks.token,
           |       aks.expires,
           |       CASE
           |           WHEN u.id IS NULL THEN 1::BIT(64)
