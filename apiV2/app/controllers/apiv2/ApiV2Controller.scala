@@ -1,7 +1,5 @@
 package controllers.apiv2
 
-import scala.language.higherKinds
-
 import java.nio.file.Path
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
@@ -608,13 +606,9 @@ class ApiV2Controller @Inject()(
               )
             }
           t <- pendingVersion.complete(project, factory)
-          (project, version, channel, tags) = t
-          _ <- {
-            if (data.recommended.exists(identity))
-              service.update(project)(_.copy(recommendedVersionId = Some(version.id)))
-            else IO.unit
-          }
         } yield {
+          val (_, version, channel, tags) = t
+
           val normalApiTags = tags.map(tag => APIV2QueryVersionTag(tag.name, tag.data, tag.color)).toList
           val channelApiTag = APIV2QueryVersionTag(
             "Channel",
@@ -765,7 +759,6 @@ object ApiV2Controller {
   @ConfiguredJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
 
   @ConfiguredJsonCodec case class DeployVersionInfo(
-      recommended: Option[Boolean],
       create_forum_post: Option[Boolean],
       description: Option[String],
       tags: Map[String, String]

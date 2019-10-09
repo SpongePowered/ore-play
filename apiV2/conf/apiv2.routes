@@ -328,7 +328,7 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ReturnedApiSession'
+#            $ref: '#/components/schemas/models.protocols.APIV2.Version'
 #
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
