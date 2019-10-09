@@ -1,13 +1,14 @@
 package controllers
 
+import java.io.StringWriter
 import java.sql.Timestamp
 import java.time.temporal.ChronoUnit
 import java.time.{Instant, LocalDate}
 import java.util.Date
 import javax.inject.{Inject, Singleton}
 
-import scala.util.Try
 import scala.concurrent.duration._
+import scala.util.Try
 
 import play.api.mvc.{Action, ActionBuilder, AnyContent}
 import play.api.routing.JavaScriptReverseRouter
@@ -28,7 +29,7 @@ import ore.models.user._
 import ore.models.user.role._
 import ore.permission._
 import ore.permission.role.{Role, RoleCategory}
-import util.UserActionLogger
+import util.{Sitemap, UserActionLogger}
 import util.syntax._
 import views.{html => views}
 
@@ -98,11 +99,7 @@ final class Application @Inject()(forms: OreForms)(
     */
   def showFlags(): Action[AnyContent] = FlagAction.asyncF { implicit request =>
     service
-      .runDbCon(
-        AppQueries
-          .flags(request.user.id)
-          .to[Vector]
-      )
+      .runDbCon(AppQueries.flags.to[Vector])
       .map(flagSeq => Ok(views.users.admin.flags(flagSeq)))
   }
 
@@ -279,7 +276,7 @@ final class Application @Inject()(forms: OreForms)(
       t2 <- (
         UserData.of(request, u),
         ZIO.foreachPar(projectRoles)(_.project[Task].orDie),
-        OrganizationData.of[Task, ParTask](orga).value.orDie
+        OrganizationData.of[Task](orga).value.orDie
       ).parTupled
       (userData, projects, orgaData) = t2
     } yield {
@@ -313,9 +310,9 @@ final class Application @Inject()(forms: OreForms)(
                   val roleType = Role.withValue((json \ "role").as[String])
 
                   if (roleType == ownerType)
-                    transferOwner(role).const(Ok)
+                    transferOwner(role).as(Ok)
                   else if (roleType.category == allowedCategory && roleType.isAssignable)
-                    service.update(role)(_.withRole(roleType)).const(Ok)
+                    service.update(role)(_.withRole(roleType)).as(Ok)
                   else
                     IO.fail(Left(BadRequest))
                 }
@@ -339,7 +336,7 @@ final class Application @Inject()(forms: OreForms)(
             r.organization[Task]
               .orDie
               .flatMap(_.transferOwner(r.userId))
-              .const(r)
+              .as(r)
 
           val res: IO[Either[Status, Unit], Status] = thing match {
             case "orgRole" =>
@@ -398,5 +395,71 @@ final class Application @Inject()(forms: OreForms)(
 
   def swagger(): Action[AnyContent] = OreAction { implicit request =>
     Ok(views.swagger())
+  }
+
+  def sitemapIndex(): Action[AnyContent] = Action.asyncF { implicit request =>
+    service.runDbCon(AppQueries.sitemapIndexUsers.to[Vector]).map { users =>
+      def userSitemap(user: String) =
+        <sitemap>
+          <loc>{routes.Users.userSitemap(user).absoluteURL()}</loc>
+        </sitemap>
+
+      val sitemapIndex =
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          {users.map(userSitemap)}
+          <sitemap>
+            <loc>{routes.Application.globalSitemap().absoluteURL()}</loc>
+          </sitemap>
+        </sitemapindex>
+
+      val writer = new StringWriter()
+      xml.XML.write(writer, sitemapIndex, "UTF-8", xmlDecl = true, null)
+
+      Ok(writer.toString).as("application/xml")
+    }
+  }
+
+  val globalSitemap: Action[AnyContent] = Action { implicit requests =>
+    Ok(
+      Sitemap.asString(
+        Sitemap.Entry(routes.Application.showHome(), changeFreq = Some(Sitemap.ChangeFreq.Hourly)),
+        Sitemap.Entry(routes.Users.showAuthors(None, None), changeFreq = Some(Sitemap.ChangeFreq.Monthly)),
+        Sitemap.Entry(routes.Application.swagger())
+      )
+    ).as("application/xml")
+  }
+
+  val robots: Action[AnyContent] = Action {
+    Ok(s"""user-agent: *
+          |Disallow: /login
+          |Disallow: /signup
+          |Disallow: /logout
+          |Disallow: /linkout
+          |Disallow: /admin
+          |Disallow: /api
+          |Disallow: /*/*/versions
+          |Disallow: /*/*/watchers
+          |Disallow: /*/*/stars
+          |Disallow: /*/*/discuss
+          |Disallow: /*/*/channels
+          |Disallow: /*/*/manage
+          |Disallow: /*/*/versionLog
+          |Disallow: /*/*/flags
+          |Disallow: /*/*/notes
+          |Disallow: /*/*/channels
+          
+          |Allow: /*/*/versions/*
+          |Allow: /api$$
+          
+          |Disallow: /*/*/versions/*/download
+          |Disallow: /*/*/versions/*/recommended/download
+          |Disallow: /*/*/versions/*/jar
+          |Disallow: /*/*/versions/*/recommended/jar
+          |Disallow: /*/*/versions/*/reviews
+          |Disallow: /*/*/versions/*/new
+          |Disallow: /*/*/versions/*/confirm
+
+          |Sitemap: ${config.app.baseUrl}/sitemap.xml
+      """.stripMargin).as("text/plain")
   }
 }

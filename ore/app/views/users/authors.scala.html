@@ -55,7 +55,7 @@
                 <tr>
                     <td>@userAvatar(Some(name), User.avatarUrl(name), clazz = "user-avatar-xs")</td>
                     <td>
-                        <a href="@routes.Users.showProjects(name, None)">@name</a>
+                        <a href="@routes.Users.showProjects(name)">@name</a>
                     </td>
                     <td>
                         @optDonorRole.map { role =>

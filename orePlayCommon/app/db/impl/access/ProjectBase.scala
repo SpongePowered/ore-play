@@ -126,14 +126,14 @@ object ProjectBase {
   /**
     * Default live implementation of [[ProjectBase]]
     */
-  class ProjectBaseF[F[_], G[_]](
+  class ProjectBaseF[F[_]](
       implicit service: ModelService[F],
       config: OreConfig,
       forums: OreDiscourseApi[F],
       fileManager: ProjectFiles[F],
       fileIO: FileIO[F],
       F: cats.effect.Effect[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ) extends ProjectBase[F] {
 
     def missingFile: F[Seq[Model[Version]]] = {

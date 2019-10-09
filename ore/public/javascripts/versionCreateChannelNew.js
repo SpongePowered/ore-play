@@ -51,7 +51,7 @@ $(function() {
                                 + 'selected>' + channelName + '</option>');
         }
 
-        $('#channel-manage').modal('hide');
+        $('#channel-settings').modal('hide');
         initChannelNew(DEFAULT_COLOR);
     }
 });

@@ -24,11 +24,13 @@ GET     /statusz                                                    @controllers
 +nocsrf
 POST    /api/sync_sso                                               @controllers.ApiV1Controller.syncSso()
 
-POST    /api/projects/:pluginId/keys/new                            @controllers.ApiV1Controller.createKey(pluginId)
-POST    /api/projects/:pluginId/keys/revoke                         @controllers.ApiV1Controller.revokeKey(pluginId)
+POST    /api/v1/projects/:pluginId/keys/new                         @controllers.ApiV1Controller.createKey(pluginId)
+POST    /api/v1/projects/:pluginId/keys/revoke                      @controllers.ApiV1Controller.revokeKey(pluginId)
 
 GET     /api/projects/:pluginId/versions/recommended/download       @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
 GET     /api/projects/:pluginId/versions/:name/download             @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
+GET     /api/v1/projects/:pluginId/versions/recommended/download    @controllers.project.Versions.downloadRecommendedJarById(pluginId, token: Option[String])
+GET     /api/v1/projects/:pluginId/versions/:name/download          @controllers.project.Versions.downloadJarById(pluginId, name, token: Option[String])
 
 GET     /api/v1/projects                                            @controllers.ApiV1Controller.listProjects(categories: Option[String], sort: Option[Int], q: Option[String], limit: Option[Long], offset: Option[Long])
 GET     /api/v1/projects/:pluginId                                  @controllers.ApiV1Controller.showProject(pluginId)
@@ -57,6 +59,9 @@ GET     /login                                                      @controllers
 GET     /logout                                                     @controllers.Users.logOut()
 POST    /verify                                                     @controllers.Users.verify(returnPath: Option[String])
 GET     /javascriptRoutes                                           @controllers.Application.javascriptRoutes
+GET     /global-sitemap.xml                                         @controllers.Application.globalSitemap
+GET     /sitemap.xml                                                @controllers.Application.sitemapIndex()
+GET     /robots.txt                                                 @controllers.Application.robots()
 
 # ---------- Projects ----------
 
@@ -88,7 +93,8 @@ POST    /notifications/read/:id                                     @controllers
 
 POST    /prompts/read/:id                                           @controllers.Users.markPromptRead(id: Int)
 
-GET     /:user                                                      @controllers.Users.showProjects(user, page: Option[Int])
+GET     /:user                                                      @controllers.Users.showProjects(user)
+GET     /:user/sitemap.xml                                          @controllers.Users.userSitemap(user)
 POST    /:user/settings/tagline                                     @controllers.Users.saveTagline(user)
 POST    /:user/settings/lock/:locked                                @controllers.Users.setLocked(user, locked: Boolean, sso: Option[String], sig: Option[String])
 GET     /:user/settings/apiKeys                                     @controllers.Users.editApiKeys(user)

@@ -22,17 +22,17 @@ sealed abstract class InviteFilter(
     val title: String,
     val filter: InviteFilter.FilterFunc
 ) extends IntEnumEntry {
-  def apply[F[_], G[_]](
+  def apply[F[_]](
       user: Model[User]
-  )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+  )(implicit service: ModelService[F], par: Parallel[F]): F[Seq[Model[UserRoleModel[_]]]] =
     filter(user)
 }
 
 object InviteFilter extends IntEnum[InviteFilter] {
   trait FilterFunc {
-    def apply[F[_], G[_]](
+    def apply[F[_]](
         user: Model[User]
-    )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]]
+    )(implicit service: ModelService[F], par: Parallel[F]): F[Seq[Model[UserRoleModel[_]]]]
   }
 
   val values: immutable.IndexedSeq[InviteFilter] = findValues
@@ -43,9 +43,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
         "all",
         "notification.invite.all",
         new FilterFunc {
-          override def apply[F[_], G[_]](
+          override def apply[F[_]](
               user: Model[User]
-          )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+          )(implicit service: ModelService[F], par: Parallel[F]): F[Seq[Model[UserRoleModel[_]]]] =
             Parallel.parMap2(
               service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result),
               service.runDBIO(
@@ -61,9 +61,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
         "projects",
         "notification.invite.projects",
         new FilterFunc {
-          override def apply[F[_], G[_]](
+          override def apply[F[_]](
               user: Model[User]
-          )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+          )(implicit service: ModelService[F], par: Parallel[F]): F[Seq[Model[UserRoleModel[_]]]] =
             service.runDBIO(user.projectRoles(ModelView.raw(ProjectUserRole)).filter(!_.isAccepted).result)
         }
       )
@@ -74,9 +74,9 @@ object InviteFilter extends IntEnum[InviteFilter] {
         "organizations",
         "notification.invite.organizations",
         new FilterFunc {
-          override def apply[F[_], G[_]](
+          override def apply[F[_]](
               user: Model[User]
-          )(implicit service: ModelService[F], par: Parallel[F, G]): F[Seq[Model[UserRoleModel[_]]]] =
+          )(implicit service: ModelService[F], par: Parallel[F]): F[Seq[Model[UserRoleModel[_]]]] =
             service.runDBIO(user.organizationRoles(ModelView.raw(OrganizationUserRole)).filter(!_.isAccepted).result)
         }
       )

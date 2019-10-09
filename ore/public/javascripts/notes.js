@@ -9,7 +9,7 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + resourcePath + '/notes/addmessage',
-            data: { csrfToken: csrf, content: textarea.val() },
+            data: { content: textarea.val() },
             success: function() {
                 location.reload();
             }

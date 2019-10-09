@@ -5,13 +5,11 @@ import java.time.LocalDate
 import scala.concurrent.duration.FiniteDuration
 
 import models.querymodels._
-import ore.data.project.Category
 import ore.db.{DbRef, Model}
 import ore.models.admin.LoggedActionViewModel
 import ore.models.project._
 import ore.models.user.User
 
-import cats.syntax.all._
 import doobie._
 import doobie.implicits._
 
@@ -60,7 +58,7 @@ object AppQueries extends WebDoobieOreProtocol {
           |  ORDER BY sq.project_name DESC, sq.version_string DESC""".stripMargin.query[UnsortedQueueEntry]
   }
 
-  def flags(userId: DbRef[User]): Query0[ShownFlag] = {
+  val flags: Query0[ShownFlag] = {
     sql"""|SELECT pf.id        AS flag_id,
           |       pf.created_at AS flag_creation_date,
           |       pf.reason    AS flag_reason,
@@ -176,5 +174,12 @@ object AppQueries extends WebDoobieOreProtocol {
           |         JOIN users u ON vc.created_by = u.id
           |  WHERE vc.resolved_at IS NULL
           |    AND p.visibility = 3""".stripMargin.query[ProjectNeedsApproval]
+  }
+
+  val sitemapIndexUsers: Query0[String] = {
+    sql"""|SELECT u.name
+          |    FROM users u
+          |    ORDER BY (SELECT COUNT(*) FROM project_members_all pma WHERE pma.user_id = u.id) DESC
+          |    LIMIT 49000""".stripMargin.query[String]
   }
 }

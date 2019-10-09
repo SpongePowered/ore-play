@@ -50,10 +50,10 @@ object UserData {
       owner   <- TableQuery[UserTable] if org.userId === owner.id
     } yield (org, orgUser, role, owner)
 
-  def of[F[_], G[_]](request: OreRequest[_], user: Model[User])(
+  def of[F[_]](request: OreRequest[_], user: Model[User])(
       implicit service: ModelService[F],
       F: Monad[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): F[UserData] =
     for {
       isOrga       <- user.toMaybeOrganization(ModelView.now(Organization)).isDefined
@@ -63,10 +63,10 @@ object UserData {
       orgas <- service.runDBIO(queryRoles(user).result)
     } yield UserData(request.headerData, user, isOrga, projectCount, orgas, globalRoles, userPerms, orgaPerms)
 
-  def perms[F[_], G[_]](user: Model[User])(
+  def perms[F[_]](user: Model[User])(
       implicit service: ModelService[F],
       F: Monad[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): F[(Set[Role], Permission, Permission)] = {
     (
       user.permissionsIn(GlobalScope),

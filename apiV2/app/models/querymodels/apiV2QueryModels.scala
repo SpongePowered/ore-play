@@ -2,7 +2,7 @@ package models.querymodels
 
 import java.time.LocalDateTime
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 import play.api.mvc.RequestHeader

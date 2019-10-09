@@ -4,12 +4,12 @@ evictionWarningOptions in update := EvictionWarningOptions.default
   .withWarnDirectEvictions(false)
   .withWarnScalaVersionEviction(false)
 
-resolvers += "Typesafe repository".at("http://repo.typesafe.com/typesafe/releases/")
+resolvers += "Typesafe repository".at("https://repo.typesafe.com/typesafe/releases/")
 
 addSbtPlugin("com.typesafe.play" % "sbt-plugin"              % "2.7.3")
 addSbtPlugin("com.typesafe.sbt"  % "sbt-digest"              % "1.1.4")
 addSbtPlugin("com.typesafe.sbt"  % "sbt-gzip"                % "1.0.2")
 addSbtPlugin("ch.epfl.scala"     % "sbt-scalafix"            % "0.9.0")
-addSbtPlugin("com.iheart"        %% "sbt-play-swagger"       % "0.7.6-PLAY2.7")
+addSbtPlugin("com.iheart"        %% "sbt-play-swagger"       % "0.7.8-PLAY2.7")
 addSbtPlugin("org.scala-js"      % "sbt-scalajs"             % "0.6.28")
 addSbtPlugin("ch.epfl.scala"     % "sbt-web-scalajs-bundler" % "0.15.0-0.6")

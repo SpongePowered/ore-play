@@ -80,11 +80,11 @@ object StatTracker {
   /**
     * Helper class for handling tracking of statistics.
     */
-  class StatTrackerInstant[F[_], G[_]](bakery: Bakery)(
+  class StatTrackerInstant[F[_]](bakery: Bakery)(
       implicit service: ModelService[F],
       users: UserBase[F],
       F: cats.effect.Effect[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ) extends StatTracker[F] {
 
     private val Logger    = scalalogging.Logger("StatTracker")

@@ -7,7 +7,6 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/init',
-            data: { csrfToken: csrf },
             complete: function() { toggleSpinner($('.btn-review-start [data-fa-i2svg]').addClass('fa-terminal')); },
             success: function() {
                 location.reload();
@@ -20,7 +19,6 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/reviewtoggle',
-            data: { csrfToken: csrf },
             complete: function() { btn.html('Add to queue'); },
             success: function() {
                 location.reload();
@@ -40,7 +38,7 @@ $(function() {
             type: 'post',
             url: '/' + versionPath + '/reviews/stop',
 
-            data: { csrfToken: csrf, content: $('.textarea-stop').val() },
+            data: { content: $('.textarea-stop').val() },
             complete: function() { toggleSpinner(icon.addClass('fa-times-circle-o')); },
             success: function() {
                 location.reload();
@@ -53,12 +51,10 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/approve',
-            data: { csrfToken: csrf }
         });
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/approve',
-            data: { csrfToken: csrf },
             success: function() {
                 location.reload();
             }
@@ -70,12 +66,10 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/approve',
-            data: { csrfToken: csrf }
         });
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/approvePartial',
-            data: { csrfToken: csrf },
             success: function() {
                 location.reload();
             }
@@ -93,7 +87,7 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/takeover',
-            data: { csrfToken: csrf, content: $('.textarea-takeover').val() },
+            data: { content: $('.textarea-takeover').val() },
             success: function() {
                 location.reload();
             }
@@ -121,7 +115,7 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/edit/' + panel.data('review'),
-            data: { csrfToken: csrf, content: textarea.val() },
+            data: { content: textarea.val() },
             success: function() {
                 location.reload();
             }
@@ -133,7 +127,7 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/addmessage',
-            data: { csrfToken: csrf, content: $('.textarea-addmessage').val() },
+            data: { content: $('.textarea-addmessage').val() },
             success: function() {
                 location.reload();
             }
@@ -146,7 +140,6 @@ $(function() {
         $.ajax({
             type: 'post',
             url: '/' + versionPath + '/reviews/reopen',
-            data: { csrfToken: csrf },
             complete: function() { toggleSpinner(icon.toggleClass('fa-terminal')); },
             success: function() {
                 location.reload();

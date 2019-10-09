@@ -5,7 +5,6 @@ function update(thing, action, data) {
         url: window.location.pathname + '/update',
         method: 'post',
         data: {
-            csrfToken: csrf,
             thing: thing,
             action: action,
             data: JSON.stringify(data)

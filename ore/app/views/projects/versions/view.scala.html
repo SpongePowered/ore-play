@@ -29,7 +29,7 @@
 
                 <!-- User info -->
             <p class="user date pull-left">
-                <a href="@routes.Users.showProjects(v.p.project.ownerName, None)">
+                <a href="@routes.Users.showProjects(v.p.project.ownerName)">
                     <strong>@v.p.project.ownerName</strong>
                 </a>
                 released this version on @prettifyDate(v.v.createdAt)
@@ -72,7 +72,7 @@
 
                         @if(!v.isRecommended && sp.perms(Permission.EditVersion) && v.v.visibility != Visibility.SoftDelete) {
                             @form(action = versionRoutes.setRecommended(
-                                v.p.project.ownerName, v.p.project.slug, v.v.versionString), 'class -> "form-inline") {
+                                v.p.project.ownerName, v.p.project.slug, v.v.versionString), Symbol("class") -> "form-inline") {
                                 @CSRF.formField
                                 <button type="submit" class="btn btn-info">
                                     <i class="fas fa-gem"></i> Set recommended

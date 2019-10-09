@@ -59,8 +59,8 @@
 
                                                         @form(action = channelRoutes.delete(
                                                             p.project.ownerName, p.project.slug, channel.name),
-                                                            'id -> s"form-delete-${channel.id}",
-                                                            'class -> "form-channel-delete") {
+                                                            Symbol("id") -> s"form-delete-${channel.id}",
+                                                            Symbol("class") -> "form-channel-delete") {
                                                             @CSRF.formField
                                                         }
                                                     }

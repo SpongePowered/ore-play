@@ -27,7 +27,9 @@ import cats.instances.option._
 import cats.syntax.all._
 import io.circe.Json
 import slick.lifted.{Rep, TableQuery}
+import zio.interop.catz._
 import zio.{UIO, ZIO}
+import zio.interop.catz._
 
 /**
   * Controller for handling Review related actions.
@@ -65,7 +67,7 @@ final class Reviews @Inject()(forms: OreForms)(
           None,
           Json.obj()
         )
-        this.service.insert(review).const(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
+        this.service.insert(review).as(Redirect(routes.Reviews.showReviews(author, slug, versionString)))
       }
     }
   }
@@ -110,7 +112,7 @@ final class Reviews @Inject()(forms: OreForms)(
         _ <- (
           service.update(review)(_.copy(endedAt = Some(Instant.now()))),
           // send notification that review happened
-          sendReviewNotification(project, version, request.user)
+          sendReviewNotification(project, version)
         ).parTupled
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }
@@ -140,8 +142,7 @@ final class Reviews @Inject()(forms: OreForms)(
 
   private def sendReviewNotification(
       project: Model[Project],
-      version: Version,
-      requestUser: Model[User]
+      version: Version
   ): UIO[Unit] = {
     val usersF =
       service.runDBIO(notificationUsersQuery((project.id, version.authorId)).result).map { list =>

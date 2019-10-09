@@ -27,9 +27,9 @@ trait CircePlayController { self: BaseControllerHelpers =>
       case playjson.JsBoolean(bool) => bool.asJson
       case playjson.JsNumber(value) => value.asJson
       case playjson.JsNull          => Json.Null
-      case playjson.JsArray(value)  => Json.arr(value.map(convertPlayJson): _*)
+      case playjson.JsArray(value)  => Json.arr(value.view.map(convertPlayJson).to(Seq): _*)
       case playjson.JsObject(underlying) =>
-        Json.obj(underlying.map(t => t._1 -> convertPlayJson(t._2))(collection.breakOut): _*)
+        Json.obj(underlying.view.map { case (k, v) => k -> convertPlayJson(v) }.to(Seq): _*)
     }
 
     //Easiest way to do stuff

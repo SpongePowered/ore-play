@@ -209,8 +209,8 @@
                         </div>
                     }
 
-                    @form(action = projectRoutes.save(p.project.ownerName, p.project.slug), 'id -> "save",
-                        'class -> "pull-right") {
+                    @form(action = projectRoutes.save(p.project.ownerName, p.project.slug), Symbol("id") -> "save",
+                        Symbol("class") -> "pull-right") {
                         @CSRF.formField
                         <input type="hidden" id="update-icon" name="update-icon" value="false" />
                         <button type="submit" name="save" class="btn btn-success btn-spinner" data-icon="fa-check">
@@ -248,7 +248,7 @@
                 </div>
                 <div class="modal-footer">
                     <div class="form-inline">
-                    @form(action = projectRoutes.rename(p.project.ownerName, p.project.slug), 'id -> "rename") {
+                    @form(action = projectRoutes.rename(p.project.ownerName, p.project.slug), Symbol("id") -> "rename") {
                         @CSRF.formField
                         <button type="button" class="btn btn-default" data-dismiss="modal">
                         @messages("channel.edit.close")

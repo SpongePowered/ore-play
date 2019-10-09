@@ -47,13 +47,13 @@ case class ProjectSettingsForm(
     keywordsRaw: String
 ) extends TProjectRoleSetBuilder {
 
-  def save[F[_], G[_]](settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
+  def save[F[_]](settings: Model[ProjectSettings], project: Model[Project], logger: LoggerTakingImplicit[OreMDC])(
       implicit fileManager: ProjectFiles[F],
       fileIO: FileIO[F],
       mdc: OreMDC,
       service: ModelService[F],
       F: Async[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): EitherT[F, String, (Model[Project], Model[ProjectSettings])] = {
     import cats.instances.vector._
     logger.debug("Saving project settings")
@@ -110,8 +110,8 @@ case class ProjectSettingsForm(
 
             val notExist   = fileIO.notExists(iconDir)
             val createDirs = fileIO.createDirectories(iconDir)
-            val deleteFiles = fileIO.list(iconDir).flatMap { ps =>
-              import cats.instances.stream._
+            val deleteFiles = fileIO.list(iconDir).use { ps =>
+              import cats.instances.lazyList._
               fileIO.traverseLimited(ps)(p => fileIO.delete(p))
             }
             val move = fileIO.move(pendingPath, iconDir.resolve(pendingPath.getFileName))

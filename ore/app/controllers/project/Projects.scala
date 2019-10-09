@@ -5,8 +5,8 @@ import java.security.MessageDigest
 import java.util.Base64
 import javax.inject.{Inject, Singleton}
 
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 import play.api.i18n.MessagesApi
 import play.api.libs.Files.TemporaryFile
@@ -192,7 +192,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               .flatMap { posterName =>
                 users.requestPermission(request.user, posterName, Permission.PostAsOrganization).toZIO
               }
-              .constError(request.user)
+              .asError(request.user)
               .either
               .map(_.merge)
           }
@@ -213,7 +213,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     projects
       .withSlug(author, slug)
       .get
-      .constError(NotFound)
+      .asError(NotFound)
       .flatMap(project => project.obj.iconUrlOrPath.map(_.fold(Redirect(_), showImage)))
   }
 
@@ -255,7 +255,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
                 s"Not flagged by ${user.name}"
               )
             )
-            .const(Redirect(self.show(author, slug)).flashing("reported" -> "true"))
+            .as(Redirect(self.show(author, slug)).flashing("reported" -> "true"))
       }
     }
 
@@ -358,9 +358,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
                 .project[Task]
                 .orDie
                 .flatMap(project => MembershipDossier.projectHasMemberships[Task].removeRole(project)(role.id).orDie)
-                .const(Ok)
-            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).const(Ok)
-            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).const(Ok)
+                .as(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.fail(BadRequest)
           }
         }
@@ -388,15 +388,15 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           import MembershipDossier._
           status match {
             case STATUS_DECLINE =>
-              MembershipDossier.projectHasMemberships.removeRole(project)(role.id).const(Ok)
-            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).const(Ok)
-            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).const(Ok)
+              MembershipDossier.projectHasMemberships.removeRole(project)(role.id).as(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.succeed(BadRequest)
           }
         }
       } yield res
 
-      res.constError(NotFound)
+      res.asError(NotFound)
     }
 
   /**
@@ -444,14 +444,14 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
           val deleteFiles = effectBlocking(Files.list(pendingDir))
             .map(_.iterator().asScala)
-            .flatMap(it => ZIO.foreachParN_(config.performance.nioBlockingFibers)(it.toIterable)(deleteFile))
+            .flatMap(it => ZIO.foreachParN_(config.performance.nioBlockingFibers)(it.to(Iterable))(deleteFile))
 
           val moveFile = effectBlocking(tmpFile.ref.moveFileTo(pendingDir.resolve(tmpFile.filename), replace = true))
 
           //todo data
           val log = UserActionLogger.log(request.request, LoggedAction.ProjectIconChanged, data.project.id, "", "")
 
-          val res = ZIO.whenM(notExist)(createDir) *> deleteFiles *> moveFile *> log.const(Ok)
+          val res = ZIO.whenM(notExist)(createDir) *> deleteFiles *> moveFile *> log.as(Ok)
           res.orDie
       }
     }
@@ -525,7 +525,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
                 s"'${user.name}' is a member of ${project.ownerName}/${project.name}"
               )
             )
-            .const(Redirect(self.showSettings(author, slug)))
+            .as(Redirect(self.showSettings(author, slug)))
         }
     }
 
@@ -545,7 +545,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           .ProjectSave(organisationUserCanUploadTo.toSeq)
           .bindZIO(FormErrorLocalized(self.showSettings(author, slug)))
         _ <- formData
-          .save[ZIO[Blocking, Throwable, ?], zio.interop.ParIO[Blocking, Throwable, ?]](
+          .save[ZIO[Blocking, Throwable, *]](
             data.settings,
             data.project,
             MDCLogger
@@ -670,7 +670,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     Authenticated.andThen(PermissionAction(Permission.HardDeleteProject)).asyncF { implicit request =>
       getProject(author, slug).flatMap { project =>
         hardDeleteProject(project)
-          .const(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
+          .as(Redirect(ShowHome).withSuccess(request.messages.apply("project.deleted", project.name)))
       }
     }
   }
@@ -758,7 +758,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       .asyncF(parse.form(forms.NoteDescription)) { implicit request =>
         getProject(author, slug)
           .flatMap(_.addNote(Note(request.body.trim, request.user.id)))
-          .const(Ok("Review"))
+          .as(Ok("Review"))
       }
   }
 }

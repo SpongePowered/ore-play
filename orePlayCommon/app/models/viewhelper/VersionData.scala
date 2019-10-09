@@ -36,10 +36,10 @@ case class VersionData(
 }
 
 object VersionData {
-  def of[F[_], G[_]](request: ProjectRequest[_], version: Model[Version])(
+  def of[F[_]](request: ProjectRequest[_], version: Model[Version])(
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): F[VersionData] = {
     import cats.instances.list._
     import cats.instances.option._

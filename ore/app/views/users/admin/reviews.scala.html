@@ -27,7 +27,7 @@
                 <h1 class="pull-left">@project.name <i>@version.versionString</i></h1>
             </div>
             <p class="user date pull-left">
-                <a href="@routes.Users.showProjects(project.ownerName, None)">
+                <a href="@routes.Users.showProjects(project.ownerName)">
                     <strong>@project.ownerName</strong>
                 </a>
                 released this version on @prettifyDate(version.createdAt)

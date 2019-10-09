@@ -61,11 +61,11 @@ object ProjectData {
 
   def cacheKey(project: Model[Project]): String = "project" + project.id
 
-  def of[F[_], G[_]](project: Model[Project])(
+  def of[F[_]](project: Model[Project])(
       implicit service: ModelService[F],
       F: MonadError[F, Throwable],
       files: ProjectFiles[F],
-      par: Parallel[F, G],
+      par: Parallel[F],
       header: RequestHeader,
       config: OreConfig
   ): F[ProjectData] = {

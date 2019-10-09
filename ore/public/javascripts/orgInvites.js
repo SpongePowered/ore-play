@@ -5,7 +5,6 @@ function replyToInvite(id, behalf, reply, success, error) {
     $.ajax({
         type: 'post',
         url: url,
-        data: { csrfToken: csrf },
         success: success,
         error: error
     });

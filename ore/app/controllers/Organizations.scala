@@ -19,7 +19,6 @@ import util.syntax._
 import views.{html => views}
 
 import cats.data.OptionT
-import cats.syntax.all._
 import zio.interop.catz._
 import zio.{IO, Task, UIO}
 
@@ -81,7 +80,7 @@ class Organizations @Inject()(forms: OreForms)(
                 .absolve
                 .bimap(
                   error => Redirect(failCall).withErrors(error),
-                  organization => Redirect(routes.Users.showProjects(organization.name, None))
+                  organization => Redirect(routes.Users.showProjects(organization.name))
                 )
             }
           }
@@ -101,14 +100,14 @@ class Organizations @Inject()(forms: OreForms)(
         .organizationRoles(ModelView.now(OrganizationUserRole))
         .get(id)
         .toZIO
-        .constError(notFound)
+        .asError(notFound)
         .flatMap { role =>
           import MembershipDossier._
           status match {
             case STATUS_DECLINE =>
               role.organization[Task].orDie.flatMap(org => org.memberships.removeRole(org)(role.id)).as(Ok)
-            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).const(Ok)
-            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).const(Ok)
+            case STATUS_ACCEPT   => service.update(role)(_.copy(isAccepted = true)).as(Ok)
+            case STATUS_UNACCEPT => service.update(role)(_.copy(isAccepted = false)).as(Ok)
             case _               => IO.fail(BadRequest)
           }
         }
@@ -128,7 +127,7 @@ class Organizations @Inject()(forms: OreForms)(
 
         auth.changeAvatarUri(request.user.name, organization).map {
           case Left(_) =>
-            Redirect(routes.Users.showProjects(organization, None)).withError(messagesApi("organization.avatarFailed"))
+            Redirect(routes.Users.showProjects(organization)).withError(messagesApi("organization.avatarFailed"))
           case Right(uri) => Redirect(uri.toString())
         }
       }
@@ -164,8 +163,8 @@ class Organizations @Inject()(forms: OreForms)(
       )
       .asyncF { implicit request =>
         request.body
-          .saveTo[Task, ParTask](request.data.orga)
+          .saveTo[Task](request.data.orga)
           .orDie
-          .const(Redirect(ShowUser(organization)))
+          .as(Redirect(ShowUser(organization)))
       }
 }

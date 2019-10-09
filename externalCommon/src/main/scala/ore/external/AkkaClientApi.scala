@@ -9,11 +9,12 @@ import ore.external.AkkaClientApi.ClientSettings
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
+import akka.http.scaladsl.model.headers.Accept
+import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
 import akka.pattern.CircuitBreaker
 import akka.stream.Materializer
+import akka.util.ByteString
 import cats.Applicative
 import cats.data.EitherT
 import cats.effect.Concurrent
@@ -32,6 +33,12 @@ abstract class AkkaClientApi[F[_], E[_], ErrorType](
     F: Concurrent[F],
     E: Applicative[E]
 ) {
+
+  implicit val jsonUnmarshaller: FromEntityUnmarshaller[Json] =
+    Unmarshaller.byteStringUnmarshaller.forContentTypes(ContentTypes.`application/json`).map {
+      case ByteString.empty => throw Unmarshaller.NoContentException
+      case data             => io.circe.jawn.parseByteBuffer(data.asByteBuffer).fold(throw _, identity)
+    }
 
   def createStatusError(statusCode: StatusCode, message: Option[String]): ErrorType
 
@@ -88,8 +95,6 @@ abstract class AkkaClientApi[F[_], E[_], ErrorType](
   protected def gatherJsonErrors[A: Decoder](json: Json): Either[E[ErrorType], A]
 
   protected def makeUnmarshallRequestEither[A: Decoder](request: HttpRequest): F[Either[E[ErrorType], A]] = {
-    import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-
     val requestWithAccept =
       if (request.header[Accept].isDefined) request
       else request.withHeaders(request.headers :+ Accept(MediaRange(MediaTypes.`application/json`)))

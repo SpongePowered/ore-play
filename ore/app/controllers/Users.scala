@@ -15,20 +15,19 @@ import ore.data.Prompt
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.query.UserQueries
-import ore.db.impl.schema.{ApiKeyTable, UserTable}
+import ore.db.impl.schema.{ApiKeyTable, PageTable, ProjectTableMain, UserTable, VersionTable}
 import ore.db.{DbRef, Model}
-import ore.models.project.ProjectSortingStrategy
 import ore.models.user.notification.{InviteFilter, NotificationFilter}
 import ore.models.user.{FakeUser, _}
 import ore.permission.Permission
 import ore.permission.role.Role
-import util.UserActionLogger
+import util.{Sitemap, UserActionLogger}
 import util.syntax._
 import views.{html => views}
 
 import cats.syntax.all._
 import zio.interop.catz._
-import zio.{IO, Task, ZIO}
+import zio.{IO, Task, UIO, ZIO}
 
 /**
   * Controller for general user actions.
@@ -83,7 +82,7 @@ class Users @Inject()(
           sponge <- this.sso
             .authenticate(sso.get, sig.get)(isNonceValid)
             .get
-            .constError(Redirect(ShowHome).withError("error.loginFailed"))
+            .asError(Redirect(ShowHome).withError("error.loginFailed"))
           fromSponge = sponge.toUser
           // Complete authentication
           user <- users.getOrCreate(sponge.username, fromSponge, _ => IO.unit)
@@ -137,9 +136,7 @@ class Users @Inject()(
     * @param username   Username to lookup
     * @return           View of user projects page
     */
-  def showProjects(username: String, page: Option[Int]): Action[AnyContent] = OreAction.asyncF { implicit request =>
-    val pageNum = page.getOrElse(1)
-
+  def showProjects(username: String): Action[AnyContent] = OreAction.asyncF { implicit request =>
     for {
       u <- users
         .withName(username)
@@ -151,7 +148,7 @@ class Users @Inject()(
       ).parTupled
       (orga, userData) = t1
       t2 <- (
-        OrganizationData.of[Task, ParTask](orga).value.orDie,
+        OrganizationData.of[Task](orga).value.orDie,
         ScopedOrganizationData.of(request.currentUser, orga).value
       ).parTupled
       (orgaData, scopedOrgaData) = t2
@@ -159,8 +156,7 @@ class Users @Inject()(
       Ok(
         views.users.projects(
           userData,
-          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b))),
-          pageNum
+          orgaData.flatMap(a => scopedOrgaData.map(b => (a, b)))
         )
       )
     }
@@ -212,7 +208,7 @@ class Users @Inject()(
 
       service
         .update(user)(_.copy(isLocked = locked))
-        .const(Redirect(ShowUser(username)))
+        .as(Redirect(ShowUser(username)))
     }
   }
 
@@ -294,7 +290,7 @@ class Users @Inject()(
     request.user
       .notifications(ModelView.now(Notification))
       .get(id)
-      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).const(Ok))
+      .semiflatMap(notification => service.update(notification)(_.copy(isRead = true)).as(Ok))
       .getOrElse(notFound)
   }
 
@@ -308,7 +304,7 @@ class Users @Inject()(
   def markPromptRead(id: Int): Action[AnyContent] = Authenticated.asyncF { implicit request =>
     Prompt.values.find(_.value == id) match {
       case None         => IO.fail(BadRequest)
-      case Some(prompt) => request.user.markPromptAsRead(prompt).const(Ok)
+      case Some(prompt) => request.user.markPromptAsRead(prompt).as(Ok)
     }
   }
 
@@ -323,7 +319,7 @@ class Users @Inject()(
           ).parTupled
           (orga, userData, keys) = t1
           t2 <- (
-            OrganizationData.of[Task, ParTask](orga).value.orDie,
+            OrganizationData.of[Task](orga).value.orDie,
             ScopedOrganizationData.of(request.currentUser, orga).value
           ).parTupled
           (orgaData, scopedOrgaData) = t2
@@ -345,4 +341,84 @@ class Users @Inject()(
         }
       } else IO.fail(Forbidden)
     }
+
+  import controllers.project.{routes => projectRoutes}
+
+  def userSitemap(user: String): Action[AnyContent] = Action.asyncF { implicit request =>
+    def use[A](a: A): Unit = {
+      if (false) println(a)
+      ()
+    }
+
+    val projectsQuery = for {
+      u <- TableQuery[UserTable]
+      p <- TableQuery[ProjectTableMain] if u.id === p.userId
+      _ = use(p)
+      if u.name === user
+    } yield p.slug
+
+    val versionQuery = for {
+      u  <- TableQuery[UserTable]
+      p  <- TableQuery[ProjectTableMain] if u.id === p.userId
+      pv <- TableQuery[VersionTable] if p.id === pv.projectId
+      _ = use(pv)
+      if u.name === user
+    } yield (p.slug, pv.versionString)
+
+    val pageQuery = for {
+      u  <- TableQuery[UserTable]
+      p  <- TableQuery[ProjectTableMain] if u.id === p.userId
+      pp <- TableQuery[PageTable] if p.id === pp.projectId
+      _ = use(pp)
+      if u.name === user
+    } yield (p.slug, pp.name)
+
+    for {
+      projectsFiber <- service.runDBIO(projectsQuery.result).fork
+      versionsFiber <- service.runDBIO(versionQuery.result).fork
+      pagesFiber    <- service.runDBIO(pageQuery.result).fork
+      userExists    <- ModelView.now(User).exists(_.name === user)
+      res <- {
+        if (userExists) {
+          val projectsF = projectsFiber.join
+          val versionsF = versionsFiber.join
+          val pagesF    = pagesFiber.join
+
+          //IntelliJ is stupid
+          projectsF <&> versionsF <&> pagesF: UIO[((Seq[String], Seq[(String, String)]), Seq[(String, String)])]
+        } else {
+          versionsFiber.interrupt &>
+            projectsFiber.interrupt &>
+            pagesFiber.interrupt &>
+            ZIO.fail(NotFound): IO[Result, Nothing]
+        }
+      }
+      ((projects, versions), pages) = res
+    } yield {
+      val projectEntries = for (project <- projects) yield Sitemap.Entry(projectRoutes.Projects.show(user, project))
+
+      val versionEntries =
+        for ((project, version) <- versions)
+          yield Sitemap.Entry(
+            projectRoutes.Versions.show(user, project, version)
+          )
+
+      val pageEntries =
+        for ((project, page) <- pages)
+          yield Sitemap.Entry(
+            projectRoutes.Pages.show(user, project, page)
+          )
+
+      Ok(
+        Sitemap.asString(
+          projectEntries ++
+            versionEntries ++
+            pageEntries :+ Sitemap.Entry(
+            routes.Users.showProjects(user),
+            changeFreq = Some(Sitemap.ChangeFreq.Weekly)
+          ): _*
+        )
+      ).as("application/xml")
+    }
+  }
 }

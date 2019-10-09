@@ -21,7 +21,7 @@ trait Calls {
     * @param username Username of user
     * @return         Call to user page
     */
-  def ShowUser(username: String): Call = controllers.routes.Users.showProjects(username, None)
+  def ShowUser(username: String): Call = controllers.routes.Users.showProjects(username)
 
   /**
     * A call to a [[User]] page.

@@ -50,10 +50,10 @@ object Organization extends ModelCompanionPartial[Organization, OrganizationTabl
 
   implicit val isUserOwned: UserOwned[Organization] = (a: Organization) => a.ownerId
 
-  implicit def orgJoinable[F[_], G[_]](
+  implicit def orgJoinable[F[_]](
       implicit service: ModelService[F],
       F: Monad[F],
-      par: Parallel[F, G]
+      par: Parallel[F]
   ): Joinable.Aux[F, Organization, OrganizationUserRole, OrganizationRoleTable] =
     new Joinable[F, Organization] {
       override type RoleType      = OrganizationUserRole

@@ -104,8 +104,7 @@ function setupAvatarForm() {
         var prompt = $(this).closest('.prompt');
         $.ajax({
             type: 'post',
-            url: 'prompts/read/' + prompt.data('prompt-id'),
-            data: {csrfToken: csrf}
+            url: 'prompts/read/' + prompt.data('prompt-id')
         });
         prompt.fadeOut('fast');
     });

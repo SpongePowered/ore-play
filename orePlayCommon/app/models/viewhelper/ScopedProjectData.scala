@@ -18,10 +18,10 @@ object ScopedProjectData {
 
   def cacheKey(project: Model[Project], user: Model[User]) = s"""project${project.id}foruser${user.id}"""
 
-  def of[F[_], G[_]](
+  def of[F[_]](
       currentUser: Option[Model[User]],
       project: Model[Project]
-  )(implicit service: ModelService[F], F: Applicative[F], par: Parallel[F, G]): F[ScopedProjectData] = {
+  )(implicit service: ModelService[F], F: Applicative[F], par: Parallel[F]): F[ScopedProjectData] = {
     currentUser
       .map { user =>
         (

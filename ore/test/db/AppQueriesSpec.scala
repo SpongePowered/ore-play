@@ -43,7 +43,7 @@ class AppQueriesSpec extends DbSpec {
   }
 
   test("Flags") {
-    check(AppQueries.flags(0))
+    check(AppQueries.flags)
   }
 
   test("GetUnhealtyProjects") {
@@ -74,5 +74,9 @@ class AppQueriesSpec extends DbSpec {
 
   test("GetVisibilityWaitingProject") {
     check(AppQueries.getVisibilityWaitingProject)
+  }
+
+  test("SitemapIndexUsers") {
+    check(AppQueries.sitemapIndexUsers)
   }
 }
