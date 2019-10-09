@@ -297,7 +297,7 @@ class OreDiscourseApiEnabled[F[_]](
       readAndFormatFile(
         topicTemplatePath,
         project.name,
-        baseUrl + '/' + project.url,
+        config.app.baseUrl + '/' + project.url,
         page.contents
       )
     }
@@ -307,8 +307,8 @@ class OreDiscourseApiEnabled[F[_]](
       readAndFormatFile(
         versionReleasePostTemplatePath,
         project.name,
-        baseUrl + '/' + project.url,
-        baseUrl + '/' + version.url(project),
+        config.app.baseUrl + '/' + project.url,
+        config.app.baseUrl + '/' + version.url(project),
         content.getOrElse("*No description given.*")
       )
     }
