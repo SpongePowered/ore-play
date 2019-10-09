@@ -239,7 +239,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
             createdPage.id,
             newPage,
             oldPage
-          )(LoggedActionPage(_, createdPage.projectId)) *> createdPage.updateForumContents[Task](newPage).orDie
+          )(LoggedActionPage(_, Some(createdPage.projectId))) *> createdPage.updateForumContents[Task](newPage).orDie
         }
       } yield Redirect(self.show(author, slug, page))
     }

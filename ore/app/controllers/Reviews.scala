@@ -254,7 +254,7 @@ final class Reviews @Inject()(forms: OreForms)(
           version.id,
           newState.toString,
           oldState.toString
-        )(LoggedActionVersion(_, version.projectId))
+        )(LoggedActionVersion(_, Some(version.projectId)))
         _ <- service.update(version)(_.copy(reviewState = newState))
       } yield Redirect(routes.Reviews.showReviews(author, slug, versionString))
     }

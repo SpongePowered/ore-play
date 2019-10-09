@@ -39,8 +39,8 @@ case class ProjectData(
     lastVisibilityChangeUser: String, // users.get(project.lastVisibilityChange.get.createdBy.get).map(_.username).getOrElse("Unknown")
     recommendedVersion: Option[Model[Version]],
     iconUrl: String,
-    starCount: Int,
-    watcherCount: Int
+    starCount: Long,
+    watcherCount: Long
 ) extends JoinableData[ProjectUserRole, Project] {
 
   def flagCount: Int = flags.size

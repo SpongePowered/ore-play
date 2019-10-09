@@ -19,10 +19,10 @@ object UserActionLogger {
       oldState: String
   )(createAction: LoggedActionCommon[Ctx] => M)(implicit service: ModelService[F]): F[Model[M]] = {
     val common = LoggedActionCommon(
-      request.user.id,
+      Some(request.user.id),
       InetString(StatTracker.remoteAddress(request)),
       action,
-      ctxId,
+      Some(ctxId),
       newState,
       oldState
     )

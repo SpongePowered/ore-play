@@ -115,8 +115,8 @@ trait DoobieOreProtocol {
 
   implicit val offsetDateTimeMeta: Meta[OffsetDateTime] =
     Meta.Basic.one[OffsetDateTime](
-      JdbcType.TimestampWithTimezone,
-      List(JdbcType.Char, JdbcType.VarChar, JdbcType.LongVarChar, JdbcType.Date, JdbcType.Time, JdbcType.Timestamp),
+      JdbcType.Timestamp, //Apparently Postgres reports TIMESTAMPTZ as TIMESTAMP and not TIMESTAMPWITHTIMEZONE
+      List(JdbcType.Char, JdbcType.VarChar, JdbcType.LongVarChar, JdbcType.Date, JdbcType.Time),
       _.getObject(_, classOf[OffsetDateTime]),
       _.setObject(_, _, java.sql.JDBCType.TIMESTAMP_WITH_TIMEZONE),
       _.updateObject(_, _, java.sql.JDBCType.TIME_WITH_TIMEZONE)

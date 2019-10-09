@@ -15,10 +15,10 @@ import enumeratum.values.{IntEnum, IntEnumEntry, StringEnum, StringEnumEntry}
 import slick.lifted.TableQuery
 
 case class LoggedActionCommon[Ctx](
-    userId: DbRef[User],
+    userId: Option[DbRef[User]],
     address: InetString,
     action: LoggedActionType[Ctx],
-    ctxId: DbRef[Ctx],
+    ctxId: Option[DbRef[Ctx]],
     newState: String,
     oldState: String
 )
@@ -29,13 +29,13 @@ object LoggedActionProject
   implicit val query: ModelQuery[LoggedActionProject] = ModelQuery.from(this)
 }
 
-case class LoggedActionVersion(data: LoggedActionCommon[Version], projectId: DbRef[Project])
+case class LoggedActionVersion(data: LoggedActionCommon[Version], projectId: Option[DbRef[Project]])
 object LoggedActionVersion
     extends DefaultModelCompanion[LoggedActionVersion, LoggedActionVersionTable](TableQuery[LoggedActionVersionTable]) {
   implicit val query: ModelQuery[LoggedActionVersion] = ModelQuery.from(this)
 }
 
-case class LoggedActionPage(data: LoggedActionCommon[Page], projectId: DbRef[Project])
+case class LoggedActionPage(data: LoggedActionCommon[Page], projectId: Option[DbRef[Project]])
 object LoggedActionPage
     extends DefaultModelCompanion[LoggedActionPage, LoggedActionPageTable](TableQuery[LoggedActionPageTable]) {
   implicit val query: ModelQuery[LoggedActionPage] = ModelQuery.from(this)

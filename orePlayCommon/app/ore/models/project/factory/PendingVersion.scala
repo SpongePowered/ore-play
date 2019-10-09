@@ -51,7 +51,7 @@ case class PendingVersion(
   ): ZIO[Blocking, Nothing, (Model[Project], Model[Version], Model[Channel], Seq[Model[VersionTag]])] =
     free[Task].orDie *> factory.createVersion(project, this)
 
-  override def key: String = projectId + '/' + versionString
+  override def key: String = s"$projectId/$versionString"
 
   def dependenciesAsGhostTags: Seq[VersionTag] =
     Platform.ghostTags(-1L, dependencies)

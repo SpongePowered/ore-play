@@ -109,7 +109,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           version.id,
           newDescription,
           oldDescription
-        )(LoggedActionVersion(_, version.projectId))
+        )(LoggedActionVersion(_, Some(version.projectId)))
       } yield Redirect(self.show(author, slug, versionString))
     }
   }
@@ -159,7 +159,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             version.id,
             newState.toString,
             version.reviewState.toString
-          )(LoggedActionVersion(_, version.projectId))
+          )(LoggedActionVersion(_, Some(version.projectId)))
         } yield Redirect(self.show(author, slug, versionString))
       }
   }
@@ -335,7 +335,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           newVersion.id,
           "published",
           "null"
-        )(LoggedActionVersion(_, newVersion.projectId))
+        )(LoggedActionVersion(_, Some(newVersion.projectId)))
       } yield Redirect(self.show(author, slug, versionString))
     }
   }
@@ -378,7 +378,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             version.id,
             s"Deleted: $comment",
             s"$version.visibility"
-          )(LoggedActionVersion(_, version.projectId))
+          )(LoggedActionVersion(_, Some(version.projectId)))
         } yield Redirect(self.showList(author, slug))
       }
   }
@@ -406,7 +406,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             version.id,
             s"SoftDelete: $comment",
             ""
-          )(LoggedActionVersion(_, version.projectId))
+          )(LoggedActionVersion(_, Some(version.projectId)))
         } yield Redirect(self.showList(author, slug))
       }
 
@@ -427,7 +427,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           version <- getProjectVersion(author, slug, versionString)
           _       <- version.setVisibility(Visibility.Public, comment, request.user.id)
           _ <- UserActionLogger.log(request, LoggedActionType.VersionDeleted, version.id, s"Restore: $comment", "")(
-            LoggedActionVersion(_, version.projectId)
+            LoggedActionVersion(_, Some(version.projectId))
           )
         } yield Redirect(self.showList(author, slug))
       }

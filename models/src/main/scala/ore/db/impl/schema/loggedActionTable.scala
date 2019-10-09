@@ -29,10 +29,10 @@ abstract class LoggedActionTable[M, Ctx](tag: Tag, tableName: String, ctxIdColum
 
   def common =
     (
-      userId,
+      userId.?,
       address,
       action,
-      ctxId,
+      ctxId.?,
       newState,
       oldState
     ) <> ((LoggedActionCommon.apply[Ctx] _).tupled, LoggedActionCommon.unapply)
@@ -49,7 +49,7 @@ class LoggedActionVersionTable(tag: Tag)
   def projectId = column[DbRef[Project]]("project_id")
 
   override def * =
-    (id.?, createdAt.?, (common, projectId)) <> (mkApply((LoggedActionVersion.apply _).tupled), mkUnapply(
+    (id.?, createdAt.?, (common, projectId.?)) <> (mkApply((LoggedActionVersion.apply _).tupled), mkUnapply(
       LoggedActionVersion.unapply
     ))
 }
@@ -59,7 +59,7 @@ class LoggedActionPageTable(tag: Tag)
   def projectId = column[DbRef[Project]]("project_id")
 
   override def * =
-    (id.?, createdAt.?, (common, projectId)) <> (mkApply((LoggedActionPage.apply _).tupled), mkUnapply(
+    (id.?, createdAt.?, (common, projectId.?)) <> (mkApply((LoggedActionPage.apply _).tupled), mkUnapply(
       LoggedActionPage.unapply
     ))
 }
