@@ -69,7 +69,7 @@ class ApiV2Controller @Inject()(
   private def offsetOrZero(offset: Long)                         = math.max(offset, 0)
 
   private def parseAuthHeader(request: Request[_]): IO[Either[Unit, Result], HttpCredentials] = {
-    lazy val authUrl                 = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+    lazy val authUrl                 = routes.ApiV2Controller.authenticate(None).absoluteURL()(request)
     def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
     for {
@@ -95,7 +95,7 @@ class ApiV2Controller @Inject()(
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
-      lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+      lazy val authUrl        = routes.ApiV2Controller.authenticate(None).absoluteURL()(request)
       def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
       val authRequest = for {
@@ -194,7 +194,7 @@ class ApiV2Controller @Inject()(
     lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, expiresIn)
     lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, expiresIn)
 
-    lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
+    lazy val authUrl        = routes.ApiV2Controller.authenticate(None).absoluteURL()(request)
     def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
     val uuidToken = UUID.randomUUID().toString
@@ -264,7 +264,7 @@ class ApiV2Controller @Inject()(
     }
   }
 
-  def authenticate(fake: Boolean, expiresIn: Option[Long]): Action[AnyContent] =
+  def authenticate(expiresIn: Option[Long], fake: Boolean): Action[AnyContent] =
     if (fake) authenticateDev() else authenticateKeyPublic(expiresIn)
 
   def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {

@@ -37,7 +37,7 @@
 #            type: string
 ###
 +nocsrf
-POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate(fake: Boolean ?= false, expiresIn: Option[Long] = None)
+POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate(expiresIn: Option[Long], fake: Boolean ?= false)
 
 ### NoDocs ###
 POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
@@ -62,6 +62,7 @@ POST    /authenticate/user                                   @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
++nocsrf
 DELETE /sessions/current                                     @controllers.apiv2.ApiV2Controller.deleteSession()
 
 ###

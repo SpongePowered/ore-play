@@ -31,6 +31,13 @@ Accept: application/json
 
 > {% client.global.set("api_session", response.body.session); %}
 
+### Invalidate session
+DELETE http://localhost:9000/api/v2/sessions/current
+Authorization: OreApi session={{api_session}}
+Accept: application/json
+
+> {% client.global.clear("api_session"); %}
+
 ### Create a new key
 POST http://localhost:9000/api/v2/keys
 Authorization: OreApi session={{api_session}}
