@@ -6,7 +6,7 @@
         <li v-if="current >= 3">
             <a @click="jump(1)">{{ 1 }}</a>
         </li>
-        <li class="disabled" v-if="current >= 4">
+        <li class="disabled" v-if="current >= 4 && total > 4">
             <a>...</a>
         </li>
         <li v-if="current === total && current - 3 > 0">
@@ -24,7 +24,7 @@
         <li v-if="current === 1 && total > 3">
             <a @click="jump(current + 2)">{{ current + 2 }}</a>
         </li>
-        <li class="disabled" v-if="total - current >= 3">
+        <li class="disabled" v-if="total - current >= 3 && total > 4">
             <a>...</a>
         </li>
         <li v-if="total - current >= 2">

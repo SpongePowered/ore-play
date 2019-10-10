@@ -5,54 +5,60 @@
                 <a v-if="canUpload" class="btn yellow">Upload a New Version</a>
             </div>
         </div>
-        <div class="list-group">
-            <a v-for="version in versions" :href="routes.Versions.show(projectOwner, projectSlug, version.name).absoluteURL()" class="list-group-item"
-                :class="[classForVisibility(version.visibility)]">
-                <div class="container-fluid">
-                    <div class="row">
-                        <div class="col-xs-6 col-sm-3" :set="channel = version.tags.find(filterTag => filterTag.name === 'Channel')">
-                            <div class="row">
-                                <div class="col-xs-12">
-                                    <span class="text-bold">{{ version.name }}</span>
-                                </div>
-                                <div class="col-xs-12">
-                                    <span class="channel" v-bind:style="{ background: channel.color.background }">{{ channel.data }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xs-6 col-sm-3">
-                            <Tag v-for="tag in version.tags.filter(filterTag => filterTag.name !== 'Channel')"
-                                 v-bind:key="tag.name + ':' + tag.data" v-bind="tag"></Tag>
-                        </div>
-                        <div class="col-xs-3 hidden-xs">
-                            <div class="row">
-                                <div class="col-xs-12">
-                                    <i class="fas fa-fw fa-calendar"></i>
-                                    {{ formatDate(version.created_at) }}
-                                </div>
-                                <div class="col-xs-12">
-                                    <i class="far fa-fw fa-file"></i>
-                                    {{ formatSize(version.file_info.size_bytes) }}
+        <div v-show="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Loading versions for you...</span>
+        </div>
+        <div v-show="!loading">
+            <div class="list-group">
+                <a v-for="version in versions" :href="routes.Versions.show(projectOwner, projectSlug, version.name).absoluteURL()" class="list-group-item"
+                   :class="[classForVisibility(version.visibility)]">
+                    <div class="container-fluid">
+                        <div class="row">
+                            <div class="col-xs-6 col-sm-3" :set="channel = version.tags.find(filterTag => filterTag.name === 'Channel')">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <span class="text-bold">{{ version.name }}</span>
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <span class="channel" v-bind:style="{ background: channel.color.background }">{{ channel.data }}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-xs-3 hidden-xs">
-                            <div class="row">
-                                <div class="col-xs-12">
-                                    <i class="fas fa-fw fa-user-tag"></i>
-                                    {{ version.author }}
+                            <div class="col-xs-6 col-sm-3">
+                                <Tag v-for="tag in version.tags.filter(filterTag => filterTag.name !== 'Channel')"
+                                     v-bind:key="tag.name + ':' + tag.data" v-bind="tag"></Tag>
+                            </div>
+                            <div class="col-xs-3 hidden-xs">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <i class="fas fa-fw fa-calendar"></i>
+                                        {{ formatDate(version.created_at) }}
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <i class="far fa-fw fa-file"></i>
+                                        {{ formatSize(version.file_info.size_bytes) }}
+                                    </div>
                                 </div>
-                                <div class="col-xs-12">
-                                    <i class="fas fa-fw fa-download"></i>
-                                    {{ version.stats.downloads }} Downloads
+                            </div>
+                            <div class="col-xs-3 hidden-xs">
+                                <div class="row">
+                                    <div class="col-xs-12">
+                                        <i class="fas fa-fw fa-user-tag"></i>
+                                        {{ version.author }}
+                                    </div>
+                                    <div class="col-xs-12">
+                                        <i class="fas fa-fw fa-download"></i>
+                                        {{ version.stats.downloads }} Downloads
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </a>
+                </a>
+            </div>
+            <Pagination :current="current" :total="total" @prev="page--" @next="page++" @jumpTo="page = $event"></Pagination>
         </div>
-        <Pagination :current="current" :total="total" @prev="page--" @next="page++" @jumpTo="page = $event"></Pagination>
     </div>
 </template>
 
@@ -75,7 +81,8 @@
                 projectSlug: window.PROJECT_SLUG,
                 versions: [],
                 totalVersions: 0,
-                canUpload: false
+                canUpload: false,
+                loading: true
             }
         },
         created() {
@@ -93,6 +100,7 @@
                 apiV2Request("projects/" + this.pluginId + "/versions", "GET", { limit: this.limit, offset: this.offset}).then((response) => {
                     this.versions = response.result;
                     this.totalVersions = response.pagination.count;
+                    this.loading = false;
                 });
             },
             formatSize(size) {

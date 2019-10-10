@@ -240,7 +240,6 @@ class OreComponents(context: ApplicationLoader.Context)
         env.conf.resolve("discourse/version_post.md"),
         forums.retryRate,
         actorSystem.scheduler,
-        forums.baseUrl,
         api.admin
       )
 

@@ -35,7 +35,6 @@ import com.typesafe.scalalogging
   * @param versionReleasePostTemplatePath Path to version release template
   * @param retryRate Rate at which to retry failed attempts
   * @param scheduler Scheduler for maintaining synchronization when requests fail
-  * @param baseUrl The base URL for this instance
   * @param admin An admin account to fall back to if no user is specified as poster
   */
 class OreDiscourseApiEnabled[F[_]](
@@ -46,7 +45,6 @@ class OreDiscourseApiEnabled[F[_]](
     versionReleasePostTemplatePath: Path,
     retryRate: FiniteDuration,
     scheduler: Scheduler,
-    baseUrl: String,
     admin: String
 )(
     implicit service: ModelService[F],
