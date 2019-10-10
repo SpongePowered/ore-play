@@ -251,6 +251,7 @@ BEGIN
         WHEN 12 THEN RETURN 'version_description_changed';;
         WHEN 17 THEN RETURN 'version_review_state_changed';;
         WHEN 14 THEN RETURN 'user_tagline_changed';;
+        ELSE
         END CASE;;
 
     RETURN NULL;;
