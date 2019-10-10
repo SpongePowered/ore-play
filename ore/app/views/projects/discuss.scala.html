@@ -9,7 +9,7 @@ Discussion page within Project overview.
 @import views.html.utils
 
 @(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_],
-        flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+        flash: Flash, config: OreConfig, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
@@ -20,7 +20,7 @@ Discussion page within Project overview.
                 topicId: @p.project.topicId
             };
     </script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/projectDiscuss.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/projectDiscuss.js")"></script>
     <script @CSPNonce.attr>$(function() { $('.btn-edit').click(); });</script>
 }
 

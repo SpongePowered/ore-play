@@ -4,13 +4,13 @@
 @import ore.db.Model
 @import ore.models.project.Channel
 @import views.html.helper.{CSPNonce, CSRF, form}
-@(p: ProjectData, channels: Seq[(Model[Channel], Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@(p: ProjectData, channels: Seq[(Model[Channel], Int)])(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
 
 @channelRoutes = @{controllers.project.routes.Channels}
 @versionRoutes = @{controllers.project.routes.Versions}
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/channelManage.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/channelManage.js")"></script>
     <script @CSPNonce.attr>
             PROJECT_OWNER = '@p.project.ownerName';
             PROJECT_SLUG = '@p.project.slug';

@@ -2,6 +2,7 @@ import javax.inject._
 
 import scala.concurrent._
 
+import controllers.AssetsFinder
 import play.api._
 import play.api.http.{DefaultHttpErrorHandler, HtmlOrJsonHttpErrorHandler, JsonHttpErrorHandler}
 import play.api.i18n.{I18nSupport, MessagesApi}
@@ -25,7 +26,8 @@ object ErrorHandler {
       conf: Configuration,
       sourceMapper: OptionalSourceMapper,
       router: Provider[Router],
-      val messagesApi: MessagesApi
+      val messagesApi: MessagesApi,
+      assetsFinder: AssetsFinder
   )(implicit config: OreConfig)
       extends DefaultHttpErrorHandler(env, conf, sourceMapper, router)
       with I18nSupport {
@@ -33,6 +35,7 @@ object ErrorHandler {
     override def onProdServerError(request: RequestHeader, exception: UsefulException): Future[Result] = {
       implicit val requestImpl: RequestHeader = request
       implicit val flash: Flash               = request.flash
+      implicit val assets: AssetsFinder       = assetsFinder
 
       Future.successful {
         exception.cause match {
@@ -45,6 +48,7 @@ object ErrorHandler {
     override def onNotFound(request: RequestHeader, message: String): Future[Result] = {
       implicit val requestImpl: RequestHeader = request
       implicit val flash: Flash               = request.flash
+      implicit val assets: AssetsFinder       = assetsFinder
 
       Future.successful(NotFound(views.html.errors.notFound()))
     }

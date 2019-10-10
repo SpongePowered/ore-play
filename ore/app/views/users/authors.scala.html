@@ -9,7 +9,7 @@
 @import util.syntax._
 @import views.html.helper.CSPNonce
 @import views.html.utils.userAvatar
-@(authors: Seq[(String, Option[Instant], Instant, Option[Role], Option[Role], Long)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@(authors: Seq[(String, Option[Instant], Instant, Option[Role], Option[Role], Long)], ordering: String, page: Int)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @pageSize = @{ config.ore.users.authorPageSize }
 @direction = @{ if (ordering.startsWith("-")) "chevron-down" else "chevron-up" }
@@ -21,7 +21,7 @@
 }
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userList.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/userList.js")"></script>
     <script @CSPNonce.attr>CURRENT_PAGE = @page;</script>
 }
 

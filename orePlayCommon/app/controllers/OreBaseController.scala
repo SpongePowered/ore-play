@@ -26,6 +26,8 @@ abstract class OreBaseController(implicit val oreComponents: OreControllerCompon
     with Actions
     with I18nSupport {
 
+  implicit val assetsFinder: AssetsFinder = oreComponents.assetsFinder
+
   override def notFound(implicit request: OreRequest[_]): Result = NotFound(views.html.errors.notFound())
 
   /**

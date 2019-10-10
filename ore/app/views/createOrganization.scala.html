@@ -2,12 +2,12 @@
 @import ore.OreConfig
 @import ore.permission.role.RoleCategory
 @import views.html.helper.{CSRF, form}
-@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/orgCreate.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/membersConfig.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/orgCreate.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/userSearch.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/membersConfig.js")"></script>
 }
 
 @layout.base(messages("org.create"), scripts) {
