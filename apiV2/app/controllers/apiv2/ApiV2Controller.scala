@@ -166,13 +166,14 @@ class ApiV2Controller @Inject()(
 
   private def expiration(duration: FiniteDuration, userChoice: Option[Long]) = {
     val durationSeconds = duration.toSeconds
-    val expirationTime  = userChoice.fold(durationSeconds)(Math.max(_, durationSeconds))
 
-    Instant.now().plusSeconds(expirationTime)
+    userChoice
+      .fold[Option[Long]](Some(durationSeconds))(d => if (d > durationSeconds) None else Some(d))
+      .map(Instant.now().plusSeconds)
   }
 
   def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
-    val sessionExpiration = expiration(config.ore.api.session.expiration, None)
+    val sessionExpiration = expiration(config.ore.api.session.expiration, None).get //Safe because user choice is None
     val uuidToken         = UUID.randomUUID().toString
     val sessionToInsert   = ApiSession(uuidToken, None, Some(request.user.id), sessionExpiration)
 
@@ -204,21 +205,28 @@ class ApiV2Controller @Inject()(
       .flatMap { creds =>
         creds.params.get("apikey") match {
           case Some(ApiKeyRegex(identifier, token)) =>
-            service
-              .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
-              .get
-              .asError(Right(unAuth("Invalid api key")))
-              .map {
-                case (keyId, keyOwnerId) =>
-                  SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
-              }
+            for {
+              expiration <- ZIO
+                .succeed(sessionExpiration)
+                .get
+                .asError(Right(BadRequest("The requested expiration can't be used")))
+              t <- service
+                .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
+                .get
+                .asError(Right(unAuth("Invalid api key")))
+              (keyId, keyOwnerId) = t
+            } yield SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), expiration)
           case _ =>
             ZIO.fail(Right(unAuth("No apikey parameter found in Authorization")))
         }
       }
       .catchAll {
         case Left(_) =>
-          ZIO.succeed(SessionType.Public -> ApiSession(uuidToken, None, None, publicSessionExpiration))
+          ZIO
+            .succeed(publicSessionExpiration)
+            .get
+            .asError(BadRequest("The requested expiration can't be used"))
+            .map(expiration => SessionType.Public -> ApiSession(uuidToken, None, None, expiration))
         case Right(e) => ZIO.fail(e)
       }
 
@@ -240,7 +248,7 @@ class ApiV2Controller @Inject()(
     if (fakeUser.isEnabled) {
       config.checkDebug()
 
-      val sessionExpiration = expiration(config.ore.api.session.expiration, None)
+      val sessionExpiration = expiration(config.ore.api.session.expiration, None).get //Safe because userChoice is None
       val uuidToken         = UUID.randomUUID().toString
       val sessionToInsert   = ApiSession(uuidToken, None, Some(fakeUser.id), sessionExpiration)
 
