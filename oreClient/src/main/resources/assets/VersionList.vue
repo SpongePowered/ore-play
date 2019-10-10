@@ -2,7 +2,7 @@
     <div class="version-list">
         <div class="row text-center">
             <div class="col-xs-12">
-                <a v-if="canUpload" class="btn yellow">Upload a New Version</a>
+                <a v-if="canUpload" class="btn yellow" :href="routes.Versions.showCreator(projectOwner, projectSlug).absoluteURL()">Upload a New Version</a>
             </div>
         </div>
         <div v-show="loading">
