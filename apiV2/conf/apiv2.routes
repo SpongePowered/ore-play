@@ -64,7 +64,7 @@ POST    /authenticate/user                                   @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-DELETE /sessions/:session                                    @controllers.apiv2.ApiV2Controller.deleteSession(session)
+DELETE /sessions/current                                     @controllers.apiv2.ApiV2Controller.deleteSession(session)
 
 ###
 #  summary: Creates an API key

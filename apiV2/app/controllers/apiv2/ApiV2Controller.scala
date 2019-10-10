@@ -261,16 +261,13 @@ class ApiV2Controller @Inject()(
   def authenticate(fake: Boolean, expiresIn: Option[Long]): Action[AnyContent] =
     if (fake) authenticateDev() else authenticateKeyPublic(expiresIn)
 
-  def deleteSession(session: String): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
+  def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
     implicit request =>
-      val sameSessionError = BadRequest("Can only invalidate the session you use to make the request")
-
       ZIO
         .succeed(request.apiInfo.session)
         .get
-        .asError(sameSessionError)
-        .filterOrFail(_ == session)(sameSessionError)
-        .andThen(service.deleteWhere(ApiSession)(_.token === session))
+        .asError(BadRequest("This request was not made with a session"))
+        .flatMap(session => service.deleteWhere(ApiSession)(_.token === session))
         .as(NoContent)
   }
 
