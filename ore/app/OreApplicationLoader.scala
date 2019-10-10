@@ -3,6 +3,8 @@ import scala.language.higherKinds
 import java.sql.Connection
 import javax.inject.Provider
 
+import scala.concurrent.duration.FiniteDuration
+
 import play.api.cache.caffeine.CaffeineCacheComponents
 import play.api.cache.{DefaultSyncCacheApi, SyncCacheApi}
 import play.api.db.evolutions.EvolutionsComponents
@@ -39,6 +41,7 @@ import ore.auth.{AkkaSSOApi, AkkaSpongeAuthApi, SSOApi, SpongeAuthApi}
 import ore.db.ModelService
 import ore.discourse.AkkaDiscourseApi
 import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
+import ore.external.Cacher
 import ore.markdown.{FlexmarkRenderer, MarkdownRenderer}
 import ore.models.project.ProjectTask
 import ore.models.project.factory.{OreProjectFactory, ProjectFactory}
@@ -210,6 +213,11 @@ class OreComponents(context: ApplicationLoader.Context)
   }
   implicit lazy val spongeAuthApi: SpongeAuthApi[UIO] = spongeAuthApiTask.mapK(taskToUIO)
   lazy val ssoApiTask: SSOApi[Task] = {
+    val cacher = util.ZIOCacher.instance[Any, Throwable]
+    implicit val taskCacher: Cacher[Task] = new Cacher[Task] {
+      override def cache[A](duration: FiniteDuration)(fa: Task[A]): Task[Task[A]] =
+        cacher.cache(duration)(fa).provide(runtime.Environment).map(_.provide(runtime.Environment))
+    }
     val sso = config.security.sso
     runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
   }
