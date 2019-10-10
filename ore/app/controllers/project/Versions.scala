@@ -255,8 +255,8 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   def showCreatorWithMeta(author: String, slug: String, versionString: String): Action[AnyContent] =
     UserLock(ShowProject(author, slug)).asyncF { implicit request =>
       val suc2 = for {
-        pendingVersion <- ZIO.fromOption(this.factory.getPendingVersion(author, slug, versionString))
         project        <- projects.withSlug(author, slug).get
+        pendingVersion <- ZIO.fromOption(this.factory.getPendingVersion(project, versionString))
         channels       <- service.runDBIO(project.channels(ModelView.raw(Channel)).result)
       } yield Ok(
         views.create(
@@ -286,9 +286,10 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   def publish(author: String, slug: String, versionString: String): Action[AnyContent] = {
     UserLock(ShowProject(author, slug)).asyncF { implicit request =>
       for {
+        project <- getProject(author, slug)
         // First get the pending Version
         pendingVersion <- ZIO
-          .fromOption(this.factory.getPendingVersion(author, slug, versionString))
+          .fromOption(this.factory.getPendingVersion(project, versionString))
           // Not found
           .asError(Redirect(self.showCreator(author, slug)).withError("error.plugin.timeout"))
         // Get submitted channel
@@ -311,7 +312,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           ZIO.fail(Redirect(self.showCreator(author, slug)).withError("error.plugin.versionExists"))
         else ZIO.succeed(())
 
-        project <- getProject(author, slug)
         _ <- project
           .channels(ModelView.now(Channel))
           .find(equalsIgnoreCase(_.name, newPendingVersion.channelName))

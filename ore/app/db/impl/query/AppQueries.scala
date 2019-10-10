@@ -8,6 +8,7 @@ import models.querymodels._
 import ore.data.project.Category
 import ore.db.{DbRef, Model}
 import ore.models.admin.LoggedActionViewModel
+import ore.models.organization.Organization
 import ore.models.project._
 import ore.models.user.User
 
@@ -125,24 +126,24 @@ object AppQueries extends WebDoobieOreProtocol {
 
   def getLog(
       oPage: Option[Int],
-      userFilter: Option[DbRef[User]],
-      projectFilter: Option[DbRef[Project]],
-      versionFilter: Option[DbRef[Version]],
+      userFilter: Option[String],
+      projectFilter: Option[String],
+      versionFilter: Option[String],
       pageFilter: Option[DbRef[Page]],
       actionFilter: Option[String],
-      subjectFilter: Option[DbRef[_]]
+      subjectFilter: Option[String]
   ): Query0[Model[LoggedActionViewModel[Any]]] = {
     val pageSize = 50L
     val page     = oPage.getOrElse(1)
     val offset   = (page - 1) * pageSize
 
     val frags = sql"SELECT * FROM v_logged_actions la " ++ Fragments.whereAndOpt(
-      userFilter.map(id => fr"la.user_id = $id"),
-      projectFilter.map(id => fr"la.filter_project = $id"),
-      versionFilter.map(id => fr"la.filter_version = $id"),
-      pageFilter.map(id => fr"la.filter_page = $id"),
-      actionFilter.map(i => fr"la.filter_action = $i"),
-      subjectFilter.map(id => fr"la.filter_subject = $id")
+      userFilter.map(name => fr"la.user_name = $name"),
+      projectFilter.map(id => fr"la.p_plugin_id = $id"),
+      versionFilter.map(id => fr"la.pv_version_string = $id"),
+      pageFilter.map(id => fr"la.pp_id = $id"),
+      actionFilter.map(action => fr"la.action = $action::LOGGED_ACTION_TYPE"),
+      subjectFilter.map(subject => fr"la.s_name = $subject")
     ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
 
     frags.query[Model[LoggedActionViewModel[Any]]]

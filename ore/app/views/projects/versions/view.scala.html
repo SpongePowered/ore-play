@@ -133,7 +133,7 @@
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
-                                    <li><a href="@appRoutes.showLog(None, None, None, Some(v.v.id), None, None, None)">User Action Logs</a></li>
+                                    <li><a href="@appRoutes.showLog(None, None, None, Some(v.v.versionString), None, None, None)">User Action Logs</a></li>
                                     @if(request.headerData.globalPerm(Permission.Reviewer)) {
                                         @if(v.v.visibility == Visibility.SoftDelete) {
                                             <li><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>

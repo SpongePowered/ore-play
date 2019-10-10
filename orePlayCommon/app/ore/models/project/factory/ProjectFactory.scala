@@ -234,13 +234,12 @@ trait ProjectFactory {
     * Returns the pending version for the specified owner, name, channel, and
     * version string.
     *
-    * @param owner   Name of owner
-    * @param slug    Project slug
+    * @param project Project for version
     * @param version Name of version
     * @return PendingVersion, if present, None otherwise
     */
-  def getPendingVersion(owner: String, slug: String, version: String): Option[PendingVersion] =
-    this.cacheApi.get[PendingVersion](owner + '/' + slug + '/' + version)
+  def getPendingVersion(project: Model[Project], version: String): Option[PendingVersion] =
+    this.cacheApi.get[PendingVersion](s"${project.id}/$version")
 
   /**
     * Creates a new release channel for the specified [[Project]].

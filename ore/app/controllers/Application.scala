@@ -228,12 +228,12 @@ final class Application @Inject()(forms: OreForms)(
 
   def showLog(
       oPage: Option[Int],
-      userFilter: Option[DbRef[User]],
-      projectFilter: Option[DbRef[Project]],
-      versionFilter: Option[DbRef[Version]],
+      userFilter: Option[String],
+      projectFilter: Option[String],
+      versionFilter: Option[String],
       pageFilter: Option[DbRef[Page]],
       actionFilter: Option[String],
-      subjectFilter: Option[DbRef[_]]
+      subjectFilter: Option[String]
   ): Action[AnyContent] = Authenticated.andThen(PermissionAction(Permission.ViewLogs)).asyncF { implicit request =>
     val pageSize = 50
     val page     = oPage.getOrElse(1)

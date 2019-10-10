@@ -106,7 +106,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         )
       project <- factory.createProject(owner, settings.asTemplate).mapError(Redirect(self.showCreator()).withError(_))
       _       <- projects.refreshHomePage(MDCLogger)
-    } yield Redirect(self.show(project.name, project.slug))
+    } yield Redirect(self.show(project.ownerName, project.slug))
   }
 
   private def orgasUserCanUploadTo(user: Model[User]): UIO[Set[DbRef[Organization]]] = {
@@ -677,10 +677,10 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
   private def hardDeleteProject[A](project: Model[Project])(implicit request: AuthRequest[A]): UIO[Unit] = {
     projects.delete(project) *>
-      UserActionLogger.log(
+      UserActionLogger.logOption(
         request,
         LoggedActionType.ProjectVisibilityChange,
-        project.id.value,
+        None,
         "deleted",
         project.visibility.nameKey
       )(LoggedActionProject.apply) *>

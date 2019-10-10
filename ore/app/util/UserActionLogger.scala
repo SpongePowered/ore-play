@@ -17,12 +17,21 @@ object UserActionLogger {
       ctxId: DbRef[Ctx],
       newState: String,
       oldState: String
+  )(createAction: LoggedActionCommon[Ctx] => M)(implicit service: ModelService[F]): F[Model[M]] =
+    logOption(request, action, Some(ctxId), newState, oldState)(createAction)
+
+  def logOption[F[_], Ctx, M: ModelQuery](
+      request: AuthRequest[_],
+      action: LoggedActionType[Ctx],
+      ctxId: Option[DbRef[Ctx]],
+      newState: String,
+      oldState: String
   )(createAction: LoggedActionCommon[Ctx] => M)(implicit service: ModelService[F]): F[Model[M]] = {
     val common = LoggedActionCommon(
       Some(request.user.id),
       InetString(StatTracker.remoteAddress(request)),
       action,
-      Some(ctxId),
+      ctxId,
       newState,
       oldState
     )
