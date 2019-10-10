@@ -871,7 +871,7 @@ SELECT a.created_at,
        a.project_id,
        a.new_state,
        a.old_state
-FROM logged_actions_project a;
+FROM logged_actions_project a WHERE a.project_id IS NOT NULL;
 
 DROP TABLE logged_actions_project;
 
@@ -885,7 +885,7 @@ SELECT a.created_at,
        a.version_id,
        a.new_state,
        a.old_state
-FROM logged_actions_version a;
+FROM logged_actions_version a WHERE a.version_id IS NOT NULL;
 
 DROP TABLE logged_actions_version;
 
@@ -899,7 +899,7 @@ SELECT a.created_at,
        a.page_id,
        a.new_state,
        a.old_state
-FROM logged_actions_page a;
+FROM logged_actions_page a WHERE a.page_id IS NOT NULL;
 
 DROP TABLE logged_actions_page;
 
@@ -913,7 +913,7 @@ SELECT a.created_at,
        a.subject_id,
        a.new_state,
        a.old_state
-FROM logged_actions_user a;
+FROM logged_actions_user a WHERE a.subject_id IS NOT NULL;
 
 DROP TABLE logged_actions_user;
 
@@ -927,7 +927,7 @@ SELECT a.created_at,
        a.organization_id,
        a.new_state,
        a.old_state
-FROM logged_actions_organization a;
+FROM logged_actions_organization a WHERE a.organization_id IS NOT NULL;
 
 DROP TABLE logged_actions_organization;
 
