@@ -27,6 +27,7 @@ trait OreControllerComponents extends ControllerComponents {
   def config: OreConfig
   def projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]]
   def zioRuntime: zio.Runtime[Blocking with Clock]
+  def assetsFinder: AssetsFinder
 }
 
 trait OreControllerEffects[F[_]] {
@@ -48,7 +49,8 @@ case class DefaultOreControllerComponents @Inject()(
     fileMimeTypes: FileMimeTypes,
     executionContext: ExecutionContext,
     projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
-    zioRuntime: zio.Runtime[Blocking with Clock]
+    zioRuntime: zio.Runtime[Blocking with Clock],
+    assetsFinder: AssetsFinder
 ) extends OreControllerComponents
 
 case class DefaultOreControllerEffects[F[_]] @Inject()(

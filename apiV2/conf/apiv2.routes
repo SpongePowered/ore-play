@@ -16,6 +16,10 @@
 #  parameters:
 #    - name: fake
 #      description: Used in testing. Can normally be ignored.
+#    - name: expiresIn
+#      description: >-
+#        How many seconds this session should be valid for. If the duration
+#        can't be used for whatever reason, Ore will reply with a 400 response.
 #  responses:
 #    200:
 #      description: Ok
@@ -23,7 +27,8 @@
 #        application/json:
 #          schema:
 #            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ReturnedApiSession'
-#
+#    400:
+#      description: Sent if the requested expiration can't be used.
 #    401:
 #      description: Api key missing or invalid
 #      headers:
@@ -32,10 +37,32 @@
 #            type: string
 ###
 +nocsrf
-POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate(fake: Boolean ?= false)
+POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate(fake: Boolean ?= false, expiresIn: Option[Long] = None)
 
 ### NoDocs ###
 POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
+
+###
+#  summary: Invalidates an existing API session.
+#  description: >-
+#    Invalidates the passed in API session. This endpoint must use the API
+#    session to validate as it's session.
+#  tags:
+#    - Keys
+#  parameters:
+#    - name: session
+#      description: The name of the key to delete
+#  responses:
+#    204:
+#      description: Session invalidated
+#    400:
+#      description: Sent if this request was not made with a session.
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+DELETE /sessions/current                                     @controllers.apiv2.ApiV2Controller.deleteSession()
 
 ###
 #  summary: Creates an API key
@@ -328,7 +355,7 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ReturnedApiSession'
+#            $ref: '#/components/schemas/models.protocols.APIV2.Version'
 #
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'

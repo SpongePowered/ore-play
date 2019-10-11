@@ -14,7 +14,7 @@
             return {
                 page: 1,
                 limit: 5,
-                user: window.location.toString().substring(window.location.toString().lastIndexOf("/") + 1, window.location.length)
+                user: window.USERNAME
             }
         }
     }

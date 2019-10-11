@@ -6,7 +6,7 @@ sorted according to different criteria.
 
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig)
+@()(implicit messages: Messages, flash: Flash, request: OreRequest[_], config: OreConfig, assetsFinder: AssetsFinder)
 
 @randomSponsor = @{
     val logos = config.sponge.sponsors
@@ -16,18 +16,22 @@ sorted according to different criteria.
 }
 
 @scripts = {
-    <script src="@routes.Assets.versioned("build/home.js")"></script>
+    <script src="@assetsFinder.path("build/home.js")"></script>
+}
+
+@stylesheets = {
+    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/home.css")" />
 }
 
 @meta = {
     <meta property="og:title" content="@messages("general.appName")">
     <meta property="og:type" content="website" />
     <meta property="og:url" content="@config.app.baseUrl">
-    <meta property="og:image" content="@routes.Assets.versioned("images/ore-dark.png")" />
+    <meta property="og:image" content="@assetsFinder.path("images/ore-dark.png")" />
     <meta property="og:description" content="@messages("general.description")" />
 }
 
-@layout.base(messages("general.title"), scripts, additionalMeta = meta) {
+@layout.base(messages("general.title"), scripts, additionalMeta = meta, additionalStyling = stylesheets) {
 
     <!-- Header -->
     <div class="index-header">
@@ -35,7 +39,7 @@ sorted according to different criteria.
             <div class="col-md-9 ore-banner">
                 <div class="row aligned-row">
                     <div class="col-xs-2 ore-logo">
-                        <img src="@routes.Assets.versioned("images/ore-colored.svg")" alt="Ore logo" />
+                        <img src="@assetsFinder.path("images/ore-colored.svg")" alt="Ore logo" />
                     </div>
                     <div class="col-xs-10 text">
                         <div class="headline">Ore</div>
@@ -49,7 +53,7 @@ sorted according to different criteria.
                     <div class="panel-body">
                     @defining(randomSponsor) { sponsor =>
                         <a href="@sponsor.link">
-                            <img class="logo" src="@routes.Assets.versioned(sponsor.image)" alt="Sponsor" />
+                            <img class="logo" src="@assetsFinder.path(sponsor.image)" alt="Sponsor" />
                         </a>
                     }
                     </div>

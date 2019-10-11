@@ -22,12 +22,12 @@ export class Category {
 export class Platform {
     static get values() {
         return [
-            {id: "Sponge", name: "Sponge Plugins", parent: true, color: { primary: "#F7Cf0D", secondary: "#333333" }},
-            {id: "SpongeForge", name: "SpongeForge", color: { primary: "#910020", secondary: "#FFFFFF" }},
-            {id: "SpongeVanilla", name: "SpongeVanilla", color: { primary: "#50C888", secondary: "#FFFFFF" }},
-            {id: "SpongeCommon", name: "SpongeCommon", color: { primary: "#5D5DFF", secondary: "#FFFFFF" }},
-            {id: "Lantern", name: "Lantern", color: { primary: "#4EC1B4", secondary: "#FFFFFF" }},
-            {id: "Forge",  name: "Forge Mods", parent: true, color: { primary: "#DFA86A", secondary: "#FFFFFF" }}
+            {id: "Sponge", name: "Sponge Plugins", parent: true, color: { background: "#F7Cf0D", foreground: "#333333" }},
+            {id: "SpongeForge", name: "SpongeForge", color: { background: "#910020", foreground: "#FFFFFF" }},
+            {id: "SpongeVanilla", name: "SpongeVanilla", color: { background: "#50C888", foreground: "#FFFFFF" }},
+            {id: "SpongeCommon", name: "SpongeCommon", color: { background: "#5D5DFF", foreground: "#FFFFFF" }},
+            {id: "Lantern", name: "Lantern", color: { background: "#4EC1B4", foreground: "#FFFFFF" }},
+            {id: "Forge",  name: "Forge Mods", parent: true, color: { background: "#DFA86A", foreground: "#FFFFFF" }}
         ];
     }
 

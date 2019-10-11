@@ -4,7 +4,7 @@
 @import models.viewhelper.ProjectData
 @import ore.OreConfig
 @import util.StringFormatterUtils._
-@(p: ProjectData)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@(p: ProjectData)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 

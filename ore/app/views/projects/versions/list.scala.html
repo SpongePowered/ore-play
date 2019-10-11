@@ -10,56 +10,31 @@ Versions page within Project overview.
 @import views.html.helper.CSPNonce
 @(p: ProjectData,
         sp: ScopedProjectData,
-        channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+        channels: Seq[Channel])(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{ controllers.project.routes.Projects }
-@versionRoutes = @{ controllers.project.routes.Versions }
 @channelRoutes = @{ controllers.project.routes.Channels }
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/versionList.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/userSearch.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/memberList.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/userSearch.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/memberList.js")"></script>
     <script @CSPNonce.attr>
-            PLUGIN_ID = '@p.project.pluginId';
-            PROJECT_OWNER = '@p.project.ownerName';
-            PROJECT_SLUG = '@p.project.slug';
-            TEXT_NOT_APPROVED = '@messages("version.download.confirm.reviewedChannel")';
-            TEXT_PARTIALLY_APPROVED = '@messages("version.download.confirmPartial.reviewedChannel")';
-            TEXT_NOT_APPROVED_CHANNEL = '@messages("version.download.confirm.nonReviewedChannel")';
-            SHOW_HIDDEN = @request.headerData.globalPerm(Permission.SeeHidden);
+            window.PLUGIN_ID = '@p.project.pluginId';
+            window.PROJECT_OWNER = '@p.project.ownerName';
+            window.PROJECT_SLUG = '@p.project.slug';
     </script>
+    <script type="text/javascript" src="@routes.Assets.versioned("build/version-list.js")"></script>
 }
 
-@projects.view(p, sp, "#versions", additionalScripts = scripts) {
+@stylesheets = {
+    <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("build/version-list.css")" />
+}
+
+@projects.view(p, sp, "#versions", additionalScripts = scripts, additionalStyling = stylesheets) {
 
     <div class="row">
         <div class="col-md-9">
-            <div class="panel panel-default version-panel">
-
-                <div class="panel-heading">
-                    <h4 class="panel-title pull-left">@messages("project.versions")</h4>
-                    @if(sp.perms(Permission.CreateVersion)) {
-                        <a href="@versionRoutes.showCreator(p.project.ownerName, p.project.slug)" class="btn yellow">
-                        @messages("project.version.new")
-                        </a>
-                    }
-                </div>
-
-                    <!-- Version table -->
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                </div>
-
-                <table class="version-table table">
-                    <tbody></tbody>
-                </table>
-
-                <div class="panel-pagination">
-                    <ul class="pagination">
-                    </ul>
-                </div>
-            </div>
+            <div id="version-list"></div>
         </div>
 
         <div class="col-md-3">

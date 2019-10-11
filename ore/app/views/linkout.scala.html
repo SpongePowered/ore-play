@@ -1,6 +1,6 @@
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
-@(remoteUrl: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@(remoteUrl: String)(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @layout.base(messages("general.linkout.title")) {
 

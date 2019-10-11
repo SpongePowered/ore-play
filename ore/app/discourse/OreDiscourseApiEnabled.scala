@@ -35,7 +35,6 @@ import com.typesafe.scalalogging
   * @param versionReleasePostTemplatePath Path to version release template
   * @param retryRate Rate at which to retry failed attempts
   * @param scheduler Scheduler for maintaining synchronization when requests fail
-  * @param baseUrl The base URL for this instance
   * @param admin An admin account to fall back to if no user is specified as poster
   */
 class OreDiscourseApiEnabled[F[_]](
@@ -46,7 +45,6 @@ class OreDiscourseApiEnabled[F[_]](
     versionReleasePostTemplatePath: Path,
     retryRate: FiniteDuration,
     scheduler: Scheduler,
-    baseUrl: String,
     admin: String
 )(
     implicit service: ModelService[F],
@@ -297,7 +295,7 @@ class OreDiscourseApiEnabled[F[_]](
       readAndFormatFile(
         topicTemplatePath,
         project.name,
-        baseUrl + '/' + project.url,
+        config.app.baseUrl + '/' + project.url,
         page.contents
       )
     }
@@ -307,8 +305,8 @@ class OreDiscourseApiEnabled[F[_]](
       readAndFormatFile(
         versionReleasePostTemplatePath,
         project.name,
-        baseUrl + '/' + project.url,
-        baseUrl + '/' + version.url(project),
+        config.app.baseUrl + '/' + project.url,
+        config.app.baseUrl + '/' + version.url(project),
         content.getOrElse("*No description given.*")
       )
     }

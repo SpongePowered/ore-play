@@ -6,7 +6,7 @@
         <li v-if="current >= 3">
             <a @click="jump(1)">{{ 1 }}</a>
         </li>
-        <li class="disabled" v-if="current >= 4">
+        <li class="disabled" v-if="current >= 4 && total > 4">
             <a>...</a>
         </li>
         <li v-if="current === total && current - 3 > 0">
@@ -24,7 +24,7 @@
         <li v-if="current === 1 && total > 3">
             <a @click="jump(current + 2)">{{ current + 2 }}</a>
         </li>
-        <li class="disabled" v-if="total - current >= 3">
+        <li class="disabled" v-if="total - current >= 3 && total > 4">
             <a>...</a>
         </li>
         <li v-if="total - current >= 2">
@@ -77,8 +77,43 @@
 </script>
 
 <style lang="scss">
+    @import "./../scss/variables";
+
     .pagination {
         display: flex;
         justify-content: center;
+
+        > li {
+            margin-right: 1rem;
+            cursor: pointer;
+
+            &:last-child {
+                margin-right: 0;
+            }
+
+            &.disabled a, &.disabled a:hover {
+                background: transparent;
+                border: 1px solid #ddd;
+                color: inherit;
+            }
+
+            a {
+                border: 1px solid #ddd;
+                padding: 0.85rem 1.6rem;
+                background: #ffffff;
+                color: $sponge_grey;
+
+                &:first-child, &:last-child {
+                    border-radius: 0;
+                }
+            }
+
+            &.active {
+                > a, > a:hover {
+                    cursor: pointer;
+                    color: darken($sponge_yellow, 30);
+                }
+            }
+        }
     }
 </style>

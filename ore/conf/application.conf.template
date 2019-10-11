@@ -58,6 +58,11 @@ play {
         parser.maxDiskBuffer             =   20MB
         parser.maxMemoryBuffer           =   1000000
     }
+
+    assets {
+        path = "/public"
+        urlPrefix = "/assets"
+    }
 }
 
 security {

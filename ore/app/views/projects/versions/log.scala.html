@@ -8,7 +8,7 @@
 @import util.StringFormatterUtils._
 @import util.syntax._
 
-@(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer)
+@(project: Project, version: Version, visibilityChanges: Seq[(Model[VersionVisibilityChange], Option[User])])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @versionRoutes = @{controllers.project.routes.Versions}
 

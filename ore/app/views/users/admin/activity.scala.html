@@ -4,7 +4,7 @@
 @import models.querymodels.{FlagActivity, ReviewActivity}
 @import ore.OreConfig
 @import util.StringFormatterUtils._
-@(username: String, activities: Seq[Either[FlagActivity, ReviewActivity]])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@(username: String, activities: Seq[Either[FlagActivity, ReviewActivity]])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @layout.base(messages("activity.title") + username) {
 

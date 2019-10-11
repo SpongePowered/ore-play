@@ -1,7 +1,7 @@
 @import controllers.sugar.Requests.OreRequest
 @import views.html.helper.CSPNonce
 
-@()(implicit messages: Messages, request: OreRequest[_])
+@()(implicit messages: Messages, request: OreRequest[_], assetsFinder: AssetsFinder)
 
 @*
 Mostly copied from swagger-ui's index file
@@ -14,8 +14,8 @@ Mostly copied from swagger-ui's index file
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <link rel="icon" href="@routes.Assets.versioned("images/favicon.ico")">
-        <link rel="stylesheet" type="text/css" href="@routes.Assets.versioned("lib/swagger-ui/swagger-ui.css")">
+        <link rel="icon" href="@assetsFinder.path("images/favicon.ico")">
+        <link rel="stylesheet" type="text/css" href="@assetsFinder.path("lib/swagger-ui/swagger-ui.css")">
 
         <style>
             html {
@@ -44,14 +44,14 @@ Mostly copied from swagger-ui's index file
     <body>
         <div id="swagger-ui"></div>
 
-        <script type="text/javascript" src="@routes.Assets.versioned("lib/jquery/dist/jquery.min.js")"></script>
-        <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-bundle.js")"></script>
-        <script src="@routes.Assets.versioned("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
-        <script src="@routes.Assets.versioned("javascripts/apiRequests.js")"></script>
+        <script type="text/javascript" src="@assetsFinder.path("lib/jquery/dist/jquery.min.js")"></script>
+        <script src="@assetsFinder.path("lib/swagger-ui/swagger-ui-bundle.js")"></script>
+        <script src="@assetsFinder.path("lib/swagger-ui/swagger-ui-standalone-preset.js")"></script>
+        <script src="@assetsFinder.path("javascripts/apiRequests.js")"></script>
         <script @CSPNonce.attr>
                 window.onload = () => {
                     window.ui = SwaggerUIBundle({
-                        url: "@routes.Assets.versioned("swagger.json")",
+                        url: "@assetsFinder.path("swagger.json")",
                         dom_id: '#swagger-ui',
                         deepLinking: true,
                         presets: [

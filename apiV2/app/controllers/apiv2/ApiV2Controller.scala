@@ -162,10 +162,16 @@ class ApiV2Controller @Inject()(
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     Action.andThen(apiAction).andThen(permApiAction(perms, scope))
 
-  private def expiration(duration: FiniteDuration) = OffsetDateTime.now().plusSeconds(duration.toSeconds)
+  private def expiration(duration: FiniteDuration, userChoice: Option[Long]) = {
+    val durationSeconds = duration.toSeconds
+
+    userChoice
+      .fold[Option[Long]](Some(durationSeconds))(d => if (d > durationSeconds) None else Some(d))
+      .map(OffsetDateTime.now().plusSeconds)
+  }
 
   def authenticateUser(): Action[AnyContent] = Authenticated.asyncF { implicit request =>
-    val sessionExpiration = expiration(config.ore.api.session.expiration)
+    val sessionExpiration = expiration(config.ore.api.session.expiration, None).get //Safe because user choice is None
     val uuidToken         = UUID.randomUUID().toString
     val sessionToInsert   = ApiSession(uuidToken, None, Some(request.user.id), sessionExpiration)
 
@@ -184,9 +190,9 @@ class ApiV2Controller @Inject()(
   private val ApiKeyRegex =
     s"""($uuidRegex).($uuidRegex)""".r
 
-  def authenticateKeyPublic(): Action[AnyContent] = Action.asyncF { implicit request =>
-    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration)
-    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration)
+  def authenticateKeyPublic(expiresIn: Option[Long]): Action[AnyContent] = Action.asyncF { implicit request =>
+    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, expiresIn)
+    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, expiresIn)
 
     lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
     def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
@@ -197,21 +203,28 @@ class ApiV2Controller @Inject()(
       .flatMap { creds =>
         creds.params.get("apikey") match {
           case Some(ApiKeyRegex(identifier, token)) =>
-            service
-              .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
-              .get
-              .asError(Right(unAuth("Invalid api key")))
-              .map {
-                case (keyId, keyOwnerId) =>
-                  SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), sessionExpiration)
-              }
+            for {
+              expiration <- ZIO
+                .succeed(sessionExpiration)
+                .get
+                .asError(Right(BadRequest("The requested expiration can't be used")))
+              t <- service
+                .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
+                .get
+                .asError(Right(unAuth("Invalid api key")))
+              (keyId, keyOwnerId) = t
+            } yield SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), expiration)
           case _ =>
             ZIO.fail(Right(unAuth("No apikey parameter found in Authorization")))
         }
       }
       .catchAll {
         case Left(_) =>
-          ZIO.succeed(SessionType.Public -> ApiSession(uuidToken, None, None, publicSessionExpiration))
+          ZIO
+            .succeed(publicSessionExpiration)
+            .get
+            .asError(BadRequest("The requested expiration can't be used"))
+            .map(expiration => SessionType.Public -> ApiSession(uuidToken, None, None, expiration))
         case Right(e) => ZIO.fail(e)
       }
 
@@ -233,7 +246,7 @@ class ApiV2Controller @Inject()(
     if (fakeUser.isEnabled) {
       config.checkDebug()
 
-      val sessionExpiration = expiration(config.ore.api.session.expiration)
+      val sessionExpiration = expiration(config.ore.api.session.expiration, None).get //Safe because userChoice is None
       val uuidToken         = UUID.randomUUID().toString
       val sessionToInsert   = ApiSession(uuidToken, None, Some(fakeUser.id), sessionExpiration)
 
@@ -251,7 +264,18 @@ class ApiV2Controller @Inject()(
     }
   }
 
-  def authenticate(fake: Boolean): Action[AnyContent] = if (fake) authenticateDev() else authenticateKeyPublic()
+  def authenticate(fake: Boolean, expiresIn: Option[Long]): Action[AnyContent] =
+    if (fake) authenticateDev() else authenticateKeyPublic(expiresIn)
+
+  def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
+    implicit request =>
+      ZIO
+        .succeed(request.apiInfo.session)
+        .get
+        .asError(BadRequest("This request was not made with a session"))
+        .flatMap(session => service.deleteWhere(ApiSession)(_.token === session))
+        .as(NoContent)
+  }
 
   def createKey(): Action[KeyToCreate] =
     ApiAction(Permission.EditApiKeys, APIScope.GlobalScope)(parseCirce.decodeJson[KeyToCreate]).asyncF {
@@ -605,13 +629,9 @@ class ApiV2Controller @Inject()(
               )
             }
           t <- pendingVersion.complete(project, factory)
-          (project, version, channel, tags) = t
-          _ <- {
-            if (data.recommended.exists(identity))
-              service.update(project)(_.copy(recommendedVersionId = Some(version.id)))
-            else IO.unit
-          }
         } yield {
+          val (_, version, channel, tags) = t
+
           val normalApiTags = tags.map(tag => APIV2QueryVersionTag(tag.name, tag.data, tag.color)).toList
           val channelApiTag = APIV2QueryVersionTag(
             "Channel",
@@ -762,7 +782,6 @@ object ApiV2Controller {
   @ConfiguredJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
 
   @ConfiguredJsonCodec case class DeployVersionInfo(
-      recommended: Option[Boolean],
       create_forum_post: Option[Boolean],
       description: Option[String],
       tags: Map[String, String]

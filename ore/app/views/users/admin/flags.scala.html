@@ -7,13 +7,13 @@
 @import views.html.utils.userAvatar
 
 @* project perms for all visibilities *@
-@(flags: Seq[ShownFlag])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash)
+@(flags: Seq[ShownFlag])(implicit messages: Messages, request: OreRequest[_], config: OreConfig, flash: Flash, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 
 @scripts = {
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/flags.js")"></script>
-    <script type="text/javascript" src="@routes.Assets.versioned("javascripts/hideProject.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/flags.js")"></script>
+    <script type="text/javascript" src="@assetsFinder.path("javascripts/hideProject.js")"></script>
 }
 
 @layout.base("Flags", scripts) {

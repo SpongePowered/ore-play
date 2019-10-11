@@ -9,7 +9,7 @@
 @import util.syntax._
 @import views.html.helper.{CSRF, form}
 @import views.html.utils.editor
-@(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer)
+@(v: VersionData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
 @versionRoutes = @{controllers.project.routes.Versions}

@@ -1,6 +1,7 @@
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
+//const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const Path = require('path');
 const rootDir = Path.resolve(__dirname, '../../../..');
@@ -15,6 +16,7 @@ module.exports = {
         home: Path.resolve(entryDir, 'home.js'),
         'font-awesome': Path.resolve(entryDir, 'font-awesome.js'),
         'user-profile': Path.resolve(entryDir, 'user-profile.js'),
+        'version-list': Path.resolve(entryDir, 'version-list.js'),
         'ore-client-fastopt': Path.resolve(entryDir, 'dummy.js'),
         'ore-client-opt': Path.resolve(entryDir, 'dummy.js')
     },
@@ -33,6 +35,7 @@ module.exports = {
                 to: Path.resolve(outputDir, 'font-awesome.css')
             }
         ]),
+        //new BundleAnalyzerPlugin()
     ],
     module: {
         rules: [
@@ -71,15 +74,16 @@ module.exports = {
         splitChunks: {
             cacheGroups: {
                 vendors: {
+                    name: "vendors",
+                    chunks: "initial",
                     test: /[\\/]node_modules[\\/]/,
-                    name: 'vendors',
-                    chunks: 'all',
-                    priority: -10
+                    priority: 10,
+                    enforce: true
                 },
                 commons: {
-                    name: 'commons',
-                    chunks: 'all',
-                    priority: -20
+                    name: "commons",
+                    chunks: "initial",
+                    minChunks: 2,
                 },
             }
         },

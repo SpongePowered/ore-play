@@ -1,7 +1,5 @@
 package ore.auth
 
-import scala.language.higherKinds
-
 import java.net.URLEncoder
 import java.security.SecureRandom
 import java.util.{Base64, Locale}
@@ -10,14 +8,16 @@ import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
+import ore.external.Cacher
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, Uri}
 import akka.stream.Materializer
+import cats.Monad
 import cats.data.OptionT
-import cats.effect.concurrent.Ref
+import cats.effect.{Concurrent, Timer}
 import cats.effect.syntax.all._
-import cats.effect.{Concurrent, ContextShift, Timer}
 import cats.syntax.all._
 import com.typesafe.scalalogging
 
@@ -26,10 +26,8 @@ class AkkaSSOApi[F[_]](
     signupUrl: String,
     verifyUrl: String,
     secret: String,
-    timeout: FiniteDuration,
-    reset: FiniteDuration,
-    cachedAvailable: Ref[F, Option[Boolean]]
-)(implicit F: Concurrent[F], cs: ContextShift[F], timer: Timer[F], system: ActorSystem, mat: Materializer)
+    cachedAvailable: F[Boolean]
+)(implicit F: Monad[F])
     extends SSOApi[F] {
 
   private val Logger = scalalogging.Logger("SSO")
@@ -37,35 +35,7 @@ class AkkaSSOApi[F[_]](
   private val CharEncoding = "UTF-8"
   private val rand         = new SecureRandom
 
-  private def futureToF[A](future: => Future[A]) = {
-    import system.dispatcher
-    F.async[A] { callback =>
-      future.onComplete(t => callback(t.toEither))
-    }
-  }
-
-  override def isAvailable: F[Boolean] = {
-    cachedAvailable.access.flatMap {
-      case (Some(available), _) => available.pure
-      case (None, setter) =>
-        val ssoTestRequest =
-          futureToF(Http().singleRequest(HttpRequest(HttpMethods.HEAD, loginUrl)))
-            .flatTap(r => F.delay(r.discardEntityBytes()))
-            .map(_.status.isSuccess())
-            .timeoutTo(timeout, false.pure)
-
-        ssoTestRequest.flatMap { result =>
-          val scheduleReset = cs.shift *> timer.sleep(reset) *> cachedAvailable.set(None)
-
-          setter(Some(result))
-            .flatMap {
-              case true  => scheduleReset
-              case false => F.unit
-            }
-            .as(result)
-        }
-    }
-  }
+  override def isAvailable: F[Boolean] = cachedAvailable
 
   private def nonce(): String = BigInt(130, rand).toString(32)
 
@@ -159,12 +129,25 @@ object AkkaSSOApi {
       reset: FiniteDuration
   )(
       implicit F: Concurrent[F],
-      cs: ContextShift[F],
+      cacher: Cacher[F],
       timer: Timer[F],
       system: ActorSystem,
       mat: Materializer
-  ): F[AkkaSSOApi[F]] =
-    Ref
-      .of[F, Option[Boolean]](None)
-      .map(ref => new AkkaSSOApi[F](loginUrl, signupUrl, verifyUrl, secret, timeout, reset, ref))
+  ): F[AkkaSSOApi[F]] = {
+    def futureToF[A](future: => Future[A]) = {
+      import system.dispatcher
+      F.async[A] { callback =>
+        future.onComplete(t => callback(t.toEither))
+      }
+    }
+
+    val cachedIsAvailable = cacher.cache(reset)(
+      futureToF(Http().singleRequest(HttpRequest(HttpMethods.HEAD, loginUrl)))
+        .flatTap(r => F.delay(r.discardEntityBytes()))
+        .map(_.status.isSuccess())
+        .timeoutTo(timeout, false.pure)
+    )
+
+    cachedIsAvailable.map(new AkkaSSOApi[F](loginUrl, signupUrl, verifyUrl, secret, _))
+  }
 }

@@ -8,7 +8,6 @@
 @import 'project';
 @import 'user';
 @import "panel";
-@import "version-list";
 @import 'utils';
 
 html {
@@ -238,53 +237,6 @@ select.form-control, input.form-control {
   display: none;
 }
 
-.pagination {
-  margin: 10px 0;
-
-  li {
-    &:first-child a {
-      border-top-left-radius: 4px;
-      border-bottom-left-radius: 4px;
-    }
-
-    &:last-child a {
-      border-top-right-radius: 4px;
-      border-bottom-right-radius: 4px;
-    }
-
-    a {
-      background: $sponge_light_gray;
-      color: white;
-      cursor: pointer;
-      border: 1px solid lighten($sponge_light_gray, 10);
-
-      &:hover, &:focus, &:active {
-        border-color: $sponge_yellow;
-        background: $sponge_yellow;
-        color: darken($sponge_yellow, 30);
-      }
-    }
-
-    &.disabled a, &.disabled a:hover, &.disabled a:focus {
-      background: $sponge_light_gray;
-      color: lighten($sponge_light_gray, 10);
-      border: 1px solid lighten($sponge_light_gray, 10);
-    }
-
-    &.active > a {
-      cursor: pointer;
-      border-color: $sponge_yellow;
-      background: $sponge_yellow;
-      color: darken($sponge_yellow, 30);
-
-      &:hover {
-        cursor: pointer;
-        color: darken($sponge_yellow, 30);
-      }
-    }
-  }
-}
-
 .tags {
   align-items: center;
   display: inline-flex;
@@ -482,4 +434,7 @@ select.form-control, input.form-control {
 }
 .mr-1 {
   margin-right: 0.5rem;
+}
+.text-center {
+  text-align: center;
 }

@@ -1,8 +1,6 @@
 package controllers.sugar
 
-import scala.language.higherKinds
-
-import java.time.{Instant, OffsetDateTime}
+import java.time.OffsetDateTime
 
 import play.api.mvc.{Request, WrappedRequest}
 
@@ -28,6 +26,7 @@ object Requests {
   case class ApiAuthInfo(
       user: Option[Model[User]],
       key: Option[ApiKey],
+      session: Option[String],
       expires: OffsetDateTime,
       globalPerms: Permission
   )
