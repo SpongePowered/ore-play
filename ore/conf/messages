@@ -264,6 +264,10 @@ version.download.confirmPartial.api = \
   Disclaimer: We disclaim all responsibility for any harm to your server or system should you choose not to heed this \
   warning.
 
+version.download.confirm.curl.nocsrf = \
+  Please POST to the attached link to acknowledge this disclaimer and continue to the download. \
+  curl -O -J -L -d -X "{0}"
+
 version.download.confirm.curl = \
   Please POST to the attached link to acknowledge this disclaimer and continue to the download. \
   curl -O -J -L -d -X "{0}&csrfToken={1}"

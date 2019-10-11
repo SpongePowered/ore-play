@@ -606,11 +606,19 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           val apiMsgKey   = if (isPartial) "version.download.confirmPartial.api" else "version.download.confirm.body.api"
           lazy val apiMsg = this.messagesApi(apiMsgKey)
 
-          lazy val curlInstruction = this.messagesApi(
-            "version.download.confirm.curl",
-            self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
-            CSRF.getToken.get.value
-          )
+          lazy val curlInstruction = CSRF.getToken match {
+            case Some(value) =>
+              this.messagesApi(
+                "version.download.confirm.curl",
+                self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
+                value
+              )
+            case None =>
+              this.messagesApi(
+                "version.download.confirm.curl.nocsrf",
+                self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL()
+              )
+          }
 
           if (api.getOrElse(false)) {
             (removeWarnings *> addWarning).as(
