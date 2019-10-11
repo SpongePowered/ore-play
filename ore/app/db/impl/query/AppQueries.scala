@@ -144,7 +144,7 @@ object AppQueries extends WebDoobieOreProtocol {
       pageFilter.map(id => fr"la.pp_id = $id"),
       actionFilter.map(action => fr"la.action = $action::LOGGED_ACTION_TYPE"),
       subjectFilter.map(subject => fr"la.s_name = $subject")
-    ) ++ fr"ORDER BY la.id DESC OFFSET $offset LIMIT $pageSize"
+    ) ++ fr"ORDER BY la.created_at DESC OFFSET $offset LIMIT $pageSize"
 
     frags.query[Model[LoggedActionViewModel[Any]]]
   }
