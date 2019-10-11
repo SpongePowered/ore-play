@@ -86,7 +86,7 @@ this.
         }
 
         @if(scriptsEnabled) {
-            @if(request != null) {
+            @if(request != null && play.filters.csrf.CSRF.getToken.isDefined) {
                 <script @CSPNonce.attr>
                         window.csrf = '@play.filters.csrf.CSRF.getToken.get.value';
                         window.isLoggedIn = @request.hasUser;
