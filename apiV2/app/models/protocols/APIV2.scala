@@ -38,26 +38,26 @@ object APIV2 {
 
   //Project
   @ConfiguredJsonCodec case class Project(
-      created_at: OffsetDateTime,
-      plugin_id: String,
+      createdAt: OffsetDateTime,
+      pluginId: String,
       name: String,
       namespace: ProjectNamespace,
-      promoted_versions: Seq[PromotedVersion],
+      promotedVersions: Seq[PromotedVersion],
       stats: ProjectStats,
       category: Category,
       description: Option[String],
-      last_updated: OffsetDateTime,
+      lastUpdated: OffsetDateTime,
       visibility: Visibility,
-      user_actions: UserActions,
+      userActions: UserActions,
       settings: ProjectSettings,
-      icon_url: String
+      iconUrl: String
   )
 
   @ConfiguredJsonCodec case class CompactProject(
-      plugin_id: String,
+      pluginId: String,
       name: String,
       namespace: ProjectNamespace,
-      promoted_versions: Seq[PromotedVersion],
+      promotedVersions: Seq[PromotedVersion],
       stats: ProjectStats,
       category: Category,
       visibility: Visibility
@@ -68,8 +68,8 @@ object APIV2 {
   @ConfiguredJsonCodec case class PromotedVersionTag(
       name: String,
       data: Option[String],
-      display_data: Option[String],
-      minecraft_version: Option[String],
+      displayData: Option[String],
+      minecraftVersion: Option[String],
       color: VersionTagColor
   )
   @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
@@ -82,7 +82,7 @@ object APIV2 {
       sources: Option[String],
       support: Option[String],
       license: ProjectLicense,
-      forum_sync: Boolean
+      forumSync: Boolean
   )
   @ConfiguredJsonCodec case class ProjectLicense(name: Option[String], url: Option[String])
 
@@ -100,28 +100,28 @@ object APIV2 {
 
   //Version
   @ConfiguredJsonCodec case class Version(
-      created_at: OffsetDateTime,
+      createdAt: OffsetDateTime,
       name: String,
       dependencies: List[VersionDependency],
       visibility: Visibility,
       description: Option[String],
       stats: VersionStats,
-      file_info: FileInfo,
+      fileInfo: FileInfo,
       author: Option[String],
-      review_state: ReviewState,
+      reviewState: ReviewState,
       tags: List[VersionTag]
   )
 
   @ConfiguredJsonCodec case class VersionDependency(plugin_id: String, version: Option[String])
   @ConfiguredJsonCodec case class VersionStats(downloads: Long)
-  @ConfiguredJsonCodec case class FileInfo(name: String, size_bytes: Long, md5_hash: String)
+  @ConfiguredJsonCodec case class FileInfo(name: String, sizeBytes: Long, md5Hash: String)
 
   //User
   @ConfiguredJsonCodec case class User(
-      created_at: OffsetDateTime,
+      createdAt: OffsetDateTime,
       name: String,
       tagline: Option[String],
-      join_date: Option[OffsetDateTime],
+      joinDate: Option[OffsetDateTime],
       roles: List[Role]
   )
 }

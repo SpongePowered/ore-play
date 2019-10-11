@@ -69,8 +69,7 @@ class ApiV2Controller @Inject()(
   private def offsetOrZero(offset: Long)                         = math.max(offset, 0)
 
   private def parseAuthHeader(request: Request[_]): IO[Either[Unit, Result], HttpCredentials] = {
-    lazy val authUrl                 = routes.ApiV2Controller.authenticate().absoluteURL()(request)
-    def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
+    def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
     for {
       stringAuth <- ZIO.fromOption(request.headers.get(AUTHORIZATION)).mapError(Left.apply)
@@ -95,8 +94,7 @@ class ApiV2Controller @Inject()(
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
-      lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
-      def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
+      def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
       val authRequest = for {
         creds <- parseAuthHeader(request)
@@ -191,11 +189,10 @@ class ApiV2Controller @Inject()(
     s"""($uuidRegex).($uuidRegex)""".r
 
   def authenticateKeyPublic(implicit request: Request[ApiSessionProperties]): ZIO[Any, Result, Result] = {
-    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, request.body.expires_in)
-    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, request.body.expires_in)
+    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, request.body.expiresIn)
+    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, request.body.expiresIn)
 
-    lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
-    def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
+    def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
     val uuidToken = UUID.randomUUID().toString
 
@@ -272,7 +269,7 @@ class ApiV2Controller @Inject()(
   def authenticate(): Action[ApiSessionProperties] =
     Action.asyncF(defaultBody(parseCirce.decodeJson[ApiSessionProperties], ApiSessionProperties(None, None))) {
       implicit request =>
-        if (request.body.fake.getOrElse(false)) authenticateDev else authenticateKeyPublic
+        if (request.body._fake.getOrElse(false)) authenticateDev else authenticateKeyPublic
     }
 
   def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
@@ -631,8 +628,8 @@ class ApiV2Controller @Inject()(
             }
             .map { v =>
               v.copy(
-                createForumPost = data.create_forum_post.getOrElse(project.settings.forumSync),
-                channelName = data.tags.getOrElse("Channel", v.channelName),
+                createForumPost = data.createForumPost.getOrElse(project.settings.forumSync),
+                channelName = data.tags.getOrElse(Map.empty).view.mapValues(_.first).getOrElse("Channel", v.channelName),
                 description = data.description
               )
             }
@@ -784,26 +781,45 @@ object ApiV2Controller {
 
   @ConfiguredJsonCodec case class ApiError(error: String)
   @ConfiguredJsonCodec case class ApiErrors(errors: NonEmptyList[String])
-  @ConfiguredJsonCodec case class UserError(user_error: String)
+  @ConfiguredJsonCodec case class UserError(userError: String)
 
   @ConfiguredJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
   @ConfiguredJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
 
   @ConfiguredJsonCodec case class DeployVersionInfo(
-      create_forum_post: Option[Boolean],
+      createForumPost: Option[Boolean],
       description: Option[String],
-      tags: Map[String, String]
+      tags: Option[Map[String, StringOrArrayString]]
   )
 
+  sealed trait StringOrArrayString {
+    def first: String
+  }
+  object StringOrArrayString {
+    case class AsString(s: String) extends StringOrArrayString {
+      def first: String = s
+    }
+    case class AsArray(ss: Seq[String]) extends StringOrArrayString {
+      override def first: String = ss.head
+    }
+
+    implicit val codec: CirceCodec[StringOrArrayString] = CirceCodec.from(
+      (c: HCursor) => c.as[String].map(AsString).orElse(c.as[Seq[String]].map(AsArray)), {
+        case AsString(s) => s.asJson
+        case AsArray(ss) => ss.asJson
+      }
+    )
+  }
+
   @ConfiguredJsonCodec case class ApiSessionProperties(
-      fake: Option[Boolean],
-      expires_in: Option[Long]
+      _fake: Option[Boolean],
+      expiresIn: Option[Long]
   )
 
   @ConfiguredJsonCodec case class ReturnedApiSession(
       session: String,
       expires: OffsetDateTime,
-      @JsonKey("type") tpe: SessionType
+      `type`: SessionType
   )
 
   @ConfiguredJsonCodec case class PaginatedProjectResult(
@@ -830,12 +846,12 @@ object ApiV2Controller {
   implicit val namedPermissionCodec: CirceCodec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
 
   @ConfiguredJsonCodec case class KeyPermissions(
-      @JsonKey("type") tpe: APIScopeType,
+      `type`: APIScopeType,
       permissions: List[NamedPermission]
   )
 
   @ConfiguredJsonCodec case class PermissionCheck(
-      @JsonKey("type") tpe: APIScopeType,
+      `type`: APIScopeType,
       result: Boolean
   )
 }
