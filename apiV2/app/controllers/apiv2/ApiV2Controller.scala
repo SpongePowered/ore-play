@@ -69,7 +69,7 @@ class ApiV2Controller @Inject()(
   private def offsetOrZero(offset: Long)                         = math.max(offset, 0)
 
   private def parseAuthHeader(request: Request[_]): IO[Either[Unit, Result], HttpCredentials] = {
-    lazy val authUrl                 = routes.ApiV2Controller.authenticate(None).absoluteURL()(request)
+    lazy val authUrl                 = routes.ApiV2Controller.authenticate().absoluteURL()(request)
     def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
     for {
@@ -95,7 +95,7 @@ class ApiV2Controller @Inject()(
   def apiAction: ActionRefiner[Request, ApiRequest] = new ActionRefiner[Request, ApiRequest] {
     def executionContext: ExecutionContext = ec
     override protected def refine[A](request: Request[A]): Future[Either[Result, ApiRequest[A]]] = {
-      lazy val authUrl        = routes.ApiV2Controller.authenticate(None).absoluteURL()(request)
+      lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
       def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
       val authRequest = for {
@@ -190,11 +190,11 @@ class ApiV2Controller @Inject()(
   private val ApiKeyRegex =
     s"""($uuidRegex).($uuidRegex)""".r
 
-  def authenticateKeyPublic(expiresIn: Option[Long]): Action[AnyContent] = Action.asyncF { implicit request =>
-    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, expiresIn)
-    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, expiresIn)
+  def authenticateKeyPublic(implicit request: Request[ApiSessionProperties]): ZIO[Any, Result, Result] = {
+    lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, request.body.expires_in)
+    lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, request.body.expires_in)
 
-    lazy val authUrl        = routes.ApiV2Controller.authenticate(None).absoluteURL()(request)
+    lazy val authUrl        = routes.ApiV2Controller.authenticate().absoluteURL()(request)
     def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> authUrl)
 
     val uuidToken = UUID.randomUUID().toString
@@ -242,7 +242,7 @@ class ApiV2Controller @Inject()(
       }
   }
 
-  def authenticateDev(): Action[AnyContent] = Action.asyncF {
+  def authenticateDev: ZIO[Any, Result, Result] = {
     if (fakeUser.isEnabled) {
       config.checkDebug()
 
@@ -264,8 +264,16 @@ class ApiV2Controller @Inject()(
     }
   }
 
-  def authenticate(expiresIn: Option[Long], fake: Boolean): Action[AnyContent] =
-    if (fake) authenticateDev() else authenticateKeyPublic(expiresIn)
+  def defaultBody[A](parser: BodyParser[A], default: => A): BodyParser[A] = parse.using { request =>
+    if (request.hasBody) parser
+    else parse.ignore(default)
+  }
+
+  def authenticate(): Action[ApiSessionProperties] =
+    Action.asyncF(defaultBody(parseCirce.decodeJson[ApiSessionProperties], ApiSessionProperties(None, None))) {
+      implicit request =>
+        if (request.body.fake.getOrElse(false)) authenticateDev else authenticateKeyPublic
+    }
 
   def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
     implicit request =>
@@ -786,6 +794,11 @@ object ApiV2Controller {
       create_forum_post: Option[Boolean],
       description: Option[String],
       tags: Map[String, String]
+  )
+
+  @ConfiguredJsonCodec case class ApiSessionProperties(
+      fake: Option[Boolean],
+      expires_in: Option[Long]
   )
 
   @ConfiguredJsonCodec case class ReturnedApiSession(

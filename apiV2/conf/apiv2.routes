@@ -20,6 +20,11 @@
 #      description: >-
 #        How many seconds this session should be valid for. If the duration
 #        can't be used for whatever reason, Ore will reply with a 400 response.
+#  requestBody:
+#    content:
+#      application/json:
+#        schema:
+#          $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.ApiSessionProperties'
 #  responses:
 #    200:
 #      description: Ok
@@ -37,7 +42,7 @@
 #            type: string
 ###
 +nocsrf
-POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate(expiresIn: Option[Long], fake: Boolean ?= false)
+POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate()
 
 ### NoDocs ###
 POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
