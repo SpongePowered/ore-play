@@ -14,16 +14,15 @@ import ore.db.ModelService
 import ore.util.OreMDC
 
 import cats.syntax.all._
-
 import com.typesafe.scalalogging
 import zio.clock.Clock
-import zio.{UIO, ZSchedule, duration}
+import zio.{Task, UIO, ZSchedule, duration}
 
 @Singleton
 class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
     implicit ec: ExecutionContext,
-    projects: ProjectBase[UIO],
-    service: ModelService[UIO]
+    projects: ProjectBase[Task],
+    service: ModelService[Task]
 ) {
 
   val interval: duration.Duration = duration.Duration.fromScala(config.ore.homepage.updateInterval)
@@ -40,15 +39,16 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
   private val statSchedule: ZSchedule[Clock, Any, Int] =
     ZSchedule.fixed(duration.Duration.fromScala(1.day)).logInput(_ => UIO(Logger.debug("Processing stats")))
 
-  private val homepageTask =
-    runtime.unsafeRun(projects.refreshHomePage(Logger).option.unit.repeat(homepageSchedule).fork)
-  private val statsTask = runtime.unsafeRun(
-    service
-      .runDbCon(StatTrackerQueries.processProjectViews.run *> StatTrackerQueries.processVersionDownloads.run)
-      .option
-      .unit
-      .repeat(statSchedule)
-      .fork
+  private def runningTask(task: Task[Unit], schedule: ZSchedule[Clock, Any, Int]) = {
+    val safeTask = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
+
+    runtime.unsafeRun(safeTask *> safeTask.repeat(schedule).fork)
+  }
+
+  private val homepageTask = runningTask(projects.refreshHomePage(Logger), homepageSchedule)
+  private val statsTask = runningTask(
+    service.runDbCon(StatTrackerQueries.processProjectViews.run *> StatTrackerQueries.processVersionDownloads.run).unit,
+    statSchedule
   )
   lifecycle.addStopHook { () =>
     Future {
