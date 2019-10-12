@@ -8,7 +8,7 @@ import ore.data.project.Dependency
 import ore.db.access.{ModelView, QueryView}
 import ore.db.impl.DefaultModelCompanion
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.common.{Describable, Downloadable, Hideable}
+import ore.db.impl.common.{Describable, Hideable}
 import ore.db.impl.schema._
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.models.admin.{Review, VersionVisibilityChange}
@@ -41,7 +41,6 @@ case class Version(
     hash: String,
     authorId: Option[DbRef[User]],
     description: Option[String],
-    downloadCount: Long = 0,
     reviewState: ReviewState = ReviewState.Unreviewed,
     reviewerId: Option[DbRef[User]] = None,
     approvedAt: Option[OffsetDateTime] = None,
@@ -50,8 +49,7 @@ case class Version(
     createForumPost: Boolean = true,
     postId: Option[Int] = None,
     isPostDirty: Boolean = false
-) extends Describable
-    with Downloadable {
+) extends Describable {
 
   //TODO: Check this in some way
   //checkArgument(description.exists(_.length <= Page.maxLength), "content too long", "")
@@ -180,32 +178,6 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
         view: V[VersionTagTable, Model[VersionTag]]
     ): V[VersionTagTable, Model[VersionTag]] =
       view.filterView(_.versionId === self.id.value)
-
-    def isSpongePlugin[QOptRet, SRet[_]](
-        view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]
-    ): SRet[Boolean] =
-      tags(view).exists(_.name === "Sponge")
-
-    def isForgeMod[QOptRet, SRet[_]](
-        view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]
-    ): SRet[Boolean] =
-      tags(view).exists(_.name === "Forge")
-
-    /**
-      * Adds a download to the amount of unique downloads this Version has.
-      */
-    def addDownload[F[_]](implicit service: ModelService[F]): F[Model[Version]] =
-      service.update(self)(_.copy(downloadCount = self.downloadCount + 1))
-
-    /**
-      * Returns [[ModelView]] to the recorded unique downloads.
-      *
-      * @return Recorded downloads
-      */
-    def downloadEntries[V[_, _]: QueryView](
-        view: V[VersionDownloadsTable, VersionDownload]
-    ): V[VersionDownloadsTable, VersionDownload] =
-      view.filterView(_.modelId === self.id.value)
 
     def reviewEntries[V[_, _]: QueryView](view: V[ReviewTable, Model[Review]]): V[ReviewTable, Model[Review]] =
       view.filterView(_.versionId === self.id.value)

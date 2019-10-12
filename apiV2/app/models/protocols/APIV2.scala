@@ -74,7 +74,14 @@ object APIV2 {
   )
   @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
   @ConfiguredJsonCodec case class VersionTagColor(foreground: String, background: String)
-  @ConfiguredJsonCodec case class ProjectStats(views: Long, downloads: Long, stars: Long)
+  @ConfiguredJsonCodec case class ProjectStats(
+      views: Long,
+      downloads: Long,
+      recent_views: Long,
+      recent_downloads: Long,
+      stars: Long,
+      watchers: Long
+  )
   @ConfiguredJsonCodec case class UserActions(starred: Boolean, watching: Boolean)
   @ConfiguredJsonCodec case class ProjectSettings(
       homepage: Option[String],

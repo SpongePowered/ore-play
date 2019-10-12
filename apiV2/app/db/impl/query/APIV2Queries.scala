@@ -120,7 +120,10 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.promoted_versions,
             |       p.views,
             |       p.downloads,
+            |       p.recent_views,
+            |       p.recent_downloads,
             |       p.stars,
+            |       p.watchers,
             |       p.category,
             |       p.description,
             |       COALESCE(p.last_updated, p.created_at) AS last_updated,
@@ -198,6 +201,8 @@ object APIV2Queries extends WebDoobieOreProtocol {
         case ProjectSortingStrategy.Newest          => fr"extract(EPOCH from p.created_at) *" ++ relevance
         case ProjectSortingStrategy.RecentlyUpdated => fr"extract(EPOCH from p.last_updated) *" ++ relevance
         case ProjectSortingStrategy.OnlyRelevance   => relevance
+        case ProjectSortingStrategy.RecentViews     => fr"p.recent_views *" ++ relevance
+        case ProjectSortingStrategy.RecentDownloads => fr"p.recent_downloads*" ++ relevance
       }
     } else order.fragment
 
@@ -242,7 +247,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       pv.dependencies,
             |       pv.visibility,
             |       pv.description,
-            |       pv.downloads,
+            |       pv.downloads, --TODO
             |       pv.file_size,
             |       pv.hash,
             |       pv.file_name,
@@ -330,7 +335,10 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       p.promoted_versions,
             |       p.views,
             |       p.downloads,
+            |       p.recent_views,
+            |       p.recent_downloads,
             |       p.stars,
+            |       p.watchers,
             |       p.category,
             |       p.visibility
             |    FROM users u JOIN """.stripMargin ++ table ++

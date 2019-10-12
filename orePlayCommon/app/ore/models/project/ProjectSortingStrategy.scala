@@ -36,6 +36,9 @@ object ProjectSortingStrategy extends IntEnum[ProjectSortingStrategy] {
   case object RecentlyUpdated extends ProjectSortingStrategy(4, "Recently updated", fr"p.last_updated DESC", "updated")
   case object OnlyRelevance
       extends ProjectSortingStrategy(5, "Only relevance", fr"p.last_updated DESC", "only_relevance")
+  case object RecentViews extends ProjectSortingStrategy(6, "Recent views", fr"p.recent_views DESC", "recent_views")
+  case object RecentDownloads
+      extends ProjectSortingStrategy(7, "Recent downloads", fr"p.recent_downloads DESC", "recent_downloads")
 
   /**
     * Parses a string as a sorting strategy.

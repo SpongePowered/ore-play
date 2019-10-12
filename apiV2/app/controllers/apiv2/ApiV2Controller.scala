@@ -653,7 +653,7 @@ class ApiV2Controller @Inject()(
             version.dependencyIds,
             version.visibility,
             version.description,
-            version.downloadCount,
+            0,
             version.fileSize,
             version.hash,
             version.fileName,

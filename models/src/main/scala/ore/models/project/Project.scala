@@ -43,8 +43,6 @@ import slick.lifted.{Rep, TableQuery}
   * @param name                   Name of plugin
   * @param slug                   URL slug
   * @param recommendedVersionId   The ID of this project's recommended version
-  * @param viewCount              View count
-  * @param downloadCount          How many times this project has been downloaded in total
   * @param topicId                ID of forum topic
   * @param postId                 ID of forum topic post ID
   * @param isTopicDirty           Whether this project's forum topic needs to be updated
@@ -60,16 +58,13 @@ case class Project(
     recommendedVersionId: Option[DbRef[Version]] = None,
     category: Category = Category.Undefined,
     description: Option[String],
-    viewCount: Long = 0,
-    downloadCount: Long = 0,
     topicId: Option[Int] = None,
     postId: Option[Int] = None,
     isTopicDirty: Boolean = false,
     visibility: Visibility = Visibility.Public,
     notes: Json = Json.obj(),
     settings: ProjectSettings = ProjectSettings()
-) extends Downloadable
-    with Named
+) extends Named
     with Describable
     with Visitable {
 
@@ -284,30 +279,6 @@ object Project extends DefaultModelCompanion[Project, ProjectTable](TableQuery[P
         else
           self.stars.addAssoc(user.id)
       } yield self
-
-    /**
-      * Returns the record of unique Project views.
-      *
-      * @return Unique project views
-      */
-    def views[V[_, _]: QueryView](
-        view: V[ProjectViewsTable, Model[ProjectView]]
-    ): V[ProjectViewsTable, Model[ProjectView]] =
-      view.filterView(_.modelId === self.id.value)
-
-    /**
-      * Adds a view to this Project.
-      */
-    def addView[F[_]](implicit service: ModelService[F]): F[Model[Project]] =
-      service.update(self)(_.copy(viewCount = self.viewCount + 1))
-
-    /**
-      * Increments this Project's downloadc count by one.
-      *
-      * @return IO result
-      */
-    def addDownload[F[_]](implicit service: ModelService[F]): F[Model[Project]] =
-      service.update(self)(_.copy(downloadCount = self.downloadCount + 1))
 
     /**
       * Returns all flags on this project.

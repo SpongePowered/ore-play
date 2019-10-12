@@ -4,13 +4,12 @@ import java.time.OffsetDateTime
 
 import ore.db.DbRef
 import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.table.common.{DescriptionColumn, DownloadsColumn, VisibilityColumn}
+import ore.db.impl.table.common.{DescriptionColumn, VisibilityColumn}
 import ore.models.project.{Channel, Project, ReviewState, Version}
 import ore.models.user.User
 
 class VersionTable(tag: Tag)
     extends ModelTable[Version](tag, "project_versions")
-    with DownloadsColumn[Version]
     with DescriptionColumn[Version]
     with VisibilityColumn[Version] {
 
@@ -42,7 +41,6 @@ class VersionTable(tag: Tag)
         hash,
         authorId.?,
         description.?,
-        downloads,
         reviewStatus,
         reviewerId.?,
         approvedAt.?,

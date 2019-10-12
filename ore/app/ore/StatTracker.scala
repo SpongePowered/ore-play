@@ -1,7 +1,5 @@
 package ore
 
-import scala.language.higherKinds
-
 import java.util.UUID
 
 import play.api.mvc.{RequestHeader, Result}
@@ -9,23 +7,15 @@ import play.api.mvc.{RequestHeader, Result}
 import controllers.sugar.Bakery
 import controllers.sugar.Requests.ProjectRequest
 import _root_.db.impl.access.UserBase
-import ore.db.access.ModelView
-import ore.db.impl.OrePostgresDriver.api._
-import ore.db.impl.table.StatTable
-import ore.db.{ModelCompanion, _}
+import _root_.db.impl.query.StatTrackerQueries
+import ore.db._
 import ore.models.project.Version
-import ore.models.statistic.{ProjectView, StatEntry, VersionDownload}
 import ore.models.user.User
-import ore.util.OreMDC
-import _root_.util.TaskUtils
 
-import cats.Parallel
-import cats.data.OptionT
-import cats.effect.syntax.all._
+import cats.{Monad, Parallel}
 import cats.syntax.all._
 import cats.tagless.autoInvariantK
 import com.github.tminglei.slickpg.InetString
-import com.typesafe.scalalogging
 
 /**
   * Helper class for handling tracking of statistics.
@@ -82,92 +72,38 @@ object StatTracker {
     */
   class StatTrackerInstant[F[_]](bakery: Bakery)(
       implicit service: ModelService[F],
-      users: UserBase[F],
-      F: cats.effect.Effect[F],
-      par: Parallel[F]
+      F: Monad[F]
   ) extends StatTracker[F] {
 
-    private val Logger    = scalalogging.Logger("StatTracker")
-    private val MDCLogger = scalalogging.Logger.takingImplicit[OreMDC](Logger.underlying)
-
-    private def recordDB[M <: StatEntry[_, M], T <: StatTable[_, M]](
-        entry: M,
-        model: ModelCompanion.Aux[M, T]
-    ): F[Boolean] = {
-      like(entry, model).value.flatMap {
-        case None => service.insertRaw(model)(entry).as(true)
-        case Some(existingEntry) =>
-          val effect =
-            if (existingEntry.userId.isEmpty && entry.userId.isDefined)
-              service.updateRaw(model)(existingEntry)(_.withUserId(Some(entry.userId.get))).void
-            else
-              F.unit
-
-          effect.as(false)
-      }
-    }
-
-    private def like[M <: StatEntry[_, M], T <: StatTable[_, M]](
-        entry: M,
-        model: ModelCompanion.Aux[M, T]
-    ): OptionT[F, Model[M]] = {
-      val baseFilter: T => Rep[Boolean] = _.modelId === entry.modelId
-      val filter: T => Rep[Boolean]     = _.cookie === entry.cookie
-
-      val userFilter = entry.userId.fold(filter)(id => e => filter(e) || e.userId === id)
-      ModelView.now(model).find(baseFilter && userFilter)
-    }
-
-    private def createEntry[A](
-        f: (InetString, String, Option[DbRef[User]]) => A
-    )(implicit projectRequest: ProjectRequest[_]) =
-      users.current
-        .map(_.id.value)
-        .value
-        .map(userId => f(InetString(StatTracker.remoteAddress), StatTracker.currentCookie, userId))
-
-    private def addStat[M <: StatEntry[_, M], T <: StatTable[_, M]](
-        createEntryFunc: (InetString, String, Option[DbRef[User]]) => M,
-        entryCompanion: ModelCompanion.Aux[M, T],
-        describe: String,
-        addStatNow: F[Unit],
-        result: F[Result]
+    private def applyUpdate(
+        f: (InetString, String, Option[DbRef[User]]) => doobie.Query0[String]
     )(implicit projectRequest: ProjectRequest[_]) = {
-      createEntry(createEntryFunc).flatMap { statEntry =>
-        val stat = recordDB(statEntry, entryCompanion).flatMap {
-          case true  => addStatNow
-          case false => F.unit
-        }
-
-        val doUpdateAsync =
-          stat.runAsync(TaskUtils.logCallback(s"Failed to register $describe", MDCLogger)).to[F]
-        val setCookie = result.map(_.withCookies(bakery.bake(COOKIE_NAME, statEntry.cookie, secure = true)))
-
-        doUpdateAsync *> setCookie
-      }
+      val userId = projectRequest.headerData.currentUser.map(_.id.value)
+      f(InetString(StatTracker.remoteAddress), StatTracker.currentCookie, userId)
     }
 
-    def projectViewed(result: F[Result])(implicit projectRequest: ProjectRequest[_]): F[Result] = {
+    private def addStat(
+        updateFunc: (InetString, String, Option[DbRef[User]]) => doobie.Query0[String],
+        result: F[Result]
+    )(implicit projectRequest: ProjectRequest[_]) =
+      for {
+        cookie    <- service.runDbCon(applyUpdate(updateFunc).unique)
+        newResult <- result.map(_.withCookies(bakery.bake(COOKIE_NAME, cookie, secure = true)))
+      } yield newResult
+
+    def projectViewed(result: F[Result])(implicit projectRequest: ProjectRequest[_]): F[Result] =
       addStat(
-        ProjectView(projectRequest.data.project.id, _, _, _),
-        ProjectView,
-        "project view",
-        projectRequest.data.project.addView.void,
+        StatTrackerQueries.addProjectView(projectRequest.data.project.id, _, _, _),
         result
       )
-    }
 
     def versionDownloaded(
         version: Model[Version]
-    )(result: F[Result])(implicit request: ProjectRequest[_]): F[Result] = {
+    )(result: F[Result])(implicit request: ProjectRequest[_]): F[Result] =
       addStat(
-        VersionDownload(version.id, _, _, _),
-        VersionDownload,
-        "version download",
-        version.addDownload &> request.data.project.addDownload.void,
+        StatTrackerQueries.addVersionDownload(version.id, version.projectId, _, _, _),
         result
       )
-    }
 
   }
 }

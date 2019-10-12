@@ -127,8 +127,8 @@ trait OreRestfulApiV1 extends OreWrites {
               "channels"    -> toJson(chans.getOrElse(p.id.value, Seq.empty).map(_.obj)),
               "recommended" -> toJson(writeVersion(v, p, c, None, vTags.getOrElse(v.id.value, Seq.empty))),
               "category"    -> obj("title" -> p.category.title, "icon" -> p.category.icon),
-              "views"       -> p.viewCount,
-              "downloads"   -> p.downloadCount,
+              "views"       -> 0,
+              "downloads"   -> 0,
               "stars"       -> 0
             )
           )
@@ -159,7 +159,7 @@ trait OreRestfulApiV1 extends OreWrites {
       "reviewState"   -> v.reviewState.toString,
       "href"          -> ("/" + v.url(p)),
       "tags"          -> tags.map(toJson(_)),
-      "downloads"     -> v.downloadCount,
+      "downloads"     -> 0,
       "description"   -> v.description
     )
 

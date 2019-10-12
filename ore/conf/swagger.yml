@@ -75,6 +75,8 @@ components:
         - newest
         - updated
         - only_relevance
+        - recent_downloads
+        - recent_views
   securitySchemes:
     Session:
       type: http

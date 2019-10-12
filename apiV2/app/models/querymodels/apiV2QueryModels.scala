@@ -33,7 +33,10 @@ case class APIV2QueryProject(
     promotedVersions: Json,
     views: Long,
     downloads: Long,
+    recentViews: Long,
+    recentDownloads: Long,
     stars: Long,
+    watchers: Long,
     category: Category,
     description: Option[String],
     lastUpdated: OffsetDateTime,
@@ -76,7 +79,10 @@ case class APIV2QueryProject(
         APIV2.ProjectStats(
           views,
           downloads,
-          stars
+          recentViews,
+          recentDownloads,
+          stars,
+          watchers
         ),
         category,
         description,
@@ -202,7 +208,10 @@ case class APIV2QueryCompactProject(
     promotedVersions: Json,
     views: Long,
     downloads: Long,
+    recentViews: Long,
+    recentDownloads: Long,
     stars: Long,
+    watchers: Long,
     category: Category,
     visibility: Visibility
 ) {
@@ -219,7 +228,10 @@ case class APIV2QueryCompactProject(
         APIV2.ProjectStats(
           views,
           downloads,
-          stars
+          recentViews,
+          recentDownloads,
+          stars,
+          watchers
         ),
         category,
         visibility
