@@ -110,18 +110,18 @@ object AppQueries extends WebDoobieOreProtocol {
   def getStats(startDate: LocalDate, endDate: LocalDate): Query0[Stats] = {
     sql"""|SELECT (SELECT COUNT(*) FROM project_version_reviews WHERE CAST(ended_at AS DATE) = day)     AS review_count,
           |       (SELECT COUNT(*) FROM project_versions WHERE CAST(created_at AS DATE) = day)          AS created_projects,
-          |       (SELECT COUNT(*) FROM project_version_downloads WHERE CAST(created_at AS DATE) = day) AS download_count,
+          |       (SELECT COUNT(*) FROM project_versions_downloads WHERE day = dates.day) AS download_count,
           |       (SELECT COUNT(*)
-          |          FROM project_version_unsafe_downloads
-          |          WHERE CAST(created_at AS DATE) = day)                                              AS unsafe_download_count,
+          |            FROM project_version_unsafe_downloads
+          |            WHERE CAST(created_at AS DATE) = day)                                            AS unsafe_download_count,
           |       (SELECT COUNT(*)
-          |          FROM project_flags
-          |          WHERE CAST(created_at AS DATE) <= day
-          |            AND (CAST(resolved_at AS DATE) >= day OR resolved_at IS NULL))                   AS flags_created,
+          |            FROM project_flags
+          |            WHERE CAST(created_at AS DATE) <= day
+          |              AND (CAST(resolved_at AS DATE) >= day OR resolved_at IS NULL))                 AS flags_created,
           |       (SELECT COUNT(*) FROM project_flags WHERE CAST(resolved_at AS DATE) = day)            AS flags_resolved,
           |       CAST(day AS DATE)
-          |  FROM (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
-          |  ORDER BY day ASC;""".stripMargin.query[Stats]
+          |    FROM (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
+          |    ORDER BY day ASC;""".stripMargin.query[Stats]
   }
 
   def getLog(

@@ -18,12 +18,7 @@ object StatTrackerQueries extends WebDoobieOreProtocol {
       cookie: String,
       userId: Option[DbRef[User]]
   ): Query0[String] =
-    sql"""|INSERT INTO project_versions_downloads_individual (created_at, project_id, version_id, address, cookie, user_id)
-          |    VALUES (now(), $projectId, $versionId, $address, $cookie, $userId)
-          |ON CONFLICT DO UPDATE SET address=excluded.address,
-          |                          cookie=excluded.cookie,
-          |                          user_id=excluded.user_id
-          |                          RETURNING cookie;""".stripMargin.query[String]
+    sql"""|SELECT add_version_download($projectId, $versionId, $address, $cookie, $userId)""".stripMargin.query[String]
 
   def addProjectView(
       projectId: DbRef[Project],
@@ -31,14 +26,9 @@ object StatTrackerQueries extends WebDoobieOreProtocol {
       cookie: String,
       userId: Option[DbRef[User]]
   ): Query0[String] =
-    sql"""|INSERT INTO project_views_individual (created_at, project_id, address, cookie, user_id)
-          |    VALUES (now(), $projectId, $address, $cookie, $userId)
-          |ON CONFLICT DO UPDATE SET address=excluded.address,
-          |                          cookie=excluded.cookie,
-          |                          user_id=excluded.user_id
-          |                          RETURNING cookie;""".stripMargin.query[String]
+    sql"""|SELECT add_project_view($projectId, $address, $cookie, $userId);""".stripMargin.query[String]
 
-  val processVersionDownloads: Update0 = sql"CALL update_project_versions_downloads();".update
-  val processProjectViews: Update0     = sql"CALL update_project_views();".update
+  val processVersionDownloads: Update0 = sql"SELECT update_project_versions_downloads();".update
+  val processProjectViews: Update0     = sql"SELECT update_project_views();".update
 
 }

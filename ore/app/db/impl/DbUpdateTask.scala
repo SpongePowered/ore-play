@@ -3,7 +3,6 @@ package db.impl
 import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
 
 import play.api.inject.ApplicationLifecycle
 
@@ -37,12 +36,14 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
     .logInput(_ => UIO(Logger.debug(s"Updating homepage view")))
 
   private val statSchedule: ZSchedule[Clock, Any, Int] =
-    ZSchedule.fixed(duration.Duration.fromScala(1.day)).logInput(_ => UIO(Logger.debug("Processing stats")))
+    ZSchedule
+      .fixed(interval)
+      .logInput(_ => UIO(Logger.debug("Processing stats")))
 
   private def runningTask(task: Task[Unit], schedule: ZSchedule[Clock, Any, Int]) = {
     val safeTask = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
 
-    runtime.unsafeRun(safeTask *> safeTask.repeat(schedule).fork)
+    runtime.unsafeRun(safeTask.repeat(schedule).fork)
   }
 
   private val homepageTask = runningTask(projects.refreshHomePage(Logger), homepageSchedule)

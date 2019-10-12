@@ -21,8 +21,26 @@ CREATE TABLE project_versions_downloads_individual
 
 INSERT INTO project_versions_downloads_individual (created_at, project_id, version_id, address, cookie, user_id)
 SELECT pvd.created_at, pv.project_id, pvd.version_id, pvd.address, pvd.cookie, pvd.user_id
-FROM project_versions_downloads pvd
+FROM project_version_downloads pvd
          JOIN project_versions pv ON pvd.version_id = pv.id;
+
+ALTER TABLE project_version_download_warnings
+    ADD COLUMN download_warning_2 BIGINT REFERENCES project_versions_downloads_individual ON DELETE CASCADE;
+
+UPDATE project_version_download_warnings
+SET download_warning_2 = pvdi.id
+FROM project_versions_downloads_individual pvdi,
+     project_version_downloads pvd
+WHERE pvdi.version_id = pvd.version_id
+  AND pvdi.address = pvd.address
+  AND pvdi.cookie = pvd.cookie
+  AND pvdi.user_id = pvd.user_id;
+
+ALTER TABLE project_version_download_warnings
+    DROP COLUMN download_id;
+
+ALTER TABLE project_version_download_warnings
+    RENAME COLUMN download_warning_2 TO download_id;
 
 DROP TABLE project_version_downloads;
 
@@ -37,7 +55,7 @@ CREATE TABLE project_versions_downloads
 
 CREATE INDEX project_versions_downloads_project_id_version_id_idx ON project_versions_downloads (project_id, version_id);
 
-CREATE FUNCTION update_project_versions_downloads()
+CREATE FUNCTION update_project_versions_downloads() RETURNS VOID
     LANGUAGE plpgsql AS
 $$
 DECLARE
@@ -65,12 +83,45 @@ BEGIN
 END;;
 $$;
 
-CALL update_project_versions_downloads();
+SELECT update_project_versions_downloads();
 
 INSERT INTO project_versions_downloads AS pvd (day, project_id, version_id, downloads)
 SELECT CURRENT_DATE - INTERVAL '1 day', pv.project_id, pv.id, pv.downloads
 FROM project_versions pv
-ON CONFLICT DO UPDATE SET downloads = excluded.downloads + pvd.downloads;
+ON CONFLICT (day, version_id) DO UPDATE SET downloads = excluded.downloads + pvd.downloads;
+
+--https://stackoverflow.com/questions/1109061/insert-on-duplicate-update-in-postgresql
+CREATE FUNCTION add_version_download(project_id BIGINT, version_id BIGINT, address INET, cookie VARCHAR(36),
+                                     user_id BIGINT) RETURNS VARCHAR(36)
+    LANGUAGE plpgsql AS
+$$
+DECLARE
+    return_cookie VARCHAR(36);;
+BEGIN
+    LOOP
+        UPDATE project_versions_downloads_individual pvdi
+        SET address = $3,
+            cookie  = $4,
+            user_id = COALESCE($5, pvdi.user_id)
+        WHERE pvdi.project_id = $1
+          AND pvdi.version_id = $2
+          AND (pvdi.address = $3 OR pvdi.cookie = $4 OR pvdi.user_id = $5) RETURNING pvdi.cookie INTO return_cookie;;
+
+        IF found THEN
+            RETURN return_cookie;;
+        END IF;;
+
+        BEGIN
+            INSERT INTO project_versions_downloads_individual (created_at, project_id, version_id, address, cookie, user_id)
+            VALUES (now(), $1, $2, $3, $4, $5);;
+            RETURN $4;;
+        EXCEPTION
+            WHEN UNIQUE_VIOLATION THEN
+            --Go to start of loop
+        END;;
+    END LOOP;;
+END;;
+$$;
 
 -- Project views
 
@@ -102,7 +153,7 @@ CREATE TABLE project_views
     PRIMARY KEY (project_id, day)
 );
 
-CREATE FUNCTION update_project_views()
+CREATE FUNCTION update_project_views() RETURNS VOID
     LANGUAGE plpgsql AS
 $$
 DECLARE
@@ -130,10 +181,42 @@ BEGIN
 END;;
 $$;
 
+SELECT update_project_views();
+
 INSERT INTO project_views AS pv (day, project_id, views)
-SELECT CURRENT_DATE - INTERVAL '1 day', p.id, p.downloads
+SELECT CURRENT_DATE - INTERVAL '1 day', p.id, p.views
 FROM projects p
-ON CONFLICT DO UPDATE SET downloads = excluded.views + pv.views;
+ON CONFLICT (project_id, day) DO UPDATE SET views = excluded.views + pv.views;
+
+CREATE FUNCTION add_project_view(project_id BIGINT, address INET, cookie VARCHAR(36), user_id BIGINT) RETURNS VARCHAR(36)
+    LANGUAGE plpgsql AS
+$$
+DECLARE
+    return_cookie VARCHAR(36);;
+BEGIN
+    LOOP
+        UPDATE project_views_individual pvi
+        SET address = $2,
+            cookie  = $3,
+            user_id = COALESCE($4, pvi.user_id)
+        WHERE pvi.project_id = $1
+          AND (pvi.address = $2 OR pvi.cookie = $3 OR pvi.user_id = $4) RETURNING pvi.cookie INTO return_cookie;;
+
+        IF found THEN
+            RETURN return_cookie;;
+        END IF;;
+
+        BEGIN
+            INSERT INTO project_views_individual (created_at, project_id, address, cookie, user_id)
+            VALUES (now(), $1, $2, $3, $4);;
+            RETURN $3;;
+        EXCEPTION
+            WHEN UNIQUE_VIOLATION THEN
+            --Go to start of loop
+        END;;
+    END LOOP;;
+END;;
+$$;
 
 -- Deleting old columns
 
@@ -247,7 +330,7 @@ CREATE MATERIALIZED VIEW home_projects AS
              LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS recent_downloads
                         FROM project_versions_downloads pv
                         GROUP BY pv.project_id) pdr ON p.id = pdr.project_id
-    GROUP BY p.id, ps.stars, pw.watchers;
+    GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views, pdr.recent_downloads;
 
 
 # --- !Downs
@@ -275,10 +358,11 @@ ALTER TABLE project_versions
 
 -- Project views
 
+WITH summed_views AS (SELECT pv.project_id, sum(pv.views) AS sum_views FROM project_views pv GROUP BY pv.project_id)
 UPDATE projects p
-SET views = sum(pv.views)
-FROM project_views pv
-WHERE p.id = pv.project_id;
+SET views = pvs.sum_views
+FROM summed_views pvs
+WHERE p.id = pvs.project_id;
 
 DROP FUNCTION update_project_views;
 
@@ -319,16 +403,22 @@ DROP TABLE project_views_individual;
 
 -- Version downloads
 
+WITH summed_downloads AS (SELECT pvd.project_id, sum(pvd.downloads) AS sum_downloads
+                          FROM project_versions_downloads pvd
+                          GROUP BY pvd.project_id)
 UPDATE projects p
-SET downloads = sum(pvd.downloads)
-FROM project_versions_downloads pvd
-WHERE p.id = pvd.project_id;
+SET downloads = pvds.sum_downloads
+FROM summed_downloads pvds
+WHERE p.id = pvds.project_id;
 
+WITH summed_downloads AS (SELECT pvd.project_id, pvd.version_id, sum(pvd.downloads) AS sum_downloads
+                          FROM project_versions_downloads pvd
+                          GROUP BY pvd.project_id, pvd.version_id)
 UPDATE project_versions pv
-SET downloads = sum(pvd.downloads)
-FROM project_versions_downloads pvd
-WHERE pvd.project_id = pv.project_id
-  AND pvd.version_id = pv.id;
+SET downloads = pvds.sum_downloads
+FROM summed_downloads pvds
+WHERE pvds.project_id = pv.project_id
+  AND pvds.version_id = pv.id;
 
 DROP FUNCTION update_project_versions_downloads;
 
@@ -361,6 +451,26 @@ CREATE TRIGGER clean_old_project_version_downloads
     AFTER INSERT
     ON project_version_downloads
 EXECUTE PROCEDURE delete_old_project_version_downloads();
+
+ALTER TABLE project_version_download_warnings
+    ADD COLUMN download_warning_2 BIGINT REFERENCES project_version_downloads ON DELETE CASCADE;
+
+UPDATE project_version_download_warnings
+SET download_warning_2 = pvd.id
+FROM project_versions_downloads_individual pvdi,
+     project_version_downloads pvd
+WHERE pvdi.version_id = pvd.version_id
+  AND pvdi.address = pvd.address
+  AND pvdi.cookie = pvd.cookie
+  AND pvdi.user_id = pvd.user_id;
+
+ALTER TABLE project_version_download_warnings
+    DROP COLUMN download_id;
+
+ALTER TABLE project_version_download_warnings
+    RENAME COLUMN download_warning_2 TO download_id;
+
+DROP TABLE project_versions_downloads_individual;
 
 CREATE MATERIALIZED VIEW home_projects AS
     WITH tags AS (
