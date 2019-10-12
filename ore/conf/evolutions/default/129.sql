@@ -325,10 +325,12 @@ CREATE MATERIALIZED VIEW home_projects AS
                         GROUP BY pv.project_id) pda ON p.id = pda.project_id
              LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS recent_views
                         FROM project_views pv
+                        WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
                         GROUP BY pv.project_id) pvr
                        ON p.id = pvr.project_id
              LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS recent_downloads
                         FROM project_versions_downloads pv
+                        WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
                         GROUP BY pv.project_id) pdr ON p.id = pdr.project_id
     GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views, pdr.recent_downloads;
 
@@ -336,6 +338,9 @@ CREATE MATERIALIZED VIEW home_projects AS
 # --- !Downs
 
 DROP MATERIALIZED VIEW home_projects;
+
+DROP FUNCTION add_version_download;
+DROP FUNCTION add_project_view;
 
 --Adding old columns
 
