@@ -14,7 +14,7 @@
 #    The returned session should be specified in all following request as the
 #    parameter `session`. An example would be `Authorization: OreApi session="noisses"`
 #  tags:
-#    - Authentification
+#    - Sessions (Authentication)
 #  security:
 #    - Key: []
 #    - {}
@@ -46,11 +46,11 @@ POST    /authenticate                                        @controllers.apiv2.
 POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
 
 ###
-#  summary: Invalidates an existing API session.
+#  summary: Invalidates the API session used for the request.
 #  description: >-
 #    Invalidates the API session used to make this call.
 #  tags:
-#    - Keys
+#    - Sessions (Authentication)
 #  responses:
 #    204:
 #      description: Session invalidated
