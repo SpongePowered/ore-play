@@ -4,7 +4,9 @@ info:
   description: >-
 
     This page describes the format for the current Ore REST API, in addition
-    to common questions when using it.
+    to common questions when using it. Note that anything that starts with `_`
+    should be considered internal, and can change at a moment's notice. Do not
+    use it.
 
     ## Authentication and authorization
 
