@@ -420,7 +420,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
   ): Query0[Long] = actionCountQuery(Fragment.const("project_watchers"), user, canSeeHidden, currentUserId)
 
   def projectStats(pluginId: String, startDate: LocalDate, endDate: LocalDate): Query0[APIV2ProjectStatsQuery] =
-    sql"""|SELECT dates.day, coalesce(sum(pvd.downloads), 0) AS downloads, coalesce(pv.views, 0) AS views
+    sql"""|SELECT CAST(dates.day as DATE), coalesce(sum(pvd.downloads), 0) AS downloads, coalesce(pv.views, 0) AS views
           |    FROM projects p,
           |         (SELECT generate_series($startDate, $endDate, INTERVAL '1 DAY') AS day) dates
           |             LEFT JOIN project_versions_downloads pvd ON dates.day = pvd.day
@@ -435,7 +435,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
       startDate: LocalDate,
       endDate: LocalDate
   ): Query0[APIV2VersionStatsQuery] =
-    sql"""|SELECT dates.day, coalesce(pvd.downloads, 0) AS downloads
+    sql"""|SELECT CAST(dates.day as DATE), coalesce(pvd.downloads, 0) AS downloads
           |    FROM projects p,
           |         project_versions pv,
           |         (SELECT generate_series($startDate, $endDate, INTERVAL '1 DAY') AS day) dates
