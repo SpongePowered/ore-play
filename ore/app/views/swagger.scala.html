@@ -30,7 +30,8 @@ Mostly copied from swagger-ui's index file
                 margin:0;
                 background: #fafafa;
             }
-            .swagger-ui .topbar .download-url-wrapper, .swagger-ui .info hgroup.main a, .swagger-ui .info .description {
+
+            .swagger-ui .topbar .download-url-wrapper, .swagger-ui .info hgroup.main a {
                 display: none;
             }
             .swagger-ui .info {
@@ -38,6 +39,14 @@ Mostly copied from swagger-ui's index file
             }
             .model-container, .responses-inner {
                 overflow-x: auto;
+            }
+            .swagger-ui .info .description h2 {
+                padding-top: 1.5rem;
+                margin: 1.5rem 0 0;
+                border-top: 3px solid #333333;
+            }
+            .swagger-ui .scheme-container {
+                border-top: 1px solid rgba(0,0,0,.15);
             }
         </style>
     </head>

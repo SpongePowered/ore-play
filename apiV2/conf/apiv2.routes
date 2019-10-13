@@ -6,20 +6,18 @@
 #  summary: Creates an API session
 #  description: >-
 #    Creates a new API session. Pass an API key to create an authenticated
-#    session, pass an API key in the Authorization header, to create a public session,
-#    don't pass an Authorization header.
+#    session. To create a public session, don't pass an Authorization header.
+#
+#    When passing an API key, you should use the scheme `OreApi`, and
+#    parameter `apikey`. An example would be `Authorization: OreApi apikey="foobar"`.
+#
+#    The returned session should be specified in all following request as the
+#    parameter `session`. An example would be `Authorization: OreApi session="noisses"`
 #  tags:
-#    - Authentification
+#    - Sessions (Authentication)
 #  security:
 #    - Key: []
 #    - {}
-#  parameters:
-#    - name: fake
-#      description: Used in testing. Can normally be ignored.
-#    - name: expiresIn
-#      description: >-
-#        How many seconds this session should be valid for. If the duration
-#        can't be used for whatever reason, Ore will reply with a 400 response.
 #  requestBody:
 #    content:
 #      application/json:
@@ -48,15 +46,11 @@ POST    /authenticate                                        @controllers.apiv2.
 POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
 
 ###
-#  summary: Invalidates an existing API session.
+#  summary: Invalidates the API session used for the request.
 #  description: >-
-#    Invalidates the passed in API session. This endpoint must use the API
-#    session to validate as it's session.
+#    Invalidates the API session used to make this call.
 #  tags:
-#    - Keys
-#  parameters:
-#    - name: session
-#      description: The name of the key to delete
+#    - Sessions (Authentication)
 #  responses:
 #    204:
 #      description: Session invalidated

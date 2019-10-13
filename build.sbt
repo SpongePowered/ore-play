@@ -289,8 +289,11 @@ lazy val ore = project
       "models.protocols.APIV2",
       "controllers.apiv2.ApiV2Controller"
     ),
+    swaggerNamingStrategy := "snake_case",
     swaggerAPIVersion := "2.0",
     swaggerV3 := true,
+    PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger.yml",
+    PlayKeys.playMonitoredFiles += baseDirectory.value / "swagger-custom-mappings.yml",
     scalaJSProjects := Seq(oreClient),
     pipelineStages in Assets += scalaJSPipeline,
     WebKeys.exportedMappings in Assets := Seq(),

@@ -2,6 +2,10 @@
   specAsParameter:
     - type: string
       format: date-time
+- type: java\.time\.OffsetDateTime
+  specAsParameter:
+    - type: string
+      format: date-time
 - type: ore\.permission\.NamedPermission
   specAsParameter:
     - $ref: '#/components/schemas/NamedPermission'

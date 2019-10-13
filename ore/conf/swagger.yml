@@ -1,7 +1,54 @@
 openapi: 3.0.0
 info:
   title: "Ore API"
-  description: "Ore REST API"
+  description: >-
+
+    This page describes the format for the current Ore REST API, in addition
+    to common questions when using it. Note that anything that starts with `_`
+    should be considered internal, and can change at a moment's notice. Do not
+    use it.
+
+    ## Authentication and authorization
+
+    There are two ways to consume the API. Keyless, and using an API key.
+
+    ### Keyless
+
+    When using keyless authentication you only get access to public
+    information, but don't need to worry about creating and storing an API key.
+
+    ### API Keys
+
+    If you need access to non-public actions, or want to do something
+    programatically, you likely want an API key. These can be created by going
+    to your user page and clicking on the key icon.
+
+    ### Authentication
+
+    Once you know how you want to authenticate you need to create a session.
+    You can do this by `POST`ing to `/authenticate`. If you're using keyless
+    authentication that's it. If you have an API key, you need to specify it
+    in the Authorization header like so `Authorization: OreApi apikey="foobar"`.
+
+    ### Authorization
+
+    Once you do that you should receive an session. This is valid for a
+    pre-defined set of time. When it expires, you need to authenticate again.
+    To use it, set it in the Authorization header like
+    so `Authorization: session="noisses"`.
+
+    For more info about authentication, see [here](#/Authentification/authenticate).
+
+    ## FAQ
+
+    ### Can I just change v1 to v2 and be done with the transition to the new API?
+
+    No, not at all. The new API is wildly different from the old API. You won't even get out the door.
+
+    ### Why do I need to create a new session when I just want to get some public info?
+
+    We're working on a session-less authentification for public endpoints.
+
 
 servers:
   - url: /api/v2
@@ -9,20 +56,40 @@ servers:
 components:
   schemas:
     DeployVersionInfo:
-      description: Information about the version to create. Can be passed either as a file, or a string.
+      description: >-
+        DeployVersionInfo.
+
+        Information about the version to create. Can be passed either as a
+        file, or a string.
       properties:
-        recommended:
-          type: boolean
         create_forum_post:
           type: boolean
+          description: >-
+            If a post should be made on the forums after this version has
+            been published.
         description:
           type: string
+          description: >-
+            The version description to post on both the version,
+            and the forum post.
         tags:
           type: object
           additionalProperties:
-            type: string
-      required:
-        - tags
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  type: string
+                minItems: 1
+                uniqueItems: true
+          description: >-
+            Override the default for the tags specified here. If nothing is
+            specified for a tag, Ore will try to infer what it should be
+            instead.
+
+            Most tags only allow one value, but a few allow multiple.
+            In cases where multiple values are specified for a tag that only
+            allows a single, the first one will be used.
     NamedPermission:
       type: string
       enum:
@@ -77,6 +144,64 @@ components:
         - only_relevance
         - recent_downloads
         - recent_views
+    models.protocols.APIV2.Project:
+      title: Project
+    models.protocols.APIV2.Role:
+      title: Role
+    models.protocols.APIV2.ProjectLicense:
+      title: ProjectLicense
+    controllers.apiv2.ApiV2Controller.CreatedApiKey:
+      title: CreatedApiKey
+    controllers.apiv2.ApiV2Controller.PermissionCheck:
+      title: PermissionCheck
+    models.protocols.APIV2.PromotedVersion:
+      title: PromotedVersion
+    models.protocols.APIV2.CompactProject:
+      title: CompactProject
+    controllers.apiv2.ApiV2Controller.KeyPermissions:
+      title: KeyPermissions
+    models.protocols.APIV2.UserActions:
+      title: UserActions
+    controllers.apiv2.ApiV2Controller.ApiSessionProperties:
+      title: ApiSessionProperties
+      example:
+        expires_in: 600
+    models.protocols.APIV2.User:
+      title: User
+    models.protocols.APIV2.VersionDependency:
+      title: VersionDependency
+    models.protocols.APIV2.ProjectSettings:
+      title: ProjectSettings
+    controllers.apiv2.ApiV2Controller.KeyToCreate:
+      title: KeyToCreate
+    controllers.apiv2.ApiV2Controller.PaginatedProjectResult:
+      title: PaginatedProjectResult
+    controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult:
+      title: PaginatedCompactProjectResult
+    controllers.apiv2.ApiV2Controller.Pagination:
+      title: Pagination
+    models.protocols.APIV2.VersionTag:
+      title: VersionTag
+    controllers.apiv2.ApiV2Controller.PaginatedVersionResult:
+      title: PaginatedVersionResult
+    models.protocols.APIV2.ProjectNamespace:
+      title: ProjectNamespace
+    controllers.apiv2.ApiV2Controller.ReturnedApiSession:
+      title: ReturnedApiSession
+    models.protocols.APIV2.FileInfo:
+      title: FileInfo
+    models.protocols.APIV2.ProjectStats:
+      title: ProjectStats
+    models.protocols.APIV2.Version:
+      title: Version
+    models.protocols.APIV2.VersionTagColor:
+      title: VersionTagColor
+    models.protocols.APIV2.ProjectMember:
+      title: ProjectMember
+    models.protocols.APIV2.PromotedVersionTag:
+      title: PromotedVersionTag
+    models.protocols.APIV2.VersionStats:
+      title: VersionStats
   securitySchemes:
     Session:
       type: http
