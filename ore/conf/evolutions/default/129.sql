@@ -218,7 +218,7 @@ BEGIN
 END;;
 $$;
 
--- Deleting old columns
+-- Misc stuff, deleting old columns
 
 ALTER TABLE projects
     DROP COLUMN views,
@@ -229,6 +229,12 @@ ALTER TABLE project_versions
 
 DROP FUNCTION delete_old_project_views;
 DROP FUNCTION delete_old_project_version_downloads;
+
+UPDATE roles
+SET permission = permission | (1::BIT(64) << 7)
+WHERE name IN
+      ('Project_Owner', 'Project_Developer', 'Project_Editor', 'Project_Support', 'Organization', 'Organization_Owner',
+       'Organization_Admin', 'Organization_Developer', 'Organization_Editor', 'Organization_Support');
 
 CREATE MATERIALIZED VIEW home_projects AS
     WITH tags AS (
@@ -476,6 +482,12 @@ ALTER TABLE project_version_download_warnings
     RENAME COLUMN download_warning_2 TO download_id;
 
 DROP TABLE project_versions_downloads_individual;
+
+UPDATE roles
+SET permission = permission & ((-1)::BIT(64) # (1::BIT(64) << 7))
+WHERE name IN
+      ('Project_Owner', 'Project_Developer', 'Project_Editor', 'Project_Support', 'Organization', 'Organization_Owner',
+       'Organization_Admin', 'Organization_Developer', 'Organization_Editor', 'Organization_Support');
 
 CREATE MATERIALIZED VIEW home_projects AS
     WITH tags AS (

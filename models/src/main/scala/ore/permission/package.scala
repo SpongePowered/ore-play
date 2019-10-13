@@ -55,7 +55,7 @@ package object permission {
     val PostAsOrganization        = Permission(1L << 21)
     val EditOrganizationSettings  = EditSubjectSettings
     val ManageOrganizationMembers = ManageSubjectMembers
-    val ISOrganizationMember      = IsProjectMember
+    val IsOrganizationMember      = IsProjectMember
     val IsOrganizationOwner       = IsProjectOwner
 
     val ModNotesAndFlags = Permission(1L << 24)

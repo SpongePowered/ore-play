@@ -205,7 +205,7 @@ object Role extends StringEnum[Role] {
         "Organization_Support",
         28,
         RoleCategory.Organization,
-        Perm(Perm.PostAsOrganization, Perm.ISOrganizationMember),
+        Perm(Perm.PostAsOrganization, Perm.IsOrganizationMember),
         "Support",
         Transparent
       )
