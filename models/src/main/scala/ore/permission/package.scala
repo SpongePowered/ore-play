@@ -36,13 +36,15 @@ package object permission {
     val EditSubjectSettings  = Permission(1L << 4)
     val ManageSubjectMembers = Permission(1L << 5)
     val IsSubjectOwner       = Permission(1L << 6)
+    val IsSubjectMember      = Permission(1L << 7)
 
     val CreateProject        = Permission(1L << 8)
     val EditPage             = Permission(1L << 9)
     val DeleteProject        = Permission(1L << 10)
     val EditProjectSettings  = EditSubjectSettings
     val ManageProjectMembers = ManageSubjectMembers
-    val IsProjectOwner       = IsSubjectOwner ++ EditProjectSettings ++ ManageProjectMembers
+    val IsProjectMember      = IsSubjectMember
+    val IsProjectOwner       = IsSubjectOwner ++ EditProjectSettings ++ ManageProjectMembers ++ IsProjectMember
 
     val CreateVersion = Permission(1L << 12)
     val EditVersion   = Permission(1L << 13)
@@ -53,6 +55,7 @@ package object permission {
     val PostAsOrganization        = Permission(1L << 21)
     val EditOrganizationSettings  = EditSubjectSettings
     val ManageOrganizationMembers = ManageSubjectMembers
+    val ISOrganizationMember      = IsProjectMember
     val IsOrganizationOwner       = IsProjectOwner
 
     val ModNotesAndFlags = Permission(1L << 24)

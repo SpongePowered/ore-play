@@ -43,7 +43,7 @@ object APIV2 {
       name: String,
       namespace: ProjectNamespace,
       promoted_versions: Seq[PromotedVersion],
-      stats: ProjectStats,
+      stats: ProjectStatsAll,
       category: Category,
       description: Option[String],
       last_updated: OffsetDateTime,
@@ -58,7 +58,7 @@ object APIV2 {
       name: String,
       namespace: ProjectNamespace,
       promoted_versions: Seq[PromotedVersion],
-      stats: ProjectStats,
+      stats: ProjectStatsAll,
       category: Category,
       visibility: Visibility
   )
@@ -74,7 +74,7 @@ object APIV2 {
   )
   @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
   @ConfiguredJsonCodec case class VersionTagColor(foreground: String, background: String)
-  @ConfiguredJsonCodec case class ProjectStats(
+  @ConfiguredJsonCodec case class ProjectStatsAll(
       views: Long,
       downloads: Long,
       recent_views: Long,
@@ -112,7 +112,7 @@ object APIV2 {
       dependencies: List[VersionDependency],
       visibility: Visibility,
       description: Option[String],
-      stats: VersionStats,
+      stats: VersionStatsAll,
       file_info: FileInfo,
       author: Option[String],
       review_state: ReviewState,
@@ -120,7 +120,7 @@ object APIV2 {
   )
 
   @ConfiguredJsonCodec case class VersionDependency(plugin_id: String, version: Option[String])
-  @ConfiguredJsonCodec case class VersionStats(downloads: Long)
+  @ConfiguredJsonCodec case class VersionStatsAll(downloads: Long)
   @ConfiguredJsonCodec case class FileInfo(name: String, size_bytes: Long, md5_hash: String)
 
   //User
@@ -130,5 +130,14 @@ object APIV2 {
       tagline: Option[String],
       join_date: Option[OffsetDateTime],
       roles: List[Role]
+  )
+
+  @ConfiguredJsonCodec case class ProjectStatsDay(
+      downloads: Long,
+      views: Long
+  )
+
+  @ConfiguredJsonCodec case class VersionStatsDay(
+      downloads: Long
   )
 }

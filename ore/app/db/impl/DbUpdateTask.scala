@@ -15,7 +15,7 @@ import ore.util.OreMDC
 import cats.syntax.all._
 import com.typesafe.scalalogging
 import zio.clock.Clock
-import zio.{Task, UIO, ZSchedule, duration}
+import zio.{Task, UIO, ZIO, ZSchedule, duration}
 
 @Singleton
 class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
@@ -41,14 +41,16 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
       .logInput(_ => UIO(Logger.debug("Processing stats")))
 
   private def runningTask(task: Task[Unit], schedule: ZSchedule[Clock, Any, Int]) = {
-    val safeTask = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
+    val safeTask: ZIO[Any, Unit, Unit] = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
 
     runtime.unsafeRun(safeTask.repeat(schedule).fork)
   }
 
   private val homepageTask = runningTask(projects.refreshHomePage(Logger), homepageSchedule)
   private val statsTask = runningTask(
-    service.runDbCon(StatTrackerQueries.processProjectViews.run *> StatTrackerQueries.processVersionDownloads.run).unit,
+    service
+      .runDbCon(StatTrackerQueries.processProjectViews.unique *> StatTrackerQueries.processVersionDownloads.unique)
+      .unit,
     statSchedule
   )
   lifecycle.addStopHook { () =>

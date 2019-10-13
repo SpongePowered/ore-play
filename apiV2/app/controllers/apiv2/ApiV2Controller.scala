@@ -1,7 +1,7 @@
 package controllers.apiv2
 
 import java.nio.file.Path
-import java.time.OffsetDateTime
+import java.time.{LocalDate, OffsetDateTime}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
@@ -22,7 +22,7 @@ import controllers.sugar.Requests.ApiRequest
 import controllers.{OreBaseController, OreControllerComponents}
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
-import models.querymodels.{APIV2QueryVersion, APIV2QueryVersionTag}
+import models.querymodels.{APIV2ProjectStatsQuery, APIV2QueryVersion, APIV2QueryVersionTag, APIV2VersionStatsQuery}
 import ore.data.project.Category
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ApiKeyTable, OrganizationTable, ProjectTable, UserTable}
@@ -509,6 +509,22 @@ class ApiV2Controller @Inject()(
       }
     }
 
+  def showProjectStats(pluginId: String, fromDateString: String, toDateString: String): Action[AnyContent] =
+    ApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      cachingF("projectStats")(pluginId, fromDateString, toDateString) {
+        import Ordering.Implicits._
+
+        for {
+          fromDate <- ZIO.effect(LocalDate.parse(fromDateString)).asError(BadRequest("Badly formatted from date"))
+          toDate   <- ZIO.effect(LocalDate.parse(toDateString)).asError(BadRequest("Badly formatted to date"))
+          _        <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest("From date is after to date"))
+          res <- service.runDbCon(
+            APIV2Queries.projectStats(pluginId, fromDate, toDate).to[Vector].map(APIV2ProjectStatsQuery.asProtocol)
+          )
+        } yield Ok(res.asJson)
+      }
+    }
+
   def listVersions(
       pluginId: String,
       tags: Seq[String],
@@ -569,6 +585,30 @@ class ApiV2Controller @Inject()(
               .option
           )
           .map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
+      }
+    }
+
+  def showVersionStats(
+      pluginId: String,
+      version: String,
+      fromDateString: String,
+      toDateString: String
+  ): Action[AnyContent] =
+    ApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      cachingF("versionStats")(pluginId, version, fromDateString, toDateString) {
+        import Ordering.Implicits._
+
+        for {
+          fromDate <- ZIO.effect(LocalDate.parse(fromDateString)).asError(BadRequest("Badly formatted from date"))
+          toDate   <- ZIO.effect(LocalDate.parse(toDateString)).asError(BadRequest("Badly formatted to date"))
+          _        <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest("From date is after to date"))
+          res <- service.runDbCon(
+            APIV2Queries
+              .versionStats(pluginId, version, fromDate, toDate)
+              .to[Vector]
+              .map(APIV2VersionStatsQuery.asProtocol)
+          )
+        } yield Ok(res.asJson)
       }
     }
 

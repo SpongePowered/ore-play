@@ -28,7 +28,7 @@ object StatTrackerQueries extends WebDoobieOreProtocol {
   ): Query0[String] =
     sql"""|SELECT add_project_view($projectId, $address, $cookie, $userId);""".stripMargin.query[String]
 
-  val processVersionDownloads: Update0 = sql"SELECT update_project_versions_downloads();".update
-  val processProjectViews: Update0     = sql"SELECT update_project_views();".update
+  val processVersionDownloads: Query0[Unit] = sql"SELECT update_project_versions_downloads();".query[Unit]
+  val processProjectViews: Query0[Unit]     = sql"SELECT update_project_views();".query[Unit]
 
 }

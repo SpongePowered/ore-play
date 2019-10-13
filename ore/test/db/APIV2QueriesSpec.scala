@@ -1,5 +1,7 @@
 package db
 
+import java.time.LocalDate
+
 import play.api.Configuration
 
 import db.impl.query.APIV2Queries
@@ -77,5 +79,13 @@ class APIV2QueriesSpec extends DbSpec {
 
   test("UserQuery") {
     check(APIV2Queries.userQuery("Foo"))
+  }
+
+  test("ProjectStats") {
+    check(APIV2Queries.projectStats("foo", LocalDate.now().minusDays(30), LocalDate.now()))
+  }
+
+  test("VersionStats") {
+    check(APIV2Queries.versionStats("foo", "bar", LocalDate.now().minusDays(30), LocalDate.now()))
   }
 }

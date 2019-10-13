@@ -1,6 +1,6 @@
 package models.querymodels
 
-import java.sql.Date
+import java.time.LocalDate
 
 case class Stats(
     reviews: Long,
@@ -9,5 +9,5 @@ case class Stats(
     unsafeDownloads: Long,
     flagsOpened: Long,
     flagsClosed: Long,
-    day: Date
+    day: LocalDate
 )

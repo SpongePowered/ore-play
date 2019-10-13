@@ -1,6 +1,6 @@
 package ore.permission.role
 
-import java.time.{Instant, OffsetDateTime}
+import java.time.OffsetDateTime
 
 import scala.collection.immutable
 
@@ -129,8 +129,17 @@ object Role extends StringEnum[Role] {
         "Developer",
         Transparent
       )
-  object ProjectEditor  extends Role("Project_Editor", 21, RoleCategory.Project, Perm.EditPage, "Editor", Transparent)
-  object ProjectSupport extends Role("Project_Support", 22, RoleCategory.Project, Perm.None, "Support", Transparent)
+  object ProjectEditor
+      extends Role(
+        "Project_Editor",
+        21,
+        RoleCategory.Project,
+        Perm(Perm.EditPage, ProjectSupport.permissions),
+        "Editor",
+        Transparent
+      )
+  object ProjectSupport
+      extends Role("Project_Support", 22, RoleCategory.Project, Perm.IsProjectMember, "Support", Transparent)
 
   object Organization
       extends Role(
@@ -196,7 +205,7 @@ object Role extends StringEnum[Role] {
         "Organization_Support",
         28,
         RoleCategory.Organization,
-        Perm.PostAsOrganization,
+        Perm(Perm.PostAsOrganization, Perm.ISOrganizationMember),
         "Support",
         Transparent
       )

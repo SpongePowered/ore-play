@@ -110,7 +110,7 @@ object AppQueries extends WebDoobieOreProtocol {
   def getStats(startDate: LocalDate, endDate: LocalDate): Query0[Stats] = {
     sql"""|SELECT (SELECT COUNT(*) FROM project_version_reviews WHERE CAST(ended_at AS DATE) = day)     AS review_count,
           |       (SELECT COUNT(*) FROM project_versions WHERE CAST(created_at AS DATE) = day)          AS created_projects,
-          |       (SELECT COUNT(*) FROM project_versions_downloads WHERE day = dates.day) AS download_count,
+          |       (SELECT COUNT(*) FROM project_versions_downloads_individual WHERE CAST(created_at AS DATE) = day) AS download_count,
           |       (SELECT COUNT(*)
           |            FROM project_version_unsafe_downloads
           |            WHERE CAST(created_at AS DATE) = day)                                            AS unsafe_download_count,
