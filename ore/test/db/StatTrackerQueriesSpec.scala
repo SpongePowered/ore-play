@@ -17,6 +17,7 @@ class StatTrackerQueriesSpec extends DbSpec {
     check(StatTrackerQueries.addProjectView(0L, InetString("::1"), "foobar", None))
   }
 
+  /* Inspection doesn't work well with VOID type
   test("ProcessVersionDownloads") {
     check(StatTrackerQueries.processVersionDownloads)
   }
@@ -24,4 +25,5 @@ class StatTrackerQueriesSpec extends DbSpec {
   test("ProcessProjectViews") {
     check(StatTrackerQueries.processProjectViews)
   }
+ */
 }

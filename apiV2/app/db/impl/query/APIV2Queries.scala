@@ -422,7 +422,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
   def projectStats(pluginId: String, startDate: LocalDate, endDate: LocalDate): Query0[APIV2ProjectStatsQuery] =
     sql"""|SELECT CAST(dates.day as DATE), coalesce(sum(pvd.downloads), 0) AS downloads, coalesce(pv.views, 0) AS views
           |    FROM projects p,
-          |         (SELECT generate_series($startDate, $endDate, INTERVAL '1 DAY') AS day) dates
+          |         (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
           |             LEFT JOIN project_versions_downloads pvd ON dates.day = pvd.day
           |             LEFT JOIN project_views pv ON dates.day = pv.day AND pvd.project_id = pv.project_id
           |    WHERE p.plugin_id = $pluginId
@@ -438,7 +438,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
     sql"""|SELECT CAST(dates.day as DATE), coalesce(pvd.downloads, 0) AS downloads
           |    FROM projects p,
           |         project_versions pv,
-          |         (SELECT generate_series($startDate, $endDate, INTERVAL '1 DAY') AS day) dates
+          |         (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
           |             LEFT JOIN project_versions_downloads pvd ON dates.day = pvd.day
           |    WHERE p.plugin_id = $pluginId
           |      AND pv.version_string = $versionString
