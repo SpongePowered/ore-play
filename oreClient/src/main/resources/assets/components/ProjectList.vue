@@ -31,9 +31,9 @@
                                                     </a>
                                                 </span>
 
-                                                <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ project.stats.views }}</span>
-                                                <span class="stat" title="Download"><i class="fas fa-download"></i> {{ project.stats.downloads }}</span>
-                                                <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ project.stats.stars }}</span>
+                                                <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ formatStats(project.stats.views) }}</span>
+                                                <span class="stat" title="Download"><i class="fas fa-download"></i> {{ formatStats(project.stats.downloads) }}</span>
+                                                <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ formatStats(project.stats.stars) }}</span>
 
                                                 <span :title="categoryFromId(project.category).name" class="stat">
                                                     <i :class="'fa-' + categoryFromId(project.category).icon" class="fas"></i>
@@ -166,6 +166,9 @@
                 });
 
                 return reducedTags;
+            },
+            formatStats(number) {
+                return numberWithCommas(number);
             }
         }
     }
