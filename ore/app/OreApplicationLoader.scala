@@ -55,7 +55,6 @@ import ErrorHandler.OreHttpErrorHandler
 import akka.actor.ActorSystem
 import cats.arrow.FunctionK
 import cats.effect.{ContextShift, Resource}
-import cats.tagless.FunctorK
 import cats.tagless.syntax.all._
 import cats.{Defer, ~>}
 import com.softwaremill.macwire._
@@ -67,7 +66,7 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{DefaultRuntime, Task, UIO, ZIO}
+import zio.{CancelableFuture, DefaultRuntime, Task, UIO, ZIO, ZSchedule}
 
 class OreApplicationLoader extends ApplicationLoader {
   override def load(context: ApplicationLoader.Context): PlayApplication = {
@@ -309,9 +308,18 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val channelsProvider: Provider[Channels]                 = () => channels
   lazy val reviewsProvider: Provider[Reviews]                   = () => reviews
 
-  eager(projectTask)
-  eager(userTask)
-  eager(dbUpdateTask)
+  def waitTilEvolutionsDone(action: UIO[Unit]): CancelableFuture[Nothing, Unit] = {
+    val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)
+    val waitCheck = ZSchedule.doUntilM[Unit](_ => isDone) && ZSchedule.fixed(zio.duration.Duration.fromNanos(100))
+
+    runtime.unsafeRunToFuture(ZIO.unit.repeat(waitCheck).andThen(action))
+  }
+
+  waitTilEvolutionsDone(ZIO.effectTotal {
+    eager(projectTask)
+    eager(userTask)
+    eager(dbUpdateTask)
+  })
 
   def eager[A](module: A): Unit = use(module)
 
