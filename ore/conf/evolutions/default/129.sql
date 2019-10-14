@@ -141,7 +141,8 @@ CREATE TABLE project_views_individual
 
 INSERT INTO project_views_individual (created_at, project_id, address, cookie, user_id)
 SELECT pv.created_at, pv.project_id, pv.address, pv.cookie, pv.user_id
-FROM project_views pv;
+FROM project_views pv
+ON CONFLICT DO NOTHING;
 
 DROP TABLE project_views;
 
