@@ -49,6 +49,11 @@ info:
 
     We're working on a session-less authentification for public endpoints.
 
+    ### What format does dates have?
+
+    Standard ISO types. Where possible we use the OpenAPI format modifier. You
+    can view it's meanings [here](https://swagger.io/docs/specification/data-models/data-types/#format).
+
 
 servers:
   - url: /api/v2
@@ -176,6 +181,8 @@ components:
       title: KeyToCreate
     controllers.apiv2.ApiV2Controller.PaginatedProjectResult:
       title: PaginatedProjectResult
+    models.protocols.APIV2.ProjectStatsDay:
+      title: ProjectStatsDay
     controllers.apiv2.ApiV2Controller.PaginatedCompactProjectResult:
       title: PaginatedCompactProjectResult
     controllers.apiv2.ApiV2Controller.Pagination:
@@ -190,8 +197,10 @@ components:
       title: ReturnedApiSession
     models.protocols.APIV2.FileInfo:
       title: FileInfo
-    models.protocols.APIV2.ProjectStats:
-      title: ProjectStats
+    models.protocols.APIV2.VersionStatsDay:
+      title: VersionStatsDay
+    models.protocols.APIV2.ProjectStatsAll:
+      title: ProjectStatsAll
     models.protocols.APIV2.Version:
       title: Version
     models.protocols.APIV2.VersionTagColor:
@@ -200,8 +209,8 @@ components:
       title: ProjectMember
     models.protocols.APIV2.PromotedVersionTag:
       title: PromotedVersionTag
-    models.protocols.APIV2.VersionStats:
-      title: VersionStats
+    models.protocols.APIV2.VersionStatsAll:
+      title: VersionStatsAll
   securitySchemes:
     Session:
       type: http
