@@ -63,10 +63,10 @@ Documentation page within Project overview.
             <div class="stats minor">
                 <p>@messages("project.category.info", p.project.category.title)</p>
                 <p>@messages("project.publishDate", prettifyDate(p.project.createdAt))</p>
-                <p>0 views</p>
-                <p>@p.starCount <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.slug, None)">stars</a></p>
-                <p>@p.watcherCount <a href="@routes.Projects.showWatchers(p.project.ownerName, p.project.slug, None)">watchers</a></p>
-                <p>@NumberFormat.getInstance.format(0) total downloads</p>
+                <p><span id="view-count"></span> views</p>
+                <p><span id="star-count"></span> <a href="@routes.Projects.showStargazers(p.project.ownerName, p.project.slug, None)">stars</a></p>
+                <p><span id="watcher-count"></span> <a href="@routes.Projects.showWatchers(p.project.ownerName, p.project.slug, None)">watchers</a></p>
+                <p><span id="download-count"></span> total downloads</p>
                 @p.project.settings.licenseName.map { licenseName =>
                     <p>
                         @Html(messages("project.license.link"))
