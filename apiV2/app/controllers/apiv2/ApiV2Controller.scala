@@ -1,6 +1,7 @@
 package controllers.apiv2
 
 import java.nio.file.Path
+import java.time.format.DateTimeParseException
 import java.time.{LocalDate, OffsetDateTime}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
@@ -37,7 +38,8 @@ import ore.permission.{NamedPermission, Permission}
 import _root_.util.syntax._
 
 import akka.http.scaladsl.model.headers.{Authorization, HttpCredentials}
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, Validated}
+import cats.kernel.Semigroup
 import cats.syntax.all._
 import enumeratum._
 import io.circe.generic.extras._
@@ -511,10 +513,17 @@ class ApiV2Controller @Inject()(
       cachingF("projectStats")(pluginId, fromDateString, toDateString) {
         import Ordering.Implicits._
 
+        def parseDate(dateStr: String) =
+          Validated
+            .catchOnly[DateTimeParseException](LocalDate.parse(dateStr))
+            .leftMap(_ => ApiErrors(NonEmptyList.one(s"Badly formatted date $dateStr")))
+
         for {
-          fromDate <- ZIO.effect(LocalDate.parse(fromDateString)).asError(BadRequest("Badly formatted from date"))
-          toDate   <- ZIO.effect(LocalDate.parse(toDateString)).asError(BadRequest("Badly formatted to date"))
-          _        <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest("From date is after to date"))
+          t <- ZIO
+            .fromEither(parseDate(fromDateString).product(parseDate(toDateString)).toEither)
+            .mapError(BadRequest(_))
+          (fromDate, toDate) = t
+          _ <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest(ApiError("From date is after to date")))
           res <- service.runDbCon(
             APIV2Queries.projectStats(pluginId, fromDate, toDate).to[Vector].map(APIV2ProjectStatsQuery.asProtocol)
           )
@@ -595,10 +604,17 @@ class ApiV2Controller @Inject()(
       cachingF("versionStats")(pluginId, version, fromDateString, toDateString) {
         import Ordering.Implicits._
 
+        def parseDate(dateStr: String) =
+          Validated
+            .catchOnly[DateTimeParseException](LocalDate.parse(dateStr))
+            .leftMap(_ => ApiErrors(NonEmptyList.one(s"Badly formatted date $dateStr")))
+
         for {
-          fromDate <- ZIO.effect(LocalDate.parse(fromDateString)).asError(BadRequest("Badly formatted from date"))
-          toDate   <- ZIO.effect(LocalDate.parse(toDateString)).asError(BadRequest("Badly formatted to date"))
-          _        <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest("From date is after to date"))
+          t <- ZIO
+            .fromEither(parseDate(fromDateString).product(parseDate(toDateString)).toEither)
+            .mapError(BadRequest(_))
+          (fromDate, toDate) = t
+          _ <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest(ApiError("From date is after to date")))
           res <- service.runDbCon(
             APIV2Queries
               .versionStats(pluginId, version, fromDate, toDate)
@@ -821,6 +837,10 @@ object ApiV2Controller {
 
   @ConfiguredJsonCodec case class ApiError(error: String)
   @ConfiguredJsonCodec case class ApiErrors(errors: NonEmptyList[String])
+  object ApiErrors {
+    implicit val semigroup: Semigroup[ApiErrors] = (x: ApiErrors, y: ApiErrors) =>
+      ApiErrors(x.errors.concatNel(y.errors))
+  }
   @ConfiguredJsonCodec case class UserError(userError: String)
 
   @ConfiguredJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
