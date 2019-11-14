@@ -40,7 +40,7 @@ BEGIN
     SELECT date_trunc('day', s.created_at), s.project_id, count(*)
     FROM project_views_individual s
     WHERE NOT s.processed
-      AND date_trunc('day', s.created_at) = process_limit
+      AND date_trunc('day', s.created_at) < process_limit
     GROUP BY date_trunc('day', s.created_at), s.project_id
     ON CONFLICT (day, project_id) DO UPDATE SET views = excluded.views + pv.views;;
 
