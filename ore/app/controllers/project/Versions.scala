@@ -188,6 +188,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
           project.ownerName,
           project.description,
           forumSync = request.data.project.settings.forumSync,
+          None,
           None
         )
       )

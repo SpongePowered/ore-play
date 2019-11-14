@@ -1,7 +1,5 @@
 package ore.data
 
-import scala.language.higherKinds
-
 import scala.collection.immutable
 import scala.util.matching.Regex
 
@@ -123,11 +121,11 @@ object Platform extends StringEnum[Platform] {
   def ghostTags(
       versionId: DbRef[Version],
       dependencies: Seq[Dependency]
-  ): ValidatedNel[String, (Vector[String], Vector[VersionTag])] = {
-    import cats.instances.vector._
+  ): ValidatedNel[String, (List[String], List[VersionTag])] = {
+    import cats.instances.list._
     getPlatforms(dependencies.map(_.pluginId))
       .map(p => p.createTag(versionId, dependencies.find(_.pluginId == p.dependencyId).get.version))
-      .toVector
+      .toList
       .sequence
       .map(v => v.flatMap(_._1) -> v.map(_._2))
   }

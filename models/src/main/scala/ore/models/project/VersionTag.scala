@@ -9,10 +9,9 @@ import ore.db._
 import ore.db.impl.ModelCompanionPartial
 import ore.db.impl.common.Named
 import ore.db.impl.schema.VersionTagTable
-import ore.models.project.VersionTag.{MixinTag, ReleaseTypeTag, StabilityTag}
 
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
-import cats.instances.option._
+import cats.instances.list._
 import cats.syntax.all._
 import enumeratum.values._
 import slick.lifted.TableQuery
@@ -38,19 +37,18 @@ object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](Tab
       name: String,
       data: Seq[String],
       versionId: DbRef[VersionTag]
-  ): ValidatedNel[String, (Seq[String], Seq[VersionTag])] = {
+  ): ValidatedNel[String, (List[String], List[VersionTag])] = {
     val platformsWithName = Platform.valuesToEntriesMap.map[String, Platform](t => t._2.name -> t._2)
 
     //If the tag is a platform we want to treat it differently
     platformsWithName.get(name) match {
       case Some(platform) =>
         if (data.nonEmpty) {
-          platform.createTag(versionId, None).map(t => t._1.toSeq -> Seq(t._2))
+          platform.createTag(versionId, None).map(t => t._1.toList -> List(t._2))
         } else {
-          import cats.instances.vector._
           data
             .map(v => platform.createTag(versionId, Some(v)))
-            .toVector
+            .toList
             .sequence
             .map(v => v.flatMap(_._1) -> v.map(_._2))
         }
@@ -62,7 +60,7 @@ object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](Tab
     }
   }
 
-  trait TagType extends StringEnumEntry {
+  sealed trait TagType extends StringEnumEntry {
     type Data
     def name: String
 
@@ -75,12 +73,12 @@ object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](Tab
     def createTag(data: Data, versionId: DbRef[Version]): VersionTag =
       VersionTag(versionId, name, stringyfyData(data), tagColor(data), None)
 
-    def parseData(data: Seq[String]): ValidatedNel[String, (Seq[String], Seq[Data])]
+    def parseData(data: Seq[String]): ValidatedNel[String, (List[String], List[Data])]
 
     def createTagUnsanitized(
         strData: Seq[String],
         versionId: DbRef[Version]
-    ): Validated[NonEmptyList[String], (Seq[String], Seq[VersionTag])] =
+    ): Validated[NonEmptyList[String], (List[String], List[VersionTag])] =
       parseData(strData).map(t => t._1 -> t._2.map(createTag(_, versionId)))
   }
   object TagType extends StringEnum[TagType] {
@@ -96,8 +94,8 @@ object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](Tab
 
     override def stringyfyData(values: Unit): Option[String] = None
 
-    override def parseData(data: Seq[String]): ValidatedNel[String, (Seq[String], Seq[Unit])] =
-      Validated.validNel((if (data.nonEmpty) Seq("tags.mixin.warnings.noData") else Nil, Seq(())))
+    override def parseData(data: Seq[String]): ValidatedNel[String, (List[String], List[Unit])] =
+      Validated.validNel((if (data.nonEmpty) List("tags.mixin.warnings.noData") else Nil, List(())))
   }
 
   object StabilityTag extends TagType {
@@ -109,26 +107,26 @@ object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](Tab
 
     override def stringyfyData(values: StabilityValues): Option[String] = Some(values.value)
 
-    override def parseData(data: Seq[String]): ValidatedNel[String, (Seq[String], Seq[StabilityValues])] =
+    override def parseData(data: Seq[String]): ValidatedNel[String, (List[String], List[StabilityValues])] =
       data.headOption
         .toValidNel("tags.stability.errors.noData")
         .andThen { s =>
           StabilityValues
             .withValueOpt(s)
-            .map(s => (if (data.lengthIs > 1) Seq("tags.stability.warnings.onlyOne") else Nil, Seq(s)))
+            .map(s => (if (data.lengthIs > 1) List("tags.stability.warnings.onlyOne") else Nil, List(s)))
             .toValidNel("tags.stability.errors.invalidStability")
         }
 
-    abstract class StabilityValues(val value: String, val color: TagColor) extends StringEnumEntry
+    sealed abstract class StabilityValues(val value: String, val color: TagColor) extends StringEnumEntry
     object StabilityValues extends StringEnum[StabilityValues] {
       override def values: IndexedSeq[StabilityValues] = findValues
 
-      case object Stable      extends StabilityValues("stable", ???)
-      case object Beta        extends StabilityValues("beta", ???)
-      case object Alpha       extends StabilityValues("alpha", ???)
-      case object Bleeding    extends StabilityValues("bleeding", ???)
-      case object Unsupported extends StabilityValues("unsupported", ???)
-      case object Broken      extends StabilityValues("broken", ???)
+      case object Stable      extends StabilityValues("stable", TagColor.Stable)
+      case object Beta        extends StabilityValues("beta", TagColor.Beta)
+      case object Alpha       extends StabilityValues("alpha", TagColor.Alpha)
+      case object Bleeding    extends StabilityValues("bleeding", TagColor.Bleeding)
+      case object Unsupported extends StabilityValues("unsupported", TagColor.Unsupported)
+      case object Broken      extends StabilityValues("broken", TagColor.Broken)
     }
   }
 
@@ -141,24 +139,24 @@ object VersionTag extends ModelCompanionPartial[VersionTag, VersionTagTable](Tab
 
     override def stringyfyData(values: ReleaseTypeValues): Option[String] = Some(values.value)
 
-    override def parseData(data: Seq[String]): ValidatedNel[String, (Seq[String], Seq[ReleaseTypeValues])] =
+    override def parseData(data: Seq[String]): ValidatedNel[String, (List[String], List[ReleaseTypeValues])] =
       data.headOption
         .toValidNel("tags.release_type.errors.noData")
         .andThen { s =>
           ReleaseTypeValues
             .withValueOpt(s)
-            .map(s => (if (data.lengthIs > 1) Seq("tags.release_type.warnings.onlyOne") else Nil, Seq(s)))
+            .map(s => (if (data.lengthIs > 1) List("tags.release_type.warnings.onlyOne") else Nil, List(s)))
             .toValidNel("tags.release_type.errors.invalidReleaseType")
         }
 
-    abstract class ReleaseTypeValues(val value: String, val color: TagColor) extends StringEnumEntry
+    sealed abstract class ReleaseTypeValues(val value: String, val color: TagColor) extends StringEnumEntry
     object ReleaseTypeValues extends StringEnum[ReleaseTypeValues] {
       override def values: IndexedSeq[ReleaseTypeValues] = findValues
 
-      case object MajorUpdate extends ReleaseTypeValues("major_update", ???)
-      case object MinorUpdate extends ReleaseTypeValues("minor_update", ???)
-      case object Patches     extends ReleaseTypeValues("patches", ???)
-      case object Hotfix      extends ReleaseTypeValues("hotfix", ???)
+      case object MajorUpdate extends ReleaseTypeValues("major_update", TagColor.MajorUpdate)
+      case object MinorUpdate extends ReleaseTypeValues("minor_update", TagColor.MinorUpdate)
+      case object Patches     extends ReleaseTypeValues("patches", TagColor.Patches)
+      case object Hotfix      extends ReleaseTypeValues("hotfix", TagColor.Hotfix)
     }
   }
 }
@@ -197,4 +195,16 @@ object TagColor extends IntEnum[TagColor] {
   case object Silver      extends TagColor(24, "#C0C0C0", "#FFFFFF")
   case object Gray        extends TagColor(25, "#A9A9A9", "#FFFFFF")
   case object Transparent extends TagColor(26, "transparent", "#FFFFFF")
+
+  case object Stable      extends TagColor(27, "00DC00", "#333333")
+  case object Beta        extends TagColor(28, "FFC800", "#333333")
+  case object Alpha       extends TagColor(29, "FF8200", "#333333")
+  case object Bleeding    extends TagColor(30, "#DC0000", "#333333")
+  case object Unsupported extends TagColor(31, "#7F7F7F", "#FFFFFF")
+  case object Broken      extends TagColor(32, "#565656", "#FFFFFF")
+
+  case object MajorUpdate extends TagColor(33, "#CFB53B", "#333333")
+  case object MinorUpdate extends TagColor(34, "#C0C0C0", "#333333")
+  case object Patches     extends TagColor(35, "#7F7F7F", "#FFFFFF")
+  case object Hotfix      extends TagColor(36, "#DC0000", "#333333")
 }

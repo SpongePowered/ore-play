@@ -92,7 +92,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     val user = request.user
     for {
       _ <- ZIO
-        .fromOption(factory.getUploadError(user))
+        .fromOption(factory.hasUserUploadError(user))
         .flip
         .mapError(Redirect(self.showCreator()).withError(_))
       organisationUserCanUploadTo <- orgasUserCanUploadTo(user)

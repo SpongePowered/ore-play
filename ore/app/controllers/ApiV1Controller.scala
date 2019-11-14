@@ -19,11 +19,11 @@ import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.PluginUpload
-import ore.models.project.{Page, Project, Version, VersionTag}
+import ore.models.project.{Page, Project, TagColor, Version, VersionTag}
 import ore.models.user.{LoggedActionProject, LoggedActionType, User}
 import ore.permission.Permission
 import ore.permission.role.Role
-import ore.rest.{OreRestfulApiV1, OreWrites}
+import ore.rest.{FakeChannel, OreRestfulApiV1, OreWrites}
 import _root_.util.syntax._
 import _root_.util.{StatusZ, UserActionLogger}
 
@@ -227,7 +227,7 @@ final class ApiV1Controller @Inject()(
               )
               .flatMap { owner =>
                 val pluginUpload = this.factory
-                  .getUploadError(owner)
+                  .hasUserUploadError(owner)
                   .map(err => BadRequest(error("user", err)))
                   .toLeft(PluginUpload.bindFromRequest())
                   .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
@@ -240,18 +240,30 @@ final class ApiV1Controller @Inject()(
                   ).leftMap(err => BadRequest(error("upload", err)))
                 }
               }
-              .map { pendingVersion =>
-                pendingVersion.copy(
-                  createForumPost = formData.createForumPost,
-                  description = formData.changelog
-                )
+              .flatMap { fileWithData =>
+                EitherT(
+                  factory
+                    .createVersion(project, fileWithData, formData.changelog, formData.createForumPost, Map.empty)
+                    .either
+                ).leftMap { es =>
+                  BadRequest(JsArray(es.toList.view.zipWithIndex.map(t => error(t._2.toString, t._1)).toSeq))
+                }
               }
-              .semiflatMap(_.complete(project, factory))
               .semiflatMap {
                 case (newProject, newVersion, tags) =>
                   val update = service.insert(tagToInsert(newVersion.id))
 
-                  update.as(Created(api.writeVersion(newVersion, newProject, ???, None, tags)))
+                  update.as(
+                    Created(
+                      api.writeVersion(
+                        newVersion,
+                        newProject,
+                        FakeChannel("Channel", TagColor.Green, isNonReviewed = false),
+                        None,
+                        tags
+                      )
+                    )
+                  )
               }
         }
         .merge

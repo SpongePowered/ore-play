@@ -1,7 +1,5 @@
 package ore.models.project.io
 
-import scala.language.higherKinds
-
 import java.nio.file.{Files, Path}
 
 import ore.data.Platform
@@ -12,6 +10,8 @@ import ore.models.user.User
 import ore.util.StringUtils
 
 import cats.data.{Validated, ValidatedNel}
+import cats.instances.list._
+import cats.instances.tuple._
 import cats.syntax.all._
 import cats.effect.Sync
 
@@ -40,18 +40,18 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
   def tagsForVersion(
       id: DbRef[Version],
       userTags: Map[String, Seq[String]]
-  ): ValidatedNel[String, (Seq[String], Seq[VersionTag])] = {
-    val userVersionTags: ValidatedNel[String, (Seq[String], Seq[VersionTag])] =
-      userTags.map(t => VersionTag.userTagsToReal(t._1, t._2, id))
+  ): ValidatedNel[String, (List[String], List[VersionTag])] = {
+    val userVersionTags: ValidatedNel[String, (List[String], List[VersionTag])] =
+      userTags.toList
+        .map(t => VersionTag.userTagsToReal(t._1, t._2, id))
+        .combineAll
 
-    (Platform.ghostTags(id, data.dependencies), userVersionTags)
+    (Platform.ghostTags(id, data.dependencies).combine(data.tags(id)), userVersionTags)
       .mapN {
-        case ((platformWarnings, platformAutoTags), (userWarnings, allUserCustomTags)) =>
-          val autoTags = platformAutoTags ++ data.tags(id)
-
+        case ((autoWarnings, autoTags), (userWarnings, allUserCustomTags)) =>
           //Technically we might emit warnings for stuff we don't use, but it also
           //means we can emit warnings for platform tags and user tags in one
-          val allWarnings = platformWarnings ++ userWarnings
+          val allWarnings = autoWarnings ++ userWarnings
 
           val autoTagsByName       = autoTags.groupBy(_.name)
           val userCustomTagsByName = allUserCustomTags.groupBy(_.name)
@@ -59,9 +59,9 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
           val (userOverrideTags, userCustomVersionTags) =
             userCustomTagsByName.partition(t => autoTagsByName.contains(t._1))
 
-          val autoTagsWithOverrides: Seq[VersionTag] = autoTagsByName.flatMap {
+          val autoTagsWithOverrides: List[VersionTag] = autoTagsByName.view.flatMap {
             case (name, tags) => userOverrideTags.getOrElse(name, tags)
-          }
+          }.toList
 
           val platformAndUserTags = autoTagsWithOverrides ++ userCustomVersionTags.flatMap(_._2)
 

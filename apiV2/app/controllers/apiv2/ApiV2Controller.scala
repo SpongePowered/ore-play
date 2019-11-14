@@ -995,6 +995,8 @@ class ApiV2Controller @Inject()(
 }
 object ApiV2Controller {
 
+  import APIV2.{config, categoryCodec}
+
   sealed abstract class APIScope(val tpe: APIScopeType)
   object APIScope {
     case object GlobalScope                                extends APIScope(APIScopeType.Global)

@@ -1,7 +1,5 @@
 package ore.models.project.io
 
-import scala.language.higherKinds
-
 import java.io.BufferedReader
 
 import scala.collection.mutable.ArrayBuffer
@@ -9,9 +7,10 @@ import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 import ore.data.project.Dependency
-import ore.db.{DbRef, Model, ModelService}
-import ore.models.project.{TagColor, Version, VersionTag}
+import ore.db.DbRef
+import ore.models.project.{Version, VersionTag}
 
+import cats.data.{Validated, ValidatedNel}
 import org.spongepowered.plugin.meta.McModInfo
 
 /**
@@ -78,15 +77,10 @@ class PluginFileData(data: Seq[DataValue]) {
     case _                  => false
   }
 
-  def tags(versionId: DbRef[Version]): Seq[VersionTag] = {
-    val buffer = new ArrayBuffer[VersionTag]
-
+  def tags(versionId: DbRef[Version]): ValidatedNel[String, (List[String], List[VersionTag])] =
     if (containsMixins) {
-      buffer += VersionTag.mixinTag(versionId)
-    }
-
-    buffer.toSeq
-  }
+      VersionTag.MixinTag.createTagUnsanitized(Nil, versionId)
+    } else Validated.valid((Nil, Nil))
 
   /**
     * A mod using Mixins will contain the "MixinConfigs" attribute in their MANIFEST
