@@ -6,6 +6,7 @@ import scala.concurrent.duration.FiniteDuration
 
 import models.querymodels._
 import ore.data.project.Category
+import ore.db.impl.query.DoobieOreProtocol
 import ore.db.{DbRef, Model}
 import ore.models.admin.LoggedActionViewModel
 import ore.models.organization.Organization
@@ -17,7 +18,7 @@ import cats.syntax.all._
 import doobie._
 import doobie.implicits._
 
-object AppQueries extends WebDoobieOreProtocol {
+object AppQueries extends DoobieOreProtocol {
 
   //implicit val logger: LogHandler = createLogger("Database")
 

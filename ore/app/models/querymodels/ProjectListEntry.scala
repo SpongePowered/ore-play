@@ -18,8 +18,8 @@ case class ProjectListEntry(
     category: Category,
     description: Option[String],
     name: String,
-    version: Option[String],
-    tags: List[ViewTag]
+    version: Option[String]
+    //tags: List[ViewTag]
 ) {
 
   def withIcon(
@@ -42,7 +42,7 @@ case class ProjectListEntry(
         description,
         name,
         version,
-        tags,
+        //tags,
         icon
       )
     }

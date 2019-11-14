@@ -478,14 +478,14 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
                 ).withHeaders(CONTENT_DISPOSITION -> "inline; filename=\"README.txt\"")
               )
             } else {
-              val stabilityTag = version.tags(ModelView.now(VersionTag)).find(_.name === "stability").toZIO
+              val nonReviewed = version.tags.stability != Version.Stability.Stable
 
-              stabilityTag.map(_.data == ???).option.map(_.exists(identity)).map { nonReviewed =>
-                //We return Ok here to make sure Chrome sets the cookie
-                //https://bugs.chromium.org/p/chromium/issues/detail?id=696204
+              //We return Ok here to make sure Chrome sets the cookie
+              //https://bugs.chromium.org/p/chromium/issues/detail?id=696204
+              IO.succeed(
                 Ok(views.unsafeDownload(project, version, nonReviewed, dlType))
                   .addingToSession(DownloadWarning.cookieKey(version.id) -> "set")
-              }
+              )
             }
           }
         }

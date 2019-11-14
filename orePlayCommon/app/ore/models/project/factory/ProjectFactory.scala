@@ -230,14 +230,13 @@ trait ProjectFactory {
       plugin: PluginFileWithData,
       description: Option[String],
       createForumPost: Boolean,
-      userTags: Map[String, Seq[String]]
-  ): ZIO[Blocking, NonEmptyList[String], (Model[Project], Model[Version], Seq[Model[VersionTag]])] = {
+      stability: Version.Stability,
+      releaseType: Option[Version.ReleaseType]
+  ): ZIO[Blocking, NonEmptyList[String], (Model[Project], Model[Version])] = {
 
     for {
       // Create version
-      version      <- service.insert(plugin.asVersion(project.id, description, createForumPost))
-      tagsToInsert <- ZIO.fromEither(plugin.tagsForVersion(version.id, userTags).map(_._2).toEither)
-      tags         <- service.bulkInsert(tagsToInsert)
+      version <- service.insert(plugin.asVersion(project.id, description, createForumPost, stability, releaseType))
       // Notify watchers
       _ <- notifyWatchers(version, project)
       _ <- uploadPluginFile(project, plugin, version).orDieWith(s => new Exception(s))
@@ -260,7 +259,7 @@ trait ProjectFactory {
       withTopicId <- if (firstTimeUploadProject.topicId.isDefined && createForumPost)
         this.forums.createVersionPost(firstTimeUploadProject, version)
       else UIO.succeed(version)
-    } yield (firstTimeUploadProject, withTopicId, tags)
+    } yield (firstTimeUploadProject, withTopicId)
   }
 
   private def uploadPluginFile(

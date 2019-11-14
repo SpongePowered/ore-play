@@ -469,32 +469,6 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.editVersion(pluginId, name)
 
 ###
-#  summary: Sets the tags for this version
-#  description: Sets the tags of an existing version. Requires the `edit_tags` permission.
-#  tags:
-#    - Versions
-#  requestBody:
-#    required: true
-#    content:
-#      application/json:
-#        schema:
-#          $ref: '#/components/schemas/controllers.apiv2.ApiV2Controller.EditableVersion'
-#  responses:
-#    200:
-#      description: Ok
-#      content:
-#        application/json:
-#          schema:
-#            $ref: '#/components/schemas/models.protocols.APIV2.Version'
-#
-#    401:
-#      $ref: '#/components/responses/UnauthorizedError'
-#    403:
-#      $ref: '#/components/responses/ForbiddenError'
-###
-PUT     /projects/:pluginId/versions/:name/tags              @controllers.apiv2.ApiV2Controller.setVersionTags(pluginId, name)
-
-###
 #  summary: Returns the description for a version
 #  description: >-
 #    Returns the description for a version. Requires the `view_public_info`

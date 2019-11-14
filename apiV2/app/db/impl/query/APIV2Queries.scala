@@ -13,6 +13,7 @@ import models.querymodels._
 import ore.OreConfig
 import ore.data.project.Category
 import ore.db.DbRef
+import ore.db.impl.query.DoobieOreProtocol
 import ore.models.api.ApiKey
 import ore.models.project.io.ProjectFiles
 import ore.models.project.{ProjectSortingStrategy, TagColor}
@@ -32,19 +33,7 @@ import io.circe.DecodingFailure
 import zio.ZIO
 import zio.blocking.Blocking
 
-object APIV2Queries extends WebDoobieOreProtocol {
-
-  implicit val apiV2TagRead: Read[List[APIV2QueryVersionTag]] =
-    viewTagListRead.map(_.map(t => APIV2QueryVersionTag(t.name, t.data, t.color)))
-  implicit val apiV2TagWrite: Write[List[APIV2QueryVersionTag]] =
-    viewTagListWrite.contramap(_.map(t => ViewTag(t.name, t.data, t.color)))
-
-  implicit val apiV2TagOptRead: Read[Option[List[APIV2QueryVersionTag]]] =
-    Read[(Option[List[String]], Option[List[Option[String]]], Option[List[TagColor]])].map {
-      case (Some(name), Some(data), Some(color)) =>
-        Some(name.zip(data).zip(color).map { case ((n, d), c) => APIV2QueryVersionTag(n, d, c) })
-      case _ => None
-    }
+object APIV2Queries extends DoobieOreProtocol {
 
   implicit val localDateTimeMeta: Meta[LocalDateTime] = Meta[Timestamp].timap(_.toLocalDateTime)(Timestamp.valueOf)
 

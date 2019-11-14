@@ -267,8 +267,7 @@ case class APIV2QueryVersion(
     md5Hash: String,
     fileName: String,
     authorName: Option[String],
-    reviewState: ReviewState,
-    tags: List[APIV2QueryVersionTag]
+    reviewState: ReviewState
 ) {
 
   def asProtocol: APIV2.Version = APIV2.Version(
@@ -285,24 +284,7 @@ case class APIV2QueryVersion(
     APIV2.VersionStatsAll(downloads),
     APIV2.FileInfo(name, fileSize, md5Hash),
     authorName,
-    reviewState,
-    tags.map(_.asProtocol)
-  )
-}
-
-case class APIV2QueryVersionTag(
-    name: String,
-    data: Option[String],
-    color: TagColor
-) {
-
-  def asProtocol: APIV2.VersionTag = APIV2.VersionTag(
-    name,
-    data,
-    APIV2.VersionTagColor(
-      color.foreground,
-      color.background
-    )
+    reviewState
   )
 }
 

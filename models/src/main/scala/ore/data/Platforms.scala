@@ -1,15 +1,9 @@
 package ore.data
 
 import scala.collection.immutable
-import scala.util.matching.Regex
 
-import ore.data.Platform.NoVersionPolicy
-import ore.data.project.Dependency
-import ore.db.DbRef
-import ore.models.project.{TagColor, Version, VersionTag}
+import ore.models.project.TagColor
 
-import cats.data.{Validated, ValidatedNel}
-import cats.syntax.all._
 import enumeratum.values._
 
 /**
@@ -28,39 +22,8 @@ sealed abstract class Platform(
 ) extends StringEnumEntry {
 
   def name: String = value
-
-  /**
-    * Creates a version tag for this platform
-    * @param versionId The version id to add in the tag
-    * @param optVersion A version for the tag
-    * @return A validated tuple of an optional warning, and a version tag
-    */
-  def createTag(
-      versionId: DbRef[Version],
-      optVersion: Option[String]
-  ): ValidatedNel[String, (Option[String], VersionTag)] = {
-
-    optVersion match {
-      case Some(version) =>
-        if (Platform.dependencyVersionRegex.matches(version))
-          Validated.validNel((None, VersionTag(versionId, name, Some(version), tagColor, None)))
-        else Validated.invalidNel("platform.invalidVersion")
-
-      case None =>
-        noVersionPolicy match {
-          case NoVersionPolicy.NotAllowed => Validated.invalidNel("platform.noVersionProvided.error")
-          case NoVersionPolicy.Warning =>
-            Validated.validNel(
-              (Some("platform.noVersionProvided.warning"), VersionTag(versionId, name, None, tagColor, None))
-            )
-          case NoVersionPolicy.Allowed => Validated.validNel((None, VersionTag(versionId, name, None, tagColor, None)))
-        }
-    }
-  }
 }
 object Platform extends StringEnum[Platform] {
-
-  private val dependencyVersionRegex: Regex = """^[0-9a-zA-Z.,\[\]()-]+$""".r
 
   val values: immutable.IndexedSeq[Platform] = findValues
 
@@ -116,18 +79,6 @@ object Platform extends StringEnum[Platform] {
       .groupBy(_.platformCategory)
       .flatMap(_._2.groupBy(_.priority).maxBy(_._1)._2)
       .toSeq
-  }
-
-  def ghostTags(
-      versionId: DbRef[Version],
-      dependencies: Seq[Dependency]
-  ): ValidatedNel[String, (List[String], List[VersionTag])] = {
-    import cats.instances.list._
-    getPlatforms(dependencies.map(_.pluginId))
-      .map(p => p.createTag(versionId, dependencies.find(_.pluginId == p.dependencyId).get.version))
-      .toList
-      .sequence
-      .map(v => v.flatMap(_._1) -> v.map(_._2))
   }
 
   sealed trait NoVersionPolicy

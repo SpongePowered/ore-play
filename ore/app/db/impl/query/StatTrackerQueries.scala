@@ -1,15 +1,15 @@
 package db.impl.query
 
 import ore.db.DbRef
+import ore.db.impl.query.DoobieOreProtocol
 import ore.models.project.{Project, Version}
 import ore.models.user.User
 
 import com.github.tminglei.slickpg.InetString
-
 import doobie._
 import doobie.implicits._
 
-object StatTrackerQueries extends WebDoobieOreProtocol {
+object StatTrackerQueries extends DoobieOreProtocol {
 
   def addVersionDownload(
       projectId: DbRef[Project],

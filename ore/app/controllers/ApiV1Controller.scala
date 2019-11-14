@@ -9,7 +9,6 @@ import play.api.mvc._
 
 import controllers.sugar.Requests.AuthedProjectRequest
 import form.OreForms
-import form.project.VersionDeployForm
 import ore.auth.CryptoUtils
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
@@ -19,7 +18,7 @@ import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.PluginUpload
-import ore.models.project.{Page, Project, TagColor, Version, VersionTag}
+import ore.models.project.{Page, Project, TagColor, Version}
 import ore.models.user.{LoggedActionProject, LoggedActionType, User}
 import ore.permission.Permission
 import ore.permission.role.Role
@@ -179,92 +178,81 @@ final class ApiV1Controller @Inject()(
         .bindEitherT[ZIO[Blocking, Nothing, *]](
           hasErrors => BadRequest(Json.obj("errors" -> hasErrors.errorsAsJson))
         )
-        .map { formData =>
-          val stabilityTagData = formData.channel
+        .flatMap { formData =>
+          val stability = formData.channel
             .map(_.toLowerCase)
             .collect {
-              case "release"    => "stable"
-              case "beta"       => "beta"
-              case "prerelease" => "beta"
-              case "alpha"      => "alpha"
-              case "unstable"   => "alpha"
-              case "bleeding"   => "bleeding"
-              case "snapshot"   => "bleeding"
+              case "release"    => Version.Stability.Stable
+              case "beta"       => Version.Stability.Beta
+              case "prerelease" => Version.Stability.Beta
+              case "alpha"      => Version.Stability.Alpha
+              case "unstable"   => Version.Stability.Alpha
+              case "bleeding"   => Version.Stability.Bleeding
+              case "snapshot"   => Version.Stability.Bleeding
             }
-            .getOrElse("stable")
+            .getOrElse(Version.Stability.Stable)
 
-          val tagToInsert = VersionTag(_, "stability", Some(stabilityTagData), ???, None)
-
-          (formData, tagToInsert)
-        }
-        .flatMap {
-          case (formData, tagToInsert) =>
-            val apiKeyTable = TableQuery[ProjectApiKeyTable]
-            def queryApiKey(key: String, pId: DbRef[Project]) = {
-              val query = for {
-                k <- apiKeyTable if k.value === key && k.projectId === pId
-              } yield {
-                k.id
-              }
-              query.exists
+          val apiKeyTable = TableQuery[ProjectApiKeyTable]
+          def queryApiKey(key: String, pId: DbRef[Project]) = {
+            val query = for {
+              k <- apiKeyTable if k.value === key && k.projectId === pId
+            } yield {
+              k.id
             }
+            query.exists
+          }
 
-            val query = Query.apply(
-              (
-                queryApiKey(formData.apiKey, project.id),
-                project.versions(ModelView.later(Version)).exists(_.versionString === name)
-              )
+          val query = Query.apply(
+            (
+              queryApiKey(formData.apiKey, project.id),
+              project.versions(ModelView.later(Version)).exists(_.versionString === name)
             )
+          )
 
-            EitherT
-              .liftF[ZIO[Blocking, Nothing, *], Result, (Boolean, Boolean)](service.runDBIO(query.result.head))
-              .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
-              .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
-              .semiflatMap(_ => project.user[Task].orDie)
-              .semiflatMap(
-                user =>
-                  user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.user[Task].orDie).getOrElse(user)
-              )
-              .flatMap { owner =>
-                val pluginUpload = this.factory
-                  .hasUserUploadError(owner)
-                  .map(err => BadRequest(error("user", err)))
-                  .toLeft(PluginUpload.bindFromRequest())
-                  .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
+          EitherT
+            .liftF[ZIO[Blocking, Nothing, *], Result, (Boolean, Boolean)](service.runDBIO(query.result.head))
+            .ensure(Unauthorized(error("apiKey", "api.deploy.invalidKey")))(apiKeyExists => apiKeyExists._1)
+            .ensure(BadRequest(error("versionName", "api.deploy.versionExists")))(nameExists => !nameExists._2)
+            .semiflatMap(_ => project.user[Task].orDie)
+            .semiflatMap(
+              user =>
+                user.toMaybeOrganization(ModelView.now(Organization)).semiflatMap(_.user[Task].orDie).getOrElse(user)
+            )
+            .flatMap { owner =>
+              val pluginUpload = this.factory
+                .hasUserUploadError(owner)
+                .map(err => BadRequest(error("user", err)))
+                .toLeft(PluginUpload.bindFromRequest())
+                .flatMap(_.toRight(BadRequest(error("files", "error.noFile"))))
 
-                EitherT.fromEither[ZIO[Blocking, Nothing, *]](pluginUpload).flatMap { data =>
-                  EitherT(
-                    this.factory
-                      .collectErrorsForVersionUpload(data, owner, project)
-                      .either
-                  ).leftMap(err => BadRequest(error("upload", err)))
-                }
-              }
-              .flatMap { fileWithData =>
+              EitherT.fromEither[ZIO[Blocking, Nothing, *]](pluginUpload).flatMap { data =>
                 EitherT(
-                  factory
-                    .createVersion(project, fileWithData, formData.changelog, formData.createForumPost, Map.empty)
+                  this.factory
+                    .collectErrorsForVersionUpload(data, owner, project)
                     .either
-                ).leftMap { es =>
-                  BadRequest(JsArray(es.toList.view.zipWithIndex.map(t => error(t._2.toString, t._1)).toSeq))
-                }
+                ).leftMap(err => BadRequest(error("upload", err)))
               }
-              .semiflatMap {
-                case (newProject, newVersion, tags) =>
-                  val update = service.insert(tagToInsert(newVersion.id))
-
-                  update.as(
-                    Created(
-                      api.writeVersion(
-                        newVersion,
-                        newProject,
-                        FakeChannel("Channel", TagColor.Green, isNonReviewed = false),
-                        None,
-                        tags
-                      )
-                    )
+            }
+            .flatMap { fileWithData =>
+              EitherT(
+                factory
+                  .createVersion(project, fileWithData, formData.changelog, formData.createForumPost, stability, None)
+                  .either
+              ).leftMap { es =>
+                BadRequest(JsArray(es.toList.view.zipWithIndex.map(t => error(t._2.toString, t._1)).toSeq))
+              }
+            }
+            .map {
+              case (newProject, newVersion) =>
+                Created(
+                  api.writeVersion(
+                    newVersion,
+                    newProject,
+                    FakeChannel("Channel", TagColor.Green, isNonReviewed = false),
+                    None
                   )
-              }
+                )
+            }
         }
         .merge
     }

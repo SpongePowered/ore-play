@@ -72,7 +72,6 @@ object APIV2 {
       minecraftVersion: Option[String],
       color: VersionTagColor
   )
-  @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
   @ConfiguredJsonCodec case class VersionTagColor(foreground: String, background: String)
   @ConfiguredJsonCodec case class ProjectStatsAll(
       views: Long,
@@ -114,8 +113,7 @@ object APIV2 {
       stats: VersionStatsAll,
       fileInfo: FileInfo,
       author: Option[String],
-      reviewState: ReviewState,
-      tags: List[VersionTag]
+      reviewState: ReviewState
   )
 
   @ConfiguredJsonCodec case class VersionDescription(description: String)

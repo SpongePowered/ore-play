@@ -13,6 +13,6 @@ case class ProjectListEntryWithIcon(
     description: Option[String],
     name: String,
     version: Option[String],
-    tags: List[ViewTag],
+    //tags: List[ViewTag],
     icon: String
 )

@@ -1,7 +1,5 @@
 package ore.models.project
 
-import scala.language.higherKinds
-
 import java.time.OffsetDateTime
 
 import ore.data.project.Dependency
@@ -12,22 +10,24 @@ import ore.db.impl.common.{Describable, Hideable}
 import ore.db.impl.schema._
 import ore.db.{DbRef, Model, ModelQuery, ModelService}
 import ore.models.admin.{Review, VersionVisibilityChange}
-import ore.models.statistic.VersionDownload
 import ore.models.user.User
 import ore.syntax._
 import ore.util.FileUtils
 
 import cats.data.OptionT
 import cats.syntax.all._
-import cats.{Monad, MonadError, Parallel}
+import cats.{Monad, Parallel}
+import enumeratum.values._
+import io.circe._
+import io.circe.syntax._
 import slick.lifted.TableQuery
 
 /**
   * Represents a single version of a Project.
   *
   * @param versionString    Version string
-  * @param dependencyIds    List of plugin dependencies with the plugin ID and
-  *                         version separated by a ':'
+  * @param dependencyIds    List of plugin dependencies with the plugin ID
+  * @param dependencyVersions    List of plugin dependencies with the plugin version
   * @param description     User description of version
   * @param projectId        ID of project this version belongs to
   */
@@ -35,6 +35,7 @@ case class Version(
     projectId: DbRef[Project],
     versionString: String,
     dependencyIds: List[String],
+    dependencyVersions: List[String],
     fileSize: Long,
     hash: String,
     authorId: Option[DbRef[User]],
@@ -46,7 +47,8 @@ case class Version(
     fileName: String,
     createForumPost: Boolean = true,
     postId: Option[Int] = None,
-    isPostDirty: Boolean = false
+    isPostDirty: Boolean = false,
+    tags: Version.VersionTags
 ) extends Describable {
 
   //TODO: Check this in some way
@@ -65,9 +67,6 @@ case class Version(
     * @return Base URL for version
     */
   def url(project: Project): String = project.url + "/versions/" + this.versionString
-
-  def author[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, VersionTagTable, Model[VersionTag]]): Option[QOptRet] =
-    this.authorId.map(view.get)
 
   def reviewer[QOptRet, SRet[_]](view: ModelView[QOptRet, SRet, UserTable, Model[User]]): Option[QOptRet] =
     this.reviewerId.map(view.get)
@@ -103,6 +102,54 @@ case class Version(
 }
 
 object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[VersionTable]) {
+
+  case class VersionTags(
+      usesMixin: Boolean,
+      stability: Stability,
+      releaseType: Option[ReleaseType],
+      channelName: Option[String] = None,
+      channelColor: Option[TagColor] = None
+  )
+
+  sealed abstract class Stability(val value: String, val color: TagColor) extends StringEnumEntry
+  object Stability extends StringEnum[Stability] {
+    override def values: IndexedSeq[Stability] = findValues
+
+    case object Stable      extends Stability("stable", TagColor.Stable)
+    case object Beta        extends Stability("beta", TagColor.Beta)
+    case object Alpha       extends Stability("alpha", TagColor.Alpha)
+    case object Bleeding    extends Stability("bleeding", TagColor.Bleeding)
+    case object Unsupported extends Stability("unsupported", TagColor.Unsupported)
+    case object Broken      extends Stability("broken", TagColor.Broken)
+
+    implicit val codec: Codec[Stability] = Codec.from(
+      (c: HCursor) =>
+        c.as[String]
+          .flatMap { str =>
+            withValueOpt(str).toRight(io.circe.DecodingFailure.apply(s"$str is not a valid stability", c.history))
+          },
+      (a: Stability) => a.value.asJson
+    )
+  }
+
+  sealed abstract class ReleaseType(val value: String, val color: TagColor) extends StringEnumEntry
+  object ReleaseType extends StringEnum[ReleaseType] {
+    override def values: IndexedSeq[ReleaseType] = findValues
+
+    case object MajorUpdate extends ReleaseType("major_update", TagColor.MajorUpdate)
+    case object MinorUpdate extends ReleaseType("minor_update", TagColor.MinorUpdate)
+    case object Patches     extends ReleaseType("patches", TagColor.Patches)
+    case object Hotfix      extends ReleaseType("hotfix", TagColor.Hotfix)
+
+    implicit val codec: Codec[ReleaseType] = Codec.from(
+      (c: HCursor) =>
+        c.as[String]
+          .flatMap { str =>
+            withValueOpt(str).toRight(io.circe.DecodingFailure.apply(s"$str is not a valid release type", c.history))
+          },
+      (a: ReleaseType) => a.value.asJson
+    )
+  }
 
   implicit val query: ModelQuery[Version] = ModelQuery.from(this)
 
@@ -160,11 +207,6 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
   }
 
   implicit class VersionModelOps(private val self: Model[Version]) extends AnyVal {
-
-    def tags[V[_, _]: QueryView](
-        view: V[VersionTagTable, Model[VersionTag]]
-    ): V[VersionTagTable, Model[VersionTag]] =
-      view.filterView(_.versionId === self.id.value)
 
     def reviewEntries[V[_, _]: QueryView](view: V[ReviewTable, Model[Review]]): V[ReviewTable, Model[Review]] =
       view.filterView(_.versionId === self.id.value)

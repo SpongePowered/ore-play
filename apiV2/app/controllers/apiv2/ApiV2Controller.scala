@@ -23,7 +23,7 @@ import controllers.sugar.Requests.ApiRequest
 import controllers.{OreBaseController, OreControllerComponents}
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
-import models.querymodels.{APIV2ProjectStatsQuery, APIV2QueryVersion, APIV2QueryVersionTag, APIV2VersionStatsQuery}
+import models.querymodels.{APIV2ProjectStatsQuery, APIV2QueryVersion, APIV2VersionStatsQuery}
 import ore.data.project.Category
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
@@ -32,7 +32,7 @@ import ore.db.{DbRef, Model}
 import ore.models.api.ApiSession
 import ore.models.project.factory.{ProjectFactory, ProjectTemplate}
 import ore.models.project.io.{PluginFileWithData, PluginUpload}
-import ore.models.project.{Page, Project, ProjectSortingStrategy, ReviewState, Visibility}
+import ore.models.project.{Page, Project, ProjectSortingStrategy, ReviewState, Version, Visibility}
 import ore.models.user.{FakeUser, User}
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 import ore.permission.{NamedPermission, Permission}
@@ -715,30 +715,18 @@ class ApiV2Controller @Inject()(
   def editVersion(pluginId: String, name: String): Action[Json] =
     ApiAction(Permission.EditVersion, APIScope.ProjectScope(pluginId)).asyncF(parseCirce.json) { implicit request =>
       val root = request.body.hcursor
-      val res  = withUndefined[Option[String]](root.downField("description")).map(EditableVersion.apply)
+
+      val res = (
+        withUndefined[Option[String]](root.downField("description")),
+        withUndefined[Version.Stability](root.downField("description")),
+        withUndefined[Option[Version.ReleaseType]](root.downField("description"))
+      ).mapN(EditableVersion)
 
       res match {
         case Validated.Valid(a)   => ???
         case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e.map(_.show))))
       }
     }
-
-  def setVersionTags(pluginId: String, name: String): Action[Map[String, StringOrArrayString]] =
-    ApiAction(Permission.EditVersion, APIScope.ProjectScope(pluginId))
-      .asyncF(parseCirce.decodeJson[Map[String, StringOrArrayString]]) { implicit request =>
-        val newStrTags = request.body.map(t => t._1 -> t._2.asSeq)
-        val tagQuery = for {
-          p <- TableQuery[ProjectTable]
-          v <- TableQuery[VersionTable] if v.projectId === p.id
-          t <- TableQuery[VersionTagTable] if t.versionId === v.id
-          if p.pluginId === pluginId
-        } yield t
-
-        service.runDBIO(tagQuery.result).map { existingTags =>
-        }
-
-        ???
-      }
 
   def showVersionDescription(pluginId: String, name: String): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
@@ -820,15 +808,7 @@ class ApiV2Controller @Inject()(
         for {
           t <- processVersionUploadToErrors(pluginId)
           (user, _, pluginFile) = t
-          t2 <- ZIO.fromEither(pluginFile.tagsForVersion(0L, Map.empty).toEither).mapError { es =>
-            implicit val lang: Lang = user.langOrDefault
-            BadRequest(UserErrors(es.map(messagesApi(_))))
-          }
         } yield {
-          val (tagWarnings, tags) = t2
-
-          val apiTags = tags.map(tag => APIV2QueryVersionTag(tag.name, tag.data, tag.color)).toList
-
           val apiVersion = APIV2QueryVersion(
             OffsetDateTime.now(),
             pluginFile.versionString,
@@ -839,11 +819,10 @@ class ApiV2Controller @Inject()(
             pluginFile.md5,
             pluginFile.fileName,
             Some(user.name),
-            ReviewState.Unreviewed,
-            apiTags
+            ReviewState.Unreviewed
           )
 
-          val warnings = NonEmptyList.fromList((pluginFile.warnings ++ tagWarnings).toList)
+          val warnings = NonEmptyList.fromList((pluginFile.warnings).toList)
           Ok(ScannedVersion(apiVersion.asProtocol, warnings))
         }
     }
@@ -883,16 +862,16 @@ class ApiV2Controller @Inject()(
               pluginFile,
               data.description,
               data.createForumPost.getOrElse(project.settings.forumSync),
-              data.tags.fold(Map.empty[String, Seq[String]])(_.view.mapValues(_.asSeq).toMap)
+              ???,
+              ???
             )
             .mapError { es =>
               implicit val lang: Lang = user.langOrDefault
               BadRequest(UserErrors(es.map(messagesApi(_))))
             }
         } yield {
-          val (_, version, tags) = t
+          val (_, version) = t
 
-          val apiTags = tags.map(tag => APIV2QueryVersionTag(tag.name, tag.data, tag.color)).toList
           val apiVersion = APIV2QueryVersion(
             version.createdAt,
             version.versionString,
@@ -903,8 +882,7 @@ class ApiV2Controller @Inject()(
             version.hash,
             version.fileName,
             Some(user.name),
-            version.reviewState,
-            apiTags
+            version.reviewState
           )
 
           Created(apiVersion.asProtocol)
@@ -1040,10 +1018,12 @@ object ApiV2Controller {
   @ConfiguredJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
   @ConfiguredJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
 
+  //TODO: Allow setting multiple platforms
   @ConfiguredJsonCodec case class DeployVersionInfo(
       createForumPost: Option[Boolean],
       description: Option[String],
-      tags: Option[Map[String, StringOrArrayString]]
+      stability: Option[Version.Stability],
+      releaseType: Option[Version.ReleaseType]
   )
 
   sealed trait StringOrArrayString {
@@ -1122,8 +1102,11 @@ object ApiV2Controller {
       forumSync: Option[Boolean]
   )
 
+  //TODO: Allow setting multiple platforms
   case class EditableVersion(
-      description: Option[Option[String]]
+      description: Option[Option[String]],
+      stability: Option[Version.Stability],
+      releaseType: Option[Option[Version.ReleaseType]]
   )
 
   @ConfiguredJsonCodec case class ApiV2ProjectTemplate(

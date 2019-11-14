@@ -2,22 +2,7 @@
 
 DROP MATERIALIZED VIEW home_projects;
 
-UPDATE project_version_tags
-SET name = CASE
-               WHEN name = 'Sponge' THEN 'spongeapi'
-               WHEN name = 'SpongeForge' THEN 'spongeforge'
-               WHEN name = 'SpongeVanilla' THEN 'spongevanilla'
-               WHEN name = 'SpongeCommon' THEN 'sponge'
-               WHEN name = 'Lantern' THEN 'lantern'
-               WHEN name = 'Forge' THEN 'forge'
-               ELSE name END;
-
-UPDATE project_version_tags
-SET name = 'stability',
-    data = 'alpha'
-WHERE name = 'Unstable';
-
-CREATE FUNCTION platform_version_from_tag(name TEXT, data TEXT) RETURNS TEXT
+CREATE FUNCTION platform_version_from_dependency(pluginid TEXT, version TEXT) RETURNS TEXT
     LANGUAGE plpgsql
     IMMUTABLE RETURNS NULL ON NULL INPUT AS
 $$
@@ -38,10 +23,25 @@ BEGIN
 END;;
 $$;
 
-ALTER TABLE project_version_tags
-    ADD COLUMN platform_version TEXT GENERATED ALWAYS AS (platform_version_from_tag(NAME, DATA)) STORED;
+CREATE FUNCTION platform_version_from_dependency_lists(pluginids TEXT[], versions TEXT[]) RETURNS TEXT[]
+    LANGUAGE plpgsql
+    IMMUTABLE RETURNS NULL ON NULL INPUT AS
+$$
+DECLARE
+    ret TEXT[];;
+BEGIN
+    FOR i IN array_lower($1, 1)..array_upper($1, 1)
+        LOOP
+            ret[i] := platform_version_from_dependency($1[i], $2[i]);;
+        END LOOP;;
+    RETURN ret;;
+END;;
+$$;
 
-CREATE FUNCTION stability_from_channel(name TEXT) RETURNS TEXT
+CREATE TYPE STABILITY AS ENUM ('stable', 'beta', 'alpha', 'bleeding', 'unsupported', 'broken');
+CREATE TYPE RELEASE_TYPE AS ENUM ('major_update', 'minor_update', 'patches', 'hotfix');
+
+CREATE FUNCTION stability_from_channel(name TEXT) RETURNS STABILITY
     LANGUAGE plpgsql
     IMMUTABLE RETURNS NULL ON NULL INPUT AS
 $$
@@ -67,153 +67,124 @@ BEGIN
 END;;
 $$;
 
-CREATE FUNCTION color_from_stability(name TEXT) RETURNS INT
-    LANGUAGE plpgsql
-    IMMUTABLE RETURNS NULL ON NULL INPUT AS
-$$
-BEGIN
-    CASE name
-        --TODO: Create better colors here
-        WHEN 'stable' THEN RETURN 17;;
-        WHEN 'beta' THEN RETURN 20;;
-        WHEN 'alpha' THEN RETURN 22;;
-        WHEN 'unsupported' THEN RETURN 9;;
-        WHEN 'bleeding' THEN RETURN 23;;
-        ELSE
-        END CASE;;
+ALTER TABLE project_versions
+    ADD COLUMN uses_mixin           BOOLEAN,
+    ADD COLUMN stability            STABILITY,
+    ADD COLUMN release_type         RELEASE_TYPE,
+    ADD COLUMN legacy_channel_name  TEXT,
+    ADD COLUMN legacy_channel_color INT,
+    ADD COLUMN dependency_ids       TEXT[],
+    ADD COLUMN dependency_versions  TEXT[];
 
-    RETURN 17;;
-END;;
-$$;
-
-INSERT INTO project_version_tags (version_id, name, data, color)
-SELECT pv.id,
-       'stability',
-       stability_from_channel(pc.name),
-       color_from_stability(stability_from_channel(pc.name))
-FROM project_versions pv
-         JOIN project_channels pc ON pv.channel_id = pc.id
-WHERE NOT EXISTS(SELECT * FROM project_version_tags pvt WHERE pvt.version_id = pv.id AND pvt.name = 'stability');
-
-DROP FUNCTION stability_from_channel;
-DROP FUNCTION color_from_stability;
-
-INSERT INTO project_version_tags (version_id, name, data, color)
-SELECT pv.id, 'channel', pc.name, pc.color + 9
-FROM project_versions pv
-         JOIN project_channels pc ON pv.channel_id = pc.id
-WHERE NOT EXISTS(SELECT stability_channels.name
-                 FROM (VALUES --Stability
-                              ('Release'),
-                              ('Beta'),
-                              ('Alpha'),
-                              ('Bleeding'),
-                              ('Snapshot%'),
-                              ('Prerelease'),
-                              ('Pre'),
-                              ('OutOfDate'),
-                              ('Stable'),
-                              ('Unstable'),
-                              ('ReleaseAPI_'),
-                              ('Old'),
-                              ('WorkInProgress'),
-                              ('DevBuild'),
-                              ('Dev'),
-                              ('Development'),
-                              --Platform
-                              ('Forge'),
-                              ('Sponge'),
-                              ('Sponge_'),
-                              ('API_'),
-                              ('SpongeAPI_'),
-                              ('SpongeBleeding')
-                      ) AS stability_channels(name)
-                 WHERE pc.name ILIKE stability_channels.name);
+-- noinspection SqlWithoutWhere
+UPDATE project_versions pv
+SET dependency_ids       = (SELECT array_agg(split_part(dep_id, ':', 1)) FROM unnest(dependencies) AS dep_id),
+    dependency_versions  = (SELECT array_agg(split_part(dep_id, ':', 2)) FROM unnest(dependencies) AS dep_id),
+    uses_mixin           = EXISTS(
+            SELECT * FROM project_version_tags pvt WHERE pvt.version_id = pv.id AND pvt.name = 'mixin'),
+    stability            = (SELECT stability_from_channel(pc.name)
+                            FROM project_channels pc
+                            WHERE pc.id = pv.channel_id),
+    legacy_channel_name  = (SELECT pc.name FROM project_channels pc WHERE pc.id = pv.channel_id),
+    legacy_channel_color = (SELECT pc.color FROM project_channels pc WHERE pc.id = pv.channel_id);
 
 ALTER TABLE project_versions
-    DROP COLUMN channel_id;
+    ALTER COLUMN uses_mixin SET NOT NULL,
+    ALTER COLUMN stability SET NOT NULL,
+    DROP COLUMN channel_id,
+    DROP COLUMN dependencies;
+
+ALTER TABLE project_versions
+    ADD COLUMN platform_versions TEXT[] GENERATED ALWAYS AS (platform_version_from_dependency_lists(dependency_ids,
+                                                                                                    dependency_versions)) STORED;
+
+DROP FUNCTION stability_from_channel;
 
 DROP TABLE project_channels;
+DROP TABLE project_version_tags;
 
 ALTER TABLE projects
     DROP COLUMN recommended_version_id;
 
+
 CREATE MATERIALIZED VIEW home_projects AS
-    WITH tags AS (
-        SELECT sq.project_id, sq.version_string, sq.tag_name, sq.tag_version, sq.tag_color
-        FROM (SELECT pv.project_id,
-                     pv.version_string,
-                     pvt.name                                                                            AS tag_name,
-                     pvt.data                                                                            AS tag_version,
-                     pvt.platform_version,
-                     pvt.color                                                                           AS tag_color,
-                     row_number()
-                     OVER (PARTITION BY pv.project_id, pvt.platform_version ORDER BY pv.created_at DESC) AS row_num
-              FROM project_versions pv
-                       JOIN project_version_tags pvt ON pv.id = pvt.version_id
-              WHERE pv.visibility = 1
-                AND pvt.platform_version IS NOT NULL) sq
-        WHERE sq.row_num = 1
-        ORDER BY sq.platform_version DESC)
-    SELECT p.id,
-           p.owner_name                      AS owner_name,
-           array_agg(DISTINCT pm.user_id)    AS project_members,
-           p.slug,
-           p.visibility,
-           coalesce(pva.views, 0)            AS views,
-           coalesce(pda.downloads, 0)        AS downloads,
-           coalesce(pvr.recent_views, 0)     AS recent_views,
-           coalesce(pdr.recent_downloads, 0) AS recent_downloads,
-           coalesce(ps.stars, 0)             AS stars,
-           coalesce(pw.watchers, 0)          AS watchers,
-           p.category,
-           p.description,
-           p.name,
-           p.plugin_id,
-           p.created_at,
-           max(lv.created_at)                AS last_updated,
-           to_jsonb(
-                   ARRAY(SELECT jsonb_build_object('version_string', tags.version_string, 'tag_name',
-                                                   tags.tag_name,
-                                                   'tag_version', tags.tag_version, 'tag_color',
-                                                   tags.tag_color)
-                         FROM tags
-                         WHERE tags.project_id = p.id
-                         LIMIT 5))           AS promoted_versions,
-           setweight(to_tsvector('english', p.name) ||
-                     to_tsvector('english', regexp_replace(p.name, '([a-z])([A-Z]+)', '\1_\2', 'g')) ||
-                     to_tsvector('english', p.plugin_id), 'A') ||
-           setweight(to_tsvector('english', p.description), 'B') ||
-           setweight(to_tsvector('english', array_to_string(p.keywords, ' ')), 'C') ||
-           setweight(to_tsvector('english', p.owner_name) ||
-                     to_tsvector('english', regexp_replace(p.owner_name, '([a-z])([A-Z]+)', '\1_\2', 'g')),
-                     'D')                    AS search_words
-    FROM projects p
-             LEFT JOIN project_versions lv ON p.id = lv.project_id
-             JOIN project_members_all pm ON p.id = pm.id
-             LEFT JOIN (SELECT p.id, COUNT(*) AS stars
-                        FROM projects p
-                                 LEFT JOIN project_stars ps ON p.id = ps.project_id
-                        GROUP BY p.id) ps ON p.id = ps.id
-             LEFT JOIN (SELECT p.id, COUNT(*) AS watchers
-                        FROM projects p
-                                 LEFT JOIN project_watchers pw ON p.id = pw.project_id
-                        GROUP BY p.id) pw ON p.id = pw.id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS views FROM project_views pv GROUP BY pv.project_id) pva
-                       ON p.id = pva.project_id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS downloads
-                        FROM project_versions_downloads pv
-                        GROUP BY pv.project_id) pda ON p.id = pda.project_id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS recent_views
-                        FROM project_views pv
-                        WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
-                        GROUP BY pv.project_id) pvr
-                       ON p.id = pvr.project_id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS recent_downloads
-                        FROM project_versions_downloads pv
-                        WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
-                        GROUP BY pv.project_id) pdr ON p.id = pdr.project_id
-    GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views, pdr.recent_downloads;
+WITH promoted AS (
+    SELECT sq.project_id, sq.version_string, sq.platform, sq.platform_version
+    FROM (SELECT sq.project_id,
+                 sq.version_string,
+                 sq.platform,
+                 sq.platform_version,
+                 row_number()
+                 OVER (PARTITION BY sq.project_id, sq.platform_partition_version ORDER BY sq.created_at) AS row_num
+          FROM (SELECT pv.project_id,
+                       pv.version_string,
+                       pv.created_at,
+                       unnest(pv.dependency_ids)      AS platform,
+                       unnest(pv.dependency_versions) AS platform_version,
+                       unnest(pv.platform_versions)   AS platform_partition_version
+                FROM project_versions pv
+                WHERE pv.visibility = 1) sq
+          WHERE sq.platform_partition_version IS NOT NULL) sq
+    WHERE sq.row_num = 1
+    ORDER BY sq.platform_version DESC)
+SELECT p.id,
+       p.owner_name                      AS owner_name,
+       array_agg(DISTINCT pm.user_id)    AS project_members,
+       p.slug,
+       p.visibility,
+       coalesce(pva.views, 0)            AS views,
+       coalesce(pda.downloads, 0)        AS downloads,
+       coalesce(pvr.recent_views, 0)     AS recent_views,
+       coalesce(pdr.recent_downloads, 0) AS recent_downloads,
+       coalesce(ps.stars, 0)             AS stars,
+       coalesce(pw.watchers, 0)          AS watchers,
+       p.category,
+       p.description,
+       p.name,
+       p.plugin_id,
+       p.created_at,
+       max(lv.created_at)                AS last_updated,
+       to_jsonb(
+               ARRAY(SELECT jsonb_build_object('version_string', promoted.version_string, 'platform',
+                                               promoted.platform,
+                                               'platform_version', promoted.platform_version)
+                     FROM promoted
+                     WHERE promoted.project_id = p.id
+                     LIMIT 5))           AS promoted_versions,
+       setweight(to_tsvector('english', p.name) ||
+                 to_tsvector('english', regexp_replace(p.name, '([a-z])([A-Z]+)', '\1_\2', 'g')) ||
+                 to_tsvector('english', p.plugin_id), 'A') ||
+       setweight(to_tsvector('english', p.description), 'B') ||
+       setweight(to_tsvector('english', array_to_string(p.keywords, ' ')), 'C') ||
+       setweight(to_tsvector('english', p.owner_name) ||
+                 to_tsvector('english', regexp_replace(p.owner_name, '([a-z])([A-Z]+)', '\1_\2', 'g')),
+                 'D')                    AS search_words
+FROM projects p
+         LEFT JOIN project_versions lv ON p.id = lv.project_id
+         JOIN project_members_all pm ON p.id = pm.id
+         LEFT JOIN (SELECT p.id, COUNT(*) AS stars
+                    FROM projects p
+                             LEFT JOIN project_stars ps ON p.id = ps.project_id
+                    GROUP BY p.id) ps ON p.id = ps.id
+         LEFT JOIN (SELECT p.id, COUNT(*) AS watchers
+                    FROM projects p
+                             LEFT JOIN project_watchers pw ON p.id = pw.project_id
+                    GROUP BY p.id) pw ON p.id = pw.id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS views FROM project_views pv GROUP BY pv.project_id) pva
+                   ON p.id = pva.project_id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS downloads
+                    FROM project_versions_downloads pv
+                    GROUP BY pv.project_id) pda ON p.id = pda.project_id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS recent_views
+                    FROM project_views pv
+                    WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+                    GROUP BY pv.project_id) pvr
+                   ON p.id = pvr.project_id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS recent_downloads
+                    FROM project_versions_downloads pv
+                    WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+                    GROUP BY pv.project_id) pdr ON p.id = pdr.project_id
+GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views, pdr.recent_downloads;
 
 # --- !Downs
 
@@ -239,223 +210,191 @@ CREATE TABLE project_channels
 ALTER TABLE project_versions
     ADD COLUMN channel_id BIGINT REFERENCES project_channels;
 
-INSERT INTO project_channels (created_at, name, color, project_id, is_non_reviewed)
-SELECT p.created_at, 'Release', 8, p.id, FALSE
-FROM projects p
-UNION ALL
-SELECT p.created_at, 'Beta', 11, p.id, TRUE
-FROM projects p
-UNION ALL
-SELECT p.created_at, 'Alpha', 13, p.id, TRUE
-FROM projects p
-UNION ALL
-SELECT p.created_at, 'Unsupported', 2, p.id, FALSE
-FROM projects p
-UNION ALL
-SELECT p.created_at, 'Bleeding', 14, p.id, TRUE
-FROM projects p;
-
 INSERT INTO project_channels (created_at, name, color, project_id)
-SELECT DISTINCT ON (p.id, pvt.data) p.created_at, pvt.data, pvt.color - 9, p.id
-FROM project_version_tags pvt
-         JOIN project_versions pv ON pvt.version_id = pv.id
-         JOIN projects p ON pv.project_id = p.id
-WHERE pvt.name = 'channel';
-
-UPDATE project_versions pv
-SET channel_id = pc.id
-FROM project_version_tags pvt
-         JOIN project_channels pc ON pvt.data = pc.name
-WHERE pvt.name = 'channel'
-  AND pvt.version_id = pv.id;
-
-DELETE
-FROM project_version_tags
-WHERE name = 'channel';
+SELECT DISTINCT pv.created_at, pv.legacy_channel_name, pv.legacy_channel_color, pv.project_id
+FROM project_versions pv
+ORDER BY pv.created_at;
 
 UPDATE project_versions pv
 SET channel_id = pc.id
 FROM project_channels pc
-WHERE pc.name = 'Release'
-  AND pv.channel_id IS NULL
-  AND EXISTS(SELECT *
-             FROM project_version_tags pvt
-             WHERE pvt.version_id = pv.id
-               AND pvt.name = 'stability'
-               AND pvt.data = 'stable');
-
-UPDATE project_versions pv
-SET channel_id = pc.id
-FROM project_channels pc
-WHERE pc.name = 'Beta'
-  AND pv.channel_id IS NULL
-  AND EXISTS(SELECT *
-             FROM project_version_tags pvt
-             WHERE pvt.version_id = pv.id
-               AND pvt.name = 'stability'
-               AND pvt.data = 'beta');
-
-UPDATE project_versions pv
-SET channel_id = pc.id
-FROM project_channels pc
-WHERE pc.name = 'Alpha'
-  AND pv.channel_id IS NULL
-  AND EXISTS(SELECT *
-             FROM project_version_tags pvt
-             WHERE pvt.version_id = pv.id
-               AND pvt.name = 'stability'
-               AND pvt.data = 'alpha');
-
-UPDATE project_versions pv
-SET channel_id = pc.id
-FROM project_channels pc
-WHERE pc.name = 'Unsupported'
-  AND pv.channel_id IS NULL
-  AND EXISTS(SELECT *
-             FROM project_version_tags pvt
-             WHERE pvt.version_id = pv.id
-               AND pvt.name = 'stability'
-               AND pvt.data = 'unsupported');
-
-UPDATE project_versions pv
-SET channel_id = pc.id
-FROM project_channels pc
-WHERE pc.name = 'Bleeding'
-  AND pv.channel_id IS NULL
-  AND EXISTS(SELECT *
-             FROM project_version_tags pvt
-             WHERE pvt.version_id = pv.id
-               AND pvt.name = 'stability'
-               AND pvt.data = 'bleeding');
+WHERE pc.project_id = pv.project_id
+  AND pv.legacy_channel_name = pc.name;
 
 ALTER TABLE project_versions
     ALTER COLUMN channel_id SET NOT NULL;
 
-ALTER TABLE project_version_tags
-    DROP COLUMN platform_version;
+CREATE TABLE project_version_tags
+(
+    id         BIGSERIAL    NOT NULL PRIMARY KEY,
+    version_id BIGINT       NOT NULL REFERENCES project_versions ON DELETE CASCADE,
+    name       VARCHAR(255) NOT NULL,
+    data       VARCHAR(255),
+    color      INTEGER      NOT NULL
+);
 
-DROP FUNCTION platform_version_from_tag(NAME TEXT, DATA TEXT);
+CREATE INDEX projects_versions_tags_version_id
+    ON project_version_tags (version_id);
 
-UPDATE project_version_tags
-SET name = CASE
-               WHEN name = 'spongeapi' THEN 'Sponge'
-               WHEN name = 'spongeforge' THEN 'SpongeForge'
-               WHEN name = 'spongevanilla' THEN 'SpongeVanilla'
-               WHEN name = 'sponge' THEN 'SpongeCommon'
-               WHEN name = 'lantern' THEN 'Lantern'
-               WHEN name = 'forge' THEN 'Forge'
-               ELSE name END;
+CREATE INDEX project_version_tags_name_data_idx
+    ON project_version_tags (name, data);
 
 INSERT INTO project_version_tags (version_id, name, data, color)
-SELECT pvt.version_id, 'Unstable', NULL, pvt.color
-FROM project_version_tags pvt
-WHERE pvt.name = 'stability'
-  AND pvt.data = 'alpha';
+SELECT pv.id,
+       CASE pv.dep_id
+           WHEN 'spongeapi' THEN 'Sponge'
+           WHEN 'spongeforge' THEN 'SpongeForge'
+           WHEN 'spongevanilla' THEN 'SpongeVanilla'
+           WHEN 'sponge' THEN 'SpongeCommon'
+           WHEN 'lantern' THEN 'Lantern'
+           WHEN 'Forge' THEN 'Forge'
+           END,
+       dep_version,
+       CASE pv.dep_id
+           WHEN 'spongeapi' THEN 1
+           WHEN 'spongeforge' THEN 4
+           WHEN 'spongevanilla' THEN 5
+           WHEN 'sponge' THEN 6
+           WHEN 'lantern' THEN 7
+           WHEN 'Forge' THEN 2
+           END
+FROM (SELECT pv.id, unnest(pv.dependency_ids) AS dep_id, unnest(pv.dependency_versions) AS dep_version
+      FROM project_versions pv) pv
+WHERE dep_id IN ('spongeapi', 'spongeforge', 'spongevanilla', 'sponge', 'lantern', 'forge');
 
-DELETE
-FROM project_version_tags
-WHERE name = 'stability';
+INSERT INTO project_version_tags (version_id, name, color)
+SELECT pv.id, 'Mixin', 8
+FROM project_versions pv
+WHERE pv.uses_mixin;
+
+INSERT INTO project_version_tags (version_id, name, color)
+SELECT pv.id, 'Unstable', 3
+FROM project_versions pv
+WHERE pv.stability = 'alpha';
+
+ALTER TABLE project_versions
+    DROP COLUMN uses_mixin,
+    DROP COLUMN stability,
+    DROP COLUMN release_type,
+    DROP COLUMN legacy_channel_name,
+    DROP COLUMN legacy_channel_color,
+    ADD COLUMN dependencies TEXT[];
+
+DROP TYPE STABILITY;
+DROP TYPE RELEASE_TYPE;
+
+-- noinspection SqlWithoutWhere
+UPDATE project_versions
+SET dependencies = ARRAY(unnest(dependency_ids) || ':' || unnest(dependency_versions));
+
+ALTER TABLE project_versions
+    DROP COLUMN dependency_ids,
+    DROP COLUMN dependency_versions,
+    DROP COLUMN platform_versions;
+
+DROP FUNCTION platform_version_from_dependency_lists;
+DROP FUNCTION platform_version_from_dependency;
 
 CREATE MATERIALIZED VIEW home_projects AS
-    WITH tags AS (
-        SELECT sq.project_id, sq.version_string, sq.tag_name, sq.tag_version, sq.tag_color
-        FROM (SELECT pv.project_id,
-                     pv.version_string,
-                     pvt.name                                                                            AS tag_name,
-                     pvt.data                                                                            AS tag_version,
-                     pvt.platform_version,
-                     pvt.color                                                                           AS tag_color,
-                     row_number()
-                     OVER (PARTITION BY pv.project_id, pvt.platform_version ORDER BY pv.created_at DESC) AS row_num
-              FROM project_versions pv
-                       JOIN (
-                  SELECT pvti.version_id,
-                         pvti.name,
-                         pvti.data,
-                         --TODO, use a STORED column in Postgres 12
-                         CASE
-                             WHEN pvti.name = 'Sponge'
-                                 THEN substring(pvti.data FROM
-                                                '^\[?(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?(?:,(?:\d+\.\d+(?:\.\d+)?)?\))?$')
-                             WHEN pvti.name = 'SpongeForge'
-                                 THEN substring(pvti.data FROM
-                                                '^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')
-                             WHEN pvti.name = 'SpongeVanilla'
-                                 THEN substring(pvti.data FROM
-                                                '^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')
-                             WHEN pvti.name = 'Forge'
-                                 THEN substring(pvti.data FROM '^\d+\.(\d+)\.\d+(?:\.\d+)?$')
-                             WHEN pvti.name = 'Lantern'
-                                 THEN NULL --TODO Change this once Lantern changes to SpongeVanilla's format
-                             ELSE NULL
-                             END AS platform_version,
-                         pvti.color
-                  FROM project_version_tags pvti
-                  WHERE pvti.name IN ('Sponge', 'SpongeForge', 'SpongeVanilla', 'Forge', 'Lantern')
-                    AND pvti.data IS NOT NULL
-              ) pvt ON pv.id = pvt.version_id
-              WHERE pv.visibility = 1
-                AND pvt.name IN
-                    ('Sponge', 'SpongeForge', 'SpongeVanilla', 'Forge', 'Lantern')
-                AND pvt.platform_version IS NOT NULL) sq
-        WHERE sq.row_num = 1
-        ORDER BY sq.platform_version DESC)
-    SELECT p.id,
-           p.owner_name                      AS owner_name,
-           array_agg(DISTINCT pm.user_id)    AS project_members,
-           p.slug,
-           p.visibility,
-           coalesce(pva.views, 0)            AS views,
-           coalesce(pda.downloads, 0)        AS downloads,
-           coalesce(pvr.recent_views, 0)     AS recent_views,
-           coalesce(pdr.recent_downloads, 0) AS recent_downloads,
-           coalesce(ps.stars, 0)             AS stars,
-           coalesce(pw.watchers, 0)          AS watchers,
-           p.category,
-           p.description,
-           p.name,
-           p.plugin_id,
-           p.created_at,
-           max(lv.created_at)                AS last_updated,
-           to_jsonb(
-                   ARRAY(SELECT jsonb_build_object('version_string', tags.version_string, 'tag_name',
-                                                   tags.tag_name,
-                                                   'tag_version', tags.tag_version, 'tag_color',
-                                                   tags.tag_color)
-                         FROM tags
-                         WHERE tags.project_id = p.id
-                         LIMIT 5))           AS promoted_versions,
-           setweight(to_tsvector('english', p.name) ||
-                     to_tsvector('english', regexp_replace(p.name, '([a-z])([A-Z]+)', '\1_\2', 'g')) ||
-                     to_tsvector('english', p.plugin_id), 'A') ||
-           setweight(to_tsvector('english', p.description), 'B') ||
-           setweight(to_tsvector('english', array_to_string(p.keywords, ' ')), 'C') ||
-           setweight(to_tsvector('english', p.owner_name) ||
-                     to_tsvector('english', regexp_replace(p.owner_name, '([a-z])([A-Z]+)', '\1_\2', 'g')),
-                     'D')                    AS search_words
-    FROM projects p
-             LEFT JOIN project_versions lv ON p.id = lv.project_id
-             JOIN project_members_all pm ON p.id = pm.id
-             LEFT JOIN (SELECT p.id, COUNT(*) AS stars
-                        FROM projects p
-                                 LEFT JOIN project_stars ps ON p.id = ps.project_id
-                        GROUP BY p.id) ps ON p.id = ps.id
-             LEFT JOIN (SELECT p.id, COUNT(*) AS watchers
-                        FROM projects p
-                                 LEFT JOIN project_watchers pw ON p.id = pw.project_id
-                        GROUP BY p.id) pw ON p.id = pw.id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS views FROM project_views pv GROUP BY pv.project_id) pva
-                       ON p.id = pva.project_id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS downloads
-                        FROM project_versions_downloads pv
-                        GROUP BY pv.project_id) pda ON p.id = pda.project_id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS recent_views
-                        FROM project_views pv
-                        WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
-                        GROUP BY pv.project_id) pvr
-                       ON p.id = pvr.project_id
-             LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS recent_downloads
-                        FROM project_versions_downloads pv
-                        WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
-                        GROUP BY pv.project_id) pdr ON p.id = pdr.project_id
-    GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views, pdr.recent_downloads;
+WITH tags AS (
+    SELECT sq.project_id, sq.version_string, sq.tag_name, sq.tag_version, sq.tag_color
+    FROM (SELECT pv.project_id,
+                 pv.version_string,
+                 pvt.name                                                                            AS tag_name,
+                 pvt.data                                                                            AS tag_version,
+                 pvt.platform_version,
+                 pvt.color                                                                           AS tag_color,
+                 row_number()
+                 OVER (PARTITION BY pv.project_id, pvt.platform_version ORDER BY pv.created_at DESC) AS row_num
+          FROM project_versions pv
+                   JOIN (
+              SELECT pvti.version_id,
+                     pvti.name,
+                     pvti.data,
+                     --TODO, use a STORED column in Postgres 12
+                     CASE
+                         WHEN pvti.name = 'Sponge'
+                             THEN substring(pvti.data FROM
+                                            '^\[?(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?(?:,(?:\d+\.\d+(?:\.\d+)?)?\))?$')
+                         WHEN pvti.name = 'SpongeForge'
+                             THEN substring(pvti.data FROM
+                                            '^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')
+                         WHEN pvti.name = 'SpongeVanilla'
+                             THEN substring(pvti.data FROM
+                                            '^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')
+                         WHEN pvti.name = 'Forge'
+                             THEN substring(pvti.data FROM '^\d+\.(\d+)\.\d+(?:\.\d+)?$')
+                         WHEN pvti.name = 'Lantern'
+                             THEN NULL --TODO Change this once Lantern changes to SpongeVanilla's format
+                         ELSE NULL
+                         END AS platform_version,
+                     pvti.color
+              FROM project_version_tags pvti
+              WHERE pvti.name IN ('Sponge', 'SpongeForge', 'SpongeVanilla', 'Forge', 'Lantern')
+                AND pvti.data IS NOT NULL
+          ) pvt ON pv.id = pvt.version_id
+          WHERE pv.visibility = 1
+            AND pvt.name IN
+                ('Sponge', 'SpongeForge', 'SpongeVanilla', 'Forge', 'Lantern')
+            AND pvt.platform_version IS NOT NULL) sq
+    WHERE sq.row_num = 1
+    ORDER BY sq.platform_version DESC)
+SELECT p.id,
+       p.owner_name                      AS owner_name,
+       array_agg(DISTINCT pm.user_id)    AS project_members,
+       p.slug,
+       p.visibility,
+       coalesce(pva.views, 0)            AS views,
+       coalesce(pda.downloads, 0)        AS downloads,
+       coalesce(pvr.recent_views, 0)     AS recent_views,
+       coalesce(pdr.recent_downloads, 0) AS recent_downloads,
+       coalesce(ps.stars, 0)             AS stars,
+       coalesce(pw.watchers, 0)          AS watchers,
+       p.category,
+       p.description,
+       p.name,
+       p.plugin_id,
+       p.created_at,
+       max(lv.created_at)                AS last_updated,
+       to_jsonb(
+               ARRAY(SELECT jsonb_build_object('version_string', tags.version_string, 'tag_name',
+                                               tags.tag_name,
+                                               'tag_version', tags.tag_version, 'tag_color',
+                                               tags.tag_color)
+                     FROM tags
+                     WHERE tags.project_id = p.id
+                     LIMIT 5))           AS promoted_versions,
+       setweight(to_tsvector('english', p.name) ||
+                 to_tsvector('english', regexp_replace(p.name, '([a-z])([A-Z]+)', '\1_\2', 'g')) ||
+                 to_tsvector('english', p.plugin_id), 'A') ||
+       setweight(to_tsvector('english', p.description), 'B') ||
+       setweight(to_tsvector('english', array_to_string(p.keywords, ' ')), 'C') ||
+       setweight(to_tsvector('english', p.owner_name) ||
+                 to_tsvector('english', regexp_replace(p.owner_name, '([a-z])([A-Z]+)', '\1_\2', 'g')),
+                 'D')                    AS search_words
+FROM projects p
+         LEFT JOIN project_versions lv ON p.id = lv.project_id
+         JOIN project_members_all pm ON p.id = pm.id
+         LEFT JOIN (SELECT p.id, COUNT(*) AS stars
+                    FROM projects p
+                             LEFT JOIN project_stars ps ON p.id = ps.project_id
+                    GROUP BY p.id) ps ON p.id = ps.id
+         LEFT JOIN (SELECT p.id, COUNT(*) AS watchers
+                    FROM projects p
+                             LEFT JOIN project_watchers pw ON p.id = pw.project_id
+                    GROUP BY p.id) pw ON p.id = pw.id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS views FROM project_views pv GROUP BY pv.project_id) pva
+                   ON p.id = pva.project_id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS downloads
+                    FROM project_versions_downloads pv
+                    GROUP BY pv.project_id) pda ON p.id = pda.project_id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.views) AS recent_views
+                    FROM project_views pv
+                    WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+                    GROUP BY pv.project_id) pvr
+                   ON p.id = pvr.project_id
+         LEFT JOIN (SELECT pv.project_id, sum(pv.downloads) AS recent_downloads
+                    FROM project_versions_downloads pv
+                    WHERE pv.day BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+                    GROUP BY pv.project_id) pdr ON p.id = pdr.project_id
+GROUP BY p.id, ps.stars, pw.watchers, pva.views, pda.downloads, pvr.recent_views, pdr.recent_downloads;

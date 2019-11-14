@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 
 import ore.data.project.Dependency
 import ore.db.DbRef
-import ore.models.project.{Version, VersionTag}
+import ore.models.project.Version
 
 import cats.data.{Validated, ValidatedNel}
 import org.spongepowered.plugin.meta.McModInfo
@@ -76,11 +76,6 @@ class PluginFileData(data: Seq[DataValue]) {
     case _: StringDataValue => true
     case _                  => false
   }
-
-  def tags(versionId: DbRef[Version]): ValidatedNel[String, (List[String], List[VersionTag])] =
-    if (containsMixins) {
-      VersionTag.MixinTag.createTagUnsanitized(Nil, versionId)
-    } else Validated.valid((Nil, Nil))
 
   /**
     * A mod using Mixins will contain the "MixinConfigs" attribute in their MANIFEST

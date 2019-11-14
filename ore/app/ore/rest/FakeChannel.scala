@@ -1,6 +1,6 @@
 package ore.rest
 
-import ore.models.project.{TagColor, VersionTag}
+import ore.models.project.{TagColor, Version}
 
 case class FakeChannel(
     name: String,
@@ -9,5 +9,12 @@ case class FakeChannel(
 )
 object FakeChannel {
 
-  def fromVersionTag(tag: VersionTag) = FakeChannel(tag.data.get.capitalize, tag.color, tag.name == ???)
+  def fromVersion(version: Version): FakeChannel = {
+    val stability = version.tags.stability
+    FakeChannel(
+      stability.value.capitalize,
+      stability.color,
+      stability != Version.Stability.Stable
+    )
+  }
 }
