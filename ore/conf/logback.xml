@@ -69,5 +69,5 @@
     <logger name="ProjectSettings" level="INFO" />
     <logger name="ProjectFiles" level="INFO" />
     <logger name="Pages" level="INFO" />
-    <logger name="ApiV2Controller" level="INFO" />
+    <logger name="ApiV2Projects" level="INFO" />
 </configuration>

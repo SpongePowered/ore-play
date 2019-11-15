@@ -15,7 +15,7 @@ import shapeless.Typeable
 
 object APIV2 {
 
-  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+  implicit val circeConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
 
   def optionToResult[A](s: String, opt: String => Option[A], history: List[CursorOp])(
       implicit tpe: Typeable[A]

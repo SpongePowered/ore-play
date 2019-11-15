@@ -26,7 +26,6 @@ import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPRe
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
 
 import controllers._
-import controllers.apiv2.ApiV2Controller
 import controllers.project.{Pages, Projects, Versions}
 import controllers.sugar.Bakery
 import db.impl.DbUpdateTask
@@ -287,24 +286,34 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val statusZ: StatusZ   = wire[StatusZ]
   lazy val fakeUser: FakeUser = wire[FakeUser]
 
-  lazy val applicationController: Application                   = wire[Application]
-  lazy val apiV1Controller: ApiV1Controller                     = wire[ApiV1Controller]
-  lazy val apiV2Controller: ApiV2Controller                     = wire[ApiV2Controller]
-  lazy val versions: Versions                                   = wire[Versions]
-  lazy val users: Users                                         = wire[Users]
-  lazy val projects: Projects                                   = wire[Projects]
-  lazy val pages: Pages                                         = wire[Pages]
-  lazy val organizations: Organizations                         = wire[Organizations]
-  lazy val reviews: Reviews                                     = wire[Reviews]
-  lazy val applicationControllerProvider: Provider[Application] = () => applicationController
-  lazy val apiV1ControllerProvider: Provider[ApiV1Controller]   = () => apiV1Controller
-  lazy val apiV2ControllerProvider: Provider[ApiV2Controller]   = () => apiV2Controller
-  lazy val versionsProvider: Provider[Versions]                 = () => versions
-  lazy val usersProvider: Provider[Users]                       = () => users
-  lazy val projectsProvider: Provider[Projects]                 = () => projects
-  lazy val pagesProvider: Provider[Pages]                       = () => pages
-  lazy val organizationsProvider: Provider[Organizations]       = () => organizations
-  lazy val reviewsProvider: Provider[Reviews]                   = () => reviews
+  lazy val applicationController: Application                          = wire[Application]
+  lazy val apiV1Controller: ApiV1Controller                            = wire[ApiV1Controller]
+  lazy val apiV2Authentication: apiv2.Authentication                   = wire[apiv2.Authentication]
+  lazy val apiV2Keys: apiv2.Keys                                       = wire[apiv2.Keys]
+  lazy val apiV2Permissions: apiv2.Permissions                         = wire[apiv2.Permissions]
+  lazy val apiV2Projects: apiv2.Projects                               = wire[apiv2.Projects]
+  lazy val apiV2Users: apiv2.Users                                     = wire[apiv2.Users]
+  lazy val apiV2Versions: apiv2.Versions                               = wire[apiv2.Versions]
+  lazy val versions: Versions                                          = wire[Versions]
+  lazy val users: Users                                                = wire[Users]
+  lazy val projects: Projects                                          = wire[Projects]
+  lazy val pages: Pages                                                = wire[Pages]
+  lazy val organizations: Organizations                                = wire[Organizations]
+  lazy val reviews: Reviews                                            = wire[Reviews]
+  lazy val applicationControllerProvider: Provider[Application]        = () => applicationController
+  lazy val apiV1ControllerProvider: Provider[ApiV1Controller]          = () => apiV1Controller
+  lazy val apiV2AuthenticationProvider: Provider[apiv2.Authentication] = () => apiV2Authentication
+  lazy val apiV2KeysProvider: Provider[apiv2.Keys]                     = () => apiV2Keys
+  lazy val apiV2PermissionsProvider: Provider[apiv2.Permissions]       = () => apiV2Permissions
+  lazy val apiV2ProjectsProvider: Provider[apiv2.Projects]             = () => apiV2Projects
+  lazy val apiV2UsersProvider: Provider[apiv2.Users]                   = () => apiV2Users
+  lazy val apiV2VersionsProvider: Provider[apiv2.Versions]             = () => apiV2Versions
+  lazy val versionsProvider: Provider[Versions]                        = () => versions
+  lazy val usersProvider: Provider[Users]                              = () => users
+  lazy val projectsProvider: Provider[Projects]                        = () => projects
+  lazy val pagesProvider: Provider[Pages]                              = () => pages
+  lazy val organizationsProvider: Provider[Organizations]              = () => organizations
+  lazy val reviewsProvider: Provider[Reviews]                          = () => reviews
 
   def waitTilEvolutionsDone(action: UIO[Unit]): CancelableFuture[Nothing, Unit] = {
     val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)

@@ -49,10 +49,9 @@ import zio.{IO, Task, UIO, ZIO}
   * Controller for handling Project related actions.
   */
 @Singleton
-class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: ProjectFactory)(
+class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
     implicit oreComponents: OreControllerComponents,
     forums: OreDiscourseApi[UIO],
-    fileIO: FileIO[ZIO[Blocking, Throwable, *]],
     messagesApi: MessagesApi,
     renderer: MarkdownRenderer
 ) extends OreBaseController {
@@ -69,24 +68,6 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   private def MemberEditAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(Permission.ManageProjectMembers))
-
-  //TODO: Expose something like this to the API
-  private def orgasUserCanUploadTo(user: Model[User]): UIO[Set[DbRef[Organization]]] = {
-    import cats.instances.vector._
-    for {
-      all <- user.organizations.allFromParent
-      canCreate <- all.toVector.parTraverse(
-        org => user.permissionsIn(org).map(_.has(Permission.CreateProject)).tupleLeft(org.id.value)
-      )
-    } yield {
-      // Filter by can Create Project
-      val others = canCreate.collect {
-        case (id, true) => id
-      }
-
-      others.toSet + user.id // Add self
-    }
-  }
 
   /**
     * Displays the Project with the specified author and name.

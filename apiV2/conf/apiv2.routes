@@ -40,10 +40,10 @@
 #            type: string
 ###
 +nocsrf
-POST    /authenticate                                        @controllers.apiv2.ApiV2Controller.authenticate()
+POST    /authenticate                                        @controllers.apiv2.Authentication.authenticate()
 
 ### NoDocs ###
-POST    /authenticate/user                                   @controllers.apiv2.ApiV2Controller.authenticateUser()
+POST    /authenticate/user                                   @controllers.apiv2.Authentication.authenticateUser()
 
 ###
 #  summary: Invalidates the API session used for the request.
@@ -62,7 +62,7 @@ POST    /authenticate/user                                   @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-DELETE /sessions/current                                     @controllers.apiv2.ApiV2Controller.deleteSession()
+DELETE /sessions/current                                     @controllers.apiv2.Authentication.deleteSession()
 
 ###
 #  summary: Creates an API key
@@ -89,7 +89,7 @@ DELETE /sessions/current                                     @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-POST    /keys                                                @controllers.apiv2.ApiV2Controller.createKey()
+POST    /keys                                                @controllers.apiv2.Keys.createKey()
 
 ###
 #  summary: Delete an API key
@@ -108,7 +108,7 @@ POST    /keys                                                @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-DELETE  /keys                                                @controllers.apiv2.ApiV2Controller.deleteKey(name)
+DELETE  /keys                                                @controllers.apiv2.Keys.deleteKey(name)
 
 
 
@@ -132,7 +132,7 @@ DELETE  /keys                                                @controllers.apiv2.
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
-GET     /permissions                                         @controllers.apiv2.ApiV2Controller.showPermissions(pluginId: Option[String], organizationName: Option[String])
+GET     /permissions                                         @controllers.apiv2.Permissions.showPermissions(pluginId: Option[String], organizationName: Option[String])
 
 ###
 #  summary: Do an AND permission check
@@ -156,7 +156,7 @@ GET     /permissions                                         @controllers.apiv2.
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
-GET     /permissions/hasAll                                  @controllers.apiv2.ApiV2Controller.hasAll(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
+GET     /permissions/hasAll                                  @controllers.apiv2.Permissions.hasAll(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
 
 ###
 #  summary: Do an OR permission check
@@ -180,7 +180,7 @@ GET     /permissions/hasAll                                  @controllers.apiv2.
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 ###
-GET     /permissions/hasAny                                  @controllers.apiv2.ApiV2Controller.hasAny(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
+GET     /permissions/hasAny                                  @controllers.apiv2.Permissions.hasAny(permissions: Seq[NamedPermission], pluginId: Option[String], organizationName: Option[String])
 
 
 
@@ -220,7 +220,7 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects                                            @controllers.apiv2.ApiV2Controller.listProjects(q: Option[String], categories: Seq[Category], tags: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+GET     /projects                                            @controllers.apiv2.Projects.listProjects(q: Option[String], categories: Seq[Category], tags: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Creates a new project
@@ -246,7 +246,7 @@ GET     /projects                                            @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-POST     /projects                                           @controllers.apiv2.ApiV2Controller.createProject()
+POST     /projects                                           @controllers.apiv2.Projects.createProject()
 
 ###
 #  summary: Returns info on a specific project
@@ -268,7 +268,7 @@ POST     /projects                                           @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId                                  @controllers.apiv2.ApiV2Controller.showProject(pluginId)
+GET     /projects/:pluginId                                  @controllers.apiv2.Projects.showProject(pluginId)
 
 ###
 #  summary: Edits an existing project
@@ -324,7 +324,7 @@ GET     /projects/:pluginId                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-PATCH   /projects/:pluginId                                  @controllers.apiv2.ApiV2Controller.editProject(pluginId)
+PATCH   /projects/:pluginId                                  @controllers.apiv2.Projects.editProject(pluginId)
 
 ###
 #  summary: Returns the members of a project
@@ -350,7 +350,7 @@ PATCH   /projects/:pluginId                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/members                          @controllers.apiv2.ApiV2Controller.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId/members                          @controllers.apiv2.Projects.showMembers(pluginId, limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns the stats for a project
@@ -383,7 +383,7 @@ GET     /projects/:pluginId/members                          @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/stats                            @controllers.apiv2.ApiV2Controller.showProjectStats(pluginId, fromDate: String, toDate: String)
+GET     /projects/:pluginId/stats                            @controllers.apiv2.Projects.showProjectStats(pluginId, fromDate: String, toDate: String)
 
 
 
@@ -414,7 +414,7 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId/versions                         @controllers.apiv2.Versions.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns a specific version of a project
@@ -438,7 +438,7 @@ GET     /projects/:pluginId/versions                         @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.showVersion(pluginId, name)
+GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.showVersion(pluginId, name)
 
 ###
 #  summary: Edits an existing version
@@ -466,7 +466,7 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.ApiV2Controller.editVersion(pluginId, name)
+PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.editVersion(pluginId, name)
 
 ###
 #  summary: Returns the description for a version
@@ -492,7 +492,7 @@ PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions/:name/description       @controllers.apiv2.ApiV2Controller.showVersionDescription(pluginId, name)
+GET     /projects/:pluginId/versions/:name/description       @controllers.apiv2.Versions.showVersionDescription(pluginId, name)
 
 ###
 #  summary: Returns the stats for a version
@@ -527,7 +527,7 @@ GET     /projects/:pluginId/versions/:name/description       @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions/:version/stats          @controllers.apiv2.ApiV2Controller.showVersionStats(pluginId, version, fromDate: String, toDate: String)
+GET     /projects/:pluginId/versions/:version/stats          @controllers.apiv2.Versions.showVersionStats(pluginId, version, fromDate: String, toDate: String)
 
 ###
 #  summary: Scan a plugin file.
@@ -565,7 +565,7 @@ GET     /projects/:pluginId/versions/:version/stats          @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.ApiV2Controller.scanVersion(pluginId)
+PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.Versions.scanVersion(pluginId)
 
 ###
 #  summary: Creates a new version
@@ -605,7 +605,7 @@ PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.
 #      $ref: '#/components/responses/ForbiddenError'
 ###
 +nocsrf
-POST    /projects/:pluginId/versions                         @controllers.apiv2.ApiV2Controller.deployVersion(pluginId)
+POST    /projects/:pluginId/versions                         @controllers.apiv2.Versions.deployVersion(pluginId)
 
 #GET     /projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
 
@@ -629,7 +629,7 @@ POST    /projects/:pluginId/versions                         @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /users/:user                                         @controllers.apiv2.ApiV2Controller.showUser(user)
+GET     /users/:user                                         @controllers.apiv2.Users.showUser(user)
 
 ###
 #  summary: Gets the starred projects for a specific user
@@ -657,7 +657,7 @@ GET     /users/:user                                         @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /users/:user/starred                                 @controllers.apiv2.ApiV2Controller.showStarred(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)
+GET     /users/:user/starred                                 @controllers.apiv2.Users.showStarred(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Gets the watched projects for a specific user
@@ -685,4 +685,4 @@ GET     /users/:user/starred                                 @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /users/:user/watching                                @controllers.apiv2.ApiV2Controller.showWatching(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)
+GET     /users/:user/watching                                @controllers.apiv2.Users.showWatching(user, sort: Option[ProjectSortingStrategy], limit: Option[Long], offset: Long ?= 0)
