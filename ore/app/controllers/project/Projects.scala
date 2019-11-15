@@ -70,45 +70,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(Permission.ManageProjectMembers))
 
-  /**
-    * Displays the "create project" page.
-    *
-    * @return Create project view
-    */
-  def showCreator(): Action[AnyContent] = UserLock().asyncF { implicit request =>
-    import cats.instances.vector._
-    for {
-      orgas      <- request.user.organizations.allFromParent
-      createOrga <- orgas.toVector.parTraverse(request.user.permissionsIn(_).map(_.has(Permission.CreateProject)))
-    } yield {
-      val createdOrgas = orgas.zip(createOrga).collect {
-        case (orga, true) => orga
-      }
-      Ok(views.create(createdOrgas, request.user))
-    }
-  }
-
-  def createProject(): Action[AnyContent] = UserLock().asyncF { implicit request =>
-    val user = request.user
-    for {
-      _ <- ZIO
-        .fromOption(factory.hasUserUploadError(user))
-        .flip
-        .mapError(Redirect(self.showCreator()).withError(_))
-      organisationUserCanUploadTo <- orgasUserCanUploadTo(user)
-      settings <- forms
-        .projectCreate(organisationUserCanUploadTo.toSeq)
-        .bindZIO(FormErrorLocalized(self.showCreator()))
-      owner <- settings.ownerId
-        .filter(_ != user.id.value)
-        .fold(IO.succeed(user): IO[Result, Model[User]])(
-          ModelView.now(User).get(_).toZIOWithError(Redirect(self.showCreator()).withError("Owner not found"))
-        )
-      project <- factory.createProject(owner, settings.asTemplate).mapError(Redirect(self.showCreator()).withError(_))
-      _       <- projects.refreshHomePage(MDCLogger)
-    } yield Redirect(self.show(project.ownerName, project.slug))
-  }
-
+  //TODO: Expose something like this to the API
   private def orgasUserCanUploadTo(user: Model[User]): UIO[Set[DbRef[Organization]]] = {
     import cats.instances.vector._
     for {
@@ -400,28 +362,6 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     }
 
   /**
-    * Shows the project manager or "settings" pane.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Project manager
-    */
-  def showSettings(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
-    implicit request =>
-      request.project.obj.iconUrl
-        .zipPar(
-          request.project
-            .apiKeys(ModelView.now(ProjectApiKey))
-            .one
-            .value
-        )
-        .map {
-          case (iconUrl, deployKey) =>
-            Ok(views.settings(request.data, request.scoped, deployKey, iconUrl))
-        }
-  }
-
-  /**
     * Uploads a new icon to be saved for the specified [[ore.models.project.Project]].
     *
     * @param author Project owner
@@ -431,7 +371,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   def uploadIcon(author: String, slug: String): Action[MultipartFormData[TemporaryFile]] =
     SettingsEditAction(author, slug)(parse.multipartFormData).asyncF { implicit request =>
       request.body.file("icon") match {
-        case None => IO.fail(Redirect(self.showSettings(author, slug)).withError("error.noFile"))
+        case None => IO.fail(Redirect(self.show(author, slug)).withError("error.noFile"))
         case Some(tmpFile) =>
           val data       = request.data
           val pendingDir = projectFiles.getPendingIconDir(data.project.ownerName, data.project.name)
@@ -529,41 +469,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
                 s"'${user.name}' is a member of ${project.ownerName}/${project.name}"
               )(LoggedActionProject.apply)
             )
-            .as(Redirect(self.showSettings(author, slug)))
+            .as(Redirect(self.show(author, slug)))
         }
     }
-
-  /**
-    * Saves the specified Project from the settings manager.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return View of project
-    */
-  def save(author: String, slug: String): Action[AnyContent] = SettingsEditAction(author, slug).asyncF {
-    implicit request =>
-      val data = request.data
-      for {
-        organisationUserCanUploadTo <- orgasUserCanUploadTo(request.user)
-        formData <- this.forms
-          .ProjectSave(organisationUserCanUploadTo.toSeq)
-          .bindZIO(FormErrorLocalized(self.showSettings(author, slug)))
-        _ <- formData
-          .save[ZIO[Blocking, Throwable, *]](data.project, MDCLogger)
-          .value
-          .orDie
-          .absolve
-          .mapError(Redirect(self.showSettings(author, slug)).withError(_))
-        _ <- projects.refreshHomePage(MDCLogger)
-        _ <- UserActionLogger.log(
-          request.request,
-          LoggedActionType.ProjectSettingsChanged,
-          request.data.project.id,
-          "",
-          ""
-        )(LoggedActionProject.apply)
-      } yield Redirect(self.show(author, slug))
-  }
 
   /**
     * Renames the specified project.
@@ -581,7 +489,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       for {
         available <- projects.isNamespaceAvailable(author, slugify(newName))
         _ <- ZIO.fromEither(
-          Either.cond(available, (), Redirect(self.showSettings(author, slug)).withError("error.nameUnavailable"))
+          Either.cond(available, (), Redirect(self.show(author, slug)).withError("error.nameUnavailable"))
         )
         _ <- projects.rename(project, newName)
         _ <- UserActionLogger.log(

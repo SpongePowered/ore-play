@@ -65,9 +65,6 @@ GET     /robots.txt                                                 @controllers
 
 # ---------- Projects ----------
 
-GET     /new                                                        @controllers.project.Projects.showCreator()
-POST    /new                                                        @controllers.project.Projects.createProject()
-
 POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: DbRef[ProjectUserRole], status)
 POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String)
 
@@ -111,9 +108,7 @@ POST    /:author/:slug/watchers/:watching                           @controllers
 GET     /:author/:slug/discuss                                      @controllers.project.Projects.showDiscussion(author, slug)
 POST    /:author/:slug/discuss/reply                                @controllers.project.Projects.postDiscussionReply(author, slug)
 
-GET     /:author/:slug/manage                                       @controllers.project.Projects.showSettings(author, slug)
 GET     /:author/:slug/manage/sendforapproval                       @controllers.project.Projects.sendForApproval(author, slug)
-POST    /:author/:slug/manage/save                                  @controllers.project.Projects.save(author, slug)
 POST    /:author/:slug/manage/rename                                @controllers.project.Projects.rename(author, slug)
 POST    /:author/:slug/manage/hardDelete                            @controllers.project.Projects.delete(author, slug)
 POST    /:author/:slug/manage/delete                                @controllers.project.Projects.softDelete(author, slug)
@@ -159,10 +154,7 @@ GET     /:author/:slug/versions/:version/download                   @controllers
 GET     /:author/:slug/versions/recommended/jar                     @controllers.project.Versions.downloadRecommendedJar(author, slug, token: Option[String])
 GET     /:author/:slug/versions/:version/jar                        @controllers.project.Versions.downloadJar(author, slug, version, token: Option[String])
 
-GET     /:author/:slug/versions/new                                 @controllers.project.Versions.showCreator(author, slug)
-
 GET     /:author/:slug/versions/:version                            @controllers.project.Versions.show(author, slug, version)
-POST    /:author/:slug/versions/:version/save                       @controllers.project.Versions.saveDescription(author, slug, version)
 
 
 # ---------- Reviews ----------

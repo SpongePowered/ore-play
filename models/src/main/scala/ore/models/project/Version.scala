@@ -35,7 +35,7 @@ case class Version(
     projectId: DbRef[Project],
     versionString: String,
     dependencyIds: List[String],
-    dependencyVersions: List[String],
+    dependencyVersions: List[Option[String]],
     fileSize: Long,
     hash: String,
     authorId: Option[DbRef[User]],

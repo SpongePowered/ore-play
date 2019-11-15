@@ -109,22 +109,16 @@ class OreDiscourseApiEnabled[F[_]](
       )
     } yield project
 
-    res
-      .leftSemiflatMap {
-        case (error, _) =>
-          // Request went through but Discourse responded with errors
-          // Don't schedule a retry because this will just keep happening
-          val message =
-            s"""|Request to create topic for project '${project.url}' might have been successful but there were errors along the way:
-                |Errors: $error""".stripMargin
-          MDCLogger.warn(message)
-          F.pure(project)
-      }
-      .merge
-      .onError {
-        case e =>
-          F.delay(MDCLogger.warn(s"Could not create project topic for project ${project.url}. Rescheduling...", e))
-      }
+    res.leftSemiflatMap {
+      case (error, _) =>
+        // Request went through but Discourse responded with errors
+        // Don't schedule a retry because this will just keep happening
+        val message =
+          s"""|Request to create topic for project '${project.url}' might have been successful but there were errors along the way:
+              |Errors: $error""".stripMargin
+        MDCLogger.warn(message)
+        F.pure(project)
+    }.merge
   }
 
   /**

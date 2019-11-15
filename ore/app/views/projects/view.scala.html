@@ -222,9 +222,11 @@ Base template for Project overview.
                             @if(sp.perms(Permission.EditProjectSettings)) {
                                 @* Show manager if permitted *@
                                 <li id="settings" class="">
+                                    @*
                                     <a href="@Projects.showSettings(p.project.ownerName, p.project.slug)">
                                         <i class="fas fa-cog"></i> @messages("project.settings")
                                     </a>
+                                    *@
                                 </li>
                             }
 

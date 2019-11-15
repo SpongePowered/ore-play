@@ -3,6 +3,7 @@ package models.protocols
 import java.time.OffsetDateTime
 
 import ore.data.project.Category
+import ore.models.project.Version.{ReleaseType, Stability}
 import ore.models.project.{ReviewState, Visibility}
 
 import enumeratum._
@@ -113,7 +114,14 @@ object APIV2 {
       stats: VersionStatsAll,
       fileInfo: FileInfo,
       author: Option[String],
-      reviewState: ReviewState
+      reviewState: ReviewState,
+      tags: VersionTags
+  )
+
+  @ConfiguredJsonCodec case class VersionTags(
+      mixin: Boolean,
+      stability: Stability,
+      releaseType: Option[ReleaseType]
   )
 
   @ConfiguredJsonCodec case class VersionDescription(description: String)

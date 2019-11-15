@@ -812,14 +812,17 @@ class ApiV2Controller @Inject()(
           val apiVersion = APIV2QueryVersion(
             OffsetDateTime.now(),
             pluginFile.versionString,
-            pluginFile.dependencyIds.toList,
+            pluginFile.dependencies.toList,
             Visibility.Public,
             0,
             pluginFile.fileSize,
             pluginFile.md5,
             pluginFile.fileName,
             Some(user.name),
-            ReviewState.Unreviewed
+            ReviewState.Unreviewed,
+            pluginFile.data.containsMixins,
+            Version.Stability.Stable,
+            None
           )
 
           val warnings = NonEmptyList.fromList((pluginFile.warnings).toList)
@@ -882,7 +885,10 @@ class ApiV2Controller @Inject()(
             version.hash,
             version.fileName,
             Some(user.name),
-            version.reviewState
+            version.reviewState,
+            version.tags.usesMixin,
+            version.tags.stability,
+            version.tags.releaseType
           )
 
           Created(apiVersion.asProtocol)

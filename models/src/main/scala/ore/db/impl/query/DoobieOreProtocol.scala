@@ -14,7 +14,7 @@ import ore.data.user.notification.NotificationType
 import ore.data.{Color, DownloadType, Prompt}
 import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
 import ore.models.api.ApiKey
-import ore.models.project.{ReviewState, TagColor, Visibility}
+import ore.models.project.{ReviewState, TagColor, Version, Visibility}
 import ore.models.user.{LoggedActionContext, LoggedActionType, User}
 import ore.permission.Permission
 import ore.permission.role.{Role, RoleCategory}
@@ -184,6 +184,9 @@ trait DoobieOreProtocol {
   implicit val langMeta: Meta[Locale] = Meta[String].timap(Locale.forLanguageTag)(_.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =
     Meta[InetAddress].timap(address => InetString(address.toString))(str => InetAddress.getByName(str.value))
+
+  implicit val stabilityMeta: Meta[Version.Stability]     = pgEnumEnumeratumMeta("STABILITY", Version.Stability)
+  implicit val releaseTypeMeta: Meta[Version.ReleaseType] = pgEnumEnumeratumMeta("RELEASE_TYPE", Version.ReleaseType)
 
   implicit val permissionMeta: Meta[Permission] =
     Meta.Advanced.one[Permission](

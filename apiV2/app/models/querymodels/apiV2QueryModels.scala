@@ -11,6 +11,7 @@ import play.api.mvc.RequestHeader
 import models.protocols.APIV2
 import ore.OreConfig
 import ore.data.project.{Category, ProjectNamespace}
+import ore.models.project.Version.{ReleaseType, Stability}
 import ore.models.project.io.ProjectFiles
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.User
@@ -267,7 +268,10 @@ case class APIV2QueryVersion(
     md5Hash: String,
     fileName: String,
     authorName: Option[String],
-    reviewState: ReviewState
+    reviewState: ReviewState,
+    mixin: Boolean,
+    stability: Stability,
+    releaseType: Option[ReleaseType]
 ) {
 
   def asProtocol: APIV2.Version = APIV2.Version(
@@ -284,7 +288,12 @@ case class APIV2QueryVersion(
     APIV2.VersionStatsAll(downloads),
     APIV2.FileInfo(name, fileSize, md5Hash),
     authorName,
-    reviewState
+    reviewState,
+    APIV2.VersionTags(
+      mixin,
+      stability,
+      releaseType
+    )
   )
 }
 

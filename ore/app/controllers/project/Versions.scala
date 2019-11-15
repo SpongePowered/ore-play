@@ -90,32 +90,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     }
 
   /**
-    * Saves the specified Version's description.
-    *
-    * @param author        Project owner
-    * @param slug          Project slug
-    * @param versionString Version name
-    * @return View of Version
-    */
-  def saveDescription(author: String, slug: String, versionString: String): Action[String] = {
-    VersionEditAction(author, slug).asyncF(parse.form(forms.VersionDescription)) { implicit request =>
-      for {
-        version <- getVersion(request.project, versionString)
-        oldDescription = version.description.getOrElse("")
-        newDescription = request.body.trim
-        _ <- version.updateForumContents[Task](newDescription).orDie
-        _ <- UserActionLogger.log(
-          request.request,
-          LoggedActionType.VersionDescriptionEdited,
-          version.id,
-          newDescription,
-          oldDescription
-        )(LoggedActionVersion(_, Some(version.projectId)))
-      } yield Redirect(self.show(author, slug, versionString))
-    }
-  }
-
-  /**
     * Sets the specified Version as approved by the moderation staff.
     *
     * @param author         Project owner
@@ -169,30 +143,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       )
     }
   }
-
-  /**
-    * Shows the creation form for new versions on projects.
-    *
-    * @param author Owner of project
-    * @param slug   Project slug
-    * @return Version creation view
-    */
-  def showCreator(author: String, slug: String): Action[AnyContent] =
-    VersionUploadAction(author, slug) { implicit request =>
-      val project = request.project
-      Ok(
-        views.create(
-          project.name,
-          project.pluginId,
-          project.slug,
-          project.ownerName,
-          project.description,
-          forumSync = request.data.project.settings.forumSync,
-          None,
-          None
-        )
-      )
-    }
 
   /**
     * Deletes the specified version and returns to the version page.

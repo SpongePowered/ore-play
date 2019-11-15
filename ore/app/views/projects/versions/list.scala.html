@@ -37,7 +37,7 @@ Versions page within Project overview.
             @users.memberList(
                 j = p,
                 perms = sp.permissions,
-                settingsCall = projectRoutes.showSettings(p.project.ownerName, p.project.slug)
+                settingsCall = projectRoutes.show(p.project.ownerName, p.project.slug) //TODO
             )
         </div>
     </div>

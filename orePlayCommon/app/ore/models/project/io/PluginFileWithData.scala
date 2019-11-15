@@ -25,10 +25,13 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
 
   lazy val fileName: String = path.getFileName.toString
 
-  lazy val dependencyIds: Seq[String] = data.dependencies.map {
+  lazy val dependencies: Seq[String] = data.dependencies.map {
     case Dependency(pluginId, Some(version)) => s"$pluginId:$version"
     case Dependency(pluginId, None)          => pluginId
   }
+
+  lazy val dependencyIds: Seq[String]              = data.dependencies.map(_.pluginId)
+  lazy val dependencyVersions: Seq[Option[String]] = data.dependencies.map(_.version)
 
   lazy val versionString: String = StringUtils.slugify(data.version.get)
 
@@ -45,6 +48,7 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
     projectId = projectId,
     versionString = versionString,
     dependencyIds = dependencyIds.toList,
+    dependencyVersions = dependencyVersions.toList,
     fileSize = fileSize,
     hash = md5,
     authorId = Some(user.id),

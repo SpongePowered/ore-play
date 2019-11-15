@@ -137,7 +137,7 @@ Documentation page within Project overview.
             @users.memberList(
                 j = p,
                 perms = sp.permissions,
-                settingsCall = routes.Projects.showSettings(p.project.ownerName, p.project.slug)
+                settingsCall = routes.Projects.show(p.project.ownerName, p.project.slug) //TODO
             )
         </div>
     </div>
