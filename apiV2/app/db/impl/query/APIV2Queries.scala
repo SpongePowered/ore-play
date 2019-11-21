@@ -1,12 +1,11 @@
 package db.impl.query
 
-import scala.language.higherKinds
-
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalDateTime}
 
 import play.api.mvc.RequestHeader
 
+import controllers.apiv2.Projects
 import controllers.sugar.Requests.ApiAuthInfo
 import models.protocols.APIV2
 import models.querymodels._
@@ -19,9 +18,12 @@ import ore.models.project.io.ProjectFiles
 import ore.models.project.{ProjectSortingStrategy, TagColor}
 import ore.models.user.User
 import ore.permission.Permission
+import _root_.util.fp.{ApplicativeK, FoldableK}
+import _root_.util.syntax._
 
-import cats.Reducible
-import cats.data.NonEmptyList
+import cats.arrow.FunctionK
+import cats.{Reducible, ~>}
+import cats.data.{NonEmptyList, Tuple2K}
 import cats.instances.list._
 import cats.syntax.all._
 import doobie._
@@ -199,6 +201,29 @@ object APIV2Queries extends DoobieOreProtocol {
     (select ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2QueryProject].map(_.asProtocol)
   }
 
+  def singleProjectQuery(
+      pluginId: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]]
+  )(
+      implicit projectFiles: ProjectFiles[ZIO[Blocking, Nothing, ?]],
+      requestHeader: RequestHeader,
+      config: OreConfig
+  ): Query0[ZIO[Blocking, Nothing, APIV2.Project]] =
+    APIV2Queries.projectQuery(
+      Some(pluginId),
+      Nil,
+      Nil,
+      None,
+      None,
+      canSeeHidden,
+      currentUserId,
+      ProjectSortingStrategy.Default,
+      orderWithRelevance = false,
+      1,
+      0
+    )
+
   def projectCountQuery(
       pluginId: Option[String],
       category: List[Category],
@@ -210,6 +235,63 @@ object APIV2Queries extends DoobieOreProtocol {
   ): Query0[Long] = {
     val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
     (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(select) ++ fr"sq").query[Long]
+  }
+
+  case class Column[A](name: String, mkElem: A => Param.Elem)
+  object Column {
+    def arg[A](name: String)(implicit put: Put[A]): Column[A]         = Column(name, Param.Elem.Arg(_, put))
+    def opt[A](name: String)(implicit put: Put[A]): Column[Option[A]] = Column(name, Param.Elem.Opt(_, put))
+  }
+
+  private def updateTable[F[_[_]]: ApplicativeK: FoldableK](
+      table: String,
+      columns: F[Column],
+      edits: F[Option]
+  ): Fragment = {
+    import shapeless.Const
+    import cats.tagless.syntax.all._
+
+    val applyUpdate = new FunctionK[Tuple2K[Option, Column, *], λ[A => Option[Const[Fragment]#λ[A]]]] {
+      override def apply[A](tuple: Tuple2K[Option, Column, A]): Option[Fragment] = {
+        val column: Column[A] = tuple.second
+        tuple.first.map(value => Fragment.const(column.name) ++ Fragment("= ?", List(column.mkElem(value))))
+      }
+    }
+
+    val updatesSeq = edits
+      .map2K(columns)(applyUpdate)
+      .foldMapK[List[Option[Fragment]]](
+        FunctionK.lift[λ[A => Option[Const[Fragment]#λ[A]]], λ[A => List[Option[Const[Fragment]#λ[A]]]]](List(_))
+      )
+
+    val updates = Fragments.setOpt(updatesSeq: _*)
+
+    sql"""UPDATE """ ++ Fragment.const(table) ++ updates
+  }
+
+  def updateProject(pluginId: String, edits: Projects.EditableProject): Update0 = {
+    val projectColumns = Projects.EditableProjectF[Column](
+      Column.arg("name"),
+      Column.arg("owner_name"),
+      Column.arg("category"),
+      Column.opt("description"),
+      Column.opt("homepage"),
+      Column.opt("issues"),
+      Column.opt("sources"),
+      Column.opt("support"),
+      Projects.EditableProjectLicenseF[Column](
+        Column.opt("license_name"),
+        Column.opt("license_url")
+      ),
+      Column.arg("forum_sync")
+    )
+
+    val (ownerSet, ownerFrom, ownerFilter) = edits.ownerName.fold((Fragment.empty, Fragment.empty, Fragment.empty)) {
+      owner =>
+        (fr"owner_id = u.id", fr"FROM users u", fr"AND u.name = $owner")
+    }
+
+    (updateTable("projects", projectColumns, edits) ++ ownerSet ++ ownerFrom ++ fr"WHERE plugin_id = $pluginId" ++ ownerFilter).update
   }
 
   def projectMembers(pluginId: String, limit: Long, offset: Long): Query0[APIV2.ProjectMember] =
@@ -405,7 +487,7 @@ object APIV2Queries extends DoobieOreProtocol {
   ): Query0[Long] = actionCountQuery(Fragment.const("project_watchers"), user, canSeeHidden, currentUserId)
 
   def projectStats(pluginId: String, startDate: LocalDate, endDate: LocalDate): Query0[APIV2ProjectStatsQuery] =
-    sql"""|SELECT CAST(dates.day as DATE), coalesce(sum(pvd.downloads), 0) AS downloads, coalesce(pv.views, 0) AS views
+    sql"""|SELECT CAST(dates.day AS DATE), coalesce(sum(pvd.downloads), 0) AS downloads, coalesce(pv.views, 0) AS views
           |    FROM projects p,
           |         (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates
           |             LEFT JOIN project_versions_downloads pvd ON dates.day = pvd.day
@@ -420,7 +502,7 @@ object APIV2Queries extends DoobieOreProtocol {
       startDate: LocalDate,
       endDate: LocalDate
   ): Query0[APIV2VersionStatsQuery] =
-    sql"""|SELECT CAST(dates.day as DATE), coalesce(pvd.downloads, 0) AS downloads
+    sql"""|SELECT CAST(dates.day AS DATE), coalesce(pvd.downloads, 0) AS downloads
           |    FROM projects p,
           |         project_versions pv,
           |         (SELECT generate_series($startDate::DATE, $endDate::DATE, INTERVAL '1 DAY') AS day) dates

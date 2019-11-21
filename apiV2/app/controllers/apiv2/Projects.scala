@@ -22,10 +22,14 @@ import ore.models.project.factory.{ProjectFactory, ProjectTemplate}
 import ore.models.user.User
 import ore.permission.Permission
 import ore.util.OreMDC
+import util.PatchDecoder
+import util.fp.{ApplicativeK, TraverseK}
 import util.syntax._
 
-import cats.data.{NonEmptyList, Validated}
+import cats.data.{NonEmptyList, Tuple2K, Validated}
 import cats.syntax.all._
+import cats.tagless.syntax.all._
+import cats.{Applicative, ~>}
 import io.circe._
 import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.syntax._
@@ -187,20 +191,9 @@ class Projects(
   def showProject(pluginId: String): Action[AnyContent] =
     ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
       cachingF("showProject")(pluginId) {
+
         val dbCon = APIV2Queries
-          .projectQuery(
-            Some(pluginId),
-            Nil,
-            Nil,
-            None,
-            None,
-            request.globalPermissions.has(Permission.SeeHidden),
-            request.user.map(_.id),
-            ProjectSortingStrategy.Default,
-            orderWithRelevance = false,
-            1,
-            0
-          )
+          .singleProjectQuery(pluginId, request.globalPermissions.has(Permission.SeeHidden), request.user.map(_.id))
           .option
 
         service.runDbCon(dbCon).get.flatMap(identity).bimap(_ => NotFound, Ok(_))
@@ -210,26 +203,26 @@ class Projects(
   def editProject(pluginId: String): Action[Json] =
     ApiAction(Permission.EditProjectSettings, APIScope.ProjectScope(pluginId))
       .asyncF(parseCirce.json) { implicit request =>
-        val root     = request.body.hcursor
-        val settings = root.downField("settings")
+        val root = request.body.hcursor
 
-        val res = (
-          withUndefined[String](root.downField("name")),
-          withUndefined[String](root.downField("owner_name")),
-          withUndefined[Category](root.downField("category"))(
-            Decoder[String].emap(Category.fromApiName(_).toRight("Not a valid category name"))
-          ),
-          withUndefined[Option[String]](root.downField("description")),
-          withUndefined[Option[String]](settings.downField("homepage")),
-          withUndefined[Option[String]](settings.downField("issues")),
-          withUndefined[Option[String]](settings.downField("sources")),
-          withUndefined[Option[String]](settings.downField("support")),
-          withUndefined[APIV2.ProjectLicense](settings.downField("license")),
-          withUndefined[Boolean](settings.downField("forum_sync"))
-        ).mapN(EditableProject.apply)
+        val res: Decoder.AccumulatingResult[EditableProject] = EditableProjectF.patchDecoder.traverseK(
+          λ[PatchDecoder ~> λ[A => Decoder.AccumulatingResult[Option[A]]]](_.decode(root))
+        )
 
         res match {
-          case Validated.Valid(a)   => ???
+          case Validated.Valid(a) =>
+            service
+              .runDbCon(
+                APIV2Queries.updateProject(pluginId, a).run *> APIV2Queries
+                  .singleProjectQuery(
+                    pluginId,
+                    request.globalPermissions.has(Permission.SeeHidden),
+                    request.user.map(_.id)
+                  )
+                  .unique
+              )
+              .flatten
+              .map(res => Ok(res))
           case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e.map(_.show))))
         }
       }
@@ -278,18 +271,122 @@ object Projects {
       result: Seq[APIV2.Project]
   )
 
-  case class EditableProject(
-      name: Option[String],
-      ownerName: Option[String],
-      category: Option[Category],
-      description: Option[Option[String]],
-      homepage: Option[Option[String]],
-      issues: Option[Option[String]],
-      sources: Option[Option[String]],
-      support: Option[Option[String]],
-      license: Option[APIV2.ProjectLicense],
-      forumSync: Option[Boolean]
+  type EditableProject = EditableProjectF[Option]
+  case class EditableProjectF[F[_]](
+      name: F[String],
+      ownerName: F[String],
+      category: F[Category],
+      description: F[Option[String]],
+      homepage: F[Option[String]],
+      issues: F[Option[String]],
+      sources: F[Option[String]],
+      support: F[Option[String]],
+      license: EditableProjectLicenseF[F],
+      forumSync: F[Boolean]
   )
+  object EditableProjectF {
+    val patchDecoder: EditableProjectF[PatchDecoder] = EditableProjectF(
+      PatchDecoder.mkPath[String]("name"),
+      PatchDecoder.mkPath[String]("owner_name"),
+      PatchDecoder.mkPath[Category]("category"),
+      PatchDecoder.mkPath[Option[String]]("description"),
+      PatchDecoder.mkPath[Option[String]]("settings", "homepage"),
+      PatchDecoder.mkPath[Option[String]]("settings", "issues"),
+      PatchDecoder.mkPath[Option[String]]("settings", "sources"),
+      PatchDecoder.mkPath[Option[String]]("settings", "support"),
+      EditableProjectLicenseF(
+        PatchDecoder.mkPath[Option[String]]("settings", "license", "name"),
+        PatchDecoder.mkPath[Option[String]]("settings", "license", "url")
+      ),
+      PatchDecoder.mkPath[Boolean]("settings", "forum_sync")
+    )
+
+    implicit val applicativeTraverseK: ApplicativeK[EditableProjectF] with TraverseK[EditableProjectF] =
+      new ApplicativeK[EditableProjectF] with TraverseK[EditableProjectF] {
+        override def pure[A[_]](a: shapeless.Const[Unit]#λ ~> A): EditableProjectF[A] = EditableProjectF(
+          a.apply(()),
+          a.apply(()),
+          a.apply(()),
+          a.apply(()),
+          a.apply(()),
+          a.apply(()),
+          a.apply(()),
+          a.apply(()),
+          EditableProjectLicenseF.applicativeTraverseK.pure(a),
+          a.apply(())
+        )
+
+        override def traverseK[G[_]: Applicative, A[_], B[_]](fa: EditableProjectF[A])(
+            f: A ~> λ[C => G[B[C]]]
+        ): G[EditableProjectF[B]] =
+          (
+            f(fa.name),
+            f(fa.ownerName),
+            f(fa.category),
+            f(fa.description),
+            f(fa.homepage),
+            f(fa.issues),
+            f(fa.sources),
+            f(fa.support),
+            fa.license.traverseK(f),
+            f(fa.forumSync)
+          ).mapN(EditableProjectF.apply)
+
+        override def productK[F[_], G[_]](
+            af: EditableProjectF[F],
+            ag: EditableProjectF[G]
+        ): EditableProjectF[Tuple2K[F, G, *]] = EditableProjectF(
+          Tuple2K(af.name, ag.name),
+          Tuple2K(af.ownerName, ag.ownerName),
+          Tuple2K(af.category, ag.category),
+          Tuple2K(af.description, ag.description),
+          Tuple2K(af.homepage, ag.homepage),
+          Tuple2K(af.issues, ag.issues),
+          Tuple2K(af.sources, ag.sources),
+          Tuple2K(af.support, ag.support),
+          af.license.productK(ag.license),
+          Tuple2K(af.forumSync, ag.forumSync)
+        )
+
+        override def foldLeftK[A[_], B](fa: EditableProjectF[A], b: B)(f: B => A ~> shapeless.Const[B]#λ): B = {
+          val b1 = f(b)(fa.name)
+          val b2 = f(b1)(fa.ownerName)
+          val b3 = f(b2)(fa.category)
+          val b4 = f(b3)(fa.description)
+          val b5 = f(b4)(fa.homepage)
+          val b6 = f(b5)(fa.issues)
+          val b7 = f(b6)(fa.sources)
+          val b8 = f(b7)(fa.support)
+          val b9 = fa.license.foldLeftK(b8)(f)
+          f(b9)(fa.forumSync)
+        }
+      }
+  }
+
+  case class EditableProjectLicenseF[F[_]](name: F[Option[String]], url: F[Option[String]])
+  object EditableProjectLicenseF {
+    implicit val applicativeTraverseK: ApplicativeK[EditableProjectLicenseF] with TraverseK[EditableProjectLicenseF] =
+      new ApplicativeK[EditableProjectLicenseF] with TraverseK[EditableProjectLicenseF] {
+        override def pure[A[_]](a: shapeless.Const[Unit]#λ ~> A): EditableProjectLicenseF[A] =
+          EditableProjectLicenseF(a.apply(()), a.apply(()))
+
+        override def traverseK[G[_]: Applicative, A[_], B[_]](fa: EditableProjectLicenseF[A])(
+            f: A ~> λ[C => G[B[C]]]
+        ): G[EditableProjectLicenseF[B]] =
+          (f(fa.name), f(fa.url)).mapN(EditableProjectLicenseF.apply)
+
+        override def productK[F[_], G[_]](
+            af: EditableProjectLicenseF[F],
+            ag: EditableProjectLicenseF[G]
+        ): EditableProjectLicenseF[Tuple2K[F, G, *]] =
+          EditableProjectLicenseF(Tuple2K(af.name, ag.name), Tuple2K(af.name, ag.name))
+
+        override def foldLeftK[A[_], B](fa: EditableProjectLicenseF[A], b: B)(f: B => A ~> shapeless.Const[B]#λ): B = {
+          val b1 = f(b)(fa.name)
+          f(b1)(fa.url)
+        }
+      }
+  }
 
   @ConfiguredJsonCodec case class ApiV2ProjectTemplate(
       name: String,
