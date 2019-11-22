@@ -137,6 +137,9 @@ object JobsProcessor {
 
         case Job.DeleteDiscourseTopic(_, topicId) =>
           deleteTopic(job, topicId)
+
+        case Job.PostDiscourseReply(_, topicId, poster, content) =>
+          postReply(job, topicId, poster, content)
       }
     }
 
@@ -212,5 +215,8 @@ object JobsProcessor {
 
   private def deleteTopic(job: Model[Job.TypedJob], topicId: Int) =
     handleDiscourseErrors(job)(_.discourse.deleteTopic(topicId))
+
+  private def postReply(job: Model[Job.TypedJob], topicId: Int, poster: String, content: String) =
+    handleDiscourseErrors(job)(_.discourse.postDiscussionReply(topicId, poster, content).map(_.void))
 
 }

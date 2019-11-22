@@ -8,7 +8,6 @@ import ore.db.access.ModelView
 import ore.db.{Model, ModelService}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.models.project.{Page, Project, Version, Visibility}
-import ore.models.user.User
 import ore.syntax._
 
 import cats.data.EitherT
@@ -127,18 +126,16 @@ class OreDiscourseApiEnabled[F[_]](
     res.value
   }
 
-  def postDiscussionReply(project: Project, user: User, content: String): F[Either[DiscourseError, DiscoursePost]] = {
-    require(project.topicId.isDefined, "undefined topic id")
-    api.createPost(poster = user.name, topicId = project.topicId.get, content = content)
-  }
+  def postDiscussionReply(topicId: Int, poster: String, content: String): F[Either[DiscourseError, DiscoursePost]] =
+    api.createPost(poster = poster, topicId = topicId, content = content)
 
   def createVersionPost(project: Model[Project], version: Model[Version]): F[Either[DiscourseError, Model[Version]]] = {
     EitherT
       .liftF(project.user)
       .flatMapF { user =>
         postDiscussionReply(
-          project,
-          user,
+          project.topicId.get,
+          user.name,
           content = Templates.versionRelease(project, version, version.description)
         )
       }

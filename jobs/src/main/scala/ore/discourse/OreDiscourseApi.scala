@@ -2,7 +2,6 @@ package ore.discourse
 
 import ore.db.Model
 import ore.models.project.{Project, Version}
-import ore.models.user.User
 
 import cats.tagless.autoFunctorK
 
@@ -31,12 +30,12 @@ trait OreDiscourseApi[+F[_]] {
   /**
     * Posts a new reply to a [[Project]]'s forum topic.
     *
-    * @param project  Project to post to
-    * @param user     User who is posting
+    * @param topicId  Topic to post to
+    * @param poster   User who is posting
     * @param content  Post content
     * @return         Error Discourse returns
     */
-  def postDiscussionReply(project: Project, user: User, content: String): F[Either[DiscourseError, DiscoursePost]]
+  def postDiscussionReply(topicId: Int, poster: String, content: String): F[Either[DiscourseError, DiscoursePost]]
 
   /**
     * Posts a new "Version release" to a [[Project]]'s forum topic.

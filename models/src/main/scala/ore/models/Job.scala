@@ -97,6 +97,19 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
           .flatMap(_.toIntOption.toRight("Topic id is not a valid long"))
           .map(l => DeleteDiscourseTopic(info, l))
     }
+
+    case object PostDiscourseReplyType extends JobType("post_discourse_reply") {
+      override type CaseClass = PostDiscourseReply
+
+      override def toCaseClass(info: JobInfo, properties: Map[String, String]): Either[String, CaseClass] = {
+        for {
+          stringTopicId <- properties.get("topic_id").toRight("No topic id found")
+          topicId       <- stringTopicId.toIntOption.toRight("Topic id is not a valid long")
+          poster        <- properties.get("poster").toRight("No poster found")
+          content       <- properties.get("content").toRight("No content found")
+        } yield PostDiscourseReply(info, topicId, poster, content)
+      }
+    }
   }
 
   sealed trait TypedJob {
@@ -142,5 +155,13 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
   object DeleteDiscourseTopic {
     def newJob(topicId: Int): DeleteDiscourseTopic =
       DeleteDiscourseTopic(JobInfo.newJob(JobType.DeleteDiscourseTopicType), topicId)
+  }
+
+  case class PostDiscourseReply(info: JobInfo, topicId: Int, poster: String, content: String) extends TypedJob {
+    override def toJob: Job = Job(info, Map("topic_id" -> topicId.toString, "poster" -> poster, "content" -> content))
+  }
+  object PostDiscourseReply {
+    def newJob(topicId: Int, poster: String, content: String): PostDiscourseReply =
+      PostDiscourseReply(JobInfo.newJob(JobType.PostDiscourseReplyType), topicId, poster, content)
   }
 }

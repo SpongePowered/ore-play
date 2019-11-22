@@ -163,9 +163,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     */
   def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
     implicit request =>
-      forums.isAvailable.flatMap { isAvailable =>
-        this.stats.projectViewed(UIO.succeed(Ok(views.discuss(request.data, request.scoped, isAvailable))))
-      }
+      this.stats.projectViewed(UIO.succeed(Ok(views.discuss(request.data, request.scoped))))
   }
 
   /**
@@ -195,8 +193,9 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               .either
               .map(_.merge)
           }
-          errors <- this.forums.postDiscussionReply(request.project, poster, formData.content).map(_.swap.toOption)
-        } yield Redirect(self.showDiscussion(author, slug)).withErrors(errors.toList)
+          topicId <- ZIO.fromOption(request.project.topicId).asError(BadRequest)
+          _       <- service.insert(Job.PostDiscourseReply.newJob(topicId, poster.name, formData.content).toJob)
+        } yield Redirect(self.showDiscussion(author, slug))
       }
     }
 

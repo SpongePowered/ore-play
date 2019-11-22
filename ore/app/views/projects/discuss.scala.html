@@ -8,7 +8,7 @@ Discussion page within Project overview.
 @import views.html.helper.CSPNonce
 @import views.html.utils
 
-@(p: ProjectData, sp: ScopedProjectData, forumsAvailable: Boolean)(implicit messages: Messages, request: OreRequest[_],
+@(p: ProjectData, sp: ScopedProjectData)(implicit messages: Messages, request: OreRequest[_],
         flash: Flash, config: OreConfig, renderer: MarkdownRenderer, assetsFinder: AssetsFinder)
 
 @projectRoutes = @{controllers.project.routes.Projects}
@@ -31,28 +31,24 @@ Discussion page within Project overview.
     @if(request.headerData.currentUser.isDefined) {
         <div class="col-md-8">
             <div class="reply-box">
-                @if(forumsAvailable) {
-                    @if(sp.canPostAsOwnerOrga) {
-                        <div class="pull-right push-down">
-                            <i class="minor">@messages("project.discuss.postAs")</i>
-                            <select name="poster" form="form-editor-save">
-                                <option selected>@request.headerData.currentUser.get.name</option>
-                                <option>@p.projectOwner.name</option>
-                            </select>
-                        </div>
+                @if(sp.canPostAsOwnerOrga) {
+                <div class="pull-right push-down">
+                    <i class="minor">@messages("project.discuss.postAs")</i>
+                    <select name="poster" form="form-editor-save">
+                        <option selected>@request.headerData.currentUser.get.name</option>
+                        <option>@p.projectOwner.name</option>
+                    </select>
+                </div>
                         <div class="clearfix"></div>
-                    }
-
-                    <div class="push-down">
-                    @utils.editor(
-                        saveCall = projectRoutes.postDiscussionReply(p.project.ownerName, p.project.slug),
-                        cancellable = false,
-                        enabled = true
-                    )
-                    </div>
-                } else {
-                    <i class="minor">@messages("general.forumsUnavailable")</i>
                 }
+
+                <div class="push-down">
+                    @utils.editor(
+                    saveCall = projectRoutes.postDiscussionReply(p.project.ownerName, p.project.slug),
+                    cancellable = false,
+                    enabled = true
+                    )
+                </div>
             </div>
             <div class="reply-controls">
                 <a class="forums" target="_blank" rel="noopener"
