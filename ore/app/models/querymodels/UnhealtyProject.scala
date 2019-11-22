@@ -8,7 +8,6 @@ case class UnhealtyProject(
     namespace: ProjectNamespace,
     topicId: Option[Int],
     postId: Option[Int],
-    isTopicDirty: Boolean,
     lastUpdated: Timestamp,
     visibility: Visibility
 )

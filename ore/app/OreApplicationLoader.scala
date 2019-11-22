@@ -85,8 +85,6 @@ class OreComponents(context: ApplicationLoader.Context)
     with EvolutionsComponents {
   import OreComponents.zioDefer
 
-  env.conf
-
   val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
   lazy val apiV2Routes: _root_.apiv2.Routes = wire[_root_.apiv2.Routes]

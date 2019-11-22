@@ -89,7 +89,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
       val checkAndCreateFibers = for {
         awaitingJobs <- ModelView.now(Job).count(_.jobState === (Job.JobState.NotStarted: Job.JobState))
         _ <- if (awaitingJobs > 0) {
-          val fibers = ZIO.foreachPar_(0 until math.min(awaitingJobs, maxConnections - 3)) { _ =>
+          val fibers = ZIO.foreachPar_(0 until math.max(1, math.min(awaitingJobs, maxConnections - 3))) { _ =>
             JobsProcessor.fiber.sandbox
           }
 

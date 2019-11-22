@@ -1,6 +1,6 @@
 ore {
-    baseUrl = "http://localhost:9000"
-    baseUrl = ${?BASE_URL}
+    base-url = "http://localhost:9000"
+    base-url = ${?BASE_URL}
 
     pages {
         home {

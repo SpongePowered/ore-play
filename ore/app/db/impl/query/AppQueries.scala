@@ -79,11 +79,10 @@ object AppQueries extends WebDoobieOreProtocol {
   }
 
   def getUnhealtyProjects(staleTime: FiniteDuration): Query0[UnhealtyProject] = {
-    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, p.is_topic_dirty, coalesce(hp.last_updated, p.created_at), p.visibility
+    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, coalesce(hp.last_updated, p.created_at), p.visibility
           |  FROM projects p JOIN home_projects hp ON p.id = hp.id
           |  WHERE p.topic_id IS NULL
           |     OR p.post_id IS NULL
-          |     OR p.is_topic_dirty
           |     OR hp.last_updated > (now() - $staleTime::INTERVAL)
           |     OR p.visibility != 1""".stripMargin.query[UnhealtyProject]
   }
