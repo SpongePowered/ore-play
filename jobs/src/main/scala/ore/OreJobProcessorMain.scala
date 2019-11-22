@@ -41,16 +41,23 @@ object OreJobProcessorMain extends zio.ManagedApp {
   val resources: Path = Paths.get(this.getClass.getClassLoader.getResource("application.conf").toURI).getParent
 
   override def run(args: List[String]): ZManaged[Environment, Nothing, Int] = {
+    def log(f: scalalogging.Logger => Unit): ZManaged[Any, Nothing, Unit] = ZManaged.fromEffect(UIO(f(Logger)))
+
     (for {
-      db           <- createSlickDb
-      transactor   <- createDoobieTransactor(db)
-      actorSystem  <- createActorSystem
-      materializer <- createMaterializer(actorSystem)
+      _          <- log(_.info("Ore jobs processing starting"))
+      db         <- createSlickDb
+      transactor <- createDoobieTransactor(db)
       taskService = new OreModelService(db, transactor)
       uioService  = taskService.mapK(Lambda[Task ~> UIO](task => task.orDie))
+      _                   <- log(_.info("Created DB system"))
+      actorSystem         <- createActorSystem
+      materializer        <- createMaterializer(actorSystem)
+      _                   <- log(_.info("Created Akka system"))
       jobsConfig          <- createConfig
+      _                   <- log(_.info("Loaded config"))
       akkaDiscourseClient <- createDiscourseApi(jobsConfig)(actorSystem, materializer)
       oreDiscourse = createOreDiscourse(akkaDiscourseClient)(jobsConfig, taskService)
+      _ <- log(_.info("Init finished. Starting"))
       _ <- runApp(db.source.maxConnections.getOrElse(32))
         .provideSome[Environment](createExpandedEnvironment(uioService, oreDiscourse, jobsConfig))
     } yield 0).catchAll(ZManaged.succeed)
@@ -169,14 +176,14 @@ object OreJobProcessorMain extends zio.ManagedApp {
   private def createDiscourseApi(
       config: OreJobsConfig
   )(implicit system: ActorSystem, mat: Materializer): ZManaged[Any, Int, AkkaDiscourseApi[Task]] =
-    config.forums.api.pipe { cfg =>
+    config.discourse.api.pipe { cfg =>
       ZManaged
         .fromEffect(
           AkkaDiscourseApi[Task](
             AkkaDiscourseSettings(
               cfg.key,
               cfg.admin,
-              config.forums.baseUrl,
+              config.discourse.baseUrl,
               cfg.breaker.maxFailures,
               cfg.breaker.reset,
               cfg.breaker.timeout
@@ -189,7 +196,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
   private def createOreDiscourse(
       discourseClient: DiscourseApi[Task]
   )(implicit config: OreJobsConfig, service: ModelService[Task]): OreDiscourseApiEnabled[Task] =
-    config.forums.pipe { cfg =>
+    config.discourse.pipe { cfg =>
       implicit val runtime: Runtime[Environment] = this
       new OreDiscourseApiEnabled[Task](
         discourseClient,

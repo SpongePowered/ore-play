@@ -11,7 +11,7 @@ trait Config {
 
 case class OreJobsConfig(
     ore: OreJobsConfig.Ore,
-    forums: OreJobsConfig.Forums,
+    discourse: OreJobsConfig.Discourse,
     jobs: OreJobsConfig.Jobs
 )
 
@@ -22,7 +22,7 @@ object OreJobsConfig {
   case class OrePages(home: OrePagesHome)
   case class OrePagesHome(name: String)
 
-  case class Forums(
+  case class Discourse(
       baseUrl: String,
       categoryDefault: Int,
       categoryDeleted: Int,

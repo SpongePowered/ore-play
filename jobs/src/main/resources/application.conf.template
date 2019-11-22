@@ -1,4 +1,7 @@
 ore {
+    baseUrl = "http://localhost:9000"
+    baseUrl = ${?BASE_URL}
+
     pages {
         home {
             name = "Home"
