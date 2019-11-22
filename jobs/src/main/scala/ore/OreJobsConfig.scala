@@ -11,7 +11,8 @@ trait Config {
 
 case class OreJobsConfig(
     ore: OreJobsConfig.Ore,
-    forums: OreJobsConfig.Forums
+    forums: OreJobsConfig.Forums,
+    jobs: OreJobsConfig.Jobs
 )
 
 object OreJobsConfig {
@@ -39,5 +40,16 @@ object OreJobsConfig {
       maxFailures: Int,
       reset: FiniteDuration,
       timeout: FiniteDuration
+  )
+
+  case class Jobs(
+      checkInterval: FiniteDuration,
+      timeouts: JobsTimeouts
+  )
+
+  case class JobsTimeouts(
+      unknownError: FiniteDuration,
+      statusError: FiniteDuration,
+      notAvailable: FiniteDuration
   )
 }

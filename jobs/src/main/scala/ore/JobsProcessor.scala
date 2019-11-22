@@ -28,7 +28,7 @@ import zio.clock.Clock
 object JobsProcessor {
   private val Logger = scalalogging.Logger("JobsProcessor")
 
-  def fiber: URIO[Db with Clock with Discourse, Unit] =
+  def fiber: URIO[Db with Clock with Discourse with Config, Unit] =
     tryGetJob.flatMap {
       case Some(job) => (decodeJob(job).mapError(Right.apply) >>= processJob >>= finishJob).catchAll(logErrors) *> fiber
       case None      => ZIO.unit
@@ -105,7 +105,9 @@ object JobsProcessor {
         .andThen(ZIO.fail(Right(error)))
   }
 
-  private def processJob(job: Model[Job.TypedJob]): ZIO[Db with Discourse, Either[Unit, String], Model[Job.TypedJob]] =
+  private def processJob(
+      job: Model[Job.TypedJob]
+  ): ZIO[Db with Discourse with Config, Either[Unit, String], Model[Job.TypedJob]] =
     setLastUpdated(job) *> ZIO.access[Db](_.service).flatMap { implicit service =>
       job.obj match {
         case Job.UpdateDiscourseProjectTopic(_, projectId) =>
@@ -140,7 +142,7 @@ object JobsProcessor {
 
   def handleDiscourseErrors(job: Model[Job.TypedJob])(
       program: Discourse => ZIO[Any, Throwable, Either[DiscourseError, Unit]]
-  ): ZIO[Db with Discourse, Either[Unit, String], Model[Job.TypedJob]] = {
+  ): ZIO[Db with Discourse with Config, Either[Unit, String], Model[Job.TypedJob]] = {
     def retryIn(duration: FiniteDuration) =
       updateJob(
         job,
@@ -148,6 +150,9 @@ object JobsProcessor {
           retryAt = Some(OffsetDateTime.now().plusNanos((duration + 5.seconds).toNanos))
         )
       ).andThen(ZIO.fail(Left(())))
+
+    def retryInConfig(duration: OreJobsConfig => FiniteDuration) =
+      ZIO.access[Config](env => duration(env.config)) >>= retryIn
 
     ZIO
       .accessM[Discourse](program)
@@ -164,7 +169,7 @@ object JobsProcessor {
         case DiscourseError.RatelimitError(waitTime) => retryIn(waitTime)
 
         case DiscourseError.UnknownError(messages, tpe, extras) =>
-          retryIn(15.minutes).asError(
+          retryInConfig(_.jobs.timeouts.unknownError).asError(
             Right(s"""|Encountered error when executing Discourse request
                       |Job: ${job.obj}
                       |Type: $tpe
@@ -172,13 +177,13 @@ object JobsProcessor {
                       |Extras: ${extras.mkString("\n  ", "\n  ", "")}""".stripMargin)
           )
         case DiscourseError.StatusError(statusCode, message) =>
-          retryIn(10.minutes).asError(
+          retryInConfig(_.jobs.timeouts.statusError).asError(
             Right(s"""|Encountered status error when executing Discourse request
                       |Job: ${job.obj}
                       |Status code: $statusCode
                       |Message: ${message.getOrElse("None")}""".stripMargin)
           )
-        case DiscourseError.NotAvailable => retryIn(2.minutes)
+        case DiscourseError.NotAvailable => retryInConfig(_.jobs.timeouts.notAvailable)
       }
   }
 

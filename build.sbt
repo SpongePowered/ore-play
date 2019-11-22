@@ -154,6 +154,7 @@ lazy val models = project
   )
 
 lazy val jobs = project
+  .enablePlugins(UniversalPlugin, JavaAppPackaging, ExternalizedResourcesMappings)
   .dependsOn(models, discourse)
   .settings(
     commonSettings,
