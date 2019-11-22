@@ -202,7 +202,7 @@ class SchemaSpec extends DbSpec {
   test("Job") {
     check(
       sql"""|SELECT last_updated, retry_at, last_error, last_error_descriptor, state, 
-            |job_type, job_properties""".stripMargin.query[Job]
+            |job_type, job_properties FROM jobs""".stripMargin.query[Job]
     )
   }
 }
