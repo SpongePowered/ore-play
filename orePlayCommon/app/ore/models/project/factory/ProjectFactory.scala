@@ -314,11 +314,7 @@ trait ProjectFactory {
             .setVisibility(Visibility.Public, "First upload", version.authorId.getOrElse(project.ownerId))
             .map(_._1)
 
-          val addForumJob = service.insert(
-            Job
-              .UpdateDiscourseProjectTopic(JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType), project.id)
-              .toJob
-          )
+          val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
 
           val initProject =
             if (project.topicId.isEmpty) addForumJob *> setVisibility
@@ -328,11 +324,7 @@ trait ProjectFactory {
         } else UIO.succeed(project)
       }
       _ <- if (pending.createForumPost) {
-        service
-          .insert(
-            Job.UpdateDiscourseVersionPost(JobInfo.newJob(Job.JobType.UpdateDiscourseVersionPostType), version.id).toJob
-          )
-          .unit
+        service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob).unit
       } else UIO.unit
     } yield (firstTimeUploadProject, version, channel, tags)
   }

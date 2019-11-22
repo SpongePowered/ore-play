@@ -102,9 +102,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         oldDescription = version.description.getOrElse("")
         newDescription = request.body.trim
         _ <- service.update(version)(_.copy(description = Some(newDescription)))
-        _ <- service.insert(
-          Job.UpdateDiscourseVersionPost(JobInfo.newJob(Job.JobType.UpdateDiscourseVersionPostType), version.id).toJob
-        )
+        _ <- service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob)
         _ <- UserActionLogger.log(
           request.request,
           LoggedActionType.VersionDescriptionEdited,

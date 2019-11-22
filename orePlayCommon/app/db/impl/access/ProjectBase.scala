@@ -189,11 +189,7 @@ object ProjectBase {
         _ <- {
           val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
           val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
-          val addForumJob = service.insert(
-            Job
-              .UpdateDiscourseProjectTopic(JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType), project.id)
-              .toJob
-          )
+          val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
 
           // Project's name alter's the topic title, update it
           val dbOp =
@@ -277,14 +273,7 @@ object ProjectBase {
       val fileEff = fileIO.executeBlocking(
         FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
       )
-      val addForumJob = (id: Int) =>
-        service
-          .insert(
-            Job
-              .DeleteDiscourseTopic(JobInfo.newJob(Job.JobType.DeleteDiscourseTopicType), id)
-              .toJob
-          )
-          .void
+      val addForumJob = (id: Int) => service.insert(Job.DeleteDiscourseTopic.newJob(id).toJob).void
 
       val eff = project.topicId.fold(F.unit)(addForumJob)
       eff *> service.delete(project) <* fileEff

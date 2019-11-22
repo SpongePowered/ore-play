@@ -608,16 +608,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       .asyncF { implicit request =>
         val newVisibility = Visibility.withValue(visibility)
 
-        val addForumJob = service
-          .insert(
-            Job
-              .UpdateDiscourseProjectTopic(
-                JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType),
-                request.project.id
-              )
-              .toJob
-          )
-          .unit
+        val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(request.project.id).toJob).unit
 
         val forumVisbility =
           if (Visibility.isPublic(newVisibility) != Visibility.isPublic(request.project.visibility)) {
@@ -715,11 +706,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         } else {
           val oreVisibility = oldProject.setVisibility(Visibility.SoftDelete, comment, request.user.id)
 
-          val forumVisibility = service.insert(
-            Job
-              .UpdateDiscourseProjectTopic(JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType), oldProject.id)
-              .toJob
-          )
+          val forumVisibility = service.insert(Job.UpdateDiscourseProjectTopic.newJob(oldProject.id).toJob)
           val log = UserActionLogger.log(
             request.request,
             LoggedActionType.ProjectVisibilityChange,

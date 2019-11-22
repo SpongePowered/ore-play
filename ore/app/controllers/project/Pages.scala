@@ -235,16 +235,7 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
           val updatePage = service.update(createdPage)(_.copy(contents = newPage))
 
           val addForumJob = if (createdPage.isHome) {
-            service
-              .insert(
-                Job
-                  .UpdateDiscourseProjectTopic(
-                    JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType),
-                    project.id
-                  )
-                  .toJob
-              )
-              .unit
+            service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob).unit
           } else IO.unit
 
           val log = UserActionLogger.log(

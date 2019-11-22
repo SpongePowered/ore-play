@@ -113,6 +113,10 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
     def toJob: Job =
       Job(info, Map("project_id" -> projectId.toString))
   }
+  object UpdateDiscourseProjectTopic {
+    def newJob(projectId: DbRef[Project]): UpdateDiscourseProjectTopic =
+      UpdateDiscourseProjectTopic(JobInfo.newJob(JobType.UpdateDiscourseProjectTopicType), projectId)
+  }
 
   case class UpdateDiscourseVersionPost(
       info: JobInfo,
@@ -122,6 +126,10 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
     def toJob: Job =
       Job(info, Map("version_id" -> versionId.toString))
   }
+  object UpdateDiscourseVersionPost {
+    def newJob(versionId: DbRef[Version]): UpdateDiscourseVersionPost =
+      UpdateDiscourseVersionPost(JobInfo.newJob(JobType.UpdateDiscourseVersionPostType), versionId)
+  }
 
   case class DeleteDiscourseTopic(
       info: JobInfo,
@@ -130,5 +138,9 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
 
     def toJob: Job =
       Job(info, Map("topic_id" -> topicId.toString))
+  }
+  object DeleteDiscourseTopic {
+    def newJob(topicId: Int): DeleteDiscourseTopic =
+      DeleteDiscourseTopic(JobInfo.newJob(JobType.DeleteDiscourseTopicType), topicId)
   }
 }
