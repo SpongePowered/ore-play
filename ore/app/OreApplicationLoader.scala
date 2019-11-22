@@ -33,14 +33,11 @@ import db.impl.DbUpdateTask
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.service.OreModelService
 import db.impl.service.OreModelService.F
-import discourse.{OreDiscourseApi, OreDiscourseApiDisabled, OreDiscourseApiEnabled}
 import filters.LoggingFilter
 import form.OreForms
 import mail.{EmailFactory, Mailer, SpongeMailer}
 import ore.auth.{AkkaSSOApi, AkkaSpongeAuthApi, SSOApi, SpongeAuthApi}
 import ore.db.ModelService
-import ore.discourse.AkkaDiscourseApi
-import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
 import ore.external.Cacher
 import ore.markdown.{FlexmarkRenderer, MarkdownRenderer}
 import ore.models.project.ProjectTask
@@ -87,6 +84,8 @@ class OreComponents(context: ApplicationLoader.Context)
     with SlickEvolutionsComponents
     with EvolutionsComponents {
   import OreComponents.zioDefer
+
+  env.conf
 
   val prefix                                = "/"
   override lazy val router: Router          = wire[_root_.router.Routes]
@@ -220,46 +219,9 @@ class OreComponents(context: ApplicationLoader.Context)
     val sso = config.security.sso
     runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
   }
-  lazy val ssoApi: SSOApi[UIO] = ssoApiTask.imapK(taskToUIO)(uioToTask)
-  lazy val oreDiscourseApiTask: OreDiscourseApi[Task] = {
-    val forums = config.forums
-    if (forums.api.enabled) {
-      val api = forums.api
-
-      val discourseApi = runtime.unsafeRun(
-        AkkaDiscourseApi[Task](
-          AkkaDiscourseSettings(
-            api.key,
-            api.admin,
-            forums.baseUrl,
-            api.breaker.maxFailures,
-            api.breaker.reset,
-            api.breaker.timeout
-          )
-        )
-      )
-
-      val forumsApi = new OreDiscourseApiEnabled(
-        discourseApi,
-        forums.categoryDefault,
-        forums.categoryDeleted,
-        env.conf.resolve("discourse/project_topic.md"),
-        env.conf.resolve("discourse/version_post.md"),
-        forums.retryRate,
-        actorSystem.scheduler,
-        api.admin
-      )
-
-      forumsApi.start()
-
-      forumsApi
-    } else {
-      new OreDiscourseApiDisabled[Task]
-    }
-  }
-  implicit lazy val oreDiscourseApi: OreDiscourseApi[UIO] = oreDiscourseApiTask.mapK(taskToUIO)
-  implicit lazy val userBaseTask: UserBase[Task]          = wire[UserBase.UserBaseF[Task]]
-  implicit lazy val userBaseUIO: UserBase[UIO]            = wire[UserBase.UserBaseF[UIO]]
+  lazy val ssoApi: SSOApi[UIO]                   = ssoApiTask.imapK(taskToUIO)(uioToTask)
+  implicit lazy val userBaseTask: UserBase[Task] = wire[UserBase.UserBaseF[Task]]
+  implicit lazy val userBaseUIO: UserBase[UIO]   = wire[UserBase.UserBaseF[UIO]]
   implicit lazy val projectBase: ProjectBase[UIO] = {
     implicit val providedProjectFiles: ProjectFiles[Task] =
       projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.Environment))

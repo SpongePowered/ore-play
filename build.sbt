@@ -78,6 +78,7 @@ lazy val zioCatsVersion      = "2.0.0.0-RC5"
 lazy val doobieVersion       = "0.8.4"
 lazy val flexmarkVersion     = "0.50.40"
 lazy val playSlickVersion    = "4.0.2"
+lazy val slickVersion        = "3.3.2"
 lazy val slickPgVersion      = "0.18.0"
 lazy val circeVersion        = "0.12.2"
 lazy val akkaVersion         = "2.5.23"
@@ -91,7 +92,7 @@ lazy val db = project.settings(
   commonSettings,
   name := "ore-db",
   libraryDependencies ++= Seq(
-    "com.typesafe.slick" %% "slick"               % "3.3.2",
+    "com.typesafe.slick" %% "slick"               % slickVersion,
     "org.tpolecat"       %% "doobie-core"         % doobieVersion,
     "org.typelevel"      %% "cats-tagless-macros" % catsTaglessVersion,
     "com.chuusai"        %% "shapeless"           % "2.3.3"
@@ -152,9 +153,27 @@ lazy val models = project
     )
   )
 
+lazy val jobs = project
+  .dependsOn(models, discourse)
+  .settings(
+    commonSettings,
+    name := "ore-jobs",
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"              % zioVersion,
+      "dev.zio" %% "zio-interop-cats" % zioCatsVersion
+    ),
+    libraryDependencies ++= Seq(
+      "com.typesafe.slick"         %% "slick-hikaricp" % slickVersion,
+      "com.typesafe.scala-logging" %% "scala-logging"  % scalaLoggingVersion,
+      "ch.qos.logback"             % "logback-classic" % "1.2.3",
+      "io.sentry"                  % "sentry-logback"  % "1.7.27",
+      "com.github.pureconfig"      %% "pureconfig"     % "0.12.1"
+    )
+  )
+
 lazy val orePlayCommon: Project = project
   .enablePlugins(PlayScala)
-  .dependsOn(discourse, auth, models)
+  .dependsOn(auth, models)
   .settings(
     commonSettings,
     playCommonSettings,
@@ -301,4 +320,6 @@ lazy val ore = project
   )
 
 lazy val oreAll =
-  project.in(file(".")).aggregate(db, externalCommon, discourse, auth, models, orePlayCommon, apiV2, ore, oreClient)
+  project
+    .in(file("."))
+    .aggregate(db, externalCommon, discourse, auth, models, orePlayCommon, apiV2, ore, oreClient, jobs)

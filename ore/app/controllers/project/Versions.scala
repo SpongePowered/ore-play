@@ -16,7 +16,6 @@ import play.filters.csrf.CSRF
 
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import controllers.{OreBaseController, OreControllerComponents}
-import discourse.OreDiscourseApi
 import form.OreForms
 import models.viewhelper.VersionData
 import ore.data.DownloadType
@@ -25,6 +24,7 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.UserTable
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
+import ore.models.{Job, JobInfo}
 import ore.models.admin.VersionVisibilityChange
 import ore.models.project._
 import ore.models.project.factory.ProjectFactory
@@ -56,7 +56,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     implicit oreComponents: OreControllerComponents,
     messagesApi: MessagesApi,
     env: OreEnv,
-    forums: OreDiscourseApi[UIO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
@@ -102,7 +101,10 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         version <- getVersion(request.project, versionString)
         oldDescription = version.description.getOrElse("")
         newDescription = request.body.trim
-        _ <- version.updateForumContents[Task](newDescription).orDie
+        _ <- service.update(version)(_.copy(description = Some(newDescription)))
+        _ <- service.insert(
+          Job.UpdateDiscourseVersionPost(JobInfo.newJob(Job.JobType.UpdateDiscourseVersionPostType), version.id).toJob
+        )
         _ <- UserActionLogger.log(
           request.request,
           LoggedActionType.VersionDescriptionEdited,

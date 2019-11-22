@@ -49,17 +49,6 @@ object StringUtils {
   def equalsIgnoreCase[T <: Table[_]](str1: T => Rep[String], str2: String): T => Rep[Boolean] =
     str1(_).toLowerCase === str2.toLowerCase
 
-  /**
-    * Reads the specified Path's file content and formats it with the
-    * specified parameters.
-    *
-    * @param path   Path to file
-    * @param params Format parameters
-    * @return       Formatted string
-    */
-  def readAndFormatFile(path: Path, params: String*): String =
-    MessageFormat.format(new String(Files.readAllBytes(path)), params: _*)
-
   //https://stackoverflow.com/a/9855338
   private val hexArray = "0123456789abcdef".toCharArray
   def bytesToHex(bytes: Array[Byte]): String = {

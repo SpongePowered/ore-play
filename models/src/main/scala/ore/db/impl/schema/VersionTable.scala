@@ -26,7 +26,6 @@ class VersionTable(tag: Tag)
   def fileName        = column[String]("file_name")
   def createForumPost = column[Boolean]("create_forum_post")
   def postId          = column[Option[Int]]("post_id")
-  def isPostDirty     = column[Boolean]("is_post_dirty")
 
   override def * =
     (
@@ -47,8 +46,7 @@ class VersionTable(tag: Tag)
         visibility,
         fileName,
         createForumPost,
-        postId,
-        isPostDirty
+        postId
       )
     ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))
 }

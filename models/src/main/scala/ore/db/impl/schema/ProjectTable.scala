@@ -23,7 +23,6 @@ class ProjectTable(tag: Tag)
   def category             = column[Category]("category")
   def topicId              = column[Option[Int]]("topic_id")
   def postId               = column[Int]("post_id")
-  def isTopicDirty         = column[Boolean]("is_topic_dirty")
   def notes                = column[Json]("notes")
   def keywords             = column[List[String]]("keywords")
   def homepage             = column[String]("homepage")
@@ -61,7 +60,6 @@ class ProjectTable(tag: Tag)
         description.?,
         topicId,
         postId.?,
-        isTopicDirty,
         visibility,
         notes,
         settings

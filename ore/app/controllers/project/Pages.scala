@@ -8,7 +8,6 @@ import play.api.mvc.{Action, AnyContent}
 import play.utils.UriEncoding
 
 import controllers.{OreBaseController, OreControllerComponents}
-import discourse.OreDiscourseApi
 import form.OreForms
 import form.project.PageSaveForm
 import ore.StatTracker
@@ -17,6 +16,7 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.PageTable
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
+import ore.models.{Job, JobInfo}
 import ore.models.project.{Page, Project}
 import ore.models.user.{LoggedActionPage, LoggedActionType}
 import ore.permission.Permission
@@ -35,7 +35,6 @@ import zio.{IO, Task, UIO}
 @Singleton
 class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
     implicit oreComponents: OreControllerComponents,
-    forums: OreDiscourseApi[UIO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
@@ -232,14 +231,31 @@ class Pages @Inject()(forms: OreForms, stats: StatTracker[UIO])(
           }
         }
         _ <- content.fold(IO.succeed(createdPage)) { newPage =>
-          val oldPage = createdPage.contents
-          UserActionLogger.log(
+          val oldPage    = createdPage.contents
+          val updatePage = service.update(createdPage)(_.copy(contents = newPage))
+
+          val addForumJob = if (createdPage.isHome) {
+            service
+              .insert(
+                Job
+                  .UpdateDiscourseProjectTopic(
+                    JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType),
+                    project.id
+                  )
+                  .toJob
+              )
+              .unit
+          } else IO.unit
+
+          val log = UserActionLogger.log(
             request.request,
             LoggedActionType.ProjectPageEdited,
             createdPage.id,
             newPage,
             oldPage
-          )(LoggedActionPage(_, Some(createdPage.projectId))) *> createdPage.updateForumContents[Task](newPage).orDie
+          )(LoggedActionPage(_, Some(createdPage.projectId)))
+
+          updatePage <* log <* addForumJob
         }
       } yield Redirect(self.show(author, slug, page))
     }

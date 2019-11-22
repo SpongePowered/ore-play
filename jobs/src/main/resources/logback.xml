@@ -1,0 +1,42 @@
+<!--
+  ~ Copyright (C) 2009-2016 Lightbend Inc. <https://www.lightbend.com>
+  -->
+<!-- The default logback configuration that Play uses if no other configuration is provided -->
+<configuration>
+    <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%d{HH:mm:ss.SSS}] %-5level %logger{15} - %message%n%xException{10}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="AsyncConsole" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="Console" />
+    </appender>
+
+    <!-- Sentry -->
+    <appender name="Sentry" class="io.sentry.logback.SentryAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="Sentry" />
+        <appender-ref ref="AsyncConsole" />
+    </root>
+
+    <!-- Disables the security logger -->
+    <turboFilter class="ch.qos.logback.classic.turbo.MarkerFilter">
+        <Marker>SECURITY</Marker>
+        <OnMatch>DENY</OnMatch>
+    </turboFilter>
+
+    <!-- Shutdown gracefully -->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
+
+    <logger name="slick" level="INFO" />
+
+    <!-- Ore loggers -->
+    <logger name="OreJobsMain" level="INFO" />
+    <logger name="JobsProcessor" level="INFO" />
+</configuration>

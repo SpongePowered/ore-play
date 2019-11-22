@@ -47,8 +47,7 @@ case class Version(
     visibility: Visibility = Visibility.Public,
     fileName: String,
     createForumPost: Boolean = true,
-    postId: Option[Int] = None,
-    isPostDirty: Boolean = false
+    postId: Option[Int] = None
 ) extends Describable {
 
   //TODO: Check this in some way

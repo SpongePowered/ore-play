@@ -6,6 +6,9 @@
 application {
     baseUrl             =   "http://localhost:9000"
     baseUrl             =   ${?BASE_URL}
+    discourse-url       =   "https://forums.spongepowered.org"
+    discourse-cdn-url   =   "https://forums-cdn.spongepowered.org"
+
     uploadsDir = "uploads"
     uploadsDir = ${?UPLOADS_DIR}
 
@@ -210,31 +213,6 @@ slick.dbs.default {
         user = ${?JDBC_DATABASE_USERNAME}
         password = ""
         password = ${?JDBC_DATABASE_PASSWORD}
-    }
-}
-
-
-# Discourse SSO
-discourse {
-    baseUrl            =   "https://forums.spongepowered.org"
-    cdnUrl             =   "https://forums-cdn.spongepowered.org"
-    retryRate          =   60000ms
-    categoryDefault    =   -1
-    categoryDefault    =   ${?DISCOURSE_CATEGORY_OPEN}
-    categoryDeleted    =   -1
-    categoryDeleted    =   ${?DISCOURSE_CATEGORY_DELETED}
-
-    api {
-        enabled              =   true
-        key                  =   "changeme"
-        key                  =   ${?DISCOURSE_API_KEY}
-        admin                =   system
-
-        breaker {
-            max-failures =   5
-            timeout      =   10s
-            reset        =   5m
-        }
     }
 }
 

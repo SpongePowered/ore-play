@@ -60,7 +60,6 @@ case class Project(
     description: Option[String],
     topicId: Option[Int] = None,
     postId: Option[Int] = None,
-    isTopicDirty: Boolean = false,
     visibility: Visibility = Visibility.Public,
     notes: Json = Json.obj(),
     settings: ProjectSettings = ProjectSettings()

@@ -10,6 +10,7 @@ import ore.data.project.{Category, FlagReason}
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, DownloadType, Prompt}
 import ore.db.OreProfile
+import ore.models.Job
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.{LoggedActionContext, LoggedActionType}
 import ore.permission.Permission
@@ -35,6 +36,7 @@ trait OrePostgresDriver
     with PgNetSupport
     with PgCirceJsonSupport
     with PgEnumSupport
+    with PgHStoreSupport
     with SlickValueEnumSupport { self =>
 
   override val columnTypes = new JdbcTypes
@@ -56,7 +58,7 @@ trait OrePostgresDriver
     }
   }
 
-  object OreDriver extends API with ArrayImplicits with NetImplicits with JsonImplicits {
+  object OreDriver extends API with ArrayImplicits with NetImplicits with JsonImplicits with HStoreImplicits {
     type ModelTable[M]          = self.ModelTable[M]
     type AssociativeTable[A, B] = self.AssociativeTable[A, B]
     type ModelFilter[T]         = self.ModelFilter[T]
@@ -131,6 +133,9 @@ trait OrePostgresDriver
     ).to(_.toList)
 
     implicit val roleCategoryTypeMapper: JdbcType[RoleCategory] = pgEnumForValueEnum("ROLE_CATEGORY", RoleCategory)
+    implicit val jobStateTypeMapper: JdbcType[Job.JobState]     = pgEnumForValueEnum("JOB_STATE", Job.JobState)
+
+    implicit val jobTypeTypeMapper: JdbcType[Job.JobType] = mappedColumnTypeForValueEnum(Job.JobType)
 
     implicit def nelArrayMapper[A](
         implicit base: BaseColumnType[List[A]]

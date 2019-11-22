@@ -8,13 +8,13 @@ import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
 import db.impl.access.ProjectBase
-import discourse.OreDiscourseApi
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, Platform}
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.MembershipDossier
+import ore.models.{Job, JobInfo}
 import ore.models.project._
 import ore.models.project.io._
 import ore.models.user.role.ProjectUserRole
@@ -52,7 +52,6 @@ trait ProjectFactory {
   protected val dependencyVersionRegex: Regex = """^[0-9a-zA-Z.,\[\]()-]+$""".r
 
   implicit protected def config: OreConfig
-  implicit protected def forums: OreDiscourseApi[UIO]
   implicit protected def env: OreEnv
 
   private val Logger    = scalalogging.Logger("Projects")
@@ -311,24 +310,31 @@ trait ProjectFactory {
       _ <- uploadPlugin(project, pending.plugin, version).orDieWith(s => new Exception(s))
       firstTimeUploadProject <- {
         if (project.visibility == Visibility.New) {
-          val setVisibility = (project: Model[Project]) => {
-            project
-              .setVisibility(Visibility.Public, "First upload", version.authorId.getOrElse(project.ownerId))
-              .map(_._1)
-          }
+          val setVisibility = project
+            .setVisibility(Visibility.Public, "First upload", version.authorId.getOrElse(project.ownerId))
+            .map(_._1)
+
+          val addForumJob = service.insert(
+            Job
+              .UpdateDiscourseProjectTopic(JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType), project.id)
+              .toJob
+          )
 
           val initProject =
-            if (project.topicId.isEmpty) this.forums.createProjectTopic(project).flatMap(setVisibility)
-            else setVisibility(project)
+            if (project.topicId.isEmpty) addForumJob *> setVisibility
+            else setVisibility
 
           initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
-
         } else UIO.succeed(project)
       }
-      withTopicId <- if (firstTimeUploadProject.topicId.isDefined && pending.createForumPost)
-        this.forums.createVersionPost(firstTimeUploadProject, version)
-      else UIO.succeed(version)
-    } yield (firstTimeUploadProject, withTopicId, channel, tags)
+      _ <- if (pending.createForumPost) {
+        service
+          .insert(
+            Job.UpdateDiscourseVersionPost(JobInfo.newJob(Job.JobType.UpdateDiscourseVersionPostType), version.id).toJob
+          )
+          .unit
+      } else UIO.unit
+    } yield (firstTimeUploadProject, version, channel, tags)
   }
 
   private def addTags(pendingVersion: PendingVersion, newVersion: Model[Version]): UIO[Seq[Model[VersionTag]]] =
@@ -380,7 +386,6 @@ trait ProjectFactory {
 class OreProjectFactory @Inject()(
     val service: ModelService[UIO],
     val config: OreConfig,
-    val forums: OreDiscourseApi[UIO],
     val cacheApi: SyncCacheApi,
     val env: OreEnv,
     val projects: ProjectBase[UIO],

@@ -5,12 +5,12 @@ import scala.language.higherKinds
 import java.io.IOException
 
 import db.impl.query.SharedQueries
-import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{PageTable, ProjectTable, VersionTable}
 import ore.db.{Model, ModelService}
+import ore.models.{Job, JobInfo}
 import ore.models.project._
 import ore.models.project.io.ProjectFiles
 import ore.util.StringUtils._
@@ -80,7 +80,7 @@ trait ProjectBase[+F[_]] {
     * @param project  Project to rename
     * @param name     New name to assign Project
     */
-  def rename(project: Model[Project], name: String): F[Boolean]
+  def rename(project: Model[Project], name: String): F[Unit]
 
   /**
     * Irreversibly deletes this channel and all version associated with it.
@@ -112,7 +112,6 @@ object ProjectBase {
   class ProjectBaseF[F[_]](
       implicit service: ModelService[F],
       config: OreConfig,
-      forums: OreDiscourseApi[F],
       fileManager: ProjectFiles[F],
       fileIO: FileIO[F],
       F: cats.effect.Effect[F],
@@ -180,27 +179,32 @@ object ProjectBase {
     def rename(
         project: Model[Project],
         name: String
-    ): F[Boolean] = {
+    ): F[Unit] = {
       val newName = compact(name)
       val newSlug = slugify(newName)
       checkArgument(config.isValidProjectName(name), "invalid name", "")
       for {
         isAvailable <- this.isNamespaceAvailable(project.ownerName, newSlug)
         _ = checkArgument(isAvailable, "slug not available", "")
-        res <- {
+        _ <- {
           val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
           val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
+          val addForumJob = service.insert(
+            Job
+              .UpdateDiscourseProjectTopic(JobInfo.newJob(Job.JobType.UpdateDiscourseProjectTopicType), project.id)
+              .toJob
+          )
 
           // Project's name alter's the topic title, update it
           val dbOp =
             if (project.topicId.isDefined)
-              forums.updateProjectTopic(project) <* renameModel
+              renameModel *> addForumJob.void
             else
-              renameModel.as(false)
+              renameModel.void
 
           dbOp <* fileOp
         }
-      } yield res
+      } yield ()
     }
 
     def deleteChannel(project: Model[Project], channel: Model[Channel]): F[Unit] = {
@@ -273,11 +277,16 @@ object ProjectBase {
       val fileEff = fileIO.executeBlocking(
         FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
       )
-      val eff =
-        if (project.topicId.isDefined)
-          forums.deleteProjectTopic(project).void
-        else F.unit
-      // TODO: Instead, move to the "projects_deleted" table just in case we couldn't delete the topic
+      val addForumJob = (id: Int) =>
+        service
+          .insert(
+            Job
+              .DeleteDiscourseTopic(JobInfo.newJob(Job.JobType.DeleteDiscourseTopicType), id)
+              .toJob
+          )
+          .void
+
+      val eff = project.topicId.fold(F.unit)(addForumJob)
       eff *> service.delete(project) <* fileEff
     }
 

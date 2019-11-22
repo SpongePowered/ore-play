@@ -13,6 +13,7 @@ import ore.data.project.{Category, FlagReason}
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, DownloadType, Prompt}
 import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
+import ore.models.Job
 import ore.models.api.ApiKey
 import ore.models.project.{ReviewState, TagColor, Visibility}
 import ore.models.user.{LoggedActionContext, LoggedActionType, User}
@@ -180,6 +181,7 @@ trait DoobieOreProtocol {
   implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
     enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]] // scalafix:ok
   implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
+  implicit val jobTypeMeta: Meta[Job.JobType]     = enumeratumMeta(Job.JobType)
 
   implicit val langMeta: Meta[Locale] = Meta[String].timap(Locale.forLanguageTag)(_.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =
@@ -209,6 +211,7 @@ trait DoobieOreProtocol {
     )
 
   implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumEnumeratumMeta("ROLE_CATEGORY", RoleCategory)
+  implicit val jobStateMeta: Meta[Job.JobState]     = pgEnumEnumeratumMeta("JOB_STATE", Job.JobState)
 
   def metaFromGetPut[A](implicit get: Get[A], put: Put[A]): Meta[A] = new Meta(get, put)
 
