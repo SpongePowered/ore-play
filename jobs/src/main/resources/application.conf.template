@@ -41,3 +41,13 @@ discourse {
         }
     }
 }
+
+jobs {
+    check-interval = 1m
+
+    timeouts {
+        unknown-error = 15m
+        status-error = 5m
+        not-available = 2m
+    }
+}
