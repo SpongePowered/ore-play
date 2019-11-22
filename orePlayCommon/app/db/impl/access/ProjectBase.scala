@@ -2,15 +2,13 @@ package db.impl.access
 
 import scala.language.higherKinds
 
-import java.io.IOException
-
 import db.impl.query.SharedQueries
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{PageTable, ProjectTable, VersionTable}
 import ore.db.{Model, ModelService}
-import ore.models.{Job, JobInfo}
+import ore.models.Job
 import ore.models.project._
 import ore.models.project.io.ProjectFiles
 import ore.util.StringUtils._
@@ -130,13 +128,13 @@ object ProjectBase {
           .traverseLimited(versions.toVector) {
             case t @ (ownerNamer, name, version) =>
               val res = F
-                .bracket(F.delay(this.fileManager.getVersionDir(ownerNamer, name, version.name)))(
-                  versionDir => fileIO.notExists(versionDir.resolve(version.fileName))
-                )(_ => F.unit)
-                .recover {
-                  case _: IOException =>
-                    //Invalid file name
-                    false
+                .attempt(
+                  F.delay(this.fileManager.getVersionDir(ownerNamer, name, version.name))
+                    .flatMap(versionDir => fileIO.notExists(versionDir.resolve(version.fileName)))
+                )
+                .map {
+                  case Left(_)      => false //Invalid file name
+                  case Right(value) => value
                 }
 
               res.tupleLeft(t)

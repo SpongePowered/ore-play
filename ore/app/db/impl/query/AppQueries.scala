@@ -7,6 +7,7 @@ import scala.concurrent.duration.FiniteDuration
 import models.querymodels._
 import ore.data.project.Category
 import ore.db.{DbRef, Model}
+import ore.models.Job
 import ore.models.admin.LoggedActionViewModel
 import ore.models.organization.Organization
 import ore.models.project._
@@ -16,6 +17,7 @@ import cats.data.NonEmptyList
 import cats.syntax.all._
 import doobie._
 import doobie.implicits._
+import doobie.postgres.implicits._
 
 object AppQueries extends WebDoobieOreProtocol {
 
@@ -86,6 +88,10 @@ object AppQueries extends WebDoobieOreProtocol {
           |     OR hp.last_updated > (now() - $staleTime::INTERVAL)
           |     OR p.visibility != 1""".stripMargin.query[UnhealtyProject]
   }
+
+  def erroredJobs: Query0[Job] =
+    sql"""|SELECT last_updated, retry_at, last_error, last_error_descriptor, state, job_type, 
+          |job_properties FROM jobs j WHERE j.state = 'fatal_failure'""".stripMargin.query[Job]
 
   def getReviewActivity(username: String): Query0[ReviewActivity] = {
     sql"""|SELECT pvr.ended_at, pvr.id, p.owner_name, p.slug

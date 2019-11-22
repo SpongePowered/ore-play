@@ -56,6 +56,10 @@ class AppQueriesSpec extends DbSpec {
     check(AppQueries.getUnhealtyProjects(30.days))
   }
 
+  test("GetErroredJobs") {
+    check(AppQueries.erroredJobs)
+  }
+
   test("GetReviewActivity") {
     check(AppQueries.getReviewActivity("Foo"))
   }

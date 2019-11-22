@@ -71,6 +71,7 @@ admin.health.stale = Stale projects
 admin.health.topic = Failed discussion topic updates
 admin.health.platform = No platform detected
 admin.health.missingFile = Missing File
+admin.health.jobs = Failed jobs
 
 editor.deleteConfirm    =   Are you sure you want to delete {0}? This cannot be undone.
 
