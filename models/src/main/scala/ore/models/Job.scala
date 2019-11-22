@@ -54,62 +54,8 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
     ): Either[String, CaseClass]
   }
   object JobType extends StringEnum[JobType] {
-    override def values: IndexedSeq[JobType] = findValues
-
-    case object UpdateDiscourseProjectTopicType extends JobType("update_project_discourse_topic") {
-      override type CaseClass = UpdateDiscourseProjectTopic
-
-      def toCaseClass(
-          info: JobInfo,
-          properties: Map[String, String]
-      ): Either[String, CaseClass] =
-        properties
-          .get("project_id")
-          .toRight("No project id found")
-          .flatMap(_.toLongOption.toRight("Project id is not a valid long"))
-          .map(l => UpdateDiscourseProjectTopic(info, l))
-    }
-
-    case object UpdateDiscourseVersionPostType extends JobType("update_version_discourse_post") {
-      override type CaseClass = UpdateDiscourseVersionPost
-
-      def toCaseClass(
-          info: JobInfo,
-          properties: Map[String, String]
-      ): Either[String, CaseClass] =
-        properties
-          .get("version_id")
-          .toRight("No version id found")
-          .flatMap(_.toLongOption.toRight("Version id is not a valid long"))
-          .map(l => UpdateDiscourseVersionPost(info, l))
-    }
-
-    case object DeleteDiscourseTopicType extends JobType("delete_discourse_topic") {
-      override type CaseClass = DeleteDiscourseTopic
-
-      def toCaseClass(
-          info: JobInfo,
-          properties: Map[String, String]
-      ): Either[String, CaseClass] =
-        properties
-          .get("topic_id")
-          .toRight("No topic id found")
-          .flatMap(_.toIntOption.toRight("Topic id is not a valid long"))
-          .map(l => DeleteDiscourseTopic(info, l))
-    }
-
-    case object PostDiscourseReplyType extends JobType("post_discourse_reply") {
-      override type CaseClass = PostDiscourseReply
-
-      override def toCaseClass(info: JobInfo, properties: Map[String, String]): Either[String, CaseClass] = {
-        for {
-          stringTopicId <- properties.get("topic_id").toRight("No topic id found")
-          topicId       <- stringTopicId.toIntOption.toRight("Topic id is not a valid long")
-          poster        <- properties.get("poster").toRight("No poster found")
-          content       <- properties.get("content").toRight("No content found")
-        } yield PostDiscourseReply(info, topicId, poster, content)
-      }
-    }
+    override def values: IndexedSeq[JobType] =
+      IndexedSeq(UpdateDiscourseProjectTopic, UpdateDiscourseVersionPost, DeleteDiscourseTopic, PostDiscourseReply)
   }
 
   sealed trait TypedJob {
@@ -126,9 +72,21 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
     def toJob: Job =
       Job(info, Map("project_id" -> projectId.toString))
   }
-  object UpdateDiscourseProjectTopic {
+  object UpdateDiscourseProjectTopic extends JobType("update_project_discourse_topic") {
     def newJob(projectId: DbRef[Project]): UpdateDiscourseProjectTopic =
-      UpdateDiscourseProjectTopic(JobInfo.newJob(JobType.UpdateDiscourseProjectTopicType), projectId)
+      UpdateDiscourseProjectTopic(JobInfo.newJob(this), projectId)
+
+    override type CaseClass = UpdateDiscourseProjectTopic
+
+    def toCaseClass(
+        info: JobInfo,
+        properties: Map[String, String]
+    ): Either[String, CaseClass] =
+      properties
+        .get("project_id")
+        .toRight("No project id found")
+        .flatMap(_.toLongOption.toRight("Project id is not a valid long"))
+        .map(l => UpdateDiscourseProjectTopic(info, l))
   }
 
   case class UpdateDiscourseVersionPost(
@@ -139,9 +97,21 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
     def toJob: Job =
       Job(info, Map("version_id" -> versionId.toString))
   }
-  object UpdateDiscourseVersionPost {
+  object UpdateDiscourseVersionPost extends JobType("update_version_discourse_post") {
     def newJob(versionId: DbRef[Version]): UpdateDiscourseVersionPost =
-      UpdateDiscourseVersionPost(JobInfo.newJob(JobType.UpdateDiscourseVersionPostType), versionId)
+      UpdateDiscourseVersionPost(JobInfo.newJob(this), versionId)
+
+    override type CaseClass = UpdateDiscourseVersionPost
+
+    def toCaseClass(
+        info: JobInfo,
+        properties: Map[String, String]
+    ): Either[String, CaseClass] =
+      properties
+        .get("version_id")
+        .toRight("No version id found")
+        .flatMap(_.toLongOption.toRight("Version id is not a valid long"))
+        .map(l => UpdateDiscourseVersionPost(info, l))
   }
 
   case class DeleteDiscourseTopic(
@@ -152,16 +122,39 @@ object Job extends DefaultModelCompanion[Job, JobTable](TableQuery[JobTable]) {
     def toJob: Job =
       Job(info, Map("topic_id" -> topicId.toString))
   }
-  object DeleteDiscourseTopic {
+  object DeleteDiscourseTopic extends JobType("delete_discourse_topic") {
     def newJob(topicId: Int): DeleteDiscourseTopic =
-      DeleteDiscourseTopic(JobInfo.newJob(JobType.DeleteDiscourseTopicType), topicId)
+      DeleteDiscourseTopic(JobInfo.newJob(this), topicId)
+
+    override type CaseClass = DeleteDiscourseTopic
+
+    def toCaseClass(
+        info: JobInfo,
+        properties: Map[String, String]
+    ): Either[String, CaseClass] =
+      properties
+        .get("topic_id")
+        .toRight("No topic id found")
+        .flatMap(_.toIntOption.toRight("Topic id is not a valid long"))
+        .map(l => DeleteDiscourseTopic(info, l))
   }
 
   case class PostDiscourseReply(info: JobInfo, topicId: Int, poster: String, content: String) extends TypedJob {
     override def toJob: Job = Job(info, Map("topic_id" -> topicId.toString, "poster" -> poster, "content" -> content))
   }
-  object PostDiscourseReply {
+  object PostDiscourseReply extends JobType("post_discourse_reply") {
     def newJob(topicId: Int, poster: String, content: String): PostDiscourseReply =
-      PostDiscourseReply(JobInfo.newJob(JobType.PostDiscourseReplyType), topicId, poster, content)
+      PostDiscourseReply(JobInfo.newJob(this), topicId, poster, content)
+
+    override type CaseClass = PostDiscourseReply
+
+    override def toCaseClass(info: JobInfo, properties: Map[String, String]): Either[String, CaseClass] = {
+      for {
+        stringTopicId <- properties.get("topic_id").toRight("No topic id found")
+        topicId       <- stringTopicId.toIntOption.toRight("Topic id is not a valid long")
+        poster        <- properties.get("poster").toRight("No poster found")
+        content       <- properties.get("content").toRight("No content found")
+      } yield PostDiscourseReply(info, topicId, poster, content)
+    }
   }
 }
