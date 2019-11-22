@@ -19,6 +19,7 @@ This is required in order for Ore to run. Learn more about PostgreSQL [here](htt
 
 You will also need to enable a few extensions for Ore. These are:
 * [pgcrypto](https://www.postgresql.org/docs/11/pgcrypto.html)
+* [hstore](https://www.postgresql.org/docs/11/hstore.html)
 
 In addition, you need to install Node.js and Yarn. Installation instructions are available for [Node.js](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/lang/en/docs/install).
 
