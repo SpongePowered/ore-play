@@ -22,11 +22,11 @@ slick.dbs.default {
 
 # Discourse
 discourse {
-    baseUrl            =   "https://forums.spongepowered.org"
-    categoryDefault    =   -1
-    categoryDefault    =   ${?DISCOURSE_CATEGORY_OPEN}
-    categoryDeleted    =   -1
-    categoryDeleted    =   ${?DISCOURSE_CATEGORY_DELETED}
+    base-url            =   "https://forums.spongepowered.org"
+    category-default    =   -1
+    category-default    =   ${?DISCOURSE_CATEGORY_OPEN}
+    category-deleted    =   -1
+    category-deleted    =   ${?DISCOURSE_CATEGORY_DELETED}
 
     api {
         enabled              =   true
