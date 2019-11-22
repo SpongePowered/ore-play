@@ -48,5 +48,5 @@ before_cache:
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION ";ore/test ;ore/assets; jobs/compile"
+  - sbt ++$TRAVIS_SCALA_VERSION ";oreAll/compile; ore/test ;ore/assets"
   - ./scalafmt --test --non-interactive
