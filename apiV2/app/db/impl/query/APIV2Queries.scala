@@ -25,6 +25,7 @@ import cats.arrow.FunctionK
 import cats.{Reducible, ~>}
 import cats.data.{NonEmptyList, Tuple2K}
 import cats.instances.list._
+import cats.kernel.Monoid
 import cats.syntax.all._
 import doobie._
 import doobie.implicits._
@@ -286,9 +287,12 @@ object APIV2Queries extends DoobieOreProtocol {
       Column.arg("forum_sync")
     )
 
-    val (ownerSet, ownerFrom, ownerFilter) = edits.ownerName.fold((Fragment.empty, Fragment.empty, Fragment.empty)) {
-      owner =>
-        (fr"owner_id = u.id", fr"FROM users u", fr"AND u.name = $owner")
+    import cats.instances.tuple._
+    import cats.instances.option._
+    Monoid[(Fragment, Fragment, Fragment)]
+
+    val (ownerSet, ownerFrom, ownerFilter) = edits.ownerName.foldMap { owner =>
+      (fr", owner_id = u.id", fr"FROM users u", fr"AND u.name = $owner")
     }
 
     (updateTable("projects", projectColumns, edits) ++ ownerSet ++ ownerFrom ++ fr"WHERE plugin_id = $pluginId" ++ ownerFilter).update

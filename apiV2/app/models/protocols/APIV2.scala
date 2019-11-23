@@ -77,8 +77,8 @@ object APIV2 {
   @ConfiguredJsonCodec case class ProjectStatsAll(
       views: Long,
       downloads: Long,
-      recent_views: Long,
-      recent_downloads: Long,
+      recentViews: Long,
+      recentDownloads: Long,
       stars: Long,
       watchers: Long
   )

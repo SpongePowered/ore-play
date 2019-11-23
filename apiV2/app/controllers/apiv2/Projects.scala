@@ -165,7 +165,14 @@ class Projects(
               project.name,
               APIV2.ProjectNamespace(project.ownerName, project.slug),
               Nil,
-              APIV2.ProjectStatsAll(0, 0, 0, 0, 0, 0),
+              APIV2.ProjectStatsAll(
+                views = 0,
+                downloads = 0,
+                recentViews = 0,
+                recentDownloads = 0,
+                stars = 0,
+                watchers = 0
+              ),
               project.category,
               project.description,
               project.createdAt,
@@ -196,7 +203,7 @@ class Projects(
           .singleProjectQuery(pluginId, request.globalPermissions.has(Permission.SeeHidden), request.user.map(_.id))
           .option
 
-        service.runDbCon(dbCon).get.flatMap(identity).bimap(_ => NotFound, Ok(_))
+        service.runDbCon(dbCon).get.flatten.bimap(_ => NotFound, Ok(_))
       }
     }
 
@@ -213,6 +220,7 @@ class Projects(
           case Validated.Valid(a) =>
             service
               .runDbCon(
+                //We need two queries two queries as singleProjectQuery takes data from the home_projects view
                 APIV2Queries.updateProject(pluginId, a).run *> APIV2Queries
                   .singleProjectQuery(
                     pluginId,
@@ -222,7 +230,7 @@ class Projects(
                   .unique
               )
               .flatten
-              .map(res => Ok(res))
+              .map(Ok(_))
           case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e.map(_.show))))
         }
       }
