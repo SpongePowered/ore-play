@@ -213,13 +213,27 @@ ALTER TABLE project_versions
 INSERT INTO project_channels (created_at, name, color, project_id)
 SELECT DISTINCT pv.created_at, pv.legacy_channel_name, pv.legacy_channel_color, pv.project_id
 FROM project_versions pv
+WHERE pv.legacy_channel_name IS NOT NULL
+  AND pv.legacy_channel_color IS NOT NULL
 ORDER BY pv.created_at;
+
+INSERT INTO project_channels (created_at, name, color, project_id)
+SELECT p.created_at, 'Release', 8, p.id
+FROM projects p
+ON CONFLICT DO NOTHING;
 
 UPDATE project_versions pv
 SET channel_id = pc.id
 FROM project_channels pc
 WHERE pc.project_id = pv.project_id
   AND pv.legacy_channel_name = pc.name;
+
+UPDATE project_versions pv
+SET channel_id = pc.id
+FROM project_channels pc
+WHERE pc.project_id = pv.project_id
+  AND pv.channel_id IS NULL
+  AND pc.name = 'Release';
 
 ALTER TABLE project_versions
     ALTER COLUMN channel_id SET NOT NULL;
@@ -247,7 +261,7 @@ SELECT pv.id,
            WHEN 'spongevanilla' THEN 'SpongeVanilla'
            WHEN 'sponge' THEN 'SpongeCommon'
            WHEN 'lantern' THEN 'Lantern'
-           WHEN 'Forge' THEN 'Forge'
+           WHEN 'forge' THEN 'Forge'
            END,
        dep_version,
        CASE pv.dep_id
@@ -256,7 +270,7 @@ SELECT pv.id,
            WHEN 'spongevanilla' THEN 5
            WHEN 'sponge' THEN 6
            WHEN 'lantern' THEN 7
-           WHEN 'Forge' THEN 2
+           WHEN 'forge' THEN 2
            END
 FROM (SELECT pv.id, unnest(pv.dependency_ids) AS dep_id, unnest(pv.dependency_versions) AS dep_version
       FROM project_versions pv) pv
