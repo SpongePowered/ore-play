@@ -5,7 +5,7 @@ import java.time.{LocalDate, LocalDateTime}
 
 import play.api.mvc.RequestHeader
 
-import controllers.apiv2.Projects
+import controllers.apiv2.{Projects, Versions}
 import controllers.sugar.Requests.ApiAuthInfo
 import models.protocols.APIV2
 import models.querymodels._
@@ -100,7 +100,7 @@ object APIV2Queries extends DoobieOreProtocol {
   ): Fragment = {
     val userActionsTaken = currentUserId.fold(fr"FALSE, FALSE,") { id =>
       fr"""|EXISTS(SELECT * FROM project_stars s WHERE s.project_id = p.id AND s.user_id = $id)    AS user_stared,
-           |EXISTS(SELECT * FROM project_watchers s WHERE s.project_id = p.id AND s.user_id = $id) AS user_watching,""".stripMargin
+           |EXISTS(SELECT * FROM project_watchers S WHERE S.project_id = p.id AND S.user_id = $id) AS user_watching,""".stripMargin
     }
 
     val base =
@@ -190,8 +190,8 @@ object APIV2Queries extends DoobieOreProtocol {
         case ProjectSortingStrategy.MostStars       => fr"p.stars *" ++ relevance
         case ProjectSortingStrategy.MostDownloads   => fr"p.downloads*" ++ relevance
         case ProjectSortingStrategy.MostViews       => fr"p.views *" ++ relevance
-        case ProjectSortingStrategy.Newest          => fr"extract(EPOCH from p.created_at) *" ++ relevance
-        case ProjectSortingStrategy.RecentlyUpdated => fr"extract(EPOCH from p.last_updated) *" ++ relevance
+        case ProjectSortingStrategy.Newest          => fr"EXTRACT(EPOCH FROM p.created_at) *" ++ relevance
+        case ProjectSortingStrategy.RecentlyUpdated => fr"EXTRACT(EPOCH FROM p.last_updated) *" ++ relevance
         case ProjectSortingStrategy.OnlyRelevance   => relevance
         case ProjectSortingStrategy.RecentViews     => fr"p.recent_views *" ++ relevance
         case ProjectSortingStrategy.RecentDownloads => fr"p.recent_downloads*" ++ relevance
@@ -289,7 +289,6 @@ object APIV2Queries extends DoobieOreProtocol {
 
     import cats.instances.tuple._
     import cats.instances.option._
-    Monoid[(Fragment, Fragment, Fragment)]
 
     val (ownerSet, ownerFrom, ownerFilter) = edits.ownerName.foldMap { owner =>
       (fr", owner_id = u.id", fr"FROM users u", fr"AND u.name = $owner")
@@ -374,6 +373,13 @@ object APIV2Queries extends DoobieOreProtocol {
       .query[APIV2QueryVersion]
       .map(_.asProtocol)
 
+  def singleVersionQuery(
+      pluginId: String,
+      versionName: String,
+      canSeeHidden: Boolean,
+      currentUserId: Option[DbRef[User]]
+  ): doobie.Query0[APIV2.Version] = versionQuery(pluginId, Some(versionName), Nil, canSeeHidden, currentUserId, 1, 0)
+
   def versionCountQuery(
       pluginId: String,
       tags: List[String],
@@ -383,6 +389,16 @@ object APIV2Queries extends DoobieOreProtocol {
     (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(
       versionSelectFrag(pluginId, None, tags, canSeeHidden, currentUserId)
     ) ++ fr"sq").query[Long]
+
+  def updateVersion(pluginId: String, versionName: String, edits: Versions.EditableVersion): Update0 = {
+    val versionColumns = Versions.EditableVersionF[Column](
+      Column.opt("description"),
+      Column.arg("stability"),
+      Column.opt("release_type")
+    )
+
+    (updateTable("projects", versionColumns, edits) ++ fr"WHERE plugin_id = $pluginId AND version_string = $versionName").update
+  }
 
   def userQuery(name: String): Query0[APIV2.User] =
     sql"""|SELECT u.created_at, u.name, u.tagline, u.join_date, array_agg(r.name)

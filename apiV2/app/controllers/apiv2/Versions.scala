@@ -21,15 +21,19 @@ import models.querymodels.{APIV2QueryVersion, APIV2VersionStatsQuery}
 import ore.db.Model
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTable, VersionTable}
+import ore.models.project.Version.Stability
 import ore.models.project.{Page, Project, ReviewState, Version, Visibility}
 import ore.models.project.factory.ProjectFactory
 import ore.models.project.io.{PluginFileWithData, PluginUpload}
 import ore.models.user.User
 import ore.permission.Permission
+import util.PatchDecoder
+import util.fp.{ApplicativeK, TraverseK}
 import util.syntax._
 
-import cats.data.{NonEmptyList, Validated}
+import cats.data.{NonEmptyList, Tuple2K, Validated}
 import cats.syntax.all._
+import cats.{Applicative, ~>}
 import io.circe._
 import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.syntax._
@@ -91,14 +95,11 @@ class Versions(
       service
         .runDbCon(
           APIV2Queries
-            .versionQuery(
+            .singleVersionQuery(
               pluginId,
-              Some(name),
-              Nil,
+              name,
               request.globalPermissions.has(Permission.SeeHidden),
-              request.user.map(_.id),
-              1,
-              0
+              request.user.map(_.id)
             )
             .option
         )
@@ -109,14 +110,27 @@ class Versions(
     ApiAction(Permission.EditVersion, APIScope.ProjectScope(pluginId)).asyncF(parseCirce.json) { implicit request =>
       val root = request.body.hcursor
 
-      val res = (
-        withUndefined[Option[String]](root.downField("description")),
-        withUndefined[Version.Stability](root.downField("description")),
-        withUndefined[Option[Version.ReleaseType]](root.downField("description"))
-      ).mapN(EditableVersion)
+      val res: Decoder.AccumulatingResult[EditableVersion] = EditableVersionF.patchDecoder.traverseK(
+        λ[PatchDecoder ~> λ[A => Decoder.AccumulatingResult[Option[A]]]](_.decode(root))
+      )
 
       res match {
-        case Validated.Valid(a)   => ???
+        case Validated.Valid(a) =>
+          service
+            .runDbCon(
+              //We need two queries two queries as singleProjectQuery takes data from the home_projects view
+              //TODO: Not true for version
+              APIV2Queries.updateVersion(pluginId, name, a).run *> APIV2Queries
+                .singleVersionQuery(
+                  pluginId,
+                  name,
+                  request.globalPermissions.has(Permission.SeeHidden),
+                  request.user.map(_.id)
+                )
+                .unique
+            )
+            .map(Ok(_))
+
         case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e.map(_.show))))
       }
     }
@@ -214,7 +228,7 @@ class Versions(
             None
           )
 
-          val warnings = NonEmptyList.fromList((pluginFile.warnings).toList)
+          val warnings = NonEmptyList.fromList(pluginFile.warnings.toList)
           Ok(ScannedVersion(apiVersion.asProtocol, warnings))
         }
     }
@@ -254,8 +268,8 @@ class Versions(
               pluginFile,
               data.description,
               data.createForumPost.getOrElse(project.settings.forumSync),
-              ???,
-              ???
+              data.stability.getOrElse(Stability.Stable),
+              data.releaseType
             )
             .mapError { es =>
               implicit val lang: Lang = user.langOrDefault
@@ -301,11 +315,52 @@ object Versions {
   )
 
   //TODO: Allow setting multiple platforms
-  case class EditableVersion(
-      description: Option[Option[String]],
-      stability: Option[Version.Stability],
-      releaseType: Option[Option[Version.ReleaseType]]
+  type EditableVersion = EditableVersionF[Option]
+  case class EditableVersionF[F[_]](
+      description: F[Option[String]],
+      stability: F[Version.Stability],
+      releaseType: F[Option[Version.ReleaseType]]
   )
+  object EditableVersionF {
+    val patchDecoder: EditableVersionF[PatchDecoder] = EditableVersionF(
+      PatchDecoder.mkPath[Option[String]]("description"),
+      PatchDecoder.mkPath[Version.Stability]("stability"),
+      PatchDecoder.mkPath[Option[Version.ReleaseType]]("release_type")
+    )
+
+    implicit val applicativeTraverseK: ApplicativeK[EditableVersionF] with TraverseK[EditableVersionF] =
+      new ApplicativeK[EditableVersionF] with TraverseK[EditableVersionF] {
+        override def pure[A[_]](a: shapeless.Const[Unit]#λ ~> A): EditableVersionF[A] = EditableVersionF(
+          a(()),
+          a(()),
+          a(())
+        )
+
+        override def traverseK[G[_]: Applicative, A[_], B[_]](
+            fa: EditableVersionF[A]
+        )(f: A ~> λ[C => G[B[C]]]): G[EditableVersionF[B]] =
+          (
+            f(fa.description),
+            f(fa.stability),
+            f(fa.releaseType)
+          ).mapN(EditableVersionF.apply)
+
+        override def foldLeftK[A[_], B](fa: EditableVersionF[A], b: B)(f: B => A ~> shapeless.Const[B]#λ): B = {
+          val b1 = f(b)(fa.description)
+          val b2 = f(b1)(fa.stability)
+          f(b2)(fa.releaseType)
+        }
+
+        override def productK[F[_], G[_]](
+            af: EditableVersionF[F],
+            ag: EditableVersionF[G]
+        ): EditableVersionF[Tuple2K[F, G, *]] = EditableVersionF(
+          Tuple2K(af.description, ag.description),
+          Tuple2K(af.stability, ag.stability),
+          Tuple2K(af.releaseType, ag.releaseType)
+        )
+      }
+  }
 
   @ConfiguredJsonCodec case class ScannedVersion(
       version: APIV2.Version,
