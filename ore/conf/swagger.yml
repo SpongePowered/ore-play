@@ -35,7 +35,7 @@ info:
     Once you do that you should receive an session. This is valid for a
     pre-defined set of time. When it expires, you need to authenticate again.
     To use it, set it in the Authorization header like
-    so `Authorization: session="noisses"`.
+    so `Authorization: OreApi session="noisses"`.
 
     For more info about authentication, see [here](#/Authentification/authenticate).
 

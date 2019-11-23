@@ -15,7 +15,7 @@ import ore.db.DbRef
 import ore.db.impl.query.DoobieOreProtocol
 import ore.models.api.ApiKey
 import ore.models.project.io.ProjectFiles
-import ore.models.project.{ProjectSortingStrategy, TagColor}
+import ore.models.project.ProjectSortingStrategy
 import ore.models.user.User
 import ore.permission.Permission
 import _root_.util.fp.{ApplicativeK, FoldableK}
@@ -25,7 +25,6 @@ import cats.arrow.FunctionK
 import cats.{Reducible, ~>}
 import cats.data.{NonEmptyList, Tuple2K}
 import cats.instances.list._
-import cats.kernel.Monoid
 import cats.syntax.all._
 import doobie._
 import doobie.implicits._
