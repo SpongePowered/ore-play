@@ -2,42 +2,6 @@
 
 DROP MATERIALIZED VIEW home_projects;
 
-CREATE FUNCTION platform_version_from_dependency(pluginid TEXT, version TEXT) RETURNS TEXT
-    LANGUAGE plpgsql
-    IMMUTABLE RETURNS NULL ON NULL INPUT AS
-$$
-BEGIN
-    CASE $1
-        WHEN 'spongeapi' THEN RETURN substring($2 FROM
-                                               '^\[?(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?(?:,(?:\d+\.\d+(?:\.\d+)?)?\))?$');;
-        WHEN 'spongeforge' THEN RETURN substring($2 FROM
-                                                 '^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$');;
-        WHEN 'spongevanilla' THEN RETURN substring($2 FROM
-                                                   '^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$');;
-        WHEN 'forge' THEN RETURN substring($2 FROM '^\d+\.(\d+)\.\d+(?:\.\d+)?$');;
-        WHEN 'lantern' THEN RETURN NULL;; --TODO Change this once Lantern changes to SpongeVanilla's format
-        ELSE
-        END CASE;;
-
-    RETURN NULL;;
-END;;
-$$;
-
-CREATE FUNCTION platform_version_from_dependency_lists(pluginids TEXT[], versions TEXT[]) RETURNS TEXT[]
-    LANGUAGE plpgsql
-    IMMUTABLE RETURNS NULL ON NULL INPUT AS
-$$
-DECLARE
-    ret TEXT[];;
-BEGIN
-    FOR i IN array_lower($1, 1)..array_upper($1, 1)
-        LOOP
-            ret[i] := platform_version_from_dependency($1[i], $2[i]);;
-        END LOOP;;
-    RETURN ret;;
-END;;
-$$;
-
 CREATE TYPE STABILITY AS ENUM ('stable', 'beta', 'alpha', 'bleeding', 'unsupported', 'broken');
 CREATE TYPE RELEASE_TYPE AS ENUM ('major_update', 'minor_update', 'patches', 'hotfix');
 
@@ -68,18 +32,23 @@ END;;
 $$;
 
 ALTER TABLE project_versions
-    ADD COLUMN uses_mixin           BOOLEAN,
-    ADD COLUMN stability            STABILITY,
-    ADD COLUMN release_type         RELEASE_TYPE,
-    ADD COLUMN legacy_channel_name  TEXT,
-    ADD COLUMN legacy_channel_color INT,
-    ADD COLUMN dependency_ids       TEXT[],
-    ADD COLUMN dependency_versions  TEXT[];
+    ADD COLUMN uses_mixin               BOOLEAN,
+    ADD COLUMN stability                STABILITY,
+    ADD COLUMN release_type             RELEASE_TYPE,
+    ADD COLUMN legacy_channel_name      TEXT,
+    ADD COLUMN legacy_channel_color     INT,
+    ADD COLUMN dependency_ids           TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[],
+    ADD COLUMN dependency_versions      TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[],
+    ADD COLUMN platforms                TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[],
+    ADD COLUMN platform_versions        TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[],
+    ADD COLUMN platform_coarse_versions INT[]  NOT NULL DEFAULT ARRAY []::INT[];
 
 -- noinspection SqlWithoutWhere
 UPDATE project_versions pv
-SET dependency_ids       = (SELECT array_agg(split_part(dep_id, ':', 1)) FROM unnest(dependencies) AS dep_id),
-    dependency_versions  = (SELECT array_agg(split_part(dep_id, ':', 2)) FROM unnest(dependencies) AS dep_id),
+SET dependency_ids       = (SELECT coalesce(array_agg(split_part(dep_id, ':', 1)), ARRAY []::TEXT[])
+                            FROM unnest(dependencies) AS dep_id),
+    dependency_versions  = (SELECT coalesce(array_agg(split_part(dep_id, ':', 2)), ARRAY []::TEXT[])
+                            FROM unnest(dependencies) AS dep_id),
     uses_mixin           = EXISTS(
             SELECT * FROM project_version_tags pvt WHERE pvt.version_id = pv.id AND pvt.name = 'mixin'),
     stability            = (SELECT stability_from_channel(pc.name)
@@ -88,15 +57,51 @@ SET dependency_ids       = (SELECT array_agg(split_part(dep_id, ':', 1)) FROM un
     legacy_channel_name  = (SELECT pc.name FROM project_channels pc WHERE pc.id = pv.channel_id),
     legacy_channel_color = (SELECT pc.color FROM project_channels pc WHERE pc.id = pv.channel_id);
 
+CREATE FUNCTION platform_coarse_version_from_dependency(pluginid TEXT, version TEXT) RETURNS INT
+    LANGUAGE plpgsql
+    IMMUTABLE RETURNS NULL ON NULL INPUT AS
+$$
+BEGIN
+    CASE $1
+        WHEN 'spongeapi' THEN RETURN substring($2 FROM
+                                               '^\[?(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?(?:,(?:\d+\.\d+(?:\.\d+)?)?\))?$')::INT;;
+        WHEN 'spongeforge' THEN RETURN substring($2 FROM
+                                                 '^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')::INT;;
+        WHEN 'spongevanilla' THEN RETURN substring($2 FROM
+                                                   '^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')::INT;;
+        WHEN 'forge' THEN RETURN substring($2 FROM '^\d+\.(\d+)\.\d+(?:\.\d+)?$')::INT;;
+        WHEN 'lantern' THEN RETURN NULL;; --TODO Change this once Lantern changes to SpongeVanilla's format
+        ELSE
+        END CASE;;
+
+    RETURN NULL;;
+END;;
+$$;
+
+-- We run this separately so we can use dependency_ids and versions
+-- noinspection SqlWithoutWhere
+UPDATE project_versions pv
+SET platforms                = ARRAY(SELECT dep_id
+                                     FROM unnest(pv.dependency_ids) AS dep_id
+                                     WHERE dep_id IN ('spongeapi', 'spongeforge', 'spongevanilla', 'forge', 'lantern')),
+    platform_versions        = ARRAY(SELECT dep_ver
+                                     FROM unnest(pv.dependency_ids, pv.dependency_versions) AS dep(dep_id, dep_ver)
+                                     WHERE dep_id IN ('spongeapi', 'spongeforge', 'spongevanilla', 'forge', 'lantern')),
+    platform_coarse_versions = ARRAY(
+            SELECT platform_coarse_version_from_dependency(unnest(pv.dependency_ids), unnest(pv.dependency_versions)));
+
+DROP FUNCTION platform_coarse_version_from_dependency;
+
 ALTER TABLE project_versions
     ALTER COLUMN uses_mixin SET NOT NULL,
     ALTER COLUMN stability SET NOT NULL,
+    ALTER COLUMN dependency_ids DROP DEFAULT,
+    ALTER COLUMN dependency_versions DROP DEFAULT,
+    ALTER COLUMN platforms DROP DEFAULT,
+    ALTER COLUMN platform_versions DROP DEFAULT,
+    ALTER COLUMN platform_coarse_versions DROP DEFAULT,
     DROP COLUMN channel_id,
     DROP COLUMN dependencies;
-
-ALTER TABLE project_versions
-    ADD COLUMN platform_versions TEXT[] GENERATED ALWAYS AS (platform_version_from_dependency_lists(dependency_ids,
-                                                                                                    dependency_versions)) STORED;
 
 DROP FUNCTION stability_from_channel;
 
@@ -109,24 +114,27 @@ ALTER TABLE projects
 
 CREATE MATERIALIZED VIEW home_projects AS
 WITH promoted AS (
-    SELECT sq.project_id, sq.version_string, sq.platform, sq.platform_version
+    SELECT sq.project_id,
+           sq.version_string,
+           sq.platform,
+           sq.platform_version
     FROM (SELECT sq.project_id,
                  sq.version_string,
+                 sq.created_at,
                  sq.platform,
                  sq.platform_version,
                  row_number()
-                 OVER (PARTITION BY sq.project_id, sq.platform_partition_version ORDER BY sq.created_at) AS row_num
+                 OVER (PARTITION BY sq.project_id, platform, platform_coarse_version ORDER BY sq.created_at) AS row_num
           FROM (SELECT pv.project_id,
                        pv.version_string,
                        pv.created_at,
-                       unnest(pv.dependency_ids)      AS platform,
-                       unnest(pv.dependency_versions) AS platform_version,
-                       unnest(pv.platform_versions)   AS platform_partition_version
+                       unnest(pv.platforms)                AS platform,
+                       unnest(pv.platform_versions)        AS platform_version,
+                       unnest(pv.platform_coarse_versions) AS platform_coarse_version
                 FROM project_versions pv
-                WHERE pv.visibility = 1) sq
-          WHERE sq.platform_partition_version IS NOT NULL) sq
+                WHERE pv.visibility = 1) sq) sq
     WHERE sq.row_num = 1
-    ORDER BY sq.platform_version DESC)
+    ORDER BY sq.platform_version)
 SELECT p.id,
        p.owner_name                      AS owner_name,
        array_agg(DISTINCT pm.user_id)    AS project_members,
@@ -305,9 +313,6 @@ ALTER TABLE project_versions
     DROP COLUMN dependency_ids,
     DROP COLUMN dependency_versions,
     DROP COLUMN platform_versions;
-
-DROP FUNCTION platform_version_from_dependency_lists;
-DROP FUNCTION platform_version_from_dependency;
 
 CREATE MATERIALIZED VIEW home_projects AS
 WITH tags AS (

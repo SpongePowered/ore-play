@@ -107,6 +107,9 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
       usesMixin: Boolean,
       stability: Stability,
       releaseType: Option[ReleaseType],
+      platforms: List[String],
+      platformsVersions: List[Option[String]],
+      platformsCoarseVersions: List[Option[Int]],
       channelName: Option[String] = None,
       channelColor: Option[TagColor] = None
   )

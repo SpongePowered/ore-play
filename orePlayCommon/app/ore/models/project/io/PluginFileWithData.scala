@@ -2,7 +2,7 @@ package ore.models.project.io
 
 import java.nio.file.{Files, Path}
 
-import ore.data.project.Dependency
+import ore.data.{Platform, VersionedPlatform}
 import ore.db.{DbRef, Model}
 import ore.models.project.{Project, Version}
 import ore.models.user.User
@@ -25,17 +25,15 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
 
   lazy val fileName: String = path.getFileName.toString
 
-  lazy val dependencies: Seq[String] = data.dependencies.map {
-    case Dependency(pluginId, Some(version)) => s"$pluginId:$version"
-    case Dependency(pluginId, None)          => pluginId
-  }
-
   lazy val dependencyIds: Seq[String]              = data.dependencies.map(_.pluginId)
   lazy val dependencyVersions: Seq[Option[String]] = data.dependencies.map(_.version)
 
   lazy val versionString: String = StringUtils.slugify(data.version.get)
 
-  def warnings: Seq[String] = ???
+  lazy val (versionedPlatforms: Seq[VersionedPlatform], platformWarnings: Seq[String]) =
+    Platform.createVersionedPlatforms(dependencyIds, dependencyVersions)
+
+  def warnings: Seq[String] = platformWarnings
 
   //TODO: Support multiple platforms here
   def asVersion(
@@ -58,7 +56,10 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
     tags = Version.VersionTags(
       usesMixin = data.containsMixins,
       stability = stability,
-      releaseType = releaseType
+      releaseType = releaseType,
+      platforms = versionedPlatforms.map(_.id).toList,
+      platformsVersions = versionedPlatforms.map(_.version).toList,
+      platformsCoarseVersions = versionedPlatforms.map(_.coarseVersion).toList
     )
   )
 }

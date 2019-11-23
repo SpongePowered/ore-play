@@ -215,7 +215,8 @@ class Versions(
           val apiVersion = APIV2QueryVersion(
             OffsetDateTime.now(),
             pluginFile.versionString,
-            pluginFile.dependencies.toList,
+            pluginFile.dependencyIds.toList,
+            pluginFile.dependencyVersions.toList,
             Visibility.Public,
             0,
             pluginFile.fileSize,
@@ -282,6 +283,7 @@ class Versions(
             version.createdAt,
             version.versionString,
             version.dependencyIds,
+            version.dependencyVersions,
             version.visibility,
             0,
             version.fileSize,

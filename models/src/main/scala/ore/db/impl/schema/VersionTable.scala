@@ -20,6 +20,11 @@ class VersionTable(tag: Tag)
       .mapTo[Option[String]](Option(_), _.orNull)
       .to(_.toList)
 
+  implicit private val listOptionIntType: OrePostgresDriver.DriverJdbcType[List[Option[Int]]] =
+    new OrePostgresDriver.SimpleArrayJdbcType[Int]("int")
+      .mapTo[Option[Int]](Option(_), _.fold(null: java.lang.Integer)(i => i))
+      .to(_.toList)
+
   def versionString      = column[String]("version_string")
   def dependencyIds      = column[List[String]]("dependency_ids")
   def dependencyVersions = column[List[Option[String]]]("dependency_versions")
@@ -35,14 +40,26 @@ class VersionTable(tag: Tag)
   def postId             = column[Option[Int]]("post_id")
   def isPostDirty        = column[Boolean]("is_post_dirty")
 
-  def usesMixin    = column[Boolean]("uses_mixin")
-  def stability    = column[Version.Stability]("uses_mixin")
-  def releaseType  = column[Version.ReleaseType]("uses_mixin")
-  def channelName  = column[String]("uses_mixin")
-  def channelColor = column[TagColor]("uses_mixin")
+  def usesMixin              = column[Boolean]("uses_mixin")
+  def stability              = column[Version.Stability]("uses_mixin")
+  def releaseType            = column[Version.ReleaseType]("uses_mixin")
+  def platforms              = column[List[String]]("platforms")
+  def platformVersions       = column[List[Option[String]]]("platform_versions")
+  def platformCoarseVersions = column[List[Option[Int]]]("platform_coarse_versions")
+  def channelName            = column[String]("uses_mixin")
+  def channelColor           = column[TagColor]("uses_mixin")
 
   def tags =
-    (usesMixin, stability, releaseType.?, channelName.?, channelColor.?) <> (Version.VersionTags.tupled, Version.VersionTags.unapply)
+    (
+      usesMixin,
+      stability,
+      releaseType.?,
+      platforms,
+      platformVersions,
+      platformCoarseVersions,
+      channelName.?,
+      channelColor.?
+    ) <> (Version.VersionTags.tupled, Version.VersionTags.unapply)
 
   override def * = {
     (

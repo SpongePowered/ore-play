@@ -121,12 +121,22 @@ object APIV2 {
   @ConfiguredJsonCodec case class VersionTags(
       mixin: Boolean,
       stability: Stability,
-      releaseType: Option[ReleaseType]
+      releaseType: Option[ReleaseType],
+      platforms: Seq[VersionPlatform]
+  )
+
+  //TODO: Potentially unify this and PromotedVersionTag
+  @ConfiguredJsonCodec case class VersionPlatform(
+      name: String,
+      data: Option[String],
+      displayData: Option[String],
+      minecraftVersion: Option[String],
+      color: VersionTagColor
   )
 
   @ConfiguredJsonCodec case class VersionDescription(description: String)
 
-  @ConfiguredJsonCodec case class VersionDependency(plugin_id: String, version: Option[String])
+  @ConfiguredJsonCodec case class VersionDependency(pluginId: String, version: Option[String])
   @ConfiguredJsonCodec case class VersionStatsAll(downloads: Long)
   @ConfiguredJsonCodec case class FileInfo(name: String, sizeBytes: Long, md5Hash: String)
 

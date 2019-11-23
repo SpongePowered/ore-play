@@ -262,6 +262,7 @@ case class APIV2QueryVersion(
     createdAt: OffsetDateTime,
     name: String,
     dependenciesIds: List[String],
+    dependenciesVersions: List[Option[String]],
     visibility: Visibility,
     downloads: Long,
     fileSize: Long,
@@ -277,12 +278,10 @@ case class APIV2QueryVersion(
   def asProtocol: APIV2.Version = APIV2.Version(
     createdAt,
     name,
-    dependenciesIds.map { depId =>
-      val data = depId.split(":")
-      APIV2.VersionDependency(
-        data(0),
-        data.lift(1)
-      )
+    dependenciesIds.zip(dependenciesVersions).map {
+      case (id, Some("null"))  => APIV2.VersionDependency(id, None)
+      case (id, Some(version)) => APIV2.VersionDependency(id, Some(version))
+      case (id, None)          => APIV2.VersionDependency(id, None)
     },
     visibility,
     APIV2.VersionStatsAll(downloads),
@@ -292,7 +291,8 @@ case class APIV2QueryVersion(
     APIV2.VersionTags(
       mixin,
       stability,
-      releaseType
+      releaseType,
+      ???
     )
   )
 }

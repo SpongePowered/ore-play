@@ -1,9 +1,13 @@
 package ore.data
 
 import scala.collection.immutable
+import scala.util.matching.Regex
 
+import ore.data.Platform.NoVersionPolicy
 import ore.models.project.TagColor
 
+import cats.syntax.all._
+import cats.instances.option._
 import enumeratum.values._
 
 /**
@@ -18,10 +22,29 @@ sealed abstract class Platform(
     val dependencyId: String,
     val tagColor: TagColor,
     val url: String,
+    val coarseVersionRegex: Option[Regex],
     val noVersionPolicy: Platform.NoVersionPolicy = Platform.NoVersionPolicy.NotAllowed
 ) extends StringEnumEntry {
 
   def name: String = value
+
+  def coarseVersionOf(version: String): Option[Int] = coarseVersionRegex.flatMap { extractor =>
+    version match {
+      case extractor(coarseStrVersion) => Some(coarseStrVersion.toInt)
+      case _                           => None
+    }
+  }
+
+  def produceVersionWarning(version: Option[String]): Option[String] = {
+    val inverseVersion = version.fold(Some(""): Option[String])(_ => None)
+    noVersionPolicy match {
+      case NoVersionPolicy.NotAllowed =>
+        inverseVersion.as(s"A missing version for the platform $name will not be accepted in the future")
+      case NoVersionPolicy.Warning =>
+        inverseVersion.as(s"You are recommended to supply a version for the platform $name")
+      case NoVersionPolicy.Allowed => None
+    }
+  }
 }
 object Platform extends StringEnum[Platform] {
 
@@ -34,7 +57,8 @@ object Platform extends StringEnum[Platform] {
         0,
         "spongeapi",
         TagColor.Sponge,
-        "https://spongepowered.org/downloads"
+        "https://spongepowered.org/downloads",
+        Some("""^(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?""".r)
       )
 
   case object SpongeForge
@@ -44,7 +68,8 @@ object Platform extends StringEnum[Platform] {
         2,
         "spongeforge",
         TagColor.SpongeForge,
-        "https://www.spongepowered.org/downloads/spongeforge"
+        "https://www.spongepowered.org/downloads/spongeforge",
+        Some("""^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$""".r)
       )
 
   case object SpongeVanilla
@@ -54,7 +79,8 @@ object Platform extends StringEnum[Platform] {
         2,
         "spongevanilla",
         TagColor.SpongeVanilla,
-        "https://www.spongepowered.org/downloads/spongevanilla"
+        "https://www.spongepowered.org/downloads/spongevanilla",
+        Some("""^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$""".r)
       )
 
   case object SpongeCommon
@@ -64,14 +90,49 @@ object Platform extends StringEnum[Platform] {
         1,
         "sponge",
         TagColor.SpongeCommon,
-        "https://www.spongepowered.org/downloads"
+        "https://www.spongepowered.org/downloads",
+        None
       )
 
   case object Lantern
-      extends Platform("lantern", SpongeCategory, 2, "lantern", TagColor.Lantern, "https://www.lanternpowered.org/")
+      extends Platform(
+        "lantern",
+        SpongeCategory,
+        2,
+        "lantern",
+        TagColor.Lantern,
+        "https://www.lanternpowered.org/",
+        None
+      )
 
   case object Forge
-      extends Platform("forge", ForgeCategory, 0, "forge", TagColor.Forge, "https://files.minecraftforge.net/")
+      extends Platform(
+        "forge",
+        ForgeCategory,
+        0,
+        "forge",
+        TagColor.Forge,
+        "https://files.minecraftforge.net/",
+        Some("""^\d+\.(\d+)\.\d+(?:\.\d+)?$""".r)
+      )
+
+  def createVersionedPlatforms(
+      dependencyIds: Seq[String],
+      dependencyVersions: Seq[Option[String]]
+  ): (Seq[VersionedPlatform], Seq[String]) = {
+    val (platforms, warnings) = dependencyIds
+      .zip(dependencyVersions)
+      .flatMap {
+        case (depId, depVersion) =>
+          withValueOpt(depId).map { platform =>
+            VersionedPlatform(platform.name, depVersion, depVersion.flatMap(platform.coarseVersionOf)) -> platform
+              .produceVersionWarning(depVersion)
+          }
+      }
+      .unzip
+
+    platforms -> warnings.flatten
+  }
 
   def getPlatforms(dependencyIds: Seq[String]): Seq[Platform] = {
     Platform.values
@@ -120,3 +181,5 @@ case object ForgeCategory extends PlatformCategory {
 object PlatformCategory {
   def getPlatformCategories: Seq[PlatformCategory] = Seq(SpongeCategory, ForgeCategory)
 }
+
+case class VersionedPlatform(id: String, version: Option[String], coarseVersion: Option[Int])
