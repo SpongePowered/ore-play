@@ -287,7 +287,14 @@ lazy val ore = project
     swaggerRoutesFile := "apiv2.routes",
     swaggerDomainNameSpaces := Seq(
       "models.protocols.APIV2",
-      "controllers.apiv2.ApiV2Controller"
+      "controllers.apiv2.AbstractApiV2Controller",
+      "controllers.apiv2.Users",
+      "controllers.apiv2.Authentication",
+      "controllers.apiv2.Keys",
+      "controllers.apiv2.Permissions",
+      "controllers.apiv2.Projects",
+      "controllers.apiv2.Users",
+      "controllers.apiv2.Versions"
     ),
     swaggerNamingStrategy := "snake_case",
     swaggerAPIVersion := "2.0",
