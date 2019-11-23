@@ -29,10 +29,8 @@ class Users(
 ) extends AbstractApiV2Controller(lifecycle) {
 
   def showUser(user: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
-      cachingF("showUser")(user) {
-        service.runDbCon(APIV2Queries.userQuery(user).option).map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
-      }
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
+      service.runDbCon(APIV2Queries.userQuery(user).option).map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
     }
 
   def showStarred(
@@ -41,7 +39,7 @@ class Users(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    showUserAction("showStarred")(
+    showUserAction(
       user,
       sort,
       limit,
@@ -56,7 +54,7 @@ class Users(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    showUserAction("showWatching")(
+    showUserAction(
       user,
       sort,
       limit,
@@ -65,7 +63,7 @@ class Users(
       APIV2Queries.watchingCountQuery
     )
 
-  def showUserAction(cacheKey: String)(
+  def showUserAction(
       user: String,
       sort: Option[ProjectSortingStrategy],
       limit: Option[Long],
@@ -79,35 +77,33 @@ class Users(
           Long
       ) => doobie.Query0[Either[DecodingFailure, APIV2.CompactProject]],
       countQuery: (String, Boolean, Option[DbRef[User]]) => doobie.Query0[Long]
-  ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
-    cachingF(cacheKey)(user, sort, limit, offset) {
-      val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
+  ): Action[AnyContent] = CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
+    val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
 
-      val getProjects = query(
-        user,
-        request.globalPermissions.has(Permission.SeeHidden),
-        request.user.map(_.id),
-        sort.getOrElse(ProjectSortingStrategy.Default),
-        realLimit,
-        offset
-      ).to[Vector]
+    val getProjects = query(
+      user,
+      request.globalPermissions.has(Permission.SeeHidden),
+      request.user.map(_.id),
+      sort.getOrElse(ProjectSortingStrategy.Default),
+      realLimit,
+      offset
+    ).to[Vector]
 
-      val countProjects = countQuery(
-        user,
-        request.globalPermissions.has(Permission.SeeHidden),
-        request.user.map(_.id)
-      ).unique
+    val countProjects = countQuery(
+      user,
+      request.globalPermissions.has(Permission.SeeHidden),
+      request.user.map(_.id)
+    ).unique
 
-      (service.runDbCon(getProjects).flatMap(ZIO.foreach(_)(ZIO.fromEither(_))).orDie, service.runDbCon(countProjects))
-        .parMapN { (projects, count) =>
-          Ok(
-            PaginatedCompactProjectResult(
-              Pagination(realLimit, offset, count),
-              projects
-            )
+    (service.runDbCon(getProjects).flatMap(ZIO.foreach(_)(ZIO.fromEither(_))).orDie, service.runDbCon(countProjects))
+      .parMapN { (projects, count) =>
+        Ok(
+          PaginatedCompactProjectResult(
+            Pagination(realLimit, offset, count),
+            projects
           )
-        }
-    }
+        )
+      }
   }
 }
 object Users {

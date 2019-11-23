@@ -59,55 +59,53 @@ class Projects(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
-      cachingF("listProjects")(q, categories, tags, owner, sort, relevance, limit, offset) {
-        val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
-        val realOffset = offsetOrZero(offset)
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
+      val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
+      val realOffset = offsetOrZero(offset)
 
-        val parsedTags = tags.map { s =>
-          val splitted = s.split(":", 2)
-          (splitted(0), splitted.lift(1))
-        }
+      val parsedTags = tags.map { s =>
+        val splitted = s.split(":", 2)
+        (splitted(0), splitted.lift(1))
+      }
 
-        val getProjects = APIV2Queries
-          .projectQuery(
-            None,
-            categories.toList,
-            parsedTags.toList,
-            q,
-            owner,
-            request.globalPermissions.has(Permission.SeeHidden),
-            request.user.map(_.id),
-            sort.getOrElse(ProjectSortingStrategy.Default),
-            relevance.getOrElse(true),
-            realLimit,
-            realOffset
+      val getProjects = APIV2Queries
+        .projectQuery(
+          None,
+          categories.toList,
+          parsedTags.toList,
+          q,
+          owner,
+          request.globalPermissions.has(Permission.SeeHidden),
+          request.user.map(_.id),
+          sort.getOrElse(ProjectSortingStrategy.Default),
+          relevance.getOrElse(true),
+          realLimit,
+          realOffset
+        )
+        .to[Vector]
+
+      val countProjects = APIV2Queries
+        .projectCountQuery(
+          None,
+          categories.toList,
+          parsedTags.toList,
+          q,
+          owner,
+          request.globalPermissions.has(Permission.SeeHidden),
+          request.user.map(_.id)
+        )
+        .unique
+
+      (
+        service.runDbCon(getProjects).flatMap(ZIO.foreachParN(config.performance.nioBlockingFibers)(_)(identity)),
+        service.runDbCon(countProjects)
+      ).parMapN { (projects, count) =>
+        Ok(
+          PaginatedProjectResult(
+            Pagination(realLimit, realOffset, count),
+            projects
           )
-          .to[Vector]
-
-        val countProjects = APIV2Queries
-          .projectCountQuery(
-            None,
-            categories.toList,
-            parsedTags.toList,
-            q,
-            owner,
-            request.globalPermissions.has(Permission.SeeHidden),
-            request.user.map(_.id)
-          )
-          .unique
-
-        (
-          service.runDbCon(getProjects).flatMap(ZIO.foreachParN(config.performance.nioBlockingFibers)(_)(identity)),
-          service.runDbCon(countProjects)
-        ).parMapN { (projects, count) =>
-          Ok(
-            PaginatedProjectResult(
-              Pagination(realLimit, realOffset, count),
-              projects
-            )
-          )
-        }
+        )
       }
     }
 
@@ -196,15 +194,12 @@ class Projects(
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      cachingF("showProject")(pluginId) {
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      val dbCon = APIV2Queries
+        .singleProjectQuery(pluginId, request.globalPermissions.has(Permission.SeeHidden), request.user.map(_.id))
+        .option
 
-        val dbCon = APIV2Queries
-          .singleProjectQuery(pluginId, request.globalPermissions.has(Permission.SeeHidden), request.user.map(_.id))
-          .option
-
-        service.runDbCon(dbCon).get.flatten.bimap(_ => NotFound, Ok(_))
-      }
+      service.runDbCon(dbCon).get.flatten.bimap(_ => NotFound, Ok(_))
     }
 
   def editProject(pluginId: String): Action[Json] =
@@ -236,39 +231,35 @@ class Projects(
       }
 
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      cachingF("showMembers")(pluginId, limit, offset) {
-        service
-          .runDbCon(
-            APIV2Queries
-              .projectMembers(pluginId, limitOrDefault(limit, 25), offsetOrZero(offset))
-              .to[Vector]
-          )
-          .map(xs => Ok(xs.asJson))
-      }
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+      service
+        .runDbCon(
+          APIV2Queries
+            .projectMembers(pluginId, limitOrDefault(limit, 25), offsetOrZero(offset))
+            .to[Vector]
+        )
+        .map(xs => Ok(xs.asJson))
     }
 
   def showProjectStats(pluginId: String, fromDateString: String, toDateString: String): Action[AnyContent] =
-    ApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      cachingF("projectStats")(pluginId, fromDateString, toDateString) {
-        import Ordering.Implicits._
+    CachingApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF {
+      import Ordering.Implicits._
 
-        def parseDate(dateStr: String) =
-          Validated
-            .catchOnly[DateTimeParseException](LocalDate.parse(dateStr))
-            .leftMap(_ => ApiErrors(NonEmptyList.one(s"Badly formatted date $dateStr")))
+      def parseDate(dateStr: String) =
+        Validated
+          .catchOnly[DateTimeParseException](LocalDate.parse(dateStr))
+          .leftMap(_ => ApiErrors(NonEmptyList.one(s"Badly formatted date $dateStr")))
 
-        for {
-          t <- ZIO
-            .fromEither(parseDate(fromDateString).product(parseDate(toDateString)).toEither)
-            .mapError(BadRequest(_))
-          (fromDate, toDate) = t
-          _ <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest(ApiError("From date is after to date")))
-          res <- service.runDbCon(
-            APIV2Queries.projectStats(pluginId, fromDate, toDate).to[Vector].map(APIV2ProjectStatsQuery.asProtocol)
-          )
-        } yield Ok(res.asJson)
-      }
+      for {
+        t <- ZIO
+          .fromEither(parseDate(fromDateString).product(parseDate(toDateString)).toEither)
+          .mapError(BadRequest(_))
+        (fromDate, toDate) = t
+        _ <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest(ApiError("From date is after to date")))
+        res <- service.runDbCon(
+          APIV2Queries.projectStats(pluginId, fromDate, toDate).to[Vector].map(APIV2ProjectStatsQuery.asProtocol)
+        )
+      } yield Ok(res.asJson)
     }
 }
 object Projects {

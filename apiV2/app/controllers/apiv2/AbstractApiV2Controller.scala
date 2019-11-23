@@ -2,12 +2,13 @@ package controllers.apiv2
 
 import java.time.OffsetDateTime
 
+import scala.collection.immutable.TreeMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
 import play.api.http.Writeable
 import play.api.inject.ApplicationLifecycle
-import play.api.mvc.{ActionBuilder, ActionFilter, ActionRefiner, AnyContent, Request, Result}
+import play.api.mvc.{ActionBuilder, ActionFilter, ActionFunction, ActionRefiner, AnyContent, Request, Result}
 
 import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors}
 import controllers.{OreBaseController, OreControllerComponents}
@@ -35,7 +36,8 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
   implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, *]] =
     scalacache.CatsEffect.modes.async[ZIO[R, Throwable, *]]
 
-  private val resultCache = scalacache.caffeine.CaffeineCache[IO[Result, Result]]
+  private val resultCache       = scalacache.caffeine.CaffeineCache[IO[Result, Result]]
+  private val actionResultCache = scalacache.caffeine.CaffeineCache[Future[Result]]
 
   lifecycle.addStopHook(() => zioRuntime.unsafeRunToFuture(resultCache.close[Task]()))
 
@@ -165,8 +167,32 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
     }
   }
 
+  def cachingAction: ActionFunction[ApiRequest, ApiRequest] =
+    new ActionFunction[ApiRequest, ApiRequest] {
+      override protected def executionContext: ExecutionContext = ec
+
+      override def invokeBlock[A](request: ApiRequest[A], block: ApiRequest[A] => Future[Result]): Future[Result] = {
+        import scalacache.modes.scalaFuture._
+        require(request.method == "GET")
+
+        request.request.target
+
+        actionResultCache
+          .caching[Future](
+            request.path,
+            request.apiInfo.key.map(_.tokenIdentifier),
+            request.apiInfo.user.map(_.id),
+            request.queryString.toSeq.sortBy(_._1)
+          )(Some(1.minute))(block(request))
+          .flatten
+      }
+    }
+
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     Action.andThen(apiAction).andThen(permApiAction(perms, scope))
+
+  def CachingApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
+    ApiAction(perms, scope).andThen(cachingAction)
 
   def withUndefined[A: Decoder](cursor: ACursor): Decoder.AccumulatingResult[Option[A]] = {
     import cats.instances.either._

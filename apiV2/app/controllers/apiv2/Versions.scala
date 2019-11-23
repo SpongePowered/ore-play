@@ -52,61 +52,57 @@ class Versions(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      cachingF("listVersions")(pluginId, tags, limit, offset) {
-        val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
-        val realOffset = offsetOrZero(offset)
-        val getVersions = APIV2Queries
-          .versionQuery(
-            pluginId,
-            None,
-            tags.toList,
-            request.globalPermissions.has(Permission.SeeHidden),
-            request.user.map(_.id),
-            realLimit,
-            realOffset
-          )
-          .to[Vector]
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
+      val realOffset = offsetOrZero(offset)
+      val getVersions = APIV2Queries
+        .versionQuery(
+          pluginId,
+          None,
+          tags.toList,
+          request.globalPermissions.has(Permission.SeeHidden),
+          request.user.map(_.id),
+          realLimit,
+          realOffset
+        )
+        .to[Vector]
 
-        val countVersions = APIV2Queries
-          .versionCountQuery(
-            pluginId,
-            tags.toList,
-            request.globalPermissions.has(Permission.SeeHidden),
-            request.user.map(_.id)
-          )
-          .unique
+      val countVersions = APIV2Queries
+        .versionCountQuery(
+          pluginId,
+          tags.toList,
+          request.globalPermissions.has(Permission.SeeHidden),
+          request.user.map(_.id)
+        )
+        .unique
 
-        (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
-          Ok(
-            PaginatedVersionResult(
-              Pagination(realLimit, realOffset, count),
-              versions
-            )
+      (service.runDbCon(getVersions), service.runDbCon(countVersions)).parMapN { (versions, count) =>
+        Ok(
+          PaginatedVersionResult(
+            Pagination(realLimit, realOffset, count),
+            versions
           )
-        }
+        )
       }
     }
 
   def showVersion(pluginId: String, name: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      cachingF("showVersion")(pluginId, name) {
-        service
-          .runDbCon(
-            APIV2Queries
-              .versionQuery(
-                pluginId,
-                Some(name),
-                Nil,
-                request.globalPermissions.has(Permission.SeeHidden),
-                request.user.map(_.id),
-                1,
-                0
-              )
-              .option
-          )
-          .map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
-      }
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+      service
+        .runDbCon(
+          APIV2Queries
+            .versionQuery(
+              pluginId,
+              Some(name),
+              Nil,
+              request.globalPermissions.has(Permission.SeeHidden),
+              request.user.map(_.id),
+              1,
+              0
+            )
+            .option
+        )
+        .map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
     }
 
   def editVersion(pluginId: String, name: String): Action[Json] =
@@ -126,20 +122,18 @@ class Versions(
     }
 
   def showVersionDescription(pluginId: String, name: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      cachingF("showVersionDescription")(pluginId, name) {
-        service
-          .runDBIO(
-            TableQuery[ProjectTable]
-              .join(TableQuery[VersionTable])
-              .on(_.id === _.projectId)
-              .filter(t => t._1.pluginId === pluginId && t._2.versionString === name)
-              .map(_._2.description)
-              .result
-              .headOption
-          )
-          .map(_.fold(NotFound: Result)(a => Ok(APIV2.VersionDescription(a))))
-      }
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+      service
+        .runDBIO(
+          TableQuery[ProjectTable]
+            .join(TableQuery[VersionTable])
+            .on(_.id === _.projectId)
+            .filter(t => t._1.pluginId === pluginId && t._2.versionString === name)
+            .map(_._2.description)
+            .result
+            .headOption
+        )
+        .map(_.fold(NotFound: Result)(a => Ok(APIV2.VersionDescription(a))))
     }
 
   def showVersionStats(
@@ -148,29 +142,27 @@ class Versions(
       fromDateString: String,
       toDateString: String
   ): Action[AnyContent] =
-    ApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
-      cachingF("versionStats")(pluginId, version, fromDateString, toDateString) {
-        import Ordering.Implicits._
+    CachingApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF {
+      import Ordering.Implicits._
 
-        def parseDate(dateStr: String) =
-          Validated
-            .catchOnly[DateTimeParseException](LocalDate.parse(dateStr))
-            .leftMap(_ => ApiErrors(NonEmptyList.one(s"Badly formatted date $dateStr")))
+      def parseDate(dateStr: String) =
+        Validated
+          .catchOnly[DateTimeParseException](LocalDate.parse(dateStr))
+          .leftMap(_ => ApiErrors(NonEmptyList.one(s"Badly formatted date $dateStr")))
 
-        for {
-          t <- ZIO
-            .fromEither(parseDate(fromDateString).product(parseDate(toDateString)).toEither)
-            .mapError(BadRequest(_))
-          (fromDate, toDate) = t
-          _ <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest(ApiError("From date is after to date")))
-          res <- service.runDbCon(
-            APIV2Queries
-              .versionStats(pluginId, version, fromDate, toDate)
-              .to[Vector]
-              .map(APIV2VersionStatsQuery.asProtocol)
-          )
-        } yield Ok(res.asJson)
-      }
+      for {
+        t <- ZIO
+          .fromEither(parseDate(fromDateString).product(parseDate(toDateString)).toEither)
+          .mapError(BadRequest(_))
+        (fromDate, toDate) = t
+        _ <- ZIO.unit.filterOrFail(_ => fromDate < toDate)(BadRequest(ApiError("From date is after to date")))
+        res <- service.runDbCon(
+          APIV2Queries
+            .versionStats(pluginId, version, fromDate, toDate)
+            .to[Vector]
+            .map(APIV2VersionStatsQuery.asProtocol)
+        )
+      } yield Ok(res.asJson)
     }
 
   //TODO: Do the async part at some point

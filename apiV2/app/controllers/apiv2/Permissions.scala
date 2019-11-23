@@ -21,34 +21,29 @@ class Permissions(
   import Permissions._
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
-    ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      cachingF("showPermissions")(pluginId, organizationName) {
-        permissionsInCreatedApiScope(pluginId, organizationName).map {
-          case (scope, perms) =>
-            Ok(
-              KeyPermissions(
-                scope.tpe,
-                perms.toNamedSeq.toList
-              )
+    CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
+      permissionsInCreatedApiScope(pluginId, organizationName).map {
+        case (scope, perms) =>
+          Ok(
+            KeyPermissions(
+              scope.tpe,
+              perms.toNamedSeq.toList
             )
-        }
+          )
       }
     }
 
   def has(
-      cacheKey: String,
       permissions: Seq[NamedPermission],
       pluginId: Option[String],
       organizationName: Option[String]
   )(
       check: (Seq[NamedPermission], Permission) => Boolean
   ): Action[AnyContent] =
-    ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      cachingF(cacheKey)(permissions, pluginId, organizationName) {
-        permissionsInCreatedApiScope(pluginId, organizationName).map {
-          case (scope, perms) =>
-            Ok(PermissionCheck(scope.tpe, check(permissions, perms)))
-        }
+    CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
+      permissionsInCreatedApiScope(pluginId, organizationName).map {
+        case (scope, perms) =>
+          Ok(PermissionCheck(scope.tpe, check(permissions, perms)))
       }
     }
 
@@ -57,14 +52,14 @@ class Permissions(
       pluginId: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has("hasAll", permissions, pluginId, organizationName)((seq, perm) => seq.forall(p => perm.has(p.permission)))
+    has(permissions, pluginId, organizationName)((seq, perm) => seq.forall(p => perm.has(p.permission)))
 
   def hasAny(
       permissions: Seq[NamedPermission],
       pluginId: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has("hasAny", permissions, pluginId, organizationName)((seq, perm) => seq.exists(p => perm.has(p.permission)))
+    has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(p => perm.has(p.permission)))
 }
 object Permissions {
 
