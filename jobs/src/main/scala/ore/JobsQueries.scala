@@ -15,7 +15,7 @@ object JobsQueries {
           |SET state = 'started', last_updated = now()
           |    WHERE id = (
           |        SELECT id
-          |            FROM queue
+          |            FROM jobs
           |            WHERE state = 'not_started' AND (retry_at IS NULL OR retry_at < now()) 
           |            ORDER BY id 
           |            FOR UPDATE SKIP LOCKED
