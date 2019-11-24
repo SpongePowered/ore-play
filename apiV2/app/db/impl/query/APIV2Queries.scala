@@ -247,7 +247,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
             |       pv.dependencies,
             |       pv.visibility,
             |       pv.description,
-            |       (SELECT sum(pvd.downloads) FROM project_versions_downloads pvd WHERE p.id = pvd.project_id AND pv.id = pvd.version_id),
+            |       coalesce((SELECT sum(pvd.downloads) FROM project_versions_downloads pvd WHERE p.id = pvd.project_id AND pv.id = pvd.version_id), 0),
             |       pv.file_size,
             |       pv.hash,
             |       pv.file_name,
