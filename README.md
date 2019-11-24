@@ -57,6 +57,11 @@ For `jobs`:
 * Either repeat the process for `ore`, but use `jobs/run` instead of `ore/run`.
 * Or, click the green triangle next to `OreJobProcessorMain` when opening up the file.
 
+**Note:** You might encounter a stack overflow exception when compiling ore. This is not unexpected. Just assign 
+more stack size to sbt in the way you're starting sbt. `-Xss4m` should be enough. If you're using IntelliJ, you can set 
+this in the VM arguments field. If you're invoking sbt directly, the most common ways to set this is either through 
+the `SBT_OPTS` environment variable, or with a file named `.jvmopts` with each flag on a new line.
+
 ### Using Hydra
 
 Hydra is the world’s only parallel compiler for the Scala language.
