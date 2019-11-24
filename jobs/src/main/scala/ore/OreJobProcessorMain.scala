@@ -1,7 +1,5 @@
 package ore
 
-import java.io.ByteArrayOutputStream
-import java.nio.file.{Files, Path, Paths}
 import java.sql.Connection
 
 import scala.concurrent.Await
@@ -17,13 +15,12 @@ import ore.discourse.{AkkaDiscourseApi, Discourse, DiscourseApi, OreDiscourseApi
 import ore.models.Job
 
 import akka.actor.{ActorSystem, Terminated}
-import akka.stream.scaladsl.{FileIO, Sink, StreamConverters}
+import akka.stream.scaladsl.{Sink, StreamConverters}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.ByteString
 import cats.effect.{Blocker, Resource}
 import cats.tagless.syntax.all._
 import cats.~>
-import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging
 import doobie.free.KleisliInterpreter
 import doobie.util.ExecutionContexts
@@ -86,7 +83,6 @@ object OreJobProcessorMain extends zio.ManagedApp {
 
   private def runApp(maxConnections: Int): ZManaged[ExpandedEnvironment, Nothing, Unit] =
     ZManaged.environment[ExpandedEnvironment].flatMap { env =>
-      import doobie.implicits._
       implicit val service: ModelService[UIO] = env.service
 
       val checkAndCreateFibers = for {
