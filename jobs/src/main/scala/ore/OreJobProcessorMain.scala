@@ -1,8 +1,10 @@
 package ore
 
-import java.nio.file.{Path, Paths}
+import java.io.ByteArrayOutputStream
+import java.nio.file.{Files, Path, Paths}
 import java.sql.Connection
 
+import scala.concurrent.Await
 import scala.util.chaining._
 
 import ore.db.ModelService
@@ -15,10 +17,13 @@ import ore.discourse.{AkkaDiscourseApi, Discourse, DiscourseApi, OreDiscourseApi
 import ore.models.Job
 
 import akka.actor.{ActorSystem, Terminated}
+import akka.stream.scaladsl.{FileIO, Sink, StreamConverters}
 import akka.stream.{ActorMaterializer, Materializer}
+import akka.util.ByteString
 import cats.effect.{Blocker, Resource}
 import cats.tagless.syntax.all._
 import cats.~>
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging
 import doobie.free.KleisliInterpreter
 import doobie.util.ExecutionContexts
@@ -38,8 +43,6 @@ object OreJobProcessorMain extends zio.ManagedApp {
 
   type SlickDb = OrePostgresDriver.backend.DatabaseDef
 
-  val resources: Path = Paths.get(this.getClass.getClassLoader.getResource("application.conf").toURI).getParent
-
   override def run(args: List[String]): ZManaged[Environment, Nothing, Int] = {
     def log(f: scalalogging.Logger => Unit): ZManaged[Any, Nothing, Unit] = ZManaged.fromEffect(UIO(f(Logger)))
 
@@ -56,7 +59,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
       jobsConfig          <- createConfig
       _                   <- log(_.info("Loaded config"))
       akkaDiscourseClient <- createDiscourseApi(jobsConfig)(actorSystem, materializer)
-      oreDiscourse = createOreDiscourse(akkaDiscourseClient)(jobsConfig, taskService)
+      oreDiscourse = createOreDiscourse(akkaDiscourseClient)(jobsConfig, taskService, materializer)
       _ <- log(_.info("Init finished. Starting"))
       _ <- runApp(db.source.maxConnections.getOrElse(32))
         .provideSome[Environment](createExpandedEnvironment(uioService, oreDiscourse, jobsConfig))
@@ -126,7 +129,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
 
   private def createSlickDb: ZManaged[Any, Int, SlickDb] =
     ZManaged
-      .makeEffect(Database.forConfig("jobs-db"))(_.close())
+      .makeEffect(Database.forConfig("jobs-db", classLoader = this.getClass.getClassLoader))(_.close())
       .flatMapError(logErrorManaged("Failed to connect to db"))
 
   private def createDoobieTransactor(db: SlickDb): ZManaged[Environment, Int, Transactor[Task]] = {
@@ -196,15 +199,27 @@ object OreJobProcessorMain extends zio.ManagedApp {
 
   private def createOreDiscourse(
       discourseClient: DiscourseApi[Task]
-  )(implicit config: OreJobsConfig, service: ModelService[Task]): OreDiscourseApiEnabled[Task] =
+  )(implicit config: OreJobsConfig, service: ModelService[Task], mat: Materializer): OreDiscourseApiEnabled[Task] =
     config.discourse.pipe { cfg =>
       implicit val runtime: Runtime[Environment] = this
+      def readFile(file: String) =
+        Await.result(
+          StreamConverters
+            .fromInputStream(
+              () => this.getClass.getClassLoader.getResourceAsStream(file)
+            )
+            .fold(ByteString.empty)(_ ++ _)
+            .map(_.utf8String)
+            .runWith(Sink.head),
+          scala.concurrent.duration.Duration.Inf
+        )
+
       new OreDiscourseApiEnabled[Task](
         discourseClient,
         cfg.categoryDefault,
         cfg.categoryDeleted,
-        resources.resolve("discourse/project_topic.md"),
-        resources.resolve("discourse/version_post.md"),
+        readFile("discourse/project_topic.md"),
+        readFile("discourse/version_post.md"),
         cfg.api.admin
       )
     }

@@ -1,6 +1,5 @@
 package ore.discourse
 
-import java.nio.file.{Files, Path}
 import java.text.MessageFormat
 
 import ore.OreJobsConfig
@@ -20,16 +19,16 @@ import com.typesafe.scalalogging
   *
   * @param categoryDefault The category where project topics are posted to
   * @param categoryDeleted The category where deleted project topics are moved to
-  * @param topicTemplatePath Path to project topic template
-  * @param versionReleasePostTemplatePath Path to version release template
+  * @param topicTemplate Project topic template
+  * @param versionReleasePostTemplate Version release template
   * @param admin An admin account to fall back to if no user is specified as poster
   */
 class OreDiscourseApiEnabled[F[_]](
     api: DiscourseApi[F],
     categoryDefault: Int,
     categoryDeleted: Int,
-    topicTemplatePath: Path,
-    versionReleasePostTemplatePath: Path,
+    topicTemplate: String,
+    versionReleasePostTemplate: String,
     admin: String
 )(
     implicit service: ModelService[F],
@@ -162,9 +161,6 @@ class OreDiscourseApiEnabled[F[_]](
     */
   object Templates {
 
-    val topicTemplate: String       = new String(Files.readAllBytes(topicTemplatePath), "UTF-8")
-    val versionPostTemplate: String = new String(Files.readAllBytes(versionReleasePostTemplatePath), "UTF-8")
-
     /** Creates a new title for a project topic. */
     def projectTitle(project: Project): String = project.name + project.description.fold("")(d => s" - $d")
 
@@ -179,7 +175,7 @@ class OreDiscourseApiEnabled[F[_]](
     /** Generates the content for a version release post. */
     def versionRelease(project: Project, version: Version, content: Option[String]): String = {
       MessageFormat.format(
-        versionPostTemplate,
+        versionReleasePostTemplate,
         project.name,
         s"${config.ore.baseUrl}/${project.url}",
         s"${config.ore.baseUrl}/${version.url(project)}",

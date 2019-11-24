@@ -11,7 +11,7 @@ ore {
 }
 
 # Slick configuration
-slick.dbs.default {
+jobs-db {
     driver = "org.postgresql.Driver"
     url = "jdbc:postgresql://localhost/ore"
     url = ${?JDBC_DATABASE_URL}
