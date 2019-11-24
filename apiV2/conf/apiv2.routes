@@ -195,9 +195,9 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #    - name: categories
 #      description: Restrict your search to a list of categories
 #      required: false
-#    - name: tags
+#    - name: platforms
 #      required: false
-#      description: A list of tags all the returned projects should have. Should be formated either as `tagname` or `tagname:tagdata`.
+#      description: Only show projects that have a promoted version with a platform given in this list. Should be formated either as `platform` or `platform:version`.
 #    - name: owner
 #      description: Limit the search to a specific user
 #    - name: sort
@@ -220,7 +220,7 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects                                            @controllers.apiv2.Projects.listProjects(q: Option[String], categories: Seq[Category], tags: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+GET     /projects                                            @controllers.apiv2.Projects.listProjects(q: Option[String], categories: Seq[Category], platforms: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Creates a new project
@@ -395,9 +395,9 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #  parameters:
 #    - name: pluginId
 #      description: The plugin id of the project to return versions for
-#    - name: tags
+#    - name: platforms
 #      required: false
-#      description: A list of tags all the returned versions should have. Should be formated either as `tagname` or `tagname:tagdata`.
+#      description: Only show versions that with a platform given in this list. Should be formated either as `platform` or `platform:version`.
 #    - name: limit
 #      description: The maximum amount of versions to return
 #    - name: offset
@@ -414,7 +414,7 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions                         @controllers.apiv2.Versions.listVersions(pluginId, tags: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId/versions                         @controllers.apiv2.Versions.listVersions(pluginId, platforms: Seq[String], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns a specific version of a project

@@ -10,6 +10,7 @@ import controllers.sugar.Requests.ApiAuthInfo
 import models.protocols.APIV2
 import models.querymodels._
 import ore.OreConfig
+import ore.data.Platform
 import ore.data.project.Category
 import ore.db.DbRef
 import ore.db.impl.query.DoobieOreProtocol
@@ -88,10 +89,16 @@ object APIV2Queries extends DoobieOreProtocol {
   def in2[F[_]: Reducible, A: Put, B: Put](f: Fragment, fs: F[(A, B)]): Fragment =
     fs.toList.map { case (a, b) => fr0"($a, $b)" }.foldSmash1(f ++ fr0"IN (", fr",", fr")")
 
+  def array[F[_]: Reducible, A: Put](fs: F[A]): Fragment =
+    fs.toList.map(a => fr0"$a").foldSmash1(fr0"ARRAY[", fr",", fr0"]")
+
+  def array2Text[F[_]: Reducible, A: Put, B: Put](fs: F[(A, B)]): Fragment =
+    fs.toList.map { case (a, b) => fr0"($a, $b)::TEXT" }.foldSmash1(fr0"ARRAY[", fr",", fr0"]")
+
   def projectSelectFrag(
       pluginId: Option[String],
       category: List[Category],
-      tags: List[(String, Option[String])],
+      platforms: List[(String, Option[String])],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -136,21 +143,26 @@ object APIV2Queries extends DoobieOreProtocol {
           Some(fr"(p.visibility = 1 OR ($id = ANY(p.project_members) AND p.visibility != 5))")
         }
 
-    val (tagsWithData, tagsWithoutData) = tags.partitionEither {
-      case (name, Some(data)) => Left((name, data))
-      case (name, None)       => Right(name)
+    val (platformsWithVersion, platformsWithoutVersion) = platforms.partitionEither {
+      case (name, Some(version)) =>
+        Left((name, Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
+      case (name, None) => Right(name)
     }
 
     val filters = Fragments.whereAndOpt(
       pluginId.map(id => fr"p.plugin_id = $id"),
       NonEmptyList.fromList(category).map(Fragments.in(fr"p.category", _)),
-      if (tags.nonEmpty) {
+      if (platforms.nonEmpty) {
         val jsSelect =
-          sql"""|SELECT pv.tag_name 
-                |          FROM jsonb_to_recordset(p.promoted_versions) AS pv(tag_name TEXT, tag_version TEXT) """.stripMargin ++
+          sql"""|SELECT promoted.platform
+                |    FROM (SELECT unnest(platforms)                AS platform,
+                |                 unnest(platform_coarse_versions) AS platform_coarse_version
+                |              FROM jsonb_to_recordset(p.promoted_versions) AS promoted(platforms TEXT[], platform_coarse_versions TEXT[])) AS promoted """.stripMargin ++
             Fragments.whereAndOpt(
-              NonEmptyList.fromList(tagsWithData).map(t => in2(fr"(pv.tag_name, pv.tag_version)", t)),
-              NonEmptyList.fromList(tagsWithoutData).map(t => Fragments.in(fr"pv.tag_name", t))
+              NonEmptyList
+                .fromList(platformsWithVersion)
+                .map(t => in2(fr"(promoted.platform, promoted.platform_coarse_version)", t)),
+              NonEmptyList.fromList(platformsWithoutVersion).map(t => Fragments.in(fr"promoted.platform", t))
             )
 
         Some(fr"EXISTS" ++ Fragments.parentheses(jsSelect))
@@ -167,7 +179,7 @@ object APIV2Queries extends DoobieOreProtocol {
   def projectQuery(
       pluginId: Option[String],
       category: List[Category],
-      tags: List[(String, Option[String])],
+      platforms: List[(String, Option[String])],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -197,7 +209,7 @@ object APIV2Queries extends DoobieOreProtocol {
       }
     } else order.fragment
 
-    val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
+    val select = projectSelectFrag(pluginId, category, platforms, query, owner, canSeeHidden, currentUserId)
     (select ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2QueryProject].map(_.asProtocol)
   }
 
@@ -227,13 +239,13 @@ object APIV2Queries extends DoobieOreProtocol {
   def projectCountQuery(
       pluginId: Option[String],
       category: List[Category],
-      tags: List[(String, Option[String])],
+      platforms: List[(String, Option[String])],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] = {
-    val select = projectSelectFrag(pluginId, category, tags, query, owner, canSeeHidden, currentUserId)
+    val select = projectSelectFrag(pluginId, category, platforms, query, owner, canSeeHidden, currentUserId)
     (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(select) ++ fr"sq").query[Long]
   }
 
@@ -310,14 +322,15 @@ object APIV2Queries extends DoobieOreProtocol {
   def versionSelectFrag(
       pluginId: String,
       versionName: Option[String],
-      tags: List[String],
+      platforms: List[(String, Option[String])],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
   ): Fragment = {
     val base =
       sql"""|SELECT pv.created_at,
             |       pv.version_string,
-            |       pv.dependencies,
+            |       pv.dependency_ids,
+            |       pv.dependency_versions,
             |       pv.visibility,
             |       (SELECT sum(pvd.downloads) FROM project_versions_downloads pvd WHERE p.id = pvd.project_id AND pv.id = pvd.version_id),
             |       pv.file_size,
@@ -325,13 +338,20 @@ object APIV2Queries extends DoobieOreProtocol {
             |       pv.file_name,
             |       u.name,
             |       pv.review_state,
-            |       array_agg(pvt.name ORDER BY (pvt.name)) FILTER ( WHERE pvt.name IS NOT NULL )  AS tag_names,
-            |       array_agg(pvt.data ORDER BY (pvt.name)) FILTER ( WHERE pvt.name IS NOT NULL )  AS tag_datas,
-            |       array_agg(pvt.color ORDER BY (pvt.name)) FILTER ( WHERE pvt.name IS NOT NULL ) AS tag_colors
+            |       pv.uses_mixin,
+            |       pv.stability,
+            |       pv.release_type,
+            |       pv.platforms,
+            |       pv.platform_versions
             |    FROM projects p
             |             JOIN project_versions pv ON p.id = pv.project_id
-            |             LEFT JOIN users u ON pv.author_id = u.id
-            |             LEFT JOIN project_version_tags pvt ON pv.id = pvt.version_id """.stripMargin
+            |             LEFT JOIN users u ON pv.author_id = u.id """.stripMargin
+
+    val (platformsWithVersion, platformsWithoutVersion) = platforms.partitionEither {
+      case (name, Some(version)) =>
+        Left((name, Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
+      case (name, None) => Right(name)
+    }
 
     val visibilityFrag =
       if (canSeeHidden) None
@@ -345,13 +365,12 @@ object APIV2Queries extends DoobieOreProtocol {
     val filters = Fragments.whereAndOpt(
       Some(fr"p.plugin_id = $pluginId"),
       versionName.map(v => fr"pv.version_string = $v"),
+      NonEmptyList.fromList(platformsWithoutVersion).map(array(_) ++ fr"&& pv.platforms"),
       NonEmptyList
-        .fromList(tags)
+        .fromList(platformsWithVersion)
         .map { t =>
-          Fragments.or(
-            Fragments.in(fr"pvt.name || ':' || pvt.data", t),
-            Fragments.in(fr"pvt.name", t)
-          )
+          array2Text(t) ++
+            fr"&& ARRAY(SELECT (platform, coarse_version)::TEXT FROM unnest(pv.platforms, pv.platform_coarse_versions) as plat(platform, coarse_version))"
         },
       visibilityFrag
     )
@@ -362,13 +381,13 @@ object APIV2Queries extends DoobieOreProtocol {
   def versionQuery(
       pluginId: String,
       versionName: Option[String],
-      tags: List[String],
+      platforms: List[(String, Option[String])],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]],
       limit: Long,
       offset: Long
   ): Query0[APIV2.Version] =
-    (versionSelectFrag(pluginId, versionName, tags, canSeeHidden, currentUserId) ++ fr"ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset")
+    (versionSelectFrag(pluginId, versionName, platforms, canSeeHidden, currentUserId) ++ fr"ORDER BY pv.created_at DESC LIMIT $limit OFFSET $offset")
       .query[APIV2QueryVersion]
       .map(_.asProtocol)
 
@@ -381,12 +400,12 @@ object APIV2Queries extends DoobieOreProtocol {
 
   def versionCountQuery(
       pluginId: String,
-      tags: List[String],
+      platforms: List[(String, Option[String])],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] =
     (sql"SELECT COUNT(*) FROM " ++ Fragments.parentheses(
-      versionSelectFrag(pluginId, None, tags, canSeeHidden, currentUserId)
+      versionSelectFrag(pluginId, None, platforms, canSeeHidden, currentUserId)
     ) ++ fr"sq").query[Long]
 
   def updateVersion(pluginId: String, versionName: String, edits: Versions.EditableVersion): Update0 = {

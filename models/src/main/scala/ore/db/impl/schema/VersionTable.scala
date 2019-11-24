@@ -20,11 +20,6 @@ class VersionTable(tag: Tag)
       .mapTo[Option[String]](Option(_), _.orNull)
       .to(_.toList)
 
-  implicit private val listOptionIntType: OrePostgresDriver.DriverJdbcType[List[Option[Int]]] =
-    new OrePostgresDriver.SimpleArrayJdbcType[Int]("int")
-      .mapTo[Option[Int]](Option(_), _.fold(null: java.lang.Integer)(i => i))
-      .to(_.toList)
-
   def versionString      = column[String]("version_string")
   def dependencyIds      = column[List[String]]("dependency_ids")
   def dependencyVersions = column[List[Option[String]]]("dependency_versions")
@@ -45,7 +40,7 @@ class VersionTable(tag: Tag)
   def releaseType            = column[Version.ReleaseType]("uses_mixin")
   def platforms              = column[List[String]]("platforms")
   def platformVersions       = column[List[Option[String]]]("platform_versions")
-  def platformCoarseVersions = column[List[Option[Int]]]("platform_coarse_versions")
+  def platformCoarseVersions = column[List[Option[String]]]("platform_coarse_versions")
   def channelName            = column[String]("uses_mixin")
   def channelColor           = column[TagColor]("uses_mixin")
 

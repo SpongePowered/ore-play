@@ -52,7 +52,7 @@ class Projects(
   def listProjects(
       q: Option[String],
       categories: Seq[Category],
-      tags: Seq[String],
+      platforms: Seq[String],
       owner: Option[String],
       sort: Option[ProjectSortingStrategy],
       relevance: Option[Boolean],
@@ -63,7 +63,7 @@ class Projects(
       val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
       val realOffset = offsetOrZero(offset)
 
-      val parsedTags = tags.map { s =>
+      val parsedPlatforms = platforms.map { s =>
         val splitted = s.split(":", 2)
         (splitted(0), splitted.lift(1))
       }
@@ -72,7 +72,7 @@ class Projects(
         .projectQuery(
           None,
           categories.toList,
-          parsedTags.toList,
+          parsedPlatforms.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -88,7 +88,7 @@ class Projects(
         .projectCountQuery(
           None,
           categories.toList,
-          parsedTags.toList,
+          parsedPlatforms.toList,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),

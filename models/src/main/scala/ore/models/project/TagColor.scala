@@ -38,16 +38,4 @@ object TagColor extends IntEnum[TagColor] {
   case object Silver      extends TagColor(24, "#C0C0C0", "#FFFFFF")
   case object Gray        extends TagColor(25, "#A9A9A9", "#FFFFFF")
   case object Transparent extends TagColor(26, "transparent", "#FFFFFF")
-
-  case object Stable      extends TagColor(27, "00DC00", "#333333")
-  case object Beta        extends TagColor(28, "FFC800", "#333333")
-  case object Alpha       extends TagColor(29, "FF8200", "#333333")
-  case object Bleeding    extends TagColor(30, "#DC0000", "#333333")
-  case object Unsupported extends TagColor(31, "#7F7F7F", "#FFFFFF")
-  case object Broken      extends TagColor(32, "#565656", "#FFFFFF")
-
-  case object MajorUpdate extends TagColor(33, "#CFB53B", "#333333")
-  case object MinorUpdate extends TagColor(34, "#C0C0C0", "#333333")
-  case object Patches     extends TagColor(35, "#7F7F7F", "#FFFFFF")
-  case object Hotfix      extends TagColor(36, "#DC0000", "#333333")
 }

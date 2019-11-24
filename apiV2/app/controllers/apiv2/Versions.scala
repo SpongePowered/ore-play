@@ -52,18 +52,23 @@ class Versions(
 
   def listVersions(
       pluginId: String,
-      tags: Seq[String],
+      platforms: Seq[String],
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
       val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
       val realOffset = offsetOrZero(offset)
+      val parsedPlatforms = platforms.map { s =>
+        val splitted = s.split(":", 2)
+        (splitted(0), splitted.lift(1))
+      }.toList
+
       val getVersions = APIV2Queries
         .versionQuery(
           pluginId,
           None,
-          tags.toList,
+          parsedPlatforms,
           request.globalPermissions.has(Permission.SeeHidden),
           request.user.map(_.id),
           realLimit,
@@ -74,7 +79,7 @@ class Versions(
       val countVersions = APIV2Queries
         .versionCountQuery(
           pluginId,
-          tags.toList,
+          parsedPlatforms,
           request.globalPermissions.has(Permission.SeeHidden),
           request.user.map(_.id)
         )
@@ -226,7 +231,9 @@ class Versions(
             ReviewState.Unreviewed,
             pluginFile.data.containsMixins,
             Version.Stability.Stable,
-            None
+            None,
+            pluginFile.versionedPlatforms.map(_.id).toList,
+            pluginFile.versionedPlatforms.map(_.version).toList
           )
 
           val warnings = NonEmptyList.fromList(pluginFile.warnings.toList)
@@ -293,7 +300,9 @@ class Versions(
             version.reviewState,
             version.tags.usesMixin,
             version.tags.stability,
-            version.tags.releaseType
+            version.tags.releaseType,
+            version.tags.platforms,
+            version.tags.platformsVersions
           )
 
           Created(apiVersion.asProtocol)

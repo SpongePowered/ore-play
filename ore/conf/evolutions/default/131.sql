@@ -41,7 +41,7 @@ ALTER TABLE project_versions
     ADD COLUMN dependency_versions      TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[],
     ADD COLUMN platforms                TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[],
     ADD COLUMN platform_versions        TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[],
-    ADD COLUMN platform_coarse_versions INT[]  NOT NULL DEFAULT ARRAY []::INT[];
+    ADD COLUMN platform_coarse_versions TEXT[] NOT NULL DEFAULT ARRAY []::TEXT[];
 
 -- noinspection SqlWithoutWhere
 UPDATE project_versions pv
@@ -57,24 +57,24 @@ SET dependency_ids       = (SELECT coalesce(array_agg(split_part(dep_id, ':', 1)
     legacy_channel_name  = (SELECT pc.name FROM project_channels pc WHERE pc.id = pv.channel_id),
     legacy_channel_color = (SELECT pc.color FROM project_channels pc WHERE pc.id = pv.channel_id);
 
-CREATE FUNCTION platform_coarse_version_from_dependency(pluginid TEXT, version TEXT) RETURNS INT
+CREATE FUNCTION platform_coarse_version_from_dependency(pluginid TEXT, version TEXT) RETURNS TEXT
     LANGUAGE plpgsql
-    IMMUTABLE RETURNS NULL ON NULL INPUT AS
+    IMMUTABLE AS
 $$
 BEGIN
     CASE $1
         WHEN 'spongeapi' THEN RETURN substring($2 FROM
-                                               '^\[?(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?(?:,(?:\d+\.\d+(?:\.\d+)?)?\))?$')::INT;;
+                                               '^\[?(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?(?:,(?:\d+\.\d+(?:\.\d+)?)?\))?$');;
         WHEN 'spongeforge' THEN RETURN substring($2 FROM
-                                                 '^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')::INT;;
+                                                 '^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$');;
         WHEN 'spongevanilla' THEN RETURN substring($2 FROM
-                                                   '^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$')::INT;;
+                                                   '^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$');;
         WHEN 'forge' THEN RETURN substring($2 FROM '^\d+\.(\d+)\.\d+(?:\.\d+)?$')::INT;;
         WHEN 'lantern' THEN RETURN NULL;; --TODO Change this once Lantern changes to SpongeVanilla's format
         ELSE
         END CASE;;
 
-    RETURN NULL;;
+    RETURN $2;;
 END;;
 $$;
 
@@ -88,7 +88,9 @@ SET platforms                = ARRAY(SELECT dep_id
                                      FROM unnest(pv.dependency_ids, pv.dependency_versions) AS dep(dep_id, dep_ver)
                                      WHERE dep_id IN ('spongeapi', 'spongeforge', 'spongevanilla', 'forge', 'lantern')),
     platform_coarse_versions = ARRAY(
-            SELECT platform_coarse_version_from_dependency(unnest(pv.dependency_ids), unnest(pv.dependency_versions)));
+            SELECT platform_coarse_version_from_dependency(dep_id, dep_ver)
+            FROM unnest(pv.dependency_ids, pv.dependency_versions) AS dep(dep_id, dep_ver)
+            WHERE dep_id IN ('spongeapi', 'spongeforge', 'spongevanilla', 'forge', 'lantern'));
 
 DROP FUNCTION platform_coarse_version_from_dependency;
 
@@ -116,25 +118,32 @@ CREATE MATERIALIZED VIEW home_projects AS
 WITH promoted AS (
     SELECT sq.project_id,
            sq.version_string,
-           sq.platform,
-           sq.platform_version
+           sq.platforms,
+           sq.platform_versions,
+           sq.platform_coarse_versions
     FROM (SELECT sq.project_id,
                  sq.version_string,
                  sq.created_at,
-                 sq.platform,
+                 sq.platforms,
+                 sq.platform_versions,
+                 sq.platform_coarse_versions,
                  sq.platform_version,
                  row_number()
                  OVER (PARTITION BY sq.project_id, platform, platform_coarse_version ORDER BY sq.created_at) AS row_num
           FROM (SELECT pv.project_id,
                        pv.version_string,
                        pv.created_at,
+                       pv.platforms,
+                       pv.platform_versions,
+                       pv.platform_coarse_versions,
                        unnest(pv.platforms)                AS platform,
                        unnest(pv.platform_versions)        AS platform_version,
                        unnest(pv.platform_coarse_versions) AS platform_coarse_version
                 FROM project_versions pv
-                WHERE pv.visibility = 1) sq) sq
+                WHERE pv.visibility = 1) sq
+          WHERE sq.platform_coarse_version IS NOT NULL) sq
     WHERE sq.row_num = 1
-    ORDER BY sq.platform_version)
+    ORDER BY sq.platform_version DESC)
 SELECT p.id,
        p.owner_name                      AS owner_name,
        array_agg(DISTINCT pm.user_id)    AS project_members,
@@ -153,9 +162,14 @@ SELECT p.id,
        p.created_at,
        max(lv.created_at)                AS last_updated,
        to_jsonb(
-               ARRAY(SELECT jsonb_build_object('version_string', promoted.version_string, 'platform',
-                                               promoted.platform,
-                                               'platform_version', promoted.platform_version)
+               ARRAY(SELECT DISTINCT ON (promoted.version_string) jsonb_build_object('version_string',
+                                                                                     promoted.version_string,
+                                                                                     'platforms',
+                                                                                     promoted.platforms,
+                                                                                     'platform_versions',
+                                                                                     promoted.platform_versions,
+                                                                                     'platform_coarse_versions',
+                                                                                     promoted.platform_coarse_versions)
                      FROM promoted
                      WHERE promoted.project_id = p.id
                      LIMIT 5))           AS promoted_versions,
@@ -219,11 +233,12 @@ ALTER TABLE project_versions
     ADD COLUMN channel_id BIGINT REFERENCES project_channels;
 
 INSERT INTO project_channels (created_at, name, color, project_id)
-SELECT DISTINCT pv.created_at, pv.legacy_channel_name, pv.legacy_channel_color, pv.project_id
+SELECT pv.created_at, pv.legacy_channel_name, pv.legacy_channel_color, pv.project_id
 FROM project_versions pv
 WHERE pv.legacy_channel_name IS NOT NULL
   AND pv.legacy_channel_color IS NOT NULL
-ORDER BY pv.created_at;
+ORDER BY pv.created_at
+ON CONFLICT DO NOTHING;
 
 INSERT INTO project_channels (created_at, name, color, project_id)
 SELECT p.created_at, 'Release', 8, p.id
@@ -300,6 +315,9 @@ ALTER TABLE project_versions
     DROP COLUMN release_type,
     DROP COLUMN legacy_channel_name,
     DROP COLUMN legacy_channel_color,
+    DROP COLUMN platforms,
+    DROP COLUMN platform_versions,
+    DROP COLUMN platform_coarse_versions,
     ADD COLUMN dependencies TEXT[];
 
 DROP TYPE STABILITY;
@@ -307,12 +325,12 @@ DROP TYPE RELEASE_TYPE;
 
 -- noinspection SqlWithoutWhere
 UPDATE project_versions
-SET dependencies = ARRAY(unnest(dependency_ids) || ':' || unnest(dependency_versions));
+SET dependencies = ARRAY(SELECT dep_id || ':' || dep_version
+                         FROM unnest(dependency_ids, dependency_versions) AS dep(dep_id, dep_version));
 
 ALTER TABLE project_versions
     DROP COLUMN dependency_ids,
-    DROP COLUMN dependency_versions,
-    DROP COLUMN platform_versions;
+    DROP COLUMN dependency_versions;
 
 CREATE MATERIALIZED VIEW home_projects AS
 WITH tags AS (

@@ -13,7 +13,7 @@ import ore.OreConfig
 import ore.data.project.{Category, ProjectNamespace}
 import ore.models.project.Version.{ReleaseType, Stability}
 import ore.models.project.io.ProjectFiles
-import ore.models.project.{ReviewState, TagColor, Visibility}
+import ore.models.project.{ReviewState, Visibility}
 import ore.models.user.User
 import ore.permission.role.Role
 import util.syntax._
@@ -122,85 +122,77 @@ object APIV2QueryProject {
         val cursor = json.hcursor
 
         for {
-          version <- cursor.get[String]("version_string")
-          tagName <- cursor.get[String]("tag_name")
-          data    <- cursor.get[Option[String]]("tag_version")
-          color <- cursor
-            .get[Int]("tag_color")
-            .flatMap { i =>
-              TagColor
-                .withValueOpt(i)
-                .toRight(DecodingFailure(s"Invalid TagColor $i", cursor.downField("tag_color").history))
-            }
-        } yield {
-
-          val displayAndMc = data.map { rawData =>
-            lazy val lowerBoundVersion = for {
-              range <- Try(VersionRange.createFromVersionSpec(rawData)).toOption
-              version <- Option(range.getRecommendedVersion)
-                .orElse(range.getRestrictions.asScala.flatMap(r => Option(r.getLowerBound)).toVector.minimumOption)
-            } yield version
-
-            lazy val lowerBoundVersionStr = lowerBoundVersion.map(_.toString)
-
-            def unzipOptions[A, B](fab: Option[(A, B)]): (Option[A], Option[B]) = fab match {
-              case Some((a, b)) => Some(a) -> Some(b)
-              case None         => (None, None)
-            }
-
-            tagName match {
-              case "Sponge" =>
-                lowerBoundVersionStr.collect {
-                  case MajorMinor(version) => version
-                } -> None //TODO
-              case "SpongeForge" =>
-                unzipOptions(
-                  lowerBoundVersionStr.collect {
-                    case SpongeForgeMajorMinorMC(version, mcVersion) => version -> mcVersion
-                  }
-                )
-              case "SpongeVanilla" =>
-                unzipOptions(
-                  lowerBoundVersionStr.collect {
-                    case SpongeVanillaMajorMinorMC(version, mcVersion) => version -> mcVersion
-                  }
-                )
-              case "Forge" =>
-                lowerBoundVersion.flatMap {
-                  //This will crash and burn if the implementation becomes
-                  //something else, but better that, than failing silently
-                  case version: DefaultArtifactVersion =>
-                    if (BigInt(version.getVersion.getFirstInteger) >= 28) {
-                      Some(version.toString) //Not sure what we really want to do here
-                    } else {
-                      version.toString match {
-                        case OldForgeVersion(version) => Some(version)
-                        case _                        => None
-                      }
-                    }
-                } -> None //TODO
-              case _ => None -> None
-            }
+          version         <- cursor.get[String]("version_string")
+          platform        <- cursor.get[List[String]]("platforms")
+          platformVersion <- cursor.get[List[Option[String]]]("platform_versions")
+        } yield APIV2.PromotedVersion(
+          version,
+          platform.zip(platformVersion).map {
+            case (platform, platformVersion) => decodeVersionPlatform(platform, platformVersion)
           }
-
-          APIV2.PromotedVersion(
-            version,
-            Seq(
-              APIV2.PromotedVersionTag(
-                tagName,
-                data,
-                displayAndMc.flatMap(_._1),
-                displayAndMc.flatMap(_._2),
-                APIV2.VersionTagColor(
-                  color.foreground,
-                  color.background
-                )
-              )
-            )
-          )
-        }
+        )
       }
     } yield res
+
+  def decodeVersionPlatform(platform: String, platformVersion: Option[String]): APIV2.VersionPlatform = {
+    //TODO: Cleanup this in the DB so we don't need to deal with it
+    val displayAndMc = platformVersion.filterNot(_ == "null").map { rawData =>
+      lazy val lowerBoundVersion = for {
+        range <- Try(VersionRange.createFromVersionSpec(rawData)).toOption
+        version <- Option(range.getRecommendedVersion)
+          .orElse(range.getRestrictions.asScala.flatMap(r => Option(r.getLowerBound)).toVector.minimumOption)
+      } yield version
+
+      lazy val lowerBoundVersionStr = lowerBoundVersion.map(_.toString)
+
+      def unzipOptions[A, B](fab: Option[(A, B)]): (Option[A], Option[B]) = fab match {
+        case Some((a, b)) => Some(a) -> Some(b)
+        case None         => (None, None)
+      }
+
+      //TODO: Move this to the platforms object
+      platform match {
+        case "spongeapi" =>
+          lowerBoundVersionStr.collect {
+            case MajorMinor(version) => version
+          } -> None //TODO
+        case "spongeforge" =>
+          unzipOptions(
+            lowerBoundVersionStr.collect {
+              case SpongeForgeMajorMinorMC(version, mcVersion) => version -> mcVersion
+            }
+          )
+        case "spongevanilla" =>
+          unzipOptions(
+            lowerBoundVersionStr.collect {
+              case SpongeVanillaMajorMinorMC(version, mcVersion) => version -> mcVersion
+            }
+          )
+        case "forge" =>
+          lowerBoundVersion.flatMap {
+            //This will crash and burn if the implementation becomes
+            //something else, but better that, than failing silently
+            case version: DefaultArtifactVersion =>
+              if (BigInt(version.getVersion.getFirstInteger) >= 28) {
+                Some(version.toString) //Not sure what we really want to do here
+              } else {
+                version.toString match {
+                  case OldForgeVersion(version) => Some(version)
+                  case _                        => None
+                }
+              }
+          } -> None //TODO
+        case _ => None -> None
+      }
+    }
+
+    APIV2.VersionPlatform(
+      platform,
+      platformVersion.filterNot(_ == "null"),
+      displayAndMc.flatMap(_._1),
+      displayAndMc.flatMap(_._2)
+    )
+  }
 }
 
 case class APIV2QueryCompactProject(
@@ -272,7 +264,9 @@ case class APIV2QueryVersion(
     reviewState: ReviewState,
     mixin: Boolean,
     stability: Stability,
-    releaseType: Option[ReleaseType]
+    releaseType: Option[ReleaseType],
+    platforms: List[String],
+    platformVersions: List[Option[String]]
 ) {
 
   def asProtocol: APIV2.Version = APIV2.Version(
@@ -292,7 +286,10 @@ case class APIV2QueryVersion(
       mixin,
       stability,
       releaseType,
-      ???
+      platforms.zip(platformVersions).map {
+        case (platform, platformVersion) =>
+          APIV2QueryProject.decodeVersionPlatform(platform, platformVersion)
+      }
     )
   )
 }

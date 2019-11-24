@@ -13,7 +13,7 @@ object FakeChannel {
     val stability = version.tags.stability
     FakeChannel(
       stability.value.capitalize,
-      stability.color,
+      TagColor.Green,
       stability != Version.Stability.Stable
     )
   }

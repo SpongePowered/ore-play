@@ -100,6 +100,11 @@ GET http://localhost:9000/api/v2/projects/nucleus/versions/1.9.0-S7.1
 Authorization: OreApi session={{api_session}}
 Accept: application/json
 
+### Get the description of a versions
+GET http://localhost:9000/api/v2/projects/nucleus/versions/1.9.0-S7.1/description
+Authorization: OreApi session={{api_session}}
+Accept: application/json
+
 ### Get version stats
 GET http://localhost:9000/api/v2/projects/nucleus/versions/1.9.0-S7.1/stats?fromDate=2019-06-01&toDate=2019-10-13
 Authorization: OreApi session={{api_session}}

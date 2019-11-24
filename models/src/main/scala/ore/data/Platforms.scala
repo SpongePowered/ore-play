@@ -20,7 +20,6 @@ sealed abstract class Platform(
     val platformCategory: PlatformCategory,
     val priority: Int,
     val dependencyId: String,
-    val tagColor: TagColor,
     val url: String,
     val coarseVersionRegex: Option[Regex],
     val noVersionPolicy: Platform.NoVersionPolicy = Platform.NoVersionPolicy.NotAllowed
@@ -28,10 +27,10 @@ sealed abstract class Platform(
 
   def name: String = value
 
-  def coarseVersionOf(version: String): Option[Int] = coarseVersionRegex.flatMap { extractor =>
+  def coarseVersionOf(version: String): String = coarseVersionRegex.fold(version) { extractor =>
     version match {
-      case extractor(coarseStrVersion) => Some(coarseStrVersion.toInt)
-      case _                           => None
+      case extractor(coarseStrVersion) => coarseStrVersion
+      case _                           => version
     }
   }
 
@@ -56,7 +55,6 @@ object Platform extends StringEnum[Platform] {
         SpongeCategory,
         0,
         "spongeapi",
-        TagColor.Sponge,
         "https://spongepowered.org/downloads",
         Some("""^(\d+)\.\d+(?:\.\d+)?(?:-SNAPSHOT)?(?:-[a-z0-9]{7,9})?""".r)
       )
@@ -67,7 +65,6 @@ object Platform extends StringEnum[Platform] {
         SpongeCategory,
         2,
         "spongeforge",
-        TagColor.SpongeForge,
         "https://www.spongepowered.org/downloads/spongeforge",
         Some("""^\d+\.\d+\.\d+-\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$""".r)
       )
@@ -78,7 +75,6 @@ object Platform extends StringEnum[Platform] {
         SpongeCategory,
         2,
         "spongevanilla",
-        TagColor.SpongeVanilla,
         "https://www.spongepowered.org/downloads/spongevanilla",
         Some("""^\d+\.\d+\.\d+-(\d+)\.\d+\.\d+(?:(?:-BETA-\d+)|(?:-RC\d+))?$""".r)
       )
@@ -89,7 +85,6 @@ object Platform extends StringEnum[Platform] {
         SpongeCategory,
         1,
         "sponge",
-        TagColor.SpongeCommon,
         "https://www.spongepowered.org/downloads",
         None
       )
@@ -100,7 +95,6 @@ object Platform extends StringEnum[Platform] {
         SpongeCategory,
         2,
         "lantern",
-        TagColor.Lantern,
         "https://www.lanternpowered.org/",
         None
       )
@@ -111,7 +105,6 @@ object Platform extends StringEnum[Platform] {
         ForgeCategory,
         0,
         "forge",
-        TagColor.Forge,
         "https://files.minecraftforge.net/",
         Some("""^\d+\.(\d+)\.\d+(?:\.\d+)?$""".r)
       )
@@ -125,7 +118,7 @@ object Platform extends StringEnum[Platform] {
       .flatMap {
         case (depId, depVersion) =>
           withValueOpt(depId).map { platform =>
-            VersionedPlatform(platform.name, depVersion, depVersion.flatMap(platform.coarseVersionOf)) -> platform
+            VersionedPlatform(platform.name, depVersion, depVersion.map(platform.coarseVersionOf)) -> platform
               .produceVersionWarning(depVersion)
           }
       }
@@ -182,4 +175,4 @@ object PlatformCategory {
   def getPlatformCategories: Seq[PlatformCategory] = Seq(SpongeCategory, ForgeCategory)
 }
 
-case class VersionedPlatform(id: String, version: Option[String], coarseVersion: Option[Int])
+case class VersionedPlatform(id: String, version: Option[String], coarseVersion: Option[String])

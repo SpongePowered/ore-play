@@ -24,13 +24,6 @@
                                         </div>
                                         <div class="col-sm-6 hidden-xs">
                                             <div class="info minor">
-                                                <span class="stat recommended-version" title="Recommended version" v-if="project.recommended_version">
-                                                    <i class="far fa-gem"></i>
-                                                    <a :href="routes.Versions.show(project.namespace.owner, project.namespace.slug, project.recommended_version.version).absoluteURL()">
-                                                        {{ project.recommended_version.version }}
-                                                    </a>
-                                                </span>
-
                                                 <span class="stat" title="Views"><i class="fas fa-eye"></i> {{ formatStats(project.stats.views) }}</span>
                                                 <span class="stat" title="Download"><i class="fas fa-download"></i> {{ formatStats(project.stats.downloads) }}</span>
                                                 <span class="stat" title="Stars"><i class="fas fa-star"></i> {{ formatStats(project.stats.stars) }}</span>
@@ -46,8 +39,8 @@
                                             <div class="description">{{ project.description }}</div>
                                         </div>
                                         <div class="col-xs-12 col-sm-5 tags-line" v-if="project.promoted_versions">
-                                            <Tag v-bind:name="tag.name" v-bind:data="tag.versions.join(' | ')" v-bind:color="tag.color"
-                                                 v-bind:key="project.name + '-' + tag.name" v-for="tag in tagsFromPromoted(project.promoted_versions)"></Tag>
+                                            <Tag v-bind:name="platform.name" v-bind:data="platform.versions.join(' | ')" v-bind:color="platform.color"
+                                                 v-bind:key="project.name + '-' + platform.name" v-for="platform in platformsFromPromoted(project.promoted_versions)"></Tag>
                                         </div>
                                     </div>
                                 </div>
@@ -86,7 +79,7 @@
             categories: {
                 type: Array
             },
-            tags: Array,
+            platforms: Array,
             owner: String,
             sort: String,
             relevance: {
@@ -142,30 +135,30 @@
             visibilityFromName(name) {
                 return Visibility.fromName(name);
             },
-            tagsFromPromoted(promotedVersions) {
-                let tagsArray = [];
+            platformsFromPromoted(promotedVersions) {
+                let platformArray = [];
                 promotedVersions
-                    .map(version => version.tags)
-                    .forEach(tags => tagsArray = tags.filter(tag => Platform.isPlatformTag(tag)).concat(tagsArray));
+                    .map(version => version.platforms)
+                    .forEach(platforms => platformArray = platforms.concat(platformArray));
 
-                const reducedTags = [];
+                const reducedPlatforms = [];
 
                 Platform.values.forEach(platform => {
                     let versions = [];
-                    tagsArray.filter(tag => tag.name === platform.id).reverse().forEach(tag => {
-                        versions.push(tag.display_data || tag.data);
+                    platformArray.filter(plat => plat.platform === platform.id).reverse().forEach(plat => {
+                        versions.push(plat.display_platform_version || plat.platform_version);
                     });
 
                     if(versions.length > 0) {
-                        reducedTags.push({
-                            name: platform.id,
+                        reducedPlatforms.push({
+                            name: platform.shortName,
                             versions: versions,
                             color: platform.color
                         });
                     }
                 });
 
-                return reducedTags;
+                return reducedPlatforms;
             },
             formatStats(number) {
                 return numberWithCommas(number);

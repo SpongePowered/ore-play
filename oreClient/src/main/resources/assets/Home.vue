@@ -43,11 +43,11 @@
                     </div>
 
                     <div class="list-group platform-list">
-                        <a class="list-group-item" @click="tags = []" v-bind:class="{ active: tags.length === 0 }">
+                        <a class="list-group-item" @click="platforms = []" v-bind:class="{ active: platforms.length === 0 }">
                             <span class="parent">Any</span>
                         </a>
-                        <a v-for="platform in availableOptions.platform" class="list-group-item" @click="tags = [platform.id]"
-                           v-bind:class="{ active: tags.includes(platform.id) }">
+                        <a v-for="platform in availableOptions.platform" class="list-group-item" @click="platforms = [platform.id]"
+                           v-bind:class="{ active: platforms.includes(platform.id) }">
                             <span :class="{parent: platform.parent}">{{ platform.name }}</span>
                         </a>
                     </div>
@@ -69,7 +69,7 @@
             sort: "updated",
             relevance: true,
             categories: [],
-            tags: [],
+            platforms: [],
             page: 1,
             offset: 0,
             limit: 25,
@@ -97,7 +97,7 @@
                     sort: this.sort,
                     relevance: this.relevance,
                     categories: this.categories,
-                    tags: this.tags
+                    platforms: this.platforms
                 }
             },
             listBinding: function () {
@@ -134,11 +134,11 @@
                 .filter(([key, value]) => defaultData().hasOwnProperty(key))
                 .forEach(([key, value]) => this.$data[key] = value);
 
-            this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags, vm.page].join(), () => {
+            this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.platforms, vm.page].join(), () => {
                 const query = queryString.stringify(this.urlBinding, {arrayFormat: 'bracket'});
                 window.history.pushState(null, null, query !== "" ? "?" + query : "/");
             });
-            this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags].join(), () => {
+            this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.platforms].join(), () => {
                 this.resetPage();
             });
         },

@@ -109,21 +109,21 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
       releaseType: Option[ReleaseType],
       platforms: List[String],
       platformsVersions: List[Option[String]],
-      platformsCoarseVersions: List[Option[Int]],
+      platformsCoarseVersions: List[Option[String]],
       channelName: Option[String] = None,
       channelColor: Option[TagColor] = None
   )
 
-  sealed abstract class Stability(val value: String, val color: TagColor) extends StringEnumEntry
+  sealed abstract class Stability(val value: String) extends StringEnumEntry
   object Stability extends StringEnum[Stability] {
     override def values: IndexedSeq[Stability] = findValues
 
-    case object Stable      extends Stability("stable", TagColor.Stable)
-    case object Beta        extends Stability("beta", TagColor.Beta)
-    case object Alpha       extends Stability("alpha", TagColor.Alpha)
-    case object Bleeding    extends Stability("bleeding", TagColor.Bleeding)
-    case object Unsupported extends Stability("unsupported", TagColor.Unsupported)
-    case object Broken      extends Stability("broken", TagColor.Broken)
+    case object Stable      extends Stability("stable")
+    case object Beta        extends Stability("beta")
+    case object Alpha       extends Stability("alpha")
+    case object Bleeding    extends Stability("bleeding")
+    case object Unsupported extends Stability("unsupported")
+    case object Broken      extends Stability("broken")
 
     implicit val codec: Codec[Stability] = Codec.from(
       (c: HCursor) =>
@@ -135,14 +135,14 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
     )
   }
 
-  sealed abstract class ReleaseType(val value: String, val color: TagColor) extends StringEnumEntry
+  sealed abstract class ReleaseType(val value: String) extends StringEnumEntry
   object ReleaseType extends StringEnum[ReleaseType] {
     override def values: IndexedSeq[ReleaseType] = findValues
 
-    case object MajorUpdate extends ReleaseType("major_update", TagColor.MajorUpdate)
-    case object MinorUpdate extends ReleaseType("minor_update", TagColor.MinorUpdate)
-    case object Patches     extends ReleaseType("patches", TagColor.Patches)
-    case object Hotfix      extends ReleaseType("hotfix", TagColor.Hotfix)
+    case object MajorUpdate extends ReleaseType("major_update")
+    case object MinorUpdate extends ReleaseType("minor_update")
+    case object Patches     extends ReleaseType("patches")
+    case object Hotfix      extends ReleaseType("hotfix")
 
     implicit val codec: Codec[ReleaseType] = Codec.from(
       (c: HCursor) =>
