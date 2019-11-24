@@ -30,8 +30,10 @@ object JobsProcessor {
 
   def fiber: URIO[Db with Clock with Discourse with Config, Unit] =
     tryGetJob.flatMap {
-      case Some(job) => (decodeJob(job).mapError(Right.apply) >>= processJob >>= finishJob).catchAll(logErrors) *> fiber
-      case None      => ZIO.unit
+      case Some(job) =>
+        (logJob(job) *> decodeJob(job).mapError(Right.apply) >>= processJob >>= finishJob).catchAll(logErrors) *> fiber
+      case None =>
+        ZIO.descriptorWith(desc => UIO(Logger.debug(s"No more jobs found. Finishing fiber ${desc.id}")))
     }
 
   private def logErrors(e: Either[Unit, String]): UIO[Unit] = {
@@ -54,6 +56,9 @@ object JobsProcessor {
 
     ZIO.accessM(_.service.runDbCon(q))
   }
+
+  private def logJob(job: Model[Job]): UIO[Unit] =
+    ZIO.descriptorWith(desc => UIO(Logger.debug(s"Starting on fiber ${desc.id} job $job")))
 
   private def updateJobInfo(job: Job)(update: JobInfo => JobInfo): Job =
     job.copy(info = update(job.info).copy(lastUpdated = Some(OffsetDateTime.now())))
