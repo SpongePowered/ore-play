@@ -6,7 +6,6 @@ import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 import ore.db.access.ModelView
-import ore.db.impl.query.DoobieOreProtocol._
 import ore.db.impl.schema.{ProjectTable, VersionTable}
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.{Model, ObjId}
@@ -18,9 +17,6 @@ import akka.pattern.CircuitBreakerOpenException
 import com.typesafe.scalalogging
 import cats.syntax.all._
 import cats.instances.either._
-import doobie._
-import doobie.implicits._
-import doobie.postgres.implicits._
 import slick.lifted.TableQuery
 import zio._
 import zio.clock.Clock
@@ -33,7 +29,7 @@ object JobsProcessor {
       case Some(job) =>
         (logJob(job) *> decodeJob(job).mapError(Right.apply) >>= processJob >>= finishJob).catchAll(logErrors) *> fiber
       case None =>
-        ZIO.descriptorWith(desc => UIO(Logger.debug(s"No more jobs found. Finishing fiber ${desc.id}")))
+        ZIO.descriptorWith(desc => UIO(Logger.debug(s"No more jobs found. Finishing fiber ${desc.id}"))): UIO[Unit]
     }
 
   private def logErrors(e: Either[Unit, String]): UIO[Unit] = {
@@ -41,21 +37,8 @@ object JobsProcessor {
     ZIO.succeed(())
   }
 
-  private def tryGetJob: URIO[Db, Option[Model[Job]]] = {
-    val q =
-      fr0"""|UPDATE jobs
-            |SET state = 'started', last_updated = now()
-            |    WHERE id = (
-            |        SELECT id
-            |            FROM queue
-            |            WHERE state = 'not_started' AND (retry_at IS NULL OR retry_at < now()) 
-            |            ORDER BY id 
-            |            FOR UPDATE SKIP LOCKED
-            |            LIMIT 1)
-            |    RETURNING *;""".stripMargin.query[Model[Job]].option
-
-    ZIO.accessM(_.service.runDbCon(q))
-  }
+  private def tryGetJob: URIO[Db, Option[Model[Job]]] =
+    ZIO.accessM(_.service.runDbCon(JobsQueries.tryGetjob.option))
 
   private def logJob(job: Model[Job]): UIO[Unit] =
     ZIO.descriptorWith(desc => UIO(Logger.debug(s"Starting on fiber ${desc.id} job $job")))
