@@ -134,16 +134,21 @@ object JobsProcessor {
   def handleDiscourseErrors(job: Model[Job.TypedJob])(
       program: Discourse => ZIO[Any, Throwable, Either[DiscourseError, Unit]]
   ): ZIO[Db with Discourse with Config, Either[Unit, String], Model[Job.TypedJob]] = {
-    def retryIn(duration: FiniteDuration) =
+    def retryIn(error: Option[String], errorDescriptor: Option[String])(duration: FiniteDuration) =
       updateJob(
         job,
         _.copy(
-          retryAt = Some(OffsetDateTime.now().plusNanos((duration + 5.seconds).toNanos))
+          retryAt = Some(OffsetDateTime.now().plusNanos((duration + 5.seconds).toNanos)),
+          lastError = error.orElse(job.info.lastError),
+          lastErrorDescriptor = errorDescriptor.orElse(job.info.lastErrorDescriptor),
+          state = Job.JobState.NotStarted
         )
-      ).andThen(ZIO.fail(Left(())))
+      ).andThen(ZIO.fail(error.toRight(())))
 
-    def retryInConfig(duration: OreJobsConfig => FiniteDuration) =
-      ZIO.access[Config](env => duration(env.config)) >>= retryIn
+    def retryInConfig(error: Option[String], errorDescriptor: Option[String])(
+        duration: OreJobsConfig => FiniteDuration
+    ) =
+      ZIO.access[Config](env => duration(env.config)) >>= retryIn(error, errorDescriptor)
 
     ZIO
       .accessM[Discourse](program)
@@ -151,30 +156,30 @@ object JobsProcessor {
         case _: TimeoutException =>
           ZIO.succeed(Left(()))
 
-        case e: CircuitBreakerOpenException => retryIn(e.remainingDuration).catchAll(ZIO.succeed)
+        case e: CircuitBreakerOpenException => retryIn(None, None)(e.remainingDuration).catchAll(ZIO.succeed)
       }
       .orDie
       .absolve
       .as(job)
       .catchAll {
-        case DiscourseError.RatelimitError(waitTime) => retryIn(waitTime)
+        case DiscourseError.RatelimitError(waitTime) => retryIn(None, None)(waitTime)
 
         case DiscourseError.UnknownError(messages, tpe, extras) =>
-          retryInConfig(_.jobs.timeouts.unknownError).asError(
-            Right(s"""|Encountered error when executing Discourse request
+          val e = s"""|Encountered error when executing Discourse request
                       |Job: ${job.obj}
                       |Type: $tpe
                       |Messages: ${messages.mkString("\n  ", "\n  ", "")}
-                      |Extras: ${extras.mkString("\n  ", "\n  ", "")}""".stripMargin)
-          )
+                      |Extras: ${extras.mkString("\n  ", "\n  ", "")}""".stripMargin
+
+          retryInConfig(Some(e), Some(s"unknown_error_$tpe"))(_.jobs.timeouts.unknownError)
         case DiscourseError.StatusError(statusCode, message) =>
-          retryInConfig(_.jobs.timeouts.statusError).asError(
-            Right(s"""|Encountered status error when executing Discourse request
+          val e = s"""|Encountered status error when executing Discourse request
                       |Job: ${job.obj}
                       |Status code: $statusCode
-                      |Message: ${message.getOrElse("None")}""".stripMargin)
-          )
-        case DiscourseError.NotAvailable => retryInConfig(_.jobs.timeouts.notAvailable)
+                      |Message: ${message.getOrElse("None")}""".stripMargin
+
+          retryInConfig(Some(e), Some(s"status_error_${statusCode.intValue}"))(_.jobs.timeouts.statusError)
+        case DiscourseError.NotAvailable => retryInConfig(None, None)(_.jobs.timeouts.notAvailable)
       }
   }
 
