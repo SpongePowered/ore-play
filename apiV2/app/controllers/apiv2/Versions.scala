@@ -18,6 +18,7 @@ import controllers.sugar.Requests.ApiRequest
 import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import models.querymodels.{APIV2QueryVersion, APIV2VersionStatsQuery}
+import ore.data.Platform
 import ore.db.Model
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTable, VersionTable}
@@ -28,12 +29,13 @@ import ore.models.project.io.{PluginFileWithData, PluginUpload}
 import ore.models.user.User
 import ore.permission.Permission
 import util.PatchDecoder
-import util.fp.{ApplicativeK, TraverseK}
 import util.syntax._
 
-import cats.data.{NonEmptyList, Tuple2K, Validated}
+import cats.data.{Nested, NonEmptyList, Validated, ValidatedNel, Writer, WriterT}
 import cats.syntax.all._
-import cats.{Applicative, ~>}
+import squeal.category._
+import squeal.category.syntax.all._
+import squeal.macros.Derive
 import io.circe._
 import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.syntax._
@@ -114,17 +116,62 @@ class Versions(
   def editVersion(pluginId: String, name: String): Action[Json] =
     ApiAction(Permission.EditVersion, APIScope.ProjectScope(pluginId)).asyncF(parseCirce.json) { implicit request =>
       val root = request.body.hcursor
+      import cats.instances.list._
+      import cats.instances.option._
 
-      val res: Decoder.AccumulatingResult[EditableVersion] = EditableVersionF.patchDecoder.traverseK(
-        λ[PatchDecoder ~> λ[A => Decoder.AccumulatingResult[Option[A]]]](_.decode(root))
-      )
+      //TODO: Fix wrong Applicative bound in syntax
+      val res: ValidatedNel[String, DbEditableVersion] = EditableVersionF.F
+        .traverseK(EditableVersionF.patchDecoder)(
+          λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
+        )
+        .leftMap(_.map(_.show))
+        .andThen { a =>
+          a.platforms
+            .traverse { platforms =>
+              val validatedWriter = platforms
+                .traverse {
+                  case SimplePlatform(platformName, platformVersion) =>
+                    Platform
+                      .withValueOpt(platformName)
+                      .toValidNel(s"Don't know about the platform named $platformName")
+                      .map { platform =>
+                        platform
+                          .produceVersionWarning(platformVersion)
+                          .as(
+                            (
+                              platformName,
+                              platformVersion,
+                              platformVersion.map(platform.coarseVersionOf)
+                            )
+                          )
+                      }
+                }
+                .map(_.sequence)
+
+              Nested(validatedWriter).map(_.unzip3).value
+            }
+            .map(_.sequence)
+            .tupleLeft(a)
+        }
+        .map {
+          case (a, WriterT((warnings, optPlatforms))) =>
+            DbEditableVersionF[Option](
+              a.description,
+              a.stability,
+              a.releaseType,
+              VersionedPlatformF[Option](
+                optPlatforms.map(_._1),
+                optPlatforms.map(_._2),
+                optPlatforms.map(_._3)
+              )
+            )
+        }
 
       res match {
         case Validated.Valid(a) =>
           service
             .runDbCon(
-              //We need two queries two queries as singleProjectQuery takes data from the home_projects view
-              //TODO: Not true for version
+              //We need two queries two queries as we use the generic update function
               APIV2Queries.updateVersion(pluginId, name, a).run *> APIV2Queries
                 .singleVersionQuery(
                   pluginId,
@@ -136,7 +183,7 @@ class Versions(
             )
             .map(Ok(_))
 
-        case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e.map(_.show))))
+        case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e)))
       }
     }
 
@@ -325,52 +372,49 @@ object Versions {
       result: Seq[APIV2.Version]
   )
 
-  //TODO: Allow setting multiple platforms
-  type EditableVersion = EditableVersionF[Option]
+  @ConfiguredJsonCodec case class SimplePlatform(
+      platform: String,
+      platformVersion: Option[String]
+  )
+
+  type EditableVersion   = EditableVersionF[Option]
+  type DbEditableVersion = DbEditableVersionF[Option]
   case class EditableVersionF[F[_]](
       description: F[Option[String]],
       stability: F[Version.Stability],
-      releaseType: F[Option[Version.ReleaseType]]
+      releaseType: F[Option[Version.ReleaseType]],
+      platforms: F[List[SimplePlatform]]
   )
   object EditableVersionF {
-    val patchDecoder: EditableVersionF[PatchDecoder] = EditableVersionF(
-      PatchDecoder.mkPath[Option[String]]("description"),
-      PatchDecoder.mkPath[Version.Stability]("stability"),
-      PatchDecoder.mkPath[Option[Version.ReleaseType]]("release_type")
-    )
+    implicit val F
+        : ApplicativeKC[EditableVersionF] with TraverseKC[EditableVersionF] with DistributiveKC[EditableVersionF] =
+      Derive.allKC[EditableVersionF]
 
-    implicit val applicativeTraverseK: ApplicativeK[EditableVersionF] with TraverseK[EditableVersionF] =
-      new ApplicativeK[EditableVersionF] with TraverseK[EditableVersionF] {
-        override def pure[A[_]](a: shapeless.Const[Unit]#λ ~> A): EditableVersionF[A] = EditableVersionF(
-          a(()),
-          a(()),
-          a(())
-        )
+    val patchDecoder: EditableVersionF[PatchDecoder] =
+      PatchDecoder.fromName(Derive.namesWithImplicitsC[EditableVersionF, Decoder])(s => s) //TODO: snake_case
+  }
 
-        override def traverseK[G[_]: Applicative, A[_], B[_]](
-            fa: EditableVersionF[A]
-        )(f: A ~> λ[C => G[B[C]]]): G[EditableVersionF[B]] =
-          (
-            f(fa.description),
-            f(fa.stability),
-            f(fa.releaseType)
-          ).mapN(EditableVersionF.apply)
+  case class VersionedPlatformF[F[_]](
+      platform: F[List[String]],
+      platformVersion: F[List[Option[String]]],
+      platformCoarseVersion: F[List[Option[String]]]
+  )
+  object VersionedPlatformF {
+    implicit val F: ApplicativeKC[VersionedPlatformF]
+      with TraverseKC[VersionedPlatformF]
+      with DistributiveKC[VersionedPlatformF] = Derive.allKC[VersionedPlatformF]
+  }
 
-        override def foldLeftK[A[_], B](fa: EditableVersionF[A], b: B)(f: B => A ~> shapeless.Const[B]#λ): B = {
-          val b1 = f(b)(fa.description)
-          val b2 = f(b1)(fa.stability)
-          f(b2)(fa.releaseType)
-        }
-
-        override def productK[F[_], G[_]](
-            af: EditableVersionF[F],
-            ag: EditableVersionF[G]
-        ): EditableVersionF[Tuple2K[F, G, *]] = EditableVersionF(
-          Tuple2K(af.description, ag.description),
-          Tuple2K(af.stability, ag.stability),
-          Tuple2K(af.releaseType, ag.releaseType)
-        )
-      }
+  case class DbEditableVersionF[F[_]](
+      description: F[Option[String]],
+      stability: F[Version.Stability],
+      releaseType: F[Option[Version.ReleaseType]],
+      platforms: VersionedPlatformF[F]
+  )
+  object DbEditableVersionF {
+    implicit val F: ApplicativeKC[DbEditableVersionF]
+      with TraverseKC[DbEditableVersionF]
+      with DistributiveKC[DbEditableVersionF] = Derive.allKC[DbEditableVersionF]
   }
 
   @ConfiguredJsonCodec case class ScannedVersion(

@@ -9,7 +9,6 @@ import ore.models.organization.OrganizationOwned
 import ore.models.project.ProjectOwned
 import ore.models.user.UserOwned
 import ore.permission.scope.HasScope
-import util.fp.{FoldableK, TraverseK}
 
 package object syntax
     extends HasScope.ToHasScopeOps
@@ -23,5 +22,3 @@ package object syntax
     with HasForumRepresentation.ToHasForumRepresentationOps
     with ModelSyntax
     with ZIOSyntax
-    with FoldableK.ToFoldableKOps
-    with TraverseK.ToTraverseKOps

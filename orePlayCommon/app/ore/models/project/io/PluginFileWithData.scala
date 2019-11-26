@@ -30,8 +30,8 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
 
   lazy val versionString: String = StringUtils.slugify(data.version.get)
 
-  lazy val (versionedPlatforms: Seq[VersionedPlatform], platformWarnings: Seq[String]) =
-    Platform.createVersionedPlatforms(dependencyIds, dependencyVersions)
+  lazy val (platformWarnings: List[String], versionedPlatforms: List[VersionedPlatform]) =
+    Platform.createVersionedPlatforms(dependencyIds, dependencyVersions).run
 
   def warnings: Seq[String] = platformWarnings
 
@@ -57,9 +57,9 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
       usesMixin = data.containsMixins,
       stability = stability,
       releaseType = releaseType,
-      platforms = versionedPlatforms.map(_.id).toList,
-      platformsVersions = versionedPlatforms.map(_.version).toList,
-      platformsCoarseVersions = versionedPlatforms.map(_.coarseVersion).toList
+      platforms = versionedPlatforms.map(_.id),
+      platformsVersions = versionedPlatforms.map(_.version),
+      platformsCoarseVersions = versionedPlatforms.map(_.coarseVersion)
     )
   )
 }

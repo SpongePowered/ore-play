@@ -151,21 +151,23 @@ trait ProjectFactory {
   /**
     * Starts the construction process of a [[Project]].
     *
-    * @param owner The owner of the project
+    * @param ownerId The id of the owner of the project
+    * @param ownerName The name of the owner of the project
     * @param template The values to use for the new project
     *
     * @return Project and ProjectSettings instance
     */
   def createProject(
-      owner: Model[User],
+      ownerId: DbRef[User],
+      ownerName: String,
       template: ProjectTemplate
   ): IO[String, Model[Project]] = {
     val name = template.name
     val slug = slugify(name)
     val project = Project(
       pluginId = template.pluginId,
-      ownerId = owner.id,
-      ownerName = owner.name,
+      ownerId = ownerId,
+      ownerName = ownerName,
       name = name,
       slug = slug,
       category = template.category,
@@ -178,8 +180,8 @@ trait ProjectFactory {
     for {
       t <- (
         this.projects.withPluginId(template.pluginId).map(_.isDefined),
-        this.projects.exists(owner.name, name),
-        this.projects.isNamespaceAvailable(owner.name, slug)
+        this.projects.exists(ownerName, name),
+        this.projects.isNamespaceAvailable(ownerName, slug)
       ).parTupled
       (existsId, existsName, available) = t
       _          <- cond(!existsName, "project with that name already exists")
@@ -191,8 +193,8 @@ trait ProjectFactory {
         MembershipDossier
           .projectHasMemberships[UIO]
           .addRole(newProject)(
-            owner.id,
-            ProjectUserRole(owner.id, newProject.id, Role.ProjectOwner, isAccepted = true)
+            ownerId,
+            ProjectUserRole(ownerId, newProject.id, Role.ProjectOwner, isAccepted = true)
           )
       }
     } yield newProject

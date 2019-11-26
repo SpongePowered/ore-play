@@ -68,7 +68,6 @@
                             </a>
                             <br>
                             @entry.versionString
-                            <span class="channel" style="background-color: @entry.channelColor.hex">@entry.channelName</span>
                         </td>
                         <td>
                             @if(entry.versionAuthor.isDefined) {
@@ -157,7 +156,6 @@
                             <td>
                                 <span class="faint">@prettifyDate(entry.versionCreatedAt)</span>
                                 <span class="minor">@entry.versionString</span>
-                                <span class="channel" style="background-color: @entry.channelColor.hex;">@entry.channelName</span>
                             </td>
                             <td>
                                 @if(entry.versionAuthor.isDefined) {

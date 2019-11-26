@@ -80,7 +80,7 @@ trait ProjectBase[+F[_]] {
     * @param project  Project to rename
     * @param name     New name to assign Project
     */
-  def rename(project: Model[Project], name: String): F[Boolean]
+  def rename(project: Model[Project], name: String): F[Either[String, Unit]]
 
   def prepareDeleteVersion(version: Model[Version]): F[Model[Project]]
 
@@ -119,6 +119,8 @@ object ProjectBase {
           v <- TableQuery[VersionTable]
           p <- TableQuery[ProjectTable] if v.projectId === p.id
         } yield (p.ownerName, p.name, v)
+
+      println(s"Foobar: ${allVersions.result.statements.toVector}")
 
       service.runDBIO(allVersions.result).flatMap { versions =>
         fileIO
@@ -174,27 +176,31 @@ object ProjectBase {
     def rename(
         project: Model[Project],
         name: String
-    ): F[Boolean] = {
+    ): F[Either[String, Unit]] = {
       val newName = compact(name)
       val newSlug = slugify(newName)
-      checkArgument(config.isValidProjectName(name), "invalid name", "")
-      for {
-        isAvailable <- this.isNamespaceAvailable(project.ownerName, newSlug)
-        _ = checkArgument(isAvailable, "slug not available", "")
-        res <- {
-          val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
-          val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
 
-          // Project's name alter's the topic title, update it
-          val dbOp =
-            if (project.topicId.isDefined)
-              forums.updateProjectTopic(project) <* renameModel
-            else
-              renameModel.as(false)
+      val doRename = {
+        val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
+        val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
 
-          dbOp <* fileOp
-        }
-      } yield res
+        // Project's name alter's the topic title, update it
+        val dbOp =
+          if (project.topicId.isDefined)
+            forums.updateProjectTopic(project).void <* renameModel
+          else
+            renameModel.void
+
+        dbOp <* fileOp
+      }
+
+      if (!config.isValidProjectName(name)) F.pure(Left("Invalid project name"))
+      else {
+        for {
+          isAvailable <- this.isNamespaceAvailable(project.ownerName, newSlug)
+          _           <- if (isAvailable) doRename else F.unit
+        } yield Either.cond(isAvailable, (), "Name not available")
+      }
     }
 
     def prepareDeleteVersion(version: Model[Version]): F[Model[Project]] = {

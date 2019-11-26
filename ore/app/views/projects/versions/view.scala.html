@@ -147,9 +147,10 @@
                 }
                 <div class="col-md-12">
                 @editor(
-                    saveCall = ??? /*versionRoutes.saveDescription( TODO
+                    saveCall = null /*versionRoutes.saveDescription( TODO
                         v.p.project.ownerName, v.p.project.slug, v.v.versionString
                     )*/,
+                    savable = false,
                     enabled = sp.perms(Permission.EditPage),
                     raw = v.v.description.getOrElse(""),
                     cooked = v.v.obj.render,

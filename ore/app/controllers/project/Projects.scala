@@ -455,36 +455,6 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
     }
 
   /**
-    * Renames the specified project.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Project homepage
-    */
-  def rename(author: String, slug: String): Action[String] =
-    SettingsEditAction(author, slug).asyncF(parse.form(forms.ProjectRename)) { implicit request =>
-      val project = request.data.project
-      val newName = compact(request.body)
-      val oldName = request.project.name
-
-      for {
-        available <- projects.isNamespaceAvailable(author, slugify(newName))
-        _ <- ZIO.fromEither(
-          Either.cond(available, (), Redirect(self.show(author, slug)).withError("error.nameUnavailable"))
-        )
-        _ <- projects.rename(project, newName)
-        _ <- UserActionLogger.log(
-          request.request,
-          LoggedActionType.ProjectRenamed,
-          request.project.id,
-          s"$author/$newName",
-          s"$author/$oldName"
-        )(LoggedActionProject.apply)
-        _ <- projects.refreshHomePage(MDCLogger)
-      } yield Redirect(self.show(author, project.slug))
-    }
-
-  /**
     * Sets the visible state of the specified Project.
     *
     * @param author     Project owner

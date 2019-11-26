@@ -154,13 +154,7 @@ trait OreRestfulApiV1 extends OreWrites {
       "description"   -> v.description
     )
 
-    lazy val jsonVisibility = obj(
-      "type" -> v.visibility.nameKey,
-      "css"  -> v.visibility.cssClass
-    )
-
-    val withVisibility = if (v.visibility == Visibility.Public) json else json + ("visibility" -> jsonVisibility)
-    author.fold(withVisibility)(a => withVisibility + (("author", JsString(a))))
+    author.fold(json)(a => json + (("author", JsString(a))))
   }
 
   private def queryProjectRV = {

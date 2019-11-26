@@ -36,13 +36,13 @@ class VersionTable(tag: Tag)
   def isPostDirty        = column[Boolean]("is_post_dirty")
 
   def usesMixin              = column[Boolean]("uses_mixin")
-  def stability              = column[Version.Stability]("uses_mixin")
-  def releaseType            = column[Version.ReleaseType]("uses_mixin")
+  def stability              = column[Version.Stability]("stability")
+  def releaseType            = column[Version.ReleaseType]("release_type")
   def platforms              = column[List[String]]("platforms")
   def platformVersions       = column[List[Option[String]]]("platform_versions")
   def platformCoarseVersions = column[List[Option[String]]]("platform_coarse_versions")
-  def channelName            = column[String]("uses_mixin")
-  def channelColor           = column[TagColor]("uses_mixin")
+  def channelName            = column[String]("legacy_channel_name")
+  def channelColor           = column[TagColor]("legacy_channel_color")
 
   def tags =
     (

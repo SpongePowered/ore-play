@@ -77,10 +77,7 @@ case class Version(
     * @return Plugin dependencies
     */
   def dependencies: List[Dependency] =
-    for (depend <- this.dependencyIds) yield {
-      val data = depend.split(":")
-      Dependency(data(0), data.lift(1))
-    }
+    dependencyIds.zip(dependencyVersions).map(Dependency.tupled)
 
   /**
     * Returns true if this version has a dependency on the specified plugin ID.
@@ -88,7 +85,7 @@ case class Version(
     * @param pluginId Id to check for
     * @return         True if has dependency on ID
     */
-  def hasDependency(pluginId: String): Boolean = this.dependencies.exists(_.pluginId == pluginId)
+  def hasDependency(pluginId: String): Boolean = this.dependencyIds.contains(pluginId)
 
   /**
     * Returns a human readable file size for this Version.

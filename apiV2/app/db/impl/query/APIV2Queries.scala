@@ -19,14 +19,14 @@ import ore.models.project.io.ProjectFiles
 import ore.models.project.ProjectSortingStrategy
 import ore.models.user.User
 import ore.permission.Permission
-import _root_.util.fp.{ApplicativeK, FoldableK}
-import _root_.util.syntax._
 
-import cats.arrow.FunctionK
-import cats.{Reducible, ~>}
-import cats.data.{NonEmptyList, Tuple2K}
+import cats.Reducible
+import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
+import squeal.category._
+import squeal.category.syntax.all._
+import squeal.macros.Derive
 import doobie._
 import doobie.implicits._
 import doobie.postgres.implicits._
@@ -255,25 +255,23 @@ object APIV2Queries extends DoobieOreProtocol {
     def opt[A](name: String)(implicit put: Put[A]): Column[Option[A]] = Column(name, Param.Elem.Opt(_, put))
   }
 
-  private def updateTable[F[_[_]]: ApplicativeK: FoldableK](
+  private def updateTable[F[_[_]]: ApplicativeKC: FoldableKC](
       table: String,
       columns: F[Column],
       edits: F[Option]
   ): Fragment = {
-    import shapeless.Const
-    import cats.tagless.syntax.all._
 
-    val applyUpdate = new FunctionK[Tuple2K[Option, Column, *], λ[A => Option[Const[Fragment]#λ[A]]]] {
-      override def apply[A](tuple: Tuple2K[Option, Column, A]): Option[Fragment] = {
-        val column: Column[A] = tuple.second
-        tuple.first.map(value => Fragment.const(column.name) ++ Fragment("= ?", List(column.mkElem(value))))
+    val applyUpdate = new FunctionK[Tuple2K[Option, Column]#λ, Compose2[Option, Const[Fragment]#λ, *]] {
+      override def apply[A](tuple: Tuple2K[Option, Column]#λ[A]): Option[Fragment] = {
+        val column = tuple._2
+        tuple._1.map(value => Fragment.const(column.name) ++ Fragment("= ?", List(column.mkElem(value))))
       }
     }
 
     val updatesSeq = edits
-      .map2K(columns)(applyUpdate)
-      .foldMapK[List[Option[Fragment]]](
-        FunctionK.lift[λ[A => Option[Const[Fragment]#λ[A]]], λ[A => List[Option[Const[Fragment]#λ[A]]]]](List(_))
+      .map2KC(columns)(applyUpdate)
+      .foldMapKC[List[Option[Fragment]]](
+        λ[Compose2[Option, Const[Fragment]#λ, *] ~>: Compose3[List, Option, Const[Fragment]#λ, *]](List(_))
       )
 
     val updates = Fragments.setOpt(updatesSeq: _*)
@@ -287,15 +285,18 @@ object APIV2Queries extends DoobieOreProtocol {
       Column.arg("owner_name"),
       Column.arg("category"),
       Column.opt("description"),
-      Column.opt("homepage"),
-      Column.opt("issues"),
-      Column.opt("sources"),
-      Column.opt("support"),
-      Projects.EditableProjectLicenseF[Column](
-        Column.opt("license_name"),
-        Column.opt("license_url")
-      ),
-      Column.arg("forum_sync")
+      Projects.EditableProjectSettingsF[Column](
+        Column.arg("keywords"),
+        Column.opt("homepage"),
+        Column.opt("issues"),
+        Column.opt("sources"),
+        Column.opt("support"),
+        Projects.EditableProjectLicenseF[Column](
+          Column.opt("license_name"),
+          Column.opt("license_url")
+        ),
+        Column.arg("forum_sync")
+      )
     )
 
     import cats.instances.tuple._
@@ -408,11 +409,16 @@ object APIV2Queries extends DoobieOreProtocol {
       versionSelectFrag(pluginId, None, platforms, canSeeHidden, currentUserId)
     ) ++ fr"sq").query[Long]
 
-  def updateVersion(pluginId: String, versionName: String, edits: Versions.EditableVersion): Update0 = {
-    val versionColumns = Versions.EditableVersionF[Column](
+  def updateVersion(pluginId: String, versionName: String, edits: Versions.DbEditableVersion): Update0 = {
+    val versionColumns = Versions.DbEditableVersionF[Column](
       Column.opt("description"),
       Column.arg("stability"),
-      Column.opt("release_type")
+      Column.opt("release_type"),
+      Versions.VersionedPlatformF[Column](
+        Column.arg("platforms"),
+        Column.arg("platform_versions"),
+        Column.arg("platform_coarse_versions")
+      )
     )
 
     (updateTable("projects", versionColumns, edits) ++ fr"WHERE plugin_id = $pluginId AND version_string = $versionName").update
@@ -549,4 +555,16 @@ object APIV2Queries extends DoobieOreProtocol {
           |      AND pv.version_string = $versionString
           |      AND (pvd IS NULL OR (pvd.project_id = p.id AND pvd.version_id = pv.id));""".stripMargin
       .query[APIV2VersionStatsQuery]
+
+  def canUploadToOrg(uploader: DbRef[User], orgName: String): Query0[(DbRef[User], Boolean)] =
+    sql"""|SELECT ou.id,
+          |       ((coalesce(gt.permission, B'0'::BIT(64)) | coalesce(ot.permission, B'0'::BIT(64))) & (1::BIT(64) << 9)) =
+          |       (1::BIT(64) << 9)
+          |    FROM organizations o
+          |             JOIN users ou ON o.user_id = ou.id
+          |             LEFT JOIN organization_members om ON o.id = om.organization_id AND om.user_id = $uploader
+          |             LEFT JOIN global_trust gt ON gt.user_id = om.user_id
+          |             LEFT JOIN organization_trust ot ON ot.user_id = om.user_id AND ot.organization_id = o.id
+          |    WHERE o.name = $orgName;""".stripMargin.query[(DbRef[User], Boolean)]
+
 }

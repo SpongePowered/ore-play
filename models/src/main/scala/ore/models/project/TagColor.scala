@@ -9,6 +9,8 @@ object TagColor extends IntEnum[TagColor] {
 
   val values: immutable.IndexedSeq[TagColor] = findValues
 
+  case object Undefined extends TagColor(0, "#000000", "#FFFFFF")
+
   // Tag colors
   case object Sponge        extends TagColor(1, "#F7Cf0D", "#333333")
   case object Forge         extends TagColor(2, "#dfa86a", "#FFFFFF")

@@ -6,6 +6,7 @@ import scala.util.matching.Regex
 import ore.data.Platform.NoVersionPolicy
 import ore.models.project.TagColor
 
+import cats.data.Writer
 import cats.syntax.all._
 import cats.instances.option._
 import enumeratum.values._
@@ -34,14 +35,16 @@ sealed abstract class Platform(
     }
   }
 
-  def produceVersionWarning(version: Option[String]): Option[String] = {
+  def produceVersionWarning(version: Option[String]): Writer[List[String], Unit] = {
     val inverseVersion = version.fold(Some(""): Option[String])(_ => None)
     noVersionPolicy match {
       case NoVersionPolicy.NotAllowed =>
-        inverseVersion.as(s"A missing version for the platform $name will not be accepted in the future")
+        Writer.tell(
+          inverseVersion.as(s"A missing version for the platform $name will not be accepted in the future").toList
+        )
       case NoVersionPolicy.Warning =>
-        inverseVersion.as(s"You are recommended to supply a version for the platform $name")
-      case NoVersionPolicy.Allowed => None
+        Writer.tell(inverseVersion.as(s"You are recommended to supply a version for the platform $name").toList)
+      case NoVersionPolicy.Allowed => Writer.tell(Nil)
     }
   }
 }
@@ -112,19 +115,20 @@ object Platform extends StringEnum[Platform] {
   def createVersionedPlatforms(
       dependencyIds: Seq[String],
       dependencyVersions: Seq[Option[String]]
-  ): (Seq[VersionedPlatform], Seq[String]) = {
-    val (platforms, warnings) = dependencyIds
+  ): Writer[List[String], List[VersionedPlatform]] = {
+    import cats.instances.list._
+    dependencyIds
       .zip(dependencyVersions)
       .flatMap {
         case (depId, depVersion) =>
           withValueOpt(depId).map { platform =>
-            VersionedPlatform(platform.name, depVersion, depVersion.map(platform.coarseVersionOf)) -> platform
+            platform
               .produceVersionWarning(depVersion)
+              .as(VersionedPlatform(platform.name, depVersion, depVersion.map(platform.coarseVersionOf)))
           }
       }
-      .unzip
-
-    platforms -> warnings.flatten
+      .toList
+      .sequence
   }
 
   def getPlatforms(dependencyIds: Seq[String]): Seq[Platform] = {

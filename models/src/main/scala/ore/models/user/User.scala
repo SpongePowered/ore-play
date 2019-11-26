@@ -143,23 +143,6 @@ object User extends ModelCompanionPartial[User, UserTable](TableQuery[UserTable]
     }
 
     /**
-      * Returns the Projects that this User has starred.
-      *
-      * @return Projects user has starred
-      */
-    def starred[F[_]](implicit service: ModelService[F]): F[Seq[Model[Project]]] = {
-      val filter = Visibility.isPublicFilter[ProjectTable]
-
-      val baseQuery = for {
-        assoc   <- TableQuery[ProjectStarsTable] if assoc.userId === self.id.value
-        project <- TableQuery[ProjectTable] if assoc.projectId === project.id
-        if filter(project)
-      } yield project
-
-      service.runDBIO(baseQuery.sortBy(_.name).result)
-    }
-
-    /**
       * Returns all [[Project]]s owned by this user.
       *
       * @return Projects owned by user

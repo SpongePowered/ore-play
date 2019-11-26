@@ -294,6 +294,13 @@ GET     /projects/:pluginId                                  @controllers.apiv2.
 #            settings:
 #              type: object
 #              properties:
+#                keywords:
+#                  type: array
+#                  items:
+#                    type: string
+#                  maxItems: 5
+#                  uniqueItems: true
+#                  nullable: true
 #                homepage:
 #                  type: string
 #                  nullable: true
