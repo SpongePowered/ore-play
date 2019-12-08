@@ -14,12 +14,8 @@ import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import models.querymodels.APIV2ProjectStatsQuery
 import ore.data.project.Category
-import ore.db.Model
-import ore.db.access.ModelView
-import ore.db.impl.OrePostgresDriver.api._
 import ore.models.project.ProjectSortingStrategy
 import ore.models.project.factory.{ProjectFactory, ProjectTemplate}
-import ore.models.user.User
 import ore.permission.Permission
 import ore.util.OreMDC
 import util.PatchDecoder
@@ -108,24 +104,6 @@ class Projects(
         )
       }
     }
-
-  private def canUploadTo(uploader: Model[User], uploadTo: Model[User]): UIO[Set[String]] = {
-    import cats.instances.vector._
-
-    for {
-      all <- uploader.organizations.allFromParent
-      canCreate <- all.toVector.parTraverse(
-        org => uploader.permissionsIn(org).map(_.has(Permission.CreateProject)).tupleLeft(org.name)
-      )
-    } yield {
-      // Filter by can Create Project
-      val others = canCreate.collect {
-        case (name, true) => name
-      }
-
-      others.toSet + uploader.name // Add self
-    }
-  }
 
   //We check the perms ourselves later for this one
   def createProject(): Action[ApiV2ProjectTemplate] =

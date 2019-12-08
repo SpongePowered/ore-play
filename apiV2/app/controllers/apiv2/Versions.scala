@@ -58,7 +58,7 @@ class Versions(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { request =>
       val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
       val realOffset = offsetOrZero(offset)
       val parsedPlatforms = platforms.map { s =>
@@ -119,37 +119,45 @@ class Versions(
       import cats.instances.list._
       import cats.instances.option._
 
+      def parsePlatforms(platforms: List[SimplePlatform]) = {
+        platforms
+          .traverse {
+            case SimplePlatform(platformName, platformVersion) =>
+              Platform
+                .withValueOpt(platformName)
+                .toValidNel(s"Don't know about the platform named $platformName")
+                .tupleRight(platformVersion)
+          }
+          .map { ps =>
+            ps.traverse {
+              case (platform, version) =>
+                platform
+                  .produceVersionWarning(version)
+                  .as(
+                    (
+                      platform.name,
+                      version,
+                      version.map(platform.coarseVersionOf)
+                    )
+                  )
+
+            }
+          }
+          .nested
+          .map(_.unzip3)
+          .value
+      }
+
       //TODO: Fix wrong Applicative bound in syntax
       val res: ValidatedNel[String, DbEditableVersion] = EditableVersionF.F
         .traverseK(EditableVersionF.patchDecoder)(
           λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
         )
         .leftMap(_.map(_.show))
+        .ensure(NonEmptyList.one("Description too long"))(_.description.flatten.forall(_.length < Page.maxLength))
         .andThen { a =>
           a.platforms
-            .traverse { platforms =>
-              val validatedWriter = platforms
-                .traverse {
-                  case SimplePlatform(platformName, platformVersion) =>
-                    Platform
-                      .withValueOpt(platformName)
-                      .toValidNel(s"Don't know about the platform named $platformName")
-                      .map { platform =>
-                        platform
-                          .produceVersionWarning(platformVersion)
-                          .as(
-                            (
-                              platformName,
-                              platformVersion,
-                              platformVersion.map(platform.coarseVersionOf)
-                            )
-                          )
-                      }
-                }
-                .map(_.sequence)
-
-              Nested(validatedWriter).map(_.unzip3).value
-            }
+            .traverse(parsePlatforms)
             .map(_.sequence)
             .tupleLeft(a)
         }

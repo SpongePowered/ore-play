@@ -19,6 +19,7 @@ import ore.models.api.ApiSession
 import ore.models.user.FakeUser
 import ore.permission.Permission
 
+import akka.http.scaladsl.model.headers.HttpCredentials
 import cats.syntax.all._
 import enumeratum.{Enum, EnumEntry}
 import io.circe._
@@ -67,51 +68,53 @@ class Authentication(
     lazy val sessionExpiration       = expiration(config.ore.api.session.expiration, request.body.expiresIn)
     lazy val publicSessionExpiration = expiration(config.ore.api.session.publicExpiration, request.body.expiresIn)
 
+    def expirationToZIO(expiration: Option[OffsetDateTime]) =
+      ZIO
+        .fromOption(expiration)
+        .asError(BadRequest(ApiError("The requested expiration can't be used")))
+
     def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
     val uuidToken = UUID.randomUUID().toString
 
-    val sessionToInsert = parseAuthHeader(request)
-      .flatMap { creds =>
-        creds.params.get("apikey") match {
-          case Some(ApiKeyRegex(identifier, token)) =>
-            for {
-              expiration <- ZIO
-                .succeed(sessionExpiration)
-                .get
-                .asError(Right(BadRequest("The requested expiration can't be used")))
-              t <- service
-                .runDbCon(APIV2Queries.findApiKey(identifier, token).option)
-                .get
-                .asError(Right(unAuth("Invalid api key")))
-              (keyId, keyOwnerId) = t
-            } yield SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), expiration)
-          case _ =>
-            ZIO.fail(Right(unAuth("No apikey parameter found in Authorization")))
-        }
+    val findApiKey = ZIO.accessM[HttpCredentials] { creds =>
+      creds.params.get("apikey") match {
+        case Some(ApiKeyRegex(identifier, token)) => ZIO.succeed(APIV2Queries.findApiKey(identifier, token).option)
+        case _                                    => ZIO.fail(unAuth("No or invalid apikey parameter found in Authorization"))
       }
+    }
+
+    val validateCreds = for {
+      expiration <- expirationToZIO(sessionExpiration)
+      findQuery  <- findApiKey
+      t          <- service.runDbCon(findQuery).get.asError(unAuth("Invalid api key"))
+      (keyId, keyOwnerId) = t
+    } yield SessionType.Key -> ApiSession(uuidToken, Some(keyId), Some(keyOwnerId), expiration)
+
+    val parsed = parseAuthHeader(request)
+      .map(Right.apply)
       .catchAll {
-        case Left(_) =>
-          ZIO
-            .succeed(publicSessionExpiration)
-            .get
-            .asError(BadRequest("The requested expiration can't be used"))
-            .map(expiration => SessionType.Public -> ApiSession(uuidToken, None, None, expiration))
-        case Right(e) => ZIO.fail(e)
+        case ParseAuthHeaderError.NoAuthHeader =>
+          expirationToZIO(publicSessionExpiration).map { expiration =>
+            Left(SessionType.Public -> ApiSession(uuidToken, None, None, expiration))
+          }
+        case e => ZIO.fail(e.toResult)
       }
 
-    sessionToInsert
-      .flatMap(t => service.insert(t._2).tupleLeft(t._1))
-      .map {
-        case (tpe, key) =>
-          Ok(
-            ReturnedApiSession(
-              key.token,
-              key.expires,
-              tpe
-            )
-          )
-      }
+    //Only validate the credentials if they are present
+    val sessionToInsert = parsed >>> (ZIO.identity ||| validateCreds)
+
+    for {
+      t <- sessionToInsert
+      (sessionType, session) = t
+      _ <- service.insert(session)
+    } yield Ok(
+      ReturnedApiSession(
+        session.token,
+        session.expires,
+        sessionType
+      )
+    )
   }
 
   def authenticateDev: ZIO[Any, Result, Result] = {
@@ -147,14 +150,12 @@ class Authentication(
         if (request.body._fake.getOrElse(false)) authenticateDev else authenticateKeyPublic
     }
 
-  def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF {
-    implicit request =>
-      ZIO
-        .succeed(request.apiInfo.session)
-        .get
-        .asError(BadRequest("This request was not made with a session"))
-        .flatMap(session => service.deleteWhere(ApiSession)(_.token === session))
-        .as(NoContent)
+  def deleteSession(): Action[AnyContent] = ApiAction(Permission.None, APIScope.GlobalScope).asyncF { request =>
+    ZIO
+      .fromOption(request.apiInfo.session)
+      .asError(BadRequest(ApiError("This request was not made with a session")))
+      .flatMap(session => service.deleteWhere(ApiSession)(_.token === session))
+      .as(NoContent)
   }
 }
 object Authentication {

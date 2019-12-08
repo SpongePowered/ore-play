@@ -22,7 +22,7 @@ class Permissions(
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
     CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      permissionsInCreatedApiScope(pluginId, organizationName).map {
+      permissionsInApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
           Ok(
             KeyPermissions(
@@ -34,16 +34,16 @@ class Permissions(
     }
 
   def has(
-      permissions: Seq[NamedPermission],
+      checkPermissions: Seq[NamedPermission],
       pluginId: Option[String],
       organizationName: Option[String]
   )(
-      check: (Seq[NamedPermission], Permission) => Boolean
+      check: (Seq[Permission], Permission) => Boolean
   ): Action[AnyContent] =
     CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
-      permissionsInCreatedApiScope(pluginId, organizationName).map {
+      permissionsInApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
-          Ok(PermissionCheck(scope.tpe, check(permissions, perms)))
+          Ok(PermissionCheck(scope.tpe, check(checkPermissions.map(_.permission), perms)))
       }
     }
 
@@ -52,14 +52,14 @@ class Permissions(
       pluginId: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has(permissions, pluginId, organizationName)((seq, perm) => seq.forall(p => perm.has(p.permission)))
+    has(permissions, pluginId, organizationName)((seq, perm) => seq.forall(perm.has(_)))
 
   def hasAny(
       permissions: Seq[NamedPermission],
       pluginId: Option[String],
       organizationName: Option[String]
   ): Action[AnyContent] =
-    has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(p => perm.has(p.permission)))
+    has(permissions, pluginId, organizationName)((seq, perm) => seq.exists(perm.has(_)))
 }
 object Permissions {
 

@@ -2,11 +2,9 @@ package controllers.apiv2
 
 import java.time.OffsetDateTime
 
-import scala.collection.immutable.TreeMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
-import play.api.http.Writeable
 import play.api.inject.ApplicationLifecycle
 import play.api.mvc.{ActionBuilder, ActionFilter, ActionFunction, ActionRefiner, AnyContent, Request, Result}
 
@@ -21,10 +19,10 @@ import ore.models.api.ApiSession
 import ore.permission.Permission
 import ore.permission.scope.{GlobalScope, OrganizationScope, ProjectScope, Scope}
 
+import akka.http.scaladsl.model.ErrorInfo
 import akka.http.scaladsl.model.headers.{Authorization, HttpCredentials}
 import cats.data.NonEmptyList
 import cats.syntax.all._
-import io.circe._
 import zio.interop.catz._
 import zio.{IO, Task, UIO, ZIO}
 
@@ -60,25 +58,45 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
   protected def limitOrDefault(limit: Option[Long], default: Long): Long = math.min(limit.getOrElse(default), default)
   protected def offsetOrZero(offset: Long): Long                         = math.max(offset, 0)
 
-  protected def parseAuthHeader(request: Request[_]): IO[Either[Unit, Result], HttpCredentials] = {
-    def unAuth[A: Writeable](msg: A) = Unauthorized(msg).withHeaders(WWW_AUTHENTICATE -> "OreApi")
+  sealed trait ParseAuthHeaderError {
+    private def unAuth(firstError: String, otherErrors: String*) = {
+      val res =
+        if (otherErrors.isEmpty) Unauthorized(ApiError(firstError))
+        else Unauthorized(ApiErrors(NonEmptyList.of(firstError, otherErrors: _*)))
+
+      res.withHeaders(WWW_AUTHENTICATE -> "OreApi")
+    }
+
+    import ParseAuthHeaderError._
+    def toResult: Result = this match {
+      case NoAuthHeader               => unAuth("No authorization specified")
+      case UnparsableHeader           => unAuth("Could not parse authorization header")
+      case ErrorParsingHeader(errors) => unAuth(errors.head.summary, errors.tail.map(_.summary): _*)
+      case InvalidScheme              => unAuth("Invalid scheme for authorization. Needs to be OreApi")
+    }
+  }
+  object ParseAuthHeaderError {
+    case object NoAuthHeader                                       extends ParseAuthHeaderError
+    case object UnparsableHeader                                   extends ParseAuthHeaderError
+    case class ErrorParsingHeader(errors: NonEmptyList[ErrorInfo]) extends ParseAuthHeaderError
+    case object InvalidScheme                                      extends ParseAuthHeaderError
+  }
+
+  protected def parseAuthHeader(request: Request[_]): IO[ParseAuthHeaderError, HttpCredentials] = {
+    import ParseAuthHeaderError._
 
     for {
-      stringAuth <- ZIO.fromOption(request.headers.get(AUTHORIZATION)).mapError(Left.apply)
-      parsedAuth = Authorization.parseFromValueString(stringAuth).leftMap { es =>
-        NonEmptyList
-          .fromList(es)
-          .fold(Right(unAuth(ApiError("Could not parse authorization header"))))(
-            es2 => Right(unAuth(ApiErrors(es2.map(_.summary))))
-          )
-      }
+      stringAuth <- ZIO.fromOption(request.headers.get(AUTHORIZATION)).asError(NoAuthHeader)
+      parsedAuth = Authorization
+        .parseFromValueString(stringAuth)
+        .leftMap(NonEmptyList.fromList(_).fold[ParseAuthHeaderError](UnparsableHeader)(ErrorParsingHeader))
       auth <- ZIO.fromEither(parsedAuth)
       creds = auth.credentials
       res <- {
         if (creds.scheme == "OreApi")
           ZIO.succeed(creds)
         else
-          ZIO.fail(Right(unAuth(ApiError("Invalid scheme for authorization. Needs to be OreApi"))))
+          ZIO.fail(InvalidScheme)
       }
     } yield res
   }
@@ -89,8 +107,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
       def unAuth(msg: String) = Unauthorized(ApiError(msg)).withHeaders(WWW_AUTHENTICATE -> "OreApi")
 
       val authRequest = for {
-        creds <- parseAuthHeader(request)
-          .mapError(_.leftMap(_ => unAuth("No authorization specified")).merge)
+        creds <- parseAuthHeader(request).mapError(_.toResult)
         token <- ZIO
           .fromOption(creds.params.get("session"))
           .asError(unAuth("No session specified"))
@@ -144,7 +161,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
       case (None, None)          => Right(APIScope.GlobalScope)
     }
 
-  def permissionsInCreatedApiScope(pluginId: Option[String], organizationName: Option[String])(
+  def permissionsInApiScope(pluginId: Option[String], organizationName: Option[String])(
       implicit request: ApiRequest[_]
   ): IO[Result, (APIScope, Permission)] =
     for {
@@ -163,7 +180,7 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
         apiScopeToRealScope(scope).flatMap(request.permissionIn[Scope, IO[Unit, *]](_))
       val res = scopePerms.asError(NotFound).ensure(Forbidden)(_.has(perms))
 
-      zioToFuture(res.either.map(_.swap.toOption))
+      zioToFuture(res.flip.option)
     }
   }
 
@@ -193,12 +210,4 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
 
   def CachingApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     ApiAction(perms, scope).andThen(cachingAction)
-
-  def withUndefined[A: Decoder](cursor: ACursor): Decoder.AccumulatingResult[Option[A]] = {
-    import cats.instances.either._
-    import cats.instances.option._
-    val res = if (cursor.succeeded) Some(cursor.as[A]) else None
-
-    res.sequence.toValidatedNel
-  }
 }
