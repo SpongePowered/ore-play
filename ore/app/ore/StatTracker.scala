@@ -75,24 +75,25 @@ object StatTracker {
       F: Monad[F]
   ) extends StatTracker[F] {
 
-    private def applyUpdate(
-        f: (InetString, String, Option[DbRef[User]]) => doobie.Query0[String]
-    )(implicit projectRequest: ProjectRequest[_]) = {
-      val userId = projectRequest.headerData.currentUser.map(_.id.value)
-      f(InetString(StatTracker.remoteAddress), StatTracker.currentCookie, userId)
-    }
-
     private def addStat(
-        updateFunc: (InetString, String, Option[DbRef[User]]) => doobie.Query0[String],
+        queryFunc: (InetString, Option[DbRef[User]]) => doobie.Query0[String],
+        updateFunc: (InetString, String, Option[DbRef[User]]) => doobie.Update0,
         result: F[Result]
-    )(implicit projectRequest: ProjectRequest[_]) =
+    )(implicit projectRequest: ProjectRequest[_]) = {
+      val userId  = projectRequest.headerData.currentUser.map(_.id.value)
+      val address = InetString(StatTracker.remoteAddress)
+
       for {
-        cookie    <- service.runDbCon(applyUpdate(updateFunc).unique)
+        existingCookie <- service.runDbCon(queryFunc(address, userId).option)
+        cookie = existingCookie.getOrElse(StatTracker.currentCookie)
+        _         <- service.runDbCon(updateFunc(address, cookie, userId).run)
         newResult <- result.map(_.withCookies(bakery.bake(COOKIE_NAME, cookie, secure = true)))
       } yield newResult
+    }
 
     def projectViewed(result: F[Result])(implicit projectRequest: ProjectRequest[_]): F[Result] =
       addStat(
+        StatTrackerQueries.findProjectViewCookie,
         StatTrackerQueries.addProjectView(projectRequest.data.project.id, _, _, _),
         result
       )
@@ -101,6 +102,7 @@ object StatTracker {
         version: Model[Version]
     )(result: F[Result])(implicit request: ProjectRequest[_]): F[Result] =
       addStat(
+        StatTrackerQueries.findVersionDownloadCookie,
         StatTrackerQueries.addVersionDownload(version.id, version.projectId, _, _, _),
         result
       )

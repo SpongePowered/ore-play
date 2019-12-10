@@ -14,8 +14,9 @@ import ore.util.OreMDC
 
 import cats.syntax.all._
 import com.typesafe.scalalogging
+import doobie.`enum`.TransactionIsolation
 import zio.clock.Clock
-import zio.{Task, UIO, ZIO, ZSchedule, duration}
+import zio.{RIO, Task, UIO, ZIO, ZSchedule, duration}
 
 @Singleton
 class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
@@ -40,17 +41,31 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
       .fixed(interval)
       .logInput(_ => UIO(Logger.debug("Processing stats")))
 
-  private def runningTask(task: Task[Unit], schedule: ZSchedule[Clock, Any, Int]) = {
-    val safeTask: ZIO[Any, Unit, Unit] = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
+  private def runningTask(task: RIO[Clock, Unit], schedule: ZSchedule[Clock, Any, Int]) = {
+    val safeTask: ZIO[Clock, Unit, Unit] = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
 
     runtime.unsafeRun(safeTask.repeat(schedule).fork)
   }
 
   private val homepageTask = runningTask(projects.refreshHomePage(Logger), homepageSchedule)
-  private val statsTask = runningTask(
+
+  private def runManyInTransaction(updates: Seq[doobie.Update0]) = {
+    import cats.instances.list._
+    import doobie._
+
     service
-      .runDbCon(StatTrackerQueries.processProjectViews.unique *> StatTrackerQueries.processVersionDownloads.unique)
-      .unit,
+      .runDbCon(
+        for {
+          _ <- HC.setTransactionIsolation(TransactionIsolation.TransactionRepeatableRead)
+          _ <- updates.toList.traverse_(_.run)
+        } yield ()
+      )
+      .retry(ZSchedule.forever)
+  }
+
+  private val statsTask = runningTask(
+    runManyInTransaction(StatTrackerQueries.processProjectViews) *>
+      runManyInTransaction(StatTrackerQueries.processVersionDownloads),
     statSchedule
   )
   lifecycle.addStopHook { () =>
