@@ -31,7 +31,7 @@ import ore.permission.Permission
 import util.PatchDecoder
 import util.syntax._
 
-import cats.data.{Nested, NonEmptyList, Validated, ValidatedNel, Writer, WriterT}
+import cats.data.{NonEmptyList, Validated, ValidatedNel, Writer, WriterT}
 import cats.syntax.all._
 import squeal.category._
 import squeal.category.syntax.all._
@@ -55,6 +55,8 @@ class Versions(
   def listVersions(
       pluginId: String,
       platforms: Seq[String],
+      stability: Option[Version.Stability],
+      releaseType: Option[Version.ReleaseType],
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
@@ -71,6 +73,8 @@ class Versions(
           pluginId,
           None,
           parsedPlatforms,
+          stability,
+          releaseType,
           request.globalPermissions.has(Permission.SeeHidden),
           request.user.map(_.id),
           realLimit,
@@ -82,6 +86,8 @@ class Versions(
         .versionCountQuery(
           pluginId,
           parsedPlatforms,
+          stability,
+          releaseType,
           request.globalPermissions.has(Permission.SeeHidden),
           request.user.map(_.id)
         )
@@ -110,7 +116,9 @@ class Versions(
             )
             .option
         )
-        .map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
+        .get
+        .asError(NotFound)
+        .map(a => Ok(a.asJson))
     }
 
   def editVersion(pluginId: String, name: String): Action[Json] =
@@ -148,8 +156,10 @@ class Versions(
           .value
       }
 
+      //We take the platform as flat in the API, but want it columnar.
+      //We also want to verify the version and platform name, and get a coarse version
       //TODO: Fix wrong Applicative bound in syntax
-      val res: ValidatedNel[String, DbEditableVersion] = EditableVersionF.F
+      val res: ValidatedNel[String, Writer[List[String], DbEditableVersion]] = EditableVersionF.F
         .traverseK(EditableVersionF.patchDecoder)(
           λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
         )
@@ -162,24 +172,26 @@ class Versions(
             .tupleLeft(a)
         }
         .map {
-          case (a, WriterT((warnings, optPlatforms))) =>
-            DbEditableVersionF[Option](
-              a.description,
-              a.stability,
-              a.releaseType,
-              VersionedPlatformF[Option](
-                optPlatforms.map(_._1),
-                optPlatforms.map(_._2),
-                optPlatforms.map(_._3)
+          case (a, w) =>
+            w.map { optPlatforms =>
+              DbEditableVersionF[Option](
+                a.description,
+                a.stability,
+                a.releaseType,
+                VersionedPlatformF[Option](
+                  optPlatforms.map(_._1),
+                  optPlatforms.map(_._2),
+                  optPlatforms.map(_._3)
+                )
               )
-            )
+            }
         }
 
       res match {
-        case Validated.Valid(a) =>
+        case Validated.Valid(WriterT((warnings, a))) =>
           service
             .runDbCon(
-              //We need two queries two queries as we use the generic update function
+              //We need two queries as we use the generic update function
               APIV2Queries.updateVersion(pluginId, name, a).run *> APIV2Queries
                 .singleVersionQuery(
                   pluginId,
@@ -287,8 +299,8 @@ class Versions(
             pluginFile.data.containsMixins,
             Version.Stability.Stable,
             None,
-            pluginFile.versionedPlatforms.map(_.id).toList,
-            pluginFile.versionedPlatforms.map(_.version).toList
+            pluginFile.versionedPlatforms.map(_.id),
+            pluginFile.versionedPlatforms.map(_.version)
           )
 
           val warnings = NonEmptyList.fromList(pluginFile.warnings.toList)

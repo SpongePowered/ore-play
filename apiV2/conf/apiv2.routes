@@ -198,6 +198,8 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #    - name: platforms
 #      required: false
 #      description: Only show projects that have a promoted version with a platform given in this list. Should be formated either as `platform` or `platform:version`.
+#    - name: stability
+#      description: Only return projects that has a promoted version with the given stability
 #    - name: owner
 #      description: Limit the search to a specific user
 #    - name: sort
@@ -220,7 +222,7 @@ GET     /permissions/hasAny                                  @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects                                            @controllers.apiv2.Projects.listProjects(q: Option[String], categories: Seq[Category], platforms: Seq[String], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
+GET     /projects                                            @controllers.apiv2.Projects.listProjects(q: Option[String], categories: Seq[Category], platforms: Seq[String], stability: Option[Version.Stability], owner: Option[String], sort: Option[ProjectSortingStrategy], relevance: Option[Boolean], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Creates a new project
@@ -405,6 +407,10 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #    - name: platforms
 #      required: false
 #      description: Only show versions that with a platform given in this list. Should be formated either as `platform` or `platform:version`.
+#    - name: stability
+#      description: Only show versions with the given stability
+#    - name: releaseType
+#      description: Only show versions with the given release type
 #    - name: limit
 #      description: The maximum amount of versions to return
 #    - name: offset
@@ -421,7 +427,7 @@ GET     /projects/:pluginId/stats                            @controllers.apiv2.
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions                         @controllers.apiv2.Versions.listVersions(pluginId, platforms: Seq[String], limit: Option[Long], offset: Long ?= 0)
+GET     /projects/:pluginId/versions                         @controllers.apiv2.Versions.listVersions(pluginId, platforms: Seq[String], stability: Option[Version.Stability], releaseType: Option[Version.ReleaseType], limit: Option[Long], offset: Long ?= 0)
 
 ###
 #  summary: Returns a specific version of a project

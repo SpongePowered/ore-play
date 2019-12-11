@@ -14,7 +14,7 @@ import db.impl.query.APIV2Queries
 import models.protocols.APIV2
 import models.querymodels.APIV2ProjectStatsQuery
 import ore.data.project.Category
-import ore.models.project.ProjectSortingStrategy
+import ore.models.project.{ProjectSortingStrategy, Version}
 import ore.models.project.factory.{ProjectFactory, ProjectTemplate}
 import ore.permission.Permission
 import ore.util.OreMDC
@@ -49,6 +49,7 @@ class Projects(
       q: Option[String],
       categories: Seq[Category],
       platforms: Seq[String],
+      stability: Option[Version.Stability],
       owner: Option[String],
       sort: Option[ProjectSortingStrategy],
       relevance: Option[Boolean],
@@ -69,6 +70,7 @@ class Projects(
           None,
           categories.toList,
           parsedPlatforms.toList,
+          stability,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),
@@ -85,6 +87,7 @@ class Projects(
           None,
           categories.toList,
           parsedPlatforms.toList,
+          stability,
           q,
           owner,
           request.globalPermissions.has(Permission.SeeHidden),

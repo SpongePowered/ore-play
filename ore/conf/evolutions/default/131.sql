@@ -120,13 +120,17 @@ WITH promoted AS (
            sq.version_string,
            sq.platforms,
            sq.platform_versions,
-           sq.platform_coarse_versions
+           sq.platform_coarse_versions,
+           sq.stability,
+           sq.release_type
     FROM (SELECT sq.project_id,
                  sq.version_string,
                  sq.created_at,
                  sq.platforms,
                  sq.platform_versions,
                  sq.platform_coarse_versions,
+                 sq.stability,
+                 sq.release_type,
                  sq.platform_version,
                  row_number()
                  OVER (PARTITION BY sq.project_id, platform, platform_coarse_version ORDER BY sq.created_at) AS row_num
@@ -136,6 +140,8 @@ WITH promoted AS (
                        pv.platforms,
                        pv.platform_versions,
                        pv.platform_coarse_versions,
+                       pv.stability,
+                       pv.release_type,
                        unnest(pv.platforms)                AS platform,
                        unnest(pv.platform_versions)        AS platform_version,
                        unnest(pv.platform_coarse_versions) AS platform_coarse_version
@@ -162,14 +168,14 @@ SELECT p.id,
        p.created_at,
        max(lv.created_at)                AS last_updated,
        to_jsonb(
-               ARRAY(SELECT DISTINCT ON (promoted.version_string) jsonb_build_object('version_string',
-                                                                                     promoted.version_string,
-                                                                                     'platforms',
-                                                                                     promoted.platforms,
-                                                                                     'platform_versions',
-                                                                                     promoted.platform_versions,
-                                                                                     'platform_coarse_versions',
-                                                                                     promoted.platform_coarse_versions)
+               ARRAY(SELECT DISTINCT
+                   ON (promoted.version_string) jsonb_build_object(
+                                                        'version_string', promoted.version_string,
+                                                        'platforms', promoted.platforms,
+                                                        'platform_versions', promoted.platform_versions,
+                                                        'platform_coarse_versions', promoted.platform_coarse_versions,
+                                                        'stability', promoted.stability,
+                                                        'release_type', promoted.release_type)
                      FROM promoted
                      WHERE promoted.project_id = p.id
                      LIMIT 5))           AS promoted_versions,
