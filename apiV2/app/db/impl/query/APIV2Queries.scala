@@ -165,7 +165,7 @@ object APIV2Queries extends WebDoobieOreProtocol {
         Some(fr"EXISTS" ++ Fragments.parentheses(jsSelect))
       } else
         None,
-      query.map(q => fr"p.search_words @@ websearch_to_tsquery($q)"),
+      query.map(q => fr"p.search_words @@ websearch_to_tsquery_postfix('english', $q)"),
       owner.map(o => fr"p.owner_name = $o"),
       visibilityFrag
     )
@@ -192,14 +192,20 @@ object APIV2Queries extends WebDoobieOreProtocol {
   ): Query0[ZIO[Blocking, Nothing, APIV2.Project]] = {
     val ordering = if (orderWithRelevance && query.nonEmpty) {
       val relevance = query.fold(fr"1") { q =>
-        fr"ts_rank(p.search_words, websearch_to_tsquery($q)) DESC"
+        fr"ts_rank(p.search_words, websearch_to_tsquery_postfix('english', $q)) DESC"
       }
+
+      // 1483056000 is the Ore epoch
+      // 86400 seconds to days
+      // 604800‬ seconds to weeks
       order match {
-        case ProjectSortingStrategy.MostStars       => fr"p.stars *" ++ relevance
-        case ProjectSortingStrategy.MostDownloads   => fr"p.downloads*" ++ relevance
-        case ProjectSortingStrategy.MostViews       => fr"p.views *" ++ relevance
-        case ProjectSortingStrategy.Newest          => fr"extract(EPOCH from p.created_at) *" ++ relevance
-        case ProjectSortingStrategy.RecentlyUpdated => fr"extract(EPOCH from p.last_updated) *" ++ relevance
+        case ProjectSortingStrategy.MostStars     => fr"p.stars *" ++ relevance
+        case ProjectSortingStrategy.MostDownloads => fr"(p.downloads / 100) *" ++ relevance
+        case ProjectSortingStrategy.MostViews     => fr"(p.views / 200) *" ++ relevance
+        case ProjectSortingStrategy.Newest =>
+          fr"((extract(EPOCH from p.created_at) - 1483056000) / 86400) *" ++ relevance
+        case ProjectSortingStrategy.RecentlyUpdated =>
+          fr"((extract(EPOCH from p.last_updated) - 1483056000) / 604800) *" ++ relevance
         case ProjectSortingStrategy.OnlyRelevance   => relevance
         case ProjectSortingStrategy.RecentViews     => fr"p.recent_views *" ++ relevance
         case ProjectSortingStrategy.RecentDownloads => fr"p.recent_downloads*" ++ relevance
