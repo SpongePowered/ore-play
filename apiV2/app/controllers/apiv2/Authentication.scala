@@ -102,7 +102,7 @@ class Authentication(
       }
 
     //Only validate the credentials if they are present
-    val sessionToInsert = parsed >>> (ZIO.identity ||| validateCreds)
+    val sessionToInsert = parsed >>> (ZIO.identity[(Authentication.SessionType, ApiSession)] ||| validateCreds)
 
     for {
       t <- sessionToInsert

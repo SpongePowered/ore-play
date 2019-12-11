@@ -25,7 +25,7 @@ import cats.data.{NonEmptyList, Validated}
 import cats.syntax.all._
 import squeal.category._
 import squeal.category.syntax.all._
-import squeal.macros.Derive
+import squeal.category.macros.Derive
 import io.circe._
 import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.syntax._
@@ -187,11 +187,9 @@ class Projects(
       .asyncF(parseCirce.json) { implicit request =>
         val root = request.body.hcursor
 
-        //TODO: Fix wrong Applicative bound in syntax
-        val res: Decoder.AccumulatingResult[EditableProject] =
-          EditableProjectF.F.traverseK(EditableProjectF.patchDecoder)(
-            λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
-          )
+        val res: Decoder.AccumulatingResult[EditableProject] = EditableProjectF.patchDecoder.traverseKC(
+          λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
+        )
 
         res match {
           case Validated.Valid(a) =>
@@ -281,8 +279,9 @@ object Projects {
       Derive.allKC[EditableProjectF]
 
     val patchDecoder: EditableProjectF[PatchDecoder] =
-      //TODO: Make it go deep
-      ??? //PatchDecoder.fromName(Derive.namesWithImplicitsC[EditableProjectF, Decoder])(s => s) //TODO: snake_case
+      PatchDecoder.fromName(Derive.namesWithProductImplicitsC[EditableProjectF, Decoder])(
+        io.circe.generic.extras.Configuration.snakeCaseTransformation
+      )
   }
 
   case class EditableProjectSettingsF[F[_]](

@@ -190,7 +190,7 @@ lazy val apiV2 = project
       "io.circe"                   %% "circe-parser"           % circeVersion,
       "com.github.cb372"           %% "scalacache-caffeine"    % scalaCacheVersion,
       "com.github.cb372"           %% "scalacache-cats-effect" % scalaCacheVersion,
-      "net.katsstuff"              %% "squeal-category-macro"  % "0.0.1"
+      "net.katsstuff"              %% "squeal-category-macro"  % "0.0.2"
     ),
     libraryDependencies ++= playTestDeps
   )

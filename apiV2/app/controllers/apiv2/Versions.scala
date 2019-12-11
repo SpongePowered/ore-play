@@ -35,7 +35,7 @@ import cats.data.{NonEmptyList, Validated, ValidatedNel, Writer, WriterT}
 import cats.syntax.all._
 import squeal.category._
 import squeal.category.syntax.all._
-import squeal.macros.Derive
+import squeal.category.macros.Derive
 import io.circe._
 import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.syntax._
@@ -158,9 +158,8 @@ class Versions(
 
       //We take the platform as flat in the API, but want it columnar.
       //We also want to verify the version and platform name, and get a coarse version
-      //TODO: Fix wrong Applicative bound in syntax
-      val res: ValidatedNel[String, Writer[List[String], DbEditableVersion]] = EditableVersionF.F
-        .traverseK(EditableVersionF.patchDecoder)(
+      val res: ValidatedNel[String, Writer[List[String], DbEditableVersion]] = EditableVersionF.patchDecoder
+        .traverseKC(
           λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
         )
         .leftMap(_.map(_.show))
@@ -411,7 +410,9 @@ object Versions {
       Derive.allKC[EditableVersionF]
 
     val patchDecoder: EditableVersionF[PatchDecoder] =
-      PatchDecoder.fromName(Derive.namesWithImplicitsC[EditableVersionF, Decoder])(s => s) //TODO: snake_case
+      PatchDecoder.fromName(Derive.namesWithProductImplicitsC[EditableVersionF, Decoder])(
+        io.circe.generic.extras.Configuration.snakeCaseTransformation
+      )
   }
 
   case class VersionedPlatformF[F[_]](

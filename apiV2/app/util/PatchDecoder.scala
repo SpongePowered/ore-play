@@ -24,9 +24,11 @@ object PatchDecoder {
   }
 
   def fromName[F[_[_]]: FunctorKC](
-      fsd: F[Tuple2K[Const[String]#λ, Decoder]#λ]
+      fsd: F[Tuple2K[Const[List[String]]#λ, Decoder]#λ]
   )(nameTransform: String => String): F[PatchDecoder] =
-    fsd.mapKC(λ[Tuple2K[Const[String]#λ, Decoder]#λ ~>: PatchDecoder](t => mkPath(nameTransform(t._1))(t._2)))
+    fsd.mapKC(
+      λ[Tuple2K[Const[List[String]]#λ, Decoder]#λ ~>: PatchDecoder](t => mkPath(t._1.map(nameTransform): _*)(t._2))
+    )
 
   implicit val applicative: Applicative[PatchDecoder] = new Applicative[PatchDecoder] {
     override def pure[A](x: A): PatchDecoder[A] = ???
