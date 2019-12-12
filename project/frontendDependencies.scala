@@ -22,9 +22,9 @@ object NPMDeps {
 
   val webpack               = "4.41.2"
   val webpackDevServer      = "3.9.0"
-  val webpackMerge          = "webpack-merge"           -> "4.2.2"
-  val webpackTerser         = "terser-webpack-plugin"   -> "2.2.3"
-  val webpackCopy           = "copy-webpack-plugin"     -> "5.1.0"
+  val webpackMerge          = "webpack-merge" -> "4.2.2"
+  val webpackTerser         = "terser-webpack-plugin" -> "2.2.3"
+  val webpackCopy           = "copy-webpack-plugin" -> "5.1.0"
   val webpackBundleAnalyzer = "webpack-bundle-analyzer" -> "3.6.0"
 
   val cssLoader         = "css-loader"                         -> "3.3.0"
