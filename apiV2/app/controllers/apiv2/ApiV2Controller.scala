@@ -42,7 +42,7 @@ import cats.data.{NonEmptyList, Validated}
 import cats.kernel.Semigroup
 import cats.syntax.all._
 import enumeratum._
-import io.circe.generic.extras._
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import io.circe.syntax._
 import io.circe.{Codec => CirceCodec, _}
 import zio.blocking.Blocking
@@ -803,8 +803,6 @@ class ApiV2Controller @Inject()(
 }
 object ApiV2Controller {
 
-  import APIV2.config
-
   sealed abstract class APIScope(val tpe: APIScopeType)
   object APIScope {
     case object GlobalScope                                extends APIScope(APIScopeType.Global)
@@ -835,18 +833,18 @@ object ApiV2Controller {
     implicit val codec: CirceCodec[SessionType] = APIV2.enumCodec(SessionType)(_.entryName)
   }
 
-  @ConfiguredJsonCodec case class ApiError(error: String)
-  @ConfiguredJsonCodec case class ApiErrors(errors: NonEmptyList[String])
+  @SnakeCaseJsonCodec case class ApiError(error: String)
+  @SnakeCaseJsonCodec case class ApiErrors(errors: NonEmptyList[String])
   object ApiErrors {
     implicit val semigroup: Semigroup[ApiErrors] = (x: ApiErrors, y: ApiErrors) =>
       ApiErrors(x.errors.concatNel(y.errors))
   }
-  @ConfiguredJsonCodec case class UserError(userError: String)
+  @SnakeCaseJsonCodec case class UserError(userError: String)
 
-  @ConfiguredJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
-  @ConfiguredJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
+  @SnakeCaseJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
+  @SnakeCaseJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
 
-  @ConfiguredJsonCodec case class DeployVersionInfo(
+  @SnakeCaseJsonCodec case class DeployVersionInfo(
       createForumPost: Option[Boolean],
       description: Option[String],
       tags: Option[Map[String, StringOrArrayString]]
@@ -871,33 +869,33 @@ object ApiV2Controller {
     )
   }
 
-  @ConfiguredJsonCodec case class ApiSessionProperties(
+  @SnakeCaseJsonCodec case class ApiSessionProperties(
       _fake: Option[Boolean],
       expiresIn: Option[Long]
   )
 
-  @ConfiguredJsonCodec case class ReturnedApiSession(
+  @SnakeCaseJsonCodec case class ReturnedApiSession(
       session: String,
       expires: OffsetDateTime,
       `type`: SessionType
   )
 
-  @ConfiguredJsonCodec case class PaginatedProjectResult(
+  @SnakeCaseJsonCodec case class PaginatedProjectResult(
       pagination: Pagination,
       result: Seq[APIV2.Project]
   )
 
-  @ConfiguredJsonCodec case class PaginatedCompactProjectResult(
+  @SnakeCaseJsonCodec case class PaginatedCompactProjectResult(
       pagination: Pagination,
       result: Seq[APIV2.CompactProject]
   )
 
-  @ConfiguredJsonCodec case class PaginatedVersionResult(
+  @SnakeCaseJsonCodec case class PaginatedVersionResult(
       pagination: Pagination,
       result: Seq[APIV2.Version]
   )
 
-  @ConfiguredJsonCodec case class Pagination(
+  @SnakeCaseJsonCodec case class Pagination(
       limit: Long,
       offset: Long,
       count: Long
@@ -905,12 +903,12 @@ object ApiV2Controller {
 
   implicit val namedPermissionCodec: CirceCodec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
 
-  @ConfiguredJsonCodec case class KeyPermissions(
+  @SnakeCaseJsonCodec case class KeyPermissions(
       `type`: APIScopeType,
       permissions: List[NamedPermission]
   )
 
-  @ConfiguredJsonCodec case class PermissionCheck(
+  @SnakeCaseJsonCodec case class PermissionCheck(
       `type`: APIScopeType,
       result: Boolean
   )

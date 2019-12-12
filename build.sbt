@@ -22,7 +22,7 @@ lazy val externalCommon = project.settings(
     Deps.catsEffect,
     Deps.catsTagless,
     Deps.circe,
-    Deps.circeGeneric,
+    Deps.circeDerivation,
     Deps.circeParser,
     Deps.akkaHttp,
     Deps.akkaHttpCore,
@@ -63,7 +63,7 @@ lazy val models = project
       Deps.cats,
       Deps.simulacrum,
       Deps.circe,
-      Deps.circeGeneric,
+      Deps.circeDerivation,
       Deps.circeParser
     )
   )
@@ -116,7 +116,7 @@ lazy val apiV2 = project
     libraryDependencies ++= Seq(
       Deps.scalaLogging,
       Deps.circe,
-      Deps.circeGeneric,
+      Deps.circeDerivation,
       Deps.circeParser,
       Deps.scalaCache,
       Deps.scalaCacheCatsEffect
@@ -183,7 +183,7 @@ lazy val ore = project
       Deps.sentry,
       Deps.javaxMail,
       Deps.circe,
-      Deps.circeGeneric,
+      Deps.circeDerivation,
       Deps.circeParser,
       Deps.macwire
     ),

@@ -369,7 +369,7 @@ trait ProjectFactory {
       createDirs *> movePath *> deleteOld.as(Right(()))
     }
 
-    fileIO.exists(newPath).ifM(UIO.succeed(Left("error.plugin.fileName")), move).orDie.absolve
+    fileIO.exists(newPath).ifM(UIO.succeed(Left("error.plugin.fileName")), move).absolve
   }
 
 }

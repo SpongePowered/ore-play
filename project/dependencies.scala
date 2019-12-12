@@ -3,23 +3,29 @@ import play.sbt.PlayImport._
 import sbt._
 
 object Version {
-  val cats         = "2.0.0"
-  val catsEffect   = "2.0.0"
-  val catsTagless  = "0.10"
-  val zio          = "1.0.0-RC14"
-  val zioCats      = "2.0.0.0-RC5"
-  val doobie       = "0.8.6"
-  val flexmark     = "0.50.44"
-  val playSlick    = "4.0.2"
-  val slick        = "3.3.2"
-  val slickPg      = "0.18.1"
-  val circe        = "0.12.2"
-  val akka         = "2.5.23"
+  val cats        = "2.0.0"
+  val catsEffect  = "2.0.0"
+  val catsTagless = "0.10"
+
+  val zio     = "1.0.0-RC17"
+  val zioCats = "2.0.0.0-RC10"
+
+  val slick     = "3.3.2"
+  val slickPg   = "0.18.1"
+  val playSlick = "4.0.2"
+  val doobie    = "0.8.6"
+
+  val circe           = "0.12.3"
+  val circeDerivation = "0.12.0-M7"
+
+  val akka         = "2.5.27"
   val akkaHttp     = "10.1.11"
   val scalaLogging = "3.9.2"
-  val simulacrum   = "0.19.0"
-  val macWire      = "2.3.3"
-  val scalaCache   = "0.28.0"
+
+  val simulacrum = "0.19.0"
+  val macWire    = "2.3.3"
+  val scalaCache = "0.28.0"
+  val flexmark   = "0.50.44"
 }
 
 object Deps {
@@ -41,9 +47,9 @@ object Deps {
   val doobiePostgres      = "org.tpolecat" %% "doobie-postgres"       % Version.doobie
   val doobiePostgresCirce = "org.tpolecat" %% "doobie-postgres-circe" % Version.doobie
 
-  val circe        = "io.circe" %% "circe-core"           % Version.circe
-  val circeGeneric = "io.circe" %% "circe-generic-extras" % Version.circe
-  val circeParser  = "io.circe" %% "circe-parser"         % Version.circe
+  val circe           = "io.circe" %% "circe-core"                   % Version.circe
+  val circeDerivation = "io.circe" %% "circe-derivation-annotations" % Version.circeDerivation
+  val circeParser     = "io.circe" %% "circe-parser"                 % Version.circe
 
   val akkaHttp     = "com.typesafe.akka" %% "akka-http"      % Version.akkaHttp
   val akkaHttpCore = "com.typesafe.akka" %% "akka-http-core" % Version.akkaHttp
