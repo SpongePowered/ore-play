@@ -620,7 +620,89 @@ PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.
 +nocsrf
 POST    /projects/:pluginId/versions                         @controllers.apiv2.Versions.deployVersion(pluginId)
 
-#GET     /projects/:pluginId/pages                            @controllers.ApiV2Controller.listPages(pluginId, parentId: Option[DbRef[Page]])
+###
+#  summary: Returns the given page
+#  description: >-
+#    Returns a page of the project. Requires the `view_public_info`
+#    permission in the project or owning organization.
+#
+#    **WARNING: This API is subject to change, maybe very little, maybe dramatically.**
+#  tags:
+#    - Pages
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return the page for
+#    - name: page
+#      description: The slug of the page to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Page'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /projects/:pluginId/_pages/*page       @controllers.apiv2.Pages.showPage(pluginId, page)
+
+###
+#  summary: Creates or updates a page
+#  description: >-
+#    Creates or updates a page in the given project. Requires the `edit_page`
+#    permission in the project or owning organization.
+#
+#    **WARNING: This API is subject to change, maybe very little, maybe dramatically.**
+#  tags:
+#    - Pages
+#  requestBody:
+#    required: true
+#    content:
+#      application/json:
+#        schema:
+#          $ref: '#/components/schemas/models.protocols.APIV2.Page'
+#  responses:
+#    200:
+#      description: Page updated
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Page'
+#    201:
+#      description: Page created
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Page'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
++nocsrf
+PUT      /projects/:pluginid/_pages/*page                     @controllers.apiv2.Pages.putPage(pluginId, page)
+
+###
+#  summary: Deletes a page
+#  description: >-
+#    Deletes a page in the given project. Requires the `edit_page`
+#    permission in the project or owning organization.
+#
+#    **WARNING: This API is subject to change, maybe very little, maybe dramatically.**
+#  tags:
+#    - Pages
+#  responses:
+#    204:
+#      description: Page deleted
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
++nocsrf
+DELETE   /projects/:pluginid/_pages/*page                     @controllers.apiv2.Pages.deletePage(pluginId, page)
 
 ###
 #  summary: Gets a specific user

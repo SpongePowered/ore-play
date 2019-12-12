@@ -16,7 +16,7 @@ import ore.db.DbRef
 import ore.db.impl.query.DoobieOreProtocol
 import ore.models.api.ApiKey
 import ore.models.project.io.ProjectFiles
-import ore.models.project.{ProjectSortingStrategy, Version}
+import ore.models.project.{Page, Project, ProjectSortingStrategy, Version}
 import ore.models.user.User
 import ore.permission.Permission
 
@@ -579,5 +579,25 @@ object APIV2Queries extends DoobieOreProtocol {
           |             LEFT JOIN global_trust gt ON gt.user_id = om.user_id
           |             LEFT JOIN organization_trust ot ON ot.user_id = om.user_id AND ot.organization_id = o.id
           |    WHERE o.name = $orgName;""".stripMargin.query[(DbRef[User], Boolean)]
+
+  def getPage(pluginId: String, page: String): Query0[(DbRef[Project], DbRef[Page], String, String)] =
+    sql"""|WITH RECURSIVE pages_rec(n, name, slug, contents, id, project_id) AS (
+          |    SELECT 2, pp.name, pp.slug, pp.contents, pp.id, pp.project_id
+          |        FROM project_pages pp
+          |                 JOIN projects p ON pp.project_id = p.id
+          |        WHERE p.plugin_id = $pluginId
+          |          AND split_part($page, '/', 1) = pp.slug
+          |    UNION
+          |    SELECT pr.n + 1, pp.name, pp.slug, pp.contents, pp.id, pp.project_id
+          |        FROM pages_rec pr,
+          |             project_pages pp
+          |        WHERE pp.project_id = pr.project_id
+          |          AND pp.parent_id = pr.id
+          |          AND split_part($page, '/', pr.n) = pp.slug
+          |)
+          |SELECT pp.project_id, pp.id, pp.name, pp.contents
+          |    FROM pages_rec pp
+          |    WHERE pp.slug = split_part($page, '/', array_length(regexp_split_to_array($page, '/'), 1));""".stripMargin
+      .query[(DbRef[Project], DbRef[Page], String, String)]
 
 }

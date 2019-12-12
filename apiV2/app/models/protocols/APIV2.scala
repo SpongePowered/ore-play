@@ -147,4 +147,9 @@ object APIV2 {
   @ConfiguredJsonCodec case class VersionStatsDay(
       downloads: Long
   )
+
+  @ConfiguredJsonCodec case class Page(
+      name: String,
+      content: String
+  )
 }
