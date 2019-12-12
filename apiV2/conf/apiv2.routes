@@ -681,8 +681,8 @@ GET     /projects/:pluginId/_pages/*page       @controllers.apiv2.Pages.showPage
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-+nocsrf
-PUT      /projects/:pluginid/_pages/*page                     @controllers.apiv2.Pages.putPage(pluginId, page)
+#+nocsrf
+PUT     /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.putPage(pluginId, page)
 
 ###
 #  summary: Deletes a page
@@ -701,8 +701,8 @@ PUT      /projects/:pluginid/_pages/*page                     @controllers.apiv2
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-+nocsrf
-DELETE   /projects/:pluginid/_pages/*page                     @controllers.apiv2.Pages.deletePage(pluginId, page)
+#+nocsrf
+DELETE   /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.deletePage(pluginId, page)
 
 ###
 #  summary: Gets a specific user
