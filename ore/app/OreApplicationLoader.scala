@@ -26,7 +26,7 @@ import play.filters.csp.{CSPConfig, CSPFilter, DefaultCSPProcessor, DefaultCSPRe
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
 
 import controllers._
-import controllers.project.{Pages, Projects, Versions}
+import controllers.project.{Projects, Versions}
 import controllers.sugar.Bakery
 import db.impl.DbUpdateTask
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
@@ -298,7 +298,6 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val versions: Versions                                          = wire[Versions]
   lazy val users: Users                                                = wire[Users]
   lazy val projects: Projects                                          = wire[Projects]
-  lazy val pages: Pages                                                = wire[Pages]
   lazy val organizations: Organizations                                = wire[Organizations]
   lazy val reviews: Reviews                                            = wire[Reviews]
   lazy val applicationControllerProvider: Provider[Application]        = () => applicationController
@@ -313,7 +312,6 @@ class OreComponents(context: ApplicationLoader.Context)
   lazy val versionsProvider: Provider[Versions]                        = () => versions
   lazy val usersProvider: Provider[Users]                              = () => users
   lazy val projectsProvider: Provider[Projects]                        = () => projects
-  lazy val pagesProvider: Provider[Pages]                              = () => pages
   lazy val organizationsProvider: Provider[Organizations]              = () => organizations
   lazy val reviewsProvider: Provider[Reviews]                          = () => reviews
 

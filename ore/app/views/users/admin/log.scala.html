@@ -1,4 +1,5 @@
 @import controllers.project.{routes => projectRoutes}
+@import controllers.sugar.Calls
 @import controllers.routes.{Application => appRoutes, Users => userRoutes}
 @import controllers.sugar.Requests.OreRequest
 @import ore.OreConfig
@@ -99,13 +100,13 @@
                                     </td>
                                 } else { @if(action.actionContext == LoggedActionContext.ProjectPage) {
                                     <td>
-                                        <a href="@projectRoutes.Pages.show(action.project.ownerName.get, action.project.slug.getOrElse(""), action.page.slug.getOrElse(""))">@action.project.ownerName.get/@action.project.slug.getOrElse("")/@action.page.slug.getOrElse("")</a>
+                                        <a href="@Calls.showPage(action.project.ownerName.get, action.project.slug.getOrElse(""), action.page.slug.getOrElse(""))">@action.project.ownerName.get/@action.project.slug.getOrElse("")/@action.page.slug.getOrElse("")</a>
                                         <small class="filter-project">(<a href="@appRoutes.showLog(Some(page), userFilter, action.project.pluginId, versionFilter, pageFilter, actionFilter, subjectFilter)">@action.project.pluginId</a>)</small>
                                         <small class="filter-page">(<a href="@appRoutes.showLog(Some(page), userFilter, projectFilter, versionFilter, action.page.id, actionFilter, subjectFilter)">@action.page.id</a>)</small>
                                     </td>
                                 } else { @if(action.actionContext == LoggedActionContext.Version) {
                                     <td>
-                                        <a href="@projectRoutes.Versions.show(action.project.ownerName.get, action.project.slug.get, action.version.versionString.get)">@action.project.ownerName.get/@action.project.slug.get/@action.version.versionString.get</a>
+                                        <a href="@Calls.showVersion(action.project.ownerName.get, action.project.slug.get, action.version.versionString.get)">@action.project.ownerName.get/@action.project.slug.get/@action.version.versionString.get</a>
                                         <small class="filter-project">(<a href="@appRoutes.showLog(Some(page), userFilter, action.project.pluginId, versionFilter, pageFilter, actionFilter, subjectFilter)">@action.project.pluginId</a>)</small>
                                         <small class="filter-version">(<a href="@appRoutes.showLog(Some(page), userFilter, projectFilter, action.version.versionString, pageFilter, actionFilter, subjectFilter)">@action.version.versionString</a>)</small>
                                     </td>

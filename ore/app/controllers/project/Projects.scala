@@ -77,39 +77,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
     * @return View of project
     */
   def show(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF { implicit request =>
-    for {
-      t <- (projects.queryProjectPages(request.project), request.project.homePage).parTupled
-      (pages, homePage) = t
-      pageCount         = pages.size + pages.map(_._2.size).sum
-      res <- stats.projectViewed(
-        UIO.succeed(
-          Ok(
-            views.pages.view(
-              request.data,
-              request.scoped,
-              Model.unwrapNested[Seq[(Model[Page], Seq[Page])]](pages),
-              homePage,
-              None,
-              pageCount
-            )
-          )
-        )
-      )
-    } yield res
-  }
-
-  /**
-    * Displays the "discussion" tab within a Project view.
-    *
-    * @param author Owner of project
-    * @param slug   Project slug
-    * @return View of project
-    */
-  def showDiscussion(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF {
-    implicit request =>
-      forums.isAvailable.flatMap { isAvailable =>
-        this.stats.projectViewed(UIO.succeed(Ok(views.discuss(request.data, request.scoped, isAvailable))))
-      }
+    stats.projectViewed(UIO.succeed(Ok(views.view(request.data))))
   }
 
   /**
@@ -121,7 +89,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
     */
   def postDiscussionReply(author: String, slug: String): Action[DiscussionReplyForm] =
     AuthedProjectAction(author, slug).asyncF(
-      parse.form(forms.ProjectReply, onErrors = FormError(self.showDiscussion(author, slug)))
+      parse.form(forms.ProjectReply, onErrors = FormError(self.show(author, slug)))
     ) { implicit request =>
       val formData = request.body
       if (request.project.topicId.isEmpty)
@@ -140,7 +108,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
               .map(_.merge)
           }
           errors <- this.forums.postDiscussionReply(request.project, poster, formData.content).map(_.swap.toOption)
-        } yield Redirect(self.showDiscussion(author, slug)).withErrors(errors.toList)
+        } yield Redirect(self.show(author, slug)).withErrors(errors.toList)
       }
     }
 

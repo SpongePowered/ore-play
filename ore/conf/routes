@@ -68,8 +68,6 @@ GET     /robots.txt                                                 @controllers
 POST    /invite/:id/:status                                         @controllers.project.Projects.setInviteStatus(id: DbRef[ProjectUserRole], status)
 POST    /invite/:id/:status/:behalf                                 @controllers.project.Projects.setInviteStatusOnBehalf(id: DbRef[ProjectUserRole], status: String, behalf: String)
 
-POST    /pages/preview                                              @controllers.project.Pages.showPreview()
-
 # ---------- Organizations ----------
 
 GET     /organizations/new                                          @controllers.Organizations.showCreator()
@@ -105,7 +103,6 @@ POST    /:author/:slug/visible/:visibility                          @controllers
 GET     /:author/:slug/watchers                                     @controllers.project.Projects.showWatchers(author, slug, page: Option[Int])
 POST    /:author/:slug/watchers/:watching                           @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
 
-GET     /:author/:slug/discuss                                      @controllers.project.Projects.showDiscussion(author, slug)
 POST    /:author/:slug/discuss/reply                                @controllers.project.Projects.postDiscussionReply(author, slug)
 
 GET     /:author/:slug/manage/sendforapproval                       @controllers.project.Projects.sendForApproval(author, slug)
@@ -125,23 +122,13 @@ GET     /:author/:slug/icon/pending                                 @controllers
 # ------- End Projects ---------
 
 
-# ---------- Pages ----------
-
-GET     /:author/:slug/pages/*page/edit                             @controllers.project.Pages.showEditor(author, slug, page)
-POST    /:author/:slug/pages/*page/edit                             @controllers.project.Pages.save(author, slug, page)
-POST    /:author/:slug/pages/*page/delete                           @controllers.project.Pages.delete(author, slug, page)
-GET     /:author/:slug/pages/*page                                  @controllers.project.Pages.show(author, slug, page)
-
-
 # ---------- Versions ----------
 
-GET     /:author/:slug/versions                                     @controllers.project.Versions.showList(author, slug)
-
-POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version, partial: Boolean = false)
-POST    /:author/:slug/versions/:version/approvePartial             @controllers.project.Versions.approve(author, slug, version, partial: Boolean = true)
-POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)
-POST    /:author/:slug/versions/:version/restore                    @controllers.project.Versions.restore(author, slug, version)
-POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
+#POST    /:author/:slug/versions/:version/approve                    @controllers.project.Versions.approve(author, slug, version, partial: Boolean = false)
+#POST    /:author/:slug/versions/:version/approvePartial             @controllers.project.Versions.approve(author, slug, version, partial: Boolean = true)
+#POST    /:author/:slug/versions/:version/hardDelete                 @controllers.project.Versions.delete(author, slug, version)
+#POST    /:author/:slug/versions/:version/restore                    @controllers.project.Versions.restore(author, slug, version)
+#POST    /:author/:slug/versions/:version/delete                     @controllers.project.Versions.softDelete(author, slug, version)
 
 GET     /:author/:slug/versions/:version/confirm                    @controllers.project.Versions.showDownloadConfirm(author, slug, version, downloadType: Option[Int], api: Option[Boolean], dummy: Option[String])
 +nocsrf
@@ -152,9 +139,6 @@ GET     /:author/:slug/versions/:version/download                   @controllers
 
 GET     /:author/:slug/versions/recommended/jar                     @controllers.project.Versions.downloadRecommendedJar(author, slug, token: Option[String])
 GET     /:author/:slug/versions/:version/jar                        @controllers.project.Versions.downloadJar(author, slug, version, token: Option[String])
-
-GET     /:author/:slug/versions/:version                            @controllers.project.Versions.show(author, slug, version)
-
 
 # ---------- Reviews ----------
 GET     /:author/:slug/versions/:version/reviews                    @controllers.Reviews.showReviews(author, slug, version)

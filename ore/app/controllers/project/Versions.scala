@@ -72,31 +72,15 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   private def VersionUploadAction(author: String, slug: String) =
     AuthedProjectAction(author, slug, requireUnlock = true).andThen(ProjectPermissionAction(Permission.CreateVersion))
 
+  /*
   /**
-    * Shows the specified version view page.
-    *
-    * @param author        Owner name
-    * @param slug          Project slug
-    * @param versionString Version name
-    * @return Version view
-    */
-  def show(author: String, slug: String, versionString: String): Action[AnyContent] =
-    ProjectAction(author, slug).asyncF { implicit request =>
-      for {
-        version  <- getVersion(request.project, versionString)
-        data     <- VersionData.of[Task](request, version).orDie
-        response <- this.stats.projectViewed(UIO.succeed(Ok(views.view(data, request.scoped))))
-      } yield response
-    }
-
-  /**
-    * Sets the specified Version as approved by the moderation staff.
-    *
-    * @param author         Project owner
-    * @param slug           Project slug
-    * @param versionString  Version name
-    * @return               View of version
-    */
+   * Sets the specified Version as approved by the moderation staff.
+   *
+   * @param author         Project owner
+   * @param slug           Project slug
+   * @param versionString  Version name
+   * @return               View of version
+   */
   def approve(author: String, slug: String, versionString: String, partial: Boolean): Action[AnyContent] = {
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(Permission.Reviewer))
@@ -123,35 +107,13 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   }
 
   /**
-    * Displays the "versions" tab within a Project view.
-    *
-    * @param author   Owner of project
-    * @param slug     Project slug
-    * @return View of project
-    */
-  def showList(author: String, slug: String): Action[AnyContent] = {
-    ProjectAction(author, slug).asyncF { implicit request =>
-      this.stats.projectViewed(
-        UIO.succeed(
-          Ok(
-            views.list(
-              request.data,
-              request.scoped
-            )
-          )
-        )
-      )
-    }
-  }
-
-  /**
-    * Deletes the specified version and returns to the version page.
-    *
-    * @param author        Owner name
-    * @param slug          Project slug
-    * @param versionString Version name
-    * @return Versions page
-    */
+   * Deletes the specified version and returns to the version page.
+   *
+   * @param author        Owner name
+   * @param slug          Project slug
+   * @param versionString Version name
+   * @return Versions page
+   */
   def delete(author: String, slug: String, versionString: String): Action[String] = {
     Authenticated
       .andThen(PermissionAction[AuthRequest](Permission.HardDeleteVersion))
@@ -173,12 +135,12 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
   }
 
   /**
-    * Soft deletes the specified version.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Home page
-    */
+   * Soft deletes the specified version.
+   *
+   * @param author Project owner
+   * @param slug   Project slug
+   * @return Home page
+   */
   def softDelete(author: String, slug: String, versionString: String): Action[String] =
     AuthedProjectAction(author, slug, requireUnlock = true)
       .andThen(ProjectPermissionAction(Permission.DeleteVersion))
@@ -200,12 +162,12 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
       }
 
   /**
-    * Restore the specified version.
-    *
-    * @param author Project owner
-    * @param slug   Project slug
-    * @return Home page
-    */
+   * Restore the specified version.
+   *
+   * @param author Project owner
+   * @param slug   Project slug
+   * @return Home page
+   */
   def restore(author: String, slug: String, versionString: String): Action[String] = {
     Authenticated
       .andThen(PermissionAction[AuthRequest](Permission.Reviewer))
@@ -221,6 +183,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
         } yield Redirect(self.showList(author, slug))
       }
   }
+   */
 
   def showLog(author: String, slug: String, versionString: String): Action[AnyContent] = {
     Authenticated

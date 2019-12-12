@@ -1,4 +1,5 @@
 @import controllers.sugar.Requests.OreRequest
+@import controllers.sugar.Calls
 @import models.querymodels.UnhealtyProject
 @import ore.OreConfig
 @import ore.models.project.{Project, Version}
@@ -107,7 +108,7 @@
                 <div class="panel-body list-group list-group-health">
                 @missingFileProjects.map { case (version, project) =>
                 <div class="list-group-item">
-                    <a href="@versionRoutes.show(project.ownerName, project.slug, version.name)">
+                    <a href="@Calls.showVersion(project.ownerName, project.slug, version.name)">
                         <strong>@project.namespace/@version.name</strong>
                 </a>
                 </div>
