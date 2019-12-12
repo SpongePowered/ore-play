@@ -8,14 +8,14 @@ object Version {
   val catsTagless  = "0.10"
   val zio          = "1.0.0-RC14"
   val zioCats      = "2.0.0.0-RC5"
-  val doobie       = "0.8.4"
-  val flexmark     = "0.50.40"
+  val doobie       = "0.8.6"
+  val flexmark     = "0.50.44"
   val playSlick    = "4.0.2"
   val slick        = "3.3.2"
-  val slickPg      = "0.18.0"
+  val slickPg      = "0.18.1"
   val circe        = "0.12.2"
   val akka         = "2.5.23"
-  val akkaHttp     = "10.1.10"
+  val akkaHttp     = "10.1.11"
   val scalaLogging = "3.9.2"
   val simulacrum   = "0.19.0"
   val macWire      = "2.3.3"
@@ -83,9 +83,9 @@ object Deps {
   val pluginMeta = "org.spongepowered" % "plugin-meta" % "0.4.1"
 
   val javaxMail = "javax.mail"     % "mail"            % "1.4.7"
-  val postgres  = "org.postgresql" % "postgresql"      % "42.2.8"
+  val postgres  = "org.postgresql" % "postgresql"      % "42.2.9"
   val logback   = "ch.qos.logback" % "logback-classic" % "1.2.3"
-  val sentry    = "io.sentry"      % "sentry-logback"  % "1.7.27"
+  val sentry    = "io.sentry"      % "sentry-logback"  % "1.7.28"
 
   val playTestDeps = Seq(
     jdbc % Test,

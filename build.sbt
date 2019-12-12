@@ -138,8 +138,8 @@ lazy val oreClient = project
     includeFilter in webpackMonitoredFiles := "*.vue" || "*.js",
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     webpackBundlingMode in fullOptJS := BundlingMode.LibraryOnly(),
-    version in startWebpackDevServer := "3.7.2",
-    version in webpack := "4.36.1",
+    version in startWebpackDevServer := NPMDeps.webpackDevServer,
+    version in webpack := NPMDeps.webpack,
     npmDependencies in Compile ++= Seq(
       NPMDeps.vue,
       NPMDeps.lodash,
