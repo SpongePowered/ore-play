@@ -16,7 +16,7 @@ import cats.syntax.all._
 import com.typesafe.scalalogging
 import doobie.`enum`.TransactionIsolation
 import zio.clock.Clock
-import zio.{RIO, Task, UIO, ZIO, ZSchedule, duration}
+import zio.{Schedule, RIO, Task, UIO, ZIO, duration}
 
 @Singleton
 class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, runtime: zio.Runtime[Clock])(
@@ -32,16 +32,16 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
 
   Logger.info("DbUpdateTask starting")
 
-  private val homepageSchedule: ZSchedule[Clock, Any, Int] = ZSchedule
+  private val homepageSchedule: Schedule[Clock, Any, Int] = Schedule
     .fixed(interval)
-    .logInput(_ => UIO(Logger.debug(s"Updating homepage view")))
+    .tapInput(_ => UIO(Logger.debug(s"Updating homepage view")))
 
-  private val statSchedule: ZSchedule[Clock, Any, Int] =
-    ZSchedule
+  private val statSchedule: Schedule[Clock, Any, Int] =
+    Schedule
       .fixed(interval)
-      .logInput(_ => UIO(Logger.debug("Processing stats")))
+      .tapInput(_ => UIO(Logger.debug("Processing stats")))
 
-  private def runningTask(task: RIO[Clock, Unit], schedule: ZSchedule[Clock, Any, Int]) = {
+  private def runningTask(task: RIO[Clock, Unit], schedule: Schedule[Clock, Any, Int]) = {
     val safeTask: ZIO[Clock, Unit, Unit] = task.flatMapError(e => UIO(Logger.error("Running DB task failed", e)))
 
     runtime.unsafeRun(safeTask.repeat(schedule).fork)
@@ -60,7 +60,7 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
           _ <- updates.toList.traverse_(_.run)
         } yield ()
       )
-      .retry(ZSchedule.forever)
+      .retry(Schedule.forever)
   }
 
   private val statsTask = runningTask(

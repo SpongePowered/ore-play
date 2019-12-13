@@ -50,7 +50,7 @@ play {
         }
 
         hosts {
-            allowed = [".spongepowered.org", "localhost:9000"]
+            allowed = [".spongepowered.org", "localhost:9000", "localhost:9443"]
         }
     }
 

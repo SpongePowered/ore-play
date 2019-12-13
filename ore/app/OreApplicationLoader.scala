@@ -63,7 +63,7 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{CancelableFuture, DefaultRuntime, Task, UIO, ZIO, ZSchedule}
+import zio.{CancelableFuture, DefaultRuntime, Schedule, Task, UIO, ZIO, ZSchedule}
 
 class OreApplicationLoader extends ApplicationLoader {
   override def load(context: ApplicationLoader.Context): PlayApplication = {
@@ -212,7 +212,7 @@ class OreComponents(context: ApplicationLoader.Context)
     val cacher = util.ZIOCacher.instance[Any, Throwable]
     implicit val taskCacher: Cacher[Task] = new Cacher[Task] {
       override def cache[A](duration: FiniteDuration)(fa: Task[A]): Task[Task[A]] =
-        cacher.cache(duration)(fa).provide(runtime.Environment).map(_.provide(runtime.Environment))
+        cacher.cache(duration)(fa).provide(runtime.environment).map(_.provide(runtime.environment))
     }
     val sso = config.security.sso
     runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
@@ -222,12 +222,12 @@ class OreComponents(context: ApplicationLoader.Context)
   implicit lazy val userBaseUIO: UserBase[UIO]   = wire[UserBase.UserBaseF[UIO]]
   implicit lazy val projectBase: ProjectBase[UIO] = {
     implicit val providedProjectFiles: ProjectFiles[Task] =
-      projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.Environment))
+      projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.environment))
 
     implicit lazy val fileIOTask: FileIO[Task] =
       fileIORaw.imapK(
         new FunctionK[ZIO[Blocking, Throwable, *], Task] {
-          def apply[A](fa: ZIO[Blocking, Throwable, A]): Task[A] = fa.provide(runtime.Environment)
+          def apply[A](fa: ZIO[Blocking, Throwable, A]): Task[A] = fa.provide(runtime.environment)
         },
         OreComponents.upcastFnK[Task, ZIO[Blocking, Throwable, *]]
       )
@@ -270,7 +270,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
   def waitTilEvolutionsDone(action: UIO[Unit]): CancelableFuture[Nothing, Unit] = {
     val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)
-    val waitCheck = ZSchedule.doUntilM[Unit](_ => isDone) && ZSchedule.fixed(zio.duration.Duration.fromNanos(100))
+    val waitCheck = Schedule.doUntilM[Unit](_ => isDone) && Schedule.fixed(zio.duration.Duration.fromNanos(100))
 
     runtime.unsafeRunToFuture(ZIO.unit.repeat(waitCheck).andThen(action))
   }
