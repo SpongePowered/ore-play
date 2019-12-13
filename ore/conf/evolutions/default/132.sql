@@ -27,13 +27,17 @@ ALTER TABLE project_versions_downloads_individual
     ADD CONSTRAINT project_versions_downloads_individual_version_id_address_key UNIQUE (version_id, address),
     ADD CONSTRAINT project_versions_downloads_individual_version_id_cookie_key UNIQUE (version_id, cookie),
     ADD CONSTRAINT project_versions_downloads_individual_version_id_user_id_key UNIQUE (version_id, user_id),
-    ALTER COLUMN processed TYPE BOOLEAN USING processed::BOOLEAN;
+    ALTER COLUMN processed DROP DEFAULT,
+    ALTER COLUMN processed TYPE BOOLEAN USING processed::BOOLEAN,
+    ALTER COLUMN processed SET DEFAULT FALSE;
 
 ALTER TABLE project_views_individual
     ADD CONSTRAINT project_views_individual_project_id_address_key UNIQUE (project_id, address),
     ADD CONSTRAINT project_views_individual_project_id_cookie_key UNIQUE (project_id, cookie),
     ADD CONSTRAINT project_views_individual_project_id_user_id_key UNIQUE (project_id, user_id),
-    ALTER COLUMN processed TYPE BOOLEAN USING processed::BOOLEAN;
+    ALTER COLUMN processed DROP DEFAULT,
+    ALTER COLUMN processed TYPE BOOLEAN USING processed::BOOLEAN,
+    ALTER COLUMN processed SET DEFAULT FALSE;
 
 CREATE OR REPLACE FUNCTION update_project_versions_downloads() RETURNS VOID
     LANGUAGE plpgsql AS
