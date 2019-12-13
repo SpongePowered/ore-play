@@ -40,7 +40,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
 
   type SlickDb = OrePostgresDriver.backend.DatabaseDef
 
-  override def run(args: List[String]): ZManaged[Environment, Nothing, Int] = {
+  override def run(args: List[String]): ZManaged[ZEnv, Nothing, Int] = {
     def log(f: scalalogging.Logger => Unit): ZManaged[Any, Nothing, Unit] = ZManaged.fromEffect(UIO(f(Logger)))
 
     (for {
@@ -59,17 +59,17 @@ object OreJobProcessorMain extends zio.ManagedApp {
       oreDiscourse = createOreDiscourse(akkaDiscourseClient)(jobsConfig, taskService, materializer)
       _ <- log(_.info("Init finished. Starting"))
       _ <- runApp(db.source.maxConnections.getOrElse(32))
-        .provideSome[Environment](createExpandedEnvironment(uioService, oreDiscourse, jobsConfig))
+        .provideSome[ZEnv](createExpandedEnvironment(uioService, oreDiscourse, jobsConfig))
     } yield 0).catchAll(ZManaged.succeed)
   }
 
-  type ExpandedEnvironment = Db with Discourse with Config with Environment
+  type ExpandedEnvironment = Db with Discourse with Config with ZEnv
 
   private def createExpandedEnvironment(
       serviceObj: ModelService[UIO],
       discourseObj: OreDiscourseApi[Task],
       configObj: OreJobsConfig
-  )(env: Environment): ExpandedEnvironment =
+  )(env: ZEnv): ExpandedEnvironment =
     new Db with Discourse with Config with Clock with Console with System with Random with Blocking {
       override val random: Random.Service[Any]      = env.random
       override val system: System.Service[Any]      = env.system
@@ -100,7 +100,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
         } else ZIO.unit
       } yield ()
 
-      val schedule = ZSchedule.spaced(Duration.fromScala(env.config.jobs.checkInterval))
+      val schedule = Schedule.spaced(Duration.fromScala(env.config.jobs.checkInterval))
 
       ZManaged.fromEffect(
         checkAndCreateFibers.sandbox
@@ -128,7 +128,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
       .makeEffect(Database.forConfig("jobs-db", classLoader = this.getClass.getClassLoader))(_.close())
       .flatMapError(logErrorManaged("Failed to connect to db"))
 
-  private def createDoobieTransactor(db: SlickDb): ZManaged[Environment, Int, Transactor[Task]] = {
+  private def createDoobieTransactor(db: SlickDb): ZManaged[ZEnv, Int, Transactor[Task]] = {
     (for {
       connectEC <- {
         implicit val runtime: DefaultRuntime = this
@@ -142,7 +142,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
           import zio.blocking._
           val acquire = Task(source.createConnection()).on(connectEC)
 
-          def release(c: Connection) = effectBlocking(c.close()).provide(Environment)
+          def release(c: Connection) = effectBlocking(c.close()).provide(environment)
 
           Resource.make(acquire)(release)
         },
@@ -197,7 +197,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
       discourseClient: DiscourseApi[Task]
   )(implicit config: OreJobsConfig, service: ModelService[Task], mat: Materializer): OreDiscourseApiEnabled[Task] =
     config.discourse.pipe { cfg =>
-      implicit val runtime: Runtime[Environment] = this
+      implicit val runtime: Runtime[ZEnv] = this
       def readFile(file: String) =
         Await.result(
           StreamConverters

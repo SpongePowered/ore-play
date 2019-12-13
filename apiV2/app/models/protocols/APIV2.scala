@@ -8,13 +8,11 @@ import ore.models.project.{ReviewState, Visibility}
 import enumeratum._
 import enumeratum.values._
 import io.circe._
-import io.circe.generic.extras._
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import io.circe.syntax._
 import shapeless.Typeable
 
 object APIV2 {
-
-  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 
   def optionToResult[A](s: String, opt: String => Option[A], history: List[CursorOp])(
       implicit tpe: Typeable[A]
@@ -37,7 +35,7 @@ object APIV2 {
   implicit val reviewStateCodec: Codec[ReviewState] = valueEnumCodec(ReviewState)(_.apiName)
 
   //Project
-  @ConfiguredJsonCodec case class Project(
+  @SnakeCaseJsonCodec case class Project(
       createdAt: OffsetDateTime,
       pluginId: String,
       name: String,
@@ -53,7 +51,7 @@ object APIV2 {
       iconUrl: String
   )
 
-  @ConfiguredJsonCodec case class CompactProject(
+  @SnakeCaseJsonCodec case class CompactProject(
       pluginId: String,
       name: String,
       namespace: ProjectNamespace,
@@ -63,18 +61,18 @@ object APIV2 {
       visibility: Visibility
   )
 
-  @ConfiguredJsonCodec case class ProjectNamespace(owner: String, slug: String)
-  @ConfiguredJsonCodec case class PromotedVersion(version: String, tags: Seq[PromotedVersionTag])
-  @ConfiguredJsonCodec case class PromotedVersionTag(
+  @SnakeCaseJsonCodec case class ProjectNamespace(owner: String, slug: String)
+  @SnakeCaseJsonCodec case class PromotedVersion(version: String, tags: Seq[PromotedVersionTag])
+  @SnakeCaseJsonCodec case class PromotedVersionTag(
       name: String,
       data: Option[String],
       displayData: Option[String],
       minecraftVersion: Option[String],
       color: VersionTagColor
   )
-  @ConfiguredJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
-  @ConfiguredJsonCodec case class VersionTagColor(foreground: String, background: String)
-  @ConfiguredJsonCodec case class ProjectStatsAll(
+  @SnakeCaseJsonCodec case class VersionTag(name: String, data: Option[String], color: VersionTagColor)
+  @SnakeCaseJsonCodec case class VersionTagColor(foreground: String, background: String)
+  @SnakeCaseJsonCodec case class ProjectStatsAll(
       views: Long,
       downloads: Long,
       recent_views: Long,
@@ -82,8 +80,8 @@ object APIV2 {
       stars: Long,
       watchers: Long
   )
-  @ConfiguredJsonCodec case class UserActions(starred: Boolean, watching: Boolean)
-  @ConfiguredJsonCodec case class ProjectSettings(
+  @SnakeCaseJsonCodec case class UserActions(starred: Boolean, watching: Boolean)
+  @SnakeCaseJsonCodec case class ProjectSettings(
       homepage: Option[String],
       issues: Option[String],
       sources: Option[String],
@@ -91,22 +89,22 @@ object APIV2 {
       license: ProjectLicense,
       forumSync: Boolean
   )
-  @ConfiguredJsonCodec case class ProjectLicense(name: Option[String], url: Option[String])
+  @SnakeCaseJsonCodec case class ProjectLicense(name: Option[String], url: Option[String])
 
   //Project member
-  @ConfiguredJsonCodec case class ProjectMember(
+  @SnakeCaseJsonCodec case class ProjectMember(
       user: String,
       roles: List[Role]
   )
 
-  @ConfiguredJsonCodec case class Role(
+  @SnakeCaseJsonCodec case class Role(
       name: String,
       title: String,
       color: String
   )
 
   //Version
-  @ConfiguredJsonCodec case class Version(
+  @SnakeCaseJsonCodec case class Version(
       createdAt: OffsetDateTime,
       name: String,
       dependencies: List[VersionDependency],
@@ -119,12 +117,12 @@ object APIV2 {
       tags: List[VersionTag]
   )
 
-  @ConfiguredJsonCodec case class VersionDependency(plugin_id: String, version: Option[String])
-  @ConfiguredJsonCodec case class VersionStatsAll(downloads: Long)
-  @ConfiguredJsonCodec case class FileInfo(name: String, sizeBytes: Long, md5Hash: String)
+  @SnakeCaseJsonCodec case class VersionDependency(plugin_id: String, version: Option[String])
+  @SnakeCaseJsonCodec case class VersionStatsAll(downloads: Long)
+  @SnakeCaseJsonCodec case class FileInfo(name: String, sizeBytes: Long, md5Hash: String)
 
   //User
-  @ConfiguredJsonCodec case class User(
+  @SnakeCaseJsonCodec case class User(
       createdAt: OffsetDateTime,
       name: String,
       tagline: Option[String],
@@ -132,12 +130,12 @@ object APIV2 {
       roles: List[Role]
   )
 
-  @ConfiguredJsonCodec case class ProjectStatsDay(
+  @SnakeCaseJsonCodec case class ProjectStatsDay(
       downloads: Long,
       views: Long
   )
 
-  @ConfiguredJsonCodec case class VersionStatsDay(
+  @SnakeCaseJsonCodec case class VersionStatsDay(
       downloads: Long
   )
 }

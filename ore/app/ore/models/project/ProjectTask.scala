@@ -15,7 +15,7 @@ import ore.db.impl.schema.{ProjectTable, VersionTable}
 
 import com.typesafe.scalalogging
 import zio.clock.Clock
-import zio.{UIO, ZIO, ZSchedule, duration}
+import zio.{Schedule, UIO, ZIO, duration}
 
 /**
   * Task that is responsible for publishing New projects
@@ -47,14 +47,14 @@ class ProjectTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle, 
   private val deleteNewProjects =
     createdAtFilterF.flatMap(createdAtFilter => service.deleteWhere(Project)(newFilter && createdAtFilter))
 
-  private val schedule: ZSchedule[Clock, Any, Int] = ZSchedule
+  private val schedule: Schedule[Clock, Any, Int] = Schedule
     .fixed(interval)
-    .logInput(_ => UIO(Logger.debug(s"Deleting draft projects")))
+    .tapInput(_ => UIO(Logger.debug(s"Deleting draft projects")))
 
   private val action = (updateFalseNewProjects *> deleteNewProjects).unit.delay(interval)
 
   //TODO: Repeat in case of failure
-  private val task = runtime.unsafeRun(action.option.unit.repeat(schedule).fork)
+  private val task = runtime.unsafeRun(action.sandbox.option.unit.repeat(schedule).fork)
 
   lifecycle.addStopHook { () =>
     Future {

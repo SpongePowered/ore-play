@@ -109,7 +109,7 @@ trait Actions extends Calls with ActionHelpers { self =>
 
         zioToFuture(
           for {
-            perms <- request.user.permissionsIn(request).orDie
+            perms <- request.user.permissionsIn(request)
             hasPerm = perms.has(p)
             _       = log(success = hasPerm, request)
             res <- (
