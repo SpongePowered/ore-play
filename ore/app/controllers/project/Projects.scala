@@ -444,7 +444,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             .map(_.iterator().asScala)
             .flatMap(it => ZIO.foreachParN_(config.performance.nioBlockingFibers)(it.to(Iterable))(deleteFile))
 
-          val moveFile = effectBlocking(tmpFile.ref.moveFileTo(pendingDir.resolve(tmpFile.filename), replace = true))
+          val moveFile = effectBlocking(tmpFile.ref.moveTo(pendingDir.resolve(tmpFile.filename), replace = true))
 
           //todo data
           val log = UserActionLogger.log(request.request, LoggedActionType.ProjectIconChanged, data.project.id, "", "")(

@@ -12,13 +12,13 @@ object Version {
 
   val slick     = "3.3.2"
   val slickPg   = "0.18.1"
-  val playSlick = "4.0.2"
+  val playSlick = "5.0.0"
   val doobie    = "0.8.6"
 
   val circe           = "0.12.3"
   val circeDerivation = "0.12.0-M7"
 
-  val akka         = "2.5.27"
+  val akka         = "2.6.1"
   val akkaHttp     = "10.1.11"
   val scalaLogging = "3.9.2"
 
@@ -96,7 +96,7 @@ object Deps {
   val playTestDeps = Seq(
     jdbc % Test,
     //specs2 % Test,
-    "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.3"        % Test,
+    "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0"        % Test,
     "org.tpolecat"           %% "doobie-scalatest"   % Version.doobie % Test
   )
 }

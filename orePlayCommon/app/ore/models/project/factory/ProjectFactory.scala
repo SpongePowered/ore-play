@@ -83,7 +83,7 @@ trait ProjectFactory {
       }
 
       val moveToNewPluginPath = fileIO.executeBlocking(
-        uploadData.pluginFile.moveFileTo(tmpDir.resolve(pluginFileName), replace = true)
+        uploadData.pluginFile.moveTo(tmpDir.resolve(pluginFileName), replace = true)
       )
 
       val loadData = createDirs *> moveToNewPluginPath.flatMap { newPluginPath =>
