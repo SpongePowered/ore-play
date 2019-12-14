@@ -47,7 +47,6 @@ case class Version(
     fileName: String,
     createForumPost: Boolean = true,
     postId: Option[Int] = None,
-    isPostDirty: Boolean = false,
     tags: Version.VersionTags
 ) extends Describable {
 

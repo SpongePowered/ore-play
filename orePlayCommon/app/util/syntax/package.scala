@@ -1,6 +1,5 @@
 package util
 
-import discourse.HasForumRepresentation
 import ore.db.access.QueryView
 import ore.db.impl.common.Hideable
 import ore.markdown.IsMarkdownRenderable
@@ -19,6 +18,5 @@ package object syntax
     with Hideable.ToHideableOps
     with Joinable.ToJoinableOps
     with IsMarkdownRenderable.ToIsMarkdownRenderableOps
-    with HasForumRepresentation.ToHasForumRepresentationOps
     with ModelSyntax
     with ZIOSyntax

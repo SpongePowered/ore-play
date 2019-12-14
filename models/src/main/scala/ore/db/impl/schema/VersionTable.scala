@@ -33,7 +33,6 @@ class VersionTable(tag: Tag)
   def fileName           = column[String]("file_name")
   def createForumPost    = column[Boolean]("create_forum_post")
   def postId             = column[Option[Int]]("post_id")
-  def isPostDirty        = column[Boolean]("is_post_dirty")
 
   def usesMixin              = column[Boolean]("uses_mixin")
   def stability              = column[Version.Stability]("stability")
@@ -76,7 +75,6 @@ class VersionTable(tag: Tag)
         fileName,
         createForumPost,
         postId,
-        isPostDirty,
         tags
       )
     ) <> (mkApply((Version.apply _).tupled), mkUnapply(Version.unapply))

@@ -1,9 +1,8 @@
 package controllers.apiv2.helpers
 
-import io.circe.generic.extras.ConfiguredJsonCodec
-import models.protocols.APIV2.circeConfig
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 
-@ConfiguredJsonCodec case class Pagination(
+@SnakeCaseJsonCodec case class Pagination(
     limit: Long,
     offset: Long,
     count: Long

@@ -6,13 +6,13 @@ import play.api.cache.SyncCacheApi
 import play.api.i18n.Messages
 
 import db.impl.access.ProjectBase
-import discourse.OreDiscourseApi
 import ore.data.user.notification.NotificationType
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.VersionTable
 import ore.db.{DbRef, Model, ModelService}
 import ore.member.MembershipDossier
+import ore.models.{Job, JobInfo}
 import ore.models.project._
 import ore.models.project.io._
 import ore.models.user.role.ProjectUserRole
@@ -47,7 +47,6 @@ trait ProjectFactory {
   protected def fileManager: ProjectFiles[ZIO[Blocking, Nothing, *]]
 
   implicit protected def config: OreConfig
-  implicit protected def forums: OreDiscourseApi[UIO]
   implicit protected def env: OreEnv
 
   private val Logger    = scalalogging.Logger("Projects")
@@ -244,24 +243,23 @@ trait ProjectFactory {
       _ <- uploadPluginFile(project, plugin, version).orDieWith(s => new Exception(s))
       firstTimeUploadProject <- {
         if (project.visibility == Visibility.New) {
-          val setVisibility = (project: Model[Project]) => {
-            project
-              .setVisibility(Visibility.Public, "First upload", version.authorId.getOrElse(project.ownerId))
-              .map(_._1)
-          }
+          val setVisibility = project
+            .setVisibility(Visibility.Public, "First upload", version.authorId.getOrElse(project.ownerId))
+            .map(_._1)
+
+          val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
 
           val initProject =
-            if (project.topicId.isEmpty) this.forums.createProjectTopic(project).flatMap(setVisibility)
-            else setVisibility(project)
+            if (project.topicId.isEmpty) addForumJob *> setVisibility
+            else setVisibility
 
           initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
-
         } else UIO.succeed(project)
       }
-      withTopicId <- if (firstTimeUploadProject.topicId.isDefined && createForumPost)
-        this.forums.createVersionPost(firstTimeUploadProject, version)
-      else UIO.succeed(version)
-    } yield (firstTimeUploadProject, withTopicId)
+      _ <- if (createForumPost) {
+        service.insert(Job.UpdateDiscourseVersionPost.newJob(version.id).toJob).unit
+      } else UIO.unit
+    } yield (firstTimeUploadProject, version)
   }
 
   private def uploadPluginFile(
@@ -284,7 +282,7 @@ trait ProjectFactory {
       createDirs *> movePath *> deleteOld.as(Right(()))
     }
 
-    fileIO.exists(newPath).ifM(UIO.succeed(Left("error.plugin.fileName")), move).orDie.absolve
+    fileIO.exists(newPath).ifM(UIO.succeed(Left("error.plugin.fileName")), move).absolve
   }
 
 }
@@ -293,7 +291,6 @@ trait ProjectFactory {
 class OreProjectFactory @Inject()(
     val service: ModelService[UIO],
     val config: OreConfig,
-    val forums: OreDiscourseApi[UIO],
     val cacheApi: SyncCacheApi,
     val env: OreEnv,
     val projects: ProjectBase[UIO],

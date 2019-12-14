@@ -1,11 +1,7 @@
-package discourse
-
-import scala.language.higherKinds
+package ore.discourse
 
 import ore.db.Model
-import ore.discourse.DiscoursePost
 import ore.models.project.{Project, Version}
-import ore.models.user.User
 
 import cats.tagless.autoFunctorK
 
@@ -21,7 +17,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param project Project to create topic for.
     * @return        True if successful
     */
-  def createProjectTopic(project: Model[Project]): F[Model[Project]]
+  def createProjectTopic(project: Model[Project]): F[Either[DiscourseError, Model[Project]]]
 
   /**
     * Updates a [[Project]]'s forum topic with the appropriate content.
@@ -29,17 +25,17 @@ trait OreDiscourseApi[+F[_]] {
     * @param project  Project to update topic for
     * @return         True if successful
     */
-  def updateProjectTopic(project: Model[Project]): F[Boolean]
+  def updateProjectTopic(project: Model[Project]): F[Either[DiscourseError, Unit]]
 
   /**
     * Posts a new reply to a [[Project]]'s forum topic.
     *
-    * @param project  Project to post to
-    * @param user     User who is posting
+    * @param topicId  Topic to post to
+    * @param poster   User who is posting
     * @param content  Post content
     * @return         Error Discourse returns
     */
-  def postDiscussionReply(project: Project, user: User, content: String): F[Either[String, DiscoursePost]]
+  def postDiscussionReply(topicId: Int, poster: String, content: String): F[Either[DiscourseError, DiscoursePost]]
 
   /**
     * Posts a new "Version release" to a [[Project]]'s forum topic.
@@ -48,7 +44,7 @@ trait OreDiscourseApi[+F[_]] {
     * @param version Version of project
     * @return
     */
-  def createVersionPost(project: Model[Project], version: Model[Version]): F[Model[Version]]
+  def createVersionPost(project: Model[Project], version: Model[Version]): F[Either[DiscourseError, Model[Version]]]
 
   /**
     * Updates a [[Version]]s forum post with the appropriate content.
@@ -56,22 +52,13 @@ trait OreDiscourseApi[+F[_]] {
     * @param version The version to update post for
     * @return True if successful
     */
-  def updateVersionPost(project: Model[Project], version: Model[Version]): F[Boolean]
-
-  def changeTopicVisibility(project: Project, isVisible: Boolean): F[Unit]
+  def updateVersionPost(project: Model[Project], version: Model[Version]): F[Either[DiscourseError, Unit]]
 
   /**
-    * Delete's a [[Project]]'s forum topic.
+    * Delete a forum topic.
     *
-    * @param project  Project to delete topic for
+    * @param topicId Topic to delete
     * @return         True if deleted
     */
-  def deleteProjectTopic(project: Model[Project]): F[Model[Project]]
-
-  /**
-    * Returns true if the forum instance is available.
-    *
-    * @return True if available
-    */
-  def isAvailable: F[Boolean]
+  def deleteTopic(topicId: Int): F[Either[DiscourseError, Unit]]
 }

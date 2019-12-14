@@ -139,22 +139,22 @@ final class Application @Inject()(forms: OreForms)(
 
       (
         service.runDbCon(AppQueries.getUnhealtyProjects(config.ore.projects.staleAge).to[Vector]),
+        service.runDbCon(AppQueries.erroredJobs.to[Vector]),
         projects.missingFile.flatMap { versions =>
           versions.toVector.traverse(v => v.project[Task].orDie.tupleLeft(v))
         }
-      ).parMapN { (unhealtyProjects, missingFileProjects) =>
-        val noTopicProjects    = unhealtyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)
-        val topicDirtyProjects = unhealtyProjects.filter(_.isTopicDirty)
+      ).parMapN { (unhealtyProjects, erroredJobs, missingFileProjects) =>
+        val noTopicProjects = unhealtyProjects.filter(p => p.topicId.isEmpty || p.postId.isEmpty)
         val staleProjects = unhealtyProjects
           .filter(_.lastUpdated > new Timestamp(new Date().getTime - config.ore.projects.staleAge.toMillis))
         val notPublic = unhealtyProjects.filter(_.visibility != Visibility.Public)
         Ok(
           views.users.admin.health(
             noTopicProjects,
-            topicDirtyProjects,
             staleProjects,
             notPublic,
-            Model.unwrapNested(missingFileProjects)
+            Model.unwrapNested(missingFileProjects),
+            erroredJobs
           )
         )
       }

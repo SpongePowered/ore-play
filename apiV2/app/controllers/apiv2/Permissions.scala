@@ -10,7 +10,7 @@ import models.protocols.APIV2
 import ore.permission.{NamedPermission, Permission}
 
 import io.circe._
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 
 class Permissions(
     val errorHandler: HttpErrorHandler,
@@ -63,16 +63,14 @@ class Permissions(
 }
 object Permissions {
 
-  import APIV2.circeConfig
-
   implicit val namedPermissionCodec: Codec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
 
-  @ConfiguredJsonCodec case class KeyPermissions(
+  @SnakeCaseJsonCodec case class KeyPermissions(
       `type`: APIScopeType,
       permissions: List[NamedPermission]
   )
 
-  @ConfiguredJsonCodec case class PermissionCheck(
+  @SnakeCaseJsonCodec case class PermissionCheck(
       `type`: APIScopeType,
       result: Boolean
   )

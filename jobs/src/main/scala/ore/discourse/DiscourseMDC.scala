@@ -1,4 +1,5 @@
-package discourse
+package ore.discourse
+
 import com.typesafe.scalalogging.CanLog
 import org.slf4j.MDC
 

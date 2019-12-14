@@ -2,15 +2,13 @@ package db.impl.access
 
 import scala.language.higherKinds
 
-import java.io.IOException
-
 import db.impl.query.SharedQueries
-import discourse.OreDiscourseApi
 import ore.OreConfig
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{PageTable, ProjectTable, VersionTable}
 import ore.db.{Model, ModelService}
+import ore.models.Job
 import ore.models.project._
 import ore.models.project.io.ProjectFiles
 import ore.util.StringUtils._
@@ -107,7 +105,6 @@ object ProjectBase {
   class ProjectBaseF[F[_]](
       implicit service: ModelService[F],
       config: OreConfig,
-      forums: OreDiscourseApi[F],
       fileManager: ProjectFiles[F],
       fileIO: FileIO[F],
       F: cats.effect.Effect[F]
@@ -127,13 +124,13 @@ object ProjectBase {
           .traverseLimited(versions.toVector) {
             case t @ (ownerNamer, name, version) =>
               val res = F
-                .bracket(F.delay(this.fileManager.getVersionDir(ownerNamer, name, version.name)))(
-                  versionDir => fileIO.notExists(versionDir.resolve(version.fileName))
-                )(_ => F.unit)
-                .recover {
-                  case _: IOException =>
-                    //Invalid file name
-                    false
+                .attempt(
+                  F.delay(this.fileManager.getVersionDir(ownerNamer, name, version.name))
+                    .flatMap(versionDir => fileIO.notExists(versionDir.resolve(version.fileName)))
+                )
+                .map {
+                  case Left(_)      => false //Invalid file name
+                  case Right(value) => value
                 }
 
               res.tupleLeft(t)
@@ -183,11 +180,12 @@ object ProjectBase {
       val doRename = {
         val fileOp      = this.fileManager.renameProject(project.ownerName, project.name, newName)
         val renameModel = service.update(project)(_.copy(name = newName, slug = newSlug))
+        val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
 
         // Project's name alter's the topic title, update it
         val dbOp =
           if (project.topicId.isDefined)
-            forums.updateProjectTopic(project).void <* renameModel
+            renameModel *> addForumJob.void
           else
             renameModel.void
 
@@ -233,11 +231,9 @@ object ProjectBase {
       val fileEff = fileIO.executeBlocking(
         FileUtils.deleteDirectory(this.fileManager.getProjectDir(project.ownerName, project.name))
       )
-      val eff =
-        if (project.topicId.isDefined)
-          forums.deleteProjectTopic(project).void
-        else F.unit
-      // TODO: Instead, move to the "projects_deleted" table just in case we couldn't delete the topic
+      val addForumJob = (id: Int) => service.insert(Job.DeleteDiscourseTopic.newJob(id).toJob).void
+
+      val eff = project.topicId.fold(F.unit)(addForumJob)
       eff *> service.delete(project) <* fileEff
     }
 

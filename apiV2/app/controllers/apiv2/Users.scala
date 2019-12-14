@@ -16,7 +16,7 @@ import ore.permission.Permission
 
 import cats.syntax.all._
 import io.circe._
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import io.circe.syntax._
 import zio.interop.catz._
 import zio.ZIO
@@ -107,9 +107,7 @@ class Users(
   }
 }
 object Users {
-  import APIV2.circeConfig
-
-  @ConfiguredJsonCodec case class PaginatedCompactProjectResult(
+  @SnakeCaseJsonCodec case class PaginatedCompactProjectResult(
       pagination: Pagination,
       result: Seq[APIV2.CompactProject]
   )

@@ -37,7 +37,7 @@ import squeal.category._
 import squeal.category.syntax.all._
 import squeal.category.macros.Derive
 import io.circe._
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import io.circe.syntax._
 import zio.blocking.Blocking
 import zio.interop.catz._
@@ -376,22 +376,21 @@ class Versions(
     }
 }
 object Versions {
-  import APIV2.circeConfig
 
   //TODO: Allow setting multiple platforms
-  @ConfiguredJsonCodec case class DeployVersionInfo(
+  @SnakeCaseJsonCodec case class DeployVersionInfo(
       createForumPost: Option[Boolean],
       description: Option[String],
       stability: Option[Version.Stability],
       releaseType: Option[Version.ReleaseType]
   )
 
-  @ConfiguredJsonCodec case class PaginatedVersionResult(
+  @SnakeCaseJsonCodec case class PaginatedVersionResult(
       pagination: Pagination,
       result: Seq[APIV2.Version]
   )
 
-  @ConfiguredJsonCodec case class SimplePlatform(
+  @SnakeCaseJsonCodec case class SimplePlatform(
       platform: String,
       platformVersion: Option[String]
   )
@@ -411,7 +410,7 @@ object Versions {
 
     val patchDecoder: EditableVersionF[PatchDecoder] =
       PatchDecoder.fromName(Derive.namesWithProductImplicitsC[EditableVersionF, Decoder])(
-        io.circe.generic.extras.Configuration.snakeCaseTransformation
+        io.circe.derivation.renaming.snakeCase
       )
   }
 
@@ -438,7 +437,7 @@ object Versions {
       with DistributiveKC[DbEditableVersionF] = Derive.allKC[DbEditableVersionF]
   }
 
-  @ConfiguredJsonCodec case class ScannedVersion(
+  @SnakeCaseJsonCodec case class ScannedVersion(
       version: APIV2.Version,
       warnings: Option[NonEmptyList[String]]
   )

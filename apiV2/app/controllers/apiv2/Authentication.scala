@@ -23,7 +23,7 @@ import akka.http.scaladsl.model.headers.HttpCredentials
 import cats.syntax.all._
 import enumeratum.{Enum, EnumEntry}
 import io.circe._
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import zio.interop.catz._
 import zio.{IO, ZIO}
 
@@ -160,8 +160,6 @@ class Authentication(
 }
 object Authentication {
 
-  import APIV2.circeConfig
-
   sealed abstract class SessionType extends EnumEntry with EnumEntry.Snakecase
   object SessionType extends Enum[SessionType] {
     case object Key    extends SessionType
@@ -174,12 +172,12 @@ object Authentication {
     implicit val codec: Codec[SessionType] = APIV2.enumCodec(SessionType)(_.entryName)
   }
 
-  @ConfiguredJsonCodec case class ApiSessionProperties(
+  @SnakeCaseJsonCodec case class ApiSessionProperties(
       _fake: Option[Boolean],
       expiresIn: Option[Long]
   )
 
-  @ConfiguredJsonCodec case class ReturnedApiSession(
+  @SnakeCaseJsonCodec case class ReturnedApiSession(
       session: String,
       expires: OffsetDateTime,
       `type`: SessionType

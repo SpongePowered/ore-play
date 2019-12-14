@@ -179,6 +179,7 @@ local.properties
 .recommenders/
 
 # Ore
+jobs/src/main/resources/application.conf
 ore/conf/application.conf
 /project/project/target
 uploads

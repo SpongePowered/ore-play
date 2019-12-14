@@ -1,6 +1,7 @@
 package db
 
 import ore.db.DbRef
+import ore.models.Job
 import ore.models.admin._
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
@@ -20,7 +21,7 @@ class SchemaSpec extends DbSpec {
 
   test("Project") {
     check(sql"""|SELECT plugin_id, owner_name, owner_id, name, slug, recommended_version_id,
-                |category, description, topic_id, post_id, is_topic_dirty, visibility,
+                |category, description, topic_id, post_id, visibility,
                 |notes, keywords, homepage, issues, source, support, license_name, license_url, 
                 |forum_sync FROM projects""".stripMargin.query[Project])
   }
@@ -51,7 +52,7 @@ class SchemaSpec extends DbSpec {
     check(
       sql"""|SELECT project_id, version_string, dependencies, channel_id, file_size, hash,
             |author_id, description, review_state, reviewer_id, approved_at, visibility, file_name,
-            |create_forum_post, post_id, is_post_dirty FROM project_versions""".stripMargin
+            |create_forum_post, post_id FROM project_versions""".stripMargin
         .query[Version]
     )
   }
@@ -196,5 +197,12 @@ class SchemaSpec extends DbSpec {
 
   test("UserGlobalRoles") {
     check(sql"""SELECT user_id, role_id FROM user_global_roles""".query[(DbRef[User], DbRef[DbRole])])
+  }
+
+  test("Job") {
+    check(
+      sql"""|SELECT last_updated, retry_at, last_error, last_error_descriptor, state, 
+            |job_type, job_properties FROM jobs""".stripMargin.query[Job]
+    )
   }
 }

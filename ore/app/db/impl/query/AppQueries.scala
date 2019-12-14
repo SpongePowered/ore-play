@@ -8,6 +8,7 @@ import models.querymodels._
 import ore.data.project.Category
 import ore.db.impl.query.DoobieOreProtocol
 import ore.db.{DbRef, Model}
+import ore.models.Job
 import ore.models.admin.LoggedActionViewModel
 import ore.models.organization.Organization
 import ore.models.project._
@@ -17,6 +18,7 @@ import cats.data.NonEmptyList
 import cats.syntax.all._
 import doobie._
 import doobie.implicits._
+import doobie.postgres.implicits._
 
 object AppQueries extends DoobieOreProtocol {
 
@@ -76,14 +78,17 @@ object AppQueries extends DoobieOreProtocol {
   }
 
   def getUnhealtyProjects(staleTime: FiniteDuration): Query0[UnhealtyProject] = {
-    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, p.is_topic_dirty, coalesce(hp.last_updated, p.created_at), p.visibility
+    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, coalesce(hp.last_updated, p.created_at), p.visibility
           |  FROM projects p JOIN home_projects hp ON p.id = hp.id
           |  WHERE p.topic_id IS NULL
           |     OR p.post_id IS NULL
-          |     OR p.is_topic_dirty
           |     OR hp.last_updated > (now() - $staleTime::INTERVAL)
           |     OR p.visibility != 1""".stripMargin.query[UnhealtyProject]
   }
+
+  def erroredJobs: Query0[Job] =
+    sql"""|SELECT last_updated, retry_at, last_error, last_error_descriptor, state, job_type, 
+          |job_properties FROM jobs j WHERE j.state = 'fatal_failure'""".stripMargin.query[Job]
 
   def getReviewActivity(username: String): Query0[ReviewActivity] = {
     sql"""|SELECT pvr.ended_at, pvr.id, p.owner_name, p.slug

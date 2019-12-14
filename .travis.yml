@@ -23,7 +23,9 @@ addons:
 before_script:
   - psql -c "ALTER USER travis WITH PASSWORD 'travis';"
   - psql -c "CREATE EXTENSION pgcrypto;"
+  - psql -c "CREATE EXTENSION hstore;"
   - cp ore/conf/application.conf.template ore/conf/application.conf
+  - cp jobs/src/main/resources/application.conf.template jobs/src/main/resources/application.conf
 
 env:
   global:
@@ -46,5 +48,5 @@ before_cache:
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION ";ore/test ;ore/assets"
+  - sbt ++$TRAVIS_SCALA_VERSION ";oreAll/compile; ore/test ;ore/assets"
   - ./scalafmt --test --non-interactive

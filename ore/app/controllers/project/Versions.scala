@@ -16,7 +16,6 @@ import play.filters.csrf.CSRF
 
 import controllers.sugar.Requests.{AuthRequest, OreRequest, ProjectRequest}
 import controllers.{OreBaseController, OreControllerComponents}
-import discourse.OreDiscourseApi
 import form.OreForms
 import models.viewhelper.VersionData
 import ore.data.DownloadType
@@ -25,6 +24,7 @@ import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.{ProjectTable, UserTable, VersionTable}
 import ore.db.{DbRef, Model}
 import ore.markdown.MarkdownRenderer
+import ore.models.{Job, JobInfo}
 import ore.models.admin.VersionVisibilityChange
 import ore.models.project._
 import ore.models.project.factory.ProjectFactory
@@ -57,7 +57,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
     implicit oreComponents: OreControllerComponents,
     messagesApi: MessagesApi,
     env: OreEnv,
-    forums: OreDiscourseApi[UIO],
     renderer: MarkdownRenderer
 ) extends OreBaseController {
 
@@ -563,7 +562,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               }
             } {
               new FunctionK[RIO[Blocking, *], UIO] {
-                override def apply[A](fa: RIO[Blocking, A]): UIO[A] = fa.provide(zioRuntime.Environment)
+                override def apply[A](fa: RIO[Blocking, A]): UIO[A] = fa.provide(zioRuntime.environment)
               }
             }
 

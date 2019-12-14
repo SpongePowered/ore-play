@@ -17,7 +17,7 @@ import ore.permission.{NamedPermission, Permission}
 import cats.data.NonEmptyList
 import cats.syntax.all._
 import io.circe.Codec
-import io.circe.generic.extras.ConfiguredJsonCodec
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import zio.interop.catz._
 import zio.{IO, ZIO}
 
@@ -77,10 +77,8 @@ class Keys(
 }
 object Keys {
 
-  import APIV2.circeConfig
-
   implicit val namedPermissionCodec: Codec[NamedPermission] = APIV2.enumCodec(NamedPermission)(_.entryName)
 
-  @ConfiguredJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
-  @ConfiguredJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
+  @SnakeCaseJsonCodec case class KeyToCreate(name: String, permissions: Seq[String])
+  @SnakeCaseJsonCodec case class CreatedApiKey(key: String, perms: Seq[NamedPermission])
 }

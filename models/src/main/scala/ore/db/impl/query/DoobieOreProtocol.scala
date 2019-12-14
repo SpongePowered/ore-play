@@ -1,5 +1,7 @@
 package ore.db.impl.query
 
+import scala.language.implicitConversions
+
 import java.net.InetAddress
 import java.time.OffsetDateTime
 import java.util.Locale
@@ -13,6 +15,7 @@ import ore.data.project.{Category, FlagReason}
 import ore.data.user.notification.NotificationType
 import ore.data.{Color, DownloadType, Prompt}
 import ore.db.{DbRef, Model, ObjId, ObjOffsetDateTime}
+import ore.models.Job
 import ore.models.api.ApiKey
 import ore.models.project.{ReviewState, TagColor, Version, Visibility}
 import ore.models.user.{LoggedActionContext, LoggedActionType, User}
@@ -26,6 +29,8 @@ import doobie._
 import doobie.enum.JdbcType
 import doobie.implicits._
 import doobie.postgres.implicits._
+import doobie.util.param.Param.Elem
+import doobie.util.pos.Pos
 import enumeratum.values._
 import org.postgresql.util.{PGInterval, PGobject}
 import shapeless._
@@ -110,6 +115,11 @@ trait DoobieOreProtocol {
     }
   }
 
+  //Based on https://github.com/tpolecat/doobie/pull/1045
+  object betterinterpolator {
+    implicit def makeBetterInterpolator(sc: StringContext): BetterSqlInterpolator = new BetterSqlInterpolator(sc)
+  }
+
   implicit def objectIdMeta[A](implicit tt: TypeTag[ObjId[A]]): Meta[ObjId[A]] =
     Meta[Long].timap(ObjId.apply[A])(_.value)
 
@@ -180,6 +190,7 @@ trait DoobieOreProtocol {
   implicit def loggedActionContextMeta[Ctx]: Meta[LoggedActionContext[Ctx]] =
     enumeratumMeta(LoggedActionContext).asInstanceOf[Meta[LoggedActionContext[Ctx]]] // scalafix:ok
   implicit val reviewStateMeta: Meta[ReviewState] = enumeratumMeta(ReviewState)
+  implicit val jobTypeMeta: Meta[Job.JobType]     = enumeratumMeta(Job.JobType)
 
   implicit val langMeta: Meta[Locale] = Meta[String].timap(Locale.forLanguageTag)(_.toLanguageTag)
   implicit val inetStringMeta: Meta[InetString] =
@@ -212,6 +223,7 @@ trait DoobieOreProtocol {
     )
 
   implicit val roleCategoryMeta: Meta[RoleCategory] = pgEnumEnumeratumMeta("ROLE_CATEGORY", RoleCategory)
+  implicit val jobStateMeta: Meta[Job.JobState]     = pgEnumEnumeratumMeta("JOB_STATE", Job.JobState)
 
   def metaFromGetPut[A](implicit get: Get[A], put: Put[A]): Meta[A] = new Meta(get, put)
 
@@ -295,3 +307,37 @@ trait DoobieOreProtocol {
     }
 }
 object DoobieOreProtocol extends DoobieOreProtocol
+
+class BetterSqlInterpolator(private val sc: StringContext) extends AnyVal {
+  import BetterSqlInterpolator.SingleFragment
+  import cats.instances.list._
+  import cats.syntax.all._
+
+  private def mkFragment(parts: List[SingleFragment], token: Boolean, pos: Pos): Fragment = {
+    val last = if (token) Fragment(" ", Nil, None) else Fragment.empty
+
+    sc.parts.toList
+      .map(sql => SingleFragment(Fragment(sql, Nil, Some(pos))))
+      .zipAll(parts, SingleFragment.empty, SingleFragment(last))
+      .flatMap { case (a, b) => List(a.fr, b.fr) }
+      .combineAll
+  }
+
+  def bfr(a: SingleFragment*)(implicit pos: Pos): doobie.Fragment = mkFragment(a.toList, token = true, pos)
+
+  def bsql(a: SingleFragment*)(implicit pos: Pos): doobie.Fragment = mkFragment(a.toList, token = false, pos)
+
+  def bfr0(a: SingleFragment*)(implicit pos: Pos): doobie.Fragment = mkFragment(a.toList, token = false, pos)
+}
+object BetterSqlInterpolator {
+  final case class SingleFragment(fr: Fragment) extends AnyVal
+  object SingleFragment {
+    val empty: SingleFragment = SingleFragment(Fragment.empty)
+
+    implicit def fromPut[A](a: A)(implicit put: Put[A]): SingleFragment =
+      SingleFragment(Fragment("?", Elem.Arg(a, put) :: Nil, None))
+    implicit def fromPutOption[A](a: Option[A])(implicit put: Put[A]): SingleFragment =
+      SingleFragment(Fragment("?", Elem.Opt(a, put) :: Nil, None))
+    implicit def fromFragment(fr: Fragment): SingleFragment = SingleFragment(fr)
+  }
+}

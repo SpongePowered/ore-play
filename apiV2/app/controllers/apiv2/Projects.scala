@@ -27,9 +27,9 @@ import squeal.category._
 import squeal.category.syntax.all._
 import squeal.category.macros.Derive
 import io.circe._
-import io.circe.generic.extras.ConfiguredJsonCodec
 import io.circe.syntax._
 import com.typesafe.scalalogging
+import io.circe.derivation.annotations.SnakeCaseJsonCodec
 import zio.interop.catz._
 import zio.{UIO, ZIO}
 
@@ -258,9 +258,9 @@ class Projects(
     }
 }
 object Projects {
-  import APIV2.{circeConfig, categoryCodec}
+  import APIV2.categoryCodec
 
-  @ConfiguredJsonCodec case class PaginatedProjectResult(
+  @SnakeCaseJsonCodec case class PaginatedProjectResult(
       pagination: Pagination,
       result: Seq[APIV2.Project]
   )
@@ -280,7 +280,7 @@ object Projects {
 
     val patchDecoder: EditableProjectF[PatchDecoder] =
       PatchDecoder.fromName(Derive.namesWithProductImplicitsC[EditableProjectF, Decoder])(
-        io.circe.generic.extras.Configuration.snakeCaseTransformation
+        io.circe.derivation.renaming.snakeCase
       )
   }
 
@@ -306,7 +306,7 @@ object Projects {
       with DistributiveKC[EditableProjectLicenseF] = Derive.allKC[EditableProjectLicenseF]
   }
 
-  @ConfiguredJsonCodec case class ApiV2ProjectTemplate(
+  @SnakeCaseJsonCodec case class ApiV2ProjectTemplate(
       name: String,
       pluginId: String,
       category: Category,

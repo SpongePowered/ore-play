@@ -32,14 +32,11 @@ import db.impl.DbUpdateTask
 import db.impl.access.{OrganizationBase, ProjectBase, UserBase}
 import db.impl.service.OreModelService
 import db.impl.service.OreModelService.F
-import discourse.{OreDiscourseApi, OreDiscourseApiDisabled, OreDiscourseApiEnabled}
 import filters.LoggingFilter
 import form.OreForms
 import mail.{EmailFactory, Mailer, SpongeMailer}
 import ore.auth.{AkkaSSOApi, AkkaSpongeAuthApi, SSOApi, SpongeAuthApi}
 import ore.db.ModelService
-import ore.discourse.AkkaDiscourseApi
-import ore.discourse.AkkaDiscourseApi.AkkaDiscourseSettings
 import ore.external.Cacher
 import ore.markdown.{FlexmarkRenderer, MarkdownRenderer}
 import ore.models.project.ProjectTask
@@ -65,7 +62,7 @@ import slick.jdbc.{JdbcDataSource, JdbcProfile}
 import zio.blocking.Blocking
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{CancelableFuture, DefaultRuntime, Task, UIO, ZIO, ZSchedule}
+import zio.{CancelableFuture, DefaultRuntime, Schedule, Task, UIO, ZIO, ZSchedule}
 
 class OreApplicationLoader extends ApplicationLoader {
   override def load(context: ApplicationLoader.Context): PlayApplication = {
@@ -214,59 +211,22 @@ class OreComponents(context: ApplicationLoader.Context)
     val cacher = util.ZIOCacher.instance[Any, Throwable]
     implicit val taskCacher: Cacher[Task] = new Cacher[Task] {
       override def cache[A](duration: FiniteDuration)(fa: Task[A]): Task[Task[A]] =
-        cacher.cache(duration)(fa).provide(runtime.Environment).map(_.provide(runtime.Environment))
+        cacher.cache(duration)(fa).provide(runtime.environment).map(_.provide(runtime.environment))
     }
     val sso = config.security.sso
     runtime.unsafeRun(AkkaSSOApi[Task](sso.loginUrl, sso.signupUrl, sso.verifyUrl, sso.secret, sso.timeout, sso.reset))
   }
-  lazy val ssoApi: SSOApi[UIO] = ssoApiTask.imapK(taskToUIO)(uioToTask)
-  lazy val oreDiscourseApiTask: OreDiscourseApi[Task] = {
-    val forums = config.forums
-    if (forums.api.enabled) {
-      val api = forums.api
-
-      val discourseApi = runtime.unsafeRun(
-        AkkaDiscourseApi[Task](
-          AkkaDiscourseSettings(
-            api.key,
-            api.admin,
-            forums.baseUrl,
-            api.breaker.maxFailures,
-            api.breaker.reset,
-            api.breaker.timeout
-          )
-        )
-      )
-
-      val forumsApi = new OreDiscourseApiEnabled(
-        discourseApi,
-        forums.categoryDefault,
-        forums.categoryDeleted,
-        env.conf.resolve("discourse/project_topic.md"),
-        env.conf.resolve("discourse/version_post.md"),
-        forums.retryRate,
-        actorSystem.scheduler,
-        api.admin
-      )
-
-      forumsApi.start()
-
-      forumsApi
-    } else {
-      new OreDiscourseApiDisabled[Task]
-    }
-  }
-  implicit lazy val oreDiscourseApi: OreDiscourseApi[UIO] = oreDiscourseApiTask.mapK(taskToUIO)
-  implicit lazy val userBaseTask: UserBase[Task]          = wire[UserBase.UserBaseF[Task]]
-  implicit lazy val userBaseUIO: UserBase[UIO]            = wire[UserBase.UserBaseF[UIO]]
+  lazy val ssoApi: SSOApi[UIO]                   = ssoApiTask.imapK(taskToUIO)(uioToTask)
+  implicit lazy val userBaseTask: UserBase[Task] = wire[UserBase.UserBaseF[Task]]
+  implicit lazy val userBaseUIO: UserBase[UIO]   = wire[UserBase.UserBaseF[UIO]]
   implicit lazy val projectBase: ProjectBase[UIO] = {
     implicit val providedProjectFiles: ProjectFiles[Task] =
-      projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.Environment))
+      projectFiles.mapK(OreComponents.provideFnK[Blocking, Nothing](runtime.environment))
 
     implicit lazy val fileIOTask: FileIO[Task] =
       fileIORaw.imapK(
         new FunctionK[ZIO[Blocking, Throwable, *], Task] {
-          def apply[A](fa: ZIO[Blocking, Throwable, A]): Task[A] = fa.provide(runtime.Environment)
+          def apply[A](fa: ZIO[Blocking, Throwable, A]): Task[A] = fa.provide(runtime.environment)
         },
         OreComponents.upcastFnK[Task, ZIO[Blocking, Throwable, *]]
       )
@@ -317,7 +277,7 @@ class OreComponents(context: ApplicationLoader.Context)
 
   def waitTilEvolutionsDone(action: UIO[Unit]): CancelableFuture[Nothing, Unit] = {
     val isDone    = ZIO.effectTotal(applicationEvolutions.upToDate)
-    val waitCheck = ZSchedule.doUntilM[Unit](_ => isDone) && ZSchedule.fixed(zio.duration.Duration.fromNanos(100))
+    val waitCheck = Schedule.doUntilM[Unit](_ => isDone) && Schedule.fixed(zio.duration.Duration.fromNanos(100))
 
     runtime.unsafeRunToFuture(ZIO.unit.repeat(waitCheck).andThen(action))
   }
