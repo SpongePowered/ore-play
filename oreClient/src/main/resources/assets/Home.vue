@@ -62,6 +62,7 @@
     import queryString from "query-string"
     import {clearFromDefaults} from "./utils"
     import {Category, Platform, SortOptions} from "./enums";
+    import debounce from "lodash/debounce"
 
     function defaultData() {
         return {
@@ -127,6 +128,9 @@
                 } else {
                     this.categories.push(category.id);
                 }
+            },
+            updateQuery(newQuery) {
+                window.history.pushState(null, null, newQuery !== "" ? "?" + newQuery : "/");
             }
         },
         created() {
@@ -134,9 +138,10 @@
                 .filter(([key, value]) => defaultData().hasOwnProperty(key))
                 .forEach(([key, value]) => this.$data[key] = value);
 
+            this.debouncedUpdateProps = debounce(this.updateQuery, 500);
             this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags, vm.page].join(), () => {
                 const query = queryString.stringify(this.urlBinding, {arrayFormat: 'bracket'});
-                window.history.pushState(null, null, query !== "" ? "?" + query : "/");
+                this.debouncedUpdateProps(query);
             });
             this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags].join(), () => {
                 this.resetPage();
