@@ -131,12 +131,16 @@
             },
             updateQuery(newQuery) {
                 window.history.pushState(null, null, newQuery !== "" ? "?" + newQuery : "/");
+            },
+            updateData() {
+                Object.entries(queryString.parse(location.search, {arrayFormat: 'bracket', parseBooleans: true}))
+                    .filter(([key, value]) => defaultData().hasOwnProperty(key))
+                    .forEach(([key, value]) => this.$data[key] = value);
             }
         },
         created() {
-            Object.entries(queryString.parse(location.search, {arrayFormat: 'bracket', parseBooleans: true}))
-                .filter(([key, value]) => defaultData().hasOwnProperty(key))
-                .forEach(([key, value]) => this.$data[key] = value);
+            this.updateData();
+            window.addEventListener('popstate', this.updateData);
 
             this.debouncedUpdateProps = debounce(this.updateQuery, 500);
             this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags, vm.page].join(), () => {
@@ -146,11 +150,6 @@
             this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags].join(), () => {
                 this.resetPage();
             });
-        },
-        watch: {
-            page: function () {
-                window.scrollTo(0,0);
-            }
         }
     }
 </script>
