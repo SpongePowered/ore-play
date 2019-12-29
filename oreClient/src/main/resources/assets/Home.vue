@@ -150,6 +150,11 @@
             this.$watch(vm => [vm.q, vm.sort, vm.relevance, vm.categories, vm.tags].join(), () => {
                 this.resetPage();
             });
+        },
+        watch: {
+            page: function () {
+                window.scrollTo(0, 0);
+            }
         }
     }
 </script>
