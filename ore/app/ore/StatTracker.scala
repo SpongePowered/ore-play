@@ -103,7 +103,7 @@ object StatTracker {
     )(result: F[Result])(implicit request: ProjectRequest[_]): F[Result] =
       addStat(
         StatTrackerQueries.findVersionDownloadCookie,
-        StatTrackerQueries.addVersionDownload(version.id, version.projectId, _, _, _),
+        StatTrackerQueries.addVersionDownload(version.projectId, version.id, _, _, _),
         result
       )
 

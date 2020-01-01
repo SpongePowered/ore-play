@@ -599,7 +599,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               this.messagesApi(
                 "version.download.confirm.curl",
                 self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
-                value
+                value.value
               )
             case None =>
               this.messagesApi(
