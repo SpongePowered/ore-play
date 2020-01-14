@@ -87,6 +87,15 @@
 </template>
 
 <script>
+    import markdownIt from "markdown-it"
+    import markdownItAnchor from "markdown-it-anchor"
+    import markdownItWikilinks from "markdown-it-wikilinks"
+    import markdownItTaskLists from "markdown-it-task-lists"
+
+    const md = markdownIt({
+        linkify: true,
+        typographer: true
+    }).use(markdownItAnchor).use(markdownItWikilinks({relativeBaseURL: location.pathname + "/pages/", uriSuffix: ''})).use(markdownItTaskLists);
 
     export default {
         data: function () {
@@ -128,7 +137,7 @@
                 }
             },
             cooked: function () {
-                return this.raw; //TODO
+                return md.render(this.raw);
             }
         }
     }

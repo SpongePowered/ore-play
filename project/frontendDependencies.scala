@@ -20,6 +20,11 @@ object NPMDeps {
   val babelLoader    = "babel-loader"      -> "8.0.6"
   val babelPresetEnv = "@babel/preset-env" -> "7.7.6"
 
+  val markdownIt          = "markdown-it"            -> "10.0.0"
+  val markdownItAnchor    = "markdown-it-anchor"     -> "5.2.5"
+  val markdownItWikiLinks = "markdown-it-wikilinks"  -> "1.0.1"
+  val markdownItTaskLists = "markdown-it-task-lists" -> "2.1.1"
+
   val webpack               = "4.41.2"
   val webpackDevServer      = "3.9.0"
   val webpackMerge          = "webpack-merge" -> "4.2.2"

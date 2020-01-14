@@ -148,7 +148,11 @@ lazy val oreClient = project
       NPMDeps.fontAwesome,
       NPMDeps.fontAwesomeSolid,
       NPMDeps.fontAwesomeRegular,
-      NPMDeps.fontAwesomeBrands
+      NPMDeps.fontAwesomeBrands,
+      NPMDeps.markdownIt,
+      NPMDeps.markdownItAnchor,
+      NPMDeps.markdownItTaskLists,
+      NPMDeps.markdownItWikiLinks
     ),
     npmDevDependencies in Compile ++= Seq(
       NPMDeps.webpackMerge,
