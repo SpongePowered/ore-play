@@ -58,10 +58,10 @@
 </template>
 
 <script>
-    import ProjectList from "./components/ProjectList"
+    import ProjectList from "./../components/ProjectList"
     import queryString from "query-string"
-    import {clearFromDefaults} from "./utils"
-    import {Category, Platform, SortOptions} from "./enums";
+    import {clearFromDefaults} from "./../utils"
+    import {Category, Platform, SortOptions} from "./../enums";
 
     function defaultData() {
         return {
@@ -151,7 +151,7 @@
 </script>
 
 <style lang="scss">
-    @import "./scss/variables";
+    @import "./../scss/variables";
 
     .select-sort {
         margin-bottom: 10px;

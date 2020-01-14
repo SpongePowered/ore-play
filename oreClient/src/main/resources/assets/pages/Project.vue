@@ -11,9 +11,9 @@
 </template>
 
 <script>
-    import ProjectHeader from "./ProjectHeader";
-    import ProjectHome from "./ProjectHome";
-    import ProjectDocs from "./ProjectDocs";
+    import ProjectHeader from "./../components/ProjectHeader";
+    import ProjectHome from "./../components/ProjectHome";
+    import ProjectDocs from "./../components/ProjectDocs";
     import {API} from "../api";
 
     export default {

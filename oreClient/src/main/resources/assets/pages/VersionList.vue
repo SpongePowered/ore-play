@@ -63,9 +63,9 @@
 </template>
 
 <script>
-    import Tag from "./components/Tag";
-    import Pagination from "./components/Pagination";
-    import {Visibility} from "./enums";
+    import Tag from "./../components/Tag";
+    import Pagination from "./../components/Pagination";
+    import {Visibility} from "./../enums";
 
     export default {
         components: {
