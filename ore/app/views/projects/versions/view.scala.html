@@ -138,7 +138,7 @@
                                         @if(v.v.visibility == Visibility.SoftDelete) {
                                             <li><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>
                                         }
-                                        @if(request.headerData.globalPerm(Permission.HardDeleteVersion) && !v.isRecommended) {
+                                        @if(request.headerData.globalPerm(Permission.HardDeleteVersion) && !v.isRecommended && (v.p.publicVersions > 1 || v.v.visibility == Visibility.SoftDelete)) {
                                             <li><a href="#" data-toggle="modal" data-target="#modal-harddelete" style="color: darkred">Hard delete</a></li>
                                         }
                                     }
