@@ -231,8 +231,16 @@ object ProjectBase {
     def prepareDeleteVersion(version: Model[Version]): F[Model[Project]] = {
       for {
         proj <- version.project
-        size <- proj.versions(ModelView.now(Version)).count(_.visibility === (Visibility.Public: Visibility))
-        _ = checkArgument(size > 1, "only one public version", "")
+        _ <- F
+          .pure(version.visibility != Visibility.SoftDelete)
+          .ifM(
+            proj
+              .versions(ModelView.now(Version))
+              .count(_.visibility === (Visibility.Public: Visibility))
+              .ensure(new IllegalStateException("only one public version"))(_ > 1)
+              .void,
+            F.unit
+          )
         rv       <- proj.recommendedVersion(ModelView.now(Version)).sequence.subflatMap(identity).value
         projects <- service.runDBIO(proj.versions(ModelView.raw(Version)).sortBy(_.createdAt.desc).result) // TODO optimize: only query one version
         res <- {
