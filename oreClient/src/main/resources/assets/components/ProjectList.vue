@@ -35,8 +35,8 @@
                                         </div>
                                     </div>
                                     <div class="row">
-                                        <div class="col-sm-7 description-column">
-                                            <div class="description">{{ project.description }}</div>
+                                        <div class="col-sm-7 summary-column">
+                                            <div class="summary">{{ project.summary }}</div>
                                         </div>
                                         <div class="col-xs-12 col-sm-5 tags-line" v-if="project.promoted_versions">
                                             <Tag v-bind:name="platform.name" v-bind:data="platform.versions.join(' | ')" v-bind:color="platform.color"
@@ -208,10 +208,10 @@
             font-weight: bold;
         }
 
-        .description-column {
+        .summary-column {
             overflow: hidden;
 
-            .description {
+            .summary {
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;

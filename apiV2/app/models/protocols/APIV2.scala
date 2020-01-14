@@ -44,7 +44,7 @@ object APIV2 {
       promotedVersions: Seq[PromotedVersion],
       stats: ProjectStatsAll,
       category: Category,
-      description: Option[String],
+      summary: Option[String],
       lastUpdated: OffsetDateTime,
       visibility: Visibility,
       userActions: UserActions,

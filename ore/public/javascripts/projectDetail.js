@@ -241,21 +241,4 @@ $(function() {
 
         increment *= -1;
     });
-
-    if(projectId) {
-        apiV2Request("projects/" + projectId).then((response) => {
-            if(response.promoted_versions) {
-                let html = "";
-                response.promoted_versions.forEach((version) => {
-                    const href = jsRoutes.controllers.project.Versions.show(projectOwner, projectSlug, version.version).absoluteURL();
-                    html = html + "<li class='list-group-item'><a href='" + href + "'>" + version.version +  "</a></li>";
-                });
-                $(".promoted-list").html(html);
-            }
-            $(".stats #view-count").html(numberWithCommas(response.stats.views));
-            $(".stats #star-count").html(numberWithCommas(response.stats.stars));
-            $(".stats #watcher-count").html(numberWithCommas(response.stats.watchers));
-            $(".stats #download-count").html(numberWithCommas(response.stats.downloads));
-        });
-    }
 });

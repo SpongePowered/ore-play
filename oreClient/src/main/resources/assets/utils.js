@@ -23,3 +23,13 @@ export function parseJsonOrNull(jsonString) {
         return null;
     }
 }
+
+export function avatarUrl(name) {
+    //TODO: Get stuff from config
+    if (name === 'Spongie') {
+        return 'https://www.spongepowered.org/assets/img/icons/spongie-mark.svg'
+    }
+    else {
+        return `https://auth.spongepowered.org/avatar/${name}?size=120x120`;
+    }
+}

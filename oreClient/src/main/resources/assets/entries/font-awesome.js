@@ -6,7 +6,7 @@ import {
     faTrash, faPlay, faInfoCircle, faQuestionCircle, faExclamationCircle, faSpinner, faCircle, faArrowRight, faCheck,
     faReply, faSave, faTimes, faPencilAlt, faArrowLeft, faCog, faPlayCircle, faEdit, faKey, faCalendar, faUpload,
     faPaperPlane, faSearch, faExternalLinkAlt, faBug, faTerminal, faStopCircle, faClipboard, faWindowClose, faUnlockAlt,
-    faGem as fasGem, faLink, faInfo, faCheckCircle as fasCheckCircle, faTimesCircle, faEyeSlash, faUserTag
+    faGem as fasGem, faLink, faInfo, faCheckCircle as fasCheckCircle, faTimesCircle, faEyeSlash, faUserTag, faPlug
 } from '@fortawesome/free-solid-svg-icons'
 
 import {
@@ -23,6 +23,6 @@ library.add(fasStar, fasGem, faEye, faDownload, faServer, faComment, faWrench, f
     faCheck, faReply, faSave, faTimes, faPencilAlt, faArrowLeft, faCog, faPlayCircle, faEdit, faKey, faCalendar, faFile,
     faUpload, faPaperPlane, faPlusSquare, faSearch, farStar, faExternalLinkAlt, faMinusSquare, faBug, faFileArchive,
     faTerminal, faStopCircle, faClipboard, faWindowClose, faSadTear, faUnlockAlt, farGem, faLink, farCheckCircle, faClock,
-    faInfo, fasCheckCircle, faTimesCircle, faEyeSlash, faUserTag);
+    faInfo, fasCheckCircle, faTimesCircle, faEyeSlash, faUserTag, faPlug);
 
 dom.watch();

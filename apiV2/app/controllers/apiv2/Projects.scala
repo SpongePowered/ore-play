@@ -182,6 +182,14 @@ class Projects(
       service.runDbCon(dbCon).get.flatten.bimap(_ => NotFound, Ok(_))
     }
 
+  def showProjectDescription(pluginId: String): Action[AnyContent] =
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+      service.runDbCon(APIV2Queries.getPage(pluginId, "Home").option).get.asError(NotFound).map {
+        case (_, _, _, contents) =>
+          Ok(Json.obj("description" := contents))
+      }
+    }
+
   def editProject(pluginId: String): Action[Json] =
     ApiAction(Permission.EditProjectSettings, APIScope.ProjectScope(pluginId))
       .asyncF(parseCirce.json) { implicit request =>

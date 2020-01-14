@@ -15,12 +15,12 @@ Base template for Project overview.
 @(p: ProjectData)(implicit messages: Messages, request: OreRequest[_], flash: Flash, config: OreConfig, assetsFinder: AssetsFinder)
 
 @scripts = {
-    <script src="@assetsFinder.path("build/project.js")"></script>
     <script @CSPNonce.attr>
             window.PROJECT_OWNER = "@p.project.ownerName";
             window.PROJECT_SLUG = "@p.project.slug";
             window.PROJECT_ID = "@p.project.pluginId";
     </script>
+    <script src="@assetsFinder.path("build/project.js")"></script>
 }
 
 @meta = {

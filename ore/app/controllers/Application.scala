@@ -61,7 +61,13 @@ final class Application @Inject()(forms: OreForms)(
     Ok(
       JavaScriptReverseRouter("jsRoutes")(
         controllers.project.routes.javascript.Projects.show,
-        controllers.routes.javascript.Users.showProjects
+        controllers.project.routes.javascript.Projects.showFlags,
+        controllers.project.routes.javascript.Projects.showNotes,
+        controllers.project.routes.javascript.Projects.showStargazers,
+        controllers.project.routes.javascript.Projects.showWatchers,
+        controllers.routes.javascript.Users.showProjects,
+        controllers.routes.javascript.Application.showLog,
+        controllers.routes.javascript.Application.linkOut
       )
     ).as("text/javascript")
   }
