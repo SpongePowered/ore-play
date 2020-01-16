@@ -66,3 +66,34 @@ export class Visibility {
         return this.values.filter(visibility => visibility.name === name)[0];
     }
 }
+
+export class Permission {
+    static ViewPublicInfo = "view_public_info";
+    static EditOwnUserSettings = "edit_own_user_settings";
+    static EditApiKeys = "edit_api_keys";
+    static EditSubjectSettings = "edit_subject_settings";
+    static ManageSubjectMembers = "manage_subject_members";
+    static IsSubjectOwner = "is_subject_owner";
+    static IsSubjectMember = "is_subject_member";
+    static CreateProject = "create_project";
+    static EditPage = "edit_page";
+    static DeleteProject = "delete_project";
+    static CreateVersion = "create_version";
+    static EditVersion = "edit_version";
+    static DeleteVersion = "delete_version";
+    static EditChannel = "edit_channel";
+    static CreateOrganization = "create_organization";
+    static PostAsOrganization = "post_as_organization";
+    static ModNotesAndFlags = "mod_notes_and_flags";
+    static SeeHidden = "see_hidden";
+    static IsStaff = "is_staff";
+    static Reviewer = "reviewer";
+    static ViewHealth = "view_health";
+    static ViewIp = "view_ip";
+    static ViewStats = "view_stats";
+    static ViewLogs = "view_logs";
+    static ManualValueChanges = "manual_value_changes";
+    static HardDeleteProject = "hard_delete_project";
+    static HardDeleteVersion = "hard_delete_version";
+    static EditAllUserSettings = "edit_all_user_settings";
+}

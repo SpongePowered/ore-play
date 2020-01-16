@@ -1,12 +1,13 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+
 import ProjectDiscussion from "../pages/project/ProjectDiscussion";
+import ProjectSettings from "../pages/project/ProjectSettings";
+import ProjectDocs from "../pages/project/ProjectDocs";
+import ProjectVersions from "../pages/project/ProjectVersions";
+import Project from "../pages/project/Project";
 
 Vue.use(VueRouter);
-
-const Project = require('../pages/project/Project.vue').default;
-const ProjectDocs = require('../pages/project/ProjectDocs.vue').default;
-const ProjectVersions = require('../pages/project/ProjectVersions.vue').default;
 
 const router = new VueRouter({
     base: window.PROJECT_OWNER + "/" + window.PROJECT_SLUG,
@@ -35,6 +36,11 @@ const router = new VueRouter({
             path: '/discuss',
             name: 'discussion',
             component: ProjectDiscussion
+        },
+        {
+            path: '/settings',
+            name: 'settings',
+            component: ProjectSettings
         }
     ]
 });

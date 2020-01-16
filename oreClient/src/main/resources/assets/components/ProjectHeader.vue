@@ -4,7 +4,7 @@
             <div class="col-xs-12">
                 <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
                     <span v-if="project.visibility === 'needsChanges'">
-                        <a v-if="permissions.includes('edit_page')" class="btn btn-success pull-right"
+                        <a v-if="permissions.includes(permission.EditPage)" class="btn btn-success pull-right"
                            :href="fullSlug + '/manage/sendforapproval'">Send for approval</a>
                         <strong>@messages("visibility.notice." + project.visibility.nameKey)</strong>
                         {{ renderVisibilityChange("Unknown")}}
@@ -113,22 +113,22 @@
 
                     </template>
 
-                    <template v-if="permissions.includes('mod_notes_and_flags') || permissions.includes('view_logs')">
+                    <template v-if="permissions.includes(permission.ModNotesAndFlags) || permissions.includes(permission.ViewLogs)">
                         <button class="btn btn-alert dropdown-toggle" type="button" id="admin-actions"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                             Admin actions
                             <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="admin-actions">
-                            <li v-if="permissions.includes('mod_notes_and_flags')">
+                            <li v-if="permissions.includes(permission.ModNotesAndFlags)">
                                 <a :href="routes.project.Projects.showFlags(project.namespace.owner, project.namespace.slug).absoluteURL()">Flag history
                                     (@project.flagCount) </a>
                             </li>
-                            <li v-if="permissions.includes('mod_notes_and_flags')">
+                            <li v-if="permissions.includes(permission.ModNotesAndFlags)">
                                 <a :href="routes.project.Projects.showNotes(project.namespace.owner, project.namespace.slug).absoluteURL()">Staff notes
                                     (@project.noteCount) </a>
                             </li>
-                            <li v-if="permissions.includes('view_logs')">
+                            <li v-if="permissions.includes(permission.ViewLogs)">
                                 <a :href="routes.Application.showLog(null, null, project.plugin_id, null, null, null, null).absoluteURL()">User
                                     Action Logs</a>
                             </li>
@@ -147,7 +147,7 @@
                 <div class="navbar navbar-default project-navbar pull-left">
                     <div class="navbar-inner">
                         <ul class="nav navbar-nav">
-                            <router-link :to="{name: 'home', params: {project: currentProject, permissions}}" v-slot="{ href, navigate, isExactActive }">
+                            <router-link :to="{name: 'home', params: {project, permissions}}" v-slot="{ href, navigate, isExactActive }">
                                 <li :class="[isExactActive && 'active']">
                                     <a :href="href" @click="navigate"><i class="fas fa-book"></i> Docs</a>
                                 </li>
@@ -166,12 +166,11 @@
                                 </li>
                             </router-link>
 
-                            <!-- Show manager if permitted -->
-                            <li v-if="permissions.includes('edit_project_settings')" id="settings" :class="tabActive('settings')">
-                                <a href="@Projects.showSettings(project.project.ownerName, project.project.slug)">
-                                    <i class="fas fa-cog"></i> @messages("project.settings")
-                                </a>
-                            </li>
+                            <router-link v-if="permissions.includes(permission.EditSubjectSettings)" :to="{name: 'settings'}" v-slot="{ href, navigate, isExactActive }">
+                                <li :class="[isExactActive && 'active']">
+                                    <a :href="href" @click="navigate"><i class="fas fas fa-cog"></i> Settings</a>
+                                </li>
+                            </router-link>
 
                             <li v-if="project.settings.homepage" id="homepage">
                                 <a :title="project.settings.homepage" target="_blank" rel="noopener"
@@ -208,6 +207,8 @@
 </template>
 
 <script>
+    import {Permission} from "../enums";
+
     export default {
         props: {
             noButtons: {
@@ -244,6 +245,9 @@
             isOwner: function () {
                 //TODO
                 return false;
+            },
+            permission() {
+                return Permission;
             }
         },
         methods: {
