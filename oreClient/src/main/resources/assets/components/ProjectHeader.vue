@@ -147,21 +147,21 @@
                 <div class="navbar navbar-default project-navbar pull-left">
                     <div class="navbar-inner">
                         <ul class="nav navbar-nav">
-                            <router-link :to="{name: 'home', params: {project: currentProject, permissions}}" v-slot="{ href, navigate, isActive }">
-                                <li :class="[isActive && 'active']">
+                            <router-link :to="{name: 'home', params: {project: currentProject, permissions}}" v-slot="{ href, navigate, isExactActive }">
+                                <li :class="[isExactActive && 'active']">
                                     <a :href="href" @click="navigate"><i class="fas fa-book"></i> Docs</a>
                                 </li>
                             </router-link>
 
-                            <router-link :to="{name: 'versions'}" v-slot="{ href, navigate, isActive }">
-                                <li :class="[isActive && 'router-link-active']">
+                            <router-link :to="{name: 'versions'}" v-slot="{ href, navigate, isExactActive }">
+                                <li :class="[isExactActive && 'active']">
                                     <a :href="href" @click="navigate"><i class="fas fa-download"></i> Versions</a>
                                 </li>
                             </router-link>
 
                             <!-- TODO only show if topic -->
-                            <router-link :to="{name: 'discussion'}" v-slot="{ href, navigate, isActive }">
-                                <li :class="[isActive && 'router-link-active']">
+                            <router-link :to="{name: 'discussion'}" v-slot="{ href, navigate, isExactActive }">
+                                <li :class="[isExactActive && 'active']">
                                     <a :href="href" @click="navigate"><i class="fas fa-users"></i> Discuss</a>
                                 </li>
                             </router-link>
