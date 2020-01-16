@@ -67,33 +67,32 @@ export class Visibility {
     }
 }
 
-export class Permission {
-    static ViewPublicInfo = "view_public_info";
-    static EditOwnUserSettings = "edit_own_user_settings";
-    static EditApiKeys = "edit_api_keys";
-    static EditSubjectSettings = "edit_subject_settings";
-    static ManageSubjectMembers = "manage_subject_members";
-    static IsSubjectOwner = "is_subject_owner";
-    static IsSubjectMember = "is_subject_member";
-    static CreateProject = "create_project";
-    static EditPage = "edit_page";
-    static DeleteProject = "delete_project";
-    static CreateVersion = "create_version";
-    static EditVersion = "edit_version";
-    static DeleteVersion = "delete_version";
-    static EditChannel = "edit_channel";
-    static CreateOrganization = "create_organization";
-    static PostAsOrganization = "post_as_organization";
-    static ModNotesAndFlags = "mod_notes_and_flags";
-    static SeeHidden = "see_hidden";
-    static IsStaff = "is_staff";
-    static Reviewer = "reviewer";
-    static ViewHealth = "view_health";
-    static ViewIp = "view_ip";
-    static ViewStats = "view_stats";
-    static ViewLogs = "view_logs";
-    static ManualValueChanges = "manual_value_changes";
-    static HardDeleteProject = "hard_delete_project";
-    static HardDeleteVersion = "hard_delete_version";
-    static EditAllUserSettings = "edit_all_user_settings";
-}
+export class Permission {}
+Permission.ViewPublicInfo = "view_public_info";
+Permission.EditOwnUserSettings = "edit_own_user_settings";
+Permission.EditApiKeys = "edit_api_keys";
+Permission.EditSubjectSettings = "edit_subject_settings";
+Permission.ManageSubjectMembers = "manage_subject_members";
+Permission.IsSubjectOwner = "is_subject_owner";
+Permission.IsSubjectMember = "is_subject_member";
+Permission.CreateProject = "create_project";
+Permission.EditPage = "edit_page";
+Permission.DeleteProject = "delete_project";
+Permission.CreateVersion = "create_version";
+Permission.EditVersion = "edit_version";
+Permission.DeleteVersion = "delete_version";
+Permission.EditChannel = "edit_channel";
+Permission.CreateOrganization = "create_organization";
+Permission.PostAsOrganization = "post_as_organization";
+Permission.ModNotesAndFlags = "mod_notes_and_flags";
+Permission.SeeHidden = "see_hidden";
+Permission.IsStaff = "is_staff";
+Permission.Reviewer = "reviewer";
+Permission.ViewHealth = "view_health";
+Permission.ViewIp = "view_ip";
+Permission.ViewStats = "view_stats";
+Permission.ViewLogs = "view_logs";
+Permission.ManualValueChanges = "manual_value_changes";
+Permission.HardDeleteProject = "hard_delete_project";
+Permission.HardDeleteVersion = "hard_delete_version";
+Permission.EditAllUserSettings = "edit_all_user_settings";
