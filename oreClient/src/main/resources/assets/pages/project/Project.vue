@@ -33,7 +33,7 @@
         },
         computed: {
           currentProject() {
-              return this.project || this.fetchedProject;
+              return this.fetchedProject || this.project;
           }
         },
         created() {
