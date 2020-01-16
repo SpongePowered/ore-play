@@ -30,7 +30,7 @@ export class API {
                             reject(error);
                         });
                     } else {
-                        reject(xhr.statusText)
+                        reject(xhr.status)
                     }
                 })
             })

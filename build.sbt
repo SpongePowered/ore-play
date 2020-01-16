@@ -143,6 +143,7 @@ lazy val oreClient = project
     version in webpack := NPMDeps.webpack,
     npmDependencies in Compile ++= Seq(
       NPMDeps.vue,
+      NPMDeps.vueRouter,
       NPMDeps.lodash,
       NPMDeps.queryString,
       NPMDeps.fontAwesome,

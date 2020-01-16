@@ -4,6 +4,7 @@ import sbt._
 object NPMDeps {
 
   val vue                 = "vue"                   -> "2.6.10"
+  val vueRouter           = "vue-router"            -> "3.1.4"
   val vueLoader           = "vue-loader"            -> "15.7.2"
   val vueTemplateCompiler = "vue-template-compiler" -> "2.6.10"
   val vueStyleLoader      = "vue-style-loader"      -> "4.1.2"
