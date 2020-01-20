@@ -3,21 +3,22 @@
         <div class="row" v-if="project.visibility !== 'public'">
             <div class="col-xs-12">
                 <div class="alert alert-danger" role="alert" style="margin: 0.2em 0 0 0">
-                    <span v-if="project.visibility === 'needsChanges'">
+                    <span v-if="project.visibility === 'new'">
+                        This project is new, and will not be shown to others until a version has been uploaded. If a version is not uploaded over a longer time the project will be deleted.
+                    </span>
+                    <span v-else-if="project.visibility === 'needsChanges'">
                         <a v-if="permissions.includes(permission.EditPage)" class="btn btn-success pull-right"
                            :href="fullSlug + '/manage/sendforapproval'">Send for approval</a>
-                        <strong>@messages("visibility.notice." + project.visibility.nameKey)</strong>
+                        <strong>This project requires changes:</strong>
                         {{ renderVisibilityChange("Unknown")}}
                     </span>
+                    <span v-else-if="project.visibility === 'needsApproval'">
+                        You have sent the project for review
+                    </span>
                     <span v-else-if="project.visibility === 'softDelete'">
-                        @messages("visibility.notice." + project.visibility.nameKey, project.lastVisibilityChangeUser)
+                        Project deleted by {{ project.lastVisibilityChangeUser }}
                         {{ renderVisibilityChange("") }}
                     </span>
-                    <span v-else>
-                        @messages("visibility.notice." + project.visibility.nameKey)
-                    </span>
-
-
                 </div>
             </div>
         </div>
@@ -67,7 +68,7 @@
                         </span>
 
                         <button data-toggle="modal" data-target="#modal-flag" class="btn btn-default">
-                            <i class="fas fa-flag"></i> @messages("project.flag")
+                            <i class="fas fa-flag"></i> Flag
                         </button>
 
                         <div class="modal fade" id="modal-flag" tabindex="-1" role="dialog"
@@ -81,32 +82,30 @@
                                         </button>
                                         <h4 class="modal-title" id="label-flag">Flag project</h4>
                                     </div>
-                                    @form(action = Projects.flag(project.project.ownerName, project.project.slug)) {
-                                    @CSRF.formField
-                                    <div class="modal-body">
-                                        <ul class="list-group list-flags">
-                                            @for(i <- FlagReason.values.indices) {
-                                            <li class="list-group-item">
-                                                <span>@FlagReason.withValue(i).title</span>
-                                                <span class="pull-right">
+                                    <form :action="routes.project.Projects.flag(project.project.ownerName, project.project.slug).absoluteURL()" method="post">
+                                        <CSRFField></CSRFField>
+                                        <div class="modal-body">
+                                            <ul class="list-group list-flags">
+                                                <li v-for="reason in FlagReason.values()" class="list-group-item">
+                                                    <span>{{ reason.title }}</span>
+                                                    <span class="pull-right">
                                                         <input required type="radio"
-                                                               value="@FlagReason.withValue(i).value"
+                                                               :value="reason.value"
                                                                name="flag-reason"/>
                                                         </span>
-                                            </li>
-                                            }
-                                        </ul>
-                                        <input class="form-control" name="comment" type="text"
-                                               maxlength="255" required="required"
-                                               placeholder="@messages('ph.comment')&hellip;"/>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-default" data-dismiss="modal">
-                                            Close
-                                        </button>
-                                        <button type="submit" class="btn btn-primary">Flag</button>
-                                    </div>
-                                    }
+                                                </li>
+                                            </ul>
+                                            <input class="form-control" name="comment" type="text"
+                                                   maxlength="255" required="required"
+                                                   placeholder="Comment&hellip;"/>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-default" data-dismiss="modal">
+                                                Close
+                                            </button>
+                                            <button type="submit" class="btn btn-primary">Flag</button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -121,20 +120,24 @@
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="admin-actions">
                             <li v-if="permissions.includes(permission.ModNotesAndFlags)">
-                                <a :href="routes.project.Projects.showFlags(project.namespace.owner, project.namespace.slug).absoluteURL()">Flag history
-                                    (@project.flagCount) </a>
+                                <a :href="routes.project.Projects.showFlags(project.namespace.owner, project.namespace.slug).absoluteURL()">
+                                    Flag history ({{ project.flagCount }})
+                                </a>
                             </li>
                             <li v-if="permissions.includes(permission.ModNotesAndFlags)">
-                                <a :href="routes.project.Projects.showNotes(project.namespace.owner, project.namespace.slug).absoluteURL()">Staff notes
-                                    (@project.noteCount) </a>
+                                <a :href="routes.project.Projects.showNotes(project.namespace.owner, project.namespace.slug).absoluteURL()">
+                                    Staff notes ({{ project.noteCount }})
+                                </a>
                             </li>
                             <li v-if="permissions.includes(permission.ViewLogs)">
-                                <a :href="routes.Application.showLog(null, null, project.plugin_id, null, null, null, null).absoluteURL()">User
-                                    Action Logs</a>
+                                <a :href="routes.Application.showLog(null, null, project.plugin_id, null, null, null, null).absoluteURL()">
+                                    User Action Logs
+                                </a>
                             </li>
                             <li>
-                                <a :href="'https://forums.spongepowered.org/users/' + project.namespace.owner">Owner on forum <i
-                                        class="fas fa-external-link-alt" aria-hidden="true"></i></a>
+                                <a :href="'https://forums.spongepowered.org/users/' + project.namespace.owner">
+                                    Owner on forum <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                                </a>
                             </li>
                         </ul>
                     </template>
@@ -208,8 +211,12 @@
 
 <script>
     import {Permission} from "../enums";
+    import CSRFField from "./CSRFField";
 
     export default {
+        components: {
+            CSRFField
+        },
         props: {
             noButtons: {
                 type: Boolean,
@@ -226,11 +233,12 @@
             project: {
                 type: Object,
                 required: true
-            }
+            },
+            currentUser: Object
         },
         computed: {
             fullSlug: function () {
-                return project.owner_name + project.slug
+                return project.namespace.owner + project.slug
             },
             routes: function () {
                 return jsRoutes.controllers;
@@ -243,8 +251,7 @@
                 }
             },
             isOwner: function () {
-                //TODO
-                return false;
+                return currentUser && project.namespace.owner === currentUser.name;
             },
             permission() {
                 return Permission;

@@ -1,26 +1,26 @@
 <template>
     <div v-if="enabled">
         <!-- Edit -->
-        <button type="button" class="btn btn-sm btn-edit btn-page btn-default" title="@messages('general.edit')">
-            <i class="fas fa-edit"></i> @messages("general.edit")
+        <button type="button" class="btn btn-sm btn-edit btn-page btn-default" title="Edit">
+            <i class="fas fa-edit"></i> Edit
         </button>
 
         <!-- Preview -->
-        <div class="btn-edit-container btn-preview-container" title="@messages('general.preview')">
+        <div class="btn-edit-container btn-preview-container" title="Preview">
             <button type="button" class="btn btn-sm btn-preview btn-page btn-default">
                 <i class="fas fa-eye"></i>
             </button>
         </div>
 
         <!-- Save -->
-        <div v-if="savable" class="btn-edit-container btn-save-container" title="@messages('general.save')">
+        <div v-if="savable" class="btn-edit-container btn-save-container" title="Save">
             <button form="form-editor-save" type="submit" class="btn btn-sm btn-save btn-page btn-default">
                 <i class="fas fa-save"></i>
             </button>
         </div>
 
         <!-- Cancel -->
-        <div v-if="cancellable" class="btn-edit-container btn-cancel-container" title="@messages('general.cancel')">
+        <div v-if="cancellable" class="btn-edit-container btn-cancel-container" title="Cancel">
             <button type="button" class="btn btn-sm btn-cancel btn-page btn-default">
                 <i class="fas fa-times"></i>
             </button>
@@ -28,7 +28,7 @@
 
         <!-- Delete -->
         <template v-if="deletable">
-            <div class="btn-edit-container btn-delete-container" title="@messages('general.delete')">
+            <div class="btn-edit-container btn-delete-container" title="Delete">
                 <button type="button" class="btn btn-sm btn-page-delete btn-page btn-default"
                         data-toggle="modal" data-target="#modal-page-delete">
                     <i class="fas fa-trash"></i>
@@ -50,10 +50,10 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            @form(action = deleteCall, Symbol("class") -> "form-inline") {
-                            @CSRF.formField
-                            <button type="submit" class="btn btn-danger">Delete</button>
-                            }
+                            <form :action="deleteCall" :method="deleteCallMethod" class="form-inline">
+                                <CSRFField></CSRFField>
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -62,20 +62,16 @@
 
         <!-- Edit window -->
         <div class="page-edit" style="display: none ;">
-            <textarea name="content" class="form-control" :form="textForm">@raw</textarea>
+            <textarea name="content" class="form-control" :form="textForm">{{ raw }}</textarea>
         </div>
 
         <!-- Preview window -->
         <div class="page-preview page-rendered" style="display: none ;"></div>
 
-        @if(savable) {
-            @form(action = saveCall, Symbol("id") -> "form-editor-save") {
-                @CSRF.formField
-                @if(extraFormValue != null) {
-                    <input type="hidden" value="@extraFormValue" name="name">
-                }
-            }
-        }
+        <form v-if="savable" :action="saveCall" method="post" id="form-editor-save">
+            <CSRFField></CSRFField>
+            <input v-if="extraFormValue !== null" type="hidden" :value="extraFormValue" name="name">
+        </form>
 
         <!-- Saved window -->
         <div class="page-content page-rendered" v-html="cooked"></div>
@@ -92,12 +88,17 @@
     import markdownItWikilinks from "markdown-it-wikilinks"
     import markdownItTaskLists from "markdown-it-task-lists"
 
+    import CSRFField from "./CSRFField"
+
     const md = markdownIt({
         linkify: true,
         typographer: true
     }).use(markdownItAnchor).use(markdownItWikilinks({relativeBaseURL: location.pathname + "/pages/", uriSuffix: ''})).use(markdownItTaskLists);
 
     export default {
+        components: {
+            CSRFField
+        },
         data: function () {
             return {
                 members: null,
@@ -126,7 +127,9 @@
                 type: String,
                 default: ""
             },
-            subject: String
+            subject: String,
+            saveCall: String,
+            extraFormValue: String
         },
         computed: {
             textForm: function () {

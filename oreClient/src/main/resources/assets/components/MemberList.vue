@@ -18,21 +18,21 @@
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
                         <button type="button" class="close" data-dismiss="modal"
-                                aria-label="@messages('general.close')">
+                                aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
-                        <h4 class="modal-title" id="label-user-delete">@messages("project.removeMember")</h4>
+                        <h4 class="modal-title" id="label-user-delete">Remove member</h4>
                     </div>
-                    <div class="modal-body">@messages("project.removeMember.confirm")</div>
+                    <div class="modal-body">Are you sure you want to remove this user?</div>
                     <div class="modal-footer">
-                        @form(action = removeCall, Symbol("class") -> "form-inline") {
-                        @CSRF.formField
-                        <input type="hidden" name="username"/>
-                        <button type="button" class="btn btn-default" data-dismiss="modal">
-                            @messages("general.close")
-                        </button>
-                        <button type="submit" class="btn btn-danger">@messages("general.remove")</button>
-                        }
+                        <form :action="removeCall" method="post" class="form-inline">
+                            <CSRFField></CSRFField>
+                            <input type="hidden" name="username"/>
+                            <button type="button" class="btn btn-default" data-dismiss="modal">
+                                Close
+                            </button>
+                            <button type="submit" class="btn btn-danger">Remove</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -44,23 +44,21 @@
 
         <div class="panel panel-default">
             <div class="panel-heading">
-                <h3 class="pull-left panel-title">@messages("project.settings.members")</h3>
+                <h3 class="pull-left panel-title">Members</h3>
 
                 <div v-if="permissions.includes('manage_subject_members')" class="pull-right">
-                    <a v-if="!editable" href="@settingsCall"
+                    <a v-if="!editable" :href="settingsCall"
                        class="btn yellow btn-xs">
                         <i class="fas fa-pencil-alt"></i>
                     </a>
 
-                    @if(saveCall != null) {
-                    @form(action = saveCall, Symbol("id") -> "save") {
-                    @CSRF.formField
-                    <button class="btn-members-save btn btn-default btn-panel btn-xs" data-toggle="tooltip"
-                            data-placement="top" data-title="@messages('org.users.save')" style="display: none;">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                    }
-                    }
+                    <form v-if="saveCall !== null" :action="saveCall" method="post" id="save">
+                        <CSRFField></CSRFField>
+                        <button class="btn-members-save btn btn-default btn-panel btn-xs" data-toggle="tooltip"
+                                data-placement="top" data-title="Save Users" style="display: none;">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -70,10 +68,10 @@
                     <li v-for="role in member.roles">
                         <user-avatar :name="member.user" :user-avatar="avatarUrl(member.user)" ,
                                      class="user-avatar-xs"></user-avatar>
-                        <a class="username" href="@routes.Users.showProjects(user.name)">
-                            @user.name
+                        <a class="username" :href="routes.Users.showProjects(member.user)">
+                            {{ member.user }}
                         </a>
-                        <p style="display: none;" class="role-id">@role.id</p>
+                        <p style="display: none;" class="role-id">{{ role.name }}</p>
                         <template
                                 v-if="editable && permissions.includes('manage_subject_members') && role.permissions.includes('manage_subject_members')">
                             <a href="#">
@@ -92,7 +90,7 @@
 
                 <!-- User search -->
                 <li v-if="permissions.includes('manage_subject_members') && editable" class="list-group-item">
-                    @users.invite.userSearch()
+                    <user-search></user-search>
                 </li>
 
             </ul>
@@ -102,14 +100,26 @@
 
 <script>
     import {avatarUrl} from "../utils";
+    import CSRFField from "./CSRFField";
 
     export default {
+        components: {
+            CSRFField
+        },
         props: {
             members: Array,
             permissions: Array,
             editable: {
                 type: Boolean,
                 default: false
+            },
+            removeCall: String,
+            settingsCall: String,
+            saveCall: String
+        },
+        computed: {
+            routes: function () {
+                return jsRoutes.controllers;
             }
         },
         methods: {
