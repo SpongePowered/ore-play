@@ -75,9 +75,10 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
     * @param slug   Project slug
     * @return View of project
     */
-  def show(author: String, slug: String): Action[AnyContent] = ProjectAction(author, slug).asyncF { implicit request =>
-    stats.projectViewed(UIO.succeed(Ok(views.view(request.data))))
-  }
+  def show(author: String, slug: String, vuePagE: String): Action[AnyContent] =
+    ProjectAction(author, slug).asyncF { implicit request =>
+      stats.projectViewed(UIO.succeed(Ok(views.view(request.data))))
+    }
 
   /**
     * Posts a new discussion reply to the forums.
@@ -88,7 +89,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
     */
   def postDiscussionReply(author: String, slug: String): Action[DiscussionReplyForm] =
     AuthedProjectAction(author, slug).asyncF(
-      parse.form(forms.ProjectReply, onErrors = FormError(self.show(author, slug)))
+      parse.form(forms.ProjectReply, onErrors = FormError(self.show(author, slug, "")))
     ) { implicit request =>
       val formData = request.body
       if (request.project.topicId.isEmpty)
@@ -108,7 +109,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
           }
           topicId <- ZIO.fromOption(request.project.topicId).asError(BadRequest)
           _       <- service.insert(Job.PostDiscourseReply.newJob(topicId, poster.name, formData.content).toJob)
-        } yield Redirect(self.show(author, slug))
+        } yield Redirect(self.show(author, slug, ""))
       }
     }
 
@@ -166,7 +167,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
                 s"Not flagged by ${user.name}"
               )(LoggedActionProject.apply)
             )
-            .as(Redirect(self.show(author, slug)).flashing("reported" -> "true"))
+            .as(Redirect(self.show(author, slug, "")).flashing("reported" -> "true"))
       }
     }
 
@@ -320,7 +321,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
   def uploadIcon(author: String, slug: String): Action[MultipartFormData[TemporaryFile]] =
     SettingsEditAction(author, slug)(parse.multipartFormData).asyncF { implicit request =>
       request.body.file("icon") match {
-        case None => IO.fail(Redirect(self.show(author, slug)).withError("error.noFile"))
+        case None => IO.fail(Redirect(self.show(author, slug, "")).withError("error.noFile"))
         case Some(tmpFile) =>
           val data       = request.data
           val pendingDir = projectFiles.getPendingIconDir(data.project.ownerName, data.project.name)
@@ -418,7 +419,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
                 s"'${user.name}' is a member of ${project.ownerName}/${project.name}"
               )(LoggedActionProject.apply)
             )
-            .as(Redirect(self.show(author, slug)))
+            .as(Redirect(self.show(author, slug, "")))
         }
     }
 
@@ -484,7 +485,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
 
         visibility *> log.unit
       } else IO.unit
-      effects.as(Redirect(self.show(request.project.ownerName, request.project.slug)))
+      effects.as(Redirect(self.show(request.project.ownerName, request.project.slug, "")))
   }
 
   /**

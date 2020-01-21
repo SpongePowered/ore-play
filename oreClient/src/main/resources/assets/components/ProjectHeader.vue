@@ -29,7 +29,7 @@
                     <div class="project-path">
                         <a :href="routes.Users.showProjects(project.namespace.owner).absoluteURL()">{{ project.namespace.owner }}</a>
                         /
-                        <a class="project-name" :href="routes.project.Projects.show(project.namespace.owner, project.namespace.slug).absoluteURL()">{{ project.name }}</a>
+                        <a class="project-name" :href="routes.project.Projects.show(project.namespace.owner, project.namespace.slug, '').absoluteURL()">{{ project.name }}</a>
                     </div>
                     <div>
                         <i class="minor" :title="project.summary"> {{project.summary}} </i>

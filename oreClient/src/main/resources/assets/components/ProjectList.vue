@@ -17,7 +17,7 @@
                                 <div class="col-xs-12 col-sm-11">
                                     <div class="row">
                                         <div class="col-sm-6">
-                                            <a :href="routes.Projects.show(project.namespace.owner, project.namespace.slug).absoluteURL()"
+                                            <a :href="routes.Projects.show(project.namespace.owner, project.namespace.slug, '').absoluteURL()"
                                                class="title">
                                                 {{ project.name }}
                                             </a>

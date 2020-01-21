@@ -95,13 +95,14 @@ POST    /:user/settings/lock/:locked                                @controllers
 GET     /:user/settings/apiKeys                                     @controllers.Users.editApiKeys(user)
 # -------- End Users --------
 
-GET     /:author/:slug                                              @controllers.project.Projects.show(author, slug)
+GET     /:author/:slug                                              @controllers.project.Projects.show(author, slug, vuePage = "")
 GET     /:author/:slug/stars                                        @controllers.project.Projects.showStargazers(author, slug, page: Option[Int])
 POST    /:author/:slug/stars/toggle                                 @controllers.project.Projects.toggleStarred(author, slug)
 POST    /:author/:slug/flag                                         @controllers.project.Projects.flag(author, slug)
 POST    /:author/:slug/visible/:visibility                          @controllers.project.Projects.setVisible(author, slug, visibility: Int)
 GET     /:author/:slug/watchers                                     @controllers.project.Projects.showWatchers(author, slug, page: Option[Int])
 POST    /:author/:slug/watchers/:watching                           @controllers.project.Projects.setWatching(author, slug, watching: Boolean)
+GET     /:author/:slug/*vuePage                                     @controllers.project.Projects.show(author, slug, vuePage)
 
 POST    /:author/:slug/discuss/reply                                @controllers.project.Projects.postDiscussionReply(author, slug)
 

@@ -43,7 +43,7 @@
                             @o.get._1.projectRoles.map { case (role, project) =>
                             <tr>
                                 <td>
-                                    <a href="@projectRoutes.Projects.show(project.ownerName, project.slug)">@project.ownerName/@project.slug</a>
+                                    <a href="@projectRoutes.Projects.show(project.ownerName, project.slug, "")">@project.ownerName/@project.slug</a>
                                     <span class="minor">@role.role.title</span>
                                 </td>
                                 <td>

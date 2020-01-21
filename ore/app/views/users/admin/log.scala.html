@@ -95,7 +95,7 @@
                                     </td>
                                 } else { @if(action.actionContext == LoggedActionContext.Project) {
                                     <td>
-                                        <a href="@projectRoutes.Projects.show(action.project.ownerName.get, action.project.slug.getOrElse(""))">@action.project.ownerName/@action.project.slug.getOrElse("")</a>
+                                        <a href="@projectRoutes.Projects.show(action.project.ownerName.get, action.project.slug.getOrElse(""), "")">@action.project.ownerName/@action.project.slug.getOrElse("")</a>
                                         <small class="filter-project">(<a href="@appRoutes.showLog(Some(page), userFilter, action.project.pluginId, versionFilter, pageFilter, actionFilter, subjectFilter)">@action.project.pluginId</a>)</small>
                                     </td>
                                 } else { @if(action.actionContext == LoggedActionContext.ProjectPage) {

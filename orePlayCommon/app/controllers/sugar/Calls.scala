@@ -38,7 +38,7 @@ trait Calls {
     * @param slug   Project slug
     * @return       Call to project page
     */
-  def ShowProject(author: String, slug: String): Call = controllers.project.routes.Projects.show(author, slug)
+  def ShowProject(author: String, slug: String): Call = controllers.project.routes.Projects.show(author, slug, "")
 
   def showVersion(author: String, slug: String, version: String): Call = ???
   def showPage(author: String, slug: String, page: String): Call       = ???

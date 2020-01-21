@@ -395,7 +395,7 @@ class Users @Inject()(
       }
       ((projects, versions), pages) = res
     } yield {
-      val projectEntries = for (project <- projects) yield Sitemap.Entry(projectRoutes.Projects.show(user, project))
+      val projectEntries = for (project <- projects) yield Sitemap.Entry(projectRoutes.Projects.show(user, project, ""))
 
       val versionEntries =
         for ((project, version) <- versions)
