@@ -55,8 +55,8 @@ class Versions(
   def listVersions(
       pluginId: String,
       platforms: Seq[String],
-      stability: Option[Version.Stability],
-      releaseType: Option[Version.ReleaseType],
+      stability: Seq[Version.Stability],
+      releaseType: Seq[Version.ReleaseType],
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
@@ -73,8 +73,8 @@ class Versions(
           pluginId,
           None,
           parsedPlatforms,
-          stability,
-          releaseType,
+          stability.toList,
+          releaseType.toList,
           request.globalPermissions.has(Permission.SeeHidden),
           request.user.map(_.id),
           realLimit,
@@ -86,8 +86,8 @@ class Versions(
         .versionCountQuery(
           pluginId,
           parsedPlatforms,
-          stability,
-          releaseType,
+          stability.toList,
+          releaseType.toList,
           request.globalPermissions.has(Permission.SeeHidden),
           request.user.map(_.id)
         )

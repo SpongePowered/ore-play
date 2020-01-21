@@ -2,7 +2,8 @@
     <div class="version-list">
         <div class="row text-center">
             <div class="col-xs-12">
-                <a v-if="canUpload" class="btn yellow" :href="routes.Versions.showCreator(projectOwner, projectSlug).absoluteURL()">Upload a New Version</a>
+                <!-- <a v-if="canUpload" class="btn yellow" :href="routes.Versions.showCreator(projectOwner, projectSlug).absoluteURL()">Upload a New Version</a> -->
+                <span v-if="canUpload" class="btn yellow">Upload a New Version</span>
             </div>
         </div>
         <div v-show="loading">
@@ -11,23 +12,32 @@
         </div>
         <div v-show="!loading">
             <div class="list-group">
-                <a v-for="version in versions" :href="routes.Versions.show(projectOwner, projectSlug, version.name).absoluteURL()" class="list-group-item"
+                <!-- <a v-for="version in versions" :href="routes.Versions.show(project.namespace.owner, project.namespace.slug, version.name).absoluteURL()" class="list-group-item" -->
+                <a v-for="version in versions" href="TODO" class="list-group-item"
                    :class="[classForVisibility(version.visibility)]">
                     <div class="container-fluid">
                         <div class="row">
-                            <div class="col-xs-6 col-sm-3" :set="channel = version.tags.find(filterTag => filterTag.name === 'Channel')">
+                            <div class="col-xs-6 col-sm-3">
                                 <div class="row">
                                     <div class="col-xs-12">
                                         <span class="text-bold">{{ version.name }}</span>
                                     </div>
-                                    <div class="col-xs-12">
-                                        <span class="channel" v-bind:style="{ background: channel.color.background }">{{ channel.data }}</span>
+                                    <div class="col-xs-12" :set="stability = stabilities.fromId(version.tags.stability)">
+                                        <span class="channel" v-bind:style="{ background: stability.color }">{{ stability.title }}</span>
+                                    </div>
+                                    <div v-if="version.tags.release_type" class="col-xs-12" :set="releaseType = releaseTypes.fromId(version.tags.release_type)">
+                                        <span class="channel" v-bind:style="{ background: releaseType.color }">{{ releaseType.title }}</span>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xs-6 col-sm-3">
-                                <Tag v-for="tag in version.tags.filter(filterTag => filterTag.name !== 'Channel')"
-                                     v-bind:key="tag.name + ':' + tag.data" v-bind="tag"></Tag>
+                                <Tag v-if="version.tags.mixin" name="Mixin" :color="{background: '#FFA500', foreground: '#333333'}"></Tag>
+
+                                <Tag v-for="platform in version.tags.platforms" :set="platformObj = platformById(platform.platform)"
+                                     :key="platform.platform + ':' + platform.platform_version"
+                                     :name="platformObj.shortName"
+                                     :data="platform.platform_version"
+                                     :color="platformObj.color"></Tag>
                             </div>
                             <div class="col-xs-3 hidden-xs">
                                 <div class="row">
@@ -63,33 +73,33 @@
 </template>
 
 <script>
-    import Tag from "./../components/Tag";
-    import Pagination from "./../components/Pagination";
-    import {Visibility} from "./../enums";
+    import Tag from "../../components/Tag";
+    import Pagination from "../../components/Pagination";
+    import {Visibility, Stability, ReleaseType, Platform} from "../../enums";
 
     export default {
         components: {
             Tag,
             Pagination
         },
+        props: {
+            permissions: Array,
+            project: {
+                type: Object,
+                required: true
+            }
+        },
         data() {
             return {
                 page: 1,
                 limit: 10,
-                pluginId: window.PLUGIN_ID,
-                projectOwner: window.PROJECT_OWNER,
-                projectSlug: window.PROJECT_SLUG,
                 versions: [],
                 totalVersions: 0,
-                canUpload: false,
                 loading: true
             }
         },
         created() {
             this.update();
-            apiV2Request("permissions", "GET", window.PLUGIN_ID).then((response) => {
-               this.canUpload = response.permissions.includes("create_version")
-            });
             this.$watch(vm => vm.page, () => {
                 this.update();
                 window.scrollTo(0,0);
@@ -97,7 +107,7 @@
         },
         methods: {
             update() {
-                apiV2Request("projects/" + this.pluginId + "/versions", "GET", { limit: this.limit, offset: this.offset}).then((response) => {
+                apiV2Request("projects/" + this.project.plugin_id + "/versions", "GET", { limit: this.limit, offset: this.offset}).then((response) => {
                     this.versions = response.result;
                     this.totalVersions = response.pagination.count;
                     this.loading = false;
@@ -111,9 +121,15 @@
             },
             classForVisibility(visibility) {
                 return Visibility.fromName(visibility).class;
+            },
+            platformById(id) {
+                return Platform.fromId(id)
             }
         },
         computed: {
+            canUpload() {
+                return this.permissions.includes('create_version')
+            },
             routes() {
                 return jsRoutes.controllers.project;
             },
@@ -125,6 +141,12 @@
             },
             total() {
                 return Math.ceil(this.totalVersions / this.limit)
+            },
+            stabilities() {
+                return Stability
+            },
+            releaseTypes() {
+                return ReleaseType
             }
         }
     }

@@ -1,6 +1,6 @@
 <template>
-    <div v-if="currentProject && permissions" >
-        <project-header :project="currentProject" :permissions="permissions" />
+    <div v-if="currentProject" >
+        <project-header :project="currentProject" :permissions="permissions" :current-user="currentUser" />
 
         <router-view :project="currentProject" :permissions="permissions" />
     </div>
@@ -17,7 +17,8 @@
         data() {
             return {
                 fetchedProject: null,
-                permissions: null
+                permissions: [],
+                currentUser: null //TODO
             }
         },
         props: {

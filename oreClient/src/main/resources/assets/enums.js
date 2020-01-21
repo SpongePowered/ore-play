@@ -38,6 +38,10 @@ export class Platform {
     static isPlatformTag(tag) {
         return this.keys.includes(tag.name);
     }
+
+    static fromId(id) {
+        return this.values.filter(platform => platform.id === id)[0];
+    }
 }
 
 export const SortOptions = [
@@ -96,3 +100,47 @@ Permission.ManualValueChanges = "manual_value_changes";
 Permission.HardDeleteProject = "hard_delete_project";
 Permission.HardDeleteVersion = "hard_delete_version";
 Permission.EditAllUserSettings = "edit_all_user_settings";
+
+export class FlagReason {
+    static get values() {
+        return [
+            {value: 0, title: 'Inappropriate Content'},
+            {value: 1, title: 'Impersonation or Deception'},
+            {value: 2, title: 'Spam'},
+            {value: 3, title: 'Malicious Intent'},
+            {value: 4, title: 'Other'}
+        ]
+    }
+}
+
+export class Stability {
+    static get values() {
+        return [
+            {id: 'stable', title: 'Stable', color: '#00C800'},
+            {id: 'beta', title: 'Beta', color: '#FFC800'},
+            {id: 'alpha', title: 'Alpha', color: '#FF6000'},
+            {id: 'bleeding', title: 'Bleeding', color: '#FF0000'},
+            {id: 'unsupported', title: 'Unsupported', color: '#784646'},
+            {id: 'broken', title: 'Broken', color: '#7F7F7F'}
+        ]
+    }
+
+    static fromId(id) {
+        return this.values.filter(stability => stability.id === id)[0];
+    }
+}
+
+export class ReleaseType {
+    static get values() {
+        return [
+            {id: 'major_update', title: 'Major update', color: '#4080FF'},
+            {id: 'minor_update', title: 'Minor update', color: '#009600'},
+            {id: 'patches', title: 'Patches', color: '#7F7F7F'},
+            {id: 'hotfix', title: 'Hotfix', color: '#C80000'}
+        ]
+    }
+
+    static fromId(id) {
+        return this.values.filter(releaseType => releaseType.id === id)[0];
+    }
+}

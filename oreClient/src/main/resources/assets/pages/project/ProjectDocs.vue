@@ -16,9 +16,9 @@
                 <p>Published on {{ parseDate(project.created_at) }}</p>
                 <p>{{ project.stats.views }} views</p>
                 <p>{{ project.stats.stars }} <a
-                        :href="routes.Projects.showStargazers(project.namespace.owner, project.namespace.slug, null)">stars</a></p>
+                        :href="routes.Projects.showStargazers(project.namespace.owner, project.namespace.slug, null).absoluteURL()">stars</a></p>
                 <p>{{ project.stats.watchers }} <a
-                        :href="routes.Projects.showWatchers(project.namespace.owner, project.namespace.slug, null)">watchers</a></p>
+                        :href="routes.Projects.showWatchers(project.namespace.owner, project.namespace.slug, null).absoluteURL()">watchers</a></p>
                 <p>{{ project.stats.downloads }} total downloads</p>
                 <p v-if="project.settings.license.name !== null">
                     <span>Licensed under </span>

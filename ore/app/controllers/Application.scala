@@ -65,7 +65,9 @@ final class Application @Inject()(forms: OreForms)(
         controllers.project.routes.javascript.Projects.showNotes,
         controllers.project.routes.javascript.Projects.showStargazers,
         controllers.project.routes.javascript.Projects.showWatchers,
+        controllers.project.routes.javascript.Projects.flag,
         controllers.routes.javascript.Users.showProjects,
+        controllers.routes.javascript.Users.logIn,
         controllers.routes.javascript.Application.showLog,
         controllers.routes.javascript.Application.linkOut
       )

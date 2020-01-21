@@ -98,7 +98,7 @@ object APIV2Queries extends DoobieOreProtocol {
       pluginId: Option[String],
       category: List[Category],
       platforms: List[(String, Option[String])],
-      stability: Option[Version.Stability],
+      stability: List[Version.Stability],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -152,7 +152,7 @@ object APIV2Queries extends DoobieOreProtocol {
     val filters = Fragments.whereAndOpt(
       pluginId.map(id => fr"p.plugin_id = $id"),
       NonEmptyList.fromList(category).map(Fragments.in(fr"p.category", _)),
-      if (platforms.nonEmpty || stability.isDefined) {
+      if (platforms.nonEmpty || stability.nonEmpty) {
         val jsSelect =
           sql"""|SELECT promoted.platform
                 |    FROM (SELECT unnest(platforms)                AS platform,
@@ -163,7 +163,7 @@ object APIV2Queries extends DoobieOreProtocol {
                 .fromList(platformsWithVersion)
                 .map(t => in2(fr"(promoted.platform, promoted.platform_coarse_version)", t)),
               NonEmptyList.fromList(platformsWithoutVersion).map(t => Fragments.in(fr"promoted.platform", t)),
-              stability.map(s => fr"promoted.stability = $s")
+              NonEmptyList.fromList(stability).map(Fragments.in(fr"promoted.stability", _))
             )
 
         Some(fr"EXISTS" ++ Fragments.parentheses(jsSelect))
@@ -181,7 +181,7 @@ object APIV2Queries extends DoobieOreProtocol {
       pluginId: Option[String],
       category: List[Category],
       platforms: List[(String, Option[String])],
-      stability: Option[Version.Stability],
+      stability: List[Version.Stability],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -234,7 +234,7 @@ object APIV2Queries extends DoobieOreProtocol {
       Some(pluginId),
       Nil,
       Nil,
-      None,
+      Nil,
       None,
       None,
       canSeeHidden,
@@ -249,7 +249,7 @@ object APIV2Queries extends DoobieOreProtocol {
       pluginId: Option[String],
       category: List[Category],
       platforms: List[(String, Option[String])],
-      stability: Option[Version.Stability],
+      stability: List[Version.Stability],
       query: Option[String],
       owner: Option[String],
       canSeeHidden: Boolean,
@@ -334,8 +334,8 @@ object APIV2Queries extends DoobieOreProtocol {
       pluginId: String,
       versionName: Option[String],
       platforms: List[(String, Option[String])],
-      stability: Option[Version.Stability],
-      releaseType: Option[Version.ReleaseType],
+      stability: List[Version.Stability],
+      releaseType: List[Version.ReleaseType],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
   ): Fragment = {
@@ -345,7 +345,6 @@ object APIV2Queries extends DoobieOreProtocol {
             |       pv.dependency_ids,
             |       pv.dependency_versions,
             |       pv.visibility,
-            |       pv.description,
             |       coalesce((SELECT sum(pvd.downloads) FROM project_versions_downloads pvd WHERE p.id = pvd.project_id AND pv.id = pvd.version_id), 0),
             |       pv.file_size,
             |       pv.hash,
@@ -376,6 +375,8 @@ object APIV2Queries extends DoobieOreProtocol {
           )
         }
 
+    NonEmptyList.fromList(stability).map(Fragments.in(fr"pv.stability", _))
+
     val filters = Fragments.whereAndOpt(
       Some(fr"p.plugin_id = $pluginId"),
       versionName.map(v => fr"pv.version_string = $v"),
@@ -386,8 +387,8 @@ object APIV2Queries extends DoobieOreProtocol {
           array2Text(t) ++
             fr"&& ARRAY(SELECT (platform, coarse_version)::TEXT FROM unnest(pv.platforms, pv.platform_coarse_versions) as plat(platform, coarse_version))"
         },
-      stability.map(s => fr"pv.stability = $s"),
-      releaseType.map(rt => fr"pv.release_type = $rt"),
+      NonEmptyList.fromList(stability).map(Fragments.in(fr"pv.stability", _)),
+      NonEmptyList.fromList(releaseType).map(Fragments.in(fr"pv.release_type", _)),
       visibilityFrag
     )
 
@@ -398,8 +399,8 @@ object APIV2Queries extends DoobieOreProtocol {
       pluginId: String,
       versionName: Option[String],
       platforms: List[(String, Option[String])],
-      stability: Option[Version.Stability],
-      releaseType: Option[Version.ReleaseType],
+      stability: List[Version.Stability],
+      releaseType: List[Version.ReleaseType],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]],
       limit: Long,
@@ -415,13 +416,13 @@ object APIV2Queries extends DoobieOreProtocol {
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
   ): doobie.Query0[APIV2.Version] =
-    versionQuery(pluginId, Some(versionName), Nil, None, None, canSeeHidden, currentUserId, 1, 0)
+    versionQuery(pluginId, Some(versionName), Nil, Nil, Nil, canSeeHidden, currentUserId, 1, 0)
 
   def versionCountQuery(
       pluginId: String,
       platforms: List[(String, Option[String])],
-      stability: Option[Version.Stability],
-      releaseType: Option[Version.ReleaseType],
+      stability: List[Version.Stability],
+      releaseType: List[Version.ReleaseType],
       canSeeHidden: Boolean,
       currentUserId: Option[DbRef[User]]
   ): Query0[Long] =

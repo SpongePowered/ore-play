@@ -17,7 +17,6 @@ module.exports = {
         project: Path.resolve(entryDir, 'project.js'),
         'font-awesome': Path.resolve(entryDir, 'font-awesome.js'),
         'user-profile': Path.resolve(entryDir, 'user-profile.js'),
-        'version-list': Path.resolve(entryDir, 'version-list.js'),
         'ore-client-fastopt': Path.resolve(entryDir, 'dummy.js'),
         'ore-client-opt': Path.resolve(entryDir, 'dummy.js')
     },

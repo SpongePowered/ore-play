@@ -29,7 +29,9 @@
                     <div class="project-path">
                         <a :href="routes.Users.showProjects(project.namespace.owner).absoluteURL()">{{ project.namespace.owner }}</a>
                         /
-                        <a class="project-name" :href="routes.project.Projects.show(project.namespace.owner, project.namespace.slug, '').absoluteURL()">{{ project.name }}</a>
+                        <router-link :to="{name: 'home', params: {project, permissions}}" v-slot="{ href, navigate, isExactActive }">
+                            <a class="project-name" :href="href" @click="navigate">{{ project.name }}</a>
+                        </router-link>
                     </div>
                     <div>
                         <i class="minor" :title="project.summary"> {{project.summary}} </i>
@@ -82,11 +84,11 @@
                                         </button>
                                         <h4 class="modal-title" id="label-flag">Flag project</h4>
                                     </div>
-                                    <form :action="routes.project.Projects.flag(project.project.ownerName, project.project.slug).absoluteURL()" method="post">
+                                    <form :action="routes.project.Projects.flag(project.namespace.owner, project.namespace.slug).absoluteURL()" method="post">
                                         <CSRFField></CSRFField>
                                         <div class="modal-body">
                                             <ul class="list-group list-flags">
-                                                <li v-for="reason in FlagReason.values()" class="list-group-item">
+                                                <li v-for="reason in flagReason.values" class="list-group-item">
                                                     <span>{{ reason.title }}</span>
                                                     <span class="pull-right">
                                                         <input required type="radio"
@@ -210,7 +212,7 @@
 </template>
 
 <script>
-    import {Permission} from "../enums";
+    import {Permission, FlagReason} from "../enums";
     import CSRFField from "./CSRFField";
 
     export default {
@@ -238,7 +240,7 @@
         },
         computed: {
             fullSlug: function () {
-                return project.namespace.owner + project.slug
+                return project.namespace.owner + '/' + project.slug
             },
             routes: function () {
                 return jsRoutes.controllers;
@@ -251,10 +253,13 @@
                 }
             },
             isOwner: function () {
-                return currentUser && project.namespace.owner === currentUser.name;
+                return this.currentUser && this.project.namespace.owner === this.currentUser.name;
             },
             permission() {
                 return Permission;
+            },
+            flagReason() {
+                return FlagReason
             }
         },
         methods: {
