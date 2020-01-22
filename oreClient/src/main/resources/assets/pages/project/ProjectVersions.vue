@@ -38,7 +38,7 @@
                 </ul>
             </div>
 
-            <member-list :permissions="permissions"></member-list>
+            <member-list :permissions="permissions" :members="members" role-category="project"></member-list>
         </div>
     </div>
 </template>
@@ -57,6 +57,10 @@
             permissions: Array,
             project: {
                 type: Object,
+                required: true
+            },
+            members: {
+                type: Array,
                 required: true
             }
         },

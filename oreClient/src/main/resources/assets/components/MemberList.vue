@@ -1,15 +1,15 @@
 <template>
     <div>
         <div v-if="editable && permissions.includes('manage_subject_members')">
-            <role-select id="select-role" class="pull-right" hidden="true"></role-select>
+            <role-select id="select-role" class="pull-right" :hidden="true" :role-category="roleCategory"></role-select>
 
             <ul style="display: none">
                 <li id="row-user" class="list-group-item">
                     <input type="hidden"/>
-                    <user-avatar class="user-avatar-xs"></user-avatar>
+                    <icon :src="avatarUrl('Spongie')" class="user-avatar-xs"></icon>
                     <a class="username"></a>
                     <i class="fas fa-times user-cancel"></i>
-                    <role-select class="pull-right"></role-select>
+                    <role-select class="pull-right" :role-category="roleCategory"></role-select>
                 </li>
             </ul>
 
@@ -66,8 +66,8 @@
                 <!-- Member list -->
                 <template v-for="member in members" class="list-group-item">
                     <li v-for="role in member.roles">
-                        <user-avatar :name="member.user" :user-avatar="avatarUrl(member.user)" ,
-                                     class="user-avatar-xs"></user-avatar>
+                        <icon :name="member.user" :src="avatarUrl(member.user)" ,
+                                     class="user-avatar-xs"></icon>
                         <a class="username" :href="routes.Users.showProjects(member.user)">
                             {{ member.user }}
                         </a>
@@ -101,12 +101,22 @@
 <script>
     import {avatarUrl} from "../utils";
     import CSRFField from "./CSRFField";
+    import Icon from "./Icon"
+    import UserSearch from "./UserSearch"
+    import RoleSelect from "./RoleSelect"
 
     export default {
         components: {
-            CSRFField
+            CSRFField,
+            Icon,
+            UserSearch,
+            RoleSelect
         },
         props: {
+            roleCategory: {
+                type: String,
+                required: true
+            },
             members: Array,
             permissions: Array,
             editable: {

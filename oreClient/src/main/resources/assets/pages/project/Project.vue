@@ -2,7 +2,7 @@
     <div v-if="currentProject" >
         <project-header :project="currentProject" :permissions="permissions" :current-user="currentUser" />
 
-        <router-view :project="currentProject" :permissions="permissions" />
+        <router-view :project="currentProject" :permissions="permissions" :members="members" />
     </div>
 </template>
 
@@ -18,6 +18,7 @@
             return {
                 fetchedProject: null,
                 permissions: [],
+                members: [], //TODO
                 currentUser: null //TODO
             }
         },

@@ -278,7 +278,7 @@ object Projects {
       name: F[String],
       ownerName: F[String],
       category: F[Category],
-      description: F[Option[String]],
+      summary: F[Option[String]],
       settings: EditableProjectSettingsF[F]
   )
   object EditableProjectF {

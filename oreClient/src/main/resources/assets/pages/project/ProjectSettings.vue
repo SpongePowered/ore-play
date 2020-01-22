@@ -8,7 +8,7 @@
                     <div class="panel-heading">
                         <h3 class="panel-title pull-left">Settings</h3>
                         <template v-if="permissions.includes('see_hidden')">
-                            <btn-hide :project="project"></btn-hide>
+                            <btn-hide :namespace="project.namespace" :project-visibility="project.visibility"></btn-hide>
                             <div class="modal fade" id="modal-visibility-comment" tabindex="-1" role="dialog"
                                  aria-labelledby="modal-visibility-comment">
                                 <div class="modal-dialog" role="document">
@@ -35,19 +35,174 @@
                     </div>
 
                     <div class="panel-body">
-                        <input-settings form="save" :project="project"></input-settings>
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>Category</h4>
+                                <p>
+                                    <label for="category-setting">
+                                        Categorize your project into one of {{ categories.values.length }} categories.
+                                        Appropriately categorizing your project makes it easier for people to find.
+                                    </label>
+                                </p>
+                            </div>
+                            <div class="setting-content">
+                                <select id="category-setting" class="form-control" v-model="category">
+                                    <option v-for="categoryIt in categories.values" :value="categoryIt.id">
+                                        {{ categoryIt.name }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>Keywords <i>(optional)</i></h4>
+                                <p>
+                                    <label for="keyword-setting">
+                                        These are special words that will return your project when people add them to their searches. Max 5.
+                                    </label>
+                                </p>
+                            </div>
+                            <input id="keyword-setting"
+                                   v-model="keywords"
+                                   type="text"
+                                   class="form-control"
+                                   placeholder="sponge server plugins mods">
+                            <div class="clearfix"></div>
+                        </div>
+
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>Homepage <i>(optional)</i></h4>
+                                <p>
+                                    <label for="homepage-setting">
+                                        Having a custom homepage for your project helps you look more proper, official,
+                                        and gives you another place to gather information about your project.
+                                    </label>
+                                </p>
+                            </div>
+                            <input id="homepage-setting"
+                                   v-model="homepage"
+                                   type="url"
+                                   class="form-control"
+                                   placeholder="https://spongepowered.org">
+                            <div class="clearfix"></div>
+                        </div>
+
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>Issue tracker <i>(optional)</i></h4>
+                                <p>
+                                    <label for="issues-setting">
+                                        Providing an issue tracker helps your users get support more easily and provides
+                                        you with an easy way to track bugs.
+                                    </label>
+                                </p>
+                            </div>
+                            <input id="issues-setting"
+                                   v-model="issues"
+                                   type="url"
+                                   class="form-control"
+                                   placeholder="https://github.com/SpongePowered/SpongeAPI/issues">
+                            <div class="clearfix"></div>
+                        </div>
+
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>Source code <i>(optional)</i></h4>
+                                <p><label for="sources-setting">Support the community of developers by making your project open source!</label></p>
+                            </div>
+                            <input id="sources-setting"
+                                   v-model="sources"
+                                   type="url"
+                                   class="form-control"
+                                   placeholder="https://github.com/SpongePowered/SpongeAPI">
+                        </div>
+
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>External support <i>(optional)</i></h4>
+                                <p>
+                                    <label for="support-setting">
+                                        An external place where you can offer support to your users. Could be a forum,
+                                        a Discord server, or somewhere else.
+                                    </label>
+                                </p>
+                            </div>
+                            <input id="support-setting"
+                                   v-model="support"
+                                   type="url"
+                                   class="form-control"
+                                   placeholder="https://discord.gg/sponge">
+                            <div class="clearfix"></div>
+                        </div>
+
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>License <i>(optional)</i></h4>
+                                <p>What can people do (and not do) with your project?</p>
+                            </div>
+                            <div class="input-group pull-left">
+                                <div class="input-group-btn">
+                                    <button type="button" class="btn btn-default btn-license dropdown-toggle" data-toggle="dropdown"
+                                            aria-haspopup="true" aria-expanded="false">
+                                        <span class="license">{{ licenseName }}</span>
+                                        <span class="caret"></span>
+                                    </button>
+                                    <input type="text" class="form-control" style="display: none;" v-model="licenseName" />
+                                    <ul class="dropdown-menu dropdown-license">
+                                        <li><a>MIT</a></li>
+                                        <li><a>Apache 2.0</a></li>
+                                        <li><a>GNU General Public License (GPL)</a></li>
+                                        <li><a>GNU Lesser General Public License (LGPL)</a></li>
+                                        <li role="separator" class="divider"></li>
+                                        <li><a class="license-custom">Custom&hellip;</a></li>
+                                    </ul>
+                                </div>
+                                <input type="text" class="form-control"
+                                       placeholder="https://github.com/SpongePowered/SpongeAPI/LICENSE.md" v-model="licenseUrl">
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
+
+                        <div class="setting">
+                            <div class="setting-description">
+                                <h4>Create posts on the forums</h4>
+                                <p>Sets if events like a new release should automatically create a post on the forums</p>
+                            </div>
+                            <div class="setting-content">
+                                <label>
+                                    <input v-model="forumSync" type="checkbox">
+                                    Make forum posts
+                                </label>
+                            </div>
+                            <div class="clearfix"></div>
+                        </div>
 
                         <!-- Summary -->
                         <div class="setting" :set="maxLength = config.ore.projects.maxDescLen">
                             <div class="setting-description">
-                                <h4>Description</h4>
-                                <p>A short summary of your project (max {{ maxLength }}).</p>
+                                <h4>Summary</h4>
+                                <p><label for="summary-setting">A short summary of your project (max {{ maxLength }}).</label></p>
                             </div>
-                            <input v-if="project.summary" form="save" class="form-control" type="text" :maxlength="maxLength" :value="project.summary">
-                            <input v-else form="save" class="form-control" type="text" :maxlength="maxLength" placeholder="No description given.">
+                            <input id="summary-setting" class="form-control" type="text" :maxlength="maxLength" v-model="summary">
                             <div class="clearfix"></div>
                         </div>
 
+                        <button name="save" class="btn btn-success btn-spinner" data-icon="fa-check">
+                            <i class="fas fa-check"></i> Save changes
+                            {{ dataToSend }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel panel-default panel-settings">
+                    <div clasS="panel-heading">
+                        <h3 class="panel-title pull-left">Danger area</h3>
+                    </div>
+
+                    <div class="panel-body">
                         <!-- Project icon -->
                         <div class="setting setting-icon">
                             <form id="form-icon" enctype="multipart/form-data">
@@ -55,10 +210,10 @@
                                 <div class="setting-description">
                                     <h4>Icon</h4>
 
-                                    <user-avatar :username="project.namespace.owner"
-                                                 :avatarUrl="avatarUrl(project.namespace.owner)"
-                                                 :imgSrc="iconUrl"
-                                                 class="user-avatar-md"></user-avatar>
+                                    <icon :username="project.namespace.owner"
+                                          :src="avatarUrl(project.namespace.owner)"
+                                          :imgSrc="iconUrl"
+                                          class="user-avatar-md"></icon>
 
                                     <input class="form-control-static" type="file" id="icon" name="icon"/>
                                 </div>
@@ -77,33 +232,28 @@
                             </form>
                         </div>
 
-                        <div v-if="permissions.inclues('edit_api_keys')" class="setting">
+                        <div v-if="permissions.includes('edit_api_keys')" class="setting">
                             <div class="setting-description">
                                 <h4>Deployment key</h4>
                                 <p>
                                     Generate a unique deployment key to enable build deployment from Gradle
                                     <a href="#"><i class="fas fa-question-circle"></i></a>
                                 </p>
-                                @deploymentKey.map { key =>
-                                <input class="form-control input-key" type="text" value="@key.value" readonly/>
-                                }.getOrElse {
-                                <input class="form-control input-key" type="text" value="" readonly/>
-                                }
+                                <input class="form-control input-key" type="text" :value="deployKey" readonly/>
                             </div>
                             <div class="setting-content">
-                                @deploymentKey.map { key =>
-                                <button class="btn btn-danger btn-block btn-key-revoke" data-key-id="@key.id">
-                                <span class="spinner" style="display: none;"><i
-                                        class="fas fa-spinner fa-spin"></i></span>
-                                    <span class="text">Revoke key</span>
-                                </button>
-                                }.getOrElse {
-                                <button class="btn btn-info btn-block btn-key-gen">
-                                <span class="spinner" style="display: none;"><i
-                                        class="fas fa-spinner fa-spin"></i></span>
-                                    <span class="text">Generate key</span>
-                                </button>
-                                }
+                                <template v-if="deployKey !== null">
+                                    <button class="btn btn-danger btn-block btn-key-revoke" :data-key-id="deployKey">
+                                        <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                        <span class="text">Revoke key</span>
+                                    </button>
+                                </template>
+                                <template v-else>
+                                    <button class="btn btn-info btn-block btn-key-gen">
+                                        <span class="spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                        <span class="text">Generate key</span>
+                                    </button>
+                                </template>
                             </div>
                             <div class="clearfix"></div>
                         </div>
@@ -155,22 +305,22 @@
                             </div>
                             <div class="clearfix"></div>
                         </div>
-
-                        <button name="save" class="btn btn-success btn-spinner" data-icon="fa-check">
-                            <i class="fas fa-check"></i> Save changes
-                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Side panel -->
             <div class="col-md-4">
-                <member-list
-                        :editable="true"
-                        :members="members"
-                        :permissions="permissions"
-                        :remove-call="routes.project.Projects.removeMember(project.namespace.owner, project.namespace.slug)"
-                        :settings-call="routes.project.Projects.showSettings(project.namespace.owner, project.namespace.slug)"></member-list>
+                <router-link :to="{name: 'settings'}" v-slot="{ href, navigate }">
+                    <!-- TODO: Pass in navigate to member-list -->
+                    <member-list
+                            :editable="true"
+                            :members="members"
+                            :permissions="permissions"
+                            :remove-call="routes.project.Projects.removeMember(project.namespace.owner, project.namespace.slug).absoluteURL()"
+                            :settings-call="href"
+                            role-category="project"></member-list>
+                </router-link>
             </div>
         </div>
 
@@ -231,14 +381,35 @@
 </template>
 
 <script>
+    import BtnHide from "../../components/BtnHide";
     import CSRFField from "../../components/CSRFField";
     import MemberList from "../../components/MemberList";
-    import InputSettings from "./InputSettings";
+    import Icon from "../../components/Icon";
+    import {avatarUrl as avatarUrlUtils, clearFromDefaults} from "../../utils"
+    import {Category} from "../../enums";
+
     export default {
         components: {
+            BtnHide,
             MemberList,
             CSRFField,
-            InputSettings
+            Icon
+        },
+        data() {
+            return {
+                category: this.project.category,
+                keywords: '', //TODO
+                homepage: this.project.settings.homepage,
+                issues: this.project.settings.issues,
+                sources: this.project.settings.sources,
+                support: this.project.settings.support,
+                licenseName: this.project.settings.license.name,
+                licenseUrl: this.project.settings.license.url,
+                forumSync: this.project.settings.forum_sync,
+                summary: this.project.summary,
+                iconUrl: this.project.icon_url,
+                deployKey: null //TODO
+            }
         },
         props: {
             permissions: {
@@ -248,11 +419,50 @@
             project: {
                 type: Object,
                 required: true
+            },
+            members: {
+                type: Array,
+                required: true
             }
         },
         computed: {
             routes() {
                 return jsRoutes.controllers
+            },
+            config() {
+                return {
+                    ore: {
+                        projects: {
+                            //TODO: Get this from someplace better
+                            maxDescLen: 120,
+                            maxNameLen: 25
+                        }
+                    }
+                }
+            },
+            categories() {
+                return Category
+            },
+            keywordArr() {
+                return this.keywords.split(' ')
+            },
+            dataToSend() {
+                let base = clearFromDefaults({category: this.category, summary: this.summary}, this.project);
+                base.settings = clearFromDefaults({
+                    keywords: this.keywordArr,
+                    homepage: this.homepage,
+                    issues: this.issues,
+                    support: this.support,
+                    forum_sync: this.forumSync
+                }, this.project.settings);
+                base.settings.license = clearFromDefaults({name: this.licenseName, url: this.licenseUrl}, this.project.settings.license);
+
+                return base
+            }
+        },
+        methods: {
+            avatarUrl(name) {
+                return avatarUrlUtils(name)
             }
         }
     }

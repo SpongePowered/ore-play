@@ -37,9 +37,9 @@
                     </li>
                 </ul>
             </div>
-        </div>
 
-        <member-list v-if="members && permissions" :members="members" :permissions="permissions"/>
+            <member-list :members="members" :permissions="permissions" role-category="project"/>
+        </div>
     </div>
 </template>
 
@@ -47,16 +47,17 @@
 
     import {API} from "../../api";
     import Editor from "../../components/Editor";
+    import MemberList from "../../components/MemberList";
     import {Category} from "../../enums";
 
     export default {
         components: {
-            Editor
+            Editor,
+            MemberList
         },
         data() {
             return {
-                description: "",
-                members: null
+                description: ""
             }
         },
         props: {
@@ -70,6 +71,10 @@
             },
             page: {
                 type: String,
+                required: true
+            },
+            members: {
+                type: Array,
                 required: true
             }
         },
