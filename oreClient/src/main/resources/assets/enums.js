@@ -22,12 +22,12 @@ export class Category {
 export class Platform {
     static get values() {
         return [
-            {id: "spongeapi", shortName: "Sponge", name: "Sponge Plugins", parent: true, color: { background: "#F7Cf0D", foreground: "#333333" }},
-            {id: "spongeforge", shortName: "SpongeForge", name: "SpongeForge", color: { background: "#910020", foreground: "#FFFFFF" }},
-            {id: "spongevanilla", shortName: "SpongeVanilla", name: "SpongeVanilla", color: { background: "#50C888", foreground: "#FFFFFF" }},
-            {id: "sponge", shortName: "SpongeCommon", name: "SpongeCommon", color: { background: "#5D5DFF", foreground: "#FFFFFF" }},
-            {id: "lantern", shortName: "Lantern", name: "Lantern", color: { background: "#4EC1B4", foreground: "#FFFFFF" }},
-            {id: "forge", shortName: "Forge",  name: "Forge Mods", parent: true, color: { background: "#DFA86A", foreground: "#FFFFFF" }}
+            {id: "spongeapi", shortName: "Sponge", name: "Sponge Plugins", parent: true, color: { background: "#F7Cf0D", foreground: "#333333" }, priority: 0},
+            {id: "spongeforge", shortName: "SpongeForge", name: "SpongeForge", color: { background: "#910020", foreground: "#FFFFFF" }, priority: 2},
+            {id: "spongevanilla", shortName: "SpongeVanilla", name: "SpongeVanilla", color: { background: "#50C888", foreground: "#FFFFFF" }, priority: 2},
+            {id: "sponge", shortName: "SpongeCommon", name: "SpongeCommon", color: { background: "#5D5DFF", foreground: "#FFFFFF" }, priority: 1},
+            {id: "lantern", shortName: "Lantern", name: "Lantern", color: { background: "#4EC1B4", foreground: "#FFFFFF" }, priority: 2},
+            {id: "forge", shortName: "Forge",  name: "Forge Mods", parent: true, color: { background: "#DFA86A", foreground: "#FFFFFF" }, priority: 0}
         ];
     }
 
@@ -41,6 +41,17 @@ export class Platform {
 
     static fromId(id) {
         return this.values.filter(platform => platform.id === id)[0];
+    }
+
+    static getPlatforms(dependencyIds) {
+        /* TODO
+        return this.values
+            .filter(p => dependencyIds.includes(p.id))
+            .groupBy(_.platformCategory)
+            .flatMap(_._2.groupBy(_.priority).maxBy(_._1)._2)
+         */
+
+        return this.values.filter(p => dependencyIds.includes(p.id))
     }
 }
 

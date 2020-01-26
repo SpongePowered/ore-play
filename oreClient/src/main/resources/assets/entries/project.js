@@ -6,6 +6,7 @@ import ProjectSettings from "../pages/project/ProjectSettings";
 import ProjectDocs from "../pages/project/ProjectDocs";
 import ProjectVersions from "../pages/project/ProjectVersions";
 import Project from "../pages/project/Project";
+import VersionPage from "../pages/project/VersionPage";
 
 Vue.use(VueRouter);
 
@@ -31,6 +32,17 @@ const router = new VueRouter({
             path: '/versions',
             name: 'versions',
             component: ProjectVersions
+        },
+        {
+            path: '/versions/new',
+            name: 'new_version',
+            component: NewVersion
+        },
+        {
+            path: '/versions/:version',
+            name: 'version',
+            component: VersionPage,
+            props: true
         },
         {
             path: '/discuss',
