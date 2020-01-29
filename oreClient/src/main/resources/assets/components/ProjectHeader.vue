@@ -158,21 +158,21 @@
                                 </li>
                             </router-link>
 
-                            <router-link :to="{name: 'versions'}" v-slot="{ href, navigate, isExactActive }">
-                                <li :class="[isExactActive && 'active']">
+                            <router-link :to="{name: 'versions'}" v-slot="{ href, navigate, isActive }">
+                                <li :class="[isActive && 'active']">
                                     <a :href="href" @click="navigate"><i class="fas fa-download"></i> Versions</a>
                                 </li>
                             </router-link>
 
                             <!-- TODO only show if topic -->
-                            <router-link :to="{name: 'discussion'}" v-slot="{ href, navigate, isExactActive }">
-                                <li :class="[isExactActive && 'active']">
+                            <router-link :to="{name: 'discussion'}" v-slot="{ href, navigate, isActive }">
+                                <li :class="[isActive && 'active']">
                                     <a :href="href" @click="navigate"><i class="fas fa-users"></i> Discuss</a>
                                 </li>
                             </router-link>
 
-                            <router-link v-if="permissions.includes(permission.EditSubjectSettings)" :to="{name: 'settings'}" v-slot="{ href, navigate, isExactActive }">
-                                <li :class="[isExactActive && 'active']">
+                            <router-link v-if="permissions.includes(permission.EditSubjectSettings)" :to="{name: 'settings'}" v-slot="{ href, navigate, isActive }">
+                                <li :class="[isActive && 'active']">
                                     <a :href="href" @click="navigate"><i class="fas fas fa-cog"></i> Settings</a>
                                 </li>
                             </router-link>

@@ -7,6 +7,7 @@ import ProjectDocs from "../pages/project/ProjectDocs";
 import ProjectVersions from "../pages/project/ProjectVersions";
 import Project from "../pages/project/Project";
 import VersionPage from "../pages/project/VersionPage";
+import NewVersion from "../pages/project/NewVersion";
 
 Vue.use(VueRouter);
 

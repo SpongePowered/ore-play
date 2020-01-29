@@ -11,7 +11,7 @@
 
                 <!-- User info -->
                 <p class="user date pull-left">
-                    <a :href="routes.Users.showProjects(project.namespace.owner)">
+                    <a :href="routes.Users.showProjects(project.namespace.owner).absoluteURL()">
                         <strong>{{ project.namespace.owner }}</strong>
                     </a>
                     released this version on {{ prettifyDate(versionObj.created_at) }}
@@ -35,10 +35,10 @@
                     </div>
 
                     <div class="version-buttons pull-right">
-                        <div><span class="date">{{ humanFileSize(versionObj.file_info.size_bytes) }}</span></div>
+                        <div><span class="date">{{ formatBytes(versionObj.file_info.size_bytes) }}</span></div>
 
                         <div>
-                            <a v-if="permissions.includes('reviewer')" :href="routes.Reviews.showReviews(project.namespace.owner, project.namespace.slug, versionObj.name)" :class="{btn: true, 'btn-info': isReviewStateChecked, 'btn-success': !isReviewStateChecked}">
+                            <a v-if="permissions.includes('reviewer')" :href="routes.Reviews.showReviews(project.namespace.owner, project.namespace.slug, versionObj.name).absoluteURL()" :class="{btn: true, 'btn-info': isReviewStateChecked, 'btn-success': !isReviewStateChecked}">
                                 <template v-if="isReviewStateChecked">Review logs</template>
                                 <i v-else class="fas fa-play"></i> Start review
                             </a>
@@ -58,7 +58,7 @@
                             </template>
 
                             <div class="btn-group btn-download">
-                                <a :href="routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null)"
+                                <a :href="routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()"
                                    title="Download the latest recommended version" data-toggle="tooltip"
                                 data-placement="bottom" class="btn btn-primary">
                                 <i class="fas fa-download"></i> Download
@@ -68,8 +68,8 @@
                                     <span class="sr-only">Toggle Dropdown</span>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-right">
-                                    <li><a :href="routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null)">Download</a></li>
-                                    <li><a href="#" class="copy-url" :data-clipboard-text="config.app.baseUrl + routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null)">Copy URL</a></li>
+                                    <li><a :href="routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()">Download</a></li>
+                                    <li><a href="#" class="copy-url" :data-clipboard-text="config.app.baseUrl + routes.project.Versions.download(project.namespace.owner, project.namespace.slug, versionObj.name, null).absoluteURL()">Copy URL</a></li>
                                 </ul>
                             </div>
 
@@ -79,9 +79,9 @@
                                     <span class="caret"></span>
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="admin-version-actions">
-                                    <li><a :href="routes.Application.showLog(null, null, null, versionObj.name, null, null, null)">User Action Logs</a></li>
+                                    <li><a :href="routes.Application.showLog(null, null, null, versionObj.name, null, null, null).absoluteURL()">User Action Logs</a></li>
                                     <template v-if="permissions.includes('reviewer')">
-                                        <li v-if="versionObj.visibility = 'softDelete'"><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>
+                                        <li v-if="versionObj.visibility === 'softDelete'"><a href="#" data-toggle="modal" data-target="#modal-restore">Undo delete</a></li>
                                         <li v-if="permissions.includes('hard_delete_version') && (publicVersions > 1 || versionObj.visibility === 'softDelete')"><a href="#" data-toggle="modal" data-target="#modal-harddelete" style="color: darkred">Hard delete</a></li>
                                     </template>
                                 </ul>
@@ -105,7 +105,7 @@
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <editor :save-call="routes.project.Versions.saveDescription(project.namespace.owner, project.namespace.slug, versionObj.name)"
+                        <editor save-call="TODO"
                                 :enabled="permissions.includes('edit_page')"
                                 :raw="versionDescription ? versionDescription : ''"
                                 subject="Version">
@@ -123,20 +123,20 @@
                     </div>
                     <ul class="list-group">
 
-                        <li v-for="platform in platforms.getPlatforms(dependencyObs.map(d => d.pluginId))" class="list-group-item">
+                        <li class="list-group-item" v-for="platform in platforms.getPlatforms(dependencyObs.map(d => d.pluginId))">
                             <a :href="platform.url">
-                                <strong>{{ platform.name }}</strong>
+                                <strong>{{ platform.shortName }}</strong>
                             </a>
-                            <p class="version-string" :set="depVersion = dependencyObs.filter(d => d.pluginId === platform.id)[0].version" v-if="depVersion">
-                                {{ depVersion }}
+                            <p class="version-string" v-if="dependencyObs.filter(d => d.pluginId === platform.id)[0].version">
+                                {{ dependencyObs.filter(d => d.pluginId === platform.id)[0].version }}
                             </p>
                         </li>
 
 
-                        <li class="list-group-item" v-for="depend in dependencyObs.filter(d => !platforms.isPlatformTag(d.pluginId))">
+                        <li class="list-group-item" v-for="depend in dependencyObs.filter(d => !platforms.isPlatformDependency(d))">
                             <!-- TODO: Use vue link -->
-                            <a v-if="depend.project" :href="routes.project.Projects.show(project.namespace.owner, project.namespace.slug)">
-                                <strong>{{ project.name }}</strong>
+                            <a v-if="depend.project" :href="routes.project.Projects.show(depend.project.namespace.owner, depend.project.namespace.slug).absoluteURL()">
+                                <strong>{{ depend.project.name }}</strong>
                             </a>
                             <div v-else class="minor">
                                 {{ depend.pluginId }}
@@ -161,7 +161,7 @@
                         </button>
                         <h4 class="modal-title" id="label-delete">Delete version</h4>
                     </div>
-                    <form method="post" :action="routes.project.Versions.softDelete(project.namespace.owner, project.namespace.slug, versionObj.name)">
+                    <form method="post" action="TODO">
                         <div class="modal-body">
                             Are you sure you want to delete this version? This action cannot be undone. Please explain why you want to delete it.
                             <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
@@ -190,7 +190,7 @@
                         </button>
                         <h4 class="modal-title" id="label-delete">Restore deleted</h4>
                     </div>
-                    <form method="post" :action="routes.project.Versions.restore(project.namespace.owner, project.namespace.slug, versionObj.name)">
+                    <form method="post" action="TODO">
                         <div class="modal-body">
                             <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
                         </div>
@@ -217,7 +217,7 @@
                         </button>
                         <h4 class="modal-title" id="label-delete">Hard delete</h4>
                     </div>
-                    <form method="post" :action="routes.project.Versions.delete(project.namespace.owner, project.namespace.slug, versionObj.name)">
+                    <form method="post" action="TODO">
                         <div class="modal-body">
                             <textarea name="comment" class="textarea-delete-comment form-control" rows="3"></textarea>
                         </div>
@@ -246,6 +246,7 @@
     import Editor from "../../components/Editor";
     import {API} from "../../api";
     import CSRFField from "../../components/CSRFField";
+    import {Platform} from "../../enums";
 
     export default {
         components: {
@@ -255,6 +256,7 @@
         data() {
             return {
                 versionObj: null,
+                versionDescription: null,
                 dependencyObs: []
             }
         },
@@ -278,6 +280,19 @@
             },
             isReviewStateChecked() {
                 return this.versionObj.review_state === 'partially_reviewed' || this.versionObj.review_state === 'reviewed'
+            },
+            publicVersions() {
+                return 10 //TODO
+            },
+            config() {
+                return {
+                    app: {
+                        baseUrl: "localhost:9000"
+                    }
+                }
+            },
+            platforms() {
+                return Platform
             }
         },
         created() {
@@ -286,14 +301,29 @@
         watch: {
             '$route': 'updateVersion'
         },
-        method: {
+        methods: {
             updateVersion() {
                 API.request('projects/' + this.project.plugin_id + '/versions/' + this.version).then(v => {
                     this.versionObj = v;
 
-                    //TODO: Handle dependencies
-                    v.dependencies
+                    for(let dependency of v.dependencies) {
 
+                        API.request('projects/' + this.project.plugin_id).then(d => {
+                            if (this.version === v.name) {
+                                this.dependencyObs.push({pluginId: dependency.plugin_id, version: dependency.version, project: d})
+                            }
+                        }).catch(error => {
+
+                            if(error === 404) {
+                                if(this.version === v.name) {
+                                    this.dependencyObs.push({pluginId: dependency.plugin_id, version: dependency.version, project: null})
+                                }
+                            }
+                            else {
+                                // TODO
+                            }
+                        })
+                    }
                 }).catch((error) => {
                     this.versionObj = null;
 
@@ -302,7 +332,26 @@
                     } else {
 
                     }
+                });
+
+                API.request('projects/' + this.project.plugin_id + '/versions/' + this.version + '/changelog').then(o => {
+                    this.versionDescription = o.changelog
                 })
+            },
+            prettifyDate(date) {
+                return moment(date).format('LL') //TODO
+            },
+            //https://stackoverflow.com/a/18650828/7207457
+            formatBytes: function(bytes, decimals = 2) {
+                if (bytes === 0) return '0 Bytes';
+
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
             }
         }
     }

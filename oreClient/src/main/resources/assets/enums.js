@@ -22,12 +22,56 @@ export class Category {
 export class Platform {
     static get values() {
         return [
-            {id: "spongeapi", shortName: "Sponge", name: "Sponge Plugins", parent: true, color: { background: "#F7Cf0D", foreground: "#333333" }, priority: 0},
-            {id: "spongeforge", shortName: "SpongeForge", name: "SpongeForge", color: { background: "#910020", foreground: "#FFFFFF" }, priority: 2},
-            {id: "spongevanilla", shortName: "SpongeVanilla", name: "SpongeVanilla", color: { background: "#50C888", foreground: "#FFFFFF" }, priority: 2},
-            {id: "sponge", shortName: "SpongeCommon", name: "SpongeCommon", color: { background: "#5D5DFF", foreground: "#FFFFFF" }, priority: 1},
-            {id: "lantern", shortName: "Lantern", name: "Lantern", color: { background: "#4EC1B4", foreground: "#FFFFFF" }, priority: 2},
-            {id: "forge", shortName: "Forge",  name: "Forge Mods", parent: true, color: { background: "#DFA86A", foreground: "#FFFFFF" }, priority: 0}
+            {
+                id: "spongeapi",
+                shortName: "Sponge",
+                name: "Sponge Plugins",
+                parent: true,
+                color: { background: "#F7Cf0D", foreground: "#333333" },
+                priority: 0,
+                url: "https://spongepowered.org/downloads",
+            },
+            {
+                id: "spongeforge",
+                shortName: "SpongeForge",
+                name: "SpongeForge",
+                color: { background: "#910020", foreground: "#FFFFFF" },
+                priority: 2,
+                url: "https://www.spongepowered.org/downloads/spongeforge"
+            },
+            {
+                id: "spongevanilla",
+                shortName: "SpongeVanilla",
+                name: "SpongeVanilla",
+                color: { background: "#50C888", foreground: "#FFFFFF" },
+                priority: 2,
+                url: "https://www.spongepowered.org/downloads/spongevanilla"
+            },
+            {
+                id: "sponge",
+                shortName: "SpongeCommon",
+                name: "SpongeCommon",
+                color: { background: "#5D5DFF", foreground: "#FFFFFF" },
+                priority: 1,
+                url: "https://www.spongepowered.org/downloads"
+            },
+            {
+                id: "lantern",
+                shortName: "Lantern",
+                name: "Lantern",
+                color: { background: "#4EC1B4", foreground: "#FFFFFF" },
+                priority: 2,
+                url: "https://www.lanternpowered.org/"
+            },
+            {
+                id: "forge",
+                shortName: "Forge",
+                name: "Forge Mods",
+                parent: true,
+                color: { background: "#DFA86A", foreground: "#FFFFFF" },
+                priority: 0,
+                url: "https://files.minecraftforge.net/"
+            }
         ];
     }
 
@@ -35,8 +79,8 @@ export class Platform {
         return this.values.map(platform => platform.id)
     }
 
-    static isPlatformTag(tag) {
-        return this.keys.includes(tag.name);
+    static isPlatformDependency(dependency) {
+        return this.keys.includes(dependency.pluginId);
     }
 
     static fromId(id) {
@@ -127,6 +171,7 @@ export class FlagReason {
 export class Stability {
     static get values() {
         return [
+            {id: 'recommended', title: 'Recommended', color: '#00C8FF'},
             {id: 'stable', title: 'Stable', color: '#00C800'},
             {id: 'beta', title: 'Beta', color: '#FFC800'},
             {id: 'alpha', title: 'Alpha', color: '#FF6000'},

@@ -2,7 +2,7 @@
 
 DROP MATERIALIZED VIEW home_projects;
 
-CREATE TYPE STABILITY AS ENUM ('stable', 'beta', 'alpha', 'bleeding', 'unsupported', 'broken');
+CREATE TYPE STABILITY AS ENUM ('recommended', 'stable', 'beta', 'alpha', 'bleeding', 'unsupported', 'broken');
 CREATE TYPE RELEASE_TYPE AS ENUM ('major_update', 'minor_update', 'patches', 'hotfix');
 
 CREATE FUNCTION stability_from_channel(name TEXT) RETURNS STABILITY
@@ -133,7 +133,7 @@ WITH promoted AS (
                  sq.release_type,
                  sq.platform_version,
                  row_number()
-                 OVER (PARTITION BY sq.project_id, platform, platform_coarse_version ORDER BY sq.created_at) AS row_num
+                 OVER (PARTITION BY sq.project_id, platform, platform_coarse_version ORDER BY sq.stability, sq.created_at DESC) AS row_num
           FROM (SELECT pv.project_id,
                        pv.version_string,
                        pv.created_at,

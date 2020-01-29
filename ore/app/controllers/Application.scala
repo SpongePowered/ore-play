@@ -67,10 +67,12 @@ final class Application @Inject()(forms: OreForms)(
         controllers.project.routes.javascript.Projects.showWatchers,
         controllers.project.routes.javascript.Projects.flag,
         controllers.project.routes.javascript.Projects.removeMember,
+        controllers.project.routes.javascript.Versions.download,
         controllers.routes.javascript.Users.showProjects,
         controllers.routes.javascript.Users.logIn,
         controllers.routes.javascript.Application.showLog,
-        controllers.routes.javascript.Application.linkOut
+        controllers.routes.javascript.Application.linkOut,
+        controllers.routes.javascript.Reviews.showReviews
       )
     ).as("text/javascript")
   }

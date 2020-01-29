@@ -122,7 +122,7 @@ object APIV2 {
       minecraftVersion: Option[String]
   )
 
-  @SnakeCaseJsonCodec case class VersionDescription(description: String)
+  @SnakeCaseJsonCodec case class VersionChangelog(changelog: String)
 
   @SnakeCaseJsonCodec case class VersionDependency(pluginId: String, version: Option[String])
   @SnakeCaseJsonCodec case class VersionStatsAll(downloads: Long)
@@ -144,6 +144,15 @@ object APIV2 {
 
   @SnakeCaseJsonCodec case class VersionStatsDay(
       downloads: Long
+  )
+
+  @SnakeCaseJsonCodec case class PageList(
+      pages: Seq[PageListEntry]
+  )
+
+  @SnakeCaseJsonCodec case class PageListEntry(
+      name: List[String],
+      slug: List[String]
   )
 
   @SnakeCaseJsonCodec case class Page(

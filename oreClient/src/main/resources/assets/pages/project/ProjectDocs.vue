@@ -26,17 +26,45 @@
                 </p>
             </div>
 
-            <div class="panel panel-default" v-if="project.promoted_versions">
+            <div class="panel panel-default">
                 <div class="panel-heading">
                     <h3 class="panel-title">Promoted Versions</h3>
                 </div>
 
                 <ul class="list-group promoted-list">
                     <li v-for="version in project.promoted_versions" class="list-group-item">
-                        <a href="TODO">{{ version.version }}</a>
+                        <router-link :to="{name: 'version', params: {project, permissions, 'version': version.version}}" v-slot="{ href, navigate }">
+                            <a :href="href" @click="navigate">{{ version.version }}</a>
+                        </router-link>
                     </li>
                 </ul>
             </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Pages</h3>
+                    <button class="new-page btn yellow btn-xs pull-right" data-toggle="modal" data-target="#new-page" title="New">
+                        <i class="fas fa-plus"></i>
+                        <!-- TODO Use API to create page -->
+                    </button>
+                </div>
+
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <router-link :to="{name: 'home', params: {project, permissions}}" v-slot="{ href, navigate }">
+                            <a :href="href" @click="navigate">Home</a>
+                        </router-link>
+                    </li>
+
+                    <li v-for="page in nonHomePages" class="list-group-item">
+                        <!-- TODO Proper page list -->
+                        <router-link :to="{name: 'pages', params: {project, permissions, 'page': slashArray(page.slug)}}" v-slot="{ href, navigate }">
+                            <a :href="href" @click="navigate">{{ slashArray(page.name) }}</a>
+                        </router-link>
+                    </li>
+                </ul>
+            </div>
+
 
             <member-list :members="members" :permissions="permissions" role-category="project"/>
         </div>
@@ -57,7 +85,8 @@
         },
         data() {
             return {
-                description: ""
+                description: "",
+                pages: []
             }
         },
         props: {
@@ -81,6 +110,9 @@
         computed: {
             routes: function () {
                 return jsRoutes.controllers.project;
+            },
+            nonHomePages() {
+                return this.pages.filter(p => p.slug.length !== 1 || p.slug[0] !== 'home')
             }
         },
         created() {
@@ -101,13 +133,21 @@
                     } else {
 
                     }
+                });
+
+                //TODO: Only make this request when the project changes, not when the page changes
+                API.request('projects/' + this.project.plugin_id + '/_pages').then(pageList => {
+                    this.pages = pageList.pages;
                 })
             },
             parseDate(rawDate) {
-                return moment(rawDate).format("MMM DD[,] YYYY");  ;
+                return moment(rawDate).format("MMM DD[,] YYYY");
             },
             parseCategory(category) {
                 return Category.fromId(category).name;
+            },
+            slashArray(arr) {
+                return arr.reduce((acc, cur) => acc + '/' + cur)
             }
         }
     }

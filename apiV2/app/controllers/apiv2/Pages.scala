@@ -23,6 +23,14 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
     implicit oreComponents: OreControllerComponents
 ) extends AbstractApiV2Controller(lifecycle) {
 
+  def showPages(pluginId: String): Action[AnyContent] =
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
+      service.runDbCon(APIV2Queries.pageList(pluginId).to[Vector]).flatMap { pages =>
+        if (pages.isEmpty) ZIO.fail(NotFound)
+        else ZIO.succeed(Ok(APIV2.PageList(pages.map(t => APIV2.PageListEntry(t._3, t._4)))))
+      }
+    }
+
   def showPage(pluginId: String, page: String): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
       service.runDbCon(APIV2Queries.getPage(pluginId, page).option).get.asError(NotFound).map {

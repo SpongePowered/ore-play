@@ -206,7 +206,7 @@ class Versions(
       }
     }
 
-  def showVersionDescription(pluginId: String, name: String): Action[AnyContent] =
+  def showVersionChangelog(pluginId: String, name: String): Action[AnyContent] =
     CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
       service
         .runDBIO(
@@ -218,7 +218,7 @@ class Versions(
             .result
             .headOption
         )
-        .map(_.fold(NotFound: Result)(a => Ok(APIV2.VersionDescription(a))))
+        .map(_.fold(NotFound: Result)(a => Ok(APIV2.VersionChangelog(a))))
     }
 
   def showVersionStats(

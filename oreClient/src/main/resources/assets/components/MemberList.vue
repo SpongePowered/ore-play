@@ -64,16 +64,16 @@
 
             <ul class="list-members list-group">
                 <!-- Member list -->
-                <template v-for="member in members" class="list-group-item">
-                    <li v-for="role in member.roles">
-                        <icon :name="member.user" :src="avatarUrl(member.user)" ,
-                                     class="user-avatar-xs"></icon>
-                        <a class="username" :href="routes.Users.showProjects(member.user)">
+                <template v-for="member in members">
+                    <li class="list-group-item" v-for="role in member.roles">
+                        <icon :name="member.user" :src="avatarUrl(member.user)" extra-classes="user-avatar-xs"></icon>
+                        <a class="username" :href="routes.Users.showProjects(member.user).absoluteURL()">
                             {{ member.user }}
                         </a>
                         <p style="display: none;" class="role-id">{{ role.name }}</p>
+
                         <template
-                                v-if="editable && permissions.includes('manage_subject_members') && role.permissions.includes('manage_subject_members')">
+                                v-if="editable && permissions.includes('manage_subject_members') /*&& role.permissions.includes('manage_subject_members')*/">
                             <a href="#">
                                 <i style="padding-left:5px" class="fas fa-trash" data-toggle="modal"
                                    data-target="#modal-user-delete"></i>
@@ -81,10 +81,11 @@
                             <a href="#"><i style="padding-left:5px" class="fas fa-edit"></i></a>
                         </template>
 
+
                         <span class="minor pull-right">
-                        <template v-if="role.is_accepted">{{ role.title }}</template>
-                        <span v-else class="minor">(Invited as {{ role.title }})</span>
-                    </span>
+                            <!-- TODO <template v-if="role.is_accepted">{{ role.title }}</template> -->
+                            <span class="minor">(Invited as {{ role.title }})</span>
+                        </span>
                     </li>
                 </template>
 

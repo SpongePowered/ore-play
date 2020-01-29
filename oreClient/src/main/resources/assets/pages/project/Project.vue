@@ -18,7 +18,7 @@
             return {
                 fetchedProject: null,
                 permissions: [],
-                members: [], //TODO
+                members: [],
                 currentUser: null //TODO
             }
         },
@@ -46,6 +46,10 @@
             }
             API.request("permissions", "GET", {'pluginId': this.pluginId}).then((response) => {
                 this.permissions = response.permissions;
+            });
+
+            API.request("projects/" + this.pluginId + "/members").then((response) => {
+                this.members = response
             })
         }
     }

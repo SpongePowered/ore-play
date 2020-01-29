@@ -382,7 +382,9 @@ GET     /projects/:pluginId/description                      @controllers.apiv2.
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/models.protocols.APIV2.ProjectMember'
+#            type: array
+#            items:
+#              $ref: '#/components/schemas/models.protocols.APIV2.ProjectMember'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 #    403:
@@ -511,9 +513,9 @@ GET     /projects/:pluginId/versions/:name                   @controllers.apiv2.
 PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.Versions.editVersion(pluginId, name)
 
 ###
-#  summary: Returns the description for a version
+#  summary: Returns the changelog for a version
 #  description: >-
-#    Returns the description for a version. Requires the `view_public_info`
+#    Returns the changelog for a version. Requires the `view_public_info`
 #    permission in the project or owning organization.
 #  tags:
 #    - Versions
@@ -521,20 +523,20 @@ PATCH   /projects/:pluginId/versions/:name                   @controllers.apiv2.
 #    - name: pluginId
 #      description: The plugin id of the project to return the version for
 #    - name: name
-#      description: The name of the version to return the description for
+#      description: The name of the version to return the changelog for
 #  responses:
 #    200:
 #      description: Ok
 #      content:
 #        application/json:
 #          schema:
-#            $ref: '#/components/schemas/models.protocols.APIV2.VersionDescription'
+#            $ref: '#/components/schemas/models.protocols.APIV2.VersionChangelog'
 #    401:
 #      $ref: '#/components/responses/UnauthorizedError'
 #    403:
 #      $ref: '#/components/responses/ForbiddenError'
 ###
-GET     /projects/:pluginId/versions/:name/description       @controllers.apiv2.Versions.showVersionDescription(pluginId, name)
+GET     /projects/:pluginId/versions/:name/changelog          @controllers.apiv2.Versions.showVersionChangelog(pluginId, name)
 
 ###
 #  summary: Returns the stats for a version
@@ -648,6 +650,34 @@ PUT    /projects/:pluginId/versions/scan                     @controllers.apiv2.
 ###
 +nocsrf
 POST    /projects/:pluginId/versions                         @controllers.apiv2.Versions.deployVersion(pluginId)
+
+###
+#  summary: Returns all the pages for a project
+#  description: >-
+#    Returns a list of all the pages of the project. Requires the `view_public_info`
+#    permission in the project or owning organization.
+#
+#    **WARNING: This API is subject to change, maybe very little, maybe dramatically.**
+#  tags:
+#    - Pages
+#  parameters:
+#    - name: pluginId
+#      description: The plugin id of the project to return the pages for
+#    - name: page
+#      description: The slug of the pages to return
+#  responses:
+#    200:
+#      description: Ok
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.PageList'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+GET     /projects/:pluginId/_pages                           @controllers.apiv2.Pages.showPages(pluginId)
 
 ###
 #  summary: Returns the given page

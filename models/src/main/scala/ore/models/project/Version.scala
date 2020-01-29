@@ -114,6 +114,7 @@ object Version extends DefaultModelCompanion[Version, VersionTable](TableQuery[V
   object Stability extends StringEnum[Stability] {
     override def values: IndexedSeq[Stability] = findValues
 
+    case object Recommended extends Stability("recommended")
     case object Stable      extends Stability("stable")
     case object Beta        extends Stability("beta")
     case object Alpha       extends Stability("alpha")

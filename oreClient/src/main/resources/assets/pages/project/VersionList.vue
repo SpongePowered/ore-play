@@ -2,8 +2,9 @@
     <div class="version-list">
         <div class="row text-center">
             <div class="col-xs-12">
-                <!-- <a v-if="canUpload" class="btn yellow" :href="routes.Versions.showCreator(projectOwner, projectSlug).absoluteURL()">Upload a New Version</a> -->
-                <span v-if="canUpload" class="btn yellow">Upload a New Version</span>
+                <router-link :to="{name: 'new_version', params: {project, permissions}}" v-slot="{ href, navigate }">
+                    <a v-if="canUpload" class="btn yellow" :href="href" @click="navigate">Upload a New Version</a>
+                </router-link>
             </div>
         </div>
         <div v-show="loading">
@@ -12,61 +13,64 @@
         </div>
         <div v-show="!loading">
             <div class="list-group">
-                <!-- <a v-for="version in versions" :href="routes.Versions.show(project.namespace.owner, project.namespace.slug, version.name).absoluteURL()" class="list-group-item" -->
-                <a v-for="version in versions" href="TODO" class="list-group-item"
-                   :class="[classForVisibility(version.visibility)]">
-                    <div class="container-fluid">
-                        <div class="row">
-                            <div class="col-xs-6 col-sm-3">
+                <template v-for="version in versions">
+                    <router-link :to="{name: 'version', params: {project, permissions, 'version': version.name}}" v-slot="{ href, navigate }">
+                        <a :href="href" @click="navigate" class="list-group-item" :class="[classForVisibility(version.visibility)]">
+                            <div class="container-fluid">
                                 <div class="row">
-                                    <div class="col-xs-12">
-                                        <span class="text-bold">{{ version.name }}</span>
+                                    <div class="col-xs-6 col-sm-3">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <span class="text-bold">{{ version.name }}</span>
+                                            </div>
+                                            <div class="col-xs-12" :set="stability = stabilities.fromId(version.tags.stability)">
+                                                <span class="channel" v-bind:style="{ background: stability.color }">{{ stability.title }}</span>
+                                            </div>
+                                            <div v-if="version.tags.release_type" class="col-xs-12" :set="releaseType = releaseTypes.fromId(version.tags.release_type)">
+                                                <span class="channel" v-bind:style="{ background: releaseType.color }">{{ releaseType.title }}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-xs-12" :set="stability = stabilities.fromId(version.tags.stability)">
-                                        <span class="channel" v-bind:style="{ background: stability.color }">{{ stability.title }}</span>
-                                    </div>
-                                    <div v-if="version.tags.release_type" class="col-xs-12" :set="releaseType = releaseTypes.fromId(version.tags.release_type)">
-                                        <span class="channel" v-bind:style="{ background: releaseType.color }">{{ releaseType.title }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xs-6 col-sm-3">
-                                <Tag v-if="version.tags.mixin" name="Mixin" :color="{background: '#FFA500', foreground: '#333333'}"></Tag>
+                                    <div class="col-xs-6 col-sm-3">
+                                        <Tag v-if="version.tags.mixin" name="Mixin" :color="{background: '#FFA500', foreground: '#333333'}"></Tag>
 
-                                <Tag v-for="platform in version.tags.platforms" :set="platformObj = platformById(platform.platform)"
-                                     :key="platform.platform + ':' + platform.platform_version"
-                                     :name="platformObj.shortName"
-                                     :data="platform.platform_version"
-                                     :color="platformObj.color"></Tag>
-                            </div>
-                            <div class="col-xs-3 hidden-xs">
-                                <div class="row">
-                                    <div class="col-xs-12">
-                                        <i class="fas fa-fw fa-calendar"></i>
-                                        {{ formatDate(version.created_at) }}
+                                        <Tag v-for="platform in version.tags.platforms" :set="platformObj = platformById(platform.platform)"
+                                             :key="platform.platform + ':' + platform.platform_version"
+                                             :name="platformObj.shortName"
+                                             :data="platform.platform_version"
+                                             :color="platformObj.color"></Tag>
                                     </div>
-                                    <div class="col-xs-12">
-                                        <i class="far fa-fw fa-file"></i>
-                                        {{ formatSize(version.file_info.size_bytes) }}
+                                    <div class="col-xs-3 hidden-xs">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <i class="fas fa-fw fa-calendar"></i>
+                                                {{ formatDate(version.created_at) }}
+                                            </div>
+                                            <div class="col-xs-12">
+                                                <i class="far fa-fw fa-file"></i>
+                                                {{ formatSize(version.file_info.size_bytes) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-3 hidden-xs">
+                                        <div class="row">
+                                            <div class="col-xs-12">
+                                                <i class="fas fa-fw fa-user-tag"></i>
+                                                {{ version.author }}
+                                            </div>
+                                            <div class="col-xs-12">
+                                                <i class="fas fa-fw fa-download"></i>
+                                                {{ version.stats.downloads }} Downloads
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xs-3 hidden-xs">
-                                <div class="row">
-                                    <div class="col-xs-12">
-                                        <i class="fas fa-fw fa-user-tag"></i>
-                                        {{ version.author }}
-                                    </div>
-                                    <div class="col-xs-12">
-                                        <i class="fas fa-fw fa-download"></i>
-                                        {{ version.stats.downloads }} Downloads
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </a>
+                        </a>
+                    </router-link>
+                </template>
             </div>
+
             <Pagination :current="current" :total="total" @prev="page--" @next="page++" @jumpTo="page = $event"></Pagination>
         </div>
     </div>
