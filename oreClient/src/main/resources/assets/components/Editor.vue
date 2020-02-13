@@ -1,34 +1,34 @@
 <template>
     <div v-if="enabled">
         <!-- Edit -->
-        <button type="button" class="btn btn-sm btn-edit btn-page btn-default" title="Edit">
+        <button :style="editButtonStyle" type="button" class="btn btn-sm btn-edit btn-page btn-default" title="Edit" @click="state = 'edit'">
             <i class="fas fa-edit"></i> Edit
         </button>
 
         <!-- Preview -->
-        <div class="btn-edit-container btn-preview-container" title="Preview">
-            <button type="button" class="btn btn-sm btn-preview btn-page btn-default">
+        <div :style="otherButtonStyle" class="btn-edit-container btn-preview-container" title="Preview">
+            <button v-if="state !== 'display'" type="button" class="btn btn-sm btn-preview btn-page btn-default" @click="state = 'preview'">
                 <i class="fas fa-eye"></i>
             </button>
         </div>
 
         <!-- Save -->
-        <div v-if="savable" class="btn-edit-container btn-save-container" title="Save">
-            <button form="form-editor-save" type="submit" class="btn btn-sm btn-save btn-page btn-default">
+        <div v-if="savable" :style="otherButtonStyle" class="btn-edit-container btn-save-container" title="Save">
+            <button class="btn btn-sm btn-save btn-page btn-default" @click="$emit('saved', rawData)">
                 <i class="fas fa-save"></i>
             </button>
         </div>
 
         <!-- Cancel -->
-        <div v-if="cancellable" class="btn-edit-container btn-cancel-container" title="Cancel">
-            <button type="button" class="btn btn-sm btn-cancel btn-page btn-default">
+        <div v-if="cancellable" :style="otherButtonStyle" class="btn-edit-container btn-cancel-container" title="Cancel">
+            <button type="button" class="btn btn-sm btn-cancel btn-page btn-default" @click="reset">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
         <!-- Delete -->
         <template v-if="deletable">
-            <div class="btn-edit-container btn-delete-container" title="Delete">
+            <div :style="otherButtonStyle" class="btn-edit-container btn-delete-container" title="Delete">
                 <button type="button" class="btn btn-sm btn-page-delete btn-page btn-default"
                         data-toggle="modal" data-target="#modal-page-delete">
                     <i class="fas fa-trash"></i>
@@ -43,38 +43,25 @@
                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </button>
-                            <h4 class="modal-title" id="label-page-delete">Delete {{ subject.toLowerCase }}</h4>
+                            <h4 class="modal-title" id="label-page-delete">Delete {{ subject.toLowerCase() }}</h4>
                         </div>
                         <div class="modal-body">
-                            Are you sure you want to delete this {{ subject.toLowerCase }}? This cannot be undone.
+                            Are you sure you want to delete this {{ subject.toLowerCase() }}? This cannot be undone.
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            <form :action="deleteCall" :method="deleteCallMethod" class="form-inline">
-                                <CSRFField></CSRFField>
-                                <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
+                            <button class="btn btn-danger" @click="$emit('delete')">Delete</button>
                         </div>
                     </div>
                 </div>
             </div>
         </template>
 
-        <!-- Edit window -->
-        <div class="page-edit" style="display: none ;">
-            <textarea name="content" class="form-control" :form="textForm">{{ raw }}</textarea>
+        <div class="page-edit" v-if="state === 'edit'">
+            <textarea name="content" class="form-control" v-model="rawData"></textarea>
         </div>
-
-        <!-- Preview window -->
-        <div class="page-preview page-rendered" style="display: none ;"></div>
-
-        <form v-if="savable" :action="saveCall" method="post" id="form-editor-save">
-            <CSRFField></CSRFField>
-            <input v-if="extraFormValue !== null" type="hidden" :value="extraFormValue" name="name">
-        </form>
-
-        <!-- Saved window -->
-        <div class="page-content page-rendered" v-html="cooked"></div>
+        <div class="page-preview page-rendered" v-else-if="state === 'preview'" v-html="cooked"></div>
+        <div class="page-content page-rendered" v-else-if="state === 'display'" v-html="cooked"></div>
     </div>
     <div v-else>
         <!-- Saved window -->
@@ -88,21 +75,16 @@
     import markdownItWikilinks from "markdown-it-wikilinks"
     import markdownItTaskLists from "markdown-it-task-lists"
 
-    import CSRFField from "./CSRFField"
-
     const md = markdownIt({
         linkify: true,
         typographer: true
     }).use(markdownItAnchor).use(markdownItWikilinks({relativeBaseURL: location.pathname + "/pages/", uriSuffix: ''})).use(markdownItTaskLists);
 
     export default {
-        components: {
-            CSRFField
-        },
-        data: function () {
+        data() {
             return {
-                members: null,
-                description: null
+                state: 'display',
+                rawData: this.raw
             }
         },
         props: {
@@ -122,25 +104,51 @@
                 type: Boolean,
                 default: true
             },
-            targetForm: String,
             raw: {
                 type: String,
                 default: ""
             },
-            subject: String,
-            saveCall: String,
-            extraFormValue: String
+            subject: String
         },
         computed: {
-            textForm: function () {
-                if (typeof targetForm !== 'undefined') {
-                    return targetForm
-                } else {
-                    return "form-editor-save"
-                }
-            },
             cooked: function () {
                 return md.render(this.raw);
+            },
+            editButtonStyle() {
+                if(this.state === 'display') {
+                    return {
+                        border: '1px solid rgb(204, 204, 204)',
+                        position: 'absolute'
+                    }
+                }
+                else {
+                    return {
+                        'border-color': 'rgb(204, 204, 204) white rgb(204, 204, 204) rgb(204, 204, 204)',
+                        position: 'absolute',
+                        'border-style': 'solid',
+                        'border-width': '1px',
+                        'border-image': 'none 100% / 1 / 0 stretch'
+                    }
+                }
+            },
+            otherButtonStyle() {
+                let zSign = this.state === 'display' ? -1 : 1;
+                return {
+                    position: 'absolute',
+                    'margin-left': this.state === 'display' ? '0px' : '-34px',
+                    'z-index': 1000 * zSign
+                }
+            }
+        },
+        methods: {
+            reset() {
+                this.rawData = this.raw;
+                this.state = 'display'
+            }
+        },
+        watch: {
+            raw(newVal, oldVal) {
+                this.rawData = newVal
             }
         }
     }
