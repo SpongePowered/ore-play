@@ -596,6 +596,7 @@ object APIV2Queries extends DoobieOreProtocol {
           |                 JOIN projects p ON pp.project_id = p.id
           |        WHERE p.plugin_id = $pluginId
           |          AND split_part($page, '/', 1) = pp.slug
+          |          AND pp.parent_id IS NULL
           |    UNION
           |    SELECT pr.n + 1, pp.name, pp.slug, pp.contents, pp.id, pp.project_id
           |        FROM pages_rec pr,
@@ -615,6 +616,7 @@ object APIV2Queries extends DoobieOreProtocol {
           |        FROM project_pages pp
           |                 JOIN projects p ON pp.project_id = p.id
           |        WHERE p.plugin_id = $pluginId
+          |          AND pp.parent_id IS NULL
           |    UNION
           |    SELECT array_append(pr.name, pp.name::TEXT), array_append(pr.slug, pp.slug::TEXT), pp.id, pp.project_id
           |        FROM pages_rec pr,
