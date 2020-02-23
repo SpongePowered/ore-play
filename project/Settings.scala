@@ -9,7 +9,7 @@ import sbt._
 object Settings {
 
   val commonSettings = Seq(
-    version := "2.0.0-M1",
+    version := "2.0.0-M2",
     scalaVersion := "2.13.1",
     scalacOptions ++= Seq(
       "-deprecation",

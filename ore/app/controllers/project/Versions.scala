@@ -121,7 +121,6 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
 
         for {
           version <- getProjectVersion(author, slug, versionString)
-          _       <- projects.deleteVersion(version)
           _ <- UserActionLogger.log(
             request,
             LoggedActionType.VersionDeleted,
@@ -129,6 +128,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             s"Deleted: $comment",
             s"$version.visibility"
           )(LoggedActionVersion(_, Some(version.projectId)))
+          _ <- projects.deleteVersion(version)
         } yield Redirect(self.showList(author, slug))
       }
   }
@@ -350,7 +350,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
               this.messagesApi(
                 "version.download.confirm.curl",
                 self.confirmDownload(author, slug, target, Some(dlType.value), Some(token), None).absoluteURL(),
-                value
+                value.value
               )
             case None =>
               this.messagesApi(

@@ -65,7 +65,7 @@ trait Mailer extends Runnable {
     for (prop <- this.properties.keys)
       props.setProperty(prop, this.properties(prop).toString)
     this.session = Session.getInstance(props)
-    this.scheduler.schedule(this.interval, this.interval, this)
+    this.scheduler.scheduleWithFixedDelay(this.interval, this.interval)(this)
     log("Started")
   }
 
