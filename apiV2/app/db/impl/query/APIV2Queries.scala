@@ -92,8 +92,10 @@ object APIV2Queries extends DoobieOreProtocol {
   def array[F[_]: Reducible, A: Put](fs: F[A]): Fragment =
     fs.toList.map(a => fr0"$a").foldSmash1(fr0"ARRAY[", fr",", fr0"]")
 
-  def array2Text[F[_]: Reducible, A: Put, B: Put](fs: F[(A, B)]): Fragment =
-    fs.toList.map { case (a, b) => fr0"($a, $b)::TEXT" }.foldSmash1(fr0"ARRAY[", fr",", fr0"]")
+  def array2Text[F[_]: Reducible, A: Put, B: Put](t1: String, t2: String)(fs: F[(A, B)]): Fragment =
+    fs.toList
+      .map { case (a, b) => fr0"($a::" ++ Fragment.const(t1) ++ fr0", $b::" ++ Fragment.const(t2) ++ fr0")::TEXT" }
+      .foldSmash1(fr0"ARRAY[", fr",", fr0"]")
 
   def projectSelectFrag(
       pluginId: Option[String],
@@ -157,7 +159,8 @@ object APIV2Queries extends DoobieOreProtocol {
         val jsSelect =
           sql"""|SELECT promoted.platform
                 |    FROM (SELECT unnest(platforms)                AS platform,
-                |                 unnest(platform_coarse_versions) AS platform_coarse_version
+                |                 unnest(platform_coarse_versions) AS platform_coarse_version,
+                |                 stability
                 |              FROM jsonb_to_recordset(p.promoted_versions) AS promoted(platforms TEXT[], platform_coarse_versions TEXT[], stability STABILITY)) AS promoted """.stripMargin ++
             Fragments.whereAndOpt(
               NonEmptyList
@@ -170,7 +173,12 @@ object APIV2Queries extends DoobieOreProtocol {
         Some(fr"EXISTS" ++ Fragments.parentheses(jsSelect))
       } else
         None,
-      query.map(q => fr"p.search_words @@ websearch_to_tsquery_postfix('english', $q)"),
+      query.map { q =>
+        val trimmedQ = q.trim
+
+        if (q.endsWith(" ")) fr"p.search_words @@ websearch_to_tsquery('english', $trimmedQ)"
+        else fr"p.search_words @@ websearch_to_tsquery_postfix('english', $trimmedQ)"
+      },
       owner.map(o => fr"p.owner_name = $o"),
       visibilityFrag
     )
@@ -198,7 +206,10 @@ object APIV2Queries extends DoobieOreProtocol {
   ): Query0[ZIO[Blocking, Nothing, APIV2.Project]] = {
     val ordering = if (orderWithRelevance && query.nonEmpty) {
       val relevance = query.fold(fr"1") { q =>
-        fr"ts_rank(p.search_words, websearch_to_tsquery_postfix('english', $q)) DESC"
+        val trimmedQ = q.trim
+
+        if (q.endsWith(" ")) fr"ts_rank(p.search_words, websearch_to_tsquery('english', $trimmedQ)) DESC"
+        else fr"ts_rank(p.search_words, websearch_to_tsquery_postfix('english', $trimmedQ)) DESC"
       }
 
       // 1483056000 is the Ore epoch
@@ -209,9 +220,9 @@ object APIV2Queries extends DoobieOreProtocol {
         case ProjectSortingStrategy.MostDownloads => fr"(p.downloads / 100) *" ++ relevance
         case ProjectSortingStrategy.MostViews     => fr"(p.views / 200) *" ++ relevance
         case ProjectSortingStrategy.Newest =>
-          fr"((extract(EPOCH from p.created_at) - 1483056000) / 86400) *" ++ relevance
+          fr"((EXTRACT(EPOCH FROM p.created_at) - 1483056000) / 86400) *" ++ relevance
         case ProjectSortingStrategy.RecentlyUpdated =>
-          fr"((extract(EPOCH from p.last_updated) - 1483056000) / 604800) *" ++ relevance
+          fr"((EXTRACT(EPOCH FROM p.last_updated) - 1483056000) / 604800) *" ++ relevance
         case ProjectSortingStrategy.OnlyRelevance   => relevance
         case ProjectSortingStrategy.RecentViews     => fr"p.recent_views *" ++ relevance
         case ProjectSortingStrategy.RecentDownloads => fr"p.recent_downloads*" ++ relevance
@@ -385,7 +396,7 @@ object APIV2Queries extends DoobieOreProtocol {
       NonEmptyList
         .fromList(platformsWithVersion)
         .map { t =>
-          array2Text(t) ++
+          array2Text("TEXT", "TEXT")(t) ++
             fr"&& ARRAY(SELECT (platform, coarse_version)::TEXT FROM unnest(pv.platforms, pv.platform_coarse_versions) as plat(platform, coarse_version))"
         },
       NonEmptyList.fromList(stability).map(Fragments.in(fr"pv.stability", _)),

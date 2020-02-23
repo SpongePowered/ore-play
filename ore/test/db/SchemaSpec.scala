@@ -20,7 +20,7 @@ import org.scalatestplus.junit.JUnitRunner
 class SchemaSpec extends DbSpec {
 
   test("Project") {
-    check(sql"""|SELECT plugin_id, owner_name, owner_id, name, slug, recommended_version_id,
+    check(sql"""|SELECT plugin_id, owner_name, owner_id, name, slug,
                 |category, description, topic_id, post_id, visibility,
                 |notes, keywords, homepage, issues, source, support, license_name, license_url, 
                 |forum_sync FROM projects""".stripMargin.query[Project])
@@ -39,20 +39,12 @@ class SchemaSpec extends DbSpec {
                 |is_deletable, contents FROM project_pages""".stripMargin.query[Page])
   }
 
-  test("Channel") {
-    check(sql"""|SELECT project_id, name, color,
-                |is_non_reviewed FROM project_channels""".stripMargin.query[Channel])
-  }
-
-  test("VersionTag") {
-    check(sql"""SELECT version_id, name, data, color FROM project_version_tags""".query[VersionTag])
-  }
-
   test("Version") {
     check(
-      sql"""|SELECT project_id, version_string, dependencies, channel_id, file_size, hash,
+      sql"""|SELECT project_id, version_string, dependency_ids, dependency_versions, file_size, hash,
             |author_id, description, review_state, reviewer_id, approved_at, visibility, file_name,
-            |create_forum_post, post_id FROM project_versions""".stripMargin
+            |create_forum_post, post_id, uses_mixin, stability, release_type, platforms, platform_versions,
+            |platform_coarse_versions, legacy_channel_name, legacy_channel_color FROM project_versions""".stripMargin
         .query[Version]
     )
   }

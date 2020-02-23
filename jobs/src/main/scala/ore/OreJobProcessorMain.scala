@@ -51,12 +51,11 @@ object OreJobProcessorMain extends zio.ManagedApp {
       uioService  = taskService.mapK(Lambda[Task ~> UIO](task => task.orDie))
       _                   <- log(_.info("Created DB system"))
       actorSystem         <- createActorSystem
-      materializer        <- createMaterializer(actorSystem)
       _                   <- log(_.info("Created Akka system"))
       jobsConfig          <- createConfig
       _                   <- log(_.info("Loaded config"))
-      akkaDiscourseClient <- createDiscourseApi(jobsConfig)(actorSystem, materializer)
-      oreDiscourse = createOreDiscourse(akkaDiscourseClient)(jobsConfig, taskService, materializer)
+      akkaDiscourseClient <- createDiscourseApi(jobsConfig)(actorSystem)
+      oreDiscourse = createOreDiscourse(akkaDiscourseClient)(jobsConfig, taskService, actorSystem)
       _ <- log(_.info("Init finished. Starting"))
       _ <- runApp(db.source.maxConnections.getOrElse(32))
         .provideSome[ZEnv](createExpandedEnvironment(uioService, oreDiscourse, jobsConfig))
@@ -160,11 +159,6 @@ object OreJobProcessorMain extends zio.ManagedApp {
       terminate.ignore
     }
 
-  private def createMaterializer(system: ActorSystem): ZManaged[Any, Int, Materializer] =
-    ZManaged
-      .makeEffect(ActorMaterializer()(system))(_.shutdown())
-      .flatMapError(logErrorManaged("Failed to create materializer"))
-
   private def createConfig: ZManaged[Any, Int, OreJobsConfig] =
     ZManaged.fromEither(OreJobsConfig.load).flatMapError { es =>
       Logger.error(
@@ -175,7 +169,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
 
   private def createDiscourseApi(
       config: OreJobsConfig
-  )(implicit system: ActorSystem, mat: Materializer): ZManaged[Any, Int, AkkaDiscourseApi[Task]] =
+  )(implicit system: ActorSystem): ZManaged[Any, Int, AkkaDiscourseApi[Task]] =
     config.discourse.api.pipe { cfg =>
       ZManaged
         .fromEffect(
@@ -195,7 +189,7 @@ object OreJobProcessorMain extends zio.ManagedApp {
 
   private def createOreDiscourse(
       discourseClient: DiscourseApi[Task]
-  )(implicit config: OreJobsConfig, service: ModelService[Task], mat: Materializer): OreDiscourseApiEnabled[Task] =
+  )(implicit config: OreJobsConfig, service: ModelService[Task], system: ActorSystem): OreDiscourseApiEnabled[Task] =
     config.discourse.pipe { cfg =>
       implicit val runtime: Runtime[ZEnv] = this
       def readFile(file: String) =
