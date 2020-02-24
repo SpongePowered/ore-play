@@ -21,7 +21,7 @@ class Permissions(
   import Permissions._
 
   def showPermissions(pluginId: Option[String], organizationName: Option[String]): Action[AnyContent] =
-    CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
       permissionsInApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
           Ok(
@@ -40,7 +40,7 @@ class Permissions(
   )(
       check: (Seq[Permission], Permission) => Boolean
   ): Action[AnyContent] =
-    CachingApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
+    ApiAction(Permission.None, APIScope.GlobalScope).asyncF { implicit request =>
       permissionsInApiScope(pluginId, organizationName).map {
         case (scope, perms) =>
           Ok(PermissionCheck(scope.tpe, check(checkPermissions.map(_.permission), perms)))

@@ -60,7 +60,7 @@ class Versions(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { request =>
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { request =>
       val realLimit  = limitOrDefault(limit, config.ore.projects.initVersionLoad.toLong)
       val realOffset = offsetOrZero(offset)
       val parsedPlatforms = platforms.map { s =>
@@ -104,7 +104,7 @@ class Versions(
     }
 
   def showVersion(pluginId: String, name: String): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
       service
         .runDbCon(
           APIV2Queries
@@ -207,7 +207,7 @@ class Versions(
     }
 
   def showVersionChangelog(pluginId: String, name: String): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
       service
         .runDBIO(
           TableQuery[ProjectTable]
@@ -227,7 +227,7 @@ class Versions(
       fromDateString: String,
       toDateString: String
   ): Action[AnyContent] =
-    CachingApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF {
+    ApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF {
       import Ordering.Implicits._
 
       def parseDate(dateStr: String) =

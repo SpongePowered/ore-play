@@ -34,9 +34,6 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
   implicit def zioMode[R]: scalacache.Mode[ZIO[R, Throwable, *]] =
     scalacache.CatsEffect.modes.async[ZIO[R, Throwable, *]]
 
-  private val actionResultCache = scalacache.caffeine.CaffeineCache[Future[Result]]
-  lifecycle.addStopHook(() => zioRuntime.unsafeRunToFuture(actionResultCache.close[Task]()))
-
   protected def limitOrDefault(limit: Option[Long], default: Long): Long = math.min(limit.getOrElse(default), default)
   protected def offsetOrZero(offset: Long): Long                         = math.max(offset, 0)
 
@@ -166,30 +163,6 @@ abstract class AbstractApiV2Controller(lifecycle: ApplicationLifecycle)(
     }
   }
 
-  def cachingAction: ActionFunction[ApiRequest, ApiRequest] =
-    new ActionFunction[ApiRequest, ApiRequest] {
-      override protected def executionContext: ExecutionContext = ec
-
-      override def invokeBlock[A](request: ApiRequest[A], block: ApiRequest[A] => Future[Result]): Future[Result] = {
-        import scalacache.modes.scalaFuture._
-        require(request.method == "GET")
-
-        request.request.target
-
-        actionResultCache
-          .caching[Future](
-            request.path,
-            request.apiInfo.key.map(_.tokenIdentifier),
-            request.apiInfo.user.map(_.id),
-            request.queryString.toSeq.sortBy(_._1)
-          )(Some(1.minute))(block(request))
-          .flatten
-      }
-    }
-
   def ApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
     Action.andThen(apiAction).andThen(permApiAction(perms, scope))
-
-  def CachingApiAction(perms: Permission, scope: APIScope): ActionBuilder[ApiRequest, AnyContent] =
-    ApiAction(perms, scope).andThen(cachingAction)
 }

@@ -56,7 +56,7 @@ class Projects(
       limit: Option[Long],
       offset: Long
   ): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
+    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
       val realLimit  = limitOrDefault(limit, config.ore.projects.initLoad)
       val realOffset = offsetOrZero(offset)
 
@@ -173,7 +173,7 @@ class Projects(
     }
 
   def showProject(pluginId: String): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF { implicit request =>
       val dbCon = APIV2Queries
         .singleProjectQuery(pluginId, request.globalPermissions.has(Permission.SeeHidden), request.user.map(_.id))
         .option
@@ -182,7 +182,7 @@ class Projects(
     }
 
   def showProjectDescription(pluginId: String): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
       service.runDbCon(APIV2Queries.getPage(pluginId, "Home").option).get.asError(NotFound).map {
         case (_, _, _, contents) =>
           Ok(Json.obj("description" := contents))
@@ -233,7 +233,7 @@ class Projects(
       }
 
   def showMembers(pluginId: String, limit: Option[Long], offset: Long): Action[AnyContent] =
-    CachingApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
+    ApiAction(Permission.ViewPublicInfo, APIScope.ProjectScope(pluginId)).asyncF {
       service
         .runDbCon(
           APIV2Queries
@@ -244,7 +244,7 @@ class Projects(
     }
 
   def showProjectStats(pluginId: String, fromDateString: String, toDateString: String): Action[AnyContent] =
-    CachingApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF {
+    ApiAction(Permission.IsProjectMember, APIScope.ProjectScope(pluginId)).asyncF {
       import Ordering.Implicits._
 
       def parseDate(dateStr: String) =
