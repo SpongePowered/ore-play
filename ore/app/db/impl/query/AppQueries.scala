@@ -78,11 +78,11 @@ object AppQueries extends DoobieOreProtocol {
   }
 
   def getUnhealtyProjects(staleTime: FiniteDuration): Query0[UnhealtyProject] = {
-    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, coalesce(hp.last_updated, p.created_at), p.visibility
-          |  FROM projects p JOIN home_projects hp ON p.id = hp.id
+    sql"""|SELECT p.owner_name, p.slug, p.topic_id, p.post_id, ps.last_updated, p.visibility
+          |  FROM projects p JOIN project_stats ps ON p.id = ps.id
           |  WHERE p.topic_id IS NULL
           |     OR p.post_id IS NULL
-          |     OR hp.last_updated > (now() - $staleTime::INTERVAL)
+          |     OR ps.last_updated > (now() - $staleTime::INTERVAL)
           |     OR p.visibility != 1""".stripMargin.query[UnhealtyProject]
   }
 
@@ -202,7 +202,7 @@ object AppQueries extends DoobieOreProtocol {
     val catFilter = NonEmptyList.fromList(categories).map(Fragments.in(fr"p.category", _))
 
     val res = (
-      sql"SELECT p.id FROM home_projects p " ++
+      sql"SELECT p.id FROM projects p JOIN project_stats ps ON p.id = ps.id " ++
         Fragments.whereAndOpt(Some(queryFilter), catFilter) ++
         fr"ORDER BY" ++
         ordering.fragment ++

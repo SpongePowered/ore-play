@@ -367,8 +367,8 @@ class Versions(
             version.tags.usesMixin,
             version.tags.stability,
             version.tags.releaseType,
-            version.tags.platforms,
-            version.tags.platformsVersions
+            ???,
+            ???
           )
 
           Created(apiVersion.asProtocol)

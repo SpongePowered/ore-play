@@ -30,8 +30,6 @@ trait ProjectBase[+F[_]] {
 
   def missingFile: F[Seq[Model[Version]]]
 
-  def refreshHomePage(logger: LoggerTakingImplicit[OreMDC])(implicit mdc: OreMDC): F[Unit]
-
   /**
     * Returns the Project with the specified owner name and name.
     *
@@ -142,12 +140,6 @@ object ProjectBase {
           }
       }
     }
-
-    def refreshHomePage(logger: LoggerTakingImplicit[OreMDC])(implicit mdc: OreMDC): F[Unit] =
-      service
-        .runDbCon(SharedQueries.refreshHomeView.run)
-        .runAsync(TaskUtils.logCallback("Failed to refresh home page", logger))
-        .to[F]
 
     def withName(owner: String, name: String): F[Option[Model[Project]]] =
       ModelView

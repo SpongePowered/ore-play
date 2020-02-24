@@ -56,10 +56,11 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
     tags = Version.VersionTags(
       usesMixin = data.containsMixins,
       stability = stability,
-      releaseType = releaseType,
-      platforms = versionedPlatforms.map(_.id),
-      platformsVersions = versionedPlatforms.map(_.version),
-      platformsCoarseVersions = versionedPlatforms.map(_.coarseVersion)
+      releaseType = releaseType
+      //TODO: Handle platforms
+      //platforms = versionedPlatforms.map(_.id),
+      //platformsVersions = versionedPlatforms.map(_.version),
+      //platformsCoarseVersions = versionedPlatforms.map(_.coarseVersion)
     )
   )
 }

@@ -460,7 +460,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
         )(LoggedActionProject.apply)
 
         (forumVisbility, projectVisibility).parTupled
-          .productR((log, projects.refreshHomePage(MDCLogger)).parTupled)
+          .productR(log)
           .as(Ok)
       }
   }
@@ -505,15 +505,13 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
   }
 
   private def hardDeleteProject[A](project: Model[Project])(implicit request: AuthRequest[A]): UIO[Unit] = {
-    projects.delete(project) *>
-      UserActionLogger.logOption(
-        request,
-        LoggedActionType.ProjectVisibilityChange,
-        None,
-        "deleted",
-        project.visibility.nameKey
-      )(LoggedActionProject.apply) *>
-      projects.refreshHomePage(MDCLogger)
+    projects.delete(project).unit <* UserActionLogger.logOption(
+      request,
+      LoggedActionType.ProjectVisibilityChange,
+      None,
+      "deleted",
+      project.visibility.nameKey
+    )(LoggedActionProject.apply)
   }
 
   /**
@@ -545,7 +543,7 @@ class Projects @Inject()(stats: StatTracker[UIO], forms: OreForms)(
           )(LoggedActionProject.apply)
 
           (oreVisibility, forumVisibility).parTupled
-            .zipRight((log, projects.refreshHomePage(MDCLogger)).parTupled)
+            .zipRight(log)
             .unit
         }
 

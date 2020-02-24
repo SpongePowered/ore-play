@@ -249,11 +249,8 @@ trait ProjectFactory {
 
           val addForumJob = service.insert(Job.UpdateDiscourseProjectTopic.newJob(project.id).toJob)
 
-          val initProject =
-            if (project.topicId.isEmpty) addForumJob *> setVisibility
-            else setVisibility
-
-          initProject <* projects.refreshHomePage(MDCLogger)(OreMDC.NoMDC)
+          if (project.topicId.isEmpty) addForumJob *> setVisibility
+          else setVisibility
         } else UIO.succeed(project)
       }
       _ <- if (createForumPost) {
