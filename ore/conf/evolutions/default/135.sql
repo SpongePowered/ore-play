@@ -78,14 +78,16 @@ $$;
 CREATE TABLE project_version_platforms
 (
     id                      BIGSERIAL PRIMARY KEY,
-    version_id              BIGINT NOT NULL REFERENCES project_versions,
-    platform                TEXT   NOT NULL,
+    created_at              TIMESTAMPTZ NOT NULL,
+    version_id              BIGINT      NOT NULL REFERENCES project_versions,
+    platform                TEXT        NOT NULL,
     platform_version        TEXT,
     platform_coarse_version TEXT
 );
 
-INSERT INTO project_version_platforms (version_id, platform, platform_version, platform_coarse_version)
+INSERT INTO project_version_platforms (version_id, created_at, platform, platform_version, platform_coarse_version)
 SELECT pv.id,
+       pv.created_at,
        dep.dep_id,
        nullif(nullif(dep.dep_version, 'null'), ''),
        platform_coarse_version_from_dependency(dep.dep_id, dep.dep_version)
@@ -297,6 +299,22 @@ CREATE TRIGGER promoted_versions_remove_invalid
     FOR EACH ROW
 EXECUTE PROCEDURE remove_invalid_promoted_versions_trigger();
 
+CREATE VIEW apiv1_projects AS
+SELECT p.id,
+       to_jsonb(
+               ARRAY(SELECT DISTINCT
+                   ON (promoted.version_string) jsonb_build_object(
+                                                        'version_string', promoted.version_string,
+                                                        'platforms', promoted.platforms,
+                                                        'platform_versions', promoted.platform_versions,
+                                                        'platform_coarse_versions', promoted.platform_coarse_versions,
+                                                        'stability', promoted.stability,
+                                                        'release_type', promoted.release_type)
+                     FROM promoted_versions promoted
+                     WHERE promoted.project_id = p.id
+                     LIMIT 5)) AS promoted_versions
+FROM projects p;
+
 # --- !Downs
 
 DROP TRIGGER project_stats_last_updated_updater ON project_versions;
@@ -313,6 +331,8 @@ DROP FUNCTION remove_invalid_promoted_versions_trigger;
 
 DROP MATERIALIZED VIEW promoted_versions;
 DROP MATERIALIZED VIEW project_stats;
+
+DROP VIEW apiv1_projects;
 
 ALTER TABLE projects
     ADD COLUMN recommended_version_id BIGINT REFERENCES project_versions ON DELETE SET NULL,

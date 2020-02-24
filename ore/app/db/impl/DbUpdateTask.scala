@@ -26,15 +26,14 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
     service: ModelService[Task]
 ) {
 
-  //TODO: Create new config options for update interval
-  val interval: duration.Duration = duration.Duration.fromScala(config.ore.homepage.updateInterval)
+  val interval: duration.Duration = duration.Duration.fromScala(config.ore.materializedUpdateInterval)
 
   private val Logger               = scalalogging.Logger.takingImplicit[OreMDC]("DbUpdateTask")
   implicit private val mdc: OreMDC = OreMDC.NoMDC
 
   Logger.info("DbUpdateTask starting")
 
-  private val homepageSchedule: Schedule[Clock, Any, Int] = Schedule
+  private val materializedViewsSchedule: Schedule[Clock, Any, Int] = Schedule
     .fixed(interval)
     .tapInput(_ => UIO(Logger.debug(s"Updating homepage view")))
 
@@ -49,12 +48,11 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
     runtime.unsafeRun(safeTask.repeat(schedule).fork)
   }
 
-  //TODO: Refresh promoted and stats every hour in case stuff screws up and to update often updated stats
-  private val homepageTask = runningTask(
+  private val materializedViewsTask = runningTask(
     service.runDbCon(
       sql"REFRESH MATERIALIZED VIEW project_stats".update.run *> sql"REFRESH MATERIALIZED VIEW promoted_versions".update.run.void
     ),
-    homepageSchedule
+    materializedViewsSchedule
   )
 
   private def runManyInTransaction(updates: Seq[doobie.Update0]) = {
@@ -78,7 +76,7 @@ class DbUpdateTask @Inject()(config: OreConfig, lifecycle: ApplicationLifecycle,
   )
   lifecycle.addStopHook { () =>
     Future {
-      runtime.unsafeRun(homepageTask.interrupt)
+      runtime.unsafeRun(materializedViewsTask.interrupt)
       runtime.unsafeRun(statsTask.interrupt)
     }
   }

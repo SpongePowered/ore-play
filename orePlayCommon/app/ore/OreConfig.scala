@@ -54,10 +54,7 @@ final class OreConfig @Inject()(config: Configuration) {
     val staging: Boolean    = raw.get[Boolean]("staging")
     val logTimings: Boolean = raw.get[Boolean]("log-timings")
 
-    object homepage extends ConfigCategory {
-      val raw: Configuration             = ore.raw.get[Configuration]("homepage")
-      val updateInterval: FiniteDuration = raw.get[FiniteDuration]("update-interval")
-    }
+    val materializedUpdateInterval: FiniteDuration = raw.get[FiniteDuration]("materialized-update-interval")
 
     object channels extends ConfigCategory {
       val raw: Configuration  = ore.raw.get[Configuration]("channels")
@@ -186,7 +183,6 @@ final class OreConfig @Inject()(config: Configuration) {
   app.fakeUser.load()
   play.load()
   ore.load()
-  ore.homepage.load()
   ore.channels.load()
   ore.pages.load()
   ore.projects.load()

@@ -243,7 +243,7 @@ final class ApiV1Controller @Inject()(
               }
             }
             .map {
-              case (newProject, newVersion) =>
+              case (newProject, newVersion, _) =>
                 Created(
                   api.writeVersion(
                     newVersion,

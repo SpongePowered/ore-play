@@ -159,7 +159,7 @@ trait OreRestfulApiV1 extends OreWrites {
 
   private def queryProjectRV = {
     for {
-      hp <- TableQuery[ApiV1HomeProjectsTable]
+      hp <- TableQuery[ApiV1ProjectsTable]
       p  <- TableQuery[ProjectTable] if hp.id === p.id
       v  <- TableQuery[VersionTable]
       if p.id === v.projectId && v.versionString === ((hp.promotedVersions ~> 0) +>> "version_string")
