@@ -24,7 +24,7 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
 ) extends AbstractApiV2Controller(lifecycle) {
 
   def showPages(pluginId: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
       service.runDbCon(APIV2Queries.pageList(pluginId).to[Vector]).flatMap { pages =>
         if (pages.isEmpty) ZIO.fail(NotFound)
         else ZIO.succeed(Ok(APIV2.PageList(pages.map(t => APIV2.PageListEntry(t._3, t._4)))))
@@ -32,7 +32,7 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
     }
 
   def showPage(pluginId: String, page: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
       service.runDbCon(APIV2Queries.getPage(pluginId, page).option).get.asError(NotFound).map {
         case (_, _, name, contents) =>
           Ok(APIV2.Page(name, contents))

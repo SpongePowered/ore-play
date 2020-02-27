@@ -29,7 +29,7 @@ class Users(
 ) extends AbstractApiV2Controller(lifecycle) {
 
   def showUser(user: String): Action[AnyContent] =
-    ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
+    CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
       service.runDbCon(APIV2Queries.userQuery(user).option).map(_.fold(NotFound: Result)(a => Ok(a.asJson)))
     }
 
@@ -77,7 +77,7 @@ class Users(
           Long
       ) => doobie.Query0[Either[DecodingFailure, APIV2.CompactProject]],
       countQuery: (String, Boolean, Option[DbRef[User]]) => doobie.Query0[Long]
-  ): Action[AnyContent] = ApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
+  ): Action[AnyContent] = CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF { implicit request =>
     val realLimit = limitOrDefault(limit, config.ore.projects.initLoad)
 
     val getProjects = query(
