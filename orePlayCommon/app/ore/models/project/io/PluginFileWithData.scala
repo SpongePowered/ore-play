@@ -57,10 +57,6 @@ class PluginFileWithData(val path: Path, val user: Model[User], val data: Plugin
       usesMixin = data.containsMixins,
       stability = stability,
       releaseType = releaseType
-      //TODO: Handle platforms
-      //platforms = versionedPlatforms.map(_.id),
-      //platformsVersions = versionedPlatforms.map(_.version),
-      //platformsCoarseVersions = versionedPlatforms.map(_.coarseVersion)
     )
   )
 
