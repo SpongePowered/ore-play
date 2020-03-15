@@ -99,13 +99,13 @@
                                     </td>
                                 } else { @if(action.actionContext == LoggedActionContext.ProjectPage) {
                                     <td>
-                                        <a href="@projectRoutes.Pages.show(action.project.ownerName.getOrElse("Unknown"), action.project.slug.getOrElse("Unknown"), action.page.slug.getOrElse("Unknown"))">@action.project.ownerName.getOrElse("Unknown"))/@action.project.slug.getOrElse("Unknown")/@action.page.slug.getOrElse("Unknown")</a>
+                                        <a href="@projectRoutes.Pages.show(action.project.ownerName.getOrElse("Unknown"), action.project.slug.getOrElse("Unknown"), action.page.slug.getOrElse("Unknown"))">@action.project.ownerName.getOrElse("Unknown")/@action.project.slug.getOrElse("Unknown")/@action.page.slug.getOrElse("Unknown")</a>
                                         <small class="filter-project">(<a href="@appRoutes.showLog(Some(page), userFilter, action.project.pluginId, versionFilter, pageFilter, actionFilter, subjectFilter)">@action.project.pluginId</a>)</small>
                                         <small class="filter-page">(<a href="@appRoutes.showLog(Some(page), userFilter, projectFilter, versionFilter, action.page.id, actionFilter, subjectFilter)">@action.page.id</a>)</small>
                                     </td>
                                 } else { @if(action.actionContext == LoggedActionContext.Version) {
                                     <td>
-                                        <a href="@projectRoutes.Versions.show(action.project.ownerName.getOrElse("Unknown"), action.project.slug.getOrElse("Unknown"), action.version.versionString.getOrElse("Unknown"))">@action.project.ownerName.getOrElse("Unknown"))/@action.project.slug.getOrElse("Unknown"))/@action.version.versionString.getOrElse("Unknown"))</a>
+                                        <a href="@projectRoutes.Versions.show(action.project.ownerName.getOrElse("Unknown"), action.project.slug.getOrElse("Unknown"), action.version.versionString.getOrElse("Unknown"))">@action.project.ownerName.getOrElse("Unknown")/@action.project.slug.getOrElse("Unknown")/@action.version.versionString.getOrElse("Unknown"))</a>
                                         <small class="filter-project">(<a href="@appRoutes.showLog(Some(page), userFilter, action.project.pluginId, versionFilter, pageFilter, actionFilter, subjectFilter)">@action.project.pluginId</a>)</small>
                                         <small class="filter-version">(<a href="@appRoutes.showLog(Some(page), userFilter, projectFilter, action.version.versionString, pageFilter, actionFilter, subjectFilter)">@action.version.versionString</a>)</small>
                                     </td>
