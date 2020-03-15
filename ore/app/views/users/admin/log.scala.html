@@ -105,7 +105,7 @@
                                     </td>
                                 } else { @if(action.actionContext == LoggedActionContext.Version) {
                                     <td>
-                                        <a href="@projectRoutes.Versions.show(action.project.ownerName.getOrElse("Unknown"), action.project.slug.getOrElse("Unknown"), action.version.versionString.getOrElse("Unknown"))">@action.project.ownerName.getOrElse("Unknown")/@action.project.slug.getOrElse("Unknown")/@action.version.versionString.getOrElse("Unknown"))</a>
+                                        <a href="@projectRoutes.Versions.show(action.project.ownerName.getOrElse("Unknown"), action.project.slug.getOrElse("Unknown"), action.version.versionString.getOrElse("Unknown"))">@action.project.ownerName.getOrElse("Unknown")/@action.project.slug.getOrElse("Unknown")/@action.version.versionString.getOrElse("Unknown")</a>
                                         <small class="filter-project">(<a href="@appRoutes.showLog(Some(page), userFilter, action.project.pluginId, versionFilter, pageFilter, actionFilter, subjectFilter)">@action.project.pluginId</a>)</small>
                                         <small class="filter-version">(<a href="@appRoutes.showLog(Some(page), userFilter, projectFilter, action.version.versionString, pageFilter, actionFilter, subjectFilter)">@action.version.versionString</a>)</small>
                                     </td>
