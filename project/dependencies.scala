@@ -3,9 +3,9 @@ import play.sbt.PlayImport._
 import sbt._
 
 object Version {
-  val cats        = "2.0.0"
-  val catsEffect  = "2.0.0"
-  val catsTagless = "0.10"
+  val cats        = "2.1.1"
+  val catsEffect  = "2.1.2"
+  val catsTagless = "0.11"
 
   val zio     = "1.0.0-RC17"
   val zioCats = "2.0.0.0-RC10"
@@ -15,10 +15,10 @@ object Version {
   val playSlick = "5.0.0"
   val doobie    = "0.8.6"
 
-  val circe           = "0.12.3"
-  val circeDerivation = "0.12.0-M7"
+  val circe           = "0.13.0"
+  val circeDerivation = "0.13.0-M3"
 
-  val akka         = "2.6.1"
+  val akka         = "2.6.3"
   val akkaHttp     = "10.1.11"
   val scalaLogging = "3.9.2"
 
@@ -59,13 +59,13 @@ object Deps {
 
   val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging" % Version.scalaLogging
 
-  val enumeratum      = "com.beachape" %% "enumeratum"       % "1.5.13"
+  val enumeratum      = "com.beachape" %% "enumeratum"       % "1.5.15"
   val enumeratumSlick = "com.beachape" %% "enumeratum-slick" % "1.5.16"
 
   val zio     = "dev.zio" %% "zio"              % Version.zio
   val zioCats = "dev.zio" %% "zio-interop-cats" % Version.zioCats
 
-  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.12.1"
+  val pureConfig = "com.github.pureconfig" %% "pureconfig" % "0.12.3"
 
   val scalaCache           = "com.github.cb372" %% "scalacache-caffeine"    % Version.scalaCache
   val scalaCacheCatsEffect = "com.github.cb372" %% "scalacache-cats-effect" % Version.scalaCache
@@ -93,9 +93,9 @@ object Deps {
   val pluginMeta = "org.spongepowered" % "plugin-meta" % "0.4.1"
 
   val javaxMail = "javax.mail"     % "mail"            % "1.4.7"
-  val postgres  = "org.postgresql" % "postgresql"      % "42.2.9"
+  val postgres  = "org.postgresql" % "postgresql"      % "42.2.11"
   val logback   = "ch.qos.logback" % "logback-classic" % "1.2.3"
-  val sentry    = "io.sentry"      % "sentry-logback"  % "1.7.28"
+  val sentry    = "io.sentry"      % "sentry-logback"  % "1.7.30"
 
   val playTestDeps = Seq(
     jdbc % Test,

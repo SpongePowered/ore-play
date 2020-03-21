@@ -1,4 +1,5 @@
 ThisBuild / turbo := true
+ThisBuild / scalaVersion := Settings.scalaVer
 
 //ThisBuild / semanticdbEnabled := true
 Global / semanticdbVersion := "4.2.3"
