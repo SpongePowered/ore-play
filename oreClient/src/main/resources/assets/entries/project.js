@@ -20,11 +20,11 @@ const router = new VueRouter({
             name: 'home',
             component: ProjectDocs,
             props: {
-                page: 'Home'
+                page: ['Home']
             }
         },
         {
-            path: '/pages/:page',
+            path: '/pages/:page+',
             name: 'pages',
             component: ProjectDocs,
             props: true

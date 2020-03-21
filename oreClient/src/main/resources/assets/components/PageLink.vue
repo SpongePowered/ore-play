@@ -1,7 +1,7 @@
 <template>
     <li class="list-group-item">
         <router-link
-                :to="{name: 'pages', params: {project, permissions, 'page': page.slug.join('/')}}"
+                :to="{name: 'pages', params: {project, permissions, 'page': page.slug}}"
                 v-slot="{ href, navigate }">
             <div>
                 <a v-if="page.children" :class="expandedChildren ? 'page-collapse' : 'page-expand'"

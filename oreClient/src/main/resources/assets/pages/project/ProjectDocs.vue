@@ -150,7 +150,7 @@
                 required: true
             },
             page: {
-                type: String,
+                type: [Array, String],
                 required: true
             },
             members: {
@@ -204,7 +204,9 @@
         },
         methods: {
             updatePage(fetchPages) {
-                API.request('projects/' + this.project.plugin_id + '/_pages/' + this.page).then((response) => {
+                let joinedPage = Array.isArray(this.page) ? this.page.join('/') : this.page;
+
+                API.request('projects/' + this.project.plugin_id + '/_pages/' + joinedPage).then((response) => {
                     this.description = response.content;
                 }).catch((error) => {
                     this.description = "";
