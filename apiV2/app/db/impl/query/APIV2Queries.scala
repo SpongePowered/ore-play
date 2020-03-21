@@ -600,7 +600,7 @@ object APIV2Queries extends DoobieOreProtocol {
           |             LEFT JOIN organization_trust ot ON ot.user_id = om.user_id AND ot.organization_id = o.id
           |    WHERE o.name = $orgName;""".stripMargin.query[(DbRef[User], Boolean)]
 
-  def getPage(pluginId: String, page: String): Query0[(DbRef[Project], DbRef[Page], String, String)] =
+  def getPage(pluginId: String, page: String): Query0[(DbRef[Project], DbRef[Page], String, Option[String])] =
     sql"""|WITH RECURSIVE pages_rec(n, name, slug, contents, id, project_id) AS (
           |    SELECT 2, pp.name, pp.slug, pp.contents, pp.id, pp.project_id
           |        FROM project_pages pp
@@ -619,24 +619,24 @@ object APIV2Queries extends DoobieOreProtocol {
           |SELECT pp.project_id, pp.id, pp.name, pp.contents
           |    FROM pages_rec pp
           |    WHERE pp.slug = split_part($page, '/', array_length(regexp_split_to_array($page, '/'), 1));""".stripMargin
-      .query[(DbRef[Project], DbRef[Page], String, String)]
+      .query[(DbRef[Project], DbRef[Page], String, Option[String])]
 
-  def pageList(pluginId: String): Query0[(DbRef[Project], DbRef[Page], List[String], List[String])] =
-    sql"""|WITH RECURSIVE pages_rec(name, slug, id, project_id) AS (
-          |    SELECT ARRAY[pp.name]::TEXT[], ARRAY[pp.slug]::TEXT[], pp.id, pp.project_id
+  def pageList(pluginId: String): Query0[(DbRef[Project], DbRef[Page], List[String], List[String], Boolean)] =
+    sql"""|WITH RECURSIVE pages_rec(name, slug, id, project_id, navigational) AS (
+          |    SELECT ARRAY[pp.name]::TEXT[], ARRAY[pp.slug]::TEXT[], pp.id, pp.project_id, pp.contents IS NULL
           |        FROM project_pages pp
           |                 JOIN projects p ON pp.project_id = p.id
           |        WHERE p.plugin_id = $pluginId
           |          AND pp.parent_id IS NULL
           |    UNION
-          |    SELECT array_append(pr.name, pp.name::TEXT), array_append(pr.slug, pp.slug::TEXT), pp.id, pp.project_id
+          |    SELECT array_append(pr.name, pp.name::TEXT), array_append(pr.slug, pp.slug::TEXT), pp.id, pp.project_id, pp.contents IS NULL
           |        FROM pages_rec pr,
           |             project_pages pp
           |        WHERE pp.project_id = pr.project_id
           |          AND pp.parent_id = pr.id
           |)
-          |SELECT pp.project_id, pp.id, pp.name, pp.slug
+          |SELECT pp.project_id, pp.id, pp.name, pp.slug, navigational
           |    FROM pages_rec pp ORDER BY pp.name;""".stripMargin
-      .query[(DbRef[Project], DbRef[Page], List[String], List[String])]
+      .query[(DbRef[Project], DbRef[Page], List[String], List[String], Boolean)]
 
 }

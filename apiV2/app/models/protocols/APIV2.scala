@@ -148,7 +148,7 @@ object APIV2 {
 
   @SnakeCaseJsonCodec case class Page(
       name: String,
-      content: String
+      content: Option[String]
   )
 
   @SnakeCaseJsonCodec case class PageList(
@@ -157,6 +157,7 @@ object APIV2 {
 
   @SnakeCaseJsonCodec case class PageListEntry(
       name: Seq[String],
-      slug: Seq[String]
+      slug: Seq[String],
+      navigational: Boolean
   )
 }

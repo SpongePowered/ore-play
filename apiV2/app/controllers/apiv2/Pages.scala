@@ -27,7 +27,7 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
     CachingApiAction(Permission.ViewPublicInfo, APIScope.GlobalScope).asyncF {
       service.runDbCon(APIV2Queries.pageList(pluginId).to[Vector]).flatMap { pages =>
         if (pages.isEmpty) ZIO.fail(NotFound)
-        else ZIO.succeed(Ok(APIV2.PageList(pages.map(t => APIV2.PageListEntry(t._3, t._4)))))
+        else ZIO.succeed(Ok(APIV2.PageList(pages.map(t => APIV2.PageListEntry(t._3, t._4, t._5)))))
       }
     }
 
@@ -72,8 +72,9 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
           projects.withPluginId(pluginId).get.asError(NotFound).map(_.id).flatMap(insertNewPage(_, None))
         }
 
-      if (page == Page.homeName && content.length < Page.minLength) ZIO.fail(BadRequest(ApiError("Too short content")))
-      else if (content.length > Page.maxLengthPage) ZIO.fail(BadRequest(ApiError("Too long content")))
+      if (page == Page.homeName && content.fold(0)(_.length) < Page.minLength)
+        ZIO.fail(BadRequest(ApiError("Too short content")))
+      else if (content.fold(0)(_.length) > Page.maxLengthPage) ZIO.fail(BadRequest(ApiError("Too long content")))
       else updateExisting.orElse(createNew)
     }
 

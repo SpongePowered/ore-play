@@ -7,7 +7,7 @@
         </li>
 
         <li is="page-link" v-for="page in pages" :key="page.slug.join('/')" :page="page" :project="project"
-            :permissions="permissions"></li>
+            :permissions="permissions" v-on:edit-page="event => $emit('edit-page', event)"></li>
     </ul>
 </template>
 

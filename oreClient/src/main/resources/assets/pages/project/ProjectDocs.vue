@@ -48,43 +48,46 @@
                     <h3 class="panel-title">Pages</h3>
                     <template v-if="permissions.includes('edit_page')">
                         <button class="new-page btn yellow btn-xs pull-right" data-toggle="modal"
-                                data-target="#new-page" title="New">
+                                data-target="#edit-page" title="New">
                             <i class="fas fa-plus"></i>
                         </button>
 
-                        <div class="modal fade" id="new-page" tabindex="-1" role="dialog"
-                             aria-labelledby="new-page-label">
+                        <div class="modal fade" id="edit-page" tabindex="-1" role="dialog"
+                             aria-labelledby="page-label">
                             <div class="modal-dialog" role="document">
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                             <span aria-hidden="true">&times;</span>
                                         </button>
-                                        <h4 class="modal-title" id="new-page-label">Create a new page</h4>
-                                        <h4 v-if="pagePutError" class="modal-title" id="new-page-label-error"
+                                        <h4 class="modal-title" id="page-label">
+                                            <template v-if="newPage">Create a new page</template>
+                                            <template v-else>Edit page</template>
+                                        </h4>
+                                        <h4 v-if="pagePutError" class="modal-title" id="page-label-error"
                                             style="display: none; color: red">
-                                            Error creating page {{ pagePutError }}
+                                            Error updating page {{ pagePutError }}
                                         </h4>
                                     </div>
                                     <div class="modal-body input-group">
                                         <div class="setting">
                                             <div class="setting-description">
                                                 <h4>Page name</h4>
-                                                <p>Enter a title for your new page.</p>
+                                                <p>Enter a title for your page.</p>
                                             </div>
                                             <div class="setting-content">
-                                                <input v-model="newPageName" class="form-control" type="text"
+                                                <input v-model="putPage.name" class="form-control" type="text"
                                                        id="page-name" name="page-name">
                                             </div>
                                             <div class="clearfix"></div>
                                         </div>
-                                        <div class="setting setting-no-border">
+                                        <div class="setting">
                                             <div class="setting-description">
                                                 <h4>Parent page</h4>
                                                 <p>Select a parent page (optional)</p>
                                             </div>
                                             <div class="setting-content">
-                                                <select v-model="newPageParent" class="form-control select-parent">
+                                                <select v-model="putPage.parent" class="form-control select-parent">
                                                     <option selected value="null">&lt;none&gt;</option>
                                                     <option v-for="page in pages" :value="page.slug.join('/')"
                                                             :data-slug="page.slug.join('/')">{{ page.name.join('/') }}
@@ -93,13 +96,26 @@
                                             </div>
                                             <div class="clearfix"></div>
                                         </div>
+                                        <div class="setting setting-no-border">
+                                            <div class="setting-description">
+                                                <h4>Navigational</h4>
+                                                <p>Makes the page only useful for nagivation. <b>This will delete all content currently on the page.</b></p>
+                                            </div>
+                                            <div class="setting-content">
+                                                <div class="form-check">
+                                                    <input v-model="putPage.navigational" class="form-check-input position-static" type="checkbox"
+                                                           id="page-navigational" name="page-navigational" aria-label="Navigational">
+                                                </div>
+                                            </div>
+                                            <div class="clearfix"></div>
+                                        </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-default" data-dismiss="modal"
-                                                @click="resetNewPage">Close
+                                                @click="resetPutPage">Close
                                         </button>
-                                        <button type="button" class="btn btn-primary" @click="createNewPage">Continue
-                                        </button>
+                                        <button v-if="!newPage" type="button" class="btn btn-danger" @click="deletePage">Delete</button>
+                                        <button type="button" class="btn btn-primary" @click="updateCreatePage">Continue</button>
                                     </div>
                                 </div>
                             </div>
@@ -108,7 +124,7 @@
                 </div>
 
                 <page-list :pages="groupedPages" :project="project" :permissions="permissions"
-                           :include-home="true"></page-list>
+                           :include-home="true" v-on:edit-page="startEditPage"></page-list>
             </div>
 
 
@@ -135,8 +151,7 @@
             return {
                 description: "",
                 pages: [],
-                newPageName: "",
-                newPageParent: null,
+                putPage: {},
                 pagePutError: null
             }
         },
@@ -189,9 +204,13 @@
 
                     obj[key].slug = page.slug;
                     obj[key].name = page.name;
+                    obj[key].navigational = page.navigational;
                 }
 
                 return acc
+            },
+            newPage() {
+                return typeof this.putPage.existing === 'undefined'
             }
         },
         created() {
@@ -207,7 +226,12 @@
                 let joinedPage = Array.isArray(this.page) ? this.page.join('/') : this.page;
 
                 API.request('projects/' + this.project.plugin_id + '/_pages/' + joinedPage).then((response) => {
-                    this.description = response.content;
+                    if(response.content === null) {
+                        this.description = ""
+                    }
+                    else {
+                        this.description = response.content;
+                    }
                 }).catch((error) => {
                     this.description = "";
 
@@ -230,25 +254,51 @@
             parseCategory(category) {
                 return Category.fromId(category).name;
             },
-            resetNewPage() {
-                this.newPageName = "";
-                this.newPageParent = null
+            resetPutPage() {
+                this.putPage = {};
             },
-            createNewPage() {
-                let newPageSlug = this.newPageParent ? this.newPageParent + '/' + this.newPageName : this.newPageName;
+            updateCreatePage() {
+                let page = this.putPage;
+                let pageSlug = page.parent ? page.parent + '/' + page.name : page.name;
 
-                API.request('projects/' + this.project.plugin_id + '/_pages/' + newPageSlug, 'PUT', {
-                    'name': this.newPageName,
-                    'content': 'Welcome to your new page'
+                let content = null;
+                if(!page.navigational) {
+                    content = page.content ? page.content : 'Welcome to your new page'
+                }
+
+                API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PUT', {
+                    'name': page.name,
+                    'content': content
                 }).then(res => {
-                    $('#new-page'). modal('toggle');
-                    this.resetNewPage();
+                    $('#edit-page').modal('toggle');
+                    this.resetPutPage();
                     this.updatePage(true)
                 }).catch(err => {
                     //TODO: Better error handling here
 
                     console.error(err);
                     this.pagePutError = err;
+                });
+            },
+            deletePage() {
+                //TODO
+            },
+            startEditPage(page) {
+                this.$set(this.putPage, 'existing', true);
+                this.$set(this.putPage, 'name', page.name[page.name.length - 1]);
+                this.$set(this.putPage, 'parent', page.slug.length === 1 ? null : page.slug.slice(0, -1).join('/'));
+                this.$set(this.putPage, 'navigational', page.navigational);
+
+                API.request('projects/' + this.project.plugin_id + '/_pages/' + page.slug.join('/')).then((response) => {
+                    this.$set(this.putPage, 'content', response.content);
+                    $('#edit-page').modal('toggle');
+                }).catch((error) => {
+                    if (error === 404) {
+                        this.$set(this.putPage, 'existing', undefined);
+                        $('#edit-page').modal('toggle');
+                    } else {
+                        //TODO
+                    }
                 });
             }
         }
