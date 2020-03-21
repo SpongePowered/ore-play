@@ -173,7 +173,7 @@ object APIV2Queries extends DoobieOreProtocol {
                 |    FROM (SELECT unnest(ppv.platforms)                AS platform,
                 |                 unnest(ppv.platform_coarse_versions) AS platform_coarse_version,
                 |                 ppv.stability
-                |              FROM ppv) AS promoted """.stripMargin ++
+                |              FROM promoted_versions ppv) AS promoted """.stripMargin ++
             Fragments.whereAndOpt(
               NonEmptyList
                 .fromList(platformsWithVersion)
@@ -245,7 +245,6 @@ object APIV2Queries extends DoobieOreProtocol {
     } else order.fragment
 
     val select = projectSelectFrag(pluginId, category, platforms, stability, query, owner, canSeeHidden, currentUserId)
-    println(select.query[Int].sql)
     (select ++ fr"ORDER BY" ++ ordering ++ fr"LIMIT $limit OFFSET $offset").query[APIV2QueryProject].map(_.asProtocol)
   }
 
@@ -389,10 +388,9 @@ object APIV2Queries extends DoobieOreProtocol {
             |             LEFT JOIN users u ON pv.author_id = u.id
             |             LEFT JOIN project_version_platforms pvp ON pv.id = pvp.version_id """.stripMargin
 
-    val (platformsWithVersion, platformsWithoutVersion) = platforms.partitionEither {
-      case (name, Some(version)) =>
-        Left((name, Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
-      case (name, None) => Right(name)
+    val coarsePlatfgorms = platforms.map {
+      case (name, optVersion) =>
+        (name, optVersion.map(version => Platform.withValueOpt(name).fold(version)(_.coarseVersionOf(version))))
     }
 
     val visibilityFrag =
@@ -409,13 +407,16 @@ object APIV2Queries extends DoobieOreProtocol {
     val filters = Fragments.whereAndOpt(
       Some(fr"p.plugin_id = $pluginId"),
       versionName.map(v => fr"pv.version_string = $v"),
-      NonEmptyList.fromList(platformsWithoutVersion).map(array(_) ++ fr"&& pv.platforms"),
-      NonEmptyList
-        .fromList(platformsWithVersion)
-        .map { t =>
-          array2Text("TEXT", "TEXT")(t) ++
-            fr"&& ARRAY(SELECT (platform, coarse_version)::TEXT FROM unnest(pv.platforms, pv.platform_coarse_versions) as plat(platform, coarse_version))"
-        },
+      if (coarsePlatfgorms.isEmpty) None
+      else
+        Some(
+          Fragments.or(
+            platforms.map {
+              case (platform, Some(version)) => fr"pvp.platform = $platform AND pvp.platform_coarse_version = $version"
+              case (platform, None)          => fr"pvp.platform = $platform"
+            }: _*
+          )
+        ),
       NonEmptyList.fromList(stability).map(Fragments.in(fr"pv.stability", _)),
       NonEmptyList.fromList(releaseType).map(Fragments.in(fr"pv.release_type", _)),
       visibilityFrag

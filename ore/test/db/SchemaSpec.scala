@@ -43,9 +43,8 @@ class SchemaSpec extends DbSpec {
     check(
       sql"""|SELECT project_id, version_string, dependency_ids, dependency_versions, file_size, hash,
             |author_id, description, review_state, reviewer_id, approved_at, visibility, file_name,
-            |create_forum_post, post_id, uses_mixin, stability, release_type, platforms, platform_versions,
-            |platform_coarse_versions, legacy_channel_name, legacy_channel_color FROM project_versions""".stripMargin
-        .query[Version]
+            |create_forum_post, post_id, uses_mixin, stability, release_type,
+            |legacy_channel_name, legacy_channel_color FROM project_versions""".stripMargin.query[Version]
     )
   }
 
