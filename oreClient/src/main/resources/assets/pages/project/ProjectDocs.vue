@@ -163,7 +163,7 @@
                 return jsRoutes.controllers.project;
             },
             groupedPages() {
-                let nonHome = this.pages.filter(p => p.slug.length !== 1 || p.slug[0] !== 'home');
+                let nonHome = this.pages.filter(p => p.slug.length !== 1 || p.slug[0] !== 'Home');
                 let acc = {};
 
                 for (let page of nonHome) {
