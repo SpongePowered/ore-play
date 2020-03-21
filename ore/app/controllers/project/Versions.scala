@@ -126,7 +126,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             LoggedActionType.VersionDeleted,
             version.id,
             s"Deleted: $comment",
-            s"$version.visibility"
+            s"${version.visibility}"
           )(LoggedActionVersion(_, Some(version.projectId)))
           _ <- projects.deleteVersion(version)
         } yield Redirect(self.showList(author, slug))
@@ -155,7 +155,7 @@ class Versions @Inject()(stats: StatTracker[UIO], forms: OreForms, factory: Proj
             LoggedActionType.VersionDeleted,
             version.id,
             s"SoftDelete: $comment",
-            ""
+            s"${version.visibility}"
           )(LoggedActionVersion(_, Some(version.projectId)))
         } yield Redirect(self.showList(author, slug))
       }

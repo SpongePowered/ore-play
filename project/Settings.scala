@@ -8,9 +8,11 @@ import sbt._
 
 object Settings {
 
+  val scalaVer = "2.13.1"
+
   val commonSettings = Seq(
     version := "2.0.0-M2",
-    scalaVersion := "2.13.1",
+    scalaVersion := scalaVer,
     scalacOptions ++= Seq(
       "-deprecation",
       "-encoding",

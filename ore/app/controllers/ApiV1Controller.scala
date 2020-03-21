@@ -13,7 +13,7 @@ import ore.auth.CryptoUtils
 import ore.db.access.ModelView
 import ore.db.impl.OrePostgresDriver.api._
 import ore.db.impl.schema.ProjectApiKeyTable
-import ore.db.DbRef
+import ore.db.{DbRef, Model, ObjId}
 import ore.models.api.ProjectApiKey
 import ore.models.organization.Organization
 import ore.models.project.factory.ProjectFactory
@@ -324,34 +324,41 @@ final class ApiV1Controller @Inject()(
       .semiflatMap {
         case (query, optUser) =>
           Logger.debug("Sync user found: " + optUser.isDefined)
+
+          val id        = ObjId(query.get("external_id").get.toLong)
+          val email     = query.get("email")
+          val username  = query.get("username")
+          val fullName  = query.get("name")
+          val addGroups = query.get("add_groups")
+
+          val globalRoles = addGroups.map { groups =>
+            if (groups.trim.isEmpty) Nil
+            else groups.split(",").flatMap(Role.withValueOpt).toList
+          }
+
+          val updateRoles = (user: Model[User]) =>
+            globalRoles.fold(UIO.unit) { roles =>
+              user.globalRoles.deleteAllFromParent *> roles
+                .map(_.toDbRole.id.value)
+                .traverse(user.globalRoles.addAssoc)
+                .unit
+            }
+
           optUser
             .map { user =>
-              val email      = query.get("email")
-              val username   = query.get("username")
-              val fullName   = query.get("name")
-              val add_groups = query.get("add_groups")
-
-              val globalRoles = add_groups.map { groups =>
-                if (groups.trim.isEmpty) Nil
-                else groups.split(",").flatMap(Role.withValueOpt).toList
-              }
-
-              val updateRoles = globalRoles.fold(UIO.unit) { roles =>
-                user.globalRoles.deleteAllFromParent *> roles
-                  .map(_.toDbRole.id.value)
-                  .traverse(user.globalRoles.addAssoc)
-                  .unit
-              }
-
-              service.update(user)(
-                _.copy(
-                  email = email.orElse(user.email),
-                  name = username.getOrElse(user.name),
-                  fullName = fullName.orElse(user.fullName)
+              service
+                .update(user)(
+                  _.copy(
+                    email = email.orElse(user.email),
+                    name = username.getOrElse(user.name),
+                    fullName = fullName.orElse(user.fullName)
+                  )
                 )
-              ) *> updateRoles
+                .flatMap(updateRoles)
             }
-            .getOrElse(UIO.unit)
+            .getOrElse {
+              service.insert(User(ObjId(id), fullName, username.get, email)).flatMap(updateRoles)
+            }
             .as(Ok(Json.obj("status" -> "success")))
       }
       .toZIO
