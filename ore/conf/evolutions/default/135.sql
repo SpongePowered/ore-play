@@ -329,10 +329,11 @@ DROP FUNCTION update_project_stats_last_updated_trigger;
 DROP FUNCTION add_project_stats_trigger;
 DROP FUNCTION remove_invalid_promoted_versions_trigger;
 
-DROP MATERIALIZED VIEW promoted_versions;
 DROP MATERIALIZED VIEW project_stats;
 
 DROP VIEW apiv1_projects;
+
+DROP MATERIALIZED VIEW promoted_versions;
 
 ALTER TABLE projects
     ADD COLUMN recommended_version_id BIGINT REFERENCES project_versions ON DELETE SET NULL,
