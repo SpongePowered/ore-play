@@ -1,26 +1,26 @@
 <template>
     <div v-if="enabled">
         <!-- Edit -->
-        <button :style="editButtonStyle" type="button" class="btn btn-sm btn-edit btn-page btn-default" title="Edit" @click="state = 'edit'">
+        <button type="button" class="btn btn-sm btn-edit btn-page btn-default" :class="editClasses" title="Edit" @click="state = 'edit'">
             <i class="fas fa-edit"></i> Edit
         </button>
 
         <!-- Preview -->
-        <div :style="otherButtonStyle" class="btn-edit-container btn-preview-container" title="Preview">
-            <button v-if="state !== 'display'" type="button" class="btn btn-sm btn-preview btn-page btn-default" @click="state = 'preview'">
+        <div class="btn-edit-container btn-preview-container" :class="buttonStateClasses" title="Preview">
+            <button v-if="state !== 'display'" type="button" class="btn btn-sm btn-preview btn-page btn-default" :class="previewClasses" @click="state = 'preview'">
                 <i class="fas fa-eye"></i>
             </button>
         </div>
 
         <!-- Save -->
-        <div v-if="savable" :style="otherButtonStyle" class="btn-edit-container btn-save-container" title="Save">
+        <div v-if="savable" class="btn-edit-container btn-save-container" :class="buttonStateClasses" title="Save">
             <button class="btn btn-sm btn-save btn-page btn-default" @click="$emit('saved', rawData)">
                 <i class="fas fa-save"></i>
             </button>
         </div>
 
         <!-- Cancel -->
-        <div v-if="cancellable" :style="otherButtonStyle" class="btn-edit-container btn-cancel-container" title="Cancel">
+        <div v-if="cancellable" class="btn-edit-container btn-cancel-container" :class="buttonStateClasses" title="Cancel">
             <button type="button" class="btn btn-sm btn-cancel btn-page btn-default" @click="reset">
                 <i class="fas fa-times"></i>
             </button>
@@ -28,7 +28,7 @@
 
         <!-- Delete -->
         <template v-if="deletable">
-            <div :style="otherButtonStyle" class="btn-edit-container btn-delete-container" title="Delete">
+            <div class="btn-edit-container btn-delete-container" :class="buttonStateClasses" title="Delete">
                 <button type="button" class="btn btn-sm btn-page-delete btn-page btn-default"
                         data-toggle="modal" data-target="#modal-page-delete">
                     <i class="fas fa-trash"></i>
@@ -114,29 +114,23 @@
             cooked: function () {
                 return md.render(this.raw);
             },
-            editButtonStyle() {
-                if(this.state === 'display') {
-                    return {
-                        border: '1px solid rgb(204, 204, 204)',
-                        position: 'absolute'
-                    }
-                }
-                else {
-                    return {
-                        'border-color': 'rgb(204, 204, 204) white rgb(204, 204, 204) rgb(204, 204, 204)',
-                        position: 'absolute',
-                        'border-style': 'solid',
-                        'border-width': '1px',
-                        'border-image': 'none 100% / 1 / 0 stretch'
-                    }
+            buttonStateClasses() {
+                return {
+                    'btn-editor-display': this.state === 'display',
+                    'btn-editor-active': this.state !== 'display'
                 }
             },
-            otherButtonStyle() {
-                let zSign = this.state === 'display' ? -1 : 1;
+            editClasses() {
                 return {
-                    position: 'absolute',
-                    'margin-left': this.state === 'display' ? '0px' : '-34px',
-                    'z-index': 1000 * zSign
+                    'editor-tab-active': this.state === 'edit',
+                    'editor-tab-inactive': this.state !== 'edit',
+                    ...this.buttonStateClasses
+                }
+            },
+            previewClasses() {
+                return {
+                    'editor-tab-active': this.state === 'preview',
+                    'editor-tab-inactive': this.state !== 'preview',
                 }
             }
         },

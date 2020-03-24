@@ -83,6 +83,7 @@ button.open:hover {
   border-radius: 4px 0 0 4px;
   padding: 6px;
   z-index: 1000;
+  position: absolute;
 }
 
 .btn-page:focus {
@@ -94,10 +95,29 @@ button.open:hover {
   position: absolute;
 }
 
+.editor-tag-inactive {
+  border: 1px solid rgb(204, 204, 204);
+}
+
+.editor-tab-active {
+  border-color: rgb(204, 204, 204) white rgb(204, 204, 204) rgb(204, 204, 204);
+  border-style: solid;
+  border-width: 1px;
+  border-image: none 100% / 1 / 0 stretch;
+}
+
 .btn-edit-container {
   position: absolute;
-  overflow: hidden;
-  z-index: -1000;
+
+  &.btn-editor-display {
+    margin-left: 0;
+    z-index: -1000;
+  }
+
+  &.btn-editor-active {
+    margin-left: -34px;
+    z-index: 1000;
+  }
 }
 
 .btn-edit-container .btn {
