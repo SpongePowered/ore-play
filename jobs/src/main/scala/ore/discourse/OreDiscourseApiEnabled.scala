@@ -72,7 +72,7 @@ class OreDiscourseApiEnabled[F[_]](
 
     val res = for {
       homePage <- EitherT.right[DiscourseError](homePage(project))
-      content = Templates.projectTopic(project, homePage.contents)
+      content = Templates.projectTopic(project, homePage.contents.getOrElse(sys.error("Homepage must have contents")))
       topic <- EitherT(createTopicProgram(content))
       // Topic created!
       // Catch some unexpected cases (should never happen)
@@ -116,7 +116,7 @@ class OreDiscourseApiEnabled[F[_]](
 
     val res = for {
       homePage <- EitherT.right[DiscourseError](homePage(project))
-      content = Templates.projectTopic(project, homePage.contents)
+      content = Templates.projectTopic(project, homePage.contents.getOrElse(sys.error("Homepage must have contents")))
       _ <- EitherT(updateTopicProgram)
       _ <- EitherT(updatePostProgram(content))
       _ = MDCLogger.debug(s"Project topic updated for ${project.url}.")
