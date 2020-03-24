@@ -2,7 +2,7 @@
 
 ALTER TABLE project_pages
     ALTER COLUMN contents DROP NOT NULL,
-    ADD CONSTRAINT homepage_contents_check CHECK ( name != 'Home' OR contents NOT NULL );
+    ADD CONSTRAINT homepage_contents_check CHECK ( name != 'Home' OR NOT contents IS NULL );
 
 # --- !Downs
 
@@ -12,4 +12,4 @@ WHERE contents IS NULL;
 
 ALTER TABLE project_pages
     DROP CONSTRAINT homepage_contents_check,
-    ALTER COLUMN contents SET NOT NULL
+    ALTER COLUMN contents SET NOT NULL;
