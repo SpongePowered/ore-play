@@ -78,7 +78,7 @@
                                                 <p>Enter a title for your page.</p>
                                             </div>
                                             <div class="setting-content">
-                                                <input v-model="putPage.name" class="form-control" type="text"
+                                                <input v-model="requestPage.name" class="form-control" type="text"
                                                        id="page-name" name="page-name">
                                             </div>
                                             <div class="clearfix"></div>
@@ -89,7 +89,7 @@
                                                 <p>Select a parent page (optional)</p>
                                             </div>
                                             <div class="setting-content">
-                                                <select v-model="putPage.parent" class="form-control select-parent">
+                                                <select v-model="requestPage.parent" class="form-control select-parent">
                                                     <option selected value="null">&lt;none&gt;</option>
                                                     <option v-for="page in pages" :value="page.slug.join('/')"
                                                             :data-slug="page.slug.join('/')">{{ page.name.join('/') }}
@@ -105,7 +105,7 @@
                                             </div>
                                             <div class="setting-content">
                                                 <div class="form-check">
-                                                    <input v-model="putPage.navigational" class="form-check-input position-static" type="checkbox"
+                                                    <input v-model="requestPage.navigational" class="form-check-input position-static" type="checkbox"
                                                            id="page-navigational" name="page-navigational" aria-label="Navigational">
                                                 </div>
                                             </div>
@@ -153,7 +153,7 @@
             return {
                 description: "",
                 pages: [],
-                putPage: {},
+                requestPage: {},
                 pagePutError: null
             }
         },
@@ -212,7 +212,10 @@
                 return acc
             },
             newPage() {
-                return typeof this.putPage.existing === 'undefined'
+                return typeof this.requestPage.existing === 'undefined'
+            },
+            joinedPage() {
+                return Array.isArray(this.page) ? this.page.join('/') : this.page
             }
         },
         created() {
@@ -225,9 +228,7 @@
         },
         methods: {
             updatePage(fetchPages) {
-                let joinedPage = Array.isArray(this.page) ? this.page.join('/') : this.page;
-
-                API.request('projects/' + this.project.plugin_id + '/_pages/' + joinedPage).then((response) => {
+                API.request('projects/' + this.project.plugin_id + '/_pages/' + this.joinedPage).then((response) => {
                     if(response.content === null) {
                         this.description = ""
                     }
@@ -257,21 +258,36 @@
                 return Category.fromId(category).name;
             },
             resetPutPage() {
-                this.putPage = {};
+                this.requestPage = {};
             },
             updateCreatePage() {
-                let page = this.putPage;
-                let pageSlug = page.parent ? page.parent + '/' + page.name : page.name;
+                let page = this.requestPage;
+                if(page.parent === 'null') {
+                    page.parent = null;
+                }
 
                 let content = null;
                 if(!page.navigational) {
                     content = page.content ? page.content : 'Welcome to your new page'
                 }
+                let action;
+                if(this.newPage) {
+                    let pageSlug = page.parent ? page.parent + '/' + page.name : page.name;
+                    action = API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PUT', {
+                        'name': page.name,
+                        'content': content
+                    });
+                }
+                else {
+                    let pageSlug = page.oldParent ? page.oldParent + '/' + page.oldName : page.oldName;
+                    action = API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PATCH', {
+                        'name': page.name,
+                        'content': content,
+                        'parent': page.parent,
+                    });
+                }
 
-                API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'PUT', {
-                    'name': page.name,
-                    'content': content
-                }).then(res => {
+                action.then(res => {
                     $('#edit-page').modal('toggle');
                     this.resetPutPage();
                     this.updatePage(true)
@@ -283,20 +299,41 @@
                 });
             },
             deletePage() {
+                let page = this.requestPage;
+                let pageSlug = page.parent ? page.parent + '/' + page.name : page.name;
                 //TODO
+
+                API.request('projects/' + this.project.plugin_id + '/_pages/' + pageSlug, 'DELETE').then(res => {
+                    $('#edit-page').modal('toggle');
+                    this.resetPutPage();
+
+                    if (pageSlug === this.joinedPage) {
+                        this.$router.push({'name': 'home', params: {'project': this.project, 'permissions': this.permissions}})
+                    }
+                    else {
+                        this.updatePage(true);
+                    }
+                }).catch(err => {
+                    //TODO: Better error handling here
+
+                    console.error(err);
+                    this.pagePutError = err;
+                });
             },
             startEditPage(page) {
-                this.$set(this.putPage, 'existing', true);
-                this.$set(this.putPage, 'name', page.name[page.name.length - 1]);
-                this.$set(this.putPage, 'parent', page.slug.length === 1 ? null : page.slug.slice(0, -1).join('/'));
-                this.$set(this.putPage, 'navigational', page.navigational);
+                this.$set(this.requestPage, 'existing', true);
+                this.$set(this.requestPage, 'oldName', page.name[page.name.length - 1]);
+                this.$set(this.requestPage, 'name', this.requestPage.oldName);
+                this.$set(this.requestPage, 'oldParent', page.slug.length === 1 ? null : page.slug.slice(0, -1).join('/'));
+                this.$set(this.requestPage, 'parent', this.requestPage.oldParent);
+                this.$set(this.requestPage, 'navigational', page.navigational);
 
                 API.request('projects/' + this.project.plugin_id + '/_pages/' + page.slug.join('/')).then((response) => {
-                    this.$set(this.putPage, 'content', response.content);
+                    this.$set(this.requestPage, 'content', response.content);
                     $('#edit-page').modal('toggle');
                 }).catch((error) => {
                     if (error === 404) {
-                        this.$set(this.putPage, 'existing', undefined);
+                        this.$set(this.requestPage, 'existing', undefined);
                         $('#edit-page').modal('toggle');
                     } else {
                         //TODO

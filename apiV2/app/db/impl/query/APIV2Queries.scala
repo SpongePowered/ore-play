@@ -5,7 +5,7 @@ import java.time.{LocalDate, LocalDateTime}
 
 import play.api.mvc.RequestHeader
 
-import controllers.apiv2.{Projects, Versions}
+import controllers.apiv2.{Pages, Projects, Versions}
 import controllers.sugar.Requests.ApiAuthInfo
 import models.protocols.APIV2
 import models.querymodels._
@@ -669,5 +669,20 @@ object APIV2Queries extends DoobieOreProtocol {
           |SELECT pp.project_id, pp.id, pp.name, pp.slug, navigational
           |    FROM pages_rec pp ORDER BY pp.name;""".stripMargin
       .query[(DbRef[Project], DbRef[Page], List[String], List[String], Boolean)]
+
+  def patchPage(
+      patch: Pages.PatchPageF[Option],
+      newSlug: Option[String],
+      id: DbRef[Page],
+      parentId: Option[Option[DbRef[Page]]]
+  ): doobie.Update0 = {
+    val sets = Fragments.setOpt(
+      patch.name.map(n => fr"name = $n"),
+      newSlug.map(n => fr"slug = $n"),
+      patch.content.map(c => fr"contents = $c"),
+      parentId.map(p => fr"parent_id = $p")
+    )
+    (sql"UPDATE project_pages " ++ sets ++ fr"WHERE id = $id").update
+  }
 
 }

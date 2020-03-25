@@ -5,7 +5,7 @@ import play.api.inject.ApplicationLifecycle
 import play.api.mvc.{Action, AnyContent}
 
 import controllers.OreControllerComponents
-import controllers.apiv2.helpers.{APIScope, ApiError}
+import controllers.apiv2.helpers.{APIScope, ApiError, ApiErrors}
 import db.impl.query.APIV2Queries
 import ore.db.impl.OrePostgresDriver.api._
 import models.protocols.APIV2
@@ -14,10 +14,20 @@ import ore.db.impl.schema.PageTable
 import ore.models.project.{Page, Project}
 import ore.permission.Permission
 import ore.util.StringUtils
+import util.PatchDecoder
 import util.syntax._
 
+import cats.Id
+import cats.data.Validated
+import cats.instances.option._
+import cats.syntax.all._
+import io.circe.{Decoder, Json}
 import slick.lifted.TableQuery
+import squeal.category._
+import squeal.category.syntax.all._
+import squeal.category.macros.Derive
 import zio.ZIO
+import zio.interop.catz._
 
 class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)(
     implicit oreComponents: OreControllerComponents
@@ -78,6 +88,43 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
       else updateExisting.orElse(createNew)
     }
 
+  def patchPage(pluginId: String, page: String): Action[Json] =
+    ApiAction(Permission.EditPage, APIScope.ProjectScope(pluginId))
+      .asyncF(parseCirce.json) { implicit request =>
+        val root = request.body.hcursor
+
+        val res: Decoder.AccumulatingResult[Pages.PatchPageF[Option]] = Pages.PatchPageF.patchDecoder.traverseKC(
+          λ[PatchDecoder ~>: Compose2[Decoder.AccumulatingResult, Option, *]](_.decode(root))
+        )
+
+        res match {
+          case Validated.Valid(a) =>
+            val newName = a.copy[Option](
+              name = a.name.map(StringUtils.compact)
+            )
+
+            val slug = newName.name.map(StringUtils.slugify)
+
+            val oldPage = service.runDbCon(APIV2Queries.getPage(pluginId, page).option).get.asError(NotFound)
+            val newParent = newName.parent
+              .map(_.map(p => service.runDbCon(APIV2Queries.getPage(pluginId, p).option).get.map(_._2)).sequence)
+              .sequence
+              .asError(BadRequest(ApiError("Unknown parent")))
+
+            val runRename = (oldPage <&> newParent).flatMap {
+              case ((_, id, name, contents), parentId) =>
+                service
+                  .runDbCon(APIV2Queries.patchPage(newName, slug, id, parentId).run)
+                  .as(Ok(APIV2.Page(newName.name.getOrElse(name), newName.content.getOrElse(contents))))
+            }
+
+            if (newName.content.flatten.fold(0)(_.length) > Page.maxLengthPage)
+              ZIO.fail(BadRequest(ApiError("Too long content")))
+            else runRename
+          case Validated.Invalid(e) => ZIO.fail(BadRequest(ApiErrors(e.map(_.show))))
+        }
+      }
+
   def deletePage(pluginId: String, page: String): Action[AnyContent] =
     ApiAction(Permission.EditPage, APIScope.ProjectScope(pluginId)).asyncF {
       service
@@ -86,11 +133,30 @@ class Pages(val errorHandler: HttpErrorHandler, lifecycle: ApplicationLifecycle)
         .asError(NotFound)
         .flatMap {
           case (_, id, _, _) =>
-            service.deleteWhere(Page)(p => p.id === id && p.isDeletable)
+            //TODO: In the future when we represent the tree in a better way, just promote all children one level up
+            service.deleteWhere(Page)(
+              p => p.id === id && p.isDeletable && TableQuery[PageTable].filter(_.parentId === id).size === 0
+            )
         }
         .map {
           case 0 => BadRequest(ApiError("Page not deletable"))
           case _ => NoContent
         }
     }
+}
+object Pages {
+  case class PatchPageF[F[_]](
+      name: F[String],
+      content: F[Option[String]],
+      parent: F[Option[String]]
+  )
+  object PatchPageF {
+    implicit val F: ApplicativeKC[PatchPageF] with TraverseKC[PatchPageF] with DistributiveKC[PatchPageF] =
+      Derive.allKC[PatchPageF]
+
+    val patchDecoder: PatchPageF[PatchDecoder] =
+      PatchDecoder.fromName(Derive.namesWithProductImplicitsC[PatchPageF, Decoder])(
+        io.circe.derivation.renaming.snakeCase
+      )
+  }
 }

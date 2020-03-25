@@ -744,6 +744,36 @@ GET     /projects/:pluginId/_pages/*page       @controllers.apiv2.Pages.showPage
 PUT     /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.putPage(pluginId, page)
 
 ###
+#  summary: Updates a page
+#  description: >-
+#    Updates a page in the given project. Requires the `edit_page`
+#    permission in the project or owning organization.
+#
+#    **WARNING: This API is subject to change, maybe very little, maybe dramatically.**
+#  tags:
+#    - Pages
+#  requestBody:
+#    required: true
+#    content:
+#      application/json:
+#        schema:
+#          $ref: '#/components/schemas/controllers.apiv2.Pages.PatchPage'
+#  responses:
+#    200:
+#      description: Page updated
+#      content:
+#        application/json:
+#          schema:
+#            $ref: '#/components/schemas/models.protocols.APIV2.Page'
+#    401:
+#      $ref: '#/components/responses/UnauthorizedError'
+#    403:
+#      $ref: '#/components/responses/ForbiddenError'
+###
+#+nocsrf
+PATCH   /projects/:pluginId/_pages/*page                     @controllers.apiv2.Pages.patchPage(pluginId, page)
+
+###
 #  summary: Deletes a page
 #  description: >-
 #    Deletes a page in the given project. Requires the `edit_page`
